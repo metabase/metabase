@@ -81,3 +81,9 @@
   [transform-id :- ::lib.schema.id/transform
    index-name   :- :string]
   (t2/exists? :model/TableIndex :transform_id transform-id :index_name index-name))
+
+(mu/defn table-indexes-for-transforms
+  "The TableIndexes of the Transforms with `transform-ids`, ordered by index name."
+  [{:keys [transform-ids]} :- [:map {:closed true}
+                               [:transform-ids [:set ::lib.schema.id/transform]]]]
+  (t2/select :model/TableIndex :transform_id [:in transform-ids] {:order-by [[:index_name :asc]]}))

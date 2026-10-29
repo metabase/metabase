@@ -5,7 +5,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn transform-source
@@ -42,11 +41,6 @@
                [:checkpoint_hi_value        {:optional true} [:maybe :string]]]]
   (t2/update! :model/TransformRun run-id changes))
 
-(mu/defn database-exists?
-  "Whether a Database with `database-id` exists."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
-
 (mu/defn target-table
   "The Table named `table-name` in `schema` of the Database with `database-id` also matching the key-value
   `conditions`, or nil."
@@ -55,13 +49,6 @@
    table-name  :- :string
    & conditions :- [:* [:or :keyword :string :int :boolean]]]
   (apply t2/select-one :model/Table :db_id database-id :schema schema :name table-name conditions))
-
-(mu/defn table-for-transform
-  "The Table owned by the Transform with `transform-id`, or nil. `transform-id` is nil for a transform
-  that hasn't been saved yet, in which case there is no owned Table either."
-  [transform-id :- [:maybe ::lib.schema.id/transform]]
-  (when transform-id
-    (t2/select-one :model/Table :transform_id transform-id {:from [(warehouse-schema-overlay/table-query)]})))
 
 (mu/defn update-table!
   "Apply `changes` to the Table with `table-id`."
@@ -93,32 +80,3 @@
                [:status        {:optional true} [:maybe [:or :keyword :string]]]
                [:error_message {:optional true} [:maybe :string]]]]
   (t2/update! :model/TableIndex :id [:in ids] (merge {:last_executed_at :%now} changes)))
-
-(mu/defn active-field-names-for-table
-  "The names of the active Fields of the Table with `table-id`, in position order."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-vec :name [:model/Field :name :position]
-                    :table_id table-id :active true
-                    {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]
-                     :order-by [[:position :asc]]}))
-
-(mu/defn table-refs-matching
-  "The id, Database id, schema, and name of the Tables matching any of `refs` (each a `[db-id schema table-name]`
-  triple; `schema` may be nil)."
-  [refs :- [:sequential [:tuple ms/PositiveInt [:maybe :string] :string]]]
-  (t2/select [:model/Table :id :db_id :schema :name]
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
-              :where (into [:or]
-                           (map (fn [[db-id schema table-name]]
-                                  [:and
-                                   [:= :db_id db-id]
-                                   (if (some? schema)
-                                     [:= :schema schema]
-                                     [:is :schema nil])
-                                   [:= :name table-name]]))
-                           refs)}))
-
-(mu/defn table-refs
-  "The id, Database id, schema, and name of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :schema :name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))

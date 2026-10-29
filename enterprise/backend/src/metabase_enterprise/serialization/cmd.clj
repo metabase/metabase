@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
@@ -14,6 +13,7 @@
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features]
    [metabase.setup.core :as setup]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -98,7 +98,7 @@
   (log/infof "Exporting Metabase to %s" path)
   (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
-  (serialization.db/all-users) ;; TODO -- why??? [editor's note: this comment originally from Cam]
+  (users.db/all-users) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [f (io/file path)]
     (.mkdirs f)
     (when-not (.canWrite f)

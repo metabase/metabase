@@ -8,8 +8,12 @@
   index's precomputed `curated` column."
   (:require
    [metabase.collections.curation :as curation]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
-   [metabase.metabot.db :as metabot.db]))
+   [metabase.content-verification.db :as content-verification.db]
+   [metabase.dashboards.db :as dashboards.db]
+   [metabase.queries.db :as queries.db]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (def ^:private report-card-models
   "Search-model strings backed by `report_card`, moderated as \"card\"."
@@ -20,14 +24,16 @@
   [ids item-type]
   (if (empty? ids)
     #{}
-    (metabot.db/verified-item-ids ids item-type)))
+    (content-verification.db/verified-item-ids {:item-ids ids :item-type item-type})))
 
 (defn- collection-info
   "`collection-id → {:authority_level :location :type}` for the given ids."
   [coll-ids]
   (when (seq coll-ids)
-    (update-vals (metabot.db/collection-curation-info-by-id coll-ids)
-                 #(select-keys % [:authority_level :location :type]))))
+    (into {}
+          (map (juxt :id #(select-keys % [:authority_level :location :type])))
+          (collections.db/collections-of-ids {:collection-ids coll-ids
+                                              :columns        [:id :authority_level :location :type]}))))
 
 (defn- root-collection-type-of
   [coll-id->info coll-id]
@@ -40,8 +46,8 @@
   "`[id signal-map]` pairs for collection-housed, moderatable models (report_card-backed and dashboards)."
   [search-model t2-model item-type ids]
   (let [rows     (case t2-model
-                   :model/Card      (metabot.db/card-collection-ids ids)
-                   :model/Dashboard (metabot.db/dashboard-collection-ids ids))
+                   :model/Card      (queries.db/card-collection-ids {:card-ids ids})
+                   :model/Dashboard (dashboards.db/dashboard-collection-ids {:dashboard-ids ids}))
         coll     (collection-info (into #{} (keep :collection_id) rows))
         verified (verified-item-ids ids item-type)]
     (for [{:keys [id collection_id]} rows]
@@ -60,7 +66,7 @@
   curated? coerce is_published consistently (only true/1 count)."
   [ids]
   (for [{:keys [id is_published data_layer data_authority]}
-        (metabot.db/table-curation-rows ids)]
+        (warehouse-schema.db/tables-by-ids {:table-ids ids :columns [:id :is_published :data_layer :data_authority]})]
     [id {:model          "table"
          :is_published   is_published
          :data_layer     data_layer

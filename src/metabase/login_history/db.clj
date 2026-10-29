@@ -63,3 +63,9 @@
                                       [:= :lh2.user_id   :login_history.user_id]
                                       [:= :lh2.device_id :login_history.device_id]
                                       [:< :lh2.id        :login_history.id]]}]]]}))
+
+(mu/defn first-login
+  "The earliest LoginHistory, with only its `:timestamp`, of the User with `user-id`, or nil."
+  [{:keys [user-id]} :- [:map {:closed true}
+                         [:user-id ::lib.schema.id/user]]]
+  (t2/select-one [:model/LoginHistory :timestamp] :user_id [:auto/param user-id] {:order-by [[:timestamp :asc]]}))

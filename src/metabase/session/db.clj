@@ -9,7 +9,6 @@
    [metabase.session.query :as session.query]
    [metabase.session.schema :as session.schema]
    [metabase.tracing.core :as tracing]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -145,12 +144,14 @@
    credentials      :- [:maybe ::auth-identity.schema/auth-identity.credentials]]
   (t2/update! :model/AuthIdentity auth-identity-id {:credentials credentials}))
 
-(mu/defn user-by-email
-  "The id, SSO source, and active flag of the User whose email matches `email` case-insensitively, or nil."
-  [email :- :string]
-  (t2/select-one [:model/User :id :sso_source :is_active] :%lower.email (u/lower-case-en email)))
+(mu/defn mfa-auth-identity-id
+  "The `:mfa_auth_identity_id` of the Session with `key-hashed`, or nil."
+  [{:keys [key-hashed]} :- [:map {:closed true}
+                            [:key-hashed :string]]]
+  (t2/select-one [:model/Session :mfa_auth_identity_id] :key_hashed [:auto/param key-hashed]))
 
-(mu/defn user-login-status
-  "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
+(mu/defn unended-session-exists?
+  "Whether the User with `user-id` has a Session whose ending has not been recorded."
+  [{:keys [user-id]} :- [:map {:closed true}
+                         [:user-id ::lib.schema.id/user]]]
+  (t2/exists? :model/Session :user_id [:auto/param user-id] :ended_at nil))

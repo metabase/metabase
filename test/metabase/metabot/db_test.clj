@@ -10,8 +10,10 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.db :as queries.db]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -19,7 +21,7 @@
 (deftest table-schema-rows-are-permission-checkable-test
   (testing "Narrowed table rows preserve query and read permission checks"
     (let [table-id (mt/id :orders)
-          row      (first (metabot.db/table-schema-rows [table-id]))]
+          row      (first (warehouse-schema.db/tables-by-ids {:table-ids [table-id] :columns [:id :name :schema :db_id :is_published :collection_id]}))]
       (is (some? row))
       (testing "the columns the permission path reads are present"
         (is (contains? row :is_published))
@@ -40,7 +42,7 @@
                                                              :is_published  true
                                                              :collection_id (:id data)}]
         (is (=? [{:id table-id, :is_published true, :collection_id (:id data)}]
-                (metabot.db/table-schema-rows [table-id])))))))
+                (warehouse-schema.db/tables-by-ids {:table-ids [table-id] :columns [:id :name :schema :db_id :is_published :collection_id]})))))))
 
 (deftest card-source-info-classifies-legacy-metrics-test
   (testing "Reading stored metric sources preserves stage structure without upgrading curated dimensions"
@@ -80,7 +82,7 @@
                     :collection_id coll-id
                     :dataset_query (let [mp (mt/metadata-provider)]
                                      (lib/query mp (lib.metadata/table mp (mt/id :orders))))}]
-      (let [row (first (metabot.db/card-source-rows #{card-id}))]
+      (let [row (first (queries.db/card-source-rows {:card-ids #{card-id}}))]
         (is (some? row))
         (testing "the columns the permission path reads are present"
           (is (contains? row :collection_id))

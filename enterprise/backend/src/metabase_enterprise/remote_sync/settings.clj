@@ -1,9 +1,9 @@
 (ns metabase-enterprise.remote-sync.settings
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.startup.core :as startup]
@@ -119,7 +119,7 @@
 (defn- custom-collections-synced?
   "Whether a top-level custom collection is remote-synced."
   []
-  (boolean (some custom-collection? (remote-sync.db/remote-synced-root-collections))))
+  (boolean (some custom-collection? (collections.db/remote-synced-root-collections))))
 
 (defn check-custom-collections-unsynced!
   "Throws when a top-level custom collection is remote-synced."

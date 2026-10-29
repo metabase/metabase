@@ -5,6 +5,7 @@
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.session.core :as session]
    [metabase.test :as mt]
+   [metabase.users.db :as users.db]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -84,4 +85,4 @@
       (is (= 1 (auth-identity.db/delete-auth-identities! user-id "google")))
       (is (t2/exists? :model/AuthIdentity :user_id other-id :provider "google")))
     (testing "an id-only lookup still finds the user"
-      (is (true? (auth-identity.db/user-active? user-id))))))
+      (is (true? (users.db/user-active? {:user-id user-id}))))))

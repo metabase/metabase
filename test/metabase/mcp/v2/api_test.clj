@@ -7,7 +7,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.config.core :as config]
-   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.scope :as mcp.scope]
@@ -30,6 +29,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
 
@@ -268,11 +268,11 @@
           (doseq [id (cons table-id target-ids)]
             (data-perms/set-table-permission! (perms-group/all-users) id :perms/create-queries :query-builder))
           (let [looked-up (atom [])
-                response  (let [active-tables-by-ids (mt/original-fn #'mcp.db/active-tables-by-ids)]
-                            (mt/with-dynamic-fn-redefs [mcp.db/active-tables-by-ids
-                                                        (fn [ids]
+                response  (let [active-tables-by-ids (mt/original-fn #'warehouse-schema.db/active-tables-by-ids)]
+                            (mt/with-dynamic-fn-redefs [warehouse-schema.db/active-tables-by-ids
+                                                        (fn [{ids :table-ids :as opts}]
                                                           (swap! looked-up conj (count ids))
-                                                          (active-tables-by-ids ids))]
+                                                          (active-tables-by-ids opts))]
                               (tool-call-as! :rasta "browse_data" {:action "get_fields" :table_ids [table-id]})))
                 result    (get-in response [:body :result])]
             (testing "the call succeeds — the related tables' read checks don't run one permission query each"

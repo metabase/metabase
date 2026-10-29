@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
    [java-time.api :as t]
+   [metabase.cache.db :as cache.db]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
@@ -42,10 +43,9 @@
   its result set is open, so materializing the row first and reading the blob afterwards throws \"object is already
   closed\"."
   [query-hash]
-  (query-processor.db/cache-entry (fn [row]
-                                    {:results    (results-as-bytes row)
-                                     :updated-at (:updated_at row)})
-                                  query-hash))
+  (cache.db/cache-entry {:row-fn (fn [row]
+                                   {:results    (results-as-bytes row)
+                                    :updated-at (:updated_at row)}) :query-hash query-hash}))
 
 (defn invalidated-at-ttl
   "Freshness boundary for a `:ttl` strategy: cache entries with `updated_at` older than this are stale. Returns nil when

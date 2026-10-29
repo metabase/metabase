@@ -10,7 +10,10 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.api :as mcp.v2.api]
+   [metabase.metabot.usage-controls :as usage-controls]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.db :as permissions.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -68,7 +71,7 @@
                               (select-keys [:mcp_enabled :tool_access])
                               (update :tool_access #(under-current-names renamed %))
                               (assoc :group_id group-id)))
-                        (mcp.db/all-group-ids))}))
+                        (permissions.db/ordered-group-ids {}))}))
 
 (api.macros/defendpoint :get "/" :- permissions-response-schema
   "List the MCP tool policy of every group, with the tools it can name and the current permission mode."
@@ -86,11 +89,20 @@
         (api/write-check row)
         (api/create-check :model/McpGroupPermission permission)))))
 
+(defn- visible-group-ids
+  "The set of ids of the groups the mode selected by `advanced?` shows."
+  [advanced?]
+  (let [simple-ids (usage-controls/simple-mode-group-ids)]
+    (set (permissions.db/ordered-group-ids
+          (if advanced?
+            {:excluded-ids (vec simple-ids)}
+            {:included-ids (vec (conj simple-ids (u/the-id (perms/admin-group))))})))))
+
 (defn- check-visible-groups
   "Throw a 400 naming the first `group_id` in `permissions` that is not a group the current mode shows, since such a
   row would take effect unseen on the next mode switch."
   [permissions]
-  (let [visible (mcp.db/visible-group-ids (mcp.db/advanced-mode?))]
+  (let [visible (visible-group-ids (mcp.db/advanced-mode?))]
     (doseq [{:keys [group_id]} permissions]
       (api/check-400 (contains? visible group_id)
                      (tru "Unknown group, or one the current permission mode hides: {0}" (str group_id))))))

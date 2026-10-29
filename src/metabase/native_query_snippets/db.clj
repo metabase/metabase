@@ -65,3 +65,23 @@
                                             (when include-root? [:= :collection_id nil])]]
                                 :order-by serdes/stable-storage-order}
                          filter-column (sql.helpers/where :or [:in filter-column filter-ids]))))
+
+(mu/defn snippets-with-ids
+  "The NativeQuerySnippets with `snippet-ids`."
+  [{:keys [snippet-ids]} :- [:map {:closed true}
+                             [:snippet-ids [:set ::lib.schema.id/native-query-snippet]]]]
+  (t2/select :model/NativeQuerySnippet :id [:in snippet-ids]))
+
+(mu/defn snippet-summaries-by-archived
+  "The id, name, description, and Collection id of the NativeQuerySnippets in the given archived state, ordered by
+  lower-cased name."
+  [{:keys [archived?]} :- [:map {:closed true}
+                           [:archived? :boolean]]]
+  (t2/select [:model/NativeQuerySnippet :id :name :description :collection_id]
+             :archived [:auto/param archived?]
+             {:order-by [[:%lower.name :asc]]}))
+
+(mu/defn snippet-collection-summaries
+  "The id, name, and Collection id of every NativeQuerySnippet."
+  []
+  (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))

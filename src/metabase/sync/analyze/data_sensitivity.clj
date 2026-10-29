@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -99,7 +100,7 @@
                          (map #(scan-table! % :force? force? :ignore-setting? true)))
                    (partial merge-with +)
                    zero-stats
-                   (sync.db/tables-by-schema-and-name-reducible table-ids))))))
+                   (warehouse-schema.db/tables-by-schema-and-name-reducible {:table-ids table-ids}))))))
 
 (mu/defn reset-data-sensitivity! :- :int
   "REPL entry point: clear every classifier-written `data_sensitivity` in the Database with `database-id` so the next

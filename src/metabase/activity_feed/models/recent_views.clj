@@ -31,15 +31,20 @@
    [medley.core :as m]
    [metabase.activity-feed.db :as activity-feed.db]
    [metabase.batch-processing.core :as grouper]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection.root :as root]
    [metabase.config.core :as config]
+   [metabase.dashboards.db :as dashboards.db]
+   [metabase.documents.db :as documents.db]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -267,7 +272,7 @@
   [card-ids]
   (if-not (seq card-ids)
     []
-    (activity-feed.db/cards-for-recent-views card-ids)))
+    (queries.db/cards-for-recent-views {:card-ids card-ids})))
 
 (defn- fill-parent-coll [model-object]
   (if (:collection_id model-object)
@@ -349,7 +354,7 @@
   [dashboard-ids]
   (if (empty? dashboard-ids)
     []
-    (activity-feed.db/dashboards-for-recent-views dashboard-ids)))
+    (dashboards.db/dashboards-for-recent-views {:dashboard-ids dashboard-ids})))
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
   (when-let [dashboard (and (mi/can-read? model_object)
@@ -372,7 +377,10 @@
   (if-not (seq collection-ids)
     []
     (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
-          collections (activity-feed.db/unarchived-collections-with-details collection-ids)]
+          collections (collections.db/collections-of-ids
+                       {:collection-ids collection-ids
+                        :columns        [:id :name :description :authority_level :archived :location :type]
+                        :archived       false})]
       (->> (t2/hydrate collections :effective_parent)
            (map #(m/dissoc-in % [:effective_parent :type]))))))
 
@@ -398,7 +406,7 @@
   [table-ids]
   (if-not (seq table-ids)
     []
-    (activity-feed.db/visible-tables-for-recent-views table-ids)))
+    (warehouse-schema.db/visible-tables-for-recent-views {:table-ids table-ids})))
 
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [table model_object]
@@ -462,7 +470,7 @@
   [document-ids]
   (if-not (seq document-ids)
     []
-    (let [documents (activity-feed.db/documents-for-recent-views document-ids)]
+    (let [documents (documents.db/documents-with-collections {:document-ids document-ids})]
       documents)))
 
 (defn- get-entity->id->data [views]

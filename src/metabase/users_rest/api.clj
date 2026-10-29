@@ -12,11 +12,13 @@
    [metabase.config.core :as config]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.events.core :as events]
+   [metabase.login-history.db :as login-history.db]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.session.db :as session.db]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
@@ -324,7 +326,7 @@
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
   [{:keys [id] :as user}]
   (let [ts (or
-            (:timestamp (users-rest.db/first-login id))
+            (:timestamp (login-history.db/first-login {:user-id id}))
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
@@ -659,11 +661,10 @@
                   (tru "Invalid password")))
     ;; We want to propagate MFA info from the old session so that users aren't auto-logged out.
     ;; This needs to be done before we delete the old session.
-    (let [mfa-auth-identity-id (some-> request
-                                       :metabase-session-key
-                                       session/hash-session-key
-                                       users-rest.db/mfa-auth-identity-id-from-hashed-key
-                                       :mfa_auth_identity_id)]
+    (let [mfa-auth-identity-id (when-let [key-hashed (some-> request
+                                                             :metabase-session-key
+                                                             session/hash-session-key)]
+                                 (:mfa_auth_identity_id (session.db/mfa-auth-identity-id {:key-hashed key-hashed})))]
       ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
       (auth-identity/set-password! id password {:ended-by api/*current-user-id*})
       (events/publish-event! :event/password-changed {:object user :user-id api/*current-user-id*})

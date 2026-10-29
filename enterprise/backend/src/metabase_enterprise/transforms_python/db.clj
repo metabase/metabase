@@ -4,16 +4,9 @@
   (:require
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.app-db.core :as mdb]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
-
-(mu/defn table-database-ids
-  "The set of Database IDs of the Tables with `table-ids`."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn update-run-message!
   "Set the message of the TransformRun with `run-id`."
@@ -49,15 +42,3 @@
   "A map of path to source for every PythonLibrary."
   []
   (t2/select-fn->fn :path :source :model/PythonLibrary))
-
-(mu/defn top-level-fields-metadata
-  "The export metadata columns of the active top-level Fields of the Table with `table-id`, in database order."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
-             :table_id table-id
-             :active true
-             ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
-             :parent_id nil
-             :nfc_path nil
-             {:from     [(warehouse-schema-overlay/field-query)]
-              :order-by [[:database_position :asc]]}))

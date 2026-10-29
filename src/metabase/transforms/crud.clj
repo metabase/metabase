@@ -134,7 +134,7 @@
   "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
   [transform]
   (when-let [db-id (transforms-base.i/target-db-id transform)]
-    (when-let [database (when (transforms.db/database-exists? db-id)
+    (when-let [database (when (warehouses.db/database-exists? {:database-id db-id})
                           (driver.u/lib-database db-id))]
       (let [methods (try
                       (driver/supported-index-methods (:engine database) database)

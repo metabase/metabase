@@ -17,6 +17,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -75,7 +76,7 @@
    {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
   (let [transform   (api/read-check :model/Transform transform-id)
         database-id (transforms-base.i/target-db-id transform)
-        _           (api/check-404 (some-> database-id indexes-rest.db/database-exists?))
+        _           (api/check-404 (when database-id (warehouses.db/database-exists? {:database-id database-id})))
         database    (driver.u/lib-database database-id)
         {:keys [schema] table-name :name} (:target transform)
         managed     (table-index/select-for-transform transform-id)

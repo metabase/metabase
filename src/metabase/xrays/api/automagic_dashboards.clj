@@ -31,7 +31,6 @@
    [metabase.xrays.automagic-dashboards.core :as automagic-dashboards.core]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as automagic-dashboards.dashboard-templates]
    [metabase.xrays.automagic-dashboards.schema :as ads]
-   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.transforms.dashboard :as transforms.dashboard]
    [metabase.xrays.transforms.materialize :as transforms.materialize]
    [ring.util.codec :as codec]
@@ -272,7 +271,7 @@
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
-    (let [fields (t2/hydrate (xrays.db/fields-targeting field-id) :table)]
+    (let [fields (t2/hydrate (warehouse-schema.db/fields-targeting {:field-id field-id}) :table)]
       (perms/prime-table-perms-cache {:table-ids (into #{} (map :table_id) fields)})
       (for [{:keys [table_id id] :as field} fields
             :when (mi/can-read? field)]

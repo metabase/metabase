@@ -14,6 +14,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.used-tables :as used-tables]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -849,7 +850,7 @@
        :saved_entities              (mapv (fn [{:keys [id metabot_chart_id]}]
                                             {:card_id  id
                                              :chart_id metabot_chart_id})
-                                          (metabot.db/saved-cards-for-conversation conversation-id))
+                                          (queries.db/saved-cards-for-conversation {:conversation-id conversation-id}))
        :messages                    (messages->client-messages messages)})))
 
 ;;; ---------------------------------------- Forking ----------------------------------------

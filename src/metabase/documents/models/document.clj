@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.documents.db :as documents.db]
@@ -23,6 +24,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -162,7 +164,7 @@
   (when old-collection-id
     (api/write-check :model/Collection old-collection-id))
   (when new-collection-id
-    (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
+    (api/check-400 (collections.db/unarchived-collection-exists? new-collection-id))
     (api/write-check :model/Collection new-collection-id)))
 
 ;;; ------------------------------------------------ Write orchestration -------------------------------------------
@@ -275,7 +277,7 @@
                                                                 (pos-int? (get (:attrs %) "id")))
                                                        (get (:attrs %) "id")))
         to-clone (when (seq card-ids)
-                   (documents.db/cards-not-in-document card-ids id))]
+                   (queries.db/cards-not-in-document {:card-ids card-ids :document-id id}))]
     (with-content-gate-cache
       (reduce (fn [accum card]
                 (api/read-check card)
@@ -450,7 +452,7 @@
   (mi/instances-with-hydrated-data
    documents k
    #(when-let [creator-ids (seq (keep :creator_id documents))]
-      (-> (documents.db/user-columns creator-ids)
+      (-> (vals (users.db/user-summaries-by-id {:user-ids creator-ids}))
           (map (juxt :id identity))
           (into {})))
    :creator_id {:default {}}))
@@ -462,7 +464,7 @@
   (let [document-ids (keep :id documents)
         ;; Fetch all cards for all documents in one batched query
         all-cards (when (seq document-ids)
-                    (documents.db/unarchived-cards-for-documents document-ids))
+                    (queries.db/unarchived-cards-for-documents {:document-ids document-ids}))
         ;; Group cards by document_id, then convert each group to a map keyed by card ID
         cards-by-doc-id (group-by :document_id all-cards)
         cards-maps-by-doc-id (update-vals cards-by-doc-id

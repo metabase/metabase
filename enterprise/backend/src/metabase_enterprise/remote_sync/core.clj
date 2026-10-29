@@ -13,6 +13,7 @@
    [metabase.collections.db :as collections.db]
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -159,7 +160,10 @@
   are tolerated so callers can pass raw `:collection_id`s straight from the entities they described."
   [ids]
   (when-let [ids (not-empty (disj (set ids) nil))]
-    (remote-sync.db/collections-by-id ids)))
+    (into {}
+          (map (juxt :id identity))
+          (collections.db/collections-of-ids {:collection-ids ids
+                                              :columns        [:id :name :type :location :personal_owner_id]}))))
 
 (defn- top-level-ancestor-id
   "Id of the outermost collection containing `collection`."
@@ -207,7 +211,7 @@
                                  "card")
                       ;; Named for the wire, as the dirty-changes payload already does for `display`.
                       :display (some-> display name)}]))
-          (remote-sync.db/card-types ids))))
+          (queries.db/card-types {:card-ids ids}))))
 
 (defn- describe-entities
   "`[{:model :id :name}]` for `entities`, which are `{:model \"Card\" :id 412}` maps, in the order given.
@@ -461,9 +465,9 @@
                                                   {:sync-on #{} :sync-off #{}}
                                                   collection-states)
                                        (update :sync-on #(when-let [sync-on (seq %)]
-                                                           (remote-sync.db/collections sync-on)))
+                                                           (collections.db/collections-of-ids {:collection-ids sync-on})))
                                        (update :sync-off #(when-let [sync-off (seq %)]
-                                                            (remote-sync.db/collections sync-off))))]
+                                                            (collections.db/collections-of-ids {:collection-ids sync-off}))))]
     ;; a data app's collection is synced with its app, and a pull refuses its file once it says remote-synced
     (when (some spec/data-apps-namespace-collection? sync-on)
       (throw (ex-info (tru "A data app''s collection is synced with its app and can''t be marked as synced.")
@@ -475,14 +479,16 @@
       (t2/with-transaction [_]
         (when (seq sync-on)
           (remote-sync.db/mark-subtree-remote-synced! sync-on)
-          (when-let [ids (seq (remote-sync.db/subtree-collection-ids sync-on))]
+          (when-let [ids (seq (collections.db/subtree-collection-ids {:collections (map #(select-keys % [:id :location]) sync-on)
+                                                                      :remote-synced? false}))]
             ;; Re-syncing before a recorded removal was pushed must not leave the contents marked for deletion.
             (restore-removed-rsos! ids)
             ;; ...and contents that were dropped outright (never-pushed 'create' rows) must be re-tracked, so
             ;; the next export pushes them rather than silently omitting them.
             (track-untracked-contents! ids)))
         (when (seq sync-off)
-          (let [affected-collection-ids (remote-sync.db/remote-synced-subtree-collection-ids sync-off)]
+          (let [affected-collection-ids (collections.db/subtree-collection-ids {:collections (map #(select-keys % [:id :location]) sync-off)
+                                                                                :remote-synced? true})]
             (when (seq affected-collection-ids)
               (remote-sync.db/unmark-collections-remote-synced! affected-collection-ids)
               (record-removed-rsos! affected-collection-ids))))

@@ -141,7 +141,7 @@
                                      (explorations.db/pages-for-blocks block-ids)))
         card-ids         (distinct (mapcat #(map :card_id (:metrics %)) all-blocks))
         cards            (when (seq card-ids)
-                           (explorations.db/card-names card-ids))
+                           (queries.db/card-names {:card-ids card-ids}))
         card-name-by-id  (into {} (map (juxt :id :name)) cards)]
     (mapv (fn [thread]
             (let [blocks (get blocks-by-thread (:id thread) [])
@@ -956,7 +956,7 @@
 (defn- summary-document-or-404
   "The non-archived Summary document for `exploration-id`, or 404."
   [exploration-id]
-  (api/check-404 (explorations.db/unarchived-summary-document exploration-id)))
+  (api/check-404 (documents.db/unarchived-document-of-exploration {:exploration-id exploration-id})))
 
 (defn- exploration-query-ids-belong-to-exploration?
   "True when every id in `eq-ids` refers to an `ExplorationQuery` whose thread belongs to

@@ -8,21 +8,6 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn sample-database-exists?
-  "Whether a sample Database exists."
-  []
-  (t2/exists? :model/Database :is_sample true))
-
-(mu/defn sample-database
-  "The sample Database, or nil."
-  []
-  (t2/select-one :model/Database :is_sample true))
-
-(mu/defn sample-database-id
-  "The id of the sample Database, or nil."
-  []
-  (t2/select-one-pk :model/Database :is_sample true))
-
 (mu/defn set-sample-database-details!
   "Set the `details` of the sample Database, returning the ids of the updated rows."
   [details :- ::warehouses.schema/database.details]

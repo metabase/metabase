@@ -12,53 +12,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
-
-(mu/defn library-root-collections
-  "The ID and type of the top-level Collections whose type is one of `types`."
-  [types :- [:sequential :string]]
-  (t2/select [:model/Collection :id :type] :type [:in types] :location "/"))
-
-(mu/defn descendant-collection-ids
-  "The IDs of the Collections under the top-level Collection with `root-id`."
-  [root-id :- ms/PositiveInt]
-  (t2/select-pks-set :model/Collection :location [:like (str "/" root-id "/%")]))
-
-(mu/defn curated-tables-reducible
-  "Reducible ID, published flag, data layer, and data authority of the active Tables that are published or
-  authoritative."
-  []
-  (t2/reducible-select [:model/Table :id :is_published :data_layer :data_authority]
-                       {:from [(warehouse-schema-overlay/table-query)]
-                        :where [:and
-                                [:= :active true]
-                                [:or [:= :is_published true]
-                                 [:= :data_authority "authoritative"]]]}))
-
-(mu/defn official-collection-ids
-  "The IDs of the official Collections."
-  []
-  (t2/select-pks-set :model/Collection :authority_level :official))
-
-(mu/defn unarchived-dashboard-ids-in-collections-reducible
-  "Reducible `:id` rows of the unarchived Dashboards in the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/reducible-select [:model/Dashboard :id]
-                       {:where [:and [:= :archived false]
-                                [:in :collection_id collection-ids]]}))
-
-(mu/defn collection-owners-and-locations
-  "The ID, owner, and location of the Collections with `collection-ids`."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :personal_owner_id :location] :id [:in collection-ids]))
-
-(mu/defn personal-collection-owners
-  "The ID and owner of the personal Collections among `collection-ids`."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :personal_owner_id]
-             :id [:in collection-ids]
-             :personal_owner_id [:not= nil]))
 
 (mu/defn collection-locations
   "The ID and location of the raw collection rows with `collection-ids`."

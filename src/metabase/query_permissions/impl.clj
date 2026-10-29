@@ -17,7 +17,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.db :as queries.db]
-   [metabase.query-permissions.db :as query-permissions.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -33,6 +32,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.util.performance :as perf]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -378,7 +378,7 @@
   (let [field-ids (keep :id result-metadata)
         table-ids (into (set (keep (some-fn :table-id :table_id) result-metadata))
                         (when (seq field-ids)
-                          (query-permissions.db/field-table-ids field-ids)))]
+                          (warehouse-schema.db/table-ids-of-fields {:field-ids field-ids})))]
     (perms/prime-table-perms-cache {:db-ids #{database-id} :table-ids table-ids})
     (run! #(when-not (perms/user-has-permission-for-table?
                       api/*current-user-id*
@@ -509,9 +509,9 @@
   to."
   [field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
   (when (seq field-ids)
-    (let [table-ids             (query-permissions.db/field-table-ids (set field-ids))
+    (let [table-ids             (warehouse-schema.db/table-ids-of-fields {:field-ids (set field-ids)})
           table-id->database-id (when (seq table-ids)
-                                  (query-permissions.db/table-id->database-id table-ids))]
+                                  (warehouse-schema.db/table-id->database-id {:table-ids table-ids}))]
       (perms/prime-table-perms-cache {:table-ids table-ids})
       (doseq [table-id table-ids
               :let     [database-id (table-id->database-id table-id)]]

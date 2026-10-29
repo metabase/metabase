@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.glossary.schema :as glossary.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -42,12 +41,34 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/Glossary :id id))
 
-(mu/defn users-by-id
-  "A map of User id to the id, email, and name of the Users with `user-ids`."
-  [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
-
 (mu/defn glossary-entry-by-term
   "The Glossary entry for `term`, or nil."
   [term :- :string]
   (t2/select-one :model/Glossary :term term))
+
+(mu/defn glossary-count
+  "The number of Glossary entries."
+  []
+  (t2/count :model/Glossary))
+
+(mu/defn glossary-definitions
+  "A map of term to definition for the first `limit` Glossary entries ordered by `order-column` descending."
+  [{:keys [order-column limit]} :- [:map {:closed true} [:order-column :keyword] [:limit ms/PositiveInt]]]
+  (t2/select-fn->fn :term :definition :model/Glossary
+                    {:order-by [[order-column :desc]]
+                     :limit    limit}))
+
+(mu/defn glossary-entry-terms
+  "The ID and term of every Glossary entry."
+  []
+  (t2/select [:model/Glossary :id :term]))
+
+(mu/defn untracked-glossary-entry-terms
+  "The ID and term of every Glossary entry with no RemoteSyncObject."
+  []
+  (t2/select [:model/Glossary :id :term]
+             {:where [:not [:exists ^:allow-subquery {:select [1]
+                                                      :from   [:remote_sync_object]
+                                                      :where  [:and
+                                                               [:= :remote_sync_object.model_type "Glossary"]
+                                                               [:= :remote_sync_object.model_id :glossary.id]]}]]}))

@@ -4,13 +4,13 @@
    via a direct database lookup, which is only available on the JVM."
   (:require
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-metric.db :as lib-metric.db]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.queries.db :as queries.db]
-   [metabase.util.performance :as perf])
+   [metabase.util.performance :as perf]
+   [metabase.warehouse-schema.db :as warehouse-schema.db])
   (:import (java.util UUID)))
 
 (set! *warn-on-reflection* true)
@@ -27,7 +27,7 @@
                                            [(:id field)
                                             (lib/infer-has-field-values
                                              (lib-be/instance->metadata field :metadata/column))]))
-                                    (lib-metric.db/fields col-ids)))]
+                                    (warehouse-schema.db/fields-by-ids {:field-ids col-ids})))]
       (perf/mapv (fn [col]
                    (if-let [hfv (get field-values-map (:id col))]
                      (assoc col :has-field-values hfv)

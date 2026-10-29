@@ -44,7 +44,7 @@
                     (->> field-ids
                          (partition-all *invalidate-select-batch-size*)
                          (mapcat (fn [batch]
-                                   (action-v2.db/fields batch)))))]
+                                   (warehouse-schema.db/fields-by-ids {:field-ids batch})))))]
     (sync.field-values/sync-fields-grouped-by-table! fields)))
 
 (defmethod queue/init-listener! ::FieldValueInvalidation [_]
@@ -54,7 +54,7 @@
 (defn select-table-pk-fields
   "Given a table-id, return the :model/Field instances corresponding to its PK columns. Do not assume any ordering."
   [table-id]
-  (u/prog1 (api/check-404 (action-v2.db/pk-fields-for-table table-id))
+  (u/prog1 (api/check-404 (warehouse-schema.db/pk-fields-of-table {:table-id table-id}))
     (api/check-500 (pos? (count <>)))))
 
 (defn get-row-pks
@@ -121,7 +121,7 @@
   (let [input-keys  (into #{} (mapcat keys) input-rows)
         field-names (map name input-keys)
         fields      (when (seq field-names)
-                      (action-v2.db/fields-by-name table-id field-names))
+                      (warehouse-schema.db/fields-of-table-named {:table-id table-id :field-names field-names}))
         coerce-fn   (->> (for [{field-name :name, :keys [coercion_strategy, semantic_type]} fields
                                :when (not (isa? semantic_type :type/PK))]
                            [field-name
@@ -147,7 +147,7 @@
                        (action-v2.db/category-list-field-ids-by-name table-id lower-names)))
         stale-fields (->> (for [[lower-name field-ids] ln->ids
                                 :let [new-values (into #{} (filter some?) (ln->values lower-name))
-                                      old-values (into #{} cat (action-v2.db/field-values-of-fields field-ids))]]
+                                      old-values (into #{} cat (warehouse-schema.db/field-values-of-fields {:field-ids field-ids}))]]
                             (when (seq (set/difference new-values old-values))
                               field-ids))
                           (apply concat))]

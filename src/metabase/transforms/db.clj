@@ -11,7 +11,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn transform-job-run :- [:maybe ::transforms.schema/transform-job-run]
@@ -812,47 +811,23 @@
 
 ;;; ----------------------------------------------- Other models -----------------------------------------------
 
-(mu/defn databases
-  "The Databases with `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+(mu/defn transform-summaries-for-source-database
+  "The id, name, description, source Database, and source of the Transforms reading from the Database with
+  `database-id`, ordered by name."
+  [{:keys [database-id]} :- [:map {:closed true}
+                             [:database-id ::lib.schema.id/database]]]
+  (t2/select [:model/Transform :id :name :description :source_database_id :source]
+             :source_database_id [:auto/param database-id]
+             {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn database-exists?
-  "Whether a Database with `database-id` exists."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
+(mu/defn transform-ids-of-source-database
+  "The set of ids of the Transforms reading from the Database with `database-id`."
+  [{:keys [database-id]} :- [:map {:closed true}
+                             [:database-id ::lib.schema.id/database]]]
+  (or (t2/select-pks-set :model/Transform :source_database_id [:auto/param database-id]) #{}))
 
-(mu/defn tables
-  "The Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn table-indexes-for-transforms
-  "The TableIndexes of the Transforms with `transform-ids`, ordered by index name."
-  [transform-ids :- [:set ::lib.schema.id/transform]]
-  (t2/select :model/TableIndex :transform_id [:in transform-ids] {:order-by [[:index_name :asc]]}))
-
-(mu/defn field-exists?
-  "Whether a Field with `field-id` exists."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn active-field-ids-by-name
-  "A map of name to ID for the active Fields of the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn active-users
-  "The active Users with `user-ids`."
-  [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select :model/User :id [:in user-ids] :is_active true))
-
-(mu/defn active-admins
-  "The active superusers."
-  []
-  (t2/select :model/User :is_superuser true :is_active true))
-
-(mu/defn user-summaries-by-id
-  "A map of ID to the ID, email, and names of the Users with `user-ids`."
-  [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+(mu/defn transform-exists-for-source-database?
+  "Whether a Transform reads from the Database with `database-id`."
+  [{:keys [database-id]} :- [:map {:closed true}
+                             [:database-id ::lib.schema.id/database]]]
+  (t2/exists? :model/Transform :source_database_id [:auto/param database-id]))

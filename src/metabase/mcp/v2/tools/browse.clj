@@ -32,6 +32,7 @@
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.table :as schema.table]))
 
@@ -301,7 +302,7 @@
                                metadata-rows)
         related-ids      (into #{} (mapcat val) targets-by-table)
         related          (when (seq related-ids)
-                           (->> (mcp.db/active-tables-by-ids related-ids)
+                           (->> (warehouse-schema.db/active-tables-by-ids {:table-ids related-ids})
                                 (filter (comp browsable-db-ids :db_id))
                                 (filter mi/can-read?)
                                 (m/index-by :id)))
@@ -312,7 +313,7 @@
                                               (take max-related-tables-with-fields))))
                                targets-by-table)
         columns          (when (seq expand-ids)
-                           (-> (group-by :table_id (mcp.db/active-visible-fields-for-tables expand-ids))
+                           (-> (group-by :table_id (warehouse-schema.db/active-visible-fields-of-tables {:table-ids expand-ids}))
                                schema.table/batch-filter-sandboxed-fields))]
     (update-vals targets-by-table
                  (fn [target-ids]

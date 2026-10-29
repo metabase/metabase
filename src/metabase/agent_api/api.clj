@@ -45,6 +45,7 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
@@ -1216,7 +1217,7 @@
   "The dashboard's tabs as `{:id :name}` in display order, [] when it has none."
   [dashboard-id]
   (mapv #(select-keys % [:id :name])
-        (agent-api.db/dashboard-tab-names dashboard-id)))
+        (dashboards.db/dashboard-tabs {:dashboard-id dashboard-id})))
 
 (mr/def ::create-dashboard-response
   [:map
@@ -1288,7 +1289,7 @@
        :collection_path (collection-path (:collection_id dash))
        :description     (:description dash)
        ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order (:id dash))
+       :dashcard_ids    (or (dashboards.db/dashcard-ids-in-layout-order {:dashboard-id (:id dash)})
                             [])
        :tabs            (dashboard-tabs (:id dash))})))
 
@@ -1394,11 +1395,11 @@
   Placement is per-tab: adds go on the mutation's `tab_id` (default: the first tab) and only
   collide with that tab's cards; a move only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
-  (let [current        (agent-api.db/dashcards dashboard-id)
+  (let [current        (dashboards.db/dashcards {:dashboard-id dashboard-id})
         ;; the dashboard row is the same for every mutation in the batch
         dashboard      (dashboards.db/dashboard dashboard-id)
         ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
-        tab-ids        (agent-api.db/dashboard-tab-ids dashboard-id)
+        tab-ids        (mapv :id (dashboards.db/dashboard-tabs {:dashboard-id dashboard-id}))
         ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
         ;; frontend renders there; nil when the dashboard has no tabs
         default-tab-id (first tab-ids)
@@ -1529,7 +1530,7 @@
     ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
     (when (or (seq (:added @state)) (seq (:removed @state)))
       (dashboard/archive-or-unarchive-internal-dashboard-questions!
-       dashboard-id (agent-api.db/dashcards dashboard-id)))
+       dashboard-id (dashboards.db/dashcards {:dashboard-id dashboard-id})))
     (select-keys @state [:added :removed :moved])))
 
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
@@ -1631,7 +1632,7 @@
        :description     (:description updated)
        :archived        (boolean (:archived updated))
        ;; select-fn-vec returns nil, not [], when there are no rows
-       :dashcard_ids    (or (agent-api.db/dashcard-ids-in-layout-order id)
+       :dashcard_ids    (or (dashboards.db/dashcard-ids-in-layout-order {:dashboard-id id})
                             [])
        :tabs            (dashboard-tabs id)})))
 
@@ -1743,7 +1744,7 @@
         ;; JWT is valid - look up user from the email extracted by the JWT provider
         ;; The provider uses jwt-attribute-email setting to extract the email from claims
         (if-let [user (when-let [email (get-in result [:user-data :email])]
-                        (agent-api.db/active-user-by-email email))]
+                        (users.db/user-by-lower-email {:email email :active? true}))]
           (let [scope-entry (-> result :jwt-data (find :scope))]
             (cond-> {:user user}
               scope-entry

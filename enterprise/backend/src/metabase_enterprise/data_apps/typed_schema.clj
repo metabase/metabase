@@ -5,10 +5,11 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase.actions.core :as actions]
+   [metabase.actions.db :as actions.db]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.queries.db :as queries.db]
    [metabase.types.core]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -163,8 +164,8 @@
 (defn generate
   "The TypeScript module of the queries and actions of the data app `app`."
   [{slug :name, collection-id :resource_collection_id}]
-  (let [cards   (data-apps.db/resource-cards collection-id)
-        action-ids (data-apps.db/resource-action-ids collection-id)
+  (let [cards   (queries.db/unarchived-cards-in-collection {:collection-id collection-id})
+        action-ids (actions.db/unarchived-action-ids-in-collection-by-name {:collection-id collection-id})
         actions (when (seq action-ids)
                   (let [by-id (u/index-by :id (actions/select-actions-for-ids action-ids))]
                     (keep by-id action-ids)))]

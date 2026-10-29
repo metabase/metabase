@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.db :as parameters.db]
    [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -40,7 +41,7 @@
   "OSS implementation; used as a fallback for the EE implementation for any fields that aren't subject to sandboxing."
   [field-ids]
   (when (seq field-ids)
-    (let [field-ids (->> (parameters.db/fields (set field-ids))
+    (let [field-ids (->> (warehouse-schema.db/fields-by-ids {:field-ids (set field-ids)})
                          field/readable-fields-only
                          (map :id))]
       (when (seq field-ids)
@@ -90,7 +91,7 @@
   FieldValues, or whose restrictions can't be keyed for the current User, maps to an empty map."
   [field-ids]
   (let [fields                 (when (seq field-ids)
-                                 (t2/hydrate (parameters.db/fields (set field-ids)) :table))
+                                 (t2/hydrate (warehouse-schema.db/fields-by-ids {:field-ids (set field-ids)}) :table))
         hash-input             (hash-inputs-by-table fields)
         {normal-fields   false
          advanced-fields true} (group-by #(not= (hash-input %) {:field-id (:id %)}) fields)]
@@ -152,7 +153,7 @@
         ;; look first on this thread: a hit is one SELECT, and handing that to a background
         ;; thread costs more than it saves. Only a miss is worth detaching, because only a
         ;; miss scans the warehouse.
-        fv (or (parameters.db/advanced-field-values (:id field) hash-key)
+        fv (or (warehouse-schema.db/advanced-field-values {:field-id (:id field) :hash-key hash-key})
                (field-values/detached-fetch!
                 [:advanced (:id field) hash-key]
                 (fn []

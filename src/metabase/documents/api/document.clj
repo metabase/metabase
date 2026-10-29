@@ -174,7 +174,7 @@
   [source-document-id :- ms/PositiveInt
    new-document-id :- ms/PositiveInt
    new-collection-id :- [:or :nil ms/PositiveInt]]
-  (let [cards-to-copy (documents.db/cards-for-document source-document-id)]
+  (let [cards-to-copy (queries.db/cards-for-document {:document-id source-document-id})]
     (reduce (fn [accum card]
               ;; The document_id FK can outlive a card's presence in the document body, and the card may sit in a
               ;; collection the caller cannot read. Read-check each card before copying, mirroring
@@ -326,7 +326,7 @@
   (let [document (api/check-404 (unarchived-document document-id))]
     (api/read-check document)
     (api/check-404 (and (contains? (set (prose-mirror/card-ids document)) card-id)
-                        (documents.db/unarchived-card-in-document-exists? card-id document-id)))))
+                        (queries.db/unarchived-card-in-document-exists? {:card-id card-id :document-id document-id})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

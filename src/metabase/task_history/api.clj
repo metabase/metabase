@@ -3,7 +3,9 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.request.core :as request]
    [metabase.task-history.db :as task-history.db]
@@ -13,7 +15,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -130,9 +133,9 @@
    [:entity_name {:optional true} [:maybe :string]]])
 
 (def ^:private entity-type->names-fn
-  {:database  task-history.db/database-names-by-id
-   :card      task-history.db/card-names-by-id
-   :dashboard task-history.db/dashboard-names-by-id})
+  {:database  #(warehouses.db/database-names-by-id {:database-ids %})
+   :card      #(queries.db/card-names-by-id {:card-ids %})
+   :dashboard #(dashboards.db/dashboard-names-by-id {:dashboard-ids %})})
 
 (defn- hydrate-entity-names
   "Hydrate entity names based on entity_type and entity_id."

@@ -88,7 +88,7 @@
                     {:status-code 400
                      :name        (:name database)
                      :engine      (:engine database)})))
-  (if (advanced-config.db/sample-database-exists?)
+  (if (warehouses.db/sample-database-exists?)
     (log/info "Sample Database already present; ignoring is_sample config entry")
     (do
       (log/info (u/format-color :green "Recreating Sample Database from is_sample config entry"))
@@ -113,7 +113,7 @@
       (when (not= magic-request (:delete database))
         (throw (ex-info (format "To delete database %s set `delete` to %s" (pr-str (:name database)) (pr-str magic-request))
                         {:database-name (:name database)})))
-      (when-let [{existing-database-id :id} (advanced-config.db/database-by-name (:name database))]
+      (when-let [{existing-database-id :id} (warehouses.db/database-by-name (:name database))]
         (log/info (u/format-color :blue "Deleting Database with ID %s" existing-database-id))
         (advanced-config.db/delete-database! existing-database-id)))
 
@@ -127,7 +127,7 @@
       (when-not (:is_stub database)
         (driver.u/with-database-network-policy database
           (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)))
-      (let [existing (advanced-config.db/database-by-name (:name database))]
+      (let [existing (warehouses.db/database-by-name (:name database))]
         (cond
           (and existing (:is_stub database))
           ;; A stub entry only creates a missing database; it never overwrites an existing one with `:details {}`.

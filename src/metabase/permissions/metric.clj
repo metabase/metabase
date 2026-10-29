@@ -9,8 +9,8 @@
    [metabase.api.common :as api]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.db :as permissions.db]
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,7 +23,7 @@
   (when (seq field-ids)
     (into {}
           (map (fn [f] [(:id f) (select-keys f [:visibility_type :table_id])]))
-          (permissions.db/field-visibility-info field-ids))))
+          (warehouse-schema.db/fields-by-ids {:field-ids field-ids :columns [:id :visibility_type :table_id]}))))
 
 (defn- batch-table-db-ids
   "Batch-fetch db_id for a set of table IDs.
@@ -32,7 +32,7 @@
   (when (seq table-ids)
     (into {}
           (map (fn [t] [(:id t) (:db_id t)]))
-          (permissions.db/table-database-ids table-ids))))
+          (warehouse-schema.db/tables-by-ids {:table-ids table-ids :columns [:id :db_id] :user-settings? false}))))
 
 ;;; ------------------------------------------------- Permission Predicates -------------------------------------------------
 

@@ -42,7 +42,6 @@
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
@@ -52,6 +51,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.util :as t2.util]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -125,7 +125,7 @@
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [driver          (driver.u/database->driver database)
           schemas?        (driver.u/supports? driver :schemas database)
-          sync-table-id?  (set (sync.db/sync-table-ids (:id database)))]
+          sync-table-id?  (set (warehouse-schema.db/sync-table-ids {:database-id (:id database)}))]
       (letfn [(sync! [fields-metadata]
                 (transduce (comp
                             (partition-by (juxt :table-name :table-schema))
@@ -133,10 +133,7 @@
                                    (let [{:keys [table-name table-schema]} (first table-metadata)
                                          ;; match over hidden Tables too, so a hidden Table's columns are never
                                          ;; given to a visible Table whose name differs only in case
-                                         table   (let [best (->> (sync.db/active-tables-by-lower-name-and-schema
-                                                                  (:id database)
-                                                                  (t2.util/lower-case-en table-name)
-                                                                  (some-> table-schema t2.util/lower-case-en))
+                                         table   (let [best (->> (warehouse-schema.db/active-tables-by-lower-name-and-schema {:database-id (:id database) :lower-name (t2.util/lower-case-en table-name) :lower-schema (some-> table-schema t2.util/lower-case-en)})
                                                                  (sort-by (select-best-matching-name table-schema table-name))
                                                                  first)]
                                                    (when (sync-table-id? (:id best))

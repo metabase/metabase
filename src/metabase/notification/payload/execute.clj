@@ -9,7 +9,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.visualization-settings :as viz-settings]
-   [metabase.notification.db :as notification.db]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.parameters.shared :as shared.params]
@@ -46,7 +45,7 @@
   "Check if a dashboard has more than 1 tab, and thus needs them to be rendered.
   We don't need to render the tab title if only 1 exists (issue #45123)."
   [dashboard-or-id]
-  (< 1 (notification.db/dashboard-tab-count (u/the-id dashboard-or-id))))
+  (< 1 (dashboards.db/dashboard-tab-count {:dashboard-id (u/the-id dashboard-or-id)})))
 
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
@@ -358,7 +357,7 @@
                              only-card-ids (filter #(contains? only-card-ids (:card_id %)))))]
      (request/with-current-user user-id
        (if (render-tabs? dashboard-id)
-         (let [tabs               (t2/hydrate (notification.db/dashboard-tabs dashboard-id) :tab-cards)
+         (let [tabs               (t2/hydrate (dashboards.db/dashboard-tabs {:dashboard-id dashboard-id}) :tab-cards)
                tabs-with-cards    (->> tabs
                                        (map #(update % :cards keep-dashcards))
                                        (filter #(seq (:cards %))))
@@ -370,7 +369,7 @@
                                 (when should-render-tab?
                                   [(tab->part tab)])
                                 (dashcards->part cards parameters opts)))))))
-         (let [dashcards (keep-dashcards (notification.db/dashcards-for-dashboard dashboard-id))]
+         (let [dashcards (keep-dashcards (dashboards.db/dashcards {:dashboard-id dashboard-id}))]
            (log/debugf "Rendering dashboard with %d cards" (count dashcards))
            (dashcards->part dashcards parameters opts)))))))
 

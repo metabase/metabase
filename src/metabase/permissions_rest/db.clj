@@ -6,7 +6,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn- managed-groups-clause
@@ -100,24 +99,11 @@
                                                                    :from   [:permissions_group]
                                                                    :where  [:= :is_tenant_group true]}])])}))
 
-(mu/defn non-admin-user-exists?
-  "Whether the User with `user-id` exists and is not a superuser."
-  [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id :is_superuser false))
-
 (mu/defn set-group-membership-manager!
   "Set the group manager flag of the PermissionsGroupMembership with `id`, returning the number updated."
   [id             :- ms/PositiveInt
    group-manager? :- :boolean]
   (t2/update! :model/PermissionsGroupMembership id {:is_group_manager group-manager?}))
-
-(mu/defn non-destination-database-ids
-  "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no
-  exclusion)."
-  [excluded-database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-pks-vec :model/Database {:where [:and
-                                              (when excluded-database-id [:not= :id excluded-database-id])
-                                              [:= :router_database_id nil]]}))
 
 (mu/defn data-permissions-reducible
   "A reducible of the type, group id, value, database id, schema, and table id of the DataPermissions rows of
@@ -151,9 +137,3 @@
                                                               [:not= :router_db.router_database_id nil]
                                                               [:= :router_db.id :db_id]]}]])
     :order-by [:group_id :db_id]}))
-
-(mu/defn tables-for-databases
-  "The id, Database id, and schema of the Tables of the Databases with `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))

@@ -16,7 +16,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (def ^:private KeypathComponents
   [:map {:closed true}
@@ -54,7 +55,7 @@
      ;; fetch the corresponding Table, then set the Table or Field property
      (if table-name
        ;; TODO: this needs to support schemas
-       (when-let [table-id (sync.db/active-table-id-by-name (u/the-id database) table-name)]
+       (when-let [table-id (warehouse-schema.db/active-table-id-by-name {:database-id (u/the-id database) :table-name table-name})]
          (if field-name
            (sync.db/update-field-by-name! table-id field-name {k value})
            (sync.db/update-table! table-id {k value})))

@@ -49,28 +49,6 @@
    changes :- ChannelRow]
   (t2/update! :model/Channel id changes))
 
-(mu/defn accepted-admin-emails
-  "The emails of the active personal superusers who have logged in at least once, in id order."
-  []
-  (t2/select-fn-set :email :model/User
-                    :is_superuser true
-                    :is_active    true
-                    :last_login   [:not= nil]
-                    :type         "personal"
-                    {:order-by [[:id :asc]]}))
-
-(mu/defn user-contact-info
-  "The name, email, locale, and derived common name of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :last_name :first_name :email :locale] :id user-id))
-
-(mu/defn active-user-emails
-  "The emails of the active Users with `user-ids`."
-  [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-fn-set :email :model/User {:where [:and
-                                                [:= :is_active true]
-                                                [:in :id user-ids]]}))
-
 (mu/defn user-ids-with-permission
   "The ids of the Users belonging to a PermissionsGroup that holds `permission-path`."
   [permission-path :- :string]
@@ -95,15 +73,45 @@
   [channel-name :- :string]
   (t2/select-one :model/Channel :name channel-name))
 
-(mu/defn dashboard-tabs
-  "The DashboardTabs of the Dashboard with `dashboard-id`, in position order."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))
+(mu/defn active-channels-by-id
+  "A map of id to Channel for the active Channels with `channel-ids`."
+  [{:keys [channel-ids]} :- [:map {:closed true}
+                             [:channel-ids [:sequential ms/PositiveInt]]]]
+  (t2/select-fn->fn :id identity :model/Channel :id [:in channel-ids] :active true))
 
-(mu/defn dashcards
-  "The DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
+(mu/defn channel-templates-by-id
+  "A map of id to ChannelTemplate for the ChannelTemplates with `template-ids`."
+  [{:keys [template-ids]} :- [:map {:closed true}
+                              [:template-ids [:sequential ms/PositiveInt]]]]
+  (t2/select-fn->fn :id identity :model/ChannelTemplate :id [:in template-ids]))
+
+(mu/defn active-channel-exists?
+  "Whether an active Channel of type `channel-type` exists."
+  [{:keys [channel-type]} :- [:map {:closed true}
+                              [:channel-type :keyword]]]
+  (t2/exists? :model/Channel :type [:auto/param channel-type] :active true))
+
+(mu/defn accepted-admin-emails
+  "The emails of the active personal superusers who have logged in at least once, in id order."
+  []
+  (t2/select-fn-set :email :model/User
+                    :is_superuser true
+                    :is_active    true
+                    :last_login   [:not= nil]
+                    :type         "personal"
+                    {:order-by [[:id :asc]]}))
+
+(mu/defn user-contact-info
+  "The name, email, locale, and derived common name of the User with `user-id`, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one [:model/User :last_name :first_name :email :locale] :id user-id))
+
+(mu/defn active-user-emails
+  "The emails of the active Users with `user-ids`."
+  [user-ids :- [:sequential ::lib.schema.id/user]]
+  (t2/select-fn-set :email :model/User {:where [:and
+                                                [:= :is_active true]
+                                                [:in :id user-ids]]}))
 
 (mu/defn any-user
   "Some User, or nil."

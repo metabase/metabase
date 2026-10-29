@@ -2,26 +2,12 @@
   "Application database queries for the task history module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.task-history.schema :as task-history.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(mu/defn database-names-by-id
-  "A map of id to name for the Databases with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Database :id [:in ids]))
-
-(mu/defn card-names-by-id
-  "A map of id to name for the Cards with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Card :id [:in ids]))
-
-(mu/defn dashboard-names-by-id
-  "A map of id to name for the Dashboards with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Dashboard :id [:in ids]))
 
 (mu/defn task-counts-for-runs
   "The total, successful, and failed TaskHistory counts of the TaskRuns with `run-ids`, grouped by run."
@@ -228,3 +214,83 @@
   (t2/update! :model/TaskHistory
               {:status :started, :run_id [:in run-ids]}
               {:status :unknown, :ended_at :%now}))
+
+(defn- lookback-cutoff
+  "The Honey SQL form for the instant `lookback-days` before now."
+  [lookback-days]
+  (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- lookback-days) :day))
+
+(mu/defn terminal-alert-runs
+  "Up to `limit` TaskRuns of `run-type` for the Notification with `notification-id` that reached one of `statuses`
+  within the last `lookback-days`, newest first."
+  [{:keys [run-type notification-id statuses lookback-days limit]}
+   :- [:map {:closed true}
+       [:run-type        :string]
+       [:notification-id ms/PositiveInt]
+       [:statuses        [:sequential :string]]
+       [:lookback-days   ms/PositiveInt]
+       [:limit           ms/PositiveInt]]]
+  (t2/select [:model/TaskRun :id :status :started_at]
+             {:where    [:and
+                         [:= :run_type [:auto/param run-type]]
+                         [:= :notification_id [:auto/param notification-id]]
+                         [:in :status statuses]
+                         [:> :started_at (lookback-cutoff lookback-days)]]
+              :order-by [[:started_at :desc] [:id :desc]]
+              :limit    limit}))
+
+(mu/defn channel-send-history-reducible
+  "Reducible TaskHistory rows of `task` for the runs of `run-type` for the Notification with `notification-id` started
+  within the last `lookback-days`, newest run first with `tr.id` as the tiebreaker, capped at 500 rows."
+  [{:keys [run-type notification-id task lookback-days]}
+   :- [:map {:closed true}
+       [:run-type        :string]
+       [:notification-id ms/PositiveInt]
+       [:task            :string]
+       [:lookback-days   ms/PositiveInt]]]
+  (t2/reducible-select :model/TaskHistory
+                       {:select   [:th.run_id :th.task_details :th.status
+                                   [:tr.started_at :run_started_at]]
+                        :from     [[:task_history :th]]
+                        :join     [[:task_run :tr] [:= :tr.id :th.run_id]]
+                        :where    [:and
+                                   [:= :tr.run_type        [:auto/param run-type]]
+                                   [:= :tr.notification_id [:auto/param notification-id]]
+                                   [:= :th.task            [:auto/param task]]
+                                   [:> :tr.started_at      (lookback-cutoff lookback-days)]]
+                        :order-by [[:tr.started_at :desc] [:tr.id :desc]]
+                        :limit    500}))
+
+(mu/defn latest-failed-task-history
+  "The `:run_id` and `:task_details` of the single failed or abandoned TaskHistory row per run among `run-ids` (and, if
+  given, restricted to `task-name`), preferring rows of `preferred-task` and then the latest by `ended_at`."
+  [{:keys [preferred-task run-ids task-name]}
+   :- [:map {:closed true}
+       [:preferred-task :string]
+       [:run-ids        [:set ms/PositiveInt]]
+       [:task-name      {:optional true} [:maybe :string]]]]
+  (t2/select :model/TaskHistory
+             {:select [:run_id :task_details]
+              :from   [[^:allow-subquery
+                        {:select [:run_id :task_details
+                                  [[:over [[:row_number]
+                                           ^:allow-subquery
+                                           {:partition-by [:run_id]
+                                            :order-by     [[[:case
+                                                             [:= :task [:auto/param preferred-task]] 0
+                                                             :else                                   1] :asc]
+                                                           [:ended_at :desc]]}]]
+                                   :rn]]
+                         :from   [:task_history]
+                         :where  [:and
+                                  [:in :run_id run-ids]
+                                  [:in :status ["failed" "abandoned"]]
+                                  (when task-name [:= :task [:auto/param task-name]])]}
+                        :sub]]
+              :where  [:= :sub.rn 1]}))
+
+(mu/defn task-details-for-task
+  "The `task_details` of every TaskHistory row for `task-name`."
+  [{:keys [task-name]} :- [:map {:closed true}
+                           [:task-name :string]]]
+  (t2/select-fn-vec :task_details [:model/TaskHistory :task_details] :task [:auto/param task-name]))

@@ -50,31 +50,6 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :sso_source :model/User :id user-id))
 
-(mu/defn has-visible-card?
-  "Whether an unarchived, non-internal Card visible to the current user exists, optionally narrowed to `card-type`
-  (nil for any type)."
-  [card-type :- [:maybe :string]]
-  (t2/exists? :model/Card
-              {:where (into [:and
-                             [:= :archived false]
-                             (collection/visible-collection-filter-clause)
-                             (mi/exclude-internal-content-hsql :model/Card)]
-                            (when card-type [[:= :type card-type]]))}))
-
-(mu/defn has-visible-dashboard?
-  "Whether an unarchived, non-internal Dashboard visible to the current user exists."
-  []
-  (t2/exists? :model/Dashboard
-              {:where [:and
-                       [:= :archived false]
-                       (collection/visible-collection-filter-clause)
-                       (mi/exclude-internal-content-hsql :model/Dashboard)]}))
-
-(mu/defn first-login
-  "The timestamp of the earliest LoginHistory of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/LoginHistory :timestamp] :user_id user-id {:order-by [[:timestamp :asc]]}))
-
 (mu/defn writable-collection-exists?
   "Whether the current user can write to at least one Collection (excluding the Trash and archived items)."
   []
@@ -125,8 +100,22 @@
    changes :- PersonalUserChanges]
   (t2/update! :model/User user-id {:type :personal} changes))
 
-(mu/defn mfa-auth-identity-id-from-hashed-key
-  "Fetches the `mfa_auth_identity_id` from the session with the given hashed key"
-  [key-hashed :- string?]
-  (t2/select-one [:model/Session :mfa_auth_identity_id]
-                 :key_hashed key-hashed))
+(mu/defn has-visible-dashboard?
+  "Whether an unarchived, non-internal Dashboard visible to the current user exists."
+  []
+  (t2/exists? :model/Dashboard
+              {:where [:and
+                       [:= :archived false]
+                       (collection/visible-collection-filter-clause)
+                       (mi/exclude-internal-content-hsql :model/Dashboard)]}))
+
+(mu/defn has-visible-card?
+  "Whether an unarchived, non-internal Card visible to the current user exists, optionally narrowed to `card-type`
+  (nil for any type)."
+  [card-type :- [:maybe :string]]
+  (t2/exists? :model/Card
+              {:where (into [:and
+                             [:= :archived false]
+                             (collection/visible-collection-filter-clause)
+                             (mi/exclude-internal-content-hsql :model/Card)]
+                            (when card-type [[:= :type card-type]]))}))

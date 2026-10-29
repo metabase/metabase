@@ -10,7 +10,6 @@
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.schema :as cd.schema]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
@@ -188,31 +187,6 @@
   [where :- vector?]
   (t2/select :model/Collection {:where where}))
 
-(mu/defn collection-context-rows
-  "The display context of the Collections with `collection-ids`: `description`, the `location` their
-  breadcrumb anchor is parsed from, `personal_owner_id`, and the tree's `namespace`."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :description :location :personal_owner_id :namespace]
-             :id [:in collection-ids]))
-
-(mu/defn collection-names-by-id
-  "`{id → name}` for the Collections with `collection-ids`."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn :name [:model/Collection :id :name] :id [:in collection-ids]))
-
-(mu/defn collection-namespaces-by-id
-  "`{id → namespace}` for the Collections with `collection-ids`."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn :namespace [:model/Collection :id :namespace] :id [:in collection-ids]))
-
-(mu/defn collection-parent-ids-by-id
-  "`{id → parent collection id}` for the Collections with `collection-ids`, parsed from `location`; nil
-  for a collection at the root of its tree."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn (comp collection/location-path->parent-id :location)
-                    [:model/Collection :id :location]
-                    :id [:in collection-ids]))
-
 ;;; --------------------------------------------- Entities of a type ------------------------------------------
 
 (mu/defn collection-ids-by-entity-id
@@ -246,27 +220,7 @@
    ids        :- [:set ms/PositiveInt]]
   (t2/select selectable :id [:in ids]))
 
-(mu/defn document-owned-card-ids
-  "The ids of every Card a Document owns."
-  []
-  (t2/select-pks-set [:model/Card :id] {:where [:not= :document_id nil]}))
-
 ;;; -------------------------------------------------- Users --------------------------------------------------
-
-(mu/defn user-names-by-id
-  "`{id → common_name}` for the Users with `user-ids`."
-  [user-ids :- [:set ::lib.schema.id/user]]
-  ;; the projection is what `add-common-name` reads - a bare model select would fetch every user
-  ;; column to derive one field
-  (t2/select-pk->fn :common_name [:model/User :id :email :first_name :last_name]
-                    :id [:in user-ids]))
-
-(mu/defn user-contacts-by-id
-  "`{id → {:id :common_name :email}}` for the Users with `user-ids`."
-  [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn #(select-keys % [:id :common_name :email])
-                    [:model/User :id :email :first_name :last_name]
-                    :id [:in user-ids]))
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
 
@@ -483,8 +437,3 @@
              :group-by [:transform_id]}))
 
 ;;; ------------------------------------------------ Task history ---------------------------------------------
-
-(mu/defn task-history-details
-  "The `task_details` of every `task_history` row for `task-name`."
-  [task-name :- :string]
-  (t2/select-fn-vec :task_details [:model/TaskHistory :task_details] :task task-name))

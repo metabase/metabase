@@ -17,6 +17,7 @@
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
    [metabase.system.core :as system]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -240,7 +241,7 @@
   (boolean
    (when-let [user-id (and (:metabase/authed-session-key-hash request)
                            (:metabase-user-id request))]
-     (oauth-server.db/personal-user? user-id))))
+     (users.db/user-exists? {:user-id user-id :type :personal}))))
 
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."

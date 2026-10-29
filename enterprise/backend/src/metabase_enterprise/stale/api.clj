@@ -3,7 +3,6 @@
   Currently supports Dashboards and Cards."
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.stale.db :as stale.db]
    [metabase-enterprise.stale.impl :as stale]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
@@ -12,8 +11,10 @@
    [metabase.collections.core :as collections]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -42,7 +43,9 @@
                                  (remove coll-id->coll))
                        (vals coll-id->coll))
         coll-id->coll (merge (if (seq to-fetch)
-                               (stale.db/collections-by-id to-fetch)
+                               (into {}
+                                     (map (juxt :id identity))
+                                     (collections.db/collections-of-ids {:collection-ids to-fetch}))
                                {})
                              coll-id->coll)
         annotate (fn [x]
@@ -58,7 +61,7 @@
     (map annotate rows)))
 
 (defmethod present-model-items :model/Card [_ cards]
-  (->> (t2/hydrate (stale.db/stale-cards (set (map :id cards))) :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])
+  (->> (t2/hydrate (queries.db/stale-cards {:card-ids (set (map :id cards))}) :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])
        (map #(assoc % :fully_parameterized (queries/fully-parameterized? %)))
        present-collections
        (map (fn [card]
@@ -79,7 +82,7 @@
            :is_tenant_dashboard (some-> parent-coll collection/shared-tenant-collection?))))
 
 (defmethod present-model-items :model/Dashboard [_ dashboards]
-  (->> (t2/hydrate (stale.db/stale-dashboards (set (map :id dashboards))) :can_write :can_delete :can_restore [:collection :effective_location])
+  (->> (t2/hydrate (dashboards.db/dashboards-with-listing-columns {:dashboard-ids (set (map :id dashboards))}) :can_write :can_delete :can_restore [:collection :effective_location])
        annotate-dashboard-with-collection-info
        present-collections))
 

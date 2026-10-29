@@ -56,64 +56,10 @@
    entity :- RevisionedRow]
   (t2/update! (:model entity) id (:row entity)))
 
-(mu/defn parameter-card-ids
-  "The Card ids of the ParameterCards of the `parameterized-object-type` with `parameterized-object-id`."
-  [parameterized-object-type :- :string
-   parameterized-object-id   :- ms/PositiveInt]
-  (t2/select-fn-vec :card_id :model/ParameterCard
-                    :parameterized_object_type parameterized-object-type
-                    :parameterized_object_id   parameterized-object-id))
-
-(mu/defn dashboard-card-ids
-  "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dashboard-id))
-
-(mu/defn dashboard-series-card-ids
-  "The Card ids of the DashboardCardSeries of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-fn-vec :card_id :model/DashboardCardSeries
-                    {:where [:in :dashboardcard_id
-                             ^:allow-subquery {:select [:id]
-                                               :from   [(t2/table-name :model/DashboardCard)]
-                                               :where  [:= :dashboard_id dashboard-id]}]}))
-
-(mu/defn card-queries
-  "A map of Card id to query for the Cards with `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
-
 (mu/defn revision :- [:maybe ::revisions.schema/revision]
   "The ::revisions.schema/revision with `revision-id`, or nil."
   [revision-id :- ms/PositiveInt]
   (t2/select-one :model/Revision :id [:auto/param revision-id]))
-
-(mu/defn dashcards
-  "The DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
-
-(mu/defn dashboard-tabs
-  "The DashboardTabs of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardTab :dashboard_id dashboard-id))
-
-(mu/defn active-card-ids-for-dashboard
-  "The ids among `card-ids` of unarchived Cards that belong to the Dashboard with `dashboard-id` or to no Dashboard."
-  [card-ids     :- [:sequential ::lib.schema.id/card]
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-pks-set :model/Card
-                     {:where [:and
-                              [:in :id card-ids]
-                              [:= :archived false]
-                              [:or
-                               [:= :dashboard_id dashboard-id]
-                               [:= :dashboard_id nil]]]}))
-
-(mu/defn active-card-ids
-  "The ids among `card-ids` of unarchived Cards."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
 
 (mu/defn lock-revisions!
   "Lock the Revisions of the `model-name` row with `model-id` for update."
@@ -277,3 +223,12 @@
                                        (when (seq ids)
                                          [:and [:= :model model-name] [:in :model_id ids]])))
                                [["Card" card-ids] ["Dashboard" dashboard-ids]])]}))
+
+(mu/defn dashboard-ids-edited-by-user
+  "The set of ids of the Dashboards the User with `user-id` has revised."
+  [{:keys [user-id]} :- [:map {:closed true}
+                         [:user-id [:maybe ::lib.schema.id/user]]]]
+  (t2/select-fn-set :model_id :model/Revision
+                    :model     "Dashboard"
+                    :user_id   user-id
+                    {:order-by [[:timestamp :desc]]}))

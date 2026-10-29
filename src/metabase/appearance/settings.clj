@@ -4,7 +4,7 @@
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.appearance.db :as appearance.db]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
@@ -468,7 +468,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :setter     :none
   :getter     (fn []
                 (let [id (setting/get-value-of-type :integer :example-dashboard-id)]
-                  (when (and id (appearance.db/unarchived-dashboard-exists? id))
+                  (when (and id (dashboards.db/dashboard-exists? {:dashboard-id id :archived? false}))
                     id)))
   :doc        false)
 

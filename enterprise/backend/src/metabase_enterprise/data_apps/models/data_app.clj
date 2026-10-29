@@ -246,4 +246,4 @@
   asked of the namespace, not of the apps, since a load may write a collection's content before the app that owns it."
   :feature :none
   [collection-id]
-  (data-apps.db/data-apps-namespace-collection? collection-id))
+  (collections.db/collection-exists-in-namespace? {:namespace-name "data-apps" :collection-id collection-id}))

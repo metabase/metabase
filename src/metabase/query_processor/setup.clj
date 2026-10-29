@@ -14,7 +14,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor.db :as query-processor.db]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
@@ -60,7 +60,7 @@
                   :id          (:id card)
                   :name        (format "Card #%d" (:id card))
                   :database-id (:database_id card)}))
-          (query-processor.db/card-database-ids (set id-set)))))
+          (queries.db/card-database-ids {:card-ids (set id-set)}))))
 
 (deftype ^:private BootstrapMetadataProvider []
   lib.metadata.protocols/MetadataProvider

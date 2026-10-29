@@ -1,13 +1,16 @@
 (ns metabase-enterprise.data-apps.group-access
   (:require
-   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase.actions.db :as actions.db]
    [metabase.api.common :as api]
    [metabase.collections.db :as collections.db]
    [metabase.graph.core :as graph]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.db :as permissions.db]
+   [metabase.queries.db :as queries.db]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (defn- access-group-ids
@@ -75,11 +78,13 @@
         database-ids (into #{} (map :database_id) tables)]
     (when (seq tables)
       {:permissions (group-by (juxt :group_id :db_id :perm_type)
-                              (data-apps.db/permissions-for-warnings group-ids database-ids table-ids))})))
+                              (permissions.db/view-data-permissions {:group-ids    (vec group-ids)
+                                                                     :database-ids (vec database-ids)
+                                                                     :table-ids    table-ids}))})))
 
 (defn- table-details
   [table-ids]
-  (->> (t2/hydrate (data-apps.db/active-tables (set table-ids)) :db)
+  (->> (t2/hydrate (warehouse-schema.db/active-tables-by-ids-in-name-order {:table-ids (set table-ids)}) :db)
        (map (fn [{:keys [id schema db] table-name :display_name database-id :db_id}]
               {:id id
                :name table-name
@@ -93,8 +98,8 @@
   "The IDs of the tables the cards and actions in the resource collection with `collection-id` read, directly or
   through the cards, measures, segments and snippets they use, with a transform they name standing for its output."
   [collection-id]
-  (let [nodes (models.dependency/entities->nodes {:card   (data-apps.db/collection-card-ids collection-id)
-                                                  :action (data-apps.db/collection-action-ids collection-id)})
+  (let [nodes (models.dependency/entities->nodes {:card   (queries.db/all-card-ids-in-collection {:collection-id collection-id})
+                                                  :action (vec (actions.db/action-ids-in-collection {:collection-id collection-id}))})
         graph (models.dependency/filtered-graph-dependencies nil {:types #{:action :card :measure :segment :snippet}})
         {:keys [table transform]} (models.dependency/group-nodes (graph/transitive graph (vec nodes)))
         outputs (->> (models.dependency/entities->nodes {:transform transform})

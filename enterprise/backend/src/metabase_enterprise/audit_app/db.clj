@@ -11,16 +11,6 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn audit-database
-  "The audit Database, or nil."
-  []
-  (t2/select-one :model/Database :is_audit true))
-
-(mu/defn non-audit-database-named
-  "The non-audit Database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one :model/Database :name database-name :is_audit false))
-
 (mu/defn insert-database!
   "Insert the Database `row` with the fixed `id`."
   [id  :- ::lib.schema.id/database
@@ -52,23 +42,6 @@
   "Delete the Permissions rows on the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" database-id "/%")]}))
-
-(mu/defn tables-of-database-named
-  "The Tables of the Database with `database-id` named one of `table-names`."
-  [database-id :- ::lib.schema.id/database
-   table-names :- [:or [:set :string] [:sequential :string]]]
-  (t2/select :model/Table :db_id database-id :name [:in table-names] {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn tables-of-database-in-id-order
-  "The `:id`, `:name`, `:schema`, and `:active` of the Tables of the Database with `database-id`, in ID order."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :schema :active] :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
-                                                                          :order-by [[:id :asc]]}))
-
-(mu/defn active-public-table-exists?
-  "Whether the Database with `database-id` has an active Table in the `public` schema."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :schema "public" :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-ids-to-downcase
   "The IDs of the Metabase-managed Tables of the Database with `database-id` that have no lower-cased counterpart
@@ -164,21 +137,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/delete! :model/Table table-id))
 
-(mu/defn field-names-of-table
-  "The `:id` and `:name` of the Fields of the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Field :id :name] :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn card-result-metadata-reducible
-  "Reducible raw `:id` and `:result_metadata` rows of the Cards of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/reducible-select [(t2/table-name :model/Card) :id :result_metadata] :database_id database-id))
-
-(mu/defn cards-of-table
-  "The Cards on the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Card :table_id table-id))
-
 (mu/defn table-ids-referenced-by-cards
   "The distinct `:table_id` rows of the Cards on the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
@@ -191,16 +149,6 @@
   [card-id :- ::lib.schema.id/card
    changes :- (mut/select-keys ::queries.schema/card.update [:dataset_query :result_metadata])]
   (t2/update! :model/Card card-id changes))
-
-(mu/defn first-superuser
-  "The `:id` and `:email` of the oldest superuser, or nil."
-  []
-  (t2/select-one [:model/User :id :email] :is_superuser true {:order-by [[:id :asc]]}))
-
-(mu/defn collection-by-entity-id
-  "The Collection with `entity-id`, or nil."
-  [entity-id :- :string]
-  (t2/select-one :model/Collection :entity_id entity-id))
 
 (mu/defn delete-analytics-collections!
   "Delete the Collections of the analytics namespace."

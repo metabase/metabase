@@ -21,6 +21,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouses.db :as warehouses.db])
   (:import
@@ -205,7 +206,7 @@
   "Create a single new table in the database, or mark it as active if a matching inactive one exists."
   [database :- i/DatabaseInstance
    {schema :schema table-name :name :as table} :- TableMetadata]
-  (if-let [existing (sync.db/inactive-table-by-schema-and-name (u/the-id database) schema table-name)]
+  (if-let [existing (warehouse-schema.db/inactive-table-by-schema-and-name {:database-id (u/the-id database) :schema schema :table-name table-name})]
     (reactivate-table! database existing {:sample? (boolean (:is_sample (warehouses.db/database (u/the-id database))))})
     (create-table! database table)))
 
@@ -378,7 +379,7 @@
         (cond-> accum
           (not= schema new-schema) (assoc schema new-schema)))))
    nil
-   (sync.db/table-schemas-reducible (u/the-id database))))
+   (warehouse-schema.db/table-schemas-reducible {:database-id (u/the-id database)})))
 
 (mu/defn- adjust-table-schemas!
   "Apply the `{old-schema new-schema}` renames from [[adjusted-schemas]] to the app-DB Table rows."
@@ -404,7 +405,7 @@
         ;; we're just using this as a cheap namespace
         suffix (str "__mbarchiv__" (.toEpochSecond (t/offset-date-time)))
         [amount unit] archive-tables-threshold
-        tables-to-archive (sync.db/tables-to-archive (u/the-id database) amount unit)
+        tables-to-archive (warehouse-schema.db/tables-to-archive {:database-id (u/the-id database) :amount amount :unit unit})
         archived (atom 0)]
     (doseq [table tables-to-archive
             :let [new-name (str (:name table) suffix)]]
@@ -506,7 +507,7 @@
                  (retire-tables! (set batch))
                  (+ retired (count batch))))
    0
-   (sync.db/active-table-ids-reducible (u/the-id database))))
+   (warehouse-schema.db/active-table-ids-reducible {:database-id (u/the-id database)})))
 
 (mu/defn sync-tables-and-database!
   "Sync the `:model/Table` rows for `database` against its driver's `describe-database`, and the DB
@@ -550,4 +551,4 @@
          {:updated-tables (cond-> (+ created updated)
                             (int? retired)  (+ retired)
                             (int? archived) (+ archived))
-          :total-tables   (sync.db/active-table-count (u/the-id database))})))))
+          :total-tables   (warehouse-schema.db/active-table-count {:database-id (u/the-id database)})})))))

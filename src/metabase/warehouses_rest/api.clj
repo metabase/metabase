@@ -7,6 +7,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.db :as collections.db]
    [metabase.config.core :as config]
    [metabase.data-apps.core :as data-apps]
    [metabase.database-routing.core :as database-routing]
@@ -22,6 +23,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
@@ -41,6 +43,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
@@ -67,7 +70,7 @@
 (defn- add-tables
   "Hydrate tables for each database. An optional `can-query?` filter keeps only the tables the user can query."
   [dbs & {:keys [can-query? exclude-unpublished-tables?]}]
-  (let [all-tables (warehouses-rest.db/active-visible-tables-for-databases (map :id dbs))
+  (let [all-tables (warehouse-schema.db/active-visible-tables-of-databases {:database-ids (map :id dbs)})
         _ (perms/prime-table-perms-cache {:db-ids (into #{} (map :id) dbs)})
         filtered-tables (cond->> (filter mi/can-read? all-tables)
                           can-query?                  (filter mi/can-query?)
@@ -86,7 +89,7 @@
   (if (empty? dbs)
     dbs
     (let [db-ids        (map :id dbs)
-          rows          (cond->> (warehouses-rest.db/active-visible-schemas-for-databases db-ids)
+          rows          (cond->> (warehouse-schema.db/active-visible-table-schema-rows {:database-ids db-ids})
                           exclude-unpublished-tables? (filter :is_published))
           schemas-by-db (reduce
                          (fn [m {:keys [db_id schema]}]
@@ -109,7 +112,7 @@
   [dbs]
   (let [db-ids (into #{}
                      (comp (filter :is_published) (map :db_id))
-                     (warehouses-rest.db/active-visible-tables-for-databases (map :id dbs)))]
+                     (warehouse-schema.db/active-visible-tables-of-databases {:database-ids (map :id dbs)}))]
     (filter (comp db-ids :id) dbs)))
 
 (mu/defn- add-native-perms-info :- [:maybe
@@ -624,7 +627,7 @@
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
 (defn- autocomplete-tables [db-id like-pattern limit published-only?]
-  (warehouses-rest.db/autocomplete-tables db-id like-pattern limit published-only?))
+  (warehouse-schema.db/tables-matching-name-pattern {:database-id db-id :like-pattern like-pattern :limit limit :published-only? published-only?}))
 
 (defn- autocomplete-cards
   "Returns cards that match the search string in the given database, ordered by id.
@@ -635,10 +638,10 @@
    If the search string contains a number at the start AND text like '123-foo' we match do an exact match on card ID, and a substring match on the card name.
    If the search string does not start with a number, and is text like 'foo' we match that as a substring on the card name."
   [database-id search-card-slug include-dashboard-questions?]
-  (warehouses-rest.db/autocomplete-cards database-id search-card-slug include-dashboard-questions?))
+  (queries.db/autocomplete-cards {:database-id database-id :search-card-slug search-card-slug :include-dashboard-questions? include-dashboard-questions?}))
 
 (defn- autocomplete-fields [db-id like-pattern limit published-only?]
-  (warehouses-rest.db/autocomplete-fields db-id like-pattern limit published-only?))
+  (warehouse-schema.db/fields-matching-name-pattern {:database-id db-id :like-pattern like-pattern :limit limit :published-only? published-only?}))
 
 (defn- autocomplete-results [tables fields limit]
   (let [tbl-count   (count tables)
@@ -750,7 +753,7 @@
                     [:id ms/PositiveInt]]]
   (warehouses/get-database id)
   (perms/prime-table-perms-cache {:db-ids #{id}})
-  (let [fields (filter mi/can-read? (-> (warehouses-rest.db/non-sensitive-fields-for-tables (warehouses-rest.db/table-ids-for-database id))
+  (let [fields (filter mi/can-read? (-> (warehouse-schema.db/non-sensitive-fields-of-tables {:table-ids (warehouse-schema.db/table-ids-of-database {:database-id id})})
                                         (t2/hydrate :table)))]
     (for [{:keys [id name display_name table table_id base_type semantic_type]} fields]
       {:id            id
@@ -1439,7 +1442,7 @@
           :question
           :collection-scope (if (= schema (schema.table/root-collection-schema-name))
                               :root
-                              (api/check-404 (not-empty (warehouses-rest.db/collection-ids-named schema)))))
+                              (api/check-404 (not-empty (collections.db/collection-ids-named {:collection-name schema})))))
          (map schema.table/card->virtual-table))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1479,7 +1482,7 @@
           :model
           :collection-scope (if (= schema (schema.table/root-collection-schema-name))
                               :root
-                              (api/check-404 (not-empty (warehouses-rest.db/collection-ids-named schema)))))
+                              (api/check-404 (not-empty (collections.db/collection-ids-named {:collection-name schema})))))
          (map schema.table/card->virtual-table))))
 
 ;;; -------------------------------- GET /api/database/:id/settings-available ------------------------------------

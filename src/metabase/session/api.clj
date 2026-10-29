@@ -338,7 +338,7 @@
     (when-let [{user-id      :id
                 sso-source   :sso_source
                 is-active?   :is_active :as user}
-               (session.db/user-by-email email)]
+               (users.db/user-by-lower-email {:email email :columns [:id :sso_source :is_active]})]
       (cond
         ;; SSO users should use their SSO provider, not password reset.
         (sso-password-reset-disabled? sso-source)
@@ -593,7 +593,7 @@
                                 (events/publish-event! :event/mfa-verification-failed
                                                        {:object (users.db/user user-id)})
                                 (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
-        user (session.db/user-login-status user-id)]
+        user (users.db/user-columns {:user-id user-id :columns [:id :is_active :last_login :tenant_id]})]
     ;; the account can be deactivated (or deleted) between the password step and here; a
     ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
     (when-not (:is_active user)
@@ -663,7 +663,7 @@
                                            (do (events/publish-event! :event/mfa-required-enrollment-failed
                                                                       {:object (users.db/user user-id)})
                                                (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
-        user           (session.db/user-login-status user-id)]
+        user           (users.db/user-columns {:user-id user-id :columns [:id :is_active :last_login :tenant_id]})]
     ;; the account can be deactivated (or deleted) between the password step and here; an
     ;; enrollment token must not outlive the account. Same 401 as a bad token — no oracle.
     (when-not (:is_active user)

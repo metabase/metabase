@@ -7,30 +7,12 @@
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
-
-(mu/defn query-execution-hash-counts
-  "The `:hash` and execution count `:n` of the QueryExecutions started at or after `started-at` and before
-  `started-before`, grouped by hash."
-  [started-at     :- ms/TemporalInstant
-   started-before :- ms/TemporalInstant]
-  (t2/select [:model/QueryExecution :hash [:%count.* :n]]
-             {:where    [:and
-                         [:>= :started_at [:auto/param started-at]]
-                         [:<  :started_at [:auto/param started-before]]]
-              :group-by [:hash]}))
 
 (mu/defn raw-field-fingerprint
   "The stored fingerprint of the Field with `field-id`, as it sits in the table, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :fingerprint :metabase_field :id field-id))
-
-(mu/defn queries-reducible
-  "A reducible over `conn` of the hash and query of the Queries with `query-hashes`."
-  [conn         :- (ms/InstanceOfClass java.sql.Connection)
-   query-hashes :- [:sequential {:min 1} bytes?]]
-  (t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in [:auto/param query-hashes]]))
 
 (mu/defn delete-segment-rollups-before!
   "Delete the SourceSegmentDaily rollup rows bucketed before `bucket-date`."
@@ -111,26 +93,6 @@
   [rows :- [:sequential
             ::usage-metadata.schema/source-dimension-profile-daily.update]]
   (t2/insert! :model/SourceDimensionProfileDaily rows))
-
-(mu/defn field-names
-  "The id, name, and display name of the Fields with `field-ids`."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :display_name] :id [:in (mapv long field-ids)] {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn table-names
-  "The id, name, display name, Database id, and schema of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :db_id :schema] :id [:in (mapv long table-ids)] {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn table-database-ids
-  "The id and Database id of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in (mapv long table-ids)] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn card-names
-  "The id and name of the Cards with `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name] :id [:in (mapv long card-ids)]))
 
 (defn- grouped-rollup-where
   [source-type source-id bucket-start bucket-end]
@@ -234,17 +196,3 @@
                           bucket-end   (conj [:<= :bucket_date [:auto/param bucket-end]]))
               :group-by [:source_type :source_id :field_id :source_basis :observation_type :observation_value]
               :order-by [[:total_count :desc]]}))
-
-(mu/defn unarchived-segments
-  "The id, Table id, and definition of the unarchived Segments, optionally narrowed to `table-id`."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select [:model/Segment :id :table_id :definition]
-             {:where (cond-> [:and [:= :archived false]]
-                       table-id (conj [:= :table_id (long table-id)]))}))
-
-(mu/defn unarchived-metric-cards
-  "The id, Database id, query, and schema of the unarchived metric Cards."
-  []
-  (t2/select [:model/Card :id :database_id :dataset_query :card_schema :type :entity_id :result_metadata :dimensions
-              :dimension_mappings]
-             :type "metric" :archived false))

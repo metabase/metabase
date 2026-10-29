@@ -72,30 +72,6 @@
   []
   (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
-(mu/defn cards-not-in-document
-  "The Cards with `card-ids` that do not belong to the Document with `document-id`."
-  [card-ids    :- [:sequential ::lib.schema.id/card]
-   document-id :- ms/PositiveInt]
-  (t2/select :model/Card {:where [:and [:in :id card-ids]
-                                  [:or [:<> :document_id document-id]
-                                   [:= :document_id nil]]]}))
-
-(mu/defn cards-for-document
-  "The Cards of the Document with `document-id`."
-  [document-id :- ms/PositiveInt]
-  (t2/select :model/Card :document_id document-id))
-
-(mu/defn unarchived-cards-for-documents
-  "The unarchived Cards of the Documents with `document-ids`."
-  [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Card :document_id [:in document-ids] :archived false))
-
-(mu/defn unarchived-card-in-document-exists?
-  "Whether the unarchived Card with `card-id` belongs to the Document with `document-id`."
-  [card-id     :- ::lib.schema.id/card
-   document-id :- ms/PositiveInt]
-  (t2/exists? :model/Card :id card-id :document_id document-id :archived false))
-
 (mu/defn update-card!
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
@@ -107,16 +83,6 @@
   [document-id :- ms/PositiveInt
    changes     :- (mut/select-keys ::queries.schema/card.update [:collection_id :archived :archived_directly])]
   (t2/update! :model/Card :document_id document-id changes))
-
-(mu/defn unarchived-collection-exists?
-  "Whether an unarchived Collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :archived false))
-
-(mu/defn user-columns
-  "The id, email, and name of the Users with `user-ids`."
-  [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
 (mu/defn update-documents-last-viewed-at!
   "Move `last_viewed_at` of each Document in `document-id->timestamp` forward to its timestamp, without touching
@@ -132,3 +98,76 @@
                                                     document-id->timestamp))
                       :updated_at :updated_at}
              :where  [:in :id (keys document-id->timestamp)]}))
+
+(mu/defn unarchived-document-summaries-in-collection
+  "The ID, name, collection, and exploration of the unarchived Documents in the Collection with `collection-id` (the
+  root when nil) that are not attached to an Exploration, ordered by name."
+  [{:keys [collection-id]} :- [:map {:closed true} [:collection-id [:maybe ::lib.schema.id/collection]]]]
+  (t2/select [:model/Document :id :name :collection_id :exploration_id]
+             :collection_id [:auto/param collection-id]
+             :archived false
+             :exploration_id nil
+             {:order-by [[:%lower.name :asc]]}))
+
+(mu/defn documents-in-archived-state
+  "The Documents with `document-ids` whose archived flag is `archived?`."
+  [{:keys [document-ids archived?]}
+   :- [:map {:closed true}
+       [:document-ids [:set ms/PositiveInt]]
+       [:archived? :boolean]]]
+  (t2/select :model/Document :id [:in document-ids] :archived [:auto/param archived?]))
+
+(mu/defn summary-documents-for-explorations
+  "The summary columns of the Documents attached to the Explorations with `exploration-ids`, oldest first."
+  [{:keys [exploration-ids]} :- [:map {:closed true} [:exploration-ids [:or [:sequential ms/PositiveInt] [:set ms/PositiveInt]]]]]
+  (t2/select [:model/Document :id :name :exploration_id :creator_id :content_type :created_at :updated_at :archived :is_placeholder]
+             :exploration_id [:in exploration-ids]
+             {:order-by [[:created_at :asc] [:id :asc]]}))
+
+(mu/defn unarchived-document-of-exploration
+  "The unarchived Document attached to the Exploration with `exploration-id`, or nil."
+  [{:keys [exploration-id]} :- [:map {:closed true} [:exploration-id ms/PositiveInt]]]
+  (t2/select-one :model/Document :exploration_id [:auto/param exploration-id] :archived false))
+
+(mu/defn document-exists?
+  "Whether a Document with `document-id` exists."
+  [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
+  (t2/exists? :model/Document :id [:auto/param document-id]))
+
+(mu/defn unarchived-documents-by-public-uuid-prefix
+  "The unarchived Documents whose public UUID prefix is `prefix`, only their `columns` when given."
+  [{:keys [prefix columns]}
+   :- [:map {:closed true}
+       [:prefix :string]
+       [:columns {:optional true} [:maybe [:sequential :keyword]]]]]
+  (t2/select (if (seq columns) (into [:model/Document] columns) :model/Document)
+             :public_uuid_prefix [:auto/param prefix]
+             :archived false))
+
+(mu/defn document-archived-flags
+  "The archived flag of every Document."
+  []
+  (t2/select [:model/Document :archived]))
+
+(mu/defn documents-exist-in-collections?
+  "Whether any Document is in the Collections with `collection-ids`."
+  [{:keys [collection-ids]} :- [:map {:closed true} [:collection-ids [:sequential ::lib.schema.id/collection]]]]
+  (t2/exists? :model/Document :collection_id [:in collection-ids]))
+
+(mu/defn documents-with-collections
+  "The ID, name, archived flag, and Collection details of the Documents with `document-ids`."
+  [{:keys [document-ids]} :- [:map {:closed true} [:document-ids [:or [:sequential ms/PositiveInt] [:set ms/PositiveInt]]]]]
+  (t2/select :model/Document
+             {:select [:d.id
+                       :d.name
+                       :d.archived
+                       [:d.collection_id :entity-coll-id]
+                       [:c.id :collection_id]
+                       [:c.name :collection_name]
+                       [:c.authority_level :collection_authority_level]]
+              :from [[:document :d]]
+              :where [:in :d.id document-ids]
+              :left-join [[:collection :c]
+                          [:and
+                           [:= :c.id :d.collection_id]
+                           [:= :c.archived false]]]}))

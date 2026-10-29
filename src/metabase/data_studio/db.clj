@@ -70,11 +70,6 @@
                                           :from   [(warehouse-schema-overlay/table-query)]
                                           :where  [:and where [:= :id output-table-id]]}]]]})))
 
-(mu/defn databases
-  "The Databases with `database-ids`."
-  [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
-
 (mu/defn tables-matching-selectors
   "The Tables picked out by `selectors`, a map of `:database_ids`, `:schema_ids`, and/or `:table_ids`."
   [selectors :- TableSelectors]
@@ -87,11 +82,6 @@
   (t2/select :model/Table {:from [(warehouse-schema-overlay/table-query)]
                            :where (table-selectors-where selectors), :order-by [[:id]]}))
 
-(mu/defn tables
-  "The Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
-
 (mu/defn selection-columns-for-selectors
   "Up to `limit` id, database, name, schema, and published flag of the Tables picked out by `selectors`."
   [selectors :- TableSelectors
@@ -99,11 +89,6 @@
   (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published]
              {:from [(warehouse-schema-overlay/table-query)]
               :where (table-selectors-where selectors), :limit limit}))
-
-(mu/defn selection-columns-for-tables
-  "The id, database, name, schema, and published flag of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn delete-field-values-for-tables!
   "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."

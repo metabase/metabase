@@ -316,7 +316,7 @@
 
 (mu/defn- cards* :- [:sequential HybridPulseCard]
   [pulse-ids :- [:sequential ms/PositiveInt]]
-  (pulse.db/pulse-cards-for-pulses pulse-ids *allow-hydrate-archived-cards*))
+  (queries.db/pulse-cards {:pulse-ids pulse-ids :include-archived? *allow-hydrate-archived-cards*}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]

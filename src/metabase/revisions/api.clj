@@ -5,11 +5,13 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.core :as query-perms]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
@@ -66,14 +68,13 @@
 
 (defn- stored-card-references
   [model id]
-  (let [parameter-cards (set (revisions.db/parameter-card-ids (if (= model :model/Dashboard)
-                                                                "dashboard"
-                                                                "card")
-                                                              id))]
+  (let [parameter-cards (set (queries.db/parameter-card-card-ids (if (= model :model/Dashboard)
+                                                                   "dashboard"
+                                                                   "card") id))]
     (if (= model :model/Dashboard)
       (into parameter-cards
-            (concat (revisions.db/dashboard-card-ids id)
-                    (revisions.db/dashboard-series-card-ids id)))
+            (concat (dashboards.db/dashcard-card-ids id)
+                    (dashboards.db/dashcard-series-card-ids id)))
       parameter-cards)))
 
 (defn- revision-parameter-field-ids
@@ -92,7 +93,7 @@
                              mapping)
             card-ids       (into #{} (keep :card_id) mappings)
             card-id->query (when (seq card-ids)
-                             (revisions.db/card-queries card-ids))]
+                             (queries.db/card-dataset-queries {:card-ids card-ids}))]
         (into [] (keep (fn [{:keys [target card_id]}]
                          (resolve-target target (card-id->query card_id))))
               mappings))

@@ -28,6 +28,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -94,7 +95,7 @@
         ;; If perms were set at the database or schema-level before, we might need to add granular values for all tables
         ;; in the database or schema, so they show correctly in the UI.
         tables (when (or (keyword? db-perm) (keyword? schema-perm))
-                 (sandbox.db/tables-of-database db-id (keyword? schema-perm) schema))
+                 (warehouse-schema.db/table-locations-of-database (cond-> {:database-id db-id} (keyword? schema-perm) (assoc :schema schema))))
         ;; Remove the overarching database or schema permission so that we can add the granular table-level permissions
         graph (cond
                 (and tables (keyword? db-perm))
@@ -156,7 +157,7 @@
   ;; Databases. A possible future optimization: Cards, Segments, and Measures belong to one Database, so a check on one
   ;; of those could walk only the sandboxing Cards on the same Database. Snippets are not tied to a Database, so a
   ;; snippet check would still need every sandboxing Card.
-  (let [cards (sandbox.db/sandboxing-cards)]
+  (let [cards (queries.db/sandboxing-cards)]
     (-> (transduce (keep (fn [{:keys [dataset_query database_id]}]
                            (when (seq dataset_query)
                              (lib/all-referenced-entity-ids-recursive

@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.recoverable.common :as recoverable]
    [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
@@ -12,7 +11,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +27,7 @@
 
 (defn- validate-database-access
   [database-id]
-  (when-not (metabot.db/database-exists? database-id)
+  (when-not (warehouses.db/database-exists? {:database-id database-id})
     (recoverable/unknown-database! {:database-id database-id}))
   (try
     (api/read-check :model/Database database-id)

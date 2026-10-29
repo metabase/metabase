@@ -19,11 +19,6 @@
              :moderated_item_id [:in item-ids]
              {:order-by [[:id :desc]]}))
 
-(mu/defn users
-  "The Users with `user-ids`."
-  [user-ids :- [:maybe [:sequential [:maybe ::lib.schema.id/user]]]]
-  (t2/select :model/User :id [:in user-ids]))
-
 (mu/defn moderation-review-ids-for-item
   "The ids of the ModerationReviews of the item with `item-id` and `item-type`, newest first."
   [item-id   :- ms/PositiveInt
@@ -63,3 +58,34 @@
   "Insert the ModerationReview `row` and return the inserted instance."
   [row :- (mut/select-keys ::content-verification.schema/moderation-review.update [:moderated_item_id :moderated_item_type :moderator_id :status :text :most_recent])]
   (t2/insert-returning-instance! :model/ModerationReview row))
+
+(mu/defn verified-item-ids
+  "The IDs of the items of `item-type` (among `item-ids` when given) whose most recent moderation review is verified."
+  [{:keys [item-ids item-type]}
+   :- [:map {:closed true}
+       [:item-type :string]
+       [:item-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
+  (apply t2/select-fn-set :moderated_item_id :model/ModerationReview
+         (cond-> [:moderated_item_type [:auto/param item-type]
+                  :most_recent         true
+                  :status              "verified"]
+           (some? item-ids) (conj :moderated_item_id [:in item-ids]))))
+
+(mu/defn latest-moderation-review-status-row
+  "The `:status` row of the most recent moderation review of the item with `item-id` of `item-type`, or nil."
+  [{:keys [item-id item-type]} :- [:map {:closed true} [:item-id ms/PositiveInt] [:item-type :string]]]
+  (t2/select-one [:model/ModerationReview :status]
+                 :moderated_item_id [:auto/param item-id]
+                 :moderated_item_type [:auto/param item-type]
+                 :most_recent true
+                 {:order-by [[:id :desc]]}))
+
+(mu/defn moderation-review-exists?
+  "Whether any ModerationReview exists."
+  []
+  (t2/exists? :model/ModerationReview))
+
+(mu/defn users
+  "The Users with `user-ids`."
+  [user-ids :- [:maybe [:sequential [:maybe ::lib.schema.id/user]]]]
+  (t2/select :model/User :id [:in user-ids]))

@@ -7,15 +7,16 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.core :as warehouse-schema]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (mu/defn current-database
   "The Database being used for uploads, or nil."
   []
-  (t2/select-one :model/Database :uploads_enabled true))
+  (warehouses.db/uploads-database))
 
 (mu/defn disable-uploads-for-all-databases!
   "Disable uploads on every Database that has them enabled."
@@ -33,11 +34,6 @@
                                            :uploads_schema_name  schema-name
                                            :uploads_table_prefix table-prefix}))
 
-(mu/defn active-fields-for-table
-  "The active Fields of the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query)]}))
-
 (mu/defn user-edited-field-names
   "The lower-cased `names`, among the Fields of the Table with `table-id`, that have a user-set display name."
   [table-id :- ::lib.schema.id/table
@@ -54,12 +50,8 @@
   (let [user-edited        (user-edited-field-names table-id (set (keys name->display-name)))
         name->display-name (apply dissoc name->display-name user-edited)]
     (doseq [{:keys [id name display_name]} (when (seq name->display-name)
-                                             (t2/select [:model/Field :id :name :display_name]
-                                                        {:from  [(warehouse-schema-overlay/field-query
-                                                                  {:user-settings? false})]
-                                                         :where [:and
-                                                                 [:= :table_id table-id]
-                                                                 [:in [:lower :name] (keys name->display-name)]]}))
+                                             (warehouse-schema.db/field-display-name-rows-by-lower-name
+                                              {:table-id table-id :lower-names (keys name->display-name)}))
             :let  [lower-name (u/lower-case-en name)]
             :when (= display_name (humanization/name->human-readable-name lower-name))]
       (t2/update! :model/Field id {:display_name (name->display-name lower-name)}))))
@@ -109,8 +101,3 @@
   "Archive the unarchived Cards of the Table with `table-id`, returning their ids."
   [table-id :- ::lib.schema.id/table]
   (t2/update-returning-pks! :model/Card {:table_id table-id :archived false} {:archived true}))
-
-(mu/defn tables
-  "The Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))

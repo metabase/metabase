@@ -1,8 +1,8 @@
 (ns metabase-enterprise.replacement.source-check
   (:require
-   [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.usages :as replacement.usages]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -19,17 +19,17 @@
   "Returns true if any sandbox (GTAP) policy references `table-id`, either directly
   via `sandbox.table_id` or indirectly via a scoping card whose `table_id` matches."
   [table-id :- ::lib.schema.id/table]
-  (or (replacement.db/sandbox-exists-for-table? table-id)
-      (let [sandbox-card-ids (replacement.db/sandbox-card-ids)]
+  (or (sandbox.db/sandbox-exists-for-table? {:table-id table-id})
+      (let [sandbox-card-ids (sandbox.db/sandbox-card-ids)]
         (boolean
          (when (seq sandbox-card-ids)
-           (replacement.db/card-with-table-exists? sandbox-card-ids table-id))))))
+           (queries.db/card-with-table-exists? {:card-ids sandbox-card-ids :table-id table-id}))))))
 
 (mu/defn- has-incoming-fks? :- :boolean
   "Returns true if any active field on an active table has a FK pointing to a field in `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (if-let [field-ids (not-empty (replacement.db/active-field-ids-of-table table-id))]
-    (replacement.db/active-fk-to-fields-exists? field-ids)
+  (if-let [field-ids (not-empty (warehouse-schema.db/active-field-ids-for-table table-id))]
+    (warehouse-schema.db/active-fk-to-fields-exist? {:field-ids field-ids})
     false))
 
 (mu/defn- format-column :- ::replacement.schema/column

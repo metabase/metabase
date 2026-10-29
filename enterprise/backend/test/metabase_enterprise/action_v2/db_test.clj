@@ -2,18 +2,19 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.db :as action-v2.db]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (deftest pk-fields-for-table-honors-user-set-semantic-type-test
   (testing "pk-fields-for-table honors a user-set semantic_type that differs from the sync value"
     (mt/with-temp [:model/Table {table-id :id} {}
                    :model/Field {field-id :id} {:table_id table-id, :semantic_type nil}]
       (testing "sanity check: not a PK by sync"
-        (is (= [] (map :id (action-v2.db/pk-fields-for-table table-id)))))
+        (is (= [] (map :id (warehouse-schema.db/pk-fields-of-table {:table-id table-id})))))
       (mt/with-temp [:model/FieldUserSettings _ {:field_id          field-id
                                                  :semantic_type     :type/PK
                                                  :semantic_type_set true}]
-        (is (= [field-id] (map :id (action-v2.db/pk-fields-for-table table-id))))))))
+        (is (= [field-id] (map :id (warehouse-schema.db/pk-fields-of-table {:table-id table-id}))))))))
 
 (deftest category-list-field-ids-by-name-honors-user-settings-test
   (testing "category-list-field-ids-by-name honors user-set has_field_values/semantic_type"

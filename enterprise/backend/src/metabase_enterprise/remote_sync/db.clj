@@ -292,45 +292,6 @@
    entity-ids :- [:set :string]]
   (t2/select-pks-vec model :entity_id [:in entity-ids]))
 
-(mu/defn card-types
-  "The `:id`, `:type`, and `:display` of the Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :type :display] :id [:in card-ids]))
-
-(mu/defn card-counts-by-type :- [:map-of :keyword :int]
-  "The number of Cards with `card-ids`, by `:type`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-fn->fn :type :count [:model/Card :type [:%count.* :count]] :id [:in card-ids] {:group-by [:type]}))
-
-(mu/defn published-table-ids :- [:set ::lib.schema.id/table]
-  "The ids of the Tables published in the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (set (t2/select-pks-set :model/Table {:from  [(warehouse-schema-overlay/table-query {:alias :t})]
-                                        :where [:and [:= :t.is_published true] [:in :t.collection_id collection-ids]]})))
-
-(mu/defn table-ids-with-user-settings
-  "The ids of the Tables among `table-ids` that have a TableUserSettings row."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn-vec :table_id :model/TableUserSettings {:select [:table_id] :where [:in :table_id table-ids]}))
-
-(mu/defn field-ids-with-user-settings
-  "The ids of the Fields of the Tables with `table-ids` that have a FieldUserSettings row."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn-vec :field_id :model/FieldUserSettings
-                    {:select [:u.field_id]
-                     :from   [[(t2/table-name :model/FieldUserSettings) :u]]
-                     :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :u.field_id]]
-                     :where  [:in :f.table_id table-ids]}))
-
-(mu/defn field-ids-with-dimensions
-  "The ids of the Fields of the Tables with `table-ids` that have a Dimension."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn-vec :field_id :model/Dimension
-                    {:select [:d.field_id]
-                     :from   [[(t2/table-name :model/Dimension) :d]]
-                     :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :d.field_id]]
-                     :where  [:in :f.table_id table-ids]}))
-
 (mu/defn delete-table-user-settings!
   "Delete the TableUserSettings of the Tables with `table-ids`, returning the number deleted."
   [table-ids :- [:sequential ::lib.schema.id/table]]
@@ -346,36 +307,11 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/delete! :model/Dimension :field_id [:in field-ids]))
 
-(mu/defn tables-tracking-details
-  "The `:id`, `:name`, and `:collection_id` of the Tables with `table-ids`, read through the overlay."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :collection_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
-
 (mu/defn fields-tracking-details
   "The `:id`, name, table id, collection id, and table name of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (let [{:keys [select from join]} (tracking-select-parts :model/FieldUserSettings)]
     (t2/query {:select (into [:f.id] select) :from from :join join :where [:in :f.id field-ids]})))
-
-(mu/defn snippets
-  "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
-  []
-  (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
-
-(mu/defn glossary-entries
-  "The `:id` and `:term` of every Glossary entry."
-  []
-  (t2/select [:model/Glossary :id :term]))
-
-(mu/defn untracked-glossary-entries
-  "The `:id` and `:term` of every Glossary entry with no RemoteSyncObject."
-  []
-  (t2/select [:model/Glossary :id :term]
-             {:where [:not [:exists ^:allow-subquery {:select [1]
-                                                      :from   [:remote_sync_object]
-                                                      :where  [:and
-                                                               [:= :remote_sync_object.model_type "Glossary"]
-                                                               [:= :remote_sync_object.model_id :glossary.id]]}]]}))
 
 (defn- subtree-expr
   "Matches `collections` and all of their descendants."
@@ -384,121 +320,6 @@
         (for [{:keys [id location]} collections]
           ;; the location its children have, so a nested collection's descendants match too
           [:like :location (str location id "/%")])))
-
-(mu/defn collections
-  "The Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Collection :id [:in collection-ids]))
-
-(mu/defn collections-by-id
-  "A map of ID to the ID, name, location, and personal owner of the Collections with `collection-ids`."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity [:model/Collection :id :name :type :location :personal_owner_id] :id [:in collection-ids]))
-
-(mu/defn collection-sync-states
-  "The `:id` and `:is_remote_synced` of the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :is_remote_synced] :id [:in collection-ids]))
-
-(mu/defn library-collection
-  "The Library Collection of `library-type`, or nil."
-  [library-type :- :string]
-  (t2/select-one :model/Collection :type library-type))
-
-(mu/defn collections-with-names-in-namespace
-  "The `:id` and `:name` of the Collections of `namespace-name`."
-  [namespace-name :- :string]
-  (t2/select [:model/Collection :id :name] :namespace namespace-name))
-
-(mu/defn action-model-ids
-  "The model Card id, or nil, of each existing Action with `action-ids`, keyed by Action id."
-  [action-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :model_id [:model/Action :id :model_id] :id [:in action-ids]))
-
-(mu/defn actions-without-model-in
-  "The `:id`, `:name`, and `:collection_id` of the Actions without a model outside of any Collection or in the
-  Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select [:model/Action :id :name :collection_id]
-             {:where [:and
-                      [:= :model_id nil]
-                      (if (seq collection-ids)
-                        [:or [:= :collection_id nil] [:in :collection_id collection-ids]]
-                        [:= :collection_id nil])]}))
-
-(mu/defn snippet-collections
-  "The `:id` and `:name` of the Collections of the snippets namespace."
-  []
-  (t2/select [:model/Collection :id :name] :namespace "snippets"))
-
-(mu/defn snippet-collection-ids
-  "The IDs of the Collections of the snippets namespace."
-  []
-  (t2/select-pks-set :model/Collection :namespace "snippets"))
-
-(mu/defn collections-in-namespace
-  "The `:id` and `:entity_id` of the Collections of `namespace-name`."
-  [namespace-name :- :string]
-  (t2/select [:model/Collection :id :entity_id] :namespace namespace-name))
-
-(mu/defn collection-ids-in-namespace
-  "The IDs of the Collections of `namespace-name`."
-  [namespace-name :- :string]
-  (t2/select-pks-vec :model/Collection :namespace namespace-name))
-
-(mu/defn remote-synced-collection-ids
-  "The IDs of the remote-synced Collections."
-  []
-  (t2/select-pks-vec :model/Collection :is_remote_synced true))
-
-(mu/defn remote-synced-root-collections
-  "The `:namespace` and `:type` of the remote-synced top-level Collections."
-  []
-  (t2/select [:model/Collection :id :namespace :type] :is_remote_synced true :location "/"))
-
-(mu/defn unarchived-remote-synced-root-collection-ids
-  "The IDs of the unarchived remote-synced root Collections."
-  []
-  (t2/select-fn-set :id :model/Collection
-                    {:where [:and
-                             [:= :is_remote_synced true]
-                             [:= :location "/"]
-                             [:not :archived]]}))
-
-(mu/defn unarchived-root-collection-ids-in-namespace
-  "The IDs of the unarchived root Collections of `namespace-name`."
-  [namespace-name :- :string]
-  (t2/select-fn-set :id :model/Collection
-                    {:where [:and
-                             [:= :namespace namespace-name]
-                             [:= :location "/"]
-                             [:not :archived]]}))
-
-(mu/defn subtree-collection-ids
-  "The IDs of `collections` and all of their descendants."
-  [collections :- [:sequential ::collections.schema/collection]]
-  (t2/select-pks-set :model/Collection {:where (subtree-expr collections)}))
-
-(mu/defn collection-content-exists? :- :boolean
-  "Whether a Card, Dashboard, Document, Timeline, or Action is in the Collections with `collection-ids`, or a Table is
-  published to one."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (boolean
-   (or (t2/exists? :model/Card :collection_id [:in collection-ids])
-       (t2/exists? :model/Dashboard :collection_id [:in collection-ids])
-       (t2/exists? :model/Document :collection_id [:in collection-ids])
-       (t2/exists? :model/Timeline :collection_id [:in collection-ids])
-       (t2/exists? :model/Action :collection_id [:in collection-ids])
-       (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
-                                 :where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
-
-(mu/defn remote-synced-subtree-collection-ids
-  "The IDs of the remote-synced Collections among `collections` and their descendants."
-  [collections :- [:sequential ::collections.schema/collection]]
-  (t2/select-pks-set :model/Collection
-                     {:where [:and
-                              [:= :is_remote_synced true]
-                              (subtree-expr collections)]}))
 
 (mu/defn mark-subtree-remote-synced!
   "Mark `collections` and all of their descendants as remote-synced."
@@ -847,8 +668,3 @@
   "Delete the RemoteSyncTasks started before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/RemoteSyncTask {:where [:< :started_at cutoff]}))
-
-(mu/defn users-by-id
-  "A map of User ID to User for `user-ids`."
-  [user-ids :- [:sequential [:maybe ::lib.schema.id/user]]]
-  (t2/select-pk->fn identity :model/User :id [:in user-ids]))

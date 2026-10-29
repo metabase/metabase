@@ -21,7 +21,6 @@
   Everything before the connection is pure; a bad test is rejected before any temp table exists."
   (:require
    [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
-   [metabase-enterprise.transform-testing.db :as transform-testing.db]
    [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
    [metabase-enterprise.transform-testing.executor :as transform-testing.executor]
    [metabase-enterprise.transform-testing.expectations.empty]
@@ -40,7 +39,8 @@
    [metabase.transforms.db :as transforms.db]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -132,7 +132,7 @@
   "The database `transform` reads, if its driver can run a transform test."
   [transform]
   (let [database-id (transforms-base.u/transform-source-database transform)
-        _           (api/check-404 (some-> database-id transform-testing.db/database-exists?))
+        _           (api/check-404 (when database-id (warehouses.db/database-exists? {:database-id database-id})))
         database    (driver.u/lib-database database-id)
         driver   (keyword (:engine database))]
     (when-not (driver.u/supports? driver :transforms/testing database)

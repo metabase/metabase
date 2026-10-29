@@ -7,28 +7,11 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn destination-database-id
-  "The ID of the destination Database of the router with `router-database-id` named `database-name`, or nil."
-  [router-database-id :- ::lib.schema.id/database
-   database-name      :- :string]
-  (t2/select-one-pk :model/Database :router_database_id router-database-id :name database-name))
-
-(mu/defn destination-name-exists?
-  "Whether the router with `router-database-id` already has a destination Database named one of `names`."
-  [router-database-id :- ::lib.schema.id/database
-   names              :- [:sequential :string]]
-  (t2/exists? :model/Database :router_database_id router-database-id :name [:in names]))
-
 (mu/defn insert-databases!
   "Insert the Database `rows` and return the new instances."
   [rows :- [:sequential
             ::warehouses.schema/database.update]]
   (t2/insert-returning-instances! :model/Database rows))
-
-(mu/defn transform-exists-for-source-database?
-  "Whether a Transform reads from the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Transform :source_database_id database-id))
 
 (mu/defn router-exists?
   "Whether the Database with `database-id` is a router."
@@ -71,3 +54,14 @@
   "Delete the DatabaseRouter of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/delete! :model/DatabaseRouter :database_id database-id))
+
+(mu/defn router-database-ids
+  "The subset of `database-ids` that are database routers."
+  [{:keys [database-ids]} :- [:map {:closed true}
+                              [:database-ids [:set ::lib.schema.id/database]]]]
+  (t2/select-fn-set :database_id :model/DatabaseRouter :database_id [:in database-ids]))
+
+(mu/defn transform-exists-for-source-database?
+  "Whether a Transform reads from the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Transform :source_database_id database-id))

@@ -39,6 +39,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -580,7 +581,7 @@
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]
       (when database-id
-        (if-let [{driver :engine :as database} (when (transforms-base.db/database-exists? database-id)
+        (if-let [{driver :engine :as database} (when (warehouses.db/database-exists? {:database-id database-id})
                                                  (driver.u/lib-database database-id))]
           (let [drop-target (update target :type keyword)]
             (driver/drop-transform-target! driver database drop-target)
@@ -772,7 +773,7 @@
 (defn output-table
   "Return the output table created by a transform, looked up via `transform_id`."
   [transform]
-  (transforms-base.db/table-for-transform (:id transform)))
+  (warehouse-schema.db/table-of-transform {:transform-id (:id transform)}))
 
 (defn merge-target-unique-key
   "Physical column names of a transform's `merge` unique key, or nil when the target isn't a merge target."
@@ -784,7 +785,7 @@
   "Physical column names of a transform's synced target table, ordered by position, or nil."
   [transform]
   (when-let [table (output-table transform)]
-    (not-empty (transforms-base.db/active-field-names-for-table (:id table)))))
+    (not-empty (warehouse-schema.db/active-field-names-of-table {:table-id (:id table)}))))
 
 (defn validate-merge-unique-key!
   "Throws if any of `unique-key` is not present in `columns`. Returns `unique-key`."
@@ -812,7 +813,7 @@
           fetch-batch (fn [batch]
                         (into {}
                               (map (juxt (juxt :db_id :schema :name) :id))
-                              (transforms-base.db/table-refs-matching batch)))]
+                              (warehouse-schema.db/tables-matching-refs {:refs batch})))]
       (into {} (mapcat fetch-batch) (partition-all batch-lookup-chunk-size unique-refs)))))
 
 (defn- source-table-ref->key
@@ -850,7 +851,7 @@
                              (into {}
                                    (map (juxt :id (fn [{:keys [db_id schema name]}]
                                                     {:database_id db_id :schema schema :table name})))
-                                   (transforms-base.db/table-refs ids))))
+                                   (warehouse-schema.db/tables-by-ids {:table-ids ids :columns [:id :db_id :schema :name] :user-settings? false}))))
         missing-ids      (when (seq needs-metadata)
                            (let [ids (into #{} (map :table_id) needs-metadata)]
                              (remove (or int-id->metadata {}) ids)))

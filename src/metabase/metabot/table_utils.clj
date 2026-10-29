@@ -5,6 +5,7 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
@@ -216,7 +217,7 @@
   ([query]
    (schema-sample query nil))
   ([{:keys [database] :as query} {:keys [all-tables-limit] :or {all-tables-limit max-schema-sample-tables}}]
-   (let [tables (metabot.db/table-names database (inc all-tables-limit))
+   (let [tables (warehouse-schema.db/active-visible-tables-of-database {:database-id database :limit (inc all-tables-limit) :columns [:id :name :schema]})
          tables (if (> (count tables) all-tables-limit)
                   (used-tables query)
                   tables)

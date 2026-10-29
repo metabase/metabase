@@ -1,6 +1,8 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require
    [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
+   [metabase-enterprise.impersonation.db :as impersonation.db]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.permissions.core :as perms]
@@ -161,7 +163,7 @@
     {}
     (let [all-users-group-id (u/the-id (perms/all-users-group))
           blocked-db-ids     (advanced-permissions.db/blocked-database-ids-for-group all-users-group-id db-ids)
-          impersonation-db-ids (advanced-permissions.db/impersonated-database-ids-for-group all-users-group-id db-ids)
+          impersonation-db-ids (impersonation.db/impersonated-database-ids-for-group {:group-id all-users-group-id :database-ids db-ids})
           sandbox-db-ids     (into #{}
                                    (map :db_id)
                                    (advanced-permissions.db/sandboxed-database-ids-for-group all-users-group-id db-ids))
@@ -176,8 +178,8 @@
   (if (empty? group-ids)
     {}
     (let [blocked-group-ids   (advanced-permissions.db/blocked-group-ids group-ids)
-          impersonation-group-ids (advanced-permissions.db/impersonated-group-ids group-ids)
-          sandbox-group-ids   (advanced-permissions.db/sandboxed-group-ids group-ids)
+          impersonation-group-ids (impersonation.db/impersonated-group-ids {:group-ids group-ids})
+          sandbox-group-ids   (sandbox.db/sandboxed-group-ids {:group-ids group-ids})
           blocked-groups      (into (or blocked-group-ids #{})
                                     (concat impersonation-group-ids sandbox-group-ids))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))

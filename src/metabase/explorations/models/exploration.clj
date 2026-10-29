@@ -1,10 +1,12 @@
 (ns metabase.explorations.models.exploration
   (:require
    [clojure.string :as str]
+   [metabase.documents.db :as documents.db]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
    [metabase.search.spec :as search.spec]
+   [metabase.users.db :as users.db]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -35,7 +37,7 @@
   [_model k explorations]
   (mi/instances-with-hydrated-data
    explorations k
-   #(explorations.db/user-summaries-by-id (keep :creator_id explorations))
+   #(users.db/user-summaries-by-id {:user-ids (keep :creator_id explorations)})
    :creator_id
    {:default {}}))
 
@@ -56,7 +58,7 @@
    #(into {}
           (map (fn [[eid docs]] [eid (first docs)]))
           (group-by :exploration_id
-                    (explorations.db/summary-documents-for-explorations (map :id explorations))))
+                    (documents.db/summary-documents-for-explorations {:exploration-ids (map :id explorations)})))
    :id
    {:default nil}))
 

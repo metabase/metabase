@@ -10,6 +10,7 @@
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.schema :as notification.schema]
+   [metabase.task-history.db :as task-history.db]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -366,16 +367,6 @@
 
 ;;; ---------------------------------------------- Channels ----------------------------------------------
 
-(mu/defn active-channels-by-id
-  "A map of ID to active Channel for `channel-ids`."
-  [channel-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn->fn :id identity :model/Channel :id [:in channel-ids] :active true))
-
-(mu/defn channel-templates-by-id
-  "A map of ID to ChannelTemplate for `template-ids`."
-  [template-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn->fn :id identity :model/ChannelTemplate :id [:in template-ids]))
-
 (mu/defn insert-channel-template!
   "Insert `template` and return its ID."
   [template :- ChannelTemplateRow]
@@ -405,14 +396,11 @@
    notification-id :- ms/PositiveInt
    statuses        :- [:sequential :string]
    limit           :- ms/PositiveInt]
-  (t2/select [:model/TaskRun :id :status :started_at]
-             {:where    [:and
-                         [:= :run_type run-type]
-                         [:= :notification_id notification-id]
-                         [:in :status statuses]
-                         [:> :started_at (admin-lookback-cutoff)]]
-              :order-by [[:started_at :desc] [:id :desc]]
-              :limit    limit}))
+  (task-history.db/terminal-alert-runs {:run-type        run-type
+                                        :notification-id notification-id
+                                        :statuses        statuses
+                                        :lookback-days   admin-run-lookback-days
+                                        :limit           limit}))
 
 (mu/defn channel-send-history-reducible
   "Reducible TaskHistory rows of `task` for the runs of `run-type` for the Notification with `notification-id`
@@ -421,18 +409,10 @@
   [run-type        :- :string
    notification-id :- ms/PositiveInt
    task            :- :string]
-  (t2/reducible-select :model/TaskHistory
-                       {:select   [:th.run_id :th.task_details :th.status
-                                   [:tr.started_at :run_started_at]]
-                        :from     [[:task_history :th]]
-                        :join     [[:task_run :tr] [:= :tr.id :th.run_id]]
-                        :where    [:and
-                                   [:= :tr.run_type        run-type]
-                                   [:= :tr.notification_id notification-id]
-                                   [:= :th.task            task]
-                                   [:> :tr.started_at      (admin-lookback-cutoff)]]
-                        :order-by [[:tr.started_at :desc] [:tr.id :desc]]
-                        :limit    500}))
+  (task-history.db/channel-send-history-reducible {:run-type        run-type
+                                                   :notification-id notification-id
+                                                   :task            task
+                                                   :lookback-days   admin-run-lookback-days}))
 
 (mu/defn latest-failed-task-history
   "The `:run_id` and `:task_details` of the single failed/abandoned TaskHistory row per run among `run-ids` (and, if
@@ -440,25 +420,9 @@
   [preferred-task :- :string
    run-ids        :- [:set ms/PositiveInt]
    task-name      :- [:maybe :string]]
-  (t2/select :model/TaskHistory
-             {:select [:run_id :task_details]
-              :from   [[^:allow-subquery
-                        {:select [:run_id :task_details
-                                  [[:over [[:row_number]
-                                           ^:allow-subquery
-                                           {:partition-by [:run_id]
-                                            :order-by     [[[:case
-                                                             [:= :task preferred-task] 0
-                                                             :else                     1] :asc]
-                                                           [:ended_at :desc]]}]]
-                                   :rn]]
-                         :from   [:task_history]
-                         :where  [:and
-                                  [:in :run_id run-ids]
-                                  [:in :status ["failed" "abandoned"]]
-                                  (when task-name [:= :task task-name])]}
-                        :sub]]
-              :where  [:= :sub.rn 1]}))
+  (task-history.db/latest-failed-task-history {:preferred-task preferred-task
+                                               :run-ids        run-ids
+                                               :task-name      task-name}))
 
 ;;; --------------------------------------------- Admin listing ---------------------------------------------
 
@@ -669,20 +633,15 @@
    id    :- [:maybe ms/PositiveInt]]
   (t2/select-one model id))
 
-(mu/defn dashboard-tabs
-  "The DashboardTabs of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardTab :dashboard_id dashboard-id))
-
-(mu/defn dashboard-tab-count
-  "The number of DashboardTabs on the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/count :model/DashboardTab :dashboard_id dashboard-id))
-
-(mu/defn dashcards-for-dashboard
-  "The DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
+(mu/defn card-notification-ids
+  "The ids of the card Notifications attached to the Card with `card-id`."
+  [{:keys [card-id]} :- [:map {:closed true}
+                         [:card-id ::lib.schema.id/card]]]
+  (t2/select-pks-set :model/Notification
+                     :payload_type :notification/card
+                     :payload_id [:in ^:allow-subquery {:select [:id]
+                                                        :from   [:notification_card]
+                                                        :where  [:= :card_id [:auto/param card-id]]}]))
 
 (mu/defn active-users-by-id
   "A map of ID to active User for `user-ids`."

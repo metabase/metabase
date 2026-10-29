@@ -6,10 +6,10 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.automagic-dashboards.schema :as ads]
-   [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [metabase.xrays.db :as xrays.db]))
+   [metabase.xrays.automagic-dashboards.util :as magic.util]))
 
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
@@ -125,7 +125,7 @@
    max-filters :- :int]
   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                        (:dashcards dashboard))))]
-              (field/with-targets (xrays.db/fk-fields-for-tables table-ids)))]
+              (field/with-targets (warehouse-schema.db/fk-fields-of-tables {:table-ids table-ids})))]
     (->> dimensions
          remove-unqualified
          sort-by-interestingness

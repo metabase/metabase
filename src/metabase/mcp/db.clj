@@ -11,9 +11,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mcp.schema :as mcp.schema]
    [metabase.session.core :as session]
+   [metabase.users.db :as users.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn mcp-session-log :- [:maybe ::mcp.schema/mcp-session-log]
@@ -33,29 +33,6 @@
   error rather than an empty result, so callers guard it."
   [model ids]
   (t2/select model :id [:in ids]))
-
-(defn select-users-where
-  "The `:model/User` rows matching the HoneySQL `where` clause.
-
-  Takes an assembled clause rather than the values behind it: the clause encodes which users the caller is
-  allowed to resolve at all, which is a permission decision and belongs with the permission check."
-  [where]
-  (t2/select :model/User {:where where}))
-
-(defn nullable-fields-with-fingerprints
-  "The Fields among `field-ids` the warehouse declares nullable, carrying their `:fingerprint`.
-  `field-ids` is expected non-empty — an empty `:in` is a SQL error rather than an empty result,
-  so callers guard it."
-  [field-ids]
-  (t2/select [:model/Field :id :database_is_nullable :fingerprint]
-             :id [:in field-ids]
-             :database_is_nullable true
-             {:from [(warehouse-schema-overlay/field-query)]}))
-
-(defn active-user-exists?
-  "Whether an active User with `user-id` exists."
-  [user-id]
-  (t2/exists? :model/User :id user-id :is_active true))
 
 (defn browsable-database
   "The Database with `database-id` restricted by the HoneySQL `browsable-where` clause, or nil.
@@ -84,46 +61,6 @@
   "The `columns` of the unarchived Models of the Database with `database-id`, in name order."
   [columns database-id]
   (t2/select columns :type :model :database_id database-id :archived false {:order-by [[:%lower.name :asc]]}))
-
-(defn active-tables-by-ids
-  "The active Tables with `table-ids`. `table-ids` is expected non-empty — an empty `:in` is a SQL error
-  rather than an empty result, so callers guard it."
-  [table-ids]
-  (t2/select :model/Table :id [:in table-ids] :active true {:from [(warehouse-schema-overlay/table-query)]}))
-
-(defn active-visible-fields-for-tables
-  "The id, name, table id, and position of the active, non-hidden Fields of the Tables with `table-ids`, in
-  table position then id order. `table-ids` is expected non-empty — an empty `:in` is a SQL error rather than
-  an empty result, so callers guard it."
-  [table-ids]
-  (t2/select [:model/Field :id :name :table_id :position]
-             :table_id [:in table-ids]
-             :active true
-             :visibility_type [:not-in ["hidden" "sensitive" "retired"]]
-             {:from [(warehouse-schema-overlay/field-query)]
-              :order-by [[:position :asc] [:id :asc]]}))
-
-(defn collections-for-read-check
-  "The Collections with `ids`, carrying the columns [[metabase.models.interface/can-read?]] consults.
-  `:namespace` and `:type` are selected for that check, not for display."
-  [ids]
-  (t2/select [:model/Collection :id :name :namespace :type] :id [:in ids]))
-
-(defn collection-id->name+location
-  "Map of collection id -> `[name location]` for the Collections with `ids`."
-  [ids]
-  (t2/select-fn->fn :id (juxt :name :location)
-                    [:model/Collection :id :name :location]
-                    :id [:in ids]))
-
-(defn snippets-by-archived-state
-  "The NativeQuerySnippets in the given archived state, ordered by lower-cased name. Selects only the
-  returned columns plus `:collection_id`, which the caller's read check consults — never `:content`,
-  which holds the SQL body."
-  [archived?]
-  (t2/select [:model/NativeQuerySnippet :id :name :description :collection_id]
-             :archived (boolean archived?)
-             {:order-by [[:%lower.name :asc]]}))
 
 ;; MCP is a session provider like any other as far as `auth_identity` is concerned; declaring it here is what lets
 ;; the AuthIdentity model's before-insert validation accept the rows [[mcp-auth-identity-id!]] creates.
@@ -228,11 +165,6 @@
   [card]
   (t2/hydrate card [:moderation_reviews :moderator_details]))
 
-(defn subscription-pulse-exists?
-  "Whether a Pulse with `pulse-id` exists and is a subscription — a nil `alert_condition` — rather than an alert."
-  [pulse-id]
-  (t2/exists? :model/Pulse :id pulse-id :alert_condition nil))
-
 (defn hydrate-notification
   "`notification` with its payload, subscriptions, and handler channels and recipients hydrated.
 
@@ -271,5 +203,5 @@
   (when-let [invalid (seq (remove int? user-ids))]
     (throw (ex-info "MCP: user ids must be a collection of integers" {:invalid (vec invalid)})))
   (if (seq user-ids)
-    (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids])
+    (users.db/user-tenant-ids {:user-ids (set user-ids)})
     {}))

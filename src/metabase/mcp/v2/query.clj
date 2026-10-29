@@ -9,9 +9,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.queries :as v2.queries]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -304,7 +304,7 @@
   (let [field-ids (into #{} (keep :id) cols)]
     (boolean
      (when (seq field-ids)
-       (->> (mcp.db/nullable-fields-with-fingerprints field-ids)
+       (->> (warehouse-schema.db/nullable-fields-with-fingerprints {:field-ids field-ids})
             (some (fn [field]
                     (pos? (or (get-in (:fingerprint field) [:global :nil%]) 0)))))))))
 

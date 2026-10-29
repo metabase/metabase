@@ -9,6 +9,7 @@
    [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
    [metabase-enterprise.support-access-grants.schema :as schema]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -80,7 +81,7 @@
                              :expires_at grant-ends-at
                              :credentials (create-support-access-reset-token-credentials <> grant-ends-at)
                              :metadata (auth-identity/create-reset-token-metadata (:email user))}]
-          (if-let [auth-identity-id (support-access-grants.db/support-access-auth-identity-id user-id)]
+          (if-let [auth-identity-id (auth-identity.db/auth-identity-id user-id "support-access-grant")]
             (support-access-grants.db/update-auth-identity! auth-identity-id auth-identity)
             (support-access-grants.db/insert-auth-identity! auth-identity)))))))
 

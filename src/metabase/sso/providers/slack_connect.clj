@@ -3,6 +3,7 @@
    and adds Slack-specific configuration and claim extraction."
   (:require
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.server.settings :as server.settings]
    [metabase.sso.db :as sso.db]
    [metabase.sso.settings :as sso-settings]
@@ -148,7 +149,7 @@
    Used in link-only mode where we don't create users or sessions."
   [user-id provider-id]
   (when (and user-id provider-id)
-    (when-not (sso.db/auth-identity-exists? user-id provider-name)
+    (when-not (auth-identity.db/auth-identity-exists? user-id provider-name)
       (sso.db/insert-auth-identity! user-id provider-name provider-id))))
 
 (methodical/defmethod auth-identity/login! :provider/slack-connect

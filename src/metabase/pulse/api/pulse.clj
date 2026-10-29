@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
    [metabase.classloader.core :as classloader]
@@ -331,7 +332,7 @@
   (let [chan-types (-> pulse-channel/channel-types
                        (assoc-in [:slack :configured] (channel.settings/slack-configured?))
                        (assoc-in [:email :configured] (channel.settings/email-configured?))
-                       (assoc-in [:http :configured] (pulse.db/active-http-channel-exists?)))]
+                       (assoc-in [:http :configured] (channel.db/active-channel-exists? {:channel-type :channel/http})))]
     {:channels (cond
                  (or (perms/sandboxed-or-impersonated-user?)
                      (some? (:tenant_id @api/*current-user*)))

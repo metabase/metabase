@@ -7,8 +7,10 @@
    [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.dependency-validation :as dependency-validation]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -63,7 +65,7 @@
 
   Does not export ee-only analytics collections."
   [user-id]
-  (let [roots (serialization.db/root-collections-for-user user-id)]
+  (let [roots (collections.db/root-collections-for-user {:user-id user-id})]
     ;; start with the special "nil" root collection ID
     (-> #{nil}
         (into (map :id) roots)
@@ -97,7 +99,7 @@
   "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
    These collections are intentionally excluded from serialization."
   []
-  (let [analytics-roots (serialization.db/analytics-root-collections)]
+  (let [analytics-roots (collections.db/collections-in-namespace "analytics")]
     (into (set (map :id analytics-roots))
           (mapcat collection/descendant-ids)
           analytics-roots)))
@@ -112,7 +114,7 @@
       (into #{}
             (comp (partition-all serdes/query-batch-size)
                   (mapcat (fn [batch]
-                            (serialization.db/card-ids-in-collections (vec batch) (vec analytics-colls)))))
+                            (queries.db/card-ids-in-collections {:card-ids (vec batch) :collection-ids (vec analytics-colls)}))))
             card-ids)
       #{})))
 

@@ -12,7 +12,6 @@
    [metabase.util.match :as match]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table :as table]
-   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* DomainEntitySpec]]
    [metabase.xrays.transforms.materialize :as tf.materialize]
@@ -193,7 +192,7 @@
 (mu/defn- tableset :- Tableset
   [db-id  :- ::lib.schema.id/database
    schema :- [:maybe :string]]
-  (-> (xrays.db/tables-in-schema db-id schema)
+  (-> (warehouse-schema.db/tables-in-schema {:database-id db-id :schema schema})
       de/with-domain-entity
       (t2/hydrate :fields)))
 

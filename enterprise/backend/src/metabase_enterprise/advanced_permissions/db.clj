@@ -26,12 +26,6 @@
                     :db_id [:in database-ids]
                     {:select-distinct [:db_id]}))
 
-(mu/defn impersonated-database-ids-for-group
-  "The subset of `database-ids` the group with `group-id` accesses through connection impersonation."
-  [group-id     :- ms/PositiveInt
-   database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-fn-set :db_id :model/ConnectionImpersonation :group_id group-id :db_id [:in database-ids]))
-
 (mu/defn sandboxed-database-ids-for-group
   "The `:db_id` rows of the Databases among `database-ids` the group with `group-id` has a sandbox on."
   [group-id     :- ms/PositiveInt
@@ -52,16 +46,6 @@
                     :perm_value :blocked
                     :group_id [:in group-ids]
                     {:select-distinct [:group_id]}))
-
-(mu/defn impersonated-group-ids
-  "The subset of `group-ids` with a connection impersonation."
-  [group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :group_id :model/ConnectionImpersonation :group_id [:in group-ids]))
-
-(mu/defn sandboxed-group-ids
-  "The subset of `group-ids` with a sandbox."
-  [group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :group_id :model/Sandbox :group_id [:in group-ids]))
 
 (mu/defn blocked-group-ids-for-database
   "The subset of `group-ids` blocked from viewing the Database with `database-id`."

@@ -128,7 +128,7 @@
 (defn- table-id->auto-pk-column [driver table-id]
   (first (filter (fn [field]
                    (= (normalize-column-name driver (:name field)) auto-pk-column-name))
-                 (upload.db/active-fields-for-table table-id))))
+                 (warehouse-schema.db/active-fields-of-table {:table-id table-id}))))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
@@ -823,7 +823,7 @@
                 [header & rows]    (cond-> (parse reader)
                                      auto-pk?
                                      without-auto-pk-columns)
-                name->field        (m/index-by :name (upload.db/active-fields-for-table (:id table)))
+                name->field        (m/index-by :name (warehouse-schema.db/active-fields-of-table {:table-id (:id table)}))
                 ;; Match colliding columns to existing fields by display name so reordering them between
                 ;; uploads doesn't write data to the wrong column. See [[match-column-names]] (GDGT-2233).
                 column-names       (match-column-names driver header name->field)
@@ -1005,7 +1005,7 @@
   "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
   (set (when (seq table-ids)
-         (->> (t2/hydrate (upload.db/tables table-ids) :db)
+         (->> (t2/hydrate (warehouse-schema.db/tables-by-ids {:table-ids table-ids}) :db)
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 

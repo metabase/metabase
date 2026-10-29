@@ -155,7 +155,7 @@
 
 (defn- dashboard-swap-source!
   [dashboard old-source new-source]
-  (let [dashcards      (replacement.db/dashboard-cards (:id dashboard))
+  (let [dashcards      (dashboards.db/dashcards {:dashboard-id (:id dashboard)})
         all-card-ids   (into #{}
                              (mapcat (fn [dashcard]
                                        (concat
@@ -165,7 +165,7 @@
                                          (-> dashcard :visualization_settings vs/db->norm)))))
                              dashcards)
         card-id->card (if (seq all-card-ids)
-                        (replacement.db/cards-by-id all-card-ids)
+                        (queries.db/cards-by-id {:card-ids all-card-ids})
                         {})
         any-dashcard-changed? (reduce (fn [changed? dashcard]
                                         (or

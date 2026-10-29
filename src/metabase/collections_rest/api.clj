@@ -23,6 +23,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -271,7 +272,7 @@
   "Implementation for the `dashboard-question-candidates` endpoints."
   [collection-id :- [:maybe :metabase.lib.schema.id/collection]]
   (api/check-403 api/*is-superuser?*)
-  (let [all-cards-in-collection (t2/hydrate (collections-rest.db/top-level-cards-in-collection collection-id) :in_dashboards)]
+  (let [all-cards-in-collection (t2/hydrate (queries.db/top-level-cards-in-collection {:collection-id collection-id}) :in_dashboards)]
     (filter
      (fn [card]
        (and

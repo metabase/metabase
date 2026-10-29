@@ -41,6 +41,7 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.pulse.core :as pulse]
+   [metabase.pulse.db :as pulse.db]
    [metabase.queries.core :as queries]
    [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
@@ -153,7 +154,7 @@
 
 (defn- stored-references
   [dashboard-id]
-  {:cards   (into (set (dashboards-rest.db/parameter-card-ids "dashboard" dashboard-id))
+  {:cards   (into (set (queries.db/parameter-card-card-ids "dashboard" dashboard-id))
                   (concat (dashboards-rest.db/dashboard-card-ids dashboard-id)
                           (dashboards-rest.db/dashboard-series-card-ids dashboard-id)))
    :actions (set (dashboards-rest.db/dashboard-action-ids dashboard-id))})
@@ -289,7 +290,7 @@
   another, and thus do not work as one would expect when used as map keys.)"
   [hashes]
   (when (seq hashes)
-    (into {} (for [[k v] (dashboards-rest.db/query-average-execution-times hashes)]
+    (into {} (for [[k v] (queries.db/query-average-execution-times {:query-hashes hashes})]
                {(vec k) v}))))
 
 (defn- add-query-average-duration-to-card
@@ -611,7 +612,7 @@
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (api/create-check :model/Dashboard {:collection_id collection_id})
   (api/check-400 (not (and (= is_deep_copy false)
-                           (dashboards-rest.db/unarchived-dashboard-question-exists? from-dashboard-id)))
+                           (queries.db/unarchived-dashboard-question-exists? {:dashboard-id from-dashboard-id})))
                  (deferred-tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))
   (let [existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
@@ -802,7 +803,7 @@
   (when (seq parameter-mappings)
     (let [card-ids       (into #{} (keep :card-id) parameter-mappings)
           card-id->query (when (seq card-ids)
-                           (dashboards-rest.db/card-queries card-ids))
+                           (queries.db/card-dataset-queries {:card-ids card-ids}))
           field-ids      (into []
                                (keep (fn [{:keys [target card-id]}]
                                        (when target
@@ -876,7 +877,7 @@
   [existing-dashboard new-dashcards]
   (let [grandfathered-ids (into #{} (mapcat dashcard-card-ids) (:dashcards existing-dashboard))]
     (when-let [card-ids (seq (remove grandfathered-ids (mapcat dashcard-card-ids new-dashcards)))]
-      (api/check-400 (not (dashboards-rest.db/card-internal-to-other-dashboard-exists? (u/the-id existing-dashboard) (set card-ids)))))))
+      (api/check-400 (not (queries.db/card-internal-to-other-dashboard-exists? {:dashboard-id (u/the-id existing-dashboard) :card-ids (set card-ids)}))))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
@@ -967,17 +968,17 @@
      :affected-users (flatten
                       (for [{pulse-channel-id  :id
                              channel-type      :channel_type
-                             {:keys [channel]} :details} (dashboards-rest.db/pulse-channels-for-pulse bad-pulse-id)]
+                             {:keys [channel]} :details} (pulse.db/pulse-channels-for-pulse bad-pulse-id)]
                         (case channel-type
                           :email (let [pulse-channel-recipients (when (= :email channel-type)
-                                                                  (dashboards-rest.db/pulse-channel-recipients pulse-channel-id))]
+                                                                  (pulse.db/pulse-channel-recipient-rows pulse-channel-id))]
                                    (when (seq pulse-channel-recipients)
                                      (map
                                       (fn [{:keys [common_name] :as recipient}]
                                         (assoc recipient
                                                :notification-type channel-type
                                                :recipient common_name))
-                                      (dashboards-rest.db/user-names-and-emails (map :user_id pulse-channel-recipients)))))
+                                      (vals (users.db/user-summaries-by-id {:user-ids (map :user_id pulse-channel-recipients)})))))
                           :slack {:notification-type channel-type
                                   :recipient         channel}
                           nil)))}))
@@ -989,7 +990,7 @@
     (let [{:keys [resolved-params]} (t2/hydrate (dashboards.db/dashboard dashboard-id) :resolved-params)
           dashboard-params (set (keys resolved-params))]
       ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
-      (->> (dashboards-rest.db/unarchived-pulses-for-dashboard dashboard-id)
+      (->> (pulse.db/unarchived-pulses-for-dashboard dashboard-id)
            (keep (fn [{:keys [parameters] :as pulse}]
                    (let [bad-params (filterv
                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
@@ -1338,7 +1339,7 @@
                                    (if api/*is-superuser?*
                                      "/"
                                      (collection/children-location
-                                      (dashboards-rest.db/personal-collection-for-user api/*current-user-id*)))))
+                                      (collections.db/personal-collection-of-user api/*current-user-id*)))))
         dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))

@@ -2,10 +2,10 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.db :as driver.db]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]))
 
 (events/derive! ::event :metabase/event)
@@ -19,7 +19,7 @@
   `nil` (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid
   by a given Database (meaning subsequent queries will fail to change the session timezone)."
   []
-  (doseq [{driver :engine, id :id, :as database} (driver.db/databases)]
+  (doseq [{driver :engine, id :id, :as database} (warehouses.db/all-databases)]
     (try
       (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
       (catch Throwable e

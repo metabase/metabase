@@ -13,10 +13,12 @@
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
@@ -226,9 +228,11 @@
   degenerate `IN ()`; callers use `get-in`, so nil is fine)."
   [ids]
   (when (seq ids)
-    (let [rows   (cd.db/collection-context-rows (set ids))
+    (let [rows   (collections.db/collections-of-ids
+                  {:collection-ids (set ids)
+                   :columns        [:id :description :location :personal_owner_id :namespace]})
           owners (when-let [owner-ids (not-empty (into #{} (keep :personal_owner_id) rows))]
-                   (cd.db/user-contacts-by-id owner-ids))]
+                   (update-vals (users.db/user-summaries-by-id {:user-ids owner-ids}) #(select-keys % [:id :common_name :email])))]
       (m/index-by :id
                   (for [{:keys [location personal_owner_id] :as row} rows]
                     (assoc row

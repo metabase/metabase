@@ -71,11 +71,6 @@
    first-name :- :string]
   (t2/update! :model/User :id user-id, :type :api-key, {:first_name first-name, :last_name ""}))
 
-(mu/defn user-type
-  "The `:type` of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :type :model/User :id user-id))
-
 (mu/defn deactivate-api-key-user!
   "Deactivate the api-key User with `user-id` (nil for keys without a user, e.g. SCIM keys, which updates nothing)."
   [user-id :- [:maybe ::lib.schema.id/user]]
@@ -150,3 +145,20 @@
       (select-keys id->timestamp
                    (when-let [busy (seq (remove (set available-ids) (keys id->timestamp)))]
                      (t2/select-pks-set :model/ApiKey :id [:in busy]))))))
+
+(mu/defn api-key-by-scope
+  "The ApiKey with `scope`, or nil."
+  [{:keys [scope]} :- [:map {:closed true}
+                       [:scope :keyword]]]
+  (t2/select-one :model/ApiKey :scope [:auto/param scope]))
+
+(mu/defn api-key-by-name
+  "The ApiKey named `key-name`, or nil."
+  [{:keys [key-name]} :- [:map {:closed true}
+                          [:key-name :string]]]
+  (t2/select-one :model/ApiKey :name [:auto/param key-name]))
+
+(mu/defn user-type
+  "The `:type` of the User with `user-id`, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one-fn :type :model/User :id user-id))

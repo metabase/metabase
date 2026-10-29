@@ -25,7 +25,6 @@
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.public-sharing-rest.db :as public-sharing-rest.db]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
@@ -42,6 +41,7 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
+   [metabase.timeline.db :as timeline.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -366,8 +366,8 @@
   [timeline-ids]
   ;; A public dashboard authorizes its saved event selection without granting collection access.
   (when (seq timeline-ids)
-    (when-let [active-ids (not-empty (public-sharing-rest.db/active-timeline-ids timeline-ids))]
-      (public-sharing-rest.db/active-timeline-events active-ids))))
+    (when-let [active-ids (not-empty (timeline.db/unarchived-timeline-ids {:timeline-ids timeline-ids}))]
+      (timeline.db/unarchived-timeline-event-summaries {:timeline-ids active-ids}))))
 
 (defn- public-dashcard-timeline-events
   [{{settings :visualization_settings} :card, :as dashcard} events]
@@ -552,7 +552,7 @@
                             [:parameters ::actions.schema/prefetch-parameter-values]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (public-sharing/public-uuid->id :model/Dashboard uuid))]
-    (api/check-404 (public-sharing-rest.db/dashcard-id-in-dashboard dashcard-id dashboard-id))
+    (api/check-404 (dashboards.db/dashcard-in-dashboard {:dashcard-id dashcard-id :dashboard-id dashboard-id}))
     (request/with-current-user nil
       (actions/fetch-values
        (api/check-404 (actions/dashcard->action dashcard-id))

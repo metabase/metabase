@@ -1,13 +1,14 @@
 (ns metabase-enterprise.analytics.stats
   (:require
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
-   [metabase-enterprise.analytics.db :as analytics.db]
    [metabase-enterprise.mfa.core :as mfa]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.scim.core :as scim]
    [metabase-enterprise.search.semantic.core :as semantic-search]
    [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase.driver :as driver]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]))
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defenterprise ee-snowplow-features-data
   "A subset of feature information included in the daily Snowplow stats report. This function only returns information
@@ -31,8 +32,8 @@
                     (mfa/mfa-enabled?))}
    {:name      :sandboxes
     :available (and (premium-features/enable-official-collections?)
-                    (analytics.db/database-with-engine-exists? (descendants driver/hierarchy :sql)))
-    :enabled   (analytics.db/sandbox-exists?)}
+                    (warehouses.db/database-with-engine-exists? {:engines (descendants driver/hierarchy :sql)}))
+    :enabled   (sandbox.db/sandbox-exists?)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)
     :enabled   (some? (advanced-config.settings/subscription-allowed-domains))}

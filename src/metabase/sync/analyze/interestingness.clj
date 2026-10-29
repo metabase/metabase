@@ -18,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,7 +33,7 @@
 (mu/defn- fields-to-score :- [:maybe [:sequential i/FieldInstance]]
   "Return Fields in `table` with fresh fingerprints that haven't completed analysis yet."
   [table :- i/TableInstance]
-  (seq (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*)))
+  (seq (warehouse-schema.db/incomplete-analysis-fields-of-table {:table-id (u/the-id table) :fingerprint-version i/*latest-fingerprint-version*})))
 
 (mu/defn score-fields!
   "Score interestingness for all qualifying Fields in `table`."
@@ -85,7 +86,7 @@
                   (update stats :fields-scored inc))))
             stats
             (remove #(contains? failed (u/the-id %))
-                    (sync.db/fields-for-interestingness-scoring field-ids)))))
+                    (warehouse-schema.db/fields-by-ids {:field-ids field-ids})))))
 
 (defn- warn-skipped-failures!
   "Say so when Fields failed scoring earlier in this process and are being skipped."

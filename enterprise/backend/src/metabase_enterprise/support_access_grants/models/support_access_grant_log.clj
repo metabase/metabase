@@ -3,8 +3,10 @@
   (:require
    [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.models.interface :as mi]
    [metabase.session.core :as session]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -26,7 +28,7 @@
   If the user exists but is deactivated, reactivate them.
   Always ensures the support user has superuser access."
   []
-  (if-let [user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
+  (if-let [user (users.db/user-by-email {:email (sag.settings/support-access-grant-email)})]
     (do
       (support-access-grants.db/update-user! (:id user) {:is_active true :is_superuser true})
       (assoc user :is_active true :is_superuser true))
@@ -39,7 +41,7 @@
   [_model _k grants]
   (let [user-ids   (keep :user_id grants)
         user-info  (when (seq user-ids)
-                     (support-access-grants.db/user-names-and-emails user-ids))]
+                     (update-vals (users.db/user-summaries-by-id {:user-ids user-ids}) #(select-keys % [:first_name :email])))]
     (for [grant grants]
       (let [user-info (get user-info (:user_id grant))]
         (assoc grant
@@ -51,7 +53,7 @@
   time-limited password can't be used again, and end their sessions, recorded as ended by `ended-by` (the revoking
   user, or nil when the grant simply ran out). Called both when a grant is explicitly revoked and when one runs out."
   [support-user-id ended-at ended-by]
-  (let [auth-identity-ids (support-access-grants.db/auth-identity-ids-of-user support-user-id)]
+  (let [auth-identity-ids (auth-identity.db/auth-identity-ids-for-user {:user-id support-user-id})]
     (try
       (support-access-grants.db/update-user! support-user-id {:is_superuser false})
       (catch Exception e
@@ -66,5 +68,5 @@
   [{revoked-at :revoked_at, revoked-by :revoked_by_user_id, :as grant}]
   (u/prog1 grant
     (when revoked-at
-      (when-let [support-user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
+      (when-let [support-user (users.db/user-by-email {:email (sag.settings/support-access-grant-email)})]
         (revoke-support-user-access! (:id support-user) revoked-at revoked-by)))))

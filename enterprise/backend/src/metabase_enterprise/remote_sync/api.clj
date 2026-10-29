@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
-   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.events :as remote-sync.events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -16,6 +15,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.db :as collections.db]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
@@ -286,7 +286,8 @@
   (let [collections (when (seq collections)
                       (let [current-states (into {}
                                                  (map (juxt :id :is_remote_synced))
-                                                 (remote-sync.db/collection-sync-states (keys collections)))]
+                                                 (collections.db/collections-of-ids {:collection-ids (keys collections)
+                                                                                     :columns        [:id :is_remote_synced]}))]
                         (not-empty
                          (into {}
                                (filter (fn [[id desired]]

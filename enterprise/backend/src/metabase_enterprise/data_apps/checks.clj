@@ -19,6 +19,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.util.i18n :refer [tru]]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -67,7 +68,7 @@
                                   (format-ids external)))))
     (when-let [external (some-> metric-ids data-apps.db/external-metric-ids not-empty)]
       (throw (data-app-error (tru "A data app can use only metrics from the Library, not the metrics {0}." (format-ids external)))))
-    (when-let [external (some-> (lib/all-source-table-ids query) data-apps.db/external-table-ids not-empty)]
+    (when-let [external (some->> (lib/all-source-table-ids query) (hash-map :table-ids) warehouse-schema.db/published-table-ids not-empty)]
       (throw (data-app-error (tru "A data app can read only tables published to the Library, not the tables {0}."
                                   (format-ids external)))))
     (when-let [external (some-> (lib/all-segment-ids query) data-apps.db/external-segment-ids not-empty)]
@@ -111,7 +112,7 @@
 (defn- published-table?
   "Whether the table with `table-id` is published to the Library."
   [table-id]
-  (empty? (data-apps.db/external-table-ids #{table-id})))
+  (empty? (warehouse-schema.db/published-table-ids {:table-ids #{table-id}})))
 
 (defn- check-published-field
   "Throws a 400 unless the field with `field-id` belongs to a table published to the Library, after a read check of
@@ -194,7 +195,7 @@
   [_data-app   :- ::data-apps.schema/data-app
    database-id :- ::lib.schema.id/database]
   (api/read-check :model/Database database-id)
-  (when-not (some #(= database-id (:db_id %)) (data-apps.db/published-tables))
+  (when-not (some #(= database-id (:db_id %)) (warehouse-schema.db/published-table-locations))
     (throw (data-app-error (tru "A data app can read only databases with tables published to the Library, not the database {0}."
                                 (str database-id)))))
   nil)

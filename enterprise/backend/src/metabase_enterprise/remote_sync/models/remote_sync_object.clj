@@ -8,6 +8,7 @@
    [clojure.set :as set]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase.actions.db :as actions.db]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -38,7 +39,7 @@
   [objects]
   (let [action-ids (into [] (comp (filter #(= "action" (:model %))) (map :id)) objects)
         card-ids   (when (seq action-ids)
-                     (remote-sync.db/action-model-ids action-ids))]
+                     (into {} (map (juxt :id :model_id)) (actions.db/actions-with-ids action-ids)))]
     (mapv (fn [{:keys [id model] :as object}]
             (cond-> object
               (and (= "action" model) (contains? card-ids id)) (assoc :card_id (get card-ids id))))

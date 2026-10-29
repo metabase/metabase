@@ -27,7 +27,8 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
-   [metabase.util.quoting :as quoting]))
+   [metabase.util.quoting :as quoting]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -305,7 +306,7 @@
   "Return whether `database-id` names an existing database."
   [database-id]
   (and (pos-int? database-id)
-       (metabot.db/database-exists? database-id)))
+       (warehouses.db/database-exists? {:database-id database-id})))
 
 (defn- readable-database?
   "Whether `database-id` names a database that exists and the current user can read. `can-read?` alone holds for any

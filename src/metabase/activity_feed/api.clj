@@ -18,9 +18,9 @@
 (defn- models-query
   [model ids]
   (case model
-    "card"      (activity-feed.db/recent-cards ids)
-    "dashboard" (activity-feed.db/recent-dashboards ids)
-    "table"     (activity-feed.db/recent-tables ids)))
+    "card"      (queries.db/recent-cards {:card-ids ids})
+    "dashboard" (dashboards.db/recent-dashboards {:dashboard-ids ids})
+    "table"     (warehouse-schema.db/recent-view-table-rows {:table-ids ids})))
 
 (defn- models-for-views
   "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
@@ -53,7 +53,7 @@
   query results for dashboard and table views."
   [views-limit card-runs-limit]
   (let [dashboard-and-table-views (activity-feed.db/recent-dashboard-and-table-views views-limit)
-        card-runs                 (->> (activity-feed.db/recent-card-runs card-runs-limit)
+        card-runs                 (->> (queries.db/recent-card-runs {:limit card-runs-limit})
                                        (mapv #(-> %
                                                   (dissoc :row_count)
                                                   (assoc :model "card"))))]
@@ -110,11 +110,11 @@
   (let [model-id     model_id
         model-type   (recent-views/rv-model->model model)
         exists?      (case model-type
-                       :model/Card       (activity-feed.db/card-exists? model-id)
-                       :model/Dashboard  (activity-feed.db/dashboard-exists? model-id)
-                       :model/Table      (activity-feed.db/table-exists? model-id)
-                       :model/Collection (activity-feed.db/collection-exists? model-id)
-                       :model/Document   (activity-feed.db/document-exists? model-id))
+                       :model/Card       (queries.db/card-exists? {:card-id model-id})
+                       :model/Dashboard  (dashboards.db/dashboard-exists? {:dashboard-id model-id})
+                       :model/Table      (warehouse-schema.db/table-exists? {:table-id model-id})
+                       :model/Collection (collections.db/collection-exists? model-id)
+                       :model/Document   (documents.db/document-exists? {:document-id model-id}))
         entity       (fn [] (case model-type
                               :model/Card       (queries.db/card model-id)
                               :model/Dashboard  (dashboards.db/dashboard model-id)

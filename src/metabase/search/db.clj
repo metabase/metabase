@@ -6,6 +6,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.queries.db :as queries.db]
    [metabase.search.appdb.index-schema :as index-schema]
    [metabase.search.appdb.query :as appdb.query]
    [metabase.search.appdb.scoring :as search.scoring]
@@ -163,11 +164,6 @@
   "Commit the current transaction."
   []
   (t2/query ["commit"]))
-
-(mu/defn user-exists?
-  "Whether a User with `user-id` exists."
-  [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id))
 
 (mu/defn entity-exists?
   "Whether a `model` row with `id` exists."
@@ -383,16 +379,6 @@
                                 [:not-in :version keep-versions]
                                 [:< :updated_at updated-before]]]}))
 
-(mu/defn non-destination-database-ids
-  "The ids of the Databases that are not routing destinations, or nil."
-  []
-  (t2/select-pks-set :model/Database :router_database_id nil))
-
-(mu/defn user-common-names
-  "A map of User id to common name for the Users with `user-ids`."
-  [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
-
 (mu/defn card-result-metadata
   "A map of Card id to result metadata for the Cards with `card-ids`.
 
@@ -407,4 +393,14 @@
     (into {}
           (map (juxt :id (comp result-metadata-out :result_metadata)))
           (when (seq card-ids)
-            (t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in card-ids])))))
+            (queries.db/raw-card-result-metadata {:card-ids card-ids})))))
+
+(mu/defn user-exists?
+  "Whether a User with `user-id` exists."
+  [user-id :- ::lib.schema.id/user]
+  (t2/exists? :model/User :id user-id))
+
+(mu/defn user-common-names
+  "A map of User id to common name for the Users with `user-ids`."
+  [user-ids :- [:set ::lib.schema.id/user]]
+  (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))

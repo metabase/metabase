@@ -4,6 +4,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -141,7 +142,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (segments.db/collections collection-ids))
+                                      (collections.db/collections-of-ids {:collection-ids collection-ids}))
                                 {})
         ;; Associate collection info with each segment's table
         segments-with-collection (for [segment segments-with-tables

@@ -13,12 +13,20 @@
    [metabase.analytics.event :as analytics.event]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.appearance.core :as appearance]
+   [metabase.cache.db :as cache.db]
+   [metabase.collections.db :as collections.db]
    [metabase.config.core :as config]
+   [metabase.content-verification.db :as content-verification.db]
+   [metabase.dashboards.db :as dashboards.db]
+   [metabase.documents.db :as documents.db]
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.pulse.db :as pulse.db]
+   [metabase.queries.db :as queries.db]
+   [metabase.segments.db :as segments.db]
    [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
@@ -28,7 +36,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.version.core :as version]))
+   [metabase.version.core :as version]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -129,7 +139,7 @@
    :slack_configured                     (setting/get :slack-configured?)
    :sso_configured                       (setting/get :google-auth-enabled)
    :instance_started                     (analytics.settings/instance-creation)
-   :has_sample_data                      (analytics.db/sample-database-exists?)
+   :has_sample_data                      (warehouses.db/sample-database-exists?)
    :enable_embedding                     (setting/get :enable-embedding)
    :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
    ;; Modular embedding and guest embeds are one setting since 0.65.0. The two field names are kept so existing
@@ -175,7 +185,7 @@
 (defn- document-metrics
   "Get metrics based on documents."
   []
-  {:documents (merge-count-maps (for [document (analytics.db/document-archived-flags)]
+  {:documents (merge-count-maps (for [document (documents.db/document-archived-flags)]
                                   {:total 1
                                    :archived (true? (:archived document))}))})
 
@@ -184,17 +194,17 @@
   []
   (letfn [(collection-and-descendant-ids [type]
             ;; Get collection and build location prefix for descendants (location like "<parent-location><id>/%")
-            (when-let [{:keys [id location]} (analytics.db/collection-by-type type)]
+            (when-let [{:keys [id location]} (collections.db/collection-of-type type)]
               (let [children-location (str location id "/")
-                    descendant-ids    (analytics.db/descendant-collection-ids children-location)]
+                    descendant-ids    (collections.db/collection-ids-with-location-like (str children-location "%"))]
                 (conj (or descendant-ids #{}) id))))]
     (let [library-data-ids    (collection-and-descendant-ids "library-data")
           library-metrics-ids (collection-and-descendant-ids "library-metrics")]
       {:library_data    (if (seq library-data-ids)
-                          (analytics.db/published-table-count-in-collections library-data-ids)
+                          (warehouse-schema.db/published-table-count-in-collections {:collection-ids library-data-ids})
                           0)
        :library_metrics (if (seq library-metrics-ids)
-                          (analytics.db/unarchived-metric-count-in-collections library-metrics-ids)
+                          (queries.db/unarchived-metric-count-in-collections {:collection-ids library-metrics-ids})
                           0)})))
 
 (defn- group-metrics
@@ -225,7 +235,7 @@
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
-  (let [dashboards (analytics.db/dashboard-stats-columns)
+  (let [dashboards (dashboards.db/dashboard-stats-columns)
         dashcards  (analytics.db/dashcards-of-dashboards)]
     {:dashboards         (count dashboards)
      :with_params        (count (filter (comp seq :parameters) dashboards))
@@ -267,7 +277,7 @@
   "Get metrics based on pulses
   TODO: characterize by non-user account emails, # emails"
   []
-  {:pulses               (analytics.db/pulse-count)
+  {:pulses               (pulse.db/pulse-count {:alert? false})
    ;; "Table Cards" are Cards that include a Table you can download
    :with_table_cards     (:count (analytics.db/notification-xls-or-csv-card-count false))
    :pulse_types          (db-frequencies :model/PulseChannel :channel_type  false)
@@ -277,10 +287,10 @@
    :num_cards_per_pulses (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   false)))})
 
 (defn- alert-metrics []
-  {:alerts               (analytics.db/alert-count)
+  {:alerts               (pulse.db/pulse-count {:alert? true})
    :with_table_cards     (:count (analytics.db/notification-xls-or-csv-card-count true))
-   :first_time_only      (analytics.db/first-time-only-alert-count)
-   :above_goal           (analytics.db/above-goal-alert-count)
+   :first_time_only      (pulse.db/pulse-count {:alert? true :first-only? true})
+   :above_goal           (pulse.db/pulse-count {:alert? true :above-goal? true})
    :alert_types          (db-frequencies :model/PulseChannel :channel_type true)
    :num_alerts_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id true)))
    :num_alerts_per_card  (medium-histogram (vals (db-frequencies :model/PulseCard :card_id    true)))
@@ -289,8 +299,8 @@
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (analytics.db/collection-count)
-        cards       (analytics.db/card-collection-ids)]
+  (let [collections (collections.db/non-internal-collection-count)
+        cards       (queries.db/non-internal-card-collection-ids)]
     {:collections              collections
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
@@ -300,7 +310,7 @@
 (defn- database-metrics
   "Get metrics based on Databases."
   []
-  (let [databases (analytics.db/database-stats-columns)]
+  (let [databases (warehouses.db/non-internal-database-stats)]
     {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
                                     {:total    1
                                      :analyzed is-full-sync?}))
@@ -329,12 +339,12 @@
 (defn- segment-metrics
   "Get metrics based on Segments."
   []
-  {:segments (analytics.db/segment-count)})
+  {:segments (segments.db/segment-count)})
 
 (defn- metric-metrics
   "Get metrics based on Metrics."
   []
-  {:metrics (analytics.db/unarchived-metric-card-count)})
+  {:metrics (queries.db/unarchived-card-count {:card-type :metric})})
 
 ;;; Execution Metrics
 
@@ -370,7 +380,7 @@
 (defn- cache-metrics
   "Metrics based on use of the QueryCache."
   []
-  (let [{:keys [length count]} (analytics.db/query-cache-stats)]
+  (let [{:keys [length count]} (cache.db/query-cache-stats)]
     {:average_entry_size (int (or length 0))
      :num_queries_cached (bin-small-number count)
      ;; this value gets used in the snowplow ping 'metrics' section.
@@ -458,17 +468,16 @@
   [num-users]
   (let [users-in-activation-period
         (analytics.db/user-count-joined-before (t/plus (t/offset-date-time (analytics.settings/instance-creation))
-                                                       (t/days activation-days))
-                                               (inc num-users))]
+                                                       (t/days activation-days)) (inc num-users))]
     (>= users-in-activation-period num-users)))
 
 (defn- sufficient-queries?
   "Returns a Boolean indicating whether the number of queries recorded over non-sample content is greater than or equal
   to `num-queries`"
   [num-queries]
-  (let [sample-db-id (analytics.db/sample-database-id)
+  (let [sample-db-id (warehouses.db/sample-database-id)
         ;; QueryExecution can be large, so let's avoid counting everything
-        queries      (analytics.db/query-execution-ids-excluding-database sample-db-id (inc num-queries))]
+        queries      (queries.db/query-execution-ids-excluding-database {:database-id sample-db-id :limit (inc num-queries)})]
     (>= (count queries) num-queries)))
 
 (defn- completed-activation-signals?
@@ -600,11 +609,11 @@
   (let [one-day-ago (->one-day-ago)
         total-translation-count (:total (get-translation-count))]
     (merge
-     {:models                          (analytics.db/unarchived-model-count)
-      :new_embedded_dashboards         (analytics.db/new-embedded-dashboard-count-since one-day-ago)
+     {:models                          (queries.db/unarchived-card-count {:card-type :model})
+      :new_embedded_dashboards         (dashboards.db/dashboard-count {:embedded? true :archived? false :created-since one-day-ago})
       :new_users_last_24h              (analytics.db/new-active-user-count-since one-day-ago)
-      :pivot_tables                    (analytics.db/unarchived-pivot-table-count)
-      :query_executions_last_24h       (analytics.db/query-execution-count-since one-day-ago)
+      :pivot_tables                    (queries.db/unarchived-pivot-table-count)
+      :query_executions_last_24h       (queries.db/query-execution-count-since {:since one-day-ago})
       :entity_id_translations_last_24h total-translation-count}
      (transform-metrics)
      (remote-sync-metrics))))
@@ -869,7 +878,7 @@
   (boolean
    (let [major-version (config/current-major-version)
          minor-version (config/current-minor-version)
-         engines       (analytics.db/database-engines-among (map name (keys csv-upload-version-availability)))]
+         engines       (warehouses.db/database-engines-among {:engine-names (map name (keys csv-upload-version-availability))})]
      (when (and major-version minor-version)
        (some
         (fn [engine]
@@ -910,7 +919,7 @@
     :enabled   (sso/ldap-enabled)}
    {:name      :sample-data
     :available true
-    :enabled   (analytics.db/sample-database-exists?)}
+    :enabled   (warehouses.db/sample-database-exists?)}
    {:name      :interactive-embedding
     :available (premium-features/hide-embed-branding?)
     :enabled   (and
@@ -922,15 +931,15 @@
     :enabled   (and
                 (setting/get :enable-embedding-modular)
                 (or
-                 (analytics.db/embedded-dashboard-exists?)
-                 (analytics.db/embedded-card-exists?)))}
+                 (dashboards.db/dashboard-exists? {:embedded? true})
+                 (queries.db/embedded-card-exists?)))}
    {:name      :public-sharing
     :available true
     :enabled   (and
                 (setting/get :enable-public-sharing)
                 (or
-                 (analytics.db/public-dashboard-exists?)
-                 (analytics.db/public-card-exists?)))}
+                 (dashboards.db/dashboard-exists? {:public? true})
+                 (queries.db/public-card-exists?)))}
    {:name      :whitelabel
     :available (premium-features/enable-whitelabeling?)
     :enabled   (whitelabeling-in-use?)}
@@ -941,7 +950,7 @@
                     (analytics.db/custom-viz-plugin-exists?))}
    {:name      :csv-upload
     :available (csv-upload-available?)
-    :enabled   (analytics.db/uploads-database-exists?)}
+    :enabled   (warehouses.db/uploads-database-exists?)}
    {:name      :mb-analytics
     :available (premium-features/enable-audit-app?)
     :enabled   (premium-features/enable-audit-app?)}
@@ -953,10 +962,10 @@
     :enabled   (premium-features/enable-serialization?)}
    {:name      :official-collections
     :available (premium-features/enable-official-collections?)
-    :enabled   (analytics.db/official-collection-exists?)}
+    :enabled   (collections.db/official-collection-exists?)}
    {:name      :cache-granular-controls
     :available (premium-features/enable-cache-granular-controls?)
-    :enabled   (analytics.db/cache-config-exists?)}
+    :enabled   (cache.db/cache-config-exists?)}
    {:name      :attached-dwh
     :available (premium-features/has-attached-dwh?)
     :enabled   (premium-features/has-attached-dwh?)}
@@ -976,10 +985,10 @@
     :enabled   (premium-features/enable-content-translation?)}
    {:name      :content-verification
     :available (premium-features/enable-content-verification?)
-    :enabled   (analytics.db/moderation-review-exists?)}
+    :enabled   (content-verification.db/moderation-review-exists?)}
    {:name      :dashboard-subscription-filters
     :available (premium-features/enable-content-verification?)
-    :enabled   (analytics.db/filtered-pulse-exists?)}
+    :enabled   (pulse.db/pulse-with-parameters-exists?)}
    {:name      :disable-password-login
     :available (premium-features/can-disable-password-login?)
     :enabled   (not (session.settings/enable-password-login))}
@@ -988,13 +997,13 @@
     :enabled   (not= (setting/get-value-of-type :keyword :user-visibility) :all)}
    {:name      :upload-management
     :available (premium-features/enable-upload-management?)
-    :enabled   (analytics.db/upload-table-exists?)}
+    :enabled   (warehouse-schema.db/upload-table-exists?)}
    {:name      :snippet-collections
     :available (premium-features/enable-snippet-collections?)
-    :enabled   (analytics.db/snippet-collection-exists?)}
+    :enabled   (collections.db/collection-exists-in-namespace? {:namespace-name "snippets"})}
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
-    :enabled   (analytics.db/preemptive-cache-config-exists?)}
+    :enabled   (cache.db/preemptive-cache-config-exists?)}
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}
@@ -1009,7 +1018,7 @@
     :available (premium-features/enable-tenants?)}
    {:name      :starburst-legacy-impersonation
     :available true
-    :enabled   (->> (analytics.db/starburst-database-details)
+    :enabled   (->> (warehouses.db/starburst-database-details)
                     (map :impersonation)
                     (some identity)
                     boolean)}

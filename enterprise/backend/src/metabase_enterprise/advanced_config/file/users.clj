@@ -6,6 +6,7 @@
     :as advanced-config.file.i]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.setup.core :as setup]
+   [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -35,7 +36,7 @@
 
 (defn- select-user
   [email]
-  (advanced-config.db/user-columns-by-email user/admin-or-self-visible-columns email))
+  (users.db/user-by-email {:columns user/admin-or-self-visible-columns :email email}))
 
 (defn- init-from-config-file!
   [user]

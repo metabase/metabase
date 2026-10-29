@@ -175,7 +175,6 @@
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.related :as related]
    [toucan2.core :as t2]))
 
@@ -405,7 +404,7 @@
    be returned."
   [table]
   (let [fields (field/with-targets
-                 (xrays.db/active-fk-fields-for-table (u/the-id table)))]
+                 (warehouse-schema.db/active-fk-fields-of-table {:table-id (u/the-id table)}))]
     (perms/prime-table-perms-cache {:table-ids (into #{} (keep (comp :table_id :target)) fields)})
     (for [{:keys [id target]} fields
           :when (some-> target mi/can-read?)]
@@ -422,7 +421,7 @@
   [{:keys [source _entity] :as _root} tables]
   (let [db (source->db source)]
     (if (mi/instance-of? :model/Table source)
-      (comp (->> (-> (xrays.db/visible-fields-for-tables (map u/the-id tables))
+      (comp (->> (-> (warehouse-schema.db/visible-previewable-fields-of-tables {:table-ids (map u/the-id tables)})
                      (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))
                  field/with-targets
                  (map #(assoc % :db db))
@@ -922,7 +921,7 @@
   Filters out tables that are link-tables"
   [database-id schema]
   (->>
-   (xrays.db/candidate-tables-with-field-stats database-id schema)
+   (warehouse-schema.db/candidate-tables-with-field-stats {:database-id database-id :schema schema})
    (map #(update % :list-like? (fn [val] (if (int? val) (= val 1) val)))))) ;; handle mysql returning the predicate value as an int
 
 (def ^:private ^:const ^Long max-candidate-tables

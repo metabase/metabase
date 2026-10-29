@@ -11,7 +11,8 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -94,7 +95,7 @@
                                   [:table_id ms/PositiveInt]
                                   [:card_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (when card_id
-    (let [db (sandbox.db/database-of-table table_id)]
+    (let [db (warehouses.db/database-of-table {:table-id table_id})]
       (when (not (driver.u/supports? (:engine db) :saved-question-sandboxing db))
         (throw (ex-info (tru "Sandboxing with a saved question is not enabled for this database.")
                         {:status-code 400

@@ -47,14 +47,6 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/delete! :model/Dashboard :id dashboard-id))
 
-(mu/defn parameter-card-ids
-  "The Card ids of the ParameterCards of the `parameterized-object-type` with `parameterized-object-id`."
-  [parameterized-object-type :- [:or :keyword :string]
-   parameterized-object-id   :- ms/PositiveInt]
-  (t2/select-fn-vec :card_id :model/ParameterCard
-                    :parameterized_object_type parameterized-object-type
-                    :parameterized_object_id   parameterized-object-id))
-
 (mu/defn dashboard-card-ids
   "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
@@ -108,40 +100,10 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-fn-vec :action_id :model/DashboardCard :dashboard_id dashboard-id))
 
-(mu/defn query-average-execution-times
-  "A map of query hash to average execution time for the Queries with `query-hashes`."
-  [query-hashes :- [:sequential bytes?]]
-  (t2/select-fn->fn :query_hash :average_execution_time :model/Query :query_hash [:in query-hashes]))
-
-(mu/defn card-queries
-  "A map of Card id to query for the Cards with `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
-
-(mu/defn unarchived-dashboard-question-exists?
-  "Whether an unarchived Card internal to the Dashboard with `dashboard-id` exists."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/exists? :model/Card :dashboard_id dashboard-id :archived false))
-
-(mu/defn card-internal-to-other-dashboard-exists?
-  "Whether any of the Cards with `card-ids` is internal to a Dashboard other than `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   card-ids     :- [:set ::lib.schema.id/card]]
-  (t2/exists? :model/Card
-              {:where [:and
-                       [:not= :dashboard_id dashboard-id]
-                       [:not= :dashboard_id nil]
-                       [:in :id card-ids]]}))
-
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return their ids."
   [rows :- [:sequential (mut/select-keys ::dashboards.schema/dashboard-tab.update [:dashboard_id :name :position])]]
   (t2/insert-returning-pks! :model/DashboardTab rows))
-
-(mu/defn personal-collection-for-user
-  "The personal Collection of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/Collection :personal_owner_id user-id))
 
 (mu/defn dashcards-by-ids
   "The DashboardCards with `dashcard-ids`."
@@ -159,23 +121,3 @@
   [dashboard-id :- ::lib.schema.id/dashboard
    dashcard-ids :- [:set ::lib.schema.id/dashcard]]
   (t2/select-pk->fn :card_id :model/DashboardCard :dashboard_id dashboard-id :id [:in dashcard-ids]))
-
-(mu/defn user-names-and-emails
-  "The names and emails of the Users with `user-ids`."
-  [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select [:model/User :first_name :last_name :email] :id [:in user-ids]))
-
-(mu/defn pulse-channels-for-pulse
-  "The id, type, and details of the PulseChannels of the Pulse with `pulse-id`."
-  [pulse-id :- ::lib.schema.id/pulse]
-  (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= pulse-id]))
-
-(mu/defn pulse-channel-recipients
-  "The PulseChannelRecipients of the PulseChannel with `pulse-channel-id`."
-  [pulse-channel-id :- ms/PositiveInt]
-  (t2/select :model/PulseChannelRecipient :pulse_channel_id pulse-channel-id))
-
-(mu/defn unarchived-pulses-for-dashboard
-  "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]}))

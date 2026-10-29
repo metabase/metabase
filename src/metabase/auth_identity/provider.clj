@@ -443,11 +443,11 @@
       (assoc :user
              (or (when-let [user-id (:user-id $)]
                    (if (pos-int? user-id)
-                     (auth-identity.db/user-login-columns user-id)
+                     (users.db/user-columns {:user-id user-id :columns [:id :is_active :last_login :tenant_id :type]})
                      (log/errorf "Provider %s returned a non-positive-int :user-id (type %s); refusing to resolve a user."
                                  provider (some-> user-id class .getName))))
                  (when-let [email (get-in $ [:user-data :email])]
-                   (auth-identity.db/user-login-columns-by-email email)))))
+                   (users.db/user-by-lower-email {:email email :columns [:id :is_active :last_login :tenant_id :type]})))))
     (apply-personal-only-check $)
     (cond-> $
       (and (:provider-id $) (:user-data $))
@@ -483,14 +483,14 @@
    provider      :- :keyword]
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
-                             (not (auth-identity.db/user-active? user-id)))]
+                             (not (users.db/user-active? {:user-id user-id})))]
       (auth-identity.db/update-user! user-id
                                      (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
                                        reactivating? (assoc :is_superuser false))))
     (when-not (auth-identity.db/auth-identity-exists? user-id (name provider))
       (auth-identity.db/insert-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
                                                 (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
-    (auth-identity.db/user-login-status user-id)))
+    (users.db/user-columns {:user-id user-id :columns [:id :is_active :last_login]})))
 
 (mu/defn- create-user!
   "Create a user from user-data in the request "

@@ -41,11 +41,3 @@
              :where           [:and
                                [:= :is_published true]
                                [:= :archived_at nil]]}))
-
-(mu/defn top-level-cards-in-collection
-  "The Cards in the Collection with `collection-id` that belong to no Dashboard, newest first."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select :model/Card {:where [:and
-                                  [:= :collection_id collection-id]
-                                  [:= :dashboard_id nil]]
-                          :order-by [[:id :desc]]}))

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.collections.db :as collections.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
@@ -35,7 +36,9 @@
 (defn get-or-create-container-collection
   "Get or create container collection for automagic dashboards in a given location."
   [location]
-  (or (xrays.db/automagic-dashboards-collection location)
+  (or (collections.db/collection-by-name-and-location {:collection-name "Automatically Generated Dashboards"
+                                                       :location        location
+                                                       :archived        false})
       (xrays.db/insert-collection! {:name "Automatically Generated Dashboards"
                                     :location location})))
 

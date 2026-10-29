@@ -4,6 +4,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.segments.db :as segments.db]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -64,5 +65,5 @@
    queries k
    #(let [seg-ids (into #{} (keep :segment_id) queries)]
       (when (seq seg-ids)
-        (explorations.db/segment-names seg-ids)))
+        (segments.db/segment-names {:ids seg-ids})))
    :segment_id))

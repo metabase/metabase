@@ -6,6 +6,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.actions.db :as actions.db]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
@@ -14,6 +15,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config :refer [*request-id*]]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -28,6 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -947,10 +950,8 @@
      [{:keys [current-user-id is-superuser?]} read-or-write root-namespace]
      (or is-superuser?
          (let [root (assoc root-collection :namespace root-namespace)]
-           (collections.db/user-has-root-collection-permission?
-            current-user-id
-            (cond-> [(perms/collection-readwrite-path root)]
-              (= :read read-or-write) (conj (perms/collection-read-path root)))))))
+           (collections.db/user-has-root-collection-permission? current-user-id (cond-> [(perms/collection-readwrite-path root)]
+                                                                                  (= :read read-or-write) (conj (perms/collection-read-path root)))))))
    ;; cache the results for 10 seconds. This is a bit arbitrary but should be long enough to cover ~all requests.
    :ttl/threshold (* 10 1000)))
 
@@ -1790,7 +1791,7 @@
       (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids true)
       (let [library-data-ids (collections.db/collection-ids-of-type affected-collection-ids library-data-collection-type)]
         (when (seq library-data-ids)
-          (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
+          (let [published-table-ids (warehouse-schema.db/published-table-ids-in-collections {:collection-ids library-data-ids})]
             (collections.db/unpublish-tables-in-collections! library-data-ids)
             (unpublish-downstream-fk-tables! published-table-ids)))))
     (let [updated-collection (collections.db/collection (:id collection))]
@@ -1932,10 +1933,8 @@
   and write perms for every Group with write perms for the source Collection."
   [source-collection-or-id dest-collections-or-ids]
   ;; figure out who has permissions for the source Collection...
-  (let [group-ids-with-read-perms  (collections.db/group-ids-with-permission-object
-                                    (perms/collection-read-path source-collection-or-id))
-        group-ids-with-write-perms (collections.db/group-ids-with-permission-object
-                                    (perms/collection-readwrite-path source-collection-or-id))]
+  (let [group-ids-with-read-perms  (collections.db/group-ids-with-permission-object (perms/collection-read-path source-collection-or-id))
+        group-ids-with-write-perms (collections.db/group-ids-with-permission-object (perms/collection-readwrite-path source-collection-or-id))]
     ;; ...and insert corresponding rows for each destination Collection
     (collections.db/insert-permissions!
      (concat
@@ -2169,7 +2168,7 @@
   ;; delete all collection children
   (collections.db/delete-collections-at-location! (children-location collection))
   (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
-        published-table-ids     (collections.db/published-table-ids-in-collections affected-collection-ids)]
+        published-table-ids     (warehouse-schema.db/published-table-ids-in-collections {:collection-ids affected-collection-ids})]
     (collections.db/unpublish-tables-in-collections! affected-collection-ids)
     (unpublish-downstream-fk-tables! published-table-ids)
     (collections.db/delete-cards-in-collections! affected-collection-ids)
@@ -2252,7 +2251,7 @@
                                                                                    trash-collection-type
                                                                                    skip-archived)]
                                  {["Collection" child-id] {"Collection" id}})))
-        dashboards  (into {} (for [dash-id (collections.db/dashboard-ids-in-collection id skip-archived)]
+        dashboards  (into {} (for [dash-id (dashboards.db/dashboard-ids-in-collection {:collection-id id :skip-archived? skip-archived})]
                                {["Dashboard" dash-id] {"Collection" id}}))
         ;; Cards materialized by an exploration Summary ride with that Summary, which is excluded just below. Listing
         ;; them here would make them export targets whose Document dependency is absent.
@@ -2264,9 +2263,9 @@
                                {["Document" doc-id] {"Collection" id}})))
         timelines   (into {} (for [timeline-id (collections.db/timeline-ids-in-collection id skip-archived)]
                                {["Timeline" timeline-id] {"Collection" id}}))
-        actions     (into {} (for [action-id (collections.db/action-ids-in-collection id skip-archived)]
+        actions     (into {} (for [action-id (actions.db/action-ids-in-collection {:collection-id id :skip-archived? skip-archived})]
                                {["Action" action-id] {"Collection" id}}))
-        tables      (into {} (for [table-id (collections.db/published-table-ids-in-collection id skip-archived)]
+        tables      (into {} (for [table-id (warehouse-schema.db/published-table-ids-in-collection {:collection-id id :skip-archived? skip-archived})]
                                {["Table" table-id] {"Collection" id}}))
         ;; Transforms don't have an archived column, so we don't filter by skip-archived
         transforms  (when config/ee-available?

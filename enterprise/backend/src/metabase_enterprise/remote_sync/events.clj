@@ -22,11 +22,15 @@
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase.actions.db :as actions.db]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.core :as collections]
    [metabase.collections.db :as collections.db]
    [metabase.events.core :as events]
+   [metabase.glossary.db :as glossary.db]
+   [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -43,12 +47,12 @@
 (defn- data-action-collections
   "The `:id` and `:name` of the data actions Collections."
   []
-  (remote-sync.db/collections-with-names-in-namespace (name collections/data-actions-ns)))
+  (collections.db/collections-in-namespace (name collections/data-actions-ns)))
 
 (defn- library-actions
   "The Actions without a model in the data actions root or a data actions Collection."
   [data-action-collection-ids]
-  (remote-sync.db/actions-without-model-in (vec data-action-collection-ids)))
+  (actions.db/actions-without-model-in {:collection-ids (vec data-action-collection-ids)}))
 
 (defn enable-library-tracking!
   "Mark all existing snippets, data actions, their namespaces' collections, and glossary entries as 'create' for
@@ -57,13 +61,13 @@
   (let [timestamp               (t/offset-date-time)
         data-action-collections (data-action-collections)
         rows      (concat
-                   (for [coll (concat (remote-sync.db/snippet-collections) data-action-collections)]
+                   (for [coll (concat (collections.db/collections-in-namespace "snippets") data-action-collections)]
                      {:model_type        "Collection"
                       :model_id          (:id coll)
                       :model_name        (:name coll)
                       :status            "create"
                       :status_changed_at timestamp})
-                   (for [snippet (remote-sync.db/snippets)]
+                   (for [snippet (native-query-snippets.db/snippet-collection-summaries)]
                      {:model_type          "NativeQuerySnippet"
                       :model_id            (:id snippet)
                       :model_name          (:name snippet)
@@ -77,7 +81,7 @@
                       :model_collection_id (:collection_id action)
                       :status              "create"
                       :status_changed_at   timestamp})
-                   (glossary-tracking-rows (remote-sync.db/glossary-entries) timestamp))]
+                   (glossary-tracking-rows (glossary.db/glossary-entry-terms) timestamp))]
     (when (seq rows)
       (remote-sync.db/insert-rsos! rows))))
 
@@ -85,7 +89,7 @@
   "Insert a 'create' ledger row for every glossary entry that has none, so an instance upgraded with the Library
   already synced still pushes its entries. Returns the number of rows inserted."
   []
-  (let [rows (vec (glossary-tracking-rows (remote-sync.db/untracked-glossary-entries) (t/offset-date-time)))]
+  (let [rows (vec (glossary-tracking-rows (glossary.db/untracked-glossary-entry-terms) (t/offset-date-time)))]
     (when (seq rows)
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
@@ -95,7 +99,7 @@
   number of rows inserted."
   []
   (let [action-spec    (spec/spec-for-model-key :model/Action)
-        collection-ids (remote-sync.db/remote-synced-collection-ids)
+        collection-ids (collections.db/remote-synced-collection-ids {})
         tracked        (remote-sync.db/tracked-model-ids "Action")
         timestamp      (t/offset-date-time)
         rows           (when (seq collection-ids)
@@ -131,7 +135,7 @@
   "Remove all snippet, data action, their namespaces' collection, and glossary tracking entries."
   []
   (let [data-action-coll-ids (into #{} (map :id) (data-action-collections))
-        coll-ids             (into (remote-sync.db/snippet-collection-ids) data-action-coll-ids)
+        coll-ids             (into (into #{} (map :id) (collections.db/collections-in-namespace "snippets")) data-action-coll-ids)
         action-ids           (into #{} (map :id) (library-actions data-action-coll-ids))]
     (remote-sync.db/delete-rsos-of-type! "NativeQuerySnippet")
     (remote-sync.db/delete-rsos-of-type! "Glossary")
@@ -143,7 +147,7 @@
 (defn- transforms-folder-ids
   "The IDs of the transforms-namespace Collections."
   []
-  (remote-sync.db/collection-ids-in-namespace (name collections/transforms-ns)))
+  (mapv :id (collections.db/collections-in-namespace (name collections/transforms-ns))))
 
 (defn- transforms-rsos
   "The RemoteSyncObjects of transforms content: every model that syncs with transforms, and the transforms folders."
@@ -176,7 +180,7 @@
            :when      (untracked? model-type tracked instance)]
        (untracked-row model-type instance timestamp))
      (let [tracked (remote-sync.db/tracked-model-ids "Collection")]
-       (for [folder (remote-sync.db/collections-with-names-in-namespace (name collections/transforms-ns))
+       (for [folder (collections.db/collections-in-namespace (name collections/transforms-ns))
              :when  (untracked? "Collection" tracked folder)]
          (untracked-row "Collection" folder timestamp))))))
 
@@ -389,8 +393,8 @@
   "The ids of the Fields of the Table with `table-id` that have the `child-spec` user settings."
   [child-spec table-id]
   (case (:model-key child-spec)
-    :model/FieldUserSettings (remote-sync.db/field-ids-with-user-settings [table-id])
-    :model/Dimension         (remote-sync.db/field-ids-with-dimensions [table-id])))
+    :model/FieldUserSettings (warehouse-schema.db/field-ids-with-user-settings-of-tables {:table-ids [table-id]})
+    :model/Dimension         (warehouse-schema.db/field-ids-with-dimensions-of-tables {:table-ids [table-id]})))
 
 (defn- cascade-to-children!
   "When a parent model becomes eligible/ineligible, cascade to its children.
@@ -500,7 +504,8 @@
   [collection]
   ;; Archiving a collection archives its subtree in bulk SQL, which publishes no event per descendant. Transforms
   ;; have no archived column, so only their collection shows that they were archived.
-  (let [collection-ids       (remote-sync.db/subtree-collection-ids [collection])
+  (let [collection-ids       (collections.db/subtree-collection-ids {:collections [(select-keys collection [:id :location])]
+                                                                     :remote-synced? false})
         collection-archived? (remote-sync.db/archived-by-id :model/Collection (vec collection-ids))
         rows                 (->> (remote-sync.db/content-rsos collection-ids)
                                   (remove #(and (= "Collection" (:model_type %)) (= (:id collection) (:model_id %)))))

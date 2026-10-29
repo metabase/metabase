@@ -18,6 +18,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouses.db :as warehouses.db]))
@@ -182,7 +183,7 @@
       (schema.table-user-settings/upsert-user-settings-for-tables! table-ids set-map)
       (maybe-sync-unhidden-tables! existing-tables set-map)
       ;; Publish update events for remote sync tracking
-      (let [updated-tables (data-studio.db/tables table-ids)]
+      (let [updated-tables (warehouse-schema.db/tables-by-ids {:table-ids table-ids})]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-update {:object  table
                                                       :user-id api/*current-user-id*}))))
@@ -201,9 +202,9 @@
         upstream-ids      (all-upstream-table-ids selectors)
         downstream-ids    (all-downstream-table-ids selectors)
         upstream-tables   (when (seq upstream-ids)
-                            (data-studio.db/selection-columns-for-tables upstream-ids))
+                            (warehouse-schema.db/tables-by-ids {:table-ids upstream-ids :columns [:id :db_id :name :display_name :schema :is_published]}))
         downstream-tables (when (seq downstream-ids)
-                            (data-studio.db/selection-columns-for-tables downstream-ids))]
+                            (warehouse-schema.db/tables-by-ids {:table-ids downstream-ids :columns [:id :db_id :name :display_name :schema :is_published]}))]
     {:selected_table              selected-table
      :published_downstream_tables (filterv :is_published downstream-tables)
      :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
@@ -223,7 +224,7 @@
   (api/check-data-studio-access)
   (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)
         db-ids (sort (set (map :db_id tables)))]
-    (doseq [database (data-studio.db/databases db-ids)]
+    (doseq [database (warehouses.db/databases db-ids)]
       (try
         (binding [driver.settings/*allow-testing-h2-connections* true
                   driver.settings/*allow-testing-sqlite-connections* true]

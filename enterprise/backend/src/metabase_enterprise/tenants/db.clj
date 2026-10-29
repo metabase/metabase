@@ -99,11 +99,6 @@
   (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
               {:is_active true :deactivated_with_tenant nil}))
 
-(mu/defn descendant-collection-ids
-  "The IDs of the Collections under the Collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-pks-set :model/Collection :location [:like (str "/" collection-id "/%")]))
-
 (mu/defn insert-collection!
   "Insert `collection` and return its ID."
   [collection :- ::collections.schema/collection.update]
@@ -114,3 +109,9 @@
   [objects :- [:sequential :string]]
   (t2/query-one {:delete-from :permissions
                  :where       [:in :object objects]}))
+
+(mu/defn tenant-collection-ids
+  "A map of Tenant id to tenant Collection id for the Tenants with `tenant-ids`."
+  [{:keys [tenant-ids]} :- [:map {:closed true}
+                            [:tenant-ids [:set ms/PositiveInt]]]]
+  (t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in tenant-ids]))

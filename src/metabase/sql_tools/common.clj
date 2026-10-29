@@ -6,10 +6,10 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.sql-tools.db :as sql-tools.db]
    [metabase.sql-tools.interface :as sql-tools]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (defn normalize-name
   "Normalize a name by per driver rules."
@@ -37,7 +37,7 @@
   (if (seq table-names)
     ;; `set` because `select-pks-set` answers `nil`, not `#{}`, when nothing matches — which is the common case of a
     ;; query naming a table that does not exist.
-    (set (sql-tools.db/active-visible-table-ids-by-name database-id table-names))
+    (set (warehouse-schema.db/active-visible-table-ids-by-name {:database-id database-id :table-names table-names}))
     #{}))
 
 (defn find-table-or-transform

@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.scim.db :as scim.db]
    [metabase.api-keys.core :as api-key]
+   [metabase.api-keys.db :as api-keys.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util.secret :as u.secret]
@@ -43,7 +44,7 @@
   to that after it is created."
   []
   (api/check-superuser)
-  (api/check-404 (scim.db/scim-api-key)))
+  (api/check-404 (api-keys.db/api-key-by-scope {:scope :scim})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

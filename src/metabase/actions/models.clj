@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -91,7 +92,7 @@
   (mi/instances-with-hydrated-data
    actions k
    #(when-let [model-ids (seq (keep :model_id actions))]
-      (actions.db/cards-by-id model-ids))
+      (queries.db/cards-by-id {:card-ids model-ids}))
    :model_id))
 
 (defn- implicit?
@@ -182,7 +183,7 @@
              (perms/data-app-collection? collection-id))
     (let [card-ids (query-card-ids query)
           outside  (when (seq card-ids)
-                     (actions.db/card-ids-outside-collection card-ids collection-id))]
+                     (queries.db/card-ids-outside-collection card-ids collection-id))]
       (when (seq outside)
         (throw (data-app-action-error
                 (tru "An action in a data app''s collection can read only the app''s own cards, not card {0}."
@@ -335,7 +336,7 @@
     (:collection_id (api/check-404 (actions.db/card-scope-columns model-id)))
     (u/prog1 collection-id
       (when collection-id
-        (api/check-404 (actions.db/collection-exists? collection-id))))))
+        (api/check-404 (collections.db/collection-exists? collection-id))))))
 
 (defmethod mi/perms-objects-set :model/Action
   [{model-id :model_id, collection-id :collection_id, :as action} read-or-write]
@@ -433,7 +434,7 @@
       (when-let [collection-id (and (contains? updates :collection_id)
                                     (not= (:collection_id updates) (:collection_id existing-action))
                                     (:collection_id updates))]
-        (api/check-400 (actions.db/unarchived-collection-exists? collection-id)))
+        (api/check-400 (collections.db/unarchived-collection-exists? collection-id)))
       (collection/check-for-remote-sync-update (t2/instance :model/Action existing-action)))))
 
 (mu/defn update!
@@ -605,7 +606,7 @@
                                               :type/Temporal :date
                                               :type/Boolean  :boolean
                                               :string)}))))
-            (actions.db/fields-for-parameters field-ids)))))
+            (warehouse-schema.db/fields-by-ids {:field-ids field-ids :columns [:id :base_type :display_name :description]})))))
 
 (defn- enrich-viz-settings-fields [viz-fields implicit-params field-id->viz-field]
   (let [param-ids          (map :id implicit-params)
@@ -643,12 +644,12 @@
   [actions]
   (let [implicit         (filter #(= :implicit (:type %)) actions)
         models           (when-let [model-ids (not-empty (into #{} (keep :model_id) implicit))]
-                           (actions.db/cards model-ids))
+                           (queries.db/cards model-ids))
         table-ids        (into #{} (comp (remove :model_id) (keep :table_id)) implicit)
         model-id->params (model-implicit-parameters models)
         table-id->params (table-implicit-parameters table-ids)
         model-id->db-id  (into {} (map (juxt :id :database_id)) models)
-        table-id->db-id  (into {} (map (juxt :id :db_id)) (when (seq table-ids) (actions.db/tables (vec table-ids))))
+        table-id->db-id  (into {} (map (juxt :id :db_id)) (when (seq table-ids) (warehouse-schema.db/tables-by-ids {:table-ids (vec table-ids)})))
         field-id->viz    (implicit-parameters->viz-fields (concat (vals model-id->params) (vals table-id->params)))]
     (for [{model-id :model_id, table-id :table_id, :as action} actions]
       (if (= :implicit (:type action))
@@ -709,7 +710,7 @@
 (defn dashcard->action
   "Get the unarchived action associated with a dashcard if exists, return `nil` otherwise."
   [dashcard-or-dashcard-id]
-  (when-let [action-id (actions.db/dashcard-action-id (u/the-id dashcard-or-dashcard-id))]
+  (when-let [action-id (:action_id (dashboards.db/dashboard-card (u/the-id dashcard-or-dashcard-id)))]
     (select-action :id action-id :archived false)))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
@@ -751,7 +752,7 @@
   (if (and (nil? model_id)
            (or (nil? collection_id)
                (= collection/data-actions-ns
-                  (some-> (actions.db/collection-namespace-with-entity-id collection_id) keyword))))
+                  (some-> (collections.db/collection-with-entity-id collection_id) :namespace keyword))))
     (serdes/storage-default-collection-path action ctx (serdes/collection-namespace-folder collection/data-actions-ns))
     (serdes/storage-default-collection-path action ctx)))
 

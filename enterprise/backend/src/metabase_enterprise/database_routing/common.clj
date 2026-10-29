@@ -5,7 +5,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.warehouses.db :as warehouses.db]))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *anonymous-router-access?*
@@ -57,7 +58,7 @@
                          :status-code 400}))
 
         :else
-        (or (database-routing.db/destination-database-id (:id db) database-name)
+        (or (warehouses.db/destination-database-id {:router-database-id (:id db) :database-name database-name})
             (throw (ex-info (tru "Database Routing error: No Destination Database with slug `{0}` found."
                                  database-name)
                             {:database-name database-name

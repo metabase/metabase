@@ -7,6 +7,9 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
+   [metabase.dashboards.db :as dashboards.db]
+   [metabase.queries.db :as queries.db]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,9 +32,9 @@
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection))
         ;; Library questions are only ever dashboard questions, which aren't collection items
-        below-card-types (disj (library.db/card-types-in-collections descendent-ids) :question)
-        below-tables? (library.db/published-table-in-collections? descendent-ids)
-        below-dashboards? (library.db/dashboard-in-collections? descendent-ids)]
+        below-card-types (disj (queries.db/card-types-in-collections {:collection-ids descendent-ids}) :question)
+        below-tables? (warehouse-schema.db/published-table-exists-in-collections? {:collection-ids descendent-ids})
+        below-dashboards? (dashboards.db/dashboard-exists-in-collections? {:collection-ids descendent-ids})]
     ;; This function is only used on the root Library which cannot have items directly in it
     ;; So can assume :here is only collection, and all descendants are :below
     (assoc collection :here #{"collection"}

@@ -16,6 +16,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (mr/def ::measure
@@ -103,7 +104,7 @@
   (let [measures  (measures.db/unarchived-measures)
         table-ids (into #{} (keep :table_id) measures)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (measures.db/table-database-ids table-ids))
+                                                 (warehouse-schema.db/database-ids-of-tables {:table-ids table-ids}))
                                     :table-ids table-ids})
     (->> (t2/hydrate (filterv mi/can-read? measures) :creator :definition_description)
          (mapv with-api-dimensions))))

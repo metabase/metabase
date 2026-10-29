@@ -23,6 +23,7 @@
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.usage :as transforms.usage]
    [metabase.transforms.util :as transforms.u]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]))
@@ -494,18 +495,18 @@
   (when-some [revisions (seq (revisions/revisions :model/Transform transform-id))]
     (let [user-ids (map :user_id revisions)
           distinct-user-ids (distinct user-ids)
-          users (transforms.db/active-users distinct-user-ids)
+          users (users.db/active-users {:user-ids distinct-user-ids})
           by-id (u/index-by :id users)]
       ;; maintain order
       (map by-id distinct-user-ids))))
 
 (defn- active-admins
   []
-  (transforms.db/active-admins))
+  (users.db/superusers {:active? true}))
 
 (defn- transform-creator
   [transform]
-  (transforms.db/active-users [(:creator_id transform)]))
+  (users.db/active-users {:user-ids [(:creator_id transform)]}))
 
 (defn- users-to-notify-of-transform-failure [transform]
   (or (seq (take 1 (active-users-to-edit-transform (:id transform))))

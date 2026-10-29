@@ -38,7 +38,7 @@
   [parameters]
   (let [card-ids      (replacement.walk/parameter-source-card-ids parameters)
         card-id->card (when (seq card-ids)
-                        (replacement.db/cards-by-id card-ids))]
+                        (queries.db/cards-by-id {:card-ids card-ids}))]
     (if (seq card-ids)
       (replacement.walk/walk-parameter-source-card-refs parameters #(upgrade-source-card-ref %1 %2 card-id->card))
       parameters)))
@@ -138,7 +138,7 @@
 (defn dashboard-upgrade-field-refs!
   "Upgrade field refs in `:parameters` for the `dashboard`, `:parameter_mappings` and `:visualization_settings` for all dashcards in the `dashboard`."
   [dashboard]
-  (let [dashcards     (replacement.db/dashboard-cards (:id dashboard))
+  (let [dashcards     (dashboards.db/dashcards {:dashboard-id (:id dashboard)})
         parameters    (or (:parameters dashboard) [])
         all-card-ids  (into (replacement.walk/parameter-source-card-ids parameters)
                             (mapcat (fn [dashcard]
@@ -147,7 +147,7 @@
                                        (replacement.walk/viz-settings-click-behavior-card-ids (-> dashcard :visualization_settings vs/db->norm)))))
                             dashcards)
         card-id->card (if (seq all-card-ids)
-                        (replacement.db/cards-by-id all-card-ids)
+                        (queries.db/cards-by-id {:card-ids all-card-ids})
                         {})
         parameters'   (replacement.walk/walk-parameter-source-card-refs parameters #(upgrade-source-card-ref %1 %2 card-id->card))
         changes       (cond-> {}

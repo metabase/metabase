@@ -8,6 +8,7 @@
    [metabase.channel.urls :as urls]
    [metabase.pulse.db :as pulse.db]
    [metabase.task.core :as task]
+   [metabase.users.db :as users.db]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -23,7 +24,7 @@
     (log/info "Sending email to admins about removal of legacy pulses")
     (let [legacy-pulse (->> (pulse.db/legacy-pulses)
                             (map #(assoc % :url (urls/legacy-pulse-url (:id %)))))]
-      (doseq [admin (pulse.db/superusers)]
+      (doseq [admin (users.db/superusers {})]
         (email/send-email-retrying!
          {:recipients   [(:email admin)]
           :message-type :html

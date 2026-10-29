@@ -225,3 +225,15 @@
    [:is_published            {:optional true} [:maybe :boolean]]
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:transform_target        {:optional true} [:maybe :boolean]]])
+
+(mr/def ::table-ids
+  "A set or sequence of Table ids."
+  [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]])
+
+(mr/def ::field-ids
+  "A set or sequence of Field ids."
+  [:or [:set ::lib.schema.id/field] [:sequential ::lib.schema.id/field]])
+
+(mr/def ::columns
+  "The columns to select."
+  [:sequential :keyword])

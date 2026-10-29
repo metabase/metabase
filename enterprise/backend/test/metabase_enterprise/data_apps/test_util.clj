@@ -14,6 +14,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)
@@ -220,7 +221,7 @@
   [table-ids f]
   (do-with-library!
    (fn [{:keys [data-id]}]
-     (let [to-publish (set/difference (set table-ids) (data-studio.db/published-table-ids (set table-ids)))
+     (let [to-publish (set/difference (set table-ids) (warehouse-schema.db/published-table-ids {:table-ids (set table-ids)}))
            previous   (when (seq to-publish)
                         (into {}
                               (map (juxt :table_id #(select-keys % [:collection_id :is_published])))

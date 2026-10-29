@@ -8,7 +8,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private order-by-name {:order-by [[:%lower.name :asc]]})
@@ -43,11 +42,6 @@
   [pattern :- :string]
   (t2/select :model/Card (merge order-by-name {:where [:like :dataset_query pattern]})))
 
-(mu/defn card-bookmarks-for-user
-  "The Card ids bookmarked by the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select [:model/CardBookmark :card_id] :user_id user-id))
-
 (mu/defn cards-using-model
   "The unarchived Cards of the same Database as the model Card with `model-id` whose query mentions it, in
   case-insensitive name order."
@@ -71,19 +65,6 @@
   "The name and id of the unarchived Cards with embedding enabled."
   []
   (t2/select [:model/Card :name :id], :enable_embedding true, :archived false))
-
-(mu/defn segment-database-id
-  "The Database id of the Table of the Segment with `segment-id`, or nil."
-  [segment-id :- ::lib.schema.id/segment]
-  (t2/select-one-fn :db_id :model/Table {:select [:t.db_id]
-                                         :from [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
-                                         :join [[:segment :m] [:= :t.id :m.table_id]]
-                                         :where [:= :m.id segment-id]}))
-
-(mu/defn table-database-id
-  "The Database id of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn cards-by-id
   "A map of Card id to Card for the Cards with `card-ids`."
@@ -122,11 +103,6 @@
   [card-id :- ::lib.schema.id/card
    changes :- (mut/select-keys ::queries.schema/card.update [:collection_position :collection_id :public_uuid :made_public_by_id])]
   (t2/update! :model/Card card-id changes))
-
-(mu/defn actions-for-model
-  "The Actions of the model Card with `model-id`."
-  [model-id :- ::lib.schema.id/card]
-  (t2/select :model/Action :model_id model-id))
 
 (mu/defn delete-card!
   "Delete the Card with `card-id`."

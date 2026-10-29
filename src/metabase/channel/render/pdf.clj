@@ -39,7 +39,6 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.js.svg :as js.svg]
@@ -1509,8 +1508,8 @@
                            parts)
            dims      (paper-dims paper-key)
            dash      (dashboards.db/dashboard dashboard-id)
-           tabs      (channel.db/dashboard-tabs dashboard-id)
-           dcs       (t2/hydrate (channel.db/dashcards dashboard-id) :card)
+           tabs      (dashboards.db/dashboard-tabs {:dashboard-id dashboard-id})
+           dcs       (t2/hydrate (dashboards.db/dashcards {:dashboard-id dashboard-id}) :card)
            ;; only treat a dashboard as tabbed when there's more than one tab -- a lone tab isn't shown as a tab in
            ;; the UI, so the PDF shouldn't draw (or reserve space for) its title either
            tabbed?   (> (count tabs) 1)

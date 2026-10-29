@@ -8,10 +8,14 @@
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.product-feedback.db :as product-feedback.db]
+   [metabase.queries.db :as queries.db]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
+   [metabase.users.db :as users.db]
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.time.temporal WeekFields)
    (java.util Locale)))
@@ -43,11 +47,11 @@
   {:created_at     (analytics/instance-creation)
    :plan           (fetch-plan-info)
    :version        (config/mb-version-info :tag)
-   :num_users      (product-feedback.db/active-personal-user-count)
-   :num_dashboards (product-feedback.db/unarchived-dashboard-count)
-   :num_databases  (product-feedback.db/non-audit-database-count)
-   :num_questions  (product-feedback.db/unarchived-card-count "question")
-   :num_models     (product-feedback.db/unarchived-card-count "model")})
+   :num_users      (users.db/active-personal-user-count)
+   :num_dashboards (dashboards.db/dashboard-count {:archived? false})
+   :num_databases  (warehouses.db/non-audit-database-count)
+   :num_questions  (queries.db/unarchived-card-count {:card-type "question"})
+   :num_models     (queries.db/unarchived-card-count {:card-type "model"})})
 
 (defn- user-instance-info
   "Create a blob of instance/user data to be sent to the creator sentiment survey."

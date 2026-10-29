@@ -19,13 +19,13 @@
   (:require
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.shared :as shared]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -252,7 +252,7 @@
      [query audited?]
      (fn []
        (if-let [resolved (resolve-effective-database query)]
-         (if (metabot.db/database-exists? (:database resolved))
+         (if (warehouses.db/database-exists? {:database-id (:database resolved)})
            (let [normalized (runnable-normalized-query audited? resolved)]
              (cond
                (= ::unchecked normalized) {:query resolved :unchecked? true}

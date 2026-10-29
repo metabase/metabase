@@ -105,7 +105,7 @@
     (log/info "Loading sample database")
     (let [engine (sample-database-engine)
           details (try-to-extract-sample-database! engine)
-          db (if (sample-data.db/sample-database-exists?)
+          db (if (warehouses.db/sample-database-exists?)
                (warehouses.db/database (first (sample-data.db/set-sample-database-details! details)))
                (sample-data.db/insert-sample-database! sample-database-name details engine))]
       (log/debug "Syncing Sample Database...")
@@ -117,7 +117,7 @@
 (defn sample-database-id
   "ID of the Sample Database if it exists, otherwise nil."
   []
-  (sample-data.db/sample-database-id))
+  (warehouses.db/sample-database-id))
 
 (defn- table-schema-for-engine
   "The schema value the sync process assigns to the sample database's tables for a given engine: H2 puts
@@ -172,7 +172,7 @@
   [[migrate-sample-database-engine-in-place!]]); otherwise we just refresh its connection details in case
   the JAR has moved."
   ([]
-   (update-sample-database-if-needed! (sample-data.db/sample-database)))
+   (update-sample-database-if-needed! (warehouses.db/sample-database)))
 
   ([sample-db]
    (when sample-db

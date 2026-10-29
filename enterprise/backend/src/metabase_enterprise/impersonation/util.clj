@@ -3,6 +3,7 @@
    [metabase-enterprise.impersonation.db :as impersonation.db]
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
+   [metabase.permissions.db :as permissions.db]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]))
 
@@ -33,7 +34,7 @@
   (boolean
    (when-not *is-superuser?*
      (if *current-user-id*
-       (let [group-ids (impersonation.db/group-ids-for-user *current-user-id*)]
+       (let [group-ids (permissions.db/user-group-ids {:user-id *current-user-id*})]
          (seq
           (when (seq group-ids)
             (impersonation.db/impersonations-for-groups group-ids))))

@@ -1,6 +1,7 @@
 (ns metabase.pulse.events.dashboard-subscription
   (:require
    [clojure.set :as set]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -24,7 +25,7 @@
                                       set)
             cards-to-add         (set/difference correct-card-ids stale-card-ids)
             card-id->dashcard-id (when (seq cards-to-add)
-                                   (pulse.db/dashcard-ids-by-card dashboard-id cards-to-add))
+                                   (dashboards.db/dashcard-ids-by-card {:dashboard-id dashboard-id :card-ids cards-to-add}))
             positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
                                                       (range)))
             new-pulse-cards      (for [pulse-id                         pulse-ids

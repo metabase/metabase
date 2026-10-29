@@ -15,19 +15,26 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.actions.db :as actions.db]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.db :as dashboards.db]
+   [metabase.documents.db :as documents.db]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.db :as queries.db]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
+   [metabase.timeline.db :as timeline.db]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
@@ -188,9 +195,15 @@
 (defn- library-has-content?
   "Whether `library` holds anything beyond its system collections."
   [library]
-  (let [collection-ids (vec (remote-sync.db/subtree-collection-ids [library]))]
-    (or (some (complement collection/library-root-collection?) (remote-sync.db/collections collection-ids))
-        (remote-sync.db/collection-content-exists? collection-ids))))
+  (let [collection-ids (vec (collections.db/subtree-collection-ids {:collections [(select-keys library [:id :location])]
+                                                                    :remote-synced? false}))]
+    (or (some (complement collection/library-root-collection?) (collections.db/collections-of-ids {:collection-ids collection-ids}))
+        (queries.db/card-in-collections-exists? {:collection-ids collection-ids})
+        (dashboards.db/dashboard-exists-in-collections? {:collection-ids collection-ids})
+        (documents.db/documents-exist-in-collections? {:collection-ids collection-ids})
+        (timeline.db/timelines-exist-in-collections? {:collection-ids collection-ids})
+        (actions.db/action-exists-in-collections? {:collection-ids collection-ids})
+        (warehouse-schema.db/published-table-exists-in-collections? {:collection-ids collection-ids}))))
 
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
@@ -225,7 +238,7 @@
         ns-coll-conflicts (spec/check-namespace-collection-conflicts
                            import-namespace-collections
                            (:entity-ids import-ns-info))
-        library-conflict (when-let [local-library (remote-sync.db/library-collection collection/library-collection-type)]
+        library-conflict (when-let [local-library (collections.db/collection-of-type collection/library-collection-type)]
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
                                                  collection/library-entity-id)
@@ -312,7 +325,7 @@
   "Deletes the TableUserSettings, FieldUserSettings, and Dimensions of the Tables published in
   `synced-collection-ids` that `seen-paths` did not import, returning those Tables' ids."
   [synced-collection-ids ingestable seen-paths]
-  (when-let [table-ids (some-> (not-empty synced-collection-ids) remote-sync.db/published-table-ids not-empty vec)]
+  (when-let [table-ids (some->> (not-empty synced-collection-ids) (hash-map :collection-ids) warehouse-schema.db/published-table-ids-in-collections not-empty vec)]
     (let [paths         (group-by (comp :model last) seen-paths)
           parent-id     #(:id (serdes/load-find-local (pop %)))
           imported      #(into #{} (keep parent-id) (get paths %))
@@ -323,15 +336,15 @@
           kept-tables   (imported "TableUserSettings")
           kept-fields   (imported "FieldUserSettings")
           kept-dims     (into (imported "Dimension") (keep #(:id (serdes/load-find-local %))) (get paths "Field"))]
-      (doseq [batch (->> (in-batches remote-sync.db/table-ids-with-user-settings table-ids)
+      (doseq [batch (->> (in-batches #(warehouse-schema.db/table-ids-with-user-settings-among {:table-ids %}) table-ids)
                          (remove kept-tables)
                          (partition-all app-db-batch-size))]
         (remote-sync.db/delete-table-user-settings! (vec batch)))
-      (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-user-settings (remove legacy-tables table-ids))
+      (doseq [batch (->> (in-batches #(warehouse-schema.db/field-ids-with-user-settings-of-tables {:table-ids %}) (remove legacy-tables table-ids))
                          (remove kept-fields)
                          (partition-all app-db-batch-size))]
         (remote-sync.db/delete-field-user-settings! (vec batch)))
-      (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-dimensions table-ids)
+      (doseq [batch (->> (in-batches #(warehouse-schema.db/field-ids-with-dimensions-of-tables {:table-ids %}) table-ids)
                          (remove kept-dims)
                          (partition-all app-db-batch-size))]
         (remote-sync.db/delete-dimensions! (vec batch)))
@@ -342,8 +355,8 @@
   `table-ids` as of `timestamp`."
   [table-ids timestamp]
   (let [table-rows (for [{:keys [id name collection_id]}
-                         (in-batches remote-sync.db/tables-tracking-details
-                                     (in-batches remote-sync.db/table-ids-with-user-settings table-ids))]
+                         (in-batches #(warehouse-schema.db/tables-by-ids {:table-ids % :columns [:id :name :collection_id]})
+                                     (in-batches #(warehouse-schema.db/table-ids-with-user-settings-among {:table-ids %}) table-ids))]
                      {:model_type          "TableUserSettings"
                       :model_id            id
                       :model_name          name
@@ -352,8 +365,8 @@
                       :model_table_name    name
                       :status              "synced"
                       :status_changed_at   timestamp})
-        field-rows (for [[model-type field-ids] {"FieldUserSettings" (in-batches remote-sync.db/field-ids-with-user-settings table-ids)
-                                                 "Dimension"         (in-batches remote-sync.db/field-ids-with-dimensions table-ids)}
+        field-rows (for [[model-type field-ids] {"FieldUserSettings" (in-batches #(warehouse-schema.db/field-ids-with-user-settings-of-tables {:table-ids %}) table-ids)
+                                                 "Dimension"         (in-batches #(warehouse-schema.db/field-ids-with-dimensions-of-tables {:table-ids %}) table-ids)}
                          {:keys [id name table_id collection_id table_name]}
                          (in-batches remote-sync.db/fields-tracking-details field-ids)]
                      {:model_type          model-type

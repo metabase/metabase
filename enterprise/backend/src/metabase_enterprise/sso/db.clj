@@ -25,11 +25,6 @@
                  :join   [[:core_session :session] [:= :u.id :session.user_id]]
                  :where  [:= :key_hashed session-key-hashed]}))
 
-(mu/defn group-ids-by-name
-  "The IDs of the PermissionsGroups named one of `group-names`."
-  [group-names :- [:set :string]]
-  (t2/select-pks-set :model/PermissionsGroup :name [:in group-names]))
-
 (mu/defn insert-relay-state!
   "Insert the SsoRelayState `row`, returning the number inserted."
   [row :- [:map {:closed true}

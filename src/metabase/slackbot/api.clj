@@ -6,6 +6,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.macros :as api.macros]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.channel.settings :as channel.settings]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.feedback :as metabot.feedback]
@@ -94,7 +95,7 @@
   "Return the user ID of the newest Slack link if the link is active and so is its user, or nil.
   Turning off Slack Connect or rotating the signing secret makes existing links inactive."
   [slack-user-id]
-  (let [identity (slackbot.db/active-slack-connect-identity slack-user-id)]
+  (let [identity (auth-identity.db/newest-active-auth-identity-by-provider-id {:provider-id slack-user-id :provider "slack-connect"})]
     (when (sso/slack-connect-identity-active? identity)
       (:user_id identity))))
 

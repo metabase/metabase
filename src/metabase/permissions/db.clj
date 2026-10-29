@@ -732,39 +732,6 @@
   []
   (t2/select-pks-vec :model/Database :router_database_id nil))
 
-(mu/defn destination-database?
-  "Whether the Database with `database-id` is a routing destination."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
-
-(mu/defn table-location
-  "The ID, Database ID, schema, and data source of the Table with `table-id`.
-
-  `:data_source` is included because new-table permission defaults branch on whether the table came from an upload;
-  see [[metabase.permissions.models.data-permissions/set-default-table-permissions!]]."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :schema :data_source] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn table-database-ids
-  "The ID and Database ID of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn active-table-locations-for-database
-  "The ID, Database ID, and schema of the active Tables of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :db_id :schema] :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn table-ids-and-schemas-excluding
-  "The ID and schema of the Tables of the Database with `database-id` other than `excluded-table-ids`."
-  [database-id        :- ::lib.schema.id/database
-   excluded-table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :schema]
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
-              :where [:and
-                      [:= :db_id database-id]
-                      [:not [:in :id excluded-table-ids]]]}))
-
 (mu/defn field-visibility-info
   "The ID, visibility type, and Table ID of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
@@ -775,3 +742,130 @@
   [model :- :keyword
    id    :- ms/PositiveInt]
   (t2/select-one model :id id))
+
+(mu/defn group-membership-exists?
+  "Whether the User with `user-id` is a member of the PermissionsGroup with `group-id`."
+  [{:keys [user-id group-id]} :- [:map {:closed true}
+                                  [:user-id  ::lib.schema.id/user]
+                                  [:group-id ms/PositiveInt]]]
+  (t2/exists? :model/PermissionsGroupMembership :user_id [:auto/param user-id] :group_id [:auto/param group-id]))
+
+(mu/defn user-group-ids
+  "The ids of the PermissionsGroups the User with `user-id` belongs to, narrowed to `group-ids` and without
+  `excluded-group-ids` when given."
+  [{:keys [user-id group-ids excluded-group-ids]} :- [:map {:closed true}
+                                                      [:user-id            [:maybe ::lib.schema.id/user]]
+                                                      [:group-ids          {:optional true} [:maybe [:set ms/PositiveInt]]]
+                                                      [:excluded-group-ids {:optional true} [:maybe [:set ms/PositiveInt]]]]]
+  (t2/select-fn-set :group_id :model/PermissionsGroupMembership
+                    {:where (cond-> [:and [:= :user_id user-id]]
+                              (some? group-ids)         (conj [:in :group_id group-ids])
+                              (seq excluded-group-ids)  (conj [:not-in :group_id excluded-group-ids]))}))
+
+(mu/defn group-memberships-for-users
+  "The user id, group id (as `:id`), and group manager flag of the PermissionsGroupMemberships of the Users with
+  `user-ids`."
+  [{:keys [user-ids]} :- [:map {:closed true}
+                          [:user-ids [:set ::lib.schema.id/user]]]]
+  (t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager] :user_id [:in user-ids]))
+
+(mu/defn user-group-ids-for-users
+  "The user id and group id of the PermissionsGroupMemberships of the Users with `user-ids`."
+  [{:keys [user-ids]} :- [:map {:closed true}
+                          [:user-ids [:set ::lib.schema.id/user]]]]
+  (t2/select [:model/PermissionsGroupMembership :user_id :group_id] :user_id [:in user-ids]))
+
+(mu/defn user-group-memberships
+  "Rows of User ID, group name, and group entity ID for the memberships of the Users with `user-ids`, excluding the
+  groups with `excluded-group-ids`."
+  [{:keys [user-ids excluded-group-ids]} :- [:map {:closed true}
+                                             [:user-ids           [:sequential ::lib.schema.id/user]]
+                                             [:excluded-group-ids [:sequential ms/PositiveInt]]]]
+  (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
+             {:from  [[:permissions_group_membership :pgm]]
+              :join  [[:permissions_group :pg] [:= :pg.id :group_id]]
+              :where (into [:and [:in :user_id user-ids]]
+                           (map (fn [group-id] [:not= :pg.id group-id]))
+                           excluded-group-ids)}))
+
+(mu/defn group-member-user-ids
+  "The user ids of the members of the PermissionsGroup with `group-id`."
+  [{:keys [group-id]} :- [:map {:closed true}
+                          [:group-id ms/PositiveInt]]]
+  (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id [:auto/param group-id]))
+
+(mu/defn group-member-emails-and-entity-ids
+  "Rows of group ID, member email, and member entity ID for the memberships of the PermissionsGroups with
+  `group-ids`."
+  [{:keys [group-ids]} :- [:map {:closed true}
+                           [:group-ids [:sequential ms/PositiveInt]]]]
+  (t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
+             {:from  [[:permissions_group_membership :pgm]]
+              :join  [[:core_user :u] [:= :u.id :pgm.user_id]]
+              :where [:in :pgm.group_id group-ids]}))
+
+(mu/defn group-id-by-name
+  "The id of the PermissionsGroup named `group-name`, or nil."
+  [{:keys [group-name]} :- [:map {:closed true}
+                            [:group-name :string]]]
+  (t2/select-one-pk :model/PermissionsGroup :name [:auto/param group-name]))
+
+(mu/defn group-ids-by-names
+  "The ids of the PermissionsGroups named one of `group-names`."
+  [{:keys [group-names]} :- [:map {:closed true}
+                             [:group-names [:set :string]]]]
+  (t2/select-pks-set :model/PermissionsGroup :name [:in group-names]))
+
+(mu/defn group-count
+  "The number of PermissionsGroups, other than `excluded-group-ids` and narrowed to the optional `group-name`."
+  [{:keys [excluded-group-ids group-name]} :- [:map {:closed true}
+                                               [:excluded-group-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+                                               [:group-name         {:optional true} [:maybe :string]]]]
+  (let [conditions (cond-> []
+                     group-name                (conj [:= :name group-name])
+                     (seq excluded-group-ids) (conj [:not-in :id excluded-group-ids]))]
+    (t2/count :model/PermissionsGroup (if (seq conditions) {:where (into [:and] conditions)} {}))))
+
+(mu/defn all-groups
+  "Every PermissionsGroup, in ID order."
+  []
+  (t2/select :model/PermissionsGroup {:order-by [[:id :asc]]}))
+
+(mu/defn ordered-group-ids
+  "The ids of the PermissionsGroups, in ID order, narrowed to `included-ids` and without `excluded-ids` when given."
+  [{:keys [included-ids excluded-ids]} :- [:map {:closed true}
+                                           [:included-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+                                           [:excluded-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
+  (let [conditions (cond-> []
+                     (some? included-ids) (conj [:in :id included-ids])
+                     (some? excluded-ids) (conj [:not-in :id excluded-ids]))]
+    (t2/select-pks-vec :model/PermissionsGroup
+                       (cond-> {:order-by [[:id :asc]]}
+                         (seq conditions) (assoc :where (into [:and] conditions))))))
+
+(mu/defn view-data-permissions
+  "The view-data DataPermissions rows of `group-ids` on the Databases with `database-ids`, for the Tables with
+  `table-ids` or the whole Database."
+  [{:keys [group-ids database-ids table-ids]} :- [:map {:closed true}
+                                                  [:group-ids    [:sequential ms/PositiveInt]]
+                                                  [:database-ids [:sequential ::lib.schema.id/database]]
+                                                  [:table-ids    [:sequential ::lib.schema.id/table]]]]
+  (if (and (seq group-ids) (seq database-ids) (seq table-ids))
+    (t2/select [:model/DataPermissions :group_id :db_id :perm_type :table_id :perm_value]
+               :group_id [:in group-ids]
+               :db_id [:in database-ids]
+               :perm_type :perms/view-data
+               {:where [:or [:in :table_id table-ids] [:= :table_id nil]]})
+    []))
+
+(mu/defn database-view-data-values
+  "The set of database-level view-data permission values `group-ids` hold on the Database with `database-id`."
+  [{:keys [database-id group-ids]} :- [:map {:closed true}
+                                       [:database-id ::lib.schema.id/database]
+                                       [:group-ids   [:set ms/PositiveInt]]]]
+  (t2/select-fn-set :perm_value :model/DataPermissions
+                    {:where [:and
+                             [:= :db_id [:auto/param database-id]]
+                             [:= :table_id nil]
+                             [:= :perm_type "perms/view-data"]
+                             [:in :group_id group-ids]]}))

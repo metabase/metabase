@@ -33,7 +33,7 @@
                                       (case channel-type
                                         :email (let [pulse-channel-recipient-ids (map :user_id (pulse.db/pulse-channel-recipient-rows pulse-channel-id))
                                                      pulse-channel-recipients (when (seq pulse-channel-recipient-ids)
-                                                                                (pulse.db/users-names-and-emails pulse-channel-recipient-ids))]
+                                                                                (vals (users.db/user-summaries-by-id {:user-ids pulse-channel-recipient-ids})))]
                                                  (map (fn [{:keys [common_name] :as recipient}]
                                                         (assoc recipient
                                                                :notification-type channel-type

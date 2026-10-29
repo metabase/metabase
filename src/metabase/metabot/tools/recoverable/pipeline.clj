@@ -20,10 +20,10 @@
   tool."
   (:require
    [clojure.string :as str]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.error :refer [defrecoverable]]
    [metabase.models.interface :as mi]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -55,7 +55,7 @@
   (let [id (:database-id data)]
     (when (and (pos-int? id)
                ;; `read_resource` 404s on a destination even when the user can read its router.
-               (empty? (metabot.db/destination-database-ids #{id}))
+               (empty? (warehouses.db/destination-database-ids {:database-ids #{id}}))
                (mi/can-read? :model/Database id))
       id)))
 

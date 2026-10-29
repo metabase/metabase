@@ -4,6 +4,8 @@
    [clojure.core.memoize :as memoize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.queries.db :as queries.db]
+   [metabase.segments.db :as segments.db]
    [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.models.source-dimension-daily]
@@ -14,7 +16,8 @@
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,7 +42,7 @@
   [field-ids]
   (let [field-ids (into #{} (filter pos-int?) field-ids)
         rows      (when (seq field-ids)
-                    (usage-metadata.db/field-names field-ids))]
+                    (warehouse-schema.db/fields-by-ids {:field-ids (mapv long field-ids) :columns [:id :name :display_name]}))]
     (into {}
           (map (fn [{:keys [id name display_name]}]
                  [id {:id           id
@@ -55,9 +58,9 @@
         table-ids (into #{} (comp (keep second) (filter pos-int?)) (get by-type :table))
         card-ids  (into #{} (comp (keep second) (filter pos-int?)) (get by-type :card))
         tables    (when (seq table-ids)
-                    (usage-metadata.db/table-names table-ids))
+                    (warehouse-schema.db/tables-by-ids {:table-ids (mapv long table-ids) :columns [:id :name :display_name :db_id :schema]}))
         cards     (when (seq card-ids)
-                    (usage-metadata.db/card-names card-ids))]
+                    (queries.db/card-names {:card-ids (mapv long card-ids)}))]
     (into {}
           cat
           [(map (fn [{:keys [id name display_name db_id schema]}]
@@ -147,12 +150,12 @@
 (defn- existing-segment-predicates*
   [[source-type source-id]]
   (let [table-id  (when (and (= source-type :table) source-id) source-id)
-        segments  (usage-metadata.db/unarchived-segments table-id)
+        segments  (segments.db/unarchived-segment-summaries {:table-id table-id})
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}
                           (map (juxt :id :db_id))
-                          (usage-metadata.db/table-database-ids table-ids)))]
+                          (warehouse-schema.db/tables-by-ids {:table-ids (mapv long table-ids) :columns [:id :db_id] :user-settings? false})))]
     (lib-be/with-metadata-provider-cache
       (into #{}
             (mapcat (fn [{:keys [table_id definition]}]
@@ -175,7 +178,7 @@
 
 (defn- existing-metric-signatures*
   []
-  (let [cards (usage-metadata.db/unarchived-metric-cards)]
+  (let [cards (queries.db/unarchived-metric-cards)]
     (lib-be/with-metadata-provider-cache
       (into #{}
             (mapcat (fn [{:keys [database_id dataset_query]}]
@@ -407,12 +410,12 @@
 (defn- existing-composite-atomsets*
   [[source-type source-id]]
   (let [table-id  (when (and (= source-type :table) source-id) source-id)
-        segments  (usage-metadata.db/unarchived-segments table-id)
+        segments  (segments.db/unarchived-segment-summaries {:table-id table-id})
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
         table->db (when (seq table-ids)
                     (into {}
                           (map (juxt :id :db_id))
-                          (usage-metadata.db/table-database-ids table-ids)))]
+                          (warehouse-schema.db/tables-by-ids {:table-ids (mapv long table-ids) :columns [:id :db_id] :user-settings? false})))]
     (lib-be/with-metadata-provider-cache
       (into #{}
             (mapcat (fn [{:keys [table_id definition]}]

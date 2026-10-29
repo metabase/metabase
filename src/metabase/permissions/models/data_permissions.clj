@@ -20,6 +20,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.schema]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -913,7 +914,7 @@
   "Returns the graph representing admin permissions for all groups"
   [& {:keys [db-id perm-type]}]
   ;; destination databases are reachable only through their router and never carry permissions of their own
-  (let [db-ids     (if db-id [db-id] (permissions.db/non-destination-database-ids))
+  (let [db-ids     (if db-id [db-id] (warehouses.db/non-destination-database-ids {}))
         perm-types (if perm-type [perm-type] (keys permissions.schema/data-permissions))]
     (into {} (map (fn [db-id]
                     [db-id (into {} (map (fn [perm] [perm (most-permissive-value perm)])
@@ -988,7 +989,7 @@
   "Whether `db-id` is a destination database — one with `router_database_id` set."
   (mdb/memoize-for-application-db
    (fn [db-id]
-     (permissions.db/destination-database? db-id))))
+     (warehouses.db/destination-database-exists? {:database-id db-id}))))
 
 (defn assert-no-destination-db-permissions!
   "Throws if any row in `perm-rows` targets a destination database — one with `router_database_id`
@@ -1157,7 +1158,7 @@
          (let [{:keys [id db_id schema]}
                (if (map? table)
                  table
-                 (permissions.db/table-location table))]
+                 (first (warehouse-schema.db/tables-by-ids {:table-ids [table] :columns [:id :db_id :schema :data_source] :user-settings? false})))]
            {:perm_type   perm-type
             :group_id    group-id
             :perm_value  value
@@ -1198,7 +1199,7 @@
       ;; we need to replace it with individual permission rows for every table in the database instead.
       ;; We can't filter out *everything* in the database because the max number of parameters is capped. But we
       ;; might as well filter out what we can (conservatively).
-      (let [other-new-perms (->> (permissions.db/table-ids-and-schemas-excluding db-id (take 10000 table-ids))
+      (let [other-new-perms (->> (warehouse-schema.db/table-id-schema-rows-excluding {:database-id db-id :excluded-table-ids (take 10000 table-ids)})
                                  (keep (fn [table]
                                          ;; See above: we filtered out what we could in the database, but if
                                          ;; the number of tables is large we need to filter them out in
@@ -1504,7 +1505,7 @@
      :schema-vals-idx  (reduce (fn [acc {:keys [group_id perm_type schema_name perm_value]}]
                                  (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
                                {} table-level)
-     :all-db-tables    (permissions.db/active-table-locations-for-database db-id)
+     :all-db-tables    (warehouse-schema.db/table-locations-of-databases {:database-ids [db-id] :active? true})
      :view-data-levels (new-table-view-data-permission-levels db-id group-ids)
      :sandboxed-groups (new-table-sandboxed-groups db-id group-ids)}))
 
@@ -1624,7 +1625,7 @@
   [table group-perm-defaults]
   (let [table (if (map? table)
                 table
-                (permissions.db/table-location table))]
+                (first (warehouse-schema.db/tables-by-ids {:table-ids [table] :columns [:id :db_id :schema :data_source] :user-settings? false})))]
     (set-default-table-permissions-bulk! (:db_id table) [[table group-perm-defaults]])))
 
 (defenterprise download-perms-level

@@ -5,16 +5,6 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn active-slack-connect-identity
-  "The user id and metadata of the newest Slack Connect AuthIdentity of an active User for `slack-user-id`, or nil."
-  [slack-user-id :- :string]
-  (t2/select-one [:model/AuthIdentity :user_id :metadata]
-                 :provider "slack-connect"
-                 :provider_id [:auto/param slack-user-id]
-                 {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
-                  :where    [:= :user.is_active true]
-                  :order-by [[:created_at :desc]]}))
-
 (mu/defn metabot-message-external-id
   "The external id of the MetabotMessage posted to `channel-id` as `slack-msg-id`, or nil."
   [channel-id   :- :string

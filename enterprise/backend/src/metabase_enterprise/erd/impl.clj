@@ -3,7 +3,6 @@
    one-layer FK expansion, and response building."
   (:require
    [clojure.set :as set]
-   [metabase-enterprise.erd.db :as erd.db]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -11,6 +10,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 ;;; -------------------------------------------------- Schema --------------------------------------------------
@@ -96,7 +96,7 @@
       (perms/prime-table-perms-cache (if (contains? opts :table-ids)
                                        {:table-ids (set table-ids)}
                                        {:db-ids #{database-id}}))
-      (->> (erd.db/active-tables-in-database table-select-columns database-id opts)
+      (->> (warehouse-schema.db/active-tables-of-database-columns (merge {:columns table-select-columns :database-id database-id} opts))
            (filter mi/can-read?)))))
 
 (defn- readable-table-ids
@@ -111,13 +111,13 @@
    as table metadata view (`/api/table/:id/query_metadata`)."
   [table-ids]
   (when (seq table-ids)
-    (erd.db/active-fields-for-tables table-ids)))
+    (warehouse-schema.db/active-fields-of-tables-in-field-order {:table-ids table-ids})))
 
 (defn- fetch-fields-by-ids
   "Fetch active fields by ID."
   [field-ids]
   (when (seq field-ids)
-    (erd.db/active-fields field-ids)))
+    (warehouse-schema.db/active-fields-by-ids {:field-ids field-ids})))
 
 (defn- discover-fk-targets
   "Given a collection of fields, find FK target field IDs that point to tables

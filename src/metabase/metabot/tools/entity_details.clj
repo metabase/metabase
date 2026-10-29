@@ -3,14 +3,15 @@
    [medley.core :as m]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
+   [metabase.content-verification.db :as content-verification.db]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.documents.core :as documents]
+   [metabase.glossary.db :as glossary.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.measures.db :as measures.db]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
@@ -23,6 +24,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -80,7 +82,7 @@
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
   [id item-type]
-  (let [review (metabot.db/latest-review-status-row id item-type)]
+  (let [review (content-verification.db/latest-moderation-review-status-row {:item-id id :item-type item-type})]
     (= (:status review) "verified")))
 
 (def ^:private max-glossary-items
@@ -94,13 +96,13 @@
 (defn- glossary-for-context
   []
   ;; Rather small glossary sizes are anticipated. Additional count is bearable.
-  (let [glossary-size (metabot.db/glossary-count)]
+  (let [glossary-size (glossary.db/glossary-count)]
     (when (> glossary-size max-glossary-items)
       ;; If we are notified about the following warning we should reconsider current,
       ;; context injection, approach to glossary integration into Metabot.
       (log/warnf "Glossary size is larger than limit for context injection (%d > %d)."
                  glossary-size max-glossary-items)))
-  (not-empty (metabot.db/glossary-definitions glossary-order-column max-glossary-items)))
+  (not-empty (glossary.db/glossary-definitions {:order-column glossary-order-column :limit max-glossary-items})))
 
 (defn get-current-user
   "Get information about the current user."
@@ -140,7 +142,7 @@
   (if-let [field-ids (seq (keep :id cols))]
     (let [id->values (params.field-values/get-or-create-field-values-by-field-id!
                       (filter params.field-values/current-user-can-fetch-field-values?
-                              (t2/hydrate (metabot.db/fields (set field-ids)) :table)))]
+                              (t2/hydrate (warehouse-schema.db/fields-by-ids {:field-ids (set field-ids)}) :table)))]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 

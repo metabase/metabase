@@ -3,6 +3,7 @@
   (:require
    [metabase.comments.db :as comments.db]
    [metabase.models.interface :as mi]
+   [metabase.users.db :as users.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -16,7 +17,7 @@
   (mi/instances-with-hydrated-data
    reactions k
    #(when-let [user-ids (seq (map :user_id reactions))]
-      (comments.db/users-by-id user-ids))
+      (users.db/user-summaries-by-id {:user-ids user-ids}))
    :user_id {:default {}}))
 
 ;;; Helpers

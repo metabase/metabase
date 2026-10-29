@@ -5,7 +5,9 @@
    [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.api-keys.core :as api-key]
+   [metabase.api-keys.db :as api-keys.db]
    [metabase.permissions.core :as perms]
+   [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -37,12 +39,12 @@
 
 (defn- select-api-key
   [name]
-  (advanced-config.db/api-key-by-name name))
+  (api-keys.db/api-key-by-name {:key-name name}))
 
 (defn- get-admin-user-by-email
   "Find an admin user by email. Throws an exception if the user doesn't exist or isn't an admin."
   [email]
-  (let [user (advanced-config.db/user-by-email email)]
+  (let [user (users.db/user-by-email {:email email})]
     (when-not user
       (throw (ex-info (format "User with email %s not found" email)
                       {:email email})))
@@ -70,7 +72,7 @@
             prefix       (api-key/prefix (u.secret/expose unhashed-key))
             creator      (get-admin-user-by-email creator)]
         ;; Check if there's an existing API key with the same prefix
-        (when (advanced-config.db/api-key-prefix-exists? prefix)
+        (when (api-keys.db/api-key-prefix-exists? prefix)
           (throw (ex-info (format "API key with prefix '%s' already exists. Keys must have unique prefixes." prefix)
                           {:name name :prefix prefix})))
         (log/info (u/format-color :green "Creating new API key"))

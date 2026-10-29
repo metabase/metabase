@@ -11,7 +11,7 @@
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
-   [metabase.mcp.db :as mcp.db]
+   [metabase.collections.db :as collections.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
@@ -20,6 +20,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.models.interface :as mi]
+   [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]))
 
@@ -123,7 +124,8 @@
     (into {}
           (comp (filter mi/can-read?)
                 (map (juxt :id :name)))
-          (mcp.db/collections-for-read-check ids))))
+          (collections.db/collections-of-ids {:collection-ids ids
+                                              :columns        [:id :name :namespace :type]}))))
 
 (defn- add-collection-paths
   "Attach `:collection_path` — ancestor collection names joined with `/`, ending in the
@@ -137,7 +139,7 @@
   [rows]
   (let [parent-ids     (into #{} (keep #(get-in % [:collection :id])) rows)
         parents        (when (seq parent-ids)
-                         (mcp.db/collection-id->name+location parent-ids))
+                         (v2.resolve/collection-id->name+location parent-ids))
         ancestor-ids   (into #{}
                              (comp (mapcat location->ids)
                                    (remove parent-ids))
@@ -418,7 +420,7 @@
    sandboxed-user exclusion apply — optionally narrowed to names containing any query as a
    case-insensitive substring."
   [queries archived]
-  (let [readable (filter mi/can-read? (mcp.db/snippets-by-archived-state archived))
+  (let [readable (filter mi/can-read? (native-query-snippets.db/snippet-summaries-by-archived {:archived? (boolean archived)}))
         matches  (if (seq queries)
                    (let [needles (mapv u/lower-case-en queries)]
                      (filter (fn [{:keys [name]}]

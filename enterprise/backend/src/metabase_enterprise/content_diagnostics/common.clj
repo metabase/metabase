@@ -6,6 +6,8 @@
    [clojure.set :as set]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.queries.db :as queries.db]
+   [metabase.users.db :as users.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -165,7 +167,7 @@
   ;; the whole owned set rather than the ids a finding mentions, so the filter stays stateless and
   ;; composable; `idx_repord_card_document_id` serves the predicate. The card after-select still runs per
   ;; row, but an :id-only projection short-circuits its schema-upgrade and metric-description branches
-  (let [document-owned (cd.db/document-owned-card-ids)]
+  (let [document-owned (queries.db/document-owned-card-ids)]
     (remove #(and (= (:entity-type %) :card) (contains? document-owned (:entity-id %))))))
 
 (defn attach-entity-attrs
@@ -193,7 +195,7 @@
                                      [id attrs] id->attrs]
                                  [[entity-type id] attrs]))
         creator-id->name (if-let [ids (not-empty (into #{} (keep :creator_id) (vals attrs-by-key)))]
-                           (cd.db/user-names-by-id ids)
+                           (update-vals (users.db/user-summaries-by-id {:user-ids ids}) :common_name)
                            {})]
     (mapv (fn [{:keys [entity-type entity-id] :as finding}]
             (let [{:keys [name created_at creator_id] card-type :type} (get attrs-by-key [entity-type entity-id])]

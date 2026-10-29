@@ -52,3 +52,8 @@
                             {:entity_type     entity-type
                              :entity_local_id entity-local-id}
                             (constantly {:ai_context ai-context})))
+
+(mu/defn all-ai-contexts
+  "The entity type, entity id, and AI context of every OsiAiContext."
+  []
+  (t2/select [:model/OsiAiContext :entity_type :entity_local_id :ai_context]))

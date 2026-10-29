@@ -3,15 +3,9 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.indexes.schema :as indexes.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(mu/defn database-exists?
-  "Whether a Database with `database-id` exists."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
 
 (mu/defn insert-table-index!
   "Insert the TableIndex `row` and return the inserted instance."

@@ -667,7 +667,7 @@
                                          (keyword? setting-kw) (boolean (setting/get-value-of-type :boolean setting-kw))
                                          :else false)]
                 :when (not setting-enabled?)
-                :let [local-ns-colls (remote-sync.db/collections-in-namespace ns-name)
+                :let [local-ns-colls (collections.db/collections-in-namespace ns-name)
                       import-eids (get import-ns-collection-entity-ids ns-name #{})
                       ;; Only consider local collections that are NOT in the import (truly local-only)
                       ;; and NOT tracked in RemoteSyncObject
@@ -783,14 +783,14 @@
   []
   (into []
         cat
-        [(remote-sync.db/remote-synced-collection-ids)
+        [(collections.db/remote-synced-collection-ids {})
          (when (rs-settings/remote-sync-transforms)
-           (remote-sync.db/collection-ids-in-namespace (name collections/transforms-ns)))
+           (mapv :id (collections.db/collections-in-namespace (name collections/transforms-ns))))
          (when (rs-settings/library-is-remote-synced?)
-           (remote-sync.db/collection-ids-in-namespace "snippets"))
+           (mapv :id (collections.db/collections-in-namespace "snippets")))
          (when (rs-settings/library-is-remote-synced?)
-           (remote-sync.db/collection-ids-in-namespace (name collections/data-actions-ns)))
-         (remote-sync.db/collection-ids-in-namespace (name collections/data-apps-ns))]))
+           (mapv :id (collections.db/collections-in-namespace (name collections/data-actions-ns))))
+         (mapv :id (collections.db/collections-in-namespace (name collections/data-apps-ns)))]))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -1278,15 +1278,14 @@
     ;; Excludes archived collections - their files are handled by the removal logic
     (let [collection-keys (fn [ids] (into #{} (map (fn [id] ["Collection" id])) ids))]
       (concat
-       (collection-keys (remote-sync.db/unarchived-remote-synced-root-collection-ids))
+       (collection-keys (collections.db/unarchived-remote-synced-root-collection-ids))
        (when (rs-settings/remote-sync-transforms)
-         (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace (name collections/transforms-ns))))
+         (collection-keys (collections.db/unarchived-root-collection-ids-in-namespace {:namespace-name (name collections/transforms-ns)})))
        (when (rs-settings/library-is-remote-synced?)
-         (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace "snippets")))
+         (collection-keys (collections.db/unarchived-root-collection-ids-in-namespace {:namespace-name "snippets"})))
        (when (rs-settings/library-is-remote-synced?)
-         (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace
-                           (name collections/data-actions-ns))))
-       (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace (name collections/data-apps-ns)))))
+         (collection-keys (collections.db/unarchived-root-collection-ids-in-namespace {:namespace-name (name collections/data-actions-ns)})))
+       (collection-keys (collections.db/unarchived-root-collection-ids-in-namespace {:namespace-name (name collections/data-apps-ns)}))))
     :derived
     (library-synced-root-export-roots spec)))
 

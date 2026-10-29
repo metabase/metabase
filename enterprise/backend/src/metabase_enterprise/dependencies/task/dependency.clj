@@ -20,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2])
   (:import (org.quartz JobExecutionContext)))
 
@@ -52,7 +53,7 @@
   (let [db-id                (transforms/transform-source-database transform)
         downstream-table-ids (dependencies.db/downstream-table-ids-of-transform id)
         downstream-tables    (when (seq downstream-table-ids)
-                               (dependencies.db/tables downstream-table-ids))
+                               (warehouse-schema.db/tables-by-ids {:table-ids downstream-table-ids}))
         outdated-tables      (remove (fn [table]
                                        (and (= (:schema table) (:schema target))
                                             (= (:name   table) (:name   target))

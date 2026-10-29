@@ -1,6 +1,5 @@
 (ns metabase-enterprise.action-v2.execute-form
   (:require
-   [metabase-enterprise.action-v2.db :as action-v2.db]
    [metabase-enterprise.action-v2.schema :as action-v2.schema]
    [metabase.actions.core :as actions]
    [metabase.actions.types :as actions.types]
@@ -110,7 +109,7 @@
                                                         table)))
         database                    (warehouses.db/database (:db_id table))
         _                           (actions/check-data-editing-enabled-for-database database)
-        fields                      (-> (action-v2.db/active-fields-in-position-order table-id)
+        fields                      (-> (warehouse-schema.db/active-fields-of-table-in-position-order {:table-id table-id})
                                         (t2/hydrate :dimensions :has_field_values :values))
         ;; TODO get this from action configuration, when we add it, or inherit from table configuration
         column-editable?            (constantly true)

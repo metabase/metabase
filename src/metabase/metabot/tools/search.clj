@@ -4,6 +4,10 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
+   [metabase.content-verification.db :as content-verification.db]
+   [metabase.documents.db :as documents.db]
+   [metabase.measures.db :as measures.db]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
@@ -17,12 +21,16 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
+   [metabase.segments.db :as segments.db]
    [metabase.transforms.core :as transforms]
+   [metabase.transforms.db :as transforms.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
@@ -119,7 +127,10 @@
   [results]
   (let [coll-ids     (->> results (keep #(get-in % [:collection :id])) distinct)
         descriptions (when (seq coll-ids)
-                       (metabot.db/collection-descriptions coll-ids))]
+                       (into {}
+                             (map (juxt :id :description))
+                             (collections.db/collections-of-ids {:collection-ids coll-ids
+                                                                 :columns        [:id :description]})))]
     (cond->> results
       (seq descriptions) (mapv (fn [r]
                                  (let [cid (-> r :collection :id)]
@@ -134,7 +145,7 @@
   [results]
   (let [db-ids (->> results (keep :database_id) distinct)
         id->db (when (seq db-ids)
-                 (metabot.db/database-engines-and-names db-ids))]
+                 (warehouses.db/database-engines-and-names {:database-ids db-ids}))]
     (cond->> results
       (seq id->db) (mapv (fn [r]
                            (let [{engine :engine, db-name :name} (get id->db (:database_id r))]
@@ -145,9 +156,9 @@
 (def ^:private entity-id-lookups
   "Each pair holds the entity types that share an ID space and the function that looks up their entity IDs.
   The function takes a seq of IDs and returns a map of ID to entity ID."
-  [[#{"metric" "model" "question"} metabot.db/card-entity-ids]
-   [#{"measure"}                   metabot.db/measure-entity-ids]
-   [#{"segment"}                   metabot.db/segment-entity-ids]])
+  [[#{"metric" "model" "question"} #(queries.db/card-entity-ids {:card-ids %})]
+   [#{"measure"}                   #(measures.db/measure-entity-ids {:ids %})]
+   [#{"segment"}                   #(segments.db/segment-entity-ids {:ids %})]])
 
 (defn- enrich-with-portable-entity-ids
   "Attach `:portable_entity_id` (the entity's `entity_id` NanoID) to saved-question, model, metric, measure and
@@ -209,7 +220,7 @@
                         (into {}
                               (comp (filter mi/can-query?)
                                     (map (juxt :id #(select-keys % [:id :schema :name]))))
-                              (metabot.db/table-schema-rows table-ids)))]
+                              (warehouse-schema.db/tables-by-ids {:table-ids table-ids :columns [:id :name :schema :db_id :is_published :collection_id]})))]
     (cond->> results
       (seq metric-ids)
       (mapv (fn [{:keys [id type database_name] :as result}]
@@ -237,7 +248,7 @@
   [results]
   (let [transform-ids (->> results (filter #(= "transform" (:type %))) (map :id) set)
         readable-ids (when (seq transform-ids)
-                       (->> (metabot.db/transforms transform-ids)
+                       (->> (transforms.db/transforms transform-ids)
                             transforms/add-source-readable
                             (filter :source_readable)
                             (map :id)
@@ -257,7 +268,7 @@
   [archived? results]
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
         id->document (when (seq document-ids)
-                       (->> (metabot.db/documents-in-archived-state document-ids archived?)
+                       (->> (documents.db/documents-in-archived-state {:document-ids document-ids :archived? (boolean archived?)})
                             (filter mi/can-read?)
                             (map (juxt :id identity))
                             (into {})))]
@@ -471,7 +482,7 @@
   (when (seq ids)
     ;; only surface tables the current user can read — a curated entry may point at one they can't access
     (for [t (filter mi/can-read?
-                    (metabot.db/table-summaries ids))]
+                    (warehouse-schema.db/tables-by-ids {:table-ids ids :columns [:id :name :display_name :schema :db_id :description]}))]
       {:id              (:id t)
        :type            "table"
        :name            (:name t)
@@ -490,14 +501,15 @@
         id->card  (when (seq ids)
                     (into {} (map (juxt :id identity))
                           (filter mi/can-read?
-                                  (metabot.db/card-search-rows ids))))
+                                  (queries.db/card-search-rows {:card-ids ids}))))
         coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
                     (into {} (map (juxt :id identity))
-                          (metabot.db/collection-summaries coll-ids)))
+                          (collections.db/collections-of-ids {:collection-ids coll-ids
+                                                              :columns        [:id :name :authority_level]})))
         ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
         verified  (when (seq ids)
-                    (metabot.db/verified-item-ids ids "card"))]
+                    (content-verification.db/verified-item-ids {:item-ids ids :item-type "card"}))]
     (for [id ids
           :let [c (id->card id)]
           :when c]
@@ -523,12 +535,12 @@
           fetch   (fn [db-fn ids]
                     (when-let [ids (not-empty (distinct ids))]
                       (filter mi/can-read? (db-fn ids))))
-          rows    (concat (map #(assoc % :type "measure") (fetch metabot.db/measures (map :id (get by-type "measure"))))
-                          (map #(assoc % :type "segment") (fetch metabot.db/segments (map :id (get by-type "segment")))))
+          rows    (concat (map #(assoc % :type "measure") (fetch #(measures.db/measure-summaries {:ids %}) (map :id (get by-type "measure"))))
+                          (map #(assoc % :type "segment") (fetch #(segments.db/segment-summaries {:ids %}) (map :id (get by-type "segment")))))
           tbl-ids (not-empty (distinct (keep :table_id rows)))
           id->tbl (when tbl-ids
                     (into {} (map (juxt :id identity))
-                          (metabot.db/table-schema-rows tbl-ids)))]
+                          (warehouse-schema.db/tables-by-ids {:table-ids tbl-ids :columns [:id :name :schema :db_id :is_published :collection_id]})))]
       (for [{:keys [id type name description table_id entity_id]} rows
             :let [t (get id->tbl table_id)]]
         (cond-> {:id id :type type :name name :description description}

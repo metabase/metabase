@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
@@ -83,11 +84,6 @@
                            [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
               :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc]]}))
 
-(mu/defn internal-dashboard-question-ids
-  "The ids of the Cards internal to the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-pks-set :model/Card :dashboard_id dashboard-id))
-
 (mu/defn set-cards-archived!
   "Set the archived flags of the Cards with `card-ids`, returning the number updated."
   [card-ids  :- [:sequential ::lib.schema.id/card]
@@ -118,39 +114,10 @@
   [card-id :- ::lib.schema.id/card]
   (queries.db/card-query-info card-id))
 
-(mu/defn card-queries
-  "A map of Card id to query for the Cards with `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
-
-(mu/defn document-cards-among
-  "The Cards among `card-ids` that belong to a Document."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids] :document_id [:<> nil]))
-
 (mu/defn insert-card!
   "Insert the Card `row` and return the inserted instance."
   [row :- ::queries.schema/card.update]
   (t2/insert-returning-instance! :model/Card row))
-
-(defn dashboard-question-exists?
-  "Does the Dashboard with `dashboard-id` hold an unarchived Card saved inside it?"
-  [dashboard-id]
-  (t2/exists? :model/Card :dashboard_id dashboard-id :archived false))
-
-(defn card-internal-to-other-dashboard?
-  "Is any Card among `card-ids` saved inside a dashboard other than the one with `dashboard-id`?"
-  [dashboard-id card-ids]
-  (t2/exists? :model/Card
-              {:where [:and
-                       [:not= :dashboard_id dashboard-id]
-                       [:not= :dashboard_id nil]
-                       [:in :id card-ids]]}))
-
-(mu/defn action-entity-ids-in
-  "The entity ids among `entity-ids` that name an existing Action."
-  [entity-ids :- [:set :string]]
-  (t2/select-fn-set :entity_id [:model/Action :entity_id] :entity_id [:in entity-ids]))
 
 (mu/defn dashcard-serdes-columns
   "The id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the Dashboard with
@@ -163,16 +130,6 @@
   "The id, Card id, and DashboardCard id of the DashboardCardSeries of the DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id] :dashboardcard_id [:in dashcard-ids]))
-
-(mu/defn series-cards-for-dashcards
-  "The series Cards of the DashboardCards with `dashcard-ids`, each with its `:dashboardcard_id`, in series order."
-  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/select [:model/Card :id :name :description :display :dataset_query :type :database_id
-              :visualization_settings :collection_id :card_schema :entity_id :result_metadata
-              :dimensions :dimension_mappings :series.dashboardcard_id]
-             {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
-              :where     [:in :series.dashboardcard_id dashcard-ids]
-              :order-by  [[:series.position :asc]]}))
 
 (mu/defn dashboard-card :- [:maybe ::dashboards.schema/dashboard-card]
   "The ::dashboards.schema/dashboard-card with `dashcard-id`, or nil."
@@ -235,13 +192,6 @@
   [rows :- [:sequential
             (mut/select-keys ::dashboards.schema/dashboard-card-series.update [:dashboardcard_id :card_id :position])]]
   (t2/insert! :model/DashboardCardSeries rows))
-
-(defn parameter-card-card-ids
-  "The Card ids referenced by the ParameterCards of the Dashboard with `dashboard-id`."
-  [dashboard-id]
-  (t2/select-fn-vec :card_id :model/ParameterCard
-                    :parameterized_object_type "dashboard"
-                    :parameterized_object_id   dashboard-id))
 
 (defn dashcard-card-ids
   "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
@@ -392,3 +342,245 @@
   "Delete the DashboardTabs with `tab-ids`, returning the number deleted."
   [tab-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/DashboardTab :id [:in tab-ids]))
+
+(mu/defn dashboard-tabs
+  "The DashboardTabs of the Dashboard with `dashboard-id`, in position order."
+  [{:keys [dashboard-id]} :- [:map {:closed true}
+                              [:dashboard-id ::lib.schema.id/dashboard]]]
+  (t2/select :model/DashboardTab
+             :dashboard_id [:auto/param dashboard-id]
+             {:order-by [[:position :asc] [:id :asc]]}))
+
+(mu/defn dashboard-tab-count
+  "The number of DashboardTabs on the Dashboard with `dashboard-id`."
+  [{:keys [dashboard-id]} :- [:map {:closed true}
+                              [:dashboard-id ::lib.schema.id/dashboard]]]
+  (t2/count :model/DashboardTab :dashboard_id [:auto/param dashboard-id]))
+
+(mu/defn dashcards
+  "The DashboardCards of the Dashboard with `dashboard-id`, in row then column order when `layout-order?`."
+  [{:keys [dashboard-id layout-order?]} :- [:map {:closed true}
+                                            [:dashboard-id  ::lib.schema.id/dashboard]
+                                            [:layout-order? {:optional true} [:maybe :boolean]]]]
+  (apply t2/select :model/DashboardCard
+         :dashboard_id [:auto/param dashboard-id]
+         (when layout-order? [{:order-by [[:row :asc] [:col :asc]]}])))
+
+(mu/defn dashcard-ids-in-layout-order
+  "The ids of the DashboardCards of the Dashboard with `dashboard-id`, in row then column order."
+  [{:keys [dashboard-id]} :- [:map {:closed true}
+                              [:dashboard-id ::lib.schema.id/dashboard]]]
+  (t2/select-fn-vec :id :model/DashboardCard
+                    :dashboard_id [:auto/param dashboard-id]
+                    {:order-by [[:row :asc] [:col :asc]]}))
+
+(mu/defn dashcards-for-card
+  "The DashboardCards showing the Card with `card-id`."
+  [{:keys [card-id]} :- [:map {:closed true}
+                         [:card-id ::lib.schema.id/card]]]
+  (t2/select :model/DashboardCard :card_id [:auto/param card-id]))
+
+(mu/defn dashboard-ids-for-card
+  "The ids of the Dashboards with a DashboardCard showing the Card with `card-id`."
+  [{:keys [card-id]} :- [:map {:closed true}
+                         [:card-id ::lib.schema.id/card]]]
+  (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id [:auto/param card-id]))
+
+(mu/defn dashcard-card-ids-in-dashboards
+  "The Card ids of the DashboardCards of the Dashboards with `dashboard-ids` (nil for DashboardCards without a Card),
+  leaving out those of the Card with `except-card-id` when given."
+  [{:keys [dashboard-ids except-card-id]} :- [:map {:closed true}
+                                              [:dashboard-ids  ::dashboards.schema/dashboard-ids]
+                                              [:except-card-id {:optional true} ::lib.schema.id/card]]]
+  (apply t2/select-fn-vec :card_id [:model/DashboardCard :card_id]
+         (cond-> [:dashboard_id [:in dashboard-ids]]
+           except-card-id (conj :card_id [:not= [:auto/param except-card-id]]))))
+
+(mu/defn dashcard-ids-by-card
+  "A map of Card id to DashboardCard id for the DashboardCards of the Dashboard with `dashboard-id` showing one of
+  `card-ids`."
+  [{:keys [dashboard-id card-ids]} :- [:map {:closed true}
+                                       [:dashboard-id ::lib.schema.id/dashboard]
+                                       [:card-ids     [:set ::lib.schema.id/card]]]]
+  (t2/select-fn->pk :card_id :model/DashboardCard
+                    :dashboard_id [:auto/param dashboard-id]
+                    :card_id [:in card-ids]))
+
+(mu/defn dashcard-in-dashboard
+  "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
+  [{:keys [dashcard-id dashboard-id]} :- [:map {:closed true}
+                                          [:dashcard-id  ::lib.schema.id/dashcard]
+                                          [:dashboard-id ::lib.schema.id/dashboard]]]
+  (t2/select-one :model/DashboardCard
+                 :id [:auto/param dashcard-id]
+                 :dashboard_id [:auto/param dashboard-id]))
+
+(mu/defn dashcard-series-exists?
+  "Whether the Card with `card-id` is a series of the DashboardCard with `dashcard-id`."
+  [{:keys [card-id dashcard-id]} :- [:map {:closed true}
+                                     [:card-id     [:maybe ::lib.schema.id/card]]
+                                     [:dashcard-id [:maybe ::lib.schema.id/dashcard]]]]
+  (t2/exists? :model/DashboardCardSeries :card_id card-id :dashboardcard_id dashcard-id))
+
+(mu/defn dashboards-by-ids
+  "The Dashboards with `dashboard-ids`."
+  [{:keys [dashboard-ids]} :- [:map {:closed true}
+                               [:dashboard-ids ::dashboards.schema/dashboard-ids]]]
+  (t2/select :model/Dashboard :id [:in dashboard-ids]))
+
+(mu/defn dashboard-by-entity-id
+  "The Dashboard with `entity-id`, or nil."
+  [{:keys [entity-id]} :- [:map {:closed true}
+                           [:entity-id :string]]]
+  (t2/select-one :model/Dashboard :entity_id [:auto/param entity-id]))
+
+(mu/defn dashboard-names-by-id
+  "A map of id to name for the Dashboards with `dashboard-ids`."
+  [{:keys [dashboard-ids]} :- [:map {:closed true}
+                               [:dashboard-ids ::dashboards.schema/dashboard-ids]]]
+  (t2/select-pk->fn :name :model/Dashboard :id [:in dashboard-ids]))
+
+(mu/defn dashboard-collection-ids
+  "The id and Collection id of the Dashboards with `dashboard-ids`."
+  [{:keys [dashboard-ids]} :- [:map {:closed true}
+                               [:dashboard-ids ::dashboards.schema/dashboard-ids]]]
+  (t2/select [:model/Dashboard :id :collection_id] :id [:in dashboard-ids]))
+
+(mu/defn unarchived-dashboards-in-collection
+  "The id, name, description, and Collection id of the unarchived Dashboards in the Collection with `collection-id` (nil
+  for the root Collection), ordered by lowercase name."
+  [{:keys [collection-id]} :- [:map {:closed true}
+                               [:collection-id [:maybe ::lib.schema.id/collection]]]]
+  (t2/select [:model/Dashboard :id :name :description :collection_id]
+             :collection_id collection-id
+             :archived false
+             {:order-by [[:%lower.name :asc]]}))
+
+(mu/defn dashboard-ids-in-collection
+  "The ids of the Dashboards in the Collection with `collection-id` (nil for the root Collection), excluding archived
+  ones when `skip-archived?`."
+  [{:keys [collection-id skip-archived?]} :- [:map {:closed true}
+                                              [:collection-id   [:maybe ::lib.schema.id/collection]]
+                                              [:skip-archived?  {:optional true} [:maybe :boolean]]]]
+  (t2/select-pks-set :model/Dashboard
+                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
+
+(mu/defn unarchived-dashboard-ids-in-collections-reducible
+  "Reducible `:id` rows of the unarchived Dashboards in the Collections with `collection-ids`."
+  [{:keys [collection-ids]} :- [:map {:closed true}
+                                [:collection-ids [:sequential ::lib.schema.id/collection]]]]
+  (t2/reducible-select [:model/Dashboard :id]
+                       {:where [:and [:= :archived false]
+                                [:in :collection_id collection-ids]]}))
+
+(mu/defn unarchived-dashboard-ids-and-public-uuids-by-prefix
+  "The `:id` and `:public_uuid` of the unarchived Dashboards whose public uuid prefix is `prefix`."
+  [{:keys [prefix]} :- [:map {:closed true}
+                        [:prefix :string]]]
+  (t2/select [:model/Dashboard :id :public_uuid] :public_uuid_prefix [:auto/param prefix] :archived false))
+
+(mu/defn unarchived-dashboards-by-public-uuid-prefix
+  "The unarchived Dashboards whose public uuid prefix is `prefix`."
+  [{:keys [prefix]} :- [:map {:closed true}
+                        [:prefix :string]]]
+  (t2/select :model/Dashboard :public_uuid_prefix [:auto/param prefix] :archived false))
+
+(mu/defn dashboard-exists?
+  "Whether a Dashboard exists, matching `dashboard-id`, `archived?`, and whether it is `embedded?` or `public?` when
+  given."
+  [{:keys [dashboard-id archived? embedded? public?]} :- [:map {:closed true}
+                                                          [:dashboard-id {:optional true} ::lib.schema.id/dashboard]
+                                                          [:archived?    {:optional true} [:maybe :boolean]]
+                                                          [:embedded?    {:optional true} [:maybe :boolean]]
+                                                          [:public?      {:optional true} [:maybe :boolean]]]]
+  (apply t2/exists? :model/Dashboard
+         (cond-> []
+           dashboard-id        (conj :id [:auto/param dashboard-id])
+           (some? archived?)   (conj :archived [:auto/param archived?])
+           embedded?           (conj :enable_embedding true)
+           public?             (conj :public_uuid [:not= nil]))))
+
+(mu/defn dashboard-exists-in-collections?
+  "Whether a Dashboard, archived or unarchived as `archived?` says when given, exists in the Collections with
+  `collection-ids`."
+  [{:keys [collection-ids archived?]} :- [:map {:closed true}
+                                          [:collection-ids [:sequential ::lib.schema.id/collection]]
+                                          [:archived?      {:optional true} [:maybe :boolean]]]]
+  (apply t2/exists? :model/Dashboard
+         (cond-> [:collection_id [:in collection-ids]]
+           (some? archived?) (conj :archived [:auto/param archived?]))))
+
+(mu/defn dashboard-count
+  "The number of Dashboards, counting only unarchived or archived ones when `archived?` is given, only those with
+  embedding enabled when `embedded?`, and only those created at or after `created-since` when given."
+  [{:keys [archived? embedded? created-since]} :- [:map {:closed true}
+                                                   [:archived?     {:optional true} [:maybe :boolean]]
+                                                   [:embedded?     {:optional true} [:maybe :boolean]]
+                                                   [:created-since {:optional true} [:maybe ms/TemporalInstant]]]]
+  (apply t2/count :model/Dashboard
+         (cond-> []
+           (some? archived?) (conj :archived [:auto/param archived?])
+           embedded?         (conj :enable_embedding true)
+           created-since     (conj :created_at [:>= [:auto/param created-since]]))))
+
+(mu/defn dashboard-stats-columns
+  "The creator, public uuid, parameters, and embedding columns of the non-internal Dashboards."
+  []
+  (t2/select [:model/Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params]
+             {:where (mi/exclude-internal-content-hsql :model/Dashboard)}))
+
+(mu/defn dashboards-with-listing-columns
+  "The listing columns of the Dashboards with `dashboard-ids`."
+  [{:keys [dashboard-ids]} :- [:map {:closed true}
+                               [:dashboard-ids ::dashboards.schema/dashboard-ids]]]
+  (t2/select [:model/Dashboard
+              :id
+              :description
+              :collection_id
+              :name
+              :entity_id
+              :archived
+              :collection_position
+              [:last_viewed_at :last_used_at]
+              ["dashboard" :model]
+              [nil :dashboard_id]
+              [nil :location]
+              [nil :database_id]]
+             :id [:in dashboard-ids]))
+
+(mu/defn recent-dashboards
+  "The recently viewed Dashboards with `dashboard-ids`, with their Collection names."
+  [{:keys [dashboard-ids]} :- [:map {:closed true}
+                               [:dashboard-ids [:sequential ms/PositiveInt]]]]
+  (t2/select [:model/Dashboard
+              :id :name :collection_id :description
+              :archived
+              :collection.authority_level [:collection.name :collection_name]]
+             {:where     [:in :report_dashboard.id dashboard-ids]
+              :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]}))
+
+(mu/defn dashboards-for-recent-views
+  "The Dashboards with `dashboard-ids` with their Collection and moderation status."
+  [{:keys [dashboard-ids]} :- [:map {:closed true}
+                               [:dashboard-ids [:sequential ::lib.schema.id/dashboard]]]]
+  (t2/select :model/Dashboard
+             {:select [:dash.id
+                       :dash.name
+                       :dash.description
+                       :dash.archived
+                       [:dash.collection_id :entity-coll-id]
+                       [:c.id :collection_id]
+                       [:c.name :collection_name]
+                       [:c.authority_level :collection_authority_level]
+                       [:mr.status :moderated-status]]
+              :from [[:report_dashboard :dash]]
+              :where [:in :dash.id dashboard-ids]
+              :left-join [[:moderation_review :mr]
+                          [:and
+                           [:= :mr.moderated_item_id :dash.id]
+                           [:= :mr.moderated_item_type "dashboard"]
+                           [:= :mr.most_recent true]]
+                          [:collection :c]
+                          [:and
+                           [:= :c.id :dash.collection_id]
+                           [:= :c.archived false]]]}))

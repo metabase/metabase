@@ -8,8 +8,10 @@
    [metabase.llm.db :as llm.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.models.interface :as mi]
+   [metabase.queries.db :as queries.db]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
@@ -30,7 +32,7 @@
       (let [driver (:engine (warehouses.db/database database-id))
             tables (sql-tools/referenced-tables-raw driver sql-string)]
         (if (seq tables)
-          (let [matched-tables (llm.db/active-tables-matching database-id tables)]
+          (let [matched-tables (warehouse-schema.db/active-tables-matching-names {:database-id database-id :tables tables})]
             (into #{} (map :id) matched-tables))
           #{}))
       (catch Exception e
@@ -66,7 +68,7 @@
   "Return readable, non-archived Card IDs from `card-ids`."
   [card-ids]
   (when (seq card-ids)
-    (->> (llm.db/unarchived-cards card-ids)
+    (->> (queries.db/unarchived-cards {:card-ids card-ids})
          (filter mi/can-read?)
          (map :id)
          set)))
@@ -108,7 +110,7 @@
                         (keep :fk_target_field_id)
                         set)]
     (when (seq target-ids)
-      (let [fields              (llm.db/field-names-and-tables target-ids)
+      (let [fields              (warehouse-schema.db/fields-by-ids {:field-ids target-ids :columns [:id :name :table_id] :user-settings? false})
             table-ids           (into #{} (map :table_id) fields)
             accessible-tables   (fetch-accessible-tables database-id table-ids)
             sandbox-restricted  (metabot.perms/sandbox-restricted-fields table-ids)]

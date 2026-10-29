@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.db :as collections.db]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -235,7 +236,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (warehouse-schema.db/collections collection-ids))
+                                      (collections.db/collections-of-ids {:collection-ids collection-ids}))
                                 {})
         ;; Associate collection info with each field's table
         fields-with-collection (for [field fields-with-tables

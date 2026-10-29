@@ -13,12 +13,15 @@
    [metabase.lib.core :as lib]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.db :as queries.db]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2])
   (:import
    (java.nio.file FileVisitOption Files LinkOption Path)
@@ -113,7 +116,7 @@
              (.setInt stmt 2 (:id card))
              (.addBatch stmt))))
        nil
-       (audit-app.db/card-result-metadata-reducible audit-db-id))
+       (queries.db/raw-card-result-metadata-reducible {:database-id audit-db-id}))
       (.executeBatch stmt))))
 
 (defn- adjust-audit-db-to-host!
@@ -223,7 +226,7 @@
   half-applied state left by an interrupted `adjust-audit-db-to-host!`."
   [audit-db-id]
   (and (not= :postgres (mdb/db-type))
-       (audit-app.db/active-public-table-exists? audit-db-id)))
+       (warehouse-schema.db/public-schema-active-table-exists? {:database-id audit-db-id})))
 
 (defn- maybe-load-analytics-content!
   "Loads serialized audit content from the classpath if its checksum has changed.
@@ -253,7 +256,7 @@
            (if loaded?
              (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
              (log/info (str "Error Loading Analytics Content: " (pr-str report))))
-           (when-let [{:keys [engine] :as audit-db} (audit-app.db/audit-database)]
+           (when-let [{:keys [engine] :as audit-db} (warehouses.db/audit-database)]
              (let [original-engine engine]
                (adjust-audit-db-to-host! audit-db)
                ;; GHY-3974 Mode B: advance the checksum only after the host-adjust completes, so an
@@ -273,7 +276,7 @@
 
 (defn- maybe-install-audit-db!
   []
-  (let [audit-db (audit-app.db/audit-database)
+  (let [audit-db (warehouses.db/audit-database)
         result   (cond
                    (not (audit-app.settings/install-analytics-database))
                    (u/prog1 ::blocked
@@ -292,7 +295,7 @@
                    :else
                    ::no-op)]
     (when (contains? #{::installed ::updated} result)
-      (when-let [db (audit-app.db/audit-database)]
+      (when-let [db (warehouses.db/audit-database)]
         (log/info "Syncing Audit DB")
         (log/with-no-logs (sync/sync-database! (u/the-id db) {:scan :schema}))
         ;; this sync saw every current view, so `maybe-sync-audit-db!` need not sync again for stale views
@@ -344,12 +347,12 @@
   [orphan-table-id survivor-table-id]
   (let [survivor-by-name (into {}
                                (map (juxt (comp u/lower-case-en :name) :id))
-                               (audit-app.db/field-names-of-table survivor-table-id))]
+                               (warehouse-schema.db/field-id-names-of-table {:table-id survivor-table-id}))]
     (into {}
           (keep (fn [{:keys [id name]}]
                   (when-let [survivor-field-id (survivor-by-name (u/lower-case-en name))]
                     [id survivor-field-id])))
-          (audit-app.db/field-names-of-table orphan-table-id))))
+          (warehouse-schema.db/field-id-names-of-table {:table-id orphan-table-id}))))
 
 (defn- remap-result-metadata-ref
   "Remap the Field ID of a single result-metadata `:field_ref` via `field-id-remap`. Handles legacy refs
@@ -384,7 +387,7 @@
    when the orphan is deleted. Field ids are remapped onto the survivor's same-named fields."
   [orphan-table-id survivor-table-id]
   (let [field-id-remap (orphan->survivor-field-ids orphan-table-id survivor-table-id)]
-    (doseq [card (audit-app.db/cards-of-table orphan-table-id)]
+    (doseq [card (queries.db/cards-of-table {:table-id orphan-table-id})]
       (audit-app.db/update-card! (:id card)
                                  (cond-> {:dataset_query (-> (:dataset_query card)
                                                              (lib/replace-table-ids {orphan-table-id survivor-table-id})
@@ -404,7 +407,7 @@
   [audit-db-id]
   ;; order by id in the query so every selection below (including the `referenced?` tiebreak) is deterministic;
   ;; group-by preserves this order within each group
-  (let [groups (->> (audit-app.db/tables-of-database-in-id-order audit-db-id)
+  (let [groups (->> (warehouse-schema.db/tables-of-database-in-id-order {:database-id audit-db-id})
                     (group-by (comp u/lower-case-en :name))
                     (filter (fn [[_ rows]] (> (count rows) 1))))]
     (doseq [[_ rows] groups]
@@ -462,7 +465,7 @@
   (try
     (cluster-lock/with-detached-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}}
       (u/prog1 (maybe-install-audit-db!)
-        (when-let [audit-db (audit-app.db/audit-database)]
+        (when-let [audit-db (warehouses.db/audit-database)]
           ((sync-util/with-duplicate-ops-prevented
             :sync-database audit-db
             (fn []

@@ -5,7 +5,6 @@
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.schema :as users.schema]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -87,35 +86,6 @@
                :ended_by_user_id ended-by
                :key_hashed       nil}))
 
-(mu/defn user-by-email
-  "The User whose email matches `email` case-insensitively, or nil."
-  [email :- :string]
-  (t2/select-one :model/User :%lower.email (u/lower-case-en email)))
-
-(mu/defn user-login-columns
-  "Return login details for the user with `user-id`, or nil.
-
-  The details include the user's ID, active flag, last login, tenant ID, and type."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] :id (long user-id)))
-
-(mu/defn user-login-columns-by-email
-  "Return login details for the user whose email matches `email`, or nil.
-
-  The match is case-insensitive. The details include the user's ID, active flag, last login, tenant ID, and type."
-  [email :- :string]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] :%lower.email (u/lower-case-en email)))
-
-(mu/defn user-login-status
-  "The id, active flag, and last login of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login] user-id))
-
-(mu/defn user-active?
-  "Whether the User with `user-id` is active."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :is_active :model/User :id (long user-id)))
-
 (mu/defn update-user!
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
@@ -155,3 +125,51 @@
                                  :saml_session_index [:auto/param (:saml-session-index opts)]
                                  :saml_name_id [:auto/param (:saml-name-id opts)]
                                  :saml_name_id_format [:auto/param (:saml-name-id-format opts)]))
+
+(mu/defn auth-identity-columns
+  "The `columns` of the AuthIdentity of the User with `user-id` at `provider`, or nil."
+  [{:keys [user-id provider columns]} :- [:map {:closed true}
+                                          [:user-id  ::lib.schema.id/user]
+                                          [:provider :string]
+                                          [:columns  [:sequential :keyword]]]]
+  (t2/select-one (into [:model/AuthIdentity] columns)
+                 :user_id [:auto/param (long user-id)] :provider [:auto/param provider]))
+
+(mu/defn auth-identity-for-update
+  "The AuthIdentity of the User with `user-id` at `provider`, locked for update, or nil."
+  [{:keys [user-id provider]} :- [:map {:closed true}
+                                  [:user-id  ::lib.schema.id/user]
+                                  [:provider :string]]]
+  (t2/select-one :model/AuthIdentity :user_id [:auto/param user-id] :provider [:auto/param provider] {:for :update}))
+
+(mu/defn auth-identity-credentials
+  "The credentials of the AuthIdentity of the User with `user-id` at `provider`, or nil."
+  [{:keys [user-id provider]} :- [:map {:closed true}
+                                  [:user-id  ::lib.schema.id/user]
+                                  [:provider :string]]]
+  (t2/select-one-fn :credentials :model/AuthIdentity :user_id [:auto/param user-id] :provider [:auto/param provider]))
+
+(mu/defn confirmed-auth-identity-count
+  "The number of confirmed AuthIdentities at `provider`."
+  [{:keys [provider]} :- [:map {:closed true}
+                          [:provider :string]]]
+  (t2/count :model/AuthIdentity :provider [:auto/param provider] :confirmed_at [:not= nil]))
+
+(mu/defn auth-identity-ids-for-user
+  "The ids of the AuthIdentities of the User with `user-id`."
+  [{:keys [user-id]} :- [:map {:closed true}
+                         [:user-id ::lib.schema.id/user]]]
+  (t2/select-pks-vec :model/AuthIdentity :user_id [:auto/param user-id]))
+
+(mu/defn newest-active-auth-identity-by-provider-id
+  "The user id and metadata of the newest AuthIdentity at `provider` with `provider-id` that belongs to an active User,
+  or nil."
+  [{:keys [provider provider-id]} :- [:map {:closed true}
+                                      [:provider    :string]
+                                      [:provider-id :string]]]
+  (t2/select-one [:model/AuthIdentity :user_id :metadata]
+                 :provider [:auto/param provider]
+                 :provider_id [:auto/param provider-id]
+                 {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
+                  :where    [:= :user.is_active true]
+                  :order-by [[:created_at :desc]]}))

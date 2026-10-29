@@ -8,6 +8,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (mu/defn action :- [:maybe ::actions.schema/action]
@@ -32,44 +33,6 @@
                                   :from      [[(t2/table-name :model/Action) :action]]
                                   :left-join (action-database-joins)
                                   :where     [:and [:= :action.id action-id] [:not= :db.id nil]]}))
-
-(mu/defn cards
-  "The Cards with `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids]))
-
-(mu/defn cards-by-id
-  "A map of Card id to Card for the Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
-
-(mu/defn card-ids-outside-collection
-  "Among `card-ids`, the IDs of the Cards that are not in the Collection with `collection-id`."
-  [card-ids      :- [:set ::lib.schema.id/card]
-   collection-id :- ::lib.schema.id/collection]
-  (t2/select-pks-set :model/Card {:where [:and
-                                          [:in :id card-ids]
-                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
-
-(mu/defn collection-exists?
-  "Whether the Collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id))
-
-(mu/defn collection-namespace-with-entity-id
-  "The namespace of the Collection with `entity-id`, or nil."
-  [entity-id :- :string]
-  (t2/select-one-fn :namespace [:model/Collection :namespace] :entity_id entity-id))
-
-(mu/defn unarchived-collection-exists?
-  "Whether the unarchived Collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :archived false))
-
-(mu/defn tables
-  "The Tables with `table-ids`."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn delete-dashcards-for-action!
   "Delete the DashboardCards of the Action with `action-id`, returning the number deleted."
@@ -142,7 +105,7 @@
 (mu/defn tables-with-fields
   "The Tables with `table-ids`, with their Fields hydrated."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/hydrate (tables table-ids) :fields))
+  (t2/hydrate (warehouse-schema.db/tables-by-ids {:table-ids table-ids}) :fields))
 
 (mu/defn implicit-actions
   "The ImplicitActions of the Actions with `action-ids`."
@@ -169,11 +132,6 @@
   [entity-id :- :string]
   (t2/select :model/Action :entity_id entity-id))
 
-(mu/defn fields-for-parameters
-  "The id, base type, display name, and description of the Fields with `field-ids`."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
-
 (mu/defn action-database-settings
   "The id and Database settings of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
@@ -190,38 +148,109 @@
   ;; dependency-free namespace that exists for exactly this.
   (t2/select-one (queries.card-schema/selection [:collection_id :database_id :display]) :id card-id))
 
-(mu/defn destination-database-exists-for-router?
-  "Whether the Database with `database-id` has routing destinations."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :router_database_id database-id))
+(mu/defn implicit-action-ids-for-table
+  "The ids of the implicit Actions that write to the Table with `table-id`."
+  [{:keys [table-id]} :- [:map {:closed true}
+                          [:table-id ::lib.schema.id/table]]]
+  (t2/select-fn-set :action_id :model/ImplicitAction :table_id [:auto/param table-id]))
 
-(mu/defn writable-table-exists?
-  "Whether the Database with `database-id` has a writable Table."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :is_writable true {:from [(warehouse-schema-overlay/table-query)]}))
+(mu/defn query-action-ids-for-database
+  "The ids of the query Actions whose query runs against the Database with `database-id`."
+  [{:keys [database-id]} :- [:map {:closed true}
+                             [:database-id ::lib.schema.id/database]]]
+  (t2/select-fn-set :action_id :model/QueryAction :database_id [:auto/param database-id]))
 
-(mu/defn table-with-unknown-writability-exists?
-  "Whether the Database with `database-id` has a Table whose writability is unknown."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :is_writable nil {:from [(warehouse-schema-overlay/table-query)]}))
+(mu/defn implicit-action-ids-for-database
+  "The ids of the implicit Actions that write to a Table of the Database with `database-id`."
+  [{:keys [database-id]} :- [:map {:closed true}
+                             [:database-id ::lib.schema.id/database]]]
+  (let [[table-subquery _] (warehouse-schema-overlay/table-query)]
+    (t2/select-fn-set :action_id :model/ImplicitAction
+                      {:join  [[table-subquery :table]
+                               [:= :table.id :implicit_action.table_id]]
+                       :where [:= :table.db_id [:auto/param database-id]]})))
 
-(mu/defn dashcard-in-dashboard
-  "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
-  [dashcard-id  :- ::lib.schema.id/dashcard
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id] :dashboard_id [:auto/param dashboard-id]))
+(mu/defn implicit-action-ids-for-model
+  "The ids of the implicit Actions of the model Card with `model-id`."
+  [{:keys [model-id]} :- [:map {:closed true}
+                          [:model-id ::lib.schema.id/card]]]
+  (t2/select-pks-set :model/Action {:select [:action.id]
+                                    :from   [:action]
+                                    :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
+                                    :where  [:= :action.model_id [:auto/param model-id]]}))
 
-(mu/defn dashcard-dashboard-id
-  "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :id [:auto/param dashcard-id]))
+(mu/defn actions-for-model
+  "The Actions of the model Card with `model-id`."
+  [{:keys [model-id]} :- [:map {:closed true}
+                          [:model-id ::lib.schema.id/card]]]
+  (t2/select :model/Action :model_id [:auto/param model-id]))
 
-(mu/defn dashcard-action-id
-  "The Action id of the DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :action_id :model/DashboardCard :id [:auto/param dashcard-id]))
+(mu/defn action-entity-ids-in
+  "The entity ids among `entity-ids` that name an existing Action."
+  [{:keys [entity-ids]} :- [:map {:closed true}
+                            [:entity-ids [:set :string]]]]
+  (t2/select-fn-set :entity_id [:model/Action :entity_id] :entity_id [:in entity-ids]))
 
-(mu/defn dashboard-collection-id
-  "The Collection id of the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
+(mu/defn action-ids-in-collection
+  "The ids of the Actions in the Collection with `collection-id` (nil for the root Collection), excluding archived ones
+  when `skip-archived?`."
+  [{:keys [collection-id skip-archived?]} :- [:map {:closed true}
+                                              [:collection-id  [:maybe ::lib.schema.id/collection]]
+                                              [:skip-archived? {:optional true} [:maybe :boolean]]]]
+  (t2/select-pks-set :model/Action
+                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
+
+(mu/defn unarchived-action-ids-in-collection-by-name
+  "The ids of the unarchived Actions in the Collection with `collection-id`, in name then id order."
+  [{:keys [collection-id]} :- [:map {:closed true}
+                               [:collection-id ::lib.schema.id/collection]]]
+  (t2/select-pks-vec :model/Action {:where    [:and [:= :collection_id [:auto/param collection-id]] [:= :archived false]]
+                                    :order-by [[:name :asc] [:id :asc]]}))
+
+(mu/defn unarchived-action-ids-and-public-uuids-by-prefix
+  "The `:id` and `:public_uuid` of the unarchived Actions whose public uuid prefix is `prefix`."
+  [{:keys [prefix]} :- [:map {:closed true}
+                        [:prefix :string]]]
+  (t2/select [:model/Action :id :public_uuid] :public_uuid_prefix [:auto/param prefix] :archived false))
+
+(mu/defn unarchived-actions-by-public-uuid-prefix
+  "The unarchived Actions whose public uuid prefix is `prefix`."
+  [{:keys [prefix]} :- [:map {:closed true}
+                        [:prefix :string]]]
+  (t2/select :model/Action :public_uuid_prefix [:auto/param prefix] :archived false))
+
+(mu/defn actions-without-model-in
+  "The `:id`, `:name`, and `:collection_id` of the Actions without a model outside of any Collection or in the
+  Collections with `collection-ids`."
+  [{:keys [collection-ids]} :- [:map {:closed true}
+                                [:collection-ids [:sequential ::lib.schema.id/collection]]]]
+  (t2/select [:model/Action :id :name :collection_id]
+             {:where [:and
+                      [:= :model_id nil]
+                      (if (seq collection-ids)
+                        [:or [:= :collection_id nil] [:in :collection_id collection-ids]]
+                        [:= :collection_id nil])]}))
+
+(mu/defn action-exists-in-collections?
+  "Whether an Action exists in the Collections with `collection-ids`."
+  [{:keys [collection-ids]} :- [:map {:closed true}
+                                [:collection-ids [:sequential ::lib.schema.id/collection]]]]
+  (t2/exists? :model/Action :collection_id [:in collection-ids]))
+
+(mu/defn delete-implicit-actions-for-table!
+  "Delete the implicit Actions that write to the Table with `table-id`, returning the number deleted."
+  [{:keys [table-id]} :- [:map {:closed true}
+                          [:table-id ::lib.schema.id/table]]]
+  (if-let [action-ids (not-empty (implicit-action-ids-for-table {:table-id table-id}))]
+    (t2/delete! :model/Action :id [:in action-ids])
+    0))
+
+(mu/defn delete-actions-for-database!
+  "Delete the query Actions whose query runs against the Database with `database-id` and the implicit Actions that write
+  to one of its Tables, returning the number deleted."
+  [{:keys [database-id]} :- [:map {:closed true}
+                             [:database-id ::lib.schema.id/database]]]
+  (if-let [action-ids (not-empty (into (query-action-ids-for-database {:database-id database-id})
+                                       (implicit-action-ids-for-database {:database-id database-id})))]
+    (t2/delete! :model/Action :id [:in action-ids])
+    0))

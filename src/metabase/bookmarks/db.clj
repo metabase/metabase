@@ -315,3 +315,8 @@
                                                  (:postgres :h2) :asc-nulls-last
                                                  :mysql          :asc)]
                   [:created_at :desc]]})))
+
+(mu/defn card-bookmarks-of-user
+  "The CardBookmarks (card ID only) of the User with `user-id`."
+  [{:keys [user-id]} :- [:map {:closed true} [:user-id ::lib.schema.id/user]]]
+  (t2/select [:model/CardBookmark :card_id] :user_id [:auto/param user-id]))

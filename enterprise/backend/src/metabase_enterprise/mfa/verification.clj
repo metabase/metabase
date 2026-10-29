@@ -17,6 +17,7 @@
    [metabase-enterprise.mfa.recovery-codes :as recovery-codes]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2])
   (:import
@@ -31,7 +32,7 @@
 (defn totp-identity
   "The AuthIdentity row for `user-id`'s TOTP enrollment, or nil."
   [user-id]
-  (mfa.db/totp-identity user-id))
+  (auth-identity.db/auth-identity-for-user-and-provider user-id mfa.db/totp-provider))
 
 (defn confirmed?
   "Has `auth-identity` been confirmed (i.e. is it a usable second factor)?
@@ -129,7 +130,7 @@
   On successful verification the AuthIdentity associated with the second factor is returned, else nil"
   [user-id code jti]
   (t2/with-transaction [_conn]
-    (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
+    (when-let [auth-identity (auth-identity.db/auth-identity-for-update {:user-id user-id :provider mfa.db/totp-provider})]
       (when (and (confirmed? auth-identity)
                  (not (jti-used? (:credentials auth-identity) jti)))
         (when (or (totp-attempt! auth-identity code jti)
@@ -143,7 +144,7 @@
   code for the caller to email, or nil when the user has no confirmed enrollment."
   [user-id]
   (t2/with-transaction [_conn]
-    (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
+    (when-let [auth-identity (auth-identity.db/auth-identity-for-update {:user-id user-id :provider mfa.db/totp-provider})]
       (when (confirmed? auth-identity)
         (let [code (format "%06d" (.nextInt (SecureRandom.) 1000000))]
           (mfa.db/update-auth-identity! (:id auth-identity)

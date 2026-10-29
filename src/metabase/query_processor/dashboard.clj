@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -16,7 +17,6 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.metric :as permissions.metric]
    [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
@@ -36,7 +36,7 @@
     (api/check-404
      (and (= (:dashboard_id dashcard) dashboard-id)
           (or (= (:card_id dashcard) card-id)
-              (query-processor.db/dashcard-series-exists? card-id dashcard-id))))))
+              (dashboards.db/dashcard-series-exists? {:card-id card-id :dashcard-id dashcard-id}))))))
 
 (defn- current-dimension-mapping?
   [provider card query mapping]

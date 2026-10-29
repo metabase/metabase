@@ -4,6 +4,7 @@
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.provider :as provider]
+   [metabase.users.db :as users.db]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -41,7 +42,7 @@
 (mu/defn- find-auth-identity-by-email
   "Find an AuthIdentity record by email address."
   [email :- ms/NonBlankString]
-  (when-let [user (auth-identity.db/user-by-email email)]
+  (when-let [user (users.db/user-by-lower-email {:email email})]
     (auth-identity.db/auth-identity-for-user-and-provider (:id user) "password")))
 
 (methodical/defmethod provider/authenticate :provider/password

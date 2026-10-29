@@ -25,15 +25,17 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase-enterprise.search.entity-retrieval.db :as entity-retrieval.db]
    [metabase-enterprise.search.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.search.semantic.embedding :as embedding]
    [metabase.collections.core :as collections]
    [metabase.measures.db :as measures.db]
+   [metabase.osi.db :as osi.db]
+   [metabase.queries.db :as queries.db]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.segments.db :as segments.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
@@ -160,20 +162,20 @@
 
 (defn- library-cards [lib-ids id]
   ;; Card :type is keywordized (:metric / :model); the entity_type is its name string.
-  (->> (entity-retrieval.db/library-cards-in-collections lib-ids id)
+  (->> (queries.db/library-cards-in-collections {:collection-ids lib-ids :card-id id})
        (map (fn [c] (->library-entity (name (:type c)) (:id c) (:name c) (:description c))))))
 
 (defn- library-tables [lib-ids id]
   ;; A published table's user-facing label is its display_name; fall back to the raw name.
-  (->> (entity-retrieval.db/library-tables-in-collections lib-ids id)
+  (->> (warehouse-schema.db/library-tables-in-collections {:collection-ids lib-ids :table-id id})
        (map (fn [t] (->library-entity "table" (:id t) (or (:display_name t) (:name t)) (:description t))))))
 
 (defn- library-measures [table-ids id]
-  (->> (entity-retrieval.db/library-measures-of-tables table-ids id)
+  (->> (measures.db/measure-summaries-of-tables {:table-ids table-ids :id id})
        (map (fn [mv] (->library-entity "measure" (:id mv) (:name mv) (:description mv))))))
 
 (defn- library-segments [table-ids id]
-  (->> (entity-retrieval.db/library-segments-of-tables table-ids id)
+  (->> (segments.db/segment-summaries-of-tables {:table-ids table-ids :id id})
        (map (fn [s] (->library-entity "segment" (:id s) (:name s) (:description s))))))
 
 (defn- library-entities
@@ -236,7 +238,7 @@
   card's live metric/model type). One row per card is guaranteed by the normalized storage key."
   []
   (u/index-by entity-class :ai_context
-              (entity-retrieval.db/ai-contexts)))
+              (osi.db/all-ai-contexts)))
 
 (defn- dedup-by-doc-id [docs]
   ;; distinct-by doc_id so an exact duplicate (same doc_type and text, e.g. a synonym listed twice)
@@ -259,8 +261,7 @@
   (if-let [member (library-entity entity-type entity-local-id)]
     ;; Match ai_context by the normalized storage type: a card's row is stored as `card`, so look it up by
     ;; `card` whichever live label (metric/model) drove this targeted run.
-    (let [ai-ctx (entity-retrieval.db/ai-context entity-local-id
-                                                 (entity-retrieval/normalize-entity-type entity-type))]
+    (let [ai-ctx (:ai_context (osi.db/ai-context (entity-retrieval/normalize-entity-type entity-type) entity-local-id))]
       (dedup-by-doc-id (entity->docs member ai-ctx)))
     []))
 

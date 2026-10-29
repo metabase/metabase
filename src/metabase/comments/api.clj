@@ -17,6 +17,8 @@
    [metabase.explorations.db :as explorations.db]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
+   [metabase.users.db :as users.db]
+   [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -144,7 +146,7 @@
   "Restrict mentioned user ids to active users who can themselves read `entity`."
   [entity mention-ids]
   (when (seq mention-ids)
-    (->> (comments.db/active-user-ids mention-ids)
+    (->> (users.db/active-user-ids {:user-ids mention-ids})
          (filterv (fn [user-id]
                     (request/with-current-user user-id
                       (mi/can-read? entity)))))))
@@ -162,7 +164,7 @@
   (let [mentions   (->> (comment/mentions (:content comment))
                         (mentioned-ids-who-can-read entity))
         ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
-        recipients (-> (comments.db/comment-recipient-emails (:creator_id entity) parent_comment_id mentions)
+        recipients (-> (users.db/comment-recipient-emails {:creator-id (:creator_id entity) :parent-comment-id parent_comment_id :mention-ids mentions})
                        (disj (:email @api/*current-user*)))
         payload    {:entity_type    (friendly-entity-type-for entity)
                     :entity_title   (:name entity)
@@ -305,7 +307,12 @@
   [_route _query _body req]
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
-  {:data   (->> (comments.db/mentionable-users (request/limit) (request/offset))
+  {:data   (->> (users.db/mentionable-users {:limit           (request/limit)
+                                             :offset          (request/offset)
+                                             :superuser?      (boolean api/*is-superuser?*)
+                                             :tenant-id       (:tenant_id @api/*current-user*)
+                                             :current-user-id api/*current-user-id*
+                                             :visibility      (users.settings/user-visibility)})
                 (mapv #(assoc % :model "user")))
    :total  (:count (comments.db/mentionable-user-count))
    :limit  (request/limit)

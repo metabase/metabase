@@ -76,25 +76,6 @@
                                                       :any         [:in :id extra-table-ids])]
                                  selector-expr))}))
 
-(mu/defn published-table-ids
-  "The IDs of the published Tables among `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn tables
-  "The Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn latest-table-publishing-event
-  "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
-                 :topic [:in [:table-publish :table-unpublish]]
-                 :model "Table"
-                 :model_id table-id
-                 {:order-by [[:timestamp :desc] [:id :desc]]}))
-
 (mu/defn publish-tables!
   "Publish the Tables with `table-ids` into the Collection with `collection-id`, returning the number updated."
   [table-ids     :- [:set ::lib.schema.id/table]

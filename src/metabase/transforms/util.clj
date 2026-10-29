@@ -22,7 +22,6 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
-   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
@@ -119,9 +118,9 @@
   (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
         table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
     {:model/Database (when (seq db-ids)
-                       (u/index-by :id (transforms.db/databases db-ids)))
+                       (u/index-by :id (warehouses.db/databases db-ids)))
      :model/Table    (when (seq table-ids)
-                       (u/index-by :id (transforms.db/tables table-ids)))}))
+                       (u/index-by :id (warehouse-schema.db/tables-by-ids {:table-ids table-ids})))}))
 
 (defn add-source-readable
   "Add :source_readable field to a transform or collection of transforms.

@@ -10,6 +10,7 @@
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.driver.connection :as driver.conn]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
@@ -278,7 +279,7 @@
     dashcard-id        :- ::lib.schema.id/dashcard
     request-parameters :- RequestParameters
     opts               :- [:maybe ExecuteActionOpts]]
-   (let [dashcard (api/check-404 (actions.db/dashcard-in-dashboard dashcard-id dashboard-id))
+   (let [dashcard (api/check-404 (dashboards.db/dashcard-in-dashboard {:dashcard-id dashcard-id :dashboard-id dashboard-id}))
          action (api/check-404 (action/select-action :id (:action_id dashcard) :archived false))]
      (analytics/track-event! :snowplow/action
                              {:event     :action-executed

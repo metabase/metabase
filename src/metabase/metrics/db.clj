@@ -6,7 +6,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn- visible-metric-cards-where
@@ -45,9 +44,3 @@
   populates missing `:dimensions`."
   [database-id :- ::lib.schema.id/database]
   (t2/select [:report_card :id :dimensions] :type "metric" :database_id database-id))
-
-(mu/defn fields-with-columns
-  "The id and `columns` of the Fields with `field-ids`."
-  [columns   :- [:sequential :keyword]
-   field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field :id] columns) :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))

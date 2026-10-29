@@ -14,6 +14,7 @@
   instance, and teaching `pick-planner!` to dispatch to it."
   (:require
    [clojure.set :as set]
+   [metabase.comments.db :as comments.db]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.context :as qp.context]
@@ -120,7 +121,7 @@
   [page-ids]
   (if (seq page-ids)
     (let [by-str (into {} (map (juxt str identity)) page-ids)]
-      (->> (explorations.db/live-comment-targets (keys by-str))
+      (->> (comments.db/live-comment-targets {:child-target-ids (keys by-str)})
            (into #{} (keep by-str))))
     #{}))
 

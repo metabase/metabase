@@ -21,6 +21,7 @@
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.measures.schema]
    [metabase.native-query-snippets.schema]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
@@ -340,7 +341,7 @@
                        (keep #(when (= (first %) :card)
                                 (second %))))
         card->type (when (seq all-cards)
-                     (dependencies.db/card-types-by-id all-cards))]
+                     (queries.db/card-types-by-id {:card-ids all-cards}))]
     (update-vals children-map
                  (fn [children]
                    (->> children

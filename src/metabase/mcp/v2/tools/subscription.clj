@@ -19,7 +19,6 @@
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
    [metabase.dashboards.db :as dashboards.db]
-   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
@@ -33,6 +32,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.pulse.api :as pulse.api]
    [metabase.pulse.core :as pulse]
+   [metabase.pulse.db :as pulse.db]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -337,7 +337,7 @@
   (v2.resolve/resolve-and-read-with
    :model/Pulse id-or-eid
    (fn [id]
-     (when (mcp.db/subscription-pulse-exists? id)
+     (when (pulse.db/subscription-pulse-exists? {:pulse-id id})
        (api/write-check (pulse/retrieve-pulse id))))))
 
 (defn- patched-channels

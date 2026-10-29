@@ -7,10 +7,12 @@
    [metabase.app-db.core :as app-db]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (def ^:private PermissionsRow
@@ -268,6 +270,183 @@
   [query]
   (t2/select :model/Collection query))
 
+(mu/defn collections-of-ids
+  "The Collections with `collection-ids`, only their `columns` when given, only those whose archived flag is `archived`
+  when given."
+  [{:keys [collection-ids columns archived]}
+   :- [:map {:closed true}
+       [:collection-ids [:or [:sequential ::lib.schema.id/collection] [:set ::lib.schema.id/collection]]]
+       [:columns {:optional true} [:maybe [:sequential :keyword]]]
+       [:archived {:optional true} [:maybe :boolean]]]]
+  (apply t2/select
+         (if (seq columns) (into [:model/Collection] columns) :model/Collection)
+         (cond-> [:id [:in collection-ids]]
+           (some? archived) (conj :archived [:auto/param archived]))))
+
+(mu/defn navigable-collections
+  "The presentable columns of the non-trash Collections in the default namespace, ordered by location and name,
+  restricted to top-level Collections unless `include-nested?`."
+  [{:keys [include-nested?]} :- [:map {:closed true} [:include-nested? :boolean]]]
+  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+             {:where    (cond-> [:and
+                                 [:= :archived false]
+                                 [:= :namespace nil]
+                                 [:or [:= :type nil] [:!= :type "trash"]]]
+                          (not include-nested?) (conj [:= :location "/"]))
+              :order-by [[:location :asc] [:%lower.name :asc]]}))
+
+(mu/defn unarchived-collections-at-location
+  "The presentable columns of the unarchived Collections directly at `location`, ordered by name."
+  [{:keys [location]} :- [:map {:closed true} [:location :string]]]
+  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+             :location [:auto/param location]
+             :archived false
+             {:order-by [[:%lower.name :asc]]}))
+
+(mu/defn root-collections-of-types
+  "The top-level Collections whose type is one of `types`, only their `columns` when given."
+  [{:keys [types columns]}
+   :- [:map {:closed true}
+       [:types [:sequential :string]]
+       [:columns {:optional true} [:maybe [:sequential :keyword]]]]]
+  (t2/select (if (seq columns) (into [:model/Collection] columns) :model/Collection)
+             :type [:in types]
+             :location "/"))
+
+(mu/defn collection-ids-of-types
+  "The IDs of the Collections whose type is one of `types`."
+  [{:keys [types]} :- [:map {:closed true} [:types [:sequential :string]]]]
+  (t2/select-pks-set :model/Collection :type [:in types]))
+
+(mu/defn collection-by-name-and-location
+  "The Collection named `collection-name` at `location` (with archived flag `archived` when given), or nil."
+  [{:keys [collection-name location archived]}
+   :- [:map {:closed true}
+       [:collection-name :string]
+       [:location :string]
+       [:archived {:optional true} [:maybe :boolean]]]]
+  (apply t2/select-one :model/Collection
+         (cond-> [:name [:auto/param collection-name] :location [:auto/param location]]
+           (some? archived) (conj :archived [:auto/param archived]))))
+
+(mu/defn collection-ids-named
+  "The IDs of the Collections named `collection-name`."
+  [{:keys [collection-name]} :- [:map {:closed true} [:collection-name :string]]]
+  (t2/select-pks-set :model/Collection :name [:auto/param collection-name]))
+
+(mu/defn remote-synced-collection-ids
+  "The IDs of the remote-synced Collections, among `collection-ids` when given."
+  [{:keys [collection-ids]}
+   :- [:map {:closed true} [:collection-ids {:optional true} [:maybe [:or [:sequential ::lib.schema.id/collection] [:set ::lib.schema.id/collection]]]]]]
+  (apply t2/select-pks-set :model/Collection
+         (cond-> [:is_remote_synced true]
+           (some? collection-ids) (conj :id [:in collection-ids]))))
+
+(mu/defn remote-synced-root-collections
+  "The ID, namespace, and type of the top-level remote-synced Collections."
+  []
+  (t2/select [:model/Collection :id :namespace :type] :is_remote_synced true :location "/"))
+
+(mu/defn unarchived-remote-synced-root-collection-ids
+  "The IDs of the unarchived top-level remote-synced Collections."
+  []
+  (t2/select-fn-set :id :model/Collection
+                    {:where [:and [:= :is_remote_synced true] [:= :location "/"] [:not :archived]]}))
+
+(mu/defn unarchived-root-collection-ids-in-namespace
+  "The IDs of the unarchived top-level Collections in the namespace named `namespace-name`."
+  [{:keys [namespace-name]} :- [:map {:closed true} [:namespace-name :string]]]
+  (t2/select-fn-set :id :model/Collection
+                    {:where [:and
+                             [:= :namespace [:auto/param namespace-name]]
+                             [:= :location "/"]
+                             [:not :archived]]}))
+
+(mu/defn collection-exists-in-namespace?
+  "Whether a Collection exists in the namespace named `namespace-name` (with ID `collection-id` and archived flag
+  `archived` when given)."
+  [{:keys [namespace-name collection-id archived]}
+   :- [:map {:closed true}
+       [:namespace-name :string]
+       [:collection-id {:optional true} [:maybe ::lib.schema.id/collection]]
+       [:archived {:optional true} [:maybe :boolean]]]]
+  (apply t2/exists? :model/Collection
+         (cond-> [:namespace [:auto/param namespace-name]]
+           (some? collection-id) (conj :id [:auto/param collection-id])
+           (some? archived)      (conj :archived [:auto/param archived]))))
+
+(mu/defn personal-root-collection-ids
+  "The IDs of the top-level personal Collections."
+  []
+  (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/"))
+
+(mu/defn root-collections-for-user
+  "The top-level Collections that are not personal or are personal to the User with `user-id`, excluding the analytics
+  namespace."
+  [{:keys [user-id]} :- [:map {:closed true} [:user-id ::lib.schema.id/user]]]
+  (t2/select :model/Collection
+             {:where [:and
+                      [:= :location "/"]
+                      [:or [:= :personal_owner_id nil] [:= :personal_owner_id [:auto/param user-id]]]
+                      [:or [:= :namespace nil] [:!= :namespace "analytics"]]]}))
+
+(mu/defn official-collection-ids
+  "The IDs of the Collections with the official authority level."
+  []
+  (t2/select-pks-set :model/Collection :authority_level "official"))
+
+(mu/defn official-collection-exists?
+  "Whether a Collection with the official authority level exists."
+  []
+  (t2/exists? :model/Collection :authority_level "official"))
+
+(mu/defn non-internal-collection-count
+  "The number of non-internal Collections."
+  []
+  (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)}))
+
+(mu/defn personal-or-descendant-collection-ids
+  "The IDs among `collection-ids` that are personal Collections, or descendants of one."
+  [{:keys [collection-ids]} :- [:map {:closed true} [:collection-ids [:set ::lib.schema.id/collection]]]]
+  (t2/select-pks-set :model/Collection
+                     {:where [:and
+                              [:in :id collection-ids]
+                              [:or [:not= :personal_owner_id nil]
+                               [:exists ^:allow-subquery
+                                {:select [1]
+                                 :from   [[:collection :pc]]
+                                 :where  [:and
+                                          [:not= :pc.personal_owner_id nil]
+                                          [:like :collection.location
+                                           [:concat "/" :pc.id "/%"]]]}]]]}))
+
+(mu/defn collection-ids-in-other-namespace
+  "The IDs among `collection-ids` that do not belong to `namespace` (nil meaning the default namespace)."
+  [{:keys [collection-ids namespace]}
+   :- [:map {:closed true}
+       [:collection-ids [:set ::lib.schema.id/collection]]
+       [:namespace [:maybe [:or :keyword :string]]]]]
+  (t2/select-pks-set :model/Collection
+                     {:where [:and [:in :id collection-ids]
+                              (cond->> [[:not= :namespace (some-> namespace name)]]
+                                (nil? namespace)  (into [:and [:not= :namespace "analytics"]])
+                                (some? namespace) (into [:or [:= :namespace nil]]))]}))
+
+(mu/defn subtree-collection-ids
+  "The IDs of `collections` and all of their descendants, only the remote-synced ones when `remote-synced?`."
+  [{:keys [collections remote-synced?]}
+   :- [:map {:closed true}
+       [:collections [:sequential [:map {:closed true}
+                                   [:id ::lib.schema.id/collection]
+                                   [:location :string]]]]
+       [:remote-synced? :boolean]]]
+  (t2/select-pks-set :model/Collection
+                     {:where [:and
+                              (when remote-synced? [:= :is_remote_synced true])
+                              (into [:or [:in :id (map :id collections)]]
+                                    (for [{:keys [id location]} collections]
+                                      [:like :location (str location id "/%")]))]}))
+
 ;;; ---------------------------------------------- Collection writes ----------------------------------------------
 
 (mu/defn insert-collection!
@@ -456,84 +635,11 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/delete! :model/Timeline :collection_id [:in collection-ids]))
 
-(mu/defn dashboard-ids-in-collection
-  "The IDs of the Dashboards in the ::collections.schema/collection with `collection-id` (nil for the root ::collections.schema/collection), excluding archived
-  ones when `skip-archived?`."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Dashboard
-                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
-
-(defn cards-in-collection
-  "The Cards in the Collection with `collection-id`."
-  [collection-id]
-  (t2/select :model/Card :collection_id collection-id))
-
-(mu/defn card-ids-in-collection
-  "The IDs of the Cards in the Collection with `collection-id`, excluding archived ones when `skip-archived?` and
-  excluding Cards materialized by an exploration Summary."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Card {:where [:and
-                                          [:= :collection_id collection-id]
-                                          (when skip-archived? [:not :archived])
-                                          [:or
-                                           [:= :document_id nil]
-                                           [:in :document_id
-                                            ^:allow-subquery {:select [:id]
-                                                              :from   [:document]
-                                                              :where  [:= :exploration_id nil]}]]]}))
-
-(mu/defn document-ids-in-collection
-  "The IDs of the non-exploration Documents in the ::collections.schema/collection with `collection-id`, excluding archived ones when
-  `skip-archived?`."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Document {:where [:and
-                                              [:= :collection_id collection-id]
-                                              [:= :exploration_id nil]
-                                              (when skip-archived? [:not :archived])]}))
-
-(mu/defn action-ids-in-collection
-  "The IDs of the Actions in the Collection with `collection-id`, excluding archived ones when `skip-archived?`."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Action
-                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
-
-(mu/defn timeline-ids-in-collection
-  "The IDs of the Timelines in the ::collections.schema/collection with `collection-id`, excluding archived ones when `skip-archived?`."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Timeline
-                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
-
-(mu/defn published-table-ids-in-collection
-  "The IDs of the published Tables in the ::collections.schema/collection with `collection-id`, excluding archived ones when
-  `skip-archived?`."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Table {:from [(warehouse-schema-overlay/table-query)]
-                                   :where [:and
-                                           [:= :collection_id collection-id]
-                                           [:= :is_published true]
-                                           (when skip-archived? [:= :archived_at nil])]}))
-
-(mu/defn transform-ids-in-collection
-  "The IDs of the Transforms in the ::collections.schema/collection with `collection-id`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-pks-set :model/Transform {:where [:= :collection_id collection-id]}))
-
-(mu/defn published-table-ids-in-collections
-  "The IDs of the published Tables in the Collections with `collection-ids`."
-  [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
-
 (mu/defn unpublish-tables-in-collections!
   "Unpublish the Tables in the Collections with `collection-ids`, in `metabase_table` and in their user settings,
   returning the number updated."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (let [table-ids (published-table-ids-in-collections collection-ids)]
+  (let [table-ids (warehouse-schema.db/published-table-ids-in-collections {:collection-ids collection-ids})]
     (when (seq table-ids)
       (t2/update! :model/TableUserSettings :table_id [:in table-ids]
                   {:collection_id nil, :is_published false}))
@@ -620,24 +726,6 @@
 
 ;;; ------------------------------------------------ Permissions ------------------------------------------------
 
-(mu/defn user-has-root-collection-permission?
-  "Whether the User with `user-id` belongs to a group holding a Permissions row for one of the root collection
-  `objects`."
-  [user-id :- ::lib.schema.id/user
-   objects :- [:sequential :string]]
-  (t2/exists? :model/Permissions {:select [:p.*]
-                                  :from   [[:permissions :p]]
-                                  :join   [[:permissions_group :pg] [:= :pg.id :p.group_id]
-                                           [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
-                                  :where  [:and
-                                           [:= :pgm.user_id user-id]
-                                           [:in :p.object objects]]}))
-
-(mu/defn group-ids-with-permission-object
-  "The set of group IDs holding a Permissions row for `object`."
-  [object :- :string]
-  (t2/select-fn-set :group_id :model/Permissions :object object))
-
 (mu/defn insert-permissions!
   "Insert the Permissions `rows`, returning the number inserted."
   [rows :- [:sequential PermissionsRow]]
@@ -656,6 +744,46 @@
 
 ;;; ---------------------------------------------------- Users ----------------------------------------------------
 
+;;; -------------------------------------------------- Hydration --------------------------------------------------
+
+(mu/defn card-ids-in-collection
+  "The IDs of the Cards in the Collection with `collection-id`, excluding archived ones when `skip-archived?` and
+  excluding Cards materialized by an exploration Summary."
+  [collection-id  :- [:maybe ::lib.schema.id/collection]
+   skip-archived? :- [:maybe :boolean]]
+  (t2/select-pks-set :model/Card {:where [:and
+                                          [:= :collection_id collection-id]
+                                          (when skip-archived? [:not :archived])
+                                          [:or
+                                           [:= :document_id nil]
+                                           [:in :document_id
+                                            ^:allow-subquery {:select [:id]
+                                                              :from   [:document]
+                                                              :where  [:= :exploration_id nil]}]]]}))
+
+(defn cards-in-collection
+  "The Cards in the Collection with `collection-id`."
+  [collection-id]
+  (t2/select :model/Card :collection_id collection-id))
+
+(mu/defn user-has-root-collection-permission?
+  "Whether the User with `user-id` belongs to a group holding a Permissions row for one of the root collection
+  `objects`."
+  [user-id :- ::lib.schema.id/user
+   objects :- [:sequential :string]]
+  (t2/exists? :model/Permissions {:select [:p.*]
+                                  :from   [[:permissions :p]]
+                                  :join   [[:permissions_group :pg] [:= :pg.id :p.group_id]
+                                           [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
+                                  :where  [:and
+                                           [:= :pgm.user_id user-id]
+                                           [:in :p.object objects]]}))
+
+(mu/defn group-ids-with-permission-object
+  "The set of group IDs holding a Permissions row for `object`."
+  [object :- :string]
+  (t2/select-fn-set :group_id :model/Permissions :object object))
+
 (mu/defn user-type
   "The type of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
@@ -671,4 +799,24 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pks-set :model/User :id [:in user-ids] :type [:not= :api-key]))
 
-;;; -------------------------------------------------- Hydration --------------------------------------------------
+(mu/defn document-ids-in-collection
+  "The IDs of the non-exploration Documents in the ::collections.schema/collection with `collection-id`, excluding archived ones when
+  `skip-archived?`."
+  [collection-id  :- [:maybe ::lib.schema.id/collection]
+   skip-archived? :- [:maybe :boolean]]
+  (t2/select-pks-set :model/Document {:where [:and
+                                              [:= :collection_id collection-id]
+                                              [:= :exploration_id nil]
+                                              (when skip-archived? [:not :archived])]}))
+
+(mu/defn timeline-ids-in-collection
+  "The IDs of the Timelines in the ::collections.schema/collection with `collection-id`, excluding archived ones when `skip-archived?`."
+  [collection-id  :- [:maybe ::lib.schema.id/collection]
+   skip-archived? :- [:maybe :boolean]]
+  (t2/select-pks-set :model/Timeline
+                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
+
+(mu/defn transform-ids-in-collection
+  "The IDs of the Transforms in the ::collections.schema/collection with `collection-id`."
+  [collection-id :- [:maybe ::lib.schema.id/collection]]
+  (t2/select-pks-set :model/Transform {:where [:= :collection_id collection-id]}))

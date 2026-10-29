@@ -10,6 +10,7 @@
    [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
@@ -36,7 +37,7 @@
                                                          :alert_condition nil)]
         ;; a trashed Dashboard keeps its triggers so restoring it resumes them; skip before opening a task run,
         ;; which nothing would complete since `pulse.send/send-pulse!` sends nothing for an archived Dashboard
-        (if (pulse.db/dashboard-archived? (:dashboard_id pulse))
+        (if (some->> (:dashboard_id pulse) (assoc {:archived? true} :dashboard-id) dashboards.db/dashboard-exists?)
           (log/debugf "Dashboard of Pulse %d is archived, Skipping." pulse-id)
           (task-history/with-task-run (some-> (pulse.send/pulse->task-run-info pulse) (assoc :auto-complete false))
             (task-history/with-task-history {:task         "send-pulse"

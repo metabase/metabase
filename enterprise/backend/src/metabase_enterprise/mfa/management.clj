@@ -18,6 +18,7 @@
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
@@ -66,7 +67,7 @@
   (boolean
    (when-not (str/blank? password)
      (or (when-let [{:keys [password_hash password_salt]}
-                    (mfa.db/password-credentials user-id)]
+                    (auth-identity.db/auth-identity-credentials {:user-id user-id :provider "password"})]
            (and password_hash (u.password/verify-password password password_salt password_hash)))
          (when (sso/ldap-enabled)
            ;; an unreachable directory fails closed: re-auth is denied (the user retries when the
@@ -201,8 +202,8 @@
   []
   (api/check-superuser)
   {:encryption_key_set (encryption/default-encryption-enabled?)
-   :enrolled_count     (mfa.db/confirmed-totp-count)
-   :unenrolled_count   (mfa.db/unenrolled-user-count)})
+   :enrolled_count     (auth-identity.db/confirmed-auth-identity-count {:provider mfa.db/totp-provider})
+   :unenrolled_count   (users.db/unenrolled-user-count)})
 
 ;;; -------------------------------------------------- Admin user lists --------------------------------------------------
 
@@ -210,12 +211,11 @@
   "Name-ordered, offset-paged list of enrolled or unenrolled users matching the name or email `query`, in the
   standard {:data :total :limit :offset} envelope."
   [enrolled? query]
-  {:data   (mfa.db/user-list enrolled?
-                             query
-                             ;; (request/limit) is nil on an unpaged request
-                             (when (request/paged?) (request/limit))
-                             (when (request/paged?) (request/offset)))
-   :total  (mfa.db/user-list-count enrolled? query)
+  {:data   (users.db/enrollment-list {:enrolled? enrolled?
+                                      :search    query
+                                      :limit     (when (request/paged?) (request/limit))
+                                      :offset    (when (request/paged?) (request/offset))})
+   :total  (users.db/enrollment-list-count {:enrolled? enrolled? :search query})
    :limit  (request/limit)
    :offset (request/offset)})
 

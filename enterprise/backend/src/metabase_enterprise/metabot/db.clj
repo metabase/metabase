@@ -9,11 +9,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn all-groups
-  "Every PermissionsGroup, in ID order."
-  []
-  (t2/select :model/PermissionsGroup {:order-by [[:id :asc]]}))
-
 (mu/defn all-stored-permissions
   "Every MetabotPermissions row, ordered by group and permission type."
   []

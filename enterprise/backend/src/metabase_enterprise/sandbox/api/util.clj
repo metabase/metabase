@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase-enterprise.impersonation.db :as impersonation.db]
    [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
    [metabase.permissions.core :as perms]
@@ -50,7 +51,7 @@
           sandboxes-with-group-ids (t2/hydrate (sandbox.db/user-sandboxes-with-group-ids user-id) :table)
 
           impersonations-with-group-ids (when (seq user-group-ids)
-                                          (sandbox.db/impersonations-for-groups user-group-ids))
+                                          (impersonation.db/impersonations-for-groups user-group-ids))
           group-id->impersonations (->> impersonations-with-group-ids
                                         (group-by :group_id))
           group-id->sandboxes (->> sandboxes-with-group-ids

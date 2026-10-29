@@ -12,6 +12,7 @@
    [metabase.analytics.event :as analytics.event]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.settings.db :as settings.db]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -19,7 +20,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db])
   (:import (java.time Instant)))
 
 ;; # Google Sheets Integration
@@ -229,7 +231,7 @@
 (api.macros/defendpoint :post "/connection" :- :gsheets/response
   "Hook up a new google drive folder or sheet that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map {:closed true} [:url ms/NonBlankString]]]
-  (let [attached-dwh (gsheets.db/attached-dwh-database-id)]
+  (let [attached-dwh (warehouses.db/attached-dwh-database-id)]
     (when-not (some? attached-dwh)
       (analytics.event/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
       (throw-error 400 (tru "No attached dwh found.") nil))
@@ -258,8 +260,7 @@
   []
   (or (gsheets)
       (do (log/warn "CACHE MISS ON GSHEETS")
-          (some-> (gsheets.db/setting "gsheets")
-                  :value
+          (some-> (settings.db/setting-value "gsheets")
                   json/decode+kw))))
 
 (defn- handle-get-connection []
@@ -403,4 +404,4 @@
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
     (sync-metadata/sync-db-metadata!
-     (:id (gsheets.db/attached-dwh-database)))))
+     (:id (warehouses.db/attached-dwh-database)))))

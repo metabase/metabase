@@ -4,7 +4,6 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -80,8 +79,3 @@
                            (if existing
                              advisory
                              (assoc advisory :match_status :unknown)))))
-
-(mu/defn user-summaries-by-id
-  "A map of ID to the ID, names, and email of the Users with `user-ids`."
-  [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-fn->fn :id identity [:model/User :id :first_name :last_name :email] :id [:in user-ids]))

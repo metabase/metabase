@@ -1,7 +1,7 @@
 (ns metabase-enterprise.scim.auth
   (:require
-   [metabase-enterprise.scim.db :as scim.db]
    [metabase-enterprise.scim.settings :as scim.settings]
+   [metabase.api-keys.db :as api-keys.db]
    [metabase.api.open-api :as open-api]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util.password :as u.password]))
@@ -11,7 +11,7 @@
   in the database with the SCIM scope."
   [api-key]
   (boolean
-   (let [expected-api-key (-> (scim.db/scim-api-key) :key)]
+   (let [expected-api-key (-> (api-keys.db/api-key-by-scope {:scope :scim}) :key)]
      (if (and api-key expected-api-key)
        (u.password/verify-password api-key "" expected-api-key)
        (mw.session/do-useless-hash)))))

@@ -71,19 +71,15 @@
    database-id :- ::lib.schema.id/database]
   (t2/delete! :model/ConnectionImpersonation :group_id group-id :db_id database-id))
 
-(mu/defn view-data-permission-values
-  "The set of database-level view-data permission values `group-ids` hold on the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database
-   group-ids   :- [:set ms/PositiveInt]]
-  (t2/select-fn-set :perm_value :model/DataPermissions
-                    {:where [:and
-                             [:= :db_id database-id]
-                             [:= :table_id nil]
-                             [:= :perm_type "perms/view-data"]
-                             [:in :group_id group-ids]]}))
+(mu/defn impersonated-database-ids-for-group
+  "The subset of `database-ids` the group with `group-id` accesses through connection impersonation."
+  [{:keys [group-id database-ids]} :- [:map {:closed true}
+                                       [:group-id ms/PositiveInt]
+                                       [:database-ids [:sequential ::lib.schema.id/database]]]]
+  (t2/select-fn-set :db_id :model/ConnectionImpersonation :group_id [:auto/param group-id] :db_id [:in database-ids]))
 
-(mu/defn group-ids-for-user
-  "The IDs of the PermissionsGroups the User with `user-id` belongs to, or nil when `user-id` is nil (e.g. no
-  current user, such as an internal or unauthenticated context)."
-  [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
+(mu/defn impersonated-group-ids
+  "The subset of `group-ids` with a connection impersonation."
+  [{:keys [group-ids]} :- [:map {:closed true}
+                           [:group-ids [:sequential ms/PositiveInt]]]]
+  (t2/select-fn-set :group_id :model/ConnectionImpersonation :group_id [:in group-ids]))

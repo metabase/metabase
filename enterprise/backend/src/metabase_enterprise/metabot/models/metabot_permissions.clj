@@ -4,6 +4,7 @@
    [metabase-enterprise.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.models.interface :as mi]
+   [metabase.permissions.db :as permissions.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -30,7 +31,7 @@
 (defn all-permissions
   "Returns all metabot permissions for all groups, filling in defaults for missing entries."
   []
-  (let [groups     (metabot.db/all-groups)
+  (let [groups     (permissions.db/all-groups)
         stored     (metabot.db/all-stored-permissions)
         by-group   (group-by :group_id stored)]
     {:permissions (vec (mapcat (fn [{:keys [id]}]

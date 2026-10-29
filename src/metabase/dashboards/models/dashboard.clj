@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.actions.db :as actions.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
@@ -181,7 +182,7 @@
   appear on the dashboard are archived."
   [dashboard-id new-cards]
   (let [;; the set of ALL Dashboard Questions (internal to the dashboard) for this Dashboard
-        internal-dashboard-question-ids (dashboards.db/internal-dashboard-question-ids dashboard-id)
+        internal-dashboard-question-ids (queries.db/internal-dashboard-question-ids {:dashboard-id dashboard-id})
         ;; the set of all card IDs that are present on the dashboard
         used-card-ids (into #{} (map :card_id new-cards))
         ;; DQs that aren't used get archived
@@ -321,7 +322,7 @@
                          (assoc mapping ::card-id (or (:card_id mapping) card_id)))
         card-ids       (into #{} (keep ::card-id) mappings)
         card-id->query (when (seq card-ids)
-                         (dashboards.db/card-queries card-ids))
+                         (queries.db/card-dataset-queries {:card-ids card-ids}))
         field-ids      (into []
                              (keep (fn [{:keys [target] ::keys [card-id]}]
                                      (when target
@@ -460,7 +461,7 @@
   "`ingested` without the dashcards whose action has no local row."
   [{:keys [dashcards] :as ingested}]
   (if-let [action-eids (not-empty (into #{} (keep :action_id) dashcards))]
-    (let [loaded (dashboards.db/action-entity-ids-in action-eids)]
+    (let [loaded (actions.db/action-entity-ids-in {:entity-ids action-eids})]
       (assoc ingested :dashcards (filterv #(or (nil? (:action_id %)) (contains? loaded (:action_id %))) dashcards)))
     ingested))
 

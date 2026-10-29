@@ -41,7 +41,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.quoting :as quoting])
+   [metabase.util.quoting :as quoting]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.sql SQLException)))
 
@@ -575,7 +577,7 @@
     (cond
       source-table-fk
       (let [db-name (nth source-table-fk 0)
-            ids     (metabot.db/database-ids-by-name db-name)]
+            ids     (warehouses.db/database-ids-by-name {:database-name db-name})]
         (case (count ids)
           0 (throw (ex-info (format "Unknown database: `%s`." db-name)
                             {:agent-error? true
@@ -937,7 +939,7 @@
                        (into {}
                              (comp (filter mi/can-query?)
                                    (map (fn [{:keys [id schema name]}] [id [db-name schema name]])))
-                             (metabot.db/table-schema-rows (vec source-table-ids))))
+                             (warehouse-schema.db/tables-by-ids {:table-ids (vec source-table-ids) :columns [:id :name :schema :db_id :is_published :collection_id]})))
         describe     (fn [metric-id]
                        (let [r        (get required-by-metric-id metric-id)
                              eid      (when (= :card (:kind r))

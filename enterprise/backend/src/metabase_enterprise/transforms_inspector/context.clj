@@ -2,7 +2,6 @@
   "Context building for Transform Inspector."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.transforms-inspector.db :as transforms-inspector.db]
    [metabase-enterprise.transforms-inspector.query-analysis :as query-analysis]
    [metabase-enterprise.transforms-inspector.schema :as transforms-inspector.schema]
    [metabase.driver :as driver]
@@ -20,6 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
@@ -30,7 +30,7 @@
   "Fetch tables by ID and build source info maps."
   [table-ids]
   (when (seq table-ids)
-    (transforms-inspector.db/table-source-rows table-ids)))
+    (map (fn [{:keys [id name schema db_id]}] {:table-id id :table-name name :schema schema :db-id db_id}) (warehouse-schema.db/tables-by-ids {:table-ids table-ids :columns [:id :name :schema :db_id]}))))
 
 (defmulti extract-sources
   "Extract source table information for a transform.
@@ -112,7 +112,7 @@
 (mu/defn- collect-field-metadata :- [:sequential ::transforms-inspector.schema/field]
   "Collect metadata for fields in a table."
   [table-id :- ::lib.schema.id/table]
-  (let [fields (transforms-inspector.db/active-fields-for-table table-id)]
+  (let [fields (warehouse-schema.db/active-fields-of-table {:table-id table-id})]
     (mapv (fn [field]
             (let [stats (get-field-stats (:fingerprint field))]
               (cond-> (select-keys field [:id :name :display_name :base_type :semantic_type])

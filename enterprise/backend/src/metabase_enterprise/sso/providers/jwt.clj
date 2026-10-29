@@ -3,10 +3,10 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [buddy.sign.util :as buddy-util]
-   [metabase-enterprise.sso.db :as sso.db]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.permissions.db :as permissions.db]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
@@ -187,7 +187,7 @@
     (sso-utils/group-names->ids group-names name-mappings)
     (let [names (into #{} (sso-utils/group-names->strings group-names))]
       (when (seq names)
-        (sso.db/group-ids-by-name names)))))
+        (permissions.db/group-ids-by-names {:group-names names})))))
 
 (methodical/defmethod auth-identity/login! :after :provider/jwt
   "Sync JWT group memberships after successful login.

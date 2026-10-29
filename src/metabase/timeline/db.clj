@@ -106,3 +106,31 @@
   "Delete the TimelineEvent with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
   (t2/delete! :model/TimelineEvent :id id))
+
+(mu/defn timelines-of-ids
+  "The Timelines with `timeline-ids`."
+  [{:keys [timeline-ids]} :- [:map {:closed true} [:timeline-ids [:or [:sequential ms/PositiveInt] [:set ms/PositiveInt]]]]]
+  (t2/select :model/Timeline :id [:in timeline-ids]))
+
+(mu/defn unarchived-timeline-ids
+  "The IDs among `timeline-ids` of the unarchived Timelines."
+  [{:keys [timeline-ids]} :- [:map {:closed true} [:timeline-ids [:or [:sequential ms/PositiveInt] [:set ms/PositiveInt]]]]]
+  (t2/select-pks-set :model/Timeline :id [:in timeline-ids] :archived false))
+
+(mu/defn unarchived-timeline-event-summaries
+  "The summary columns of the unarchived TimelineEvents of the Timelines with `timeline-ids`, oldest first."
+  [{:keys [timeline-ids]} :- [:map {:closed true} [:timeline-ids [:or [:sequential ms/PositiveInt] [:set ms/PositiveInt]]]]]
+  (t2/select [:model/TimelineEvent :id :timeline_id :name :description :icon :timestamp :timezone :time_matters :archived :created_at]
+             :timeline_id [:in timeline-ids]
+             :archived false
+             {:order-by [[:timestamp :asc] [:id :asc]]}))
+
+(mu/defn timeline-ids-of-events
+  "The IDs of the Timelines of the TimelineEvents with `event-ids`."
+  [{:keys [event-ids]} :- [:map {:closed true} [:event-ids [:or [:sequential ms/PositiveInt] [:set ms/PositiveInt]]]]]
+  (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in event-ids]))
+
+(mu/defn timelines-exist-in-collections?
+  "Whether any Timeline is in the Collections with `collection-ids`."
+  [{:keys [collection-ids]} :- [:map {:closed true} [:collection-ids [:sequential ::lib.schema.id/collection]]]]
+  (t2/exists? :model/Timeline :collection_id [:in collection-ids]))

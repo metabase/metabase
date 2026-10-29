@@ -15,18 +15,6 @@
   "A `java.time` instant, date, or date-time."
   [:fn #(instance? java.time.temporal.Temporal %)])
 
-(mu/defn dashcard-series-exists?
-  "Whether the Card with `card-id` is a series of the DashboardCard with `dashcard-id`."
-  [card-id     :- [:maybe ::lib.schema.id/card]
-   dashcard-id :- [:maybe ::lib.schema.id/dashcard]]
-  (t2/exists? :model/DashboardCardSeries :card_id card-id :dashboardcard_id dashcard-id))
-
-(mu/defn cache-entry
-  "`row-fn` applied to the results and updated-at of the QueryCache entry for `query-hash`, or nil."
-  [row-fn     :- fn?
-   query-hash :- bytes?]
-  (t2/select-one-fn row-fn [:model/QueryCache :results :updated_at] :query_hash query-hash))
-
 (mu/defn claim-cache-refresh-lease!
   "Set `refresh_started_at` of the QueryCache entry for `query-hash` to `started-at` if its lease (defaulting to
   `lease-free-sentinel`) is older than `lease-cutoff`, returning the number of rows updated."
@@ -74,11 +62,6 @@
                                                     [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
                                                   card-id->timestamp))
                       :updated_at :updated_at}}))
-
-(mu/defn card-database-ids
-  "The `:id` and `:database_id` of the Cards with `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :database_id] :id [:in card-ids]))
 
 (mu/defn upsert-cache-entry!
   "Insert or update the QueryCache entry for `query-hash`, setting `:results` to `results` and `:updated_at` to

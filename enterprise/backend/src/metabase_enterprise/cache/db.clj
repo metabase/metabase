@@ -7,13 +7,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private DurationScope
-  "One `{:model :model-id :rerun-cutoff}` scope, as built by `duration-scopes`."
-  [:map {:closed true}
-   [:model         :string]
-   [:model-id      ms/PositiveInt]
-   [:rerun-cutoff  ms/TemporalInstant]])
-
 (def ^:private CacheConfigChanges
   "The keys callers pass to [[update-cache-config!]]."
   [:map {:closed true}
@@ -44,103 +37,10 @@
                                          :order-by :ordering
                                          :limit    [:inline 1]})))
 
-(mu/defn cards-by-id
-  "A map of ID to Card for `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
-
-(mu/defn router-database-ids
-  "The subset of `database-ids` that are database routers."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-fn-set :database_id :model/DatabaseRouter :database_id [:in database-ids]))
-
 (mu/defn duration-cache-configs
   "The duration CacheConfigs that refresh automatically."
   []
   (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true))
-
-(mu/defn duration-queries-to-rerun
-  "The query definitions to rerun for the duration cache `scopes`, each `{:model :model-id :rerun-cutoff}`, counting
-  only executions started after `started-after`; `parameterized?` selects parameterized or plain queries."
-  [scopes         :- [:sequential DurationScope]
-   started-after  :- ms/TemporalInstant
-   parameterized? :- :boolean]
-  (t2/select
-   :model/Query
-   {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
-    :from   [[^:allow-subquery
-              {:union (for [{:keys [model model-id rerun-cutoff]} scopes]
-                        ^:allow-subquery
-                        {:nest
-                         ^:allow-subquery
-                         {:select   [[:q.query :query]
-                                     [:qc.query_hash :cache-hash]
-                                     [:qe.card_id :card-id]
-                                     [:qe.dashboard_id :dashboard-id]
-                                     [[:count :q.query_hash] :count]]
-                          :from     [[(t2/table-name :model/Query) :q]]
-                          :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
-                                     [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
-                          :where    [:and
-                                     (case model
-                                       "question"  [:= :qe.card_id model-id]
-                                       "dashboard" [:= :qe.dashboard_id model-id])
-                                     [:<= :qc.updated_at rerun-cutoff]
-                                     [:>= :qe.started_at started-after]
-                                     [:= :qe.error nil]
-                                     [:= :qe.is_sandboxed false]
-                                     (if parameterized?
-                                       [:and
-                                        [:= :qe.parameterized true]
-                                        ;; Only rerun a parameterized query if it's had a cache hit within
-                                        ;; the last caching window
-                                        [:= :qe.cache_hit true]
-                                        ;; Don't factor the last cache refresh into whether we should rerun
-                                        ;; a parameterized query
-                                        [:not= :qe.context "cache-refresh"]]
-                                       [:= :qe.parameterized false])]
-                          :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}})}
-              :u]]}))
-
-(mu/defn scheduled-base-query-to-rerun
-  "The unparameterized query definition of the Card with `card-id` executed most recently after `started-after`, or
-  nil."
-  [card-id       :- ::lib.schema.id/card
-   started-after :- ms/TemporalInstant]
-  (t2/select-one :model/Query
-                 {:select   [:q.query [:qe.card_id :card-id]]
-                  :from     [[(t2/table-name :model/Query) :q]]
-                  :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
-                  :where    [:and
-                             [:= :qe.card_id card-id]
-                             [:= :qe.parameterized false]
-                             [:= :qe.error nil]
-                             [:= :qe.is_sandboxed false]
-                             [:>= :qe.started_at started-after]]
-                  :order-by [[:qe.started_at :desc]]
-                  :limit    1}))
-
-(mu/defn scheduled-parameterized-queries-to-rerun
-  "The `limit` most common parameterized query definitions of the Card with `card-id` executed after `rerun-cutoff`."
-  [card-id      :- ::lib.schema.id/card
-   rerun-cutoff :- ms/TemporalInstant
-   limit        :- ms/PositiveInt]
-  (t2/select :model/Query
-             {:select   [:q.query [:qe.card_id :card-id]]
-              :from     [[(t2/table-name :model/Query) :q]]
-              :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
-              :where    [:and
-                         [:= :qe.card_id card-id]
-                         [:>= :qe.started_at rerun-cutoff]
-                         ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
-                         [:not= :qe.context "cache-refresh"]
-                         [:= :parameterized true]
-                         [:= :qe.error nil]
-                         [:= :qe.is_sandboxed false]]
-              :group-by [:q.query_hash :q.query :qe.card_id]
-              :order-by [[[:count :q.query_hash] :desc]
-                         [[:min :qe.started_at] :asc]]
-              :limit    limit}))
 
 (mu/defn delete-query-caches!
   "Delete the QueryCache entries with `query-hashes`."

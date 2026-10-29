@@ -13,8 +13,13 @@
    [metabase.collections.core :as collections]
    [metabase.collections.curation :as curation]
    [metabase.collections.db :as collections.db]
+   [metabase.content-verification.db :as content-verification.db]
+   [metabase.measures.db :as measures.db]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -135,7 +140,7 @@
   (into {}
         (mapcat (fn [chunk]
                   (u/group-by :table_id :name
-                              (data-complexity-score.db/unarchived-measure-names chunk))))
+                              (measures.db/unarchived-measure-names {:table-ids chunk}))))
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- ->card-entity
@@ -182,19 +187,19 @@
   []
   ;; Called only when `metabot-scope` requests curated-only filtering — avoids a `moderation_review`
   ;; join on the universe Card select by pushing the check into a small auxiliary lookup.
-  (data-complexity-score.db/verified-card-ids))
+  (content-verification.db/verified-item-ids {:item-type "card"}))
 
 (defn- official-collection-id-set
   "Set of collection ids with `official` authority level."
   []
-  (data-complexity-score.db/official-collection-ids))
+  (collections.db/official-collection-ids))
 
 (defn- routed-child-database-id-set
   "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
    tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
    catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
   []
-  (data-complexity-score.db/routed-child-database-ids))
+  (warehouses.db/routing-destination-database-ids))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
@@ -234,8 +239,8 @@
         ;; `:data_layer`, `:data_authority`) are selected purely to drive the in-memory
         ;; library/metabot derivations below — they're ignored by `->card-entity` /
         ;; `->table-entity`.
-        universe-cards    (data-complexity-score.db/universe-cards audit/audit-db-id)
-        universe-tables   (data-complexity-score.db/universe-tables audit/audit-db-id)
+        universe-cards    (queries.db/universe-cards {:audit-database-id audit/audit-db-id})
+        universe-tables   (warehouse-schema.db/tables-excluding-database {:database-id audit/audit-db-id})
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)

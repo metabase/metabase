@@ -4,9 +4,11 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.db :as cache.db]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -41,8 +43,8 @@
   "Get the collection_id for the target entity of a CacheConfig."
   [{:keys [model model_id]}]
   (case model
-    "dashboard" (:collection_id (cache.db/dashboard-collection-id model_id))
-    "question"  (:collection_id (cache.db/card-collection-id model_id))
+    "dashboard" (:collection_id (dashboards.db/dashboard model_id))
+    "question"  (:collection_id (queries.db/card model_id))
     nil))
 
 (defmethod mi/can-write? :model/CacheConfig
@@ -191,9 +193,9 @@
   (let [card-ids (concat
                   questions
                   (when (seq databases)
-                    (cache.db/card-ids-for-databases databases))
+                    (queries.db/card-ids-of-databases {:database-ids databases}))
                   (when (seq dashboards)
-                    (cache.db/dashboard-card-ids dashboards)))]
+                    (dashboards.db/dashcard-card-ids-in-dashboards {:dashboard-ids dashboards})))]
     (if (empty? card-ids)
       -1
       (cache.db/invalidate-cards! card-ids (t/offset-date-time)))))

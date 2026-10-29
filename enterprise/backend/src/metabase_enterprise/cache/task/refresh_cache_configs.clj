@@ -6,8 +6,10 @@
    [java-time.api :as t]
    [metabase-enterprise.cache.db :as cache.db]
    [metabase-enterprise.cache.strategies :as strategies]
+   [metabase-enterprise.database-routing.db :as database-routing.db]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
@@ -62,10 +64,10 @@
   [refresh-defs]
   (fn []
     (let [card-ids      (into #{} (map :card-id refresh-defs))
-          cards-by-id   (cache.db/cards-by-id card-ids)
+          cards-by-id   (queries.db/cards-by-id {:card-ids card-ids})
           all-db-ids    (into #{} (keep (comp :database_id val)) cards-by-id)
           router-db-ids (if (seq all-db-ids)
-                          (cache.db/router-database-ids all-db-ids)
+                          (database-routing.db/router-database-ids {:database-ids all-db-ids})
                           #{})]
       (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
         (let [card (get cards-by-id card-id)]
@@ -123,7 +125,7 @@
   "The query definitions to rerun for the duration `cache-configs`; `parameterized?` selects parameterized or plain
   queries."
   [cache-configs parameterized?]
-  (cache.db/duration-queries-to-rerun (duration-scopes cache-configs) (started-after) parameterized?))
+  (queries.db/duration-queries-to-rerun {:scopes (duration-scopes cache-configs) :started-after (started-after) :parameterized? parameterized?}))
 
 (defn- duration-queries-to-rerun
   []
@@ -162,14 +164,12 @@
 (defn- scheduled-base-query-to-rerun
   "The unparameterized query definition of the Card with `card-id` to rerun, or nil."
   [card-id]
-  (cache.db/scheduled-base-query-to-rerun card-id (started-after)))
+  (queries.db/scheduled-base-query-to-rerun {:card-id card-id :started-after (started-after)}))
 
 (defn- scheduled-parameterized-queries-to-rerun
   "The parameterized query definitions of the Card with `card-id` executed after `rerun-cutoff` to rerun."
   [card-id rerun-cutoff]
-  (cache.db/scheduled-parameterized-queries-to-rerun card-id
-                                                     rerun-cutoff
-                                                     *parameterized-queries-to-rerun-per-card*))
+  (queries.db/scheduled-parameterized-queries-to-rerun {:card-id card-id :rerun-cutoff rerun-cutoff :limit *parameterized-queries-to-rerun-per-card*}))
 
 (defn- scheduled-queries-to-rerun
   "Returns a list containing all of the parameterized query definitions that we should preemptively rerun for a given

@@ -8,7 +8,9 @@
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.events.core :as events]
+   [metabase.session.db :as session.db]
    [metabase.system.core :as system]
+   [metabase.users.db :as users.db]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -99,8 +101,8 @@
   A no-op when there is no support user, when a grant is still running, or when access is already torn down."
   []
   (when-let [{support-user-id :id, superuser? :is_superuser}
-             (support-access-grants.db/user-superuser-flag-by-email (sag.settings/support-access-grant-email))]
-    (when (or superuser? (support-access-grants.db/unended-session-exists-for-user? support-user-id))
+             (users.db/user-by-email {:email (sag.settings/support-access-grant-email) :columns [:id :is_superuser]})]
+    (when (or superuser? (session.db/unended-session-exists? {:user-id support-user-id}))
       (cluster-lock/with-cluster-lock grant-lifecycle-lock
         ;; Re-check after acquiring the same lock used by grant creation. This makes credential teardown and grant
         ;; creation mutually exclusive across the cluster, so teardown cannot invalidate a newly created grant.

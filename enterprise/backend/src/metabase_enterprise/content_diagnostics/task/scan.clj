@@ -11,6 +11,7 @@
    [metabase-enterprise.content-diagnostics.scan :as scan]
    [metabase.premium-features.core :as premium-features]
    [metabase.task-history.core :as task-history]
+   [metabase.task-history.db :as task-history.db]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log])
@@ -66,7 +67,7 @@
   still qualifies for the backfill once licensed."
   []
   (boolean (some #(not (contains? % :skipped-reason))
-                 (cd.db/task-history-details scan-task-name))))
+                 (task-history.db/task-details-for-task {:task-name scan-task-name}))))
 
 (defn- backfill-scan!
   "Scan only if the instance has never scanned and has the `:content-diagnostics` feature. A skip only logs, so it

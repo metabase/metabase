@@ -14,18 +14,6 @@
   [pulse-channel-id :- ms/PositiveInt]
   (t2/select-one :model/PulseChannel :id [:auto/param pulse-channel-id]))
 
-(mu/defn dashboard-archived? :- :boolean
-  "Whether the Dashboard with `dashboard-id` exists and is archived."
-  [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
-  (t2/exists? :model/Dashboard :id dashboard-id :archived true))
-
-(mu/defn dashcard-ids-by-card
-  "A map of Card id to DashboardCard id for the DashboardCards of the Dashboard with `dashboard-id` showing one of
-  `card-ids`."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   card-ids     :- [:set ::lib.schema.id/card]]
-  (t2/select-fn->pk :card_id :model/DashboardCard :dashboard_id dashboard-id :card_id [:in card-ids]))
-
 (mu/defn pulse-card-pairs-for-dashboard
   "Distinct `:pulse-id`/`:card-id` pairs for the Pulses (subscriptions) attached to the Dashboard with
   `dashboard-id`."
@@ -43,21 +31,6 @@
                                :where           [:and
                                                  [:= :dc.dashboard_id dashboard-id]
                                                  [:not= :dc.card_id nil]]})))
-
-(mu/defn active-http-channel-exists?
-  "Whether an active HTTP Channel exists."
-  []
-  (t2/exists? :model/Channel :type :channel/http :active true))
-
-(mu/defn superusers
-  "The superusers."
-  []
-  (t2/select :model/User :is_superuser true))
-
-(mu/defn user-emails-by-id
-  "A map of User id to email for the Users with `user-ids`."
-  [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :email :model/User, :id [:in user-ids]))
 
 (mu/defn pulse :- [:maybe ::pulse.schema/pulse]
   "The ::pulse.schema/pulse with `pulse-id`, or nil."
@@ -182,24 +155,6 @@
    changes      :- ::pulse.schema/pulse.update]
   (t2/update! :model/Pulse {:dashboard_id dashboard-id} (assoc changes :updated_at :updated_at)))
 
-(mu/defn pulse-cards-for-pulses
-  "The Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order. Excludes
-  archived Cards unless `include-archived?`."
-  [pulse-ids         :- [:sequential ::lib.schema.id/pulse]
-   include-archived? :- :boolean]
-  (t2/select
-   :model/Card
-   {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows :pc.pivot_results
-                :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings] [:p.id :pulse_id]] ;; :dc.parameter_mappings - how do you select this?
-    :from      [[:pulse :p]]
-    :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
-                [:report_card :c] [:= :c.id :pc.card_id]]
-    :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
-    :where     [:and
-                [:in :p.id pulse-ids]
-                (when-not include-archived? [:= :c.archived false])]
-    :order-by [[:pc.position :asc]]}))
-
 (mu/defn pulse-card-refs
   "The Card id (as `:id`), export options, and DashboardCard id of the PulseCards of the Pulse with `pulse-id`, in
   position order."
@@ -313,17 +268,6 @@
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/delete! :model/PulseChannel :pulse_id pulse-id))
 
-(mu/defn active-recipients-for-channels
-  "The id, email, name, and PulseChannel id of the active User recipients of the PulseChannels with `channel-ids`, in
-  User id order."
-  [channel-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/User :id :email :first_name :last_name :pcr.pulse_channel_id]
-             {:left-join [[:pulse_channel_recipient :pcr] [:= :core_user.id :pcr.user_id]]
-              :where     [:and
-                          [:in :pcr.pulse_channel_id channel-ids]
-                          [:= :core_user.is_active true]]
-              :order-by [[:core_user.id :asc]]}))
-
 (mu/defn pulse-channel-recipient-id
   "The id of the PulseChannelRecipient of the User with `user-id` on the PulseChannel with `channel-id`, or nil."
   [channel-id :- ms/PositiveInt
@@ -363,16 +307,6 @@
   [notification-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/Notification :id [:in notification-ids]))
 
-(mu/defn user-tenant-ids
-  "A map of User ID to `:tenant_id` for `user-ids`."
-  [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids]))
-
-(defn users-names-and-emails
-  "The first names, last names, and emails of the Users with `user-ids`."
-  [user-ids]
-  (t2/select [:model/User :first_name :last_name :email] :id [:in user-ids]))
-
 (defn pulse-channel-kinds-for-pulse
   "The id, channel type, and details of the PulseChannels of the Pulse with `pulse-id`."
   [pulse-id]
@@ -387,3 +321,48 @@
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
   [dashboard-id]
   (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]}))
+
+(mu/defn subscription-pulse-exists?
+  "Whether a Pulse with `pulse-id` exists and is a subscription (a nil `alert_condition`) rather than an alert."
+  [{:keys [pulse-id]} :- [:map {:closed true}
+                          [:pulse-id ::lib.schema.id/pulse]]]
+  (t2/exists? :model/Pulse :id [:auto/param pulse-id] :alert_condition nil))
+
+(mu/defn pulse-count
+  "The number of Pulses that are alerts when `alert?` and subscriptions otherwise, counting only alerts that fire once
+  when `first-only?` and only alerts that fire above their goal when `above-goal?`."
+  [{:keys [alert? first-only? above-goal?]} :- [:map {:closed true}
+                                                [:alert?       :boolean]
+                                                [:first-only?  {:optional true} [:maybe :boolean]]
+                                                [:above-goal?  {:optional true} [:maybe :boolean]]]]
+  (apply t2/count :model/Pulse
+         :alert_condition (if alert? [:not= nil] nil)
+         (cond-> []
+           first-only?  (conj :alert_first_only true)
+           above-goal?  (conj :alert_above_goal true))))
+
+(mu/defn pulse-with-parameters-exists?
+  "Whether a Pulse with parameters exists."
+  []
+  (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]}))
+
+(mu/defn user-tenant-ids
+  "A map of User ID to `:tenant_id` for `user-ids`."
+  [user-ids :- [:set ::lib.schema.id/user]]
+  (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids]))
+
+(mu/defn user-emails-by-id
+  "A map of User id to email for the Users with `user-ids`."
+  [user-ids :- [:set ::lib.schema.id/user]]
+  (t2/select-pk->fn :email :model/User, :id [:in user-ids]))
+
+(mu/defn active-recipients-for-channels
+  "The id, email, name, and PulseChannel id of the active User recipients of the PulseChannels with `channel-ids`, in
+  User id order."
+  [channel-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/User :id :email :first_name :last_name :pcr.pulse_channel_id]
+             {:left-join [[:pulse_channel_recipient :pcr] [:= :core_user.id :pcr.user_id]]
+              :where     [:and
+                          [:in :pcr.pulse_channel_id channel-ids]
+                          [:= :core_user.is_active true]]
+              :order-by [[:core_user.id :asc]]}))

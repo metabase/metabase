@@ -26,7 +26,7 @@
    (get-collection collection-name (root-container-location)))
   ([collection-name :- :string
     location        :- :string]
-   (xrays.db/collection-id-by-name-and-location collection-name location)))
+   (:id (collections.db/collection-by-name-and-location {:collection-name collection-name :location location}))))
 
 (defn- create-collection!
   ([collection-name description]

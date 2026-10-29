@@ -271,7 +271,7 @@
   (mi/instances-with-hydrated-data
    notification-handlers k
    #(when-let [channel-ids (seq (keep :channel_id notification-handlers))]
-      (notification.db/active-channels-by-id channel-ids))
+      (channel.db/active-channels-by-id {:channel-ids channel-ids}))
    :channel_id
    {:default nil}))
 
@@ -281,7 +281,7 @@
   (mi/instances-with-hydrated-data
    notification-handlers k
    #(when-let [template-ids (seq (keep :template_id notification-handlers))]
-      (notification.db/channel-templates-by-id template-ids))
+      (channel.db/channel-templates-by-id {:template-ids template-ids}))
    :template_id
    {:default nil}))
 

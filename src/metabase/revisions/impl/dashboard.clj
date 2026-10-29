@@ -3,10 +3,12 @@
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
    [metabase.util :as u]
@@ -55,7 +57,7 @@
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
-  (let [current-cards    (->> (t2/hydrate (revisions.db/dashcards dashboard-id) :series)
+  (let [current-cards    (->> (t2/hydrate (dashboards.db/dashcards {:dashboard-id dashboard-id}) :series)
                               (mapv (fn [dashcard]
                                       (-> (apply dissoc (t2.realize/realize dashcard)
                                                  excluded-columns-for-dashcard-revision)
@@ -77,7 +79,7 @@
   [dashboard-id dashcards]
   (let [card-ids          (set (keep :card_id dashcards))
         active-card-ids   (when-let [card-ids (seq card-ids)]
-                            (revisions.db/active-card-ids-for-dashboard card-ids dashboard-id))
+                            (queries.db/unarchived-card-ids {:card-ids card-ids :dashboard-id dashboard-id}))
         inactive-card-ids (set/difference card-ids active-card-ids)]
     (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
@@ -87,7 +89,7 @@
   [parameters]
   (let [card-ids        (set (keep #(get-in % [:values_source_config :card_id]) parameters))
         active-card-ids (when (seq card-ids)
-                          (revisions.db/active-card-ids card-ids))
+                          (queries.db/unarchived-card-ids {:card-ids card-ids}))
         invalid-card-ids (set/difference card-ids active-card-ids)]
     (if (empty? invalid-card-ids)
       parameters
@@ -109,7 +111,7 @@
     ;; Now update the tabs and cards as needed
     (let [serialized-dashcards      (:cards serialized-dashboard)
           current-tabs              (mapv #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
-                                          (revisions.db/dashboard-tabs dashboard-id))
+                                          (dashboards.db/dashboard-tabs {:dashboard-id dashboard-id}))
           {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
           _                         (dashboard/archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
           serialized-dashcards      (cond->> serialized-dashcards

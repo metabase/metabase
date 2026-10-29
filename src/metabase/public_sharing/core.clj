@@ -1,8 +1,11 @@
 (ns metabase.public-sharing.core
   (:require
    [medley.core :as m]
-   [metabase.public-sharing.db :as public-sharing.db]
+   [metabase.actions.db :as actions.db]
+   [metabase.dashboards.db :as dashboards.db]
+   [metabase.documents.db :as documents.db]
    [metabase.public-sharing.settings :as public-sharing.settings]
+   [metabase.queries.db :as queries.db]
    [toucan2.core :as t2]))
 
 (def public-uuid-prefix-length
@@ -63,10 +66,10 @@
   (when uuid
     (let [prefix (public-uuid-prefix uuid)
           candidates (case model
-                       :model/Card      (public-sharing.db/unarchived-card-ids-and-public-uuids-by-prefix prefix)
-                       :model/Dashboard (public-sharing.db/unarchived-dashboard-ids-and-public-uuids-by-prefix prefix)
-                       :model/Action    (public-sharing.db/unarchived-action-ids-and-public-uuids-by-prefix prefix)
-                       :model/Document  (public-sharing.db/unarchived-document-ids-and-public-uuids-by-prefix prefix))]
+                       :model/Card      (queries.db/unarchived-card-ids-and-public-uuids-by-prefix {:prefix prefix})
+                       :model/Dashboard (dashboards.db/unarchived-dashboard-ids-and-public-uuids-by-prefix {:prefix prefix})
+                       :model/Action    (actions.db/unarchived-action-ids-and-public-uuids-by-prefix {:prefix prefix})
+                       :model/Document  (documents.db/unarchived-documents-by-public-uuid-prefix {:prefix prefix :columns [:id :public_uuid]}))]
       (some (fn [{:keys [id public_uuid]}]
               (when (= uuid public_uuid)
                 id))
@@ -83,8 +86,8 @@
   (when uuid
     (let [prefix (public-uuid-prefix uuid)
           candidates (case model
-                       :model/Card      (public-sharing.db/unarchived-cards-by-public-uuid-prefix prefix)
-                       :model/Dashboard (public-sharing.db/unarchived-dashboards-by-public-uuid-prefix prefix)
-                       :model/Action    (public-sharing.db/unarchived-actions-by-public-uuid-prefix prefix)
-                       :model/Document  (public-sharing.db/unarchived-documents-by-public-uuid-prefix prefix))]
+                       :model/Card      (queries.db/unarchived-cards-by-public-uuid-prefix {:prefix prefix})
+                       :model/Dashboard (dashboards.db/unarchived-dashboards-by-public-uuid-prefix {:prefix prefix})
+                       :model/Action    (actions.db/unarchived-actions-by-public-uuid-prefix {:prefix prefix})
+                       :model/Document  (documents.db/unarchived-documents-by-public-uuid-prefix {:prefix prefix}))]
       (m/find-first #(= uuid (:public_uuid %)) candidates))))

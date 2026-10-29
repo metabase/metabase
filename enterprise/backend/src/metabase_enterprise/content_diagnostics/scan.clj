@@ -14,6 +14,7 @@
    [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.tracing.core :as tracing]
@@ -105,7 +106,10 @@
               :when      model
               :let       [ids      (set (map :entity-id findings-for-type))
                           id->coll (if (= entity-type :collection)
-                                     (cd.db/collection-parent-ids-by-id ids)
+                                     (into {}
+                                           (map (juxt :id (comp collection/location-path->parent-id :location)))
+                                           (collections.db/collections-of-ids {:collection-ids ids
+                                                                               :columns        [:id :location]}))
                                      (cd.db/collection-ids-by-entity-id model ids))]
               {:keys [entity-id]} findings-for-type]
           [[entity-type entity-id] (get id->coll entity-id)])))
@@ -124,7 +128,10 @@
   [findings]
   (let [ids        (into #{} (keep :scope-collection-id) findings)
         id->name   (when (seq ids)
-                     (cd.db/collection-names-by-id ids))
+                     (into {}
+                           (map (juxt :id :name))
+                           (collections.db/collections-of-ids {:collection-ids ids
+                                                               :columns        [:id :name]})))
         ;; root-resident collection subjects sit under their own tree's root (GDGT-2921 admits
         ;; transforms/tenant-namespace collections as subjects), so look their namespace up
         root-colls (into #{}
@@ -133,7 +140,10 @@
                                (map :entity-id))
                          findings)
         id->ns     (when (seq root-colls)
-                     (cd.db/collection-namespaces-by-id root-colls))
+                     (into {}
+                           (map (juxt :id :namespace))
+                           (collections.db/collections-of-ids {:collection-ids root-colls
+                                                               :columns        [:id :namespace]})))
         ;; str realizes the label NOW, in the job's (site) locale
         root-label (memoize (fn [collection-namespace]
                               (str (:name (collection/root-collection-with-ui-details

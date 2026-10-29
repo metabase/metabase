@@ -2,15 +2,17 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
-   [metabase-enterprise.search.semantic.db :as semantic-search.db]
    [metabase-enterprise.search.semantic.index :as semantic.index]
    [metabase-enterprise.search.semantic.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.search.semantic.util :as semantic.util]
    [metabase.collections.curation :as collections.curation]
+   [metabase.collections.db :as collections.db]
    [metabase.config.core :as config]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.search.embeddings.provider :as embeddings.provider]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
@@ -211,8 +213,8 @@
   ;; Catch covers test setups that exercise pgvector before the appdb schema is up;
   ;; production semantic-search init always runs after appdb migration.
   (try
-    (u/for-map [{root-id :id root-type :type} (semantic-search.db/library-root-collections library-types)
-                coll-id (cons root-id (semantic-search.db/descendant-collection-ids root-id))]
+    (u/for-map [{root-id :id root-type :type} (collections.db/root-collections-of-types {:types library-types :columns [:id :type]})
+                coll-id (cons root-id (collections.db/collection-ids-with-location-like (str "/" root-id "/%")))]
       [coll-id root-type])
     (catch Exception e
       (log/warnf "Skipping Library forest backfill — appdb lookup failed: %s" (ex-message e))
@@ -273,7 +275,7 @@
            (= :authoritative data_authority)        (update :authoritative conj id)
            (and is_published (= :final data_layer)) (update :published conj id))))
      {:authoritative [] :published []}
-     (semantic-search.db/curated-tables-reducible))
+     (warehouse-schema.db/curated-tables-reducible))
     (catch Exception e
       (when-not config/is-test?
         (throw e))
@@ -287,11 +289,11 @@
   Throws outside tests if the appdb lookup fails."
   []
   (try
-    (let [official-coll-ids (semantic-search.db/official-collection-ids)]
+    (let [official-coll-ids (collections.db/official-collection-ids)]
       (if (empty? official-coll-ids)
         []
         (into [] (map (comp str :id))
-              (semantic-search.db/unarchived-dashboard-ids-in-collections-reducible (vec official-coll-ids)))))
+              (dashboards.db/unarchived-dashboard-ids-in-collections-reducible {:collection-ids (vec official-coll-ids)}))))
     (catch Exception e
       (when-not config/is-test?
         (throw e))

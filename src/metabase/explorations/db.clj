@@ -559,11 +559,6 @@
 
 ;;; ------------------------------------------------ Timelines ------------------------------------------------
 
-(mu/defn timelines
-  "The Timelines with `timeline-ids`."
-  [timeline-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/Timeline :id [:in timeline-ids]))
-
 (mu/defn thread-timelines-for-threads
   "The ExplorationThreadTimelines of the ExplorationThreads with `thread-ids`, in position order."
   [thread-ids :- [:sequential ms/PositiveInt]]
@@ -622,20 +617,6 @@
 
 ;;; ------------------------------------------------ Documents ------------------------------------------------
 
-(mu/defn summary-documents-for-explorations
-  "The wire-shape columns of the Summary Documents of the Explorations with `exploration-ids`, oldest first."
-  [exploration-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Document
-              :id :name :exploration_id :creator_id :content_type
-              :created_at :updated_at :archived :is_placeholder]
-             :exploration_id [:in exploration-ids]
-             {:order-by [[:created_at :asc] [:id :asc]]}))
-
-(mu/defn unarchived-summary-document
-  "The unarchived Summary Document of the Exploration with `exploration-id`, or nil."
-  [exploration-id :- ms/PositiveInt]
-  (t2/select-one :model/Document :exploration_id exploration-id :archived false))
-
 (mu/defn insert-document!
   "Insert `document`."
   [document :- ::documents.schema/document.update]
@@ -666,20 +647,10 @@
 
 ;;; ------------------------------------------------ Other models ------------------------------------------------
 
-(mu/defn card-names
-  "The ID and name of the Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name] :id [:in card-ids]))
-
 (mu/defn card-queries
   "The query-relevant columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (queries/cards-queries-info card-ids :include [:database_id]))
-
-(mu/defn metric-cards-by-id
-  "A map of ID to the planner columns of the Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (u/index-by :id (queries/cards-queries-info card-ids :include [:name :description :database_id])))
 
 (mu/defn metric-card-ids
   "The `:id`s of the Cards visible to the current user as metrics, restricted to `metric-ids` when
@@ -694,42 +665,11 @@
                            :else 1] :asc]
                          [:name :asc]]}))
 
+(mu/defn metric-cards-by-id
+  "A map of ID to the planner columns of the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (u/index-by :id (queries/cards-queries-info card-ids :include [:name :description :database_id])))
+
 ;;; Columns we actually need from `Card` for the two functions below. We deliberately avoid pulling the full row
 ;;; (which includes large blobs like `:result_metadata`, `:visualization_settings`, `:parameter_mappings`, etc.) so
 ;;; the response stays small and JSON encoding is fast.
-(def ^:private exploration-card-columns
-  [:id :name :description :collection_id :database_id :table_id :type :entity_id
-   :card_schema :dataset_query :result_metadata :dimensions :dimension_mappings])
-
-(mu/defn metric-cards-for-explorations
-  "The exploration-relevant columns of the metric Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids] :type "metric"))
-
-(mu/defn cards-for-explorations
-  "The exploration-relevant columns of the Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select (into [:model/Card] exploration-card-columns) :id [:in card-ids]))
-
-(mu/defn library-metrics-root-collection
-  "The ID and location of the library metrics Collection of `type`, or nil."
-  [type :- :string]
-  (t2/select-one [:model/Collection :id :location] :type type))
-
-(mu/defn segment-names
-  "A map of ID to name for the Segments with `segment-ids`."
-  [segment-ids :- [:set ::lib.schema.id/segment]]
-  (t2/select-pk->fn :name [:model/Segment :id :name] :id [:in segment-ids]))
-
-(mu/defn user-summaries-by-id
-  "A map of ID to the ID, email, and names of the Users with `user-ids`."
-  [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
-
-(mu/defn live-comment-targets
-  "The child target IDs of the live exploration Comments anchored to one of `child-target-ids`."
-  [child-target-ids :- [:sequential :string]]
-  (t2/select-fn-set :child_target_id :model/Comment
-                    :target_type     "exploration"
-                    :child_target_id [:in child-target-ids]
-                    :deleted_at      nil))

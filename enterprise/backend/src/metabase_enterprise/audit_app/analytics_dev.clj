@@ -18,14 +18,17 @@
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.db :as collections.db]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.core :as plugins]
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -53,7 +56,7 @@
 (defn find-analytics-dev-database
   "Finds existing analytics dev database."
   []
-  (audit-app.db/non-audit-database-named canonical-db-name))
+  (warehouses.db/non-audit-database-by-name {:database-name canonical-db-name}))
 
 (defn create-analytics-dev-database!
   "Creates a Database entry pointing to the app database for analytics development.
@@ -281,12 +284,12 @@
 (defn- first-admin-user
   "Get the first admin user (by ID)."
   []
-  (audit-app.db/first-superuser))
+  (users.db/first-superuser))
 
 (defn find-analytics-collection
   "Get the analytics collection"
   []
-  (audit-app.db/collection-by-entity-id audit/default-audit-collection-entity-id))
+  (collections.db/collection-with-entity-id audit/default-audit-collection-entity-id))
 
 (defn- analytics-content-loaded?
   "Check if analytics content has already been imported."

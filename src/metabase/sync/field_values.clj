@@ -14,12 +14,14 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
-   [metabase.warehouse-schema.models.field-values :as field-values]))
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (mu/defn- clear-field-values-for-field!
   [field :- i/FieldInstance]
-  (when (sync.db/field-values-exist? (u/the-id field))
+  (when (warehouse-schema.db/field-values-exist? {:field-id (u/the-id field)})
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
@@ -38,7 +40,7 @@
   Bounding the count keeps wide tables (e.g. document databases with huge/dynamic schemas) from loading every Field
   into memory and issuing a warehouse request per field."
   [table limit]
-  (sync.db/normal-fields-for-table (u/the-id table) limit))
+  (warehouse-schema.db/normal-fields-of-table {:table-id (u/the-id table) :limit limit}))
 
 (defn- warn-too-many-fields!
   "Log that `table` has more fields to scan for FieldValues than scan-max-fields-per-table (`limit`), so only the first
@@ -167,7 +169,7 @@
             by-table (group-by :table_id eligible)
             database (memoize driver.u/lib-database)]
         (transduce (map (fn [[table-id table-fields]]
-                          (let [table (sync.db/table table-id)]
+                          (let [table (warehouse-schema.db/table-without-user-settings {:table-id table-id})]
                             (sync-fields-for-table! (database (:db_id table)) table table-fields fvs-map))))
                    (completing (partial merge-with +))
                    empty-counts
@@ -241,9 +243,9 @@
   [table-ids]
   (let [table-ids            (set table-ids)
         table-id->db-id      (when (seq table-ids)
-                               (sync.db/table-database-ids table-ids))
+                               (warehouse-schema.db/table-id->database-id {:table-ids table-ids}))
         db-id->is-on-demand? (when (seq table-id->db-id)
-                               (sync.db/database-on-demand-flags (set (vals table-id->db-id))))]
+                               (warehouses.db/database-on-demand-flags {:database-ids (set (vals table-id->db-id))}))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 
@@ -264,7 +266,7 @@
                  (->> field-ids
                       (partition-all *on-demand-select-batch-size*)
                       (mapcat (fn [batch]
-                                (sync.db/fields-for-field-values batch)))))
+                                (warehouse-schema.db/fields-for-field-values {:field-ids batch})))))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))
         on-demand-fields        (filter #(table-id->is-on-demand? (:table_id %)) fields)]
     (when (seq on-demand-fields)
@@ -278,7 +280,7 @@
   (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
     (let [types        field-values/advanced-field-values-types
           max-age-days (t/as field-values/advanced-field-values-max-age :days)
-          rows-count   (sync.db/advanced-field-values-count-before (:id field) types max-age-days)]
+          rows-count   (warehouse-schema.db/advanced-field-values-count-before {:field-id (:id field) :types types :max-age-days max-age-days})]
       (sync.db/delete-advanced-field-values-before! (:id field) types max-age-days)
       rows-count)))
 

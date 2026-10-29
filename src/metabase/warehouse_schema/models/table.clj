@@ -1,17 +1,22 @@
 (ns metabase.warehouse-schema.models.table
   (:require
    [medley.core :as m]
+   [metabase.actions.db :as actions.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
+   [metabase.measures.db :as measures.db]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.card-schema :as card-schema]
+   [metabase.queries.db :as queries.db]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
+   [metabase.segments.db :as segments.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -244,7 +249,7 @@
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
   (warehouse-schema.db/delete-fields-for-table! (:id table))
-  (warehouse-schema.db/delete-implicit-actions-for-table! (:id table)))
+  (actions.db/delete-implicit-actions-for-table! {:table-id (:id table)}))
 
 (t2/define-before-update :model/Table
   [table]
@@ -408,7 +413,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (warehouse-schema.db/collections collection-ids))
+                                      (collections.db/collections-of-ids {:collection-ids collection-ids}))
                                 {})
         ;; Associate collection info with each table so table-editable? doesn't need to query
         tables-with-collection (for [table tables]
@@ -520,7 +525,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (warehouse-schema.db/unarchived-segments-for-tables table-ids))
+      (segments.db/unarchived-segments-of-tables {:table-ids table-ids}))
     tables))
 
 (mi/define-batched-hydration-method with-measures
@@ -529,7 +534,7 @@
   [tables]
   (with-objects :measures
     (fn [table-ids]
-      (warehouse-schema.db/unarchived-measures-for-tables table-ids))
+      (measures.db/unarchived-measures-of-tables {:table-ids table-ids}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -545,7 +550,7 @@
   (with-objects :metrics
     (fn [table-ids]
       (->> (binding [card-schema/*skip-dimension-backfill?* true]
-             (warehouse-schema.db/unarchived-metric-cards-for-tables table-ids))
+             (queries.db/unarchived-metric-cards-of-tables {:table-ids table-ids}))
            (filter mi/can-read?)))
     tables))
 
@@ -585,9 +590,9 @@
                                   [["FieldUserSettings" field-id] {"Table" id}]))
         dimensions (into {} (for [dimension-id (warehouse-schema.db/dimension-ids-for-table id)]
                               [["Dimension" dimension-id] {"Table" id}]))
-        segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
+        segments (into {} (for [segment-id (segments.db/segment-ids-for-table {:table-id id :skip-archived? skip-archived})]
                             [["Segment" segment-id] {"Table" id}]))
-        measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id skip-archived)]
+        measures (into {} (for [measure-id (measures.db/measure-ids-for-table {:table-id id :skip-archived? skip-archived})]
                             [["Measure" measure-id] {"Table" id}]))]
     (merge fields settings field-settings dimensions segments measures)))
 

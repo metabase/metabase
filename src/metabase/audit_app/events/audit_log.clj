@@ -4,6 +4,7 @@
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.events.core :as events]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [methodical.core :as methodical]))
 
@@ -37,7 +38,7 @@
   (let [cards   (when (seq dashcards)
                   (into {}
                         (map (juxt :id #(select-keys % [:name :description])))
-                        (audit-app.db/cards (map :card_id dashcards))))
+                        (queries.db/cards (map :card_id dashcards))))
         details (-> (select-keys object [:description :name :id])
                     (assoc :dashcards (for [{:keys [id card_id]} dashcards]
                                         (-> (cards card_id)

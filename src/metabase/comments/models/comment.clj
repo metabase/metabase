@@ -7,6 +7,7 @@
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.schema :as comments.schema]
    [metabase.models.interface :as mi]
+   [metabase.users.db :as users.db]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -34,7 +35,7 @@
   (mi/instances-with-hydrated-data
    comments k
    #(when-let [creator-ids (seq (keep :creator_id comments))]
-      (comments.db/users-by-id creator-ids))
+      (users.db/user-summaries-by-id {:user-ids creator-ids}))
    :creator_id
    {:default {}}))
 

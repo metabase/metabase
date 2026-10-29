@@ -287,7 +287,7 @@
   (try (.delete file) (catch Exception _)))
 
 (defn- fields-metadata [_driver table-id]
-  (transforms-python.db/top-level-fields-metadata table-id))
+  (warehouse-schema.db/top-level-fields-metadata {:table-id table-id}))
 
 (defn- build-table-query
   "Build a mbql query for table, might add a proper filter for incremental transforms."

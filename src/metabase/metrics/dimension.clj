@@ -6,7 +6,6 @@
    [malli.util :as mut]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lm.schema]
-   [metabase.metrics.db :as metrics.db]
    [metabase.parameters.core :as parameters]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -222,7 +221,7 @@
         field->row (when (seq field-ids)
                      (into {}
                            (map (juxt :id #(update-keys (select-keys % field-cols) u/->kebab-case-en)))
-                           (metrics.db/fields-with-columns field-cols field-ids)))
+                           (warehouse-schema.db/fields-by-ids {:field-ids field-ids :columns (into [:id] field-cols)})))
         nil-cols   (zipmap (map u/->kebab-case-en field-cols) (repeat nil))]
     (mapv (fn [metric pairs]
             (cond-> metric

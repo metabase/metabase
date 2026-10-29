@@ -121,14 +121,14 @@
   (t2/with-transaction [_]
     (dependencies.db/mark-dependents-result-metadata-statuses-stale! :card #{card-id})
     (dependencies.db/mark-dependents-analysis-finding-statuses-stale! :card #{card-id})
-    (if (= state (dependencies.db/card-state card-id true))
+    (if (= state (queries.db/card-state {:card-id card-id :lock? true}))
       (dependencies.db/set-card-result-metadata! card-id metadata)
       (dependencies.db/mark-result-metadata-statuses-stale! {:card #{card-id}}))))
 
 (mu/defn- rederive-card!
   "Re-derive the result metadata of the MBQL Card with `card-id` and store it when it changed."
   [card-id :- ::lib.schema.id/card]
-  (let [state    (dependencies.db/card-state card-id false)
+  (let [state    (queries.db/card-state {:card-id card-id :lock? false})
         card     (queries.db/card card-id)
         metadata (lib-be/with-metadata-provider-cache
                    (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))

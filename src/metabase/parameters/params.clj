@@ -23,13 +23,13 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -129,7 +129,7 @@
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (m/index-by :table_id (-> (parameters.db/active-name-fields-for-tables param-field-columns table-ids)
+    (m/index-by :table_id (-> (warehouse-schema.db/active-name-fields-of-tables {:columns param-field-columns :table-ids table-ids})
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)
@@ -200,7 +200,7 @@
   [fields]
   (let [target-ids (into #{} (keep :fk_target_field_id) fields)
         id->target (when (seq target-ids)
-                     (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns target-ids)
+                     (m/index-by :id (-> (warehouse-schema.db/fields-by-ids {:field-ids target-ids :columns (into [] param-field-columns)})
                                          (t2/hydrate :has_field_values :name_field))))]
     (for [field fields]
       (assoc field :target (some-> (:fk_target_field_id field) id->target)))))
@@ -212,7 +212,7 @@
   [param-id->field-ids :- [:maybe [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]]]
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
-                          (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns field-ids)
+                          (m/index-by :id (-> (warehouse-schema.db/fields-by-ids {:field-ids field-ids :columns (into [] param-field-columns)})
                                               (t2/hydrate :has_field_values :name_field [:dimensions [:human_readable_field :has_field_values]])
                                               hydrate-param-field-targets
                                               remove-dimensions-nonpublic-columns)))]

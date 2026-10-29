@@ -3,8 +3,9 @@
   (:require
    [clojure.string :as str]
    [metabase.analytics.core :as analytics]
-   [metabase.embedding.db :as embedding.db]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.premium-features.core :as premium-features]
+   [metabase.queries.db :as queries.db]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
@@ -106,8 +107,8 @@
           (analytics/track-event! :snowplow/embed_share
                                   {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
                                    :embedding-app-origin-set   (embedding-app-origin-set?)
-                                   :number-embedded-questions  (embedding.db/count-embedded-cards)
-                                   :number-embedded-dashboards (embedding.db/count-embedded-dashboards)}))))))
+                                   :number-embedded-questions  (queries.db/embedded-card-count)
+                                   :number-embedded-dashboards (dashboards.db/dashboard-count {:embedded? true})}))))))
 
 (defsetting ^:deprecated enable-embedding
   ;; To be removed in 0.53.0
@@ -201,8 +202,8 @@
                        {:event        (keyword (str "modular-embedding" (if new-value "-enabled" "-disabled")))
                         :event-detail (json/encode
                                        {:embedding_app_origin_set   (embedding-app-origin-set?)
-                                        :number_embedded_questions  (embedding.db/count-embedded-cards)
-                                        :number_embedded_dashboards (embedding.db/count-embedded-dashboards)})}))))))
+                                        :number_embedded_questions  (queries.db/embedded-card-count)
+                                        :number_embedded_dashboards (dashboards.db/dashboard-count {:embedded? true})})}))))))
 
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")

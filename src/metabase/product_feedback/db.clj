@@ -33,33 +33,3 @@
                         [:>= [:count [:distinct :rc.id]] 10]
                         [:>= [:count [:distinct [:case [:= :rc.query_type "native"] :rc.id]]] 2]
                         [:>= [:count [:distinct :d.id]] 1]]})))
-
-(mu/defn active-personal-user-count
-  "The number of active personal Users."
-  []
-  (t2/count :model/User :is_active true, :type "personal"))
-
-(mu/defn unarchived-dashboard-count
-  "The number of unarchived Dashboards."
-  []
-  (t2/count :model/Dashboard :archived false))
-
-(mu/defn non-audit-database-count
-  "The number of Databases other than the audit Database."
-  []
-  (t2/count :model/Database :is_audit false))
-
-(mu/defn unarchived-card-count
-  "The number of unarchived Cards of `card-type`."
-  [card-type :- [:or :keyword :string]]
-  (t2/count :model/Card :archived false :type card-type))
-
-(mu/defn oldest-active-admin
-  "The earliest-joined active superuser, or nil."
-  []
-  (t2/select-one :model/User :is_superuser true, :is_active true, {:order-by [:date_joined]}))
-
-(mu/defn earliest-user-date-joined
-  "The join date of the earliest-joined User, or nil."
-  []
-  (t2/select-one-fn :date_joined :model/User, {:order-by [[:date_joined :asc]]}))

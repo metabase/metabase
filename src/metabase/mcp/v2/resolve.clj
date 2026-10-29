@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.mcp.db :as mcp.db]
@@ -160,6 +161,14 @@
   (when location
     (mapv parse-long (re-seq #"\d+" location))))
 
+(defn collection-id->name+location
+  "Map of collection id -> `[name location]` for the Collections with `ids`."
+  [ids]
+  (into {}
+        (map (juxt :id (juxt :name :location)))
+        (collections.db/collections-of-ids {:collection-ids ids
+                                            :columns        [:id :name :location]})))
+
 (defn- readable-id->name
   "Map of collection id -> name for the given ids, omitting collections the current user cannot
    read. `:namespace` and `:type` are selected because [[mi/can-read?]] consults them."
@@ -168,7 +177,8 @@
     (into {}
           (comp (filter mi/can-read?)
                 (map (juxt :id :name)))
-          (mcp.db/collections-for-read-check ids))))
+          (collections.db/collections-of-ids {:collection-ids ids
+                                              :columns        [:id :name :namespace :type]}))))
 
 (defn collection-path
   "The display path of the collection with `collection-id` — ancestor names joined with `/`, ending
@@ -183,6 +193,6 @@
    pages and batches the same lookups itself rather than calling this per row."
   [collection-id]
   (when collection-id
-    (when-let [[cname location] (get (mcp.db/collection-id->name+location #{collection-id}) collection-id)]
+    (when-let [[cname location] (get (collection-id->name+location #{collection-id}) collection-id)]
       (let [ancestors (readable-id->name (set (location->ids location)))]
         (str/join "/" (concat (keep ancestors (location->ids location)) [cname]))))))

@@ -4,6 +4,7 @@
    [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
+   [metabase.permissions.db :as permissions.db]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
@@ -23,7 +24,7 @@
   called from a background sync), since sandboxes are scoped to a user's group memberships."
   [table-id]
   (when api/*current-user-id*
-    (let [group-ids (sandbox.db/user-group-ids api/*current-user-id*)
+    (let [group-ids (permissions.db/user-group-ids {:user-id api/*current-user-id*})
           sandboxes (when (seq group-ids)
                       (sandbox.db/sandboxes-for-groups-and-table group-ids table-id))]
       (when sandboxes

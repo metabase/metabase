@@ -18,6 +18,8 @@
    [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.appearance.core :as appearance]
+   [metabase.auth-identity.db :as auth-identity.db]
+   [metabase.users.db :as users.db]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -54,8 +56,8 @@
     ;; serialize concurrent enrollments for the same user by locking the User row: with no totp
     ;; row yet there is nothing else to lock, and racing inserts would abort the transaction on
     ;; the unique (user_id, provider) constraint
-    (let [user          (mfa.db/lock-user user-id)
-          auth-identity (mfa.db/lock-totp-identity user-id)]
+    (let [user          (users.db/locked-user-id {:user-id user-id})
+          auth-identity (auth-identity.db/auth-identity-for-update {:user-id user-id :provider mfa.db/totp-provider})]
       (when-not (some-> auth-identity verification/confirmed?)
         (let [secret      (totp/generate-secret)
               credentials {:secret secret}]
@@ -82,7 +84,7 @@
   ([user-id code] (confirm-enrollment! user-id code nil))
   ([user-id code jti]
    (t2/with-transaction [_conn]
-     (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
+     (when-let [auth-identity (auth-identity.db/auth-identity-for-update {:user-id user-id :provider mfa.db/totp-provider})]
        (when-not (verification/confirmed? auth-identity)
          (when-not (verification/jti-used? (:credentials auth-identity) jti)
            (when-let [secret (verification/stored-secret auth-identity)]
@@ -110,7 +112,7 @@
   plaintext; only bcrypt hashes are stored. Nil when the user has no confirmed enrollment."
   [user-id]
   (t2/with-transaction [_conn]
-    (when-let [auth-identity (mfa.db/lock-totp-identity user-id)]
+    (when-let [auth-identity (auth-identity.db/auth-identity-for-update {:user-id user-id :provider mfa.db/totp-provider})]
       (when (verification/confirmed? auth-identity)
         (let [codes (recovery-codes/generate-codes)]
           (mfa.db/update-auth-identity! (:id auth-identity)

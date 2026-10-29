@@ -3,6 +3,7 @@
    [metabase-enterprise.tenants.db :as tenants.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
@@ -91,7 +92,7 @@
   (into []
         (when-let [tenant-id (:tenant_id (users.db/user (u/the-id user-or-id)))]
           (when-let [tenant-collection-id (:tenant_collection_id (tenants.db/tenant tenant-id))]
-            (let [descendant-ids (tenants.db/descendant-collection-ids tenant-collection-id)]
+            (let [descendant-ids (collections.db/collection-ids-with-location-like (str "/" tenant-collection-id "/%"))]
               (conj descendant-ids tenant-collection-id))))))
 
 (defenterprise maybe-localize-tenant-collection-names

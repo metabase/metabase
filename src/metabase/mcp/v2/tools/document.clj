@@ -23,7 +23,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.users.models.user :as user]
+   [metabase.users.db :as users.db]
    [metabase.users.settings :as users.settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -88,18 +88,11 @@
   `can-read?`, and resolving any id the caller names would let a document author enumerate names and
   emails (`:common_name` is the email when a user has no name) across tenants."
   [ids]
-  (let [clauses (cond-> [:and [:in :id ids] [:= :type "personal"] [:= :is_active true]]
-                  (not api/*is-superuser?*)
-                  (conj [:= :tenant_id (:tenant_id @api/*current-user*)]))
-        clauses (if api/*is-superuser?*
-                  clauses
-                  (case (users.settings/user-visibility)
-                    :all   clauses
-                    :group (conj clauses [:in :id (-> (user/same-groups-user-ids api/*current-user-id*)
-                                                      set
-                                                      (conj api/*current-user-id*))])
-                    :none  (conj clauses [:= :id api/*current-user-id*])))]
-    (mcp.db/select-users-where clauses)))
+  (users.db/visible-users-among {:user-ids         ids
+                                 :superuser?       (boolean api/*is-superuser?*)
+                                 :tenant-id        (:tenant_id @api/*current-user*)
+                                 :current-user-id  api/*current-user-id*
+                                 :visibility       (users.settings/user-visibility)}))
 
 (defn- smart-link-rows
   "`{[model id] row}` for every distinct smart-link target among `links` the current user may

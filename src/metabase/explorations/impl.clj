@@ -8,6 +8,7 @@
    exploration-data modal without an extra round trip."
   (:require
    [clojure.string :as str]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration-block :as block]
@@ -15,6 +16,7 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -30,7 +32,7 @@
   "Set of collection ids (the library-metrics root + descendants) whose metric Cards should be sorted
    to the top of the /dimensions response."
   []
-  (when-let [root (explorations.db/library-metrics-root-collection collection/library-metrics-collection-type)]
+  (when-let [root (collections.db/collection-of-type collection/library-metrics-collection-type)]
     (conj (or (collection/descendant-ids root) #{}) (:id root))))
 
 (defn- metric-query
@@ -110,7 +112,7 @@
    visualization_settings, dataset_query, etc.) and dominates response size."
   [card-ids]
   (when (seq card-ids)
-    (let [rows   (explorations.db/metric-cards-for-explorations card-ids)
+    (let [rows   (queries.db/cards-for-explorations {:card-ids card-ids :metric-only? true})
           by-id  (u/index-by :id rows)]
       (into [] (keep by-id) card-ids))))
 
@@ -134,7 +136,7 @@
             (metrics/sync-dimensions! :metadata/metric id)
             (catch Throwable e
               (log/warnf e "Failed to sync dimensions for metric card %d" id))))
-        (let [healed (u/index-by :id (explorations.db/cards-for-explorations broken-ids))]
+        (let [healed (u/index-by :id (queries.db/cards-for-explorations {:card-ids broken-ids}))]
           (mapv #(or (get healed (:id %)) %) cards))))))
 
 (defn- simple-table-query?

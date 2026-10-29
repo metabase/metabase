@@ -1,9 +1,11 @@
 (ns metabase.queries-rest.api.card
   "/api/card endpoints."
   (:require
+   [metabase.actions.db :as actions.db]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.bookmarks.db :as bookmarks.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.data-apps.core :as data-apps]
@@ -41,6 +43,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -67,7 +70,7 @@
 ;; return all Cards bookmarked by the current user.
 (defmethod cards-for-filter-option* :bookmarked
   [_]
-  (let [bookmarks (queries-rest.db/card-bookmarks-for-user api/*current-user-id*)]
+  (let [bookmarks (bookmarks.db/card-bookmarks-of-user {:user-id api/*current-user-id*})]
     (->> (t2/hydrate bookmarks :card)
          (map :card)
          (remove :archived)
@@ -168,9 +171,9 @@
                                                        (name f)))
     (case f
       :database      (api/read-check :model/Database model-id)
-      :table         (api/read-check :model/Database (queries-rest.db/table-database-id model-id))
+      :table         (api/read-check :model/Database (warehouse-schema.db/database-id-of-table {:table-id model-id}))
       :using_model   (api/read-check :model/Card model-id)
-      :using_segment (api/read-check :model/Database (queries-rest.db/segment-database-id model-id))))
+      :using_segment (api/read-check :model/Database (warehouse-schema.db/database-id-of-segment {:segment-id model-id}))))
   (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
         last-edit-info (:card (revisions/fetch-last-edited-info {:card-ids (map :id cards)}))]
     (into []
@@ -681,7 +684,7 @@
                     [:id ms/PositiveInt]]]
   (let [card    (api/write-check :model/Card id)
         ;; the database deletes the card's actions through the foreign key, with no events of their own
-        actions (queries-rest.db/actions-for-model id)]
+        actions (actions.db/actions-for-model {:model-id id})]
     (queries-rest.db/delete-card! id)
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*})
     (doseq [action actions]

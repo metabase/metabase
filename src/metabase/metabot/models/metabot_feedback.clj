@@ -1,8 +1,8 @@
 (ns metabase.metabot.models.metabot-feedback
   "Persist Metabot message feedback"
   (:require
-   [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
+   [metabase.users.db :as users.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -16,5 +16,5 @@
   [_model k feedbacks]
   (mi/instances-with-hydrated-data
    feedbacks k
-   #(metabot.db/user-summaries-by-id (keep :user_id feedbacks))
+   #(users.db/user-summaries-by-id {:user-ids (keep :user_id feedbacks)})
    :user_id {:default nil}))

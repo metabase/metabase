@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
+   [metabase.permissions.db :as permissions.db]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -31,7 +32,7 @@
   (let [non-impersonated-group-ids (set/difference (set group-ids)
                                                    (set (map :group_id impersonations)))
         perm-values                (when (seq non-impersonated-group-ids)
-                                     (impersonation.db/view-data-permission-values (u/the-id db-or-id) non-impersonated-group-ids))]
+                                     (permissions.db/database-view-data-values {:database-id (u/the-id db-or-id) :group-ids non-impersonated-group-ids}))]
     ;; Just check if any other non-impersonated groups have unrestricted access to the DB. We don't need to worry
     ;; about block permissions here because it would have been enforced earlier in the QP middleware stack.
     (not (contains? perm-values :unrestricted))))
@@ -52,7 +53,7 @@
   Note: this returns a list of policies. Typically a user should only be in one group with an impersonation policy at a time,
   but there may be policies in multiple groups if they use the same user attribute."
   [db-or-id]
-  (let [group-ids           (impersonation.db/group-ids-for-user api/*current-user-id*)
+  (let [group-ids           (permissions.db/user-group-ids {:user-id api/*current-user-id*})
         conn-impersonations (when (seq group-ids)
                               (impersonation.db/impersonations-for-groups-and-database group-ids (u/the-id db-or-id)))]
     (when (and (seq conn-impersonations) (sandboxed? db-or-id))

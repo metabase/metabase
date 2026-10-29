@@ -25,32 +25,11 @@
                            (date-part :year year)
                            (date-part :month month)]})))
 
-(mu/defn api-key-by-name
-  "The ApiKey named `api-key-name`, or nil."
-  [api-key-name :- :string]
-  (t2/select-one :model/ApiKey :name api-key-name))
-
-(mu/defn api-key-prefix-exists?
-  "Whether an ApiKey with `prefix` exists."
-  [prefix :- :string]
-  (t2/exists? :model/ApiKey :key_prefix prefix))
-
 (mu/defn insert-api-key!
   "Insert `api-key` and return the new instance. `::api-keys/unhashed-key` has a special meaning to the ApiKey
   model's before-insert hook: it is hashed into `:key` and used to derive `:key_prefix`."
   [api-key :- ::api-keys.schema/api-key.create]
   (t2/insert-returning-instance! :model/ApiKey api-key))
-
-(mu/defn user-by-email
-  "The User with `email`, or nil."
-  [email :- :string]
-  (t2/select-one :model/User :email email))
-
-(mu/defn user-columns-by-email
-  "The `columns` of the User with `email`, or nil."
-  [columns :- [:sequential :keyword]
-   email :- :string]
-  (t2/select-one (into [:model/User] columns) :email email))
 
 (mu/defn insert-user!
   "Insert `user` and return the new instance."
@@ -62,16 +41,6 @@
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
   (t2/update! :model/User user-id changes))
-
-(mu/defn sample-database-exists?
-  "Whether the sample Database exists."
-  []
-  (t2/exists? :model/Database :is_sample true))
-
-(mu/defn database-by-name
-  "The `:id` and `:is_stub` of the Database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one [:model/Database :id :is_stub] :name database-name))
 
 (mu/defn insert-database!
   "Insert `database` and return the new instance."

@@ -3,11 +3,12 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.xrays.automagic-dashboards.populate :as populate]
-   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.transforms.materialize :as tf.materialize]
    [metabase.xrays.transforms.specs :refer [*transform-specs*]]
    [toucan2.realize :as t2.realize]))
@@ -67,7 +68,7 @@
                             (map (comp :source-table :query :dataset_query))
                             (filter number?)
                             not-empty)]
-    (let [table-id->table (into {} (map (juxt :id t2.realize/realize)) (xrays.db/tables (set table-ids)))]
+    (let [table-id->table (into {} (map (juxt :id t2.realize/realize)) (warehouse-schema.db/tables-by-ids {:table-ids (set table-ids)}))]
       (mapv (fn [table-id]
               (let [table (get table-id->table table-id)]
                 (card-for-source-table table)))
@@ -79,9 +80,8 @@
   (let [transform-spec              (or (m/find-first (comp #{transform-name} :name) @*transform-specs*)
                                         (throw (ex-info (format "Failed to find transform with name %s" (pr-str transform-name))
                                                         {:status-code 404})))
-        {steps false provides true} (->> transform-name
-                                         tf.materialize/get-collection
-                                         xrays.db/cards-in-collection
+        {steps false provides true} (->> {:collection-id (tf.materialize/get-collection transform-name)}
+                                         queries.db/cards-in-collection
                                          (group-by (comp some?
                                                          (-> transform-spec :provides set)
                                                          :name)))

@@ -14,12 +14,12 @@
    [metabase.request.core :as request]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
-   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as ingestion]
    [metabase.search.settings :as search.settings]
    [metabase.search.task.search-index :as task.search-index]
    [metabase.task.core :as task]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -395,7 +395,7 @@
                                         expected-result-type expected-result-id))]
     (if (and for-user-id (not= for-user-id api/*current-user-id*))
       ;; Build the context and run every permission/visibility check from the target user's perspective.
-      (do (api/check-404 (search.db/user-exists? for-user-id))
+      (do (api/check-404 (users.db/user-exists? {:user-id for-user-id}))
           (request/with-current-user for-user-id (diagnose)))
       (diagnose))))
 

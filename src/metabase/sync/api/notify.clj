@@ -7,12 +7,13 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sync.core :as sync]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,10 +39,10 @@
   (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)
         db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
-    (api/check-404 (sync.db/database-exists? id))
+    (api/check-404 (warehouses.db/database-exists? {:database-id id}))
     (let [table (cond
-                  table_id   (api/check-404 (sync.db/table-in-database id (int table_id)))
-                  table_name (api/check-404 (sync.db/table-by-name id table_name)))]
+                  table_id   (api/check-404 (warehouse-schema.db/table-in-database {:database-id id :table-id (int table_id)}))
+                  table_name (api/check-404 (warehouse-schema.db/table-by-database-and-name {:database-id id :table-name table_name})))]
       (cond-> (future (if table
                         (table-sync-fn table)
                         (db-sync-fn id)))
@@ -89,11 +90,11 @@
                                                      [:table_name   {:optional true} [:maybe ms/NonBlankString]]
                                                      [:schema_name  {:optional true} [:maybe string?]]
                                                      [:synchronous? {:default false} [:maybe ms/BooleanValue]]]]
-  (api/let-404 [database-id (sync.db/attached-dwh-database-id)]
+  (api/let-404 [database-id (warehouses.db/attached-dwh-database-id)]
     (if (str/blank? table_name)
       (cond-> (future (sync-metadata/sync-db-metadata! database-id))
         synchronous? deref)
-      (if-let [table (sync.db/table-by-schema-and-name database-id schema_name table_name)]
+      (if-let [table (warehouse-schema.db/table-by-schema-and-name {:database-id database-id :schema schema_name :table-name table_name})]
         (cond-> (future (sync-metadata/sync-table-metadata! table))
           synchronous? deref)
         ;; find and sync is always synchronous. And we want it to be so since the "can't find this table" error is
@@ -114,8 +115,8 @@
    {:keys [schema_name table_name]} :- [:map {:closed true}
                                         [:schema_name ms/NonBlankString]
                                         [:table_name  ms/NonBlankString]]]
-  (api/check-404 (sync.db/database-exists? id))
-  (if-not (sync.db/table-by-schema-and-name id schema_name table_name)
+  (api/check-404 (warehouses.db/database-exists? {:database-id id}))
+  (if-not (warehouse-schema.db/table-by-schema-and-name {:database-id id :schema schema_name :table-name table_name})
     (find-and-sync-new-table id table_name schema_name)
     (throw (without-stacktrace
             (ex-info (trs "Table ''{0}.{1}'' already exists"

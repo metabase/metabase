@@ -1,6 +1,5 @@
 (ns metabase-enterprise.audit-app.permissions
   (:require
-   [metabase-enterprise.audit-app.db :as audit-app.db]
    [metabase.audit-app.core :as audit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -10,7 +9,8 @@
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (def audit-db-view-names
   "Used for giving granular permissions into the audit db. Instead of granting permissions to
@@ -75,7 +75,7 @@
       (let [create-queries-value (case tyype
                                    (:read :write) :query-builder
                                    :none  :no)
-            view-tables         (audit-app.db/tables-of-database-named audit/audit-db-id audit-db-view-names)]
+            view-tables         (warehouse-schema.db/tables-of-database-named {:database-id audit/audit-db-id :table-names audit-db-view-names})]
         (doseq [table view-tables]
           (perms/set-table-permission! group-id table :perms/create-queries create-queries-value))
         (cond-> changes

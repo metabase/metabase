@@ -3,6 +3,7 @@
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema]
    [metabase.models.serialization :as serdes]
+   [metabase.users.db :as users.db]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -20,7 +21,7 @@
   (if-not (seq glossary-entries)
     glossary-entries
     (let [creator-ids (into #{} (map :creator_id) glossary-entries)
-          id->creator (glossary.db/users-by-id creator-ids)]
+          id->creator (users.db/user-summaries-by-id {:user-ids creator-ids})]
       (for [entry glossary-entries]
         (assoc entry :creator (get id->creator (:creator_id entry)))))))
 

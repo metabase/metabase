@@ -7,6 +7,7 @@
    [metabase.model-persistence.db :as model-persistence.db]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -170,7 +171,7 @@
 (defn ready-unpersisted-models!
   "Looks for all new models in database and creates a persisted-info ready to be synced."
   [database-id]
-  (let [cards (model-persistence.db/unpersisted-models-for-database database-id)]
+  (let [cards (queries.db/unpersisted-model-cards {:database-id database-id})]
     (model-persistence.db/insert-persisted-infos! (map #(create-row nil %) cards))))
 
 (defn turn-on-model!

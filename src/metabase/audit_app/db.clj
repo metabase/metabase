@@ -8,30 +8,10 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn cards
-  "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
-  [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
-  (t2/select :model/Card :id [:in card-ids]))
-
 (mu/defn audit-log-topic-exists?
   "Whether an AuditLog entry with `topic` exists."
   [topic :- [:or :keyword :string]]
   (t2/exists? :model/AuditLog :topic topic))
-
-(mu/defn collection-with-entity-id
-  "The Collection with `entity-id`, or nil."
-  [entity-id :- :string]
-  (t2/select-one :model/Collection :entity_id entity-id))
-
-(mu/defn dashboard-with-entity-id
-  "The Dashboard with `entity-id`, or nil."
-  [entity-id :- :string]
-  (t2/select-one :model/Dashboard :entity_id entity-id))
-
-(mu/defn card-name-and-description
-  "The name and description of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :name :description], :id card-id))
 
 (mu/defn insert-audit-log!
   "Insert an AuditLog entry."
@@ -71,3 +51,13 @@
   (t2/query-one {:delete-from table
                  :where [:<= time-column cutoff]
                  :limit batch-size}))
+
+(mu/defn latest-table-publishing-event
+  "The most recent publish or unpublish AuditLog event for the Table with `table-id`, or nil."
+  [{:keys [table-id]} :- [:map {:closed true}
+                          [:table-id ::lib.schema.id/table]]]
+  (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
+                 :topic [:in [:table-publish :table-unpublish]]
+                 :model "Table"
+                 :model_id [:auto/param table-id]
+                 {:order-by [[:timestamp :desc] [:id :desc]]}))

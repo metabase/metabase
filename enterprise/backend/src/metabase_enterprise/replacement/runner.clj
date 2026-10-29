@@ -8,11 +8,15 @@
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
    [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase-enterprise.replacement.util :as replacement.util]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.measures.db :as measures.db]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.model-persistence.db :as model-persistence.db]
    [metabase.queries.db :as queries.db]
+   [metabase.segments.db :as segments.db]
    [metabase.source-swap.util :as source-swap.util]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.db :as transforms.db]
@@ -51,12 +55,12 @@
                 (into {}
                       (map (juxt (fn [o] [m (:id o)]) identity))
                       (case m
-                        :card      (replacement.db/cards-with-ids ids)
-                        :table     (replacement.db/tables-with-ids ids)
-                        :dashboard (replacement.db/dashboards-with-ids ids)
-                        :transform (replacement.db/transforms-with-ids ids)
-                        :segment   (replacement.db/segments-with-ids ids)
-                        :measure   (replacement.db/measures-with-ids ids))))))]
+                        :card      (queries.db/cards ids)
+                        :table     (warehouse-schema.db/tables-by-ids {:table-ids ids})
+                        :dashboard (dashboards.db/dashboards-by-ids {:dashboard-ids ids})
+                        :transform (transforms.db/transforms ids)
+                        :segment   (segments.db/segments-with-ids {:ids ids})
+                        :measure   (measures.db/measures-with-ids {:ids ids}))))))]
     (let [cards      (id->instances :card)
           tables     (id->instances :table)
           dashboards (id->instances :dashboard)
@@ -177,7 +181,7 @@
   [card-id table-id]
   (let [card            (queries.db/card card-id)
         result-metadata (:result_metadata card)
-        fields          (replacement.db/active-fields-of-table table-id)
+        fields          (warehouse-schema.db/active-fields-of-table {:table-id table-id})
         field-by-name   (m/index-by :name fields)]
     (doseq [col-meta result-metadata
             :let [field     (field-by-name (source-swap.util/column-match-key col-meta))
@@ -207,7 +211,7 @@
        (copy-model-metadata-overrides! card-id (:id table))
        (run-swap-source! [:card card-id] [:table (:id table)] progress))
      ;; phase 3: unpersist the model if it was persisted
-     (when-let [persisted-info (replacement.db/persisted-info-for-card card-id)]
+     (when-let [persisted-info (model-persistence.db/persisted-info-for-card card-id)]
        (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
      ;; phase 4: convert the model to a saved question
      (replacement.db/update-card! card-id {:type :question}))))

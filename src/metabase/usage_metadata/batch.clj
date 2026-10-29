@@ -3,6 +3,7 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
+   [metabase.queries.db :as queries.db]
    [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.models.source-dimension-daily]
@@ -90,7 +91,7 @@
   Identical hashes produce identical facts, so collapse at the DB and iterate
   unique hashes. Per-execution totals come from multiplying by `:n`."
   [bucket-date]
-  (usage-metadata.db/query-execution-hash-counts (utc-day-start bucket-date) (utc-day-end bucket-date)))
+  (queries.db/query-execution-hash-counts {:started-at (utc-day-start bucket-date) :started-before (utc-day-end bucket-date)}))
 
 (defn- add-skip [stats reason n]
   (update-in stats [:skipped-rows reason] (fnil + 0) n))
@@ -281,7 +282,7 @@
                               stats
                               (mdb/streaming-reducible
                                (fn [conn]
-                                 (usage-metadata.db/queries-reducible conn hash-chunk)))))
+                                 (queries.db/queries-reducible {:conn conn :query-hashes hash-chunk})))))
                            initial-stats
                            (partition-all hash-chunk-size raw-hashes))
          seen-hashes      (:seen-hashes after-stream)

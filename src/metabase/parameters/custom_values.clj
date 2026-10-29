@@ -15,7 +15,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
-   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.db :as queries.db]
    [metabase.query-processor :as qp]
@@ -25,7 +24,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
 
@@ -255,7 +255,7 @@
   [field-ids]
   (when (and (seq field-ids) (every? pos-int? field-ids))
     (let [field-id-set (set field-ids)
-          fields (parameters.db/fields-fk-info field-id-set)]
+          fields (warehouse-schema.db/fields-by-ids {:field-ids field-id-set :columns [:id :fk_target_field_id :semantic_type]})]
       ;; when every field could be found and all are keys
       (when (and (= (count field-id-set) (count fields))
                  (every? (fn [{:keys [semantic_type fk_target_field_id]}]

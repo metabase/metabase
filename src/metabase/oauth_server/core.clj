@@ -11,6 +11,7 @@
    [metabase.oauth-server.store :as store]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.system.core :as system]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as oidc.proto]
@@ -224,7 +225,7 @@
                      ;; Fail closed if the issuing client is gone (SEC-863).
                      (oauth-server.db/oauth-client-exists? (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
-              (when (oauth-server.db/active-user-exists? user-id)
+              (when (users.db/user-exists? {:user-id user-id :active? true})
                 {:user-id user-id
                  :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
 

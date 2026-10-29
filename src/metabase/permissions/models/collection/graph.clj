@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
@@ -195,7 +196,7 @@
   These should never appear in permission graphs or be editable via the graph API."
   [collection-ids]
   (when-let [ids (seq (disj collection-ids :root))]
-    (chunked ids permissions.db/personal-or-descendant-collection-ids)))
+    (chunked ids #(collections.db/personal-or-descendant-collection-ids {:collection-ids %}))))
 
 (defn- remove-personal-collections-from-graph
   "Remove any personal collection IDs from the graph. Personal collections cannot be edited via the graph API."
@@ -209,7 +210,7 @@
   [graph collection-ids namespace]
   (let [ids          (disj collection-ids :root)
         other-ns-ids (when (seq ids)
-                       (chunked ids #(permissions.db/collection-ids-in-other-namespace % namespace)))]
+                       (chunked ids #(collections.db/collection-ids-in-other-namespace {:collection-ids % :namespace namespace})))]
     (cond-> graph
       (seq other-ns-ids) (update :groups update-vals #(apply dissoc % other-ns-ids)))))
 
@@ -218,7 +219,7 @@
    Data Analysts always have full read-write access to library collections."
   [changes]
   (let [data-analyst-group-id (u/the-id (perms-group/data-analyst))
-        library-collection-ids (permissions.db/library-collection-ids)]
+        library-collection-ids (collections.db/collection-ids-of-types {:types ["library" "library-data" "library-metrics" "library-dashboards"]})]
     (when-let [group-changes (get changes data-analyst-group-id)]
       (let [changed-collection-ids (set (keys group-changes))
             library-changes (set/intersection changed-collection-ids library-collection-ids)]

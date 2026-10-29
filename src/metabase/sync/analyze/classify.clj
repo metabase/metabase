@@ -109,7 +109,7 @@
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
-  (seq (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*)))
+  (seq (warehouse-schema.db/incomplete-analysis-fields-of-table {:table-id (u/the-id table) :fingerprint-version i/*latest-fingerprint-version*})))
 
 (mu/defn classify-fields!
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do
@@ -118,7 +118,7 @@
   (tracing/with-span :sync "sync.classify.fields" {:sync/table (:name table)}
     (let [table-id (:id table)]
       (when-let [fields (fields-to-classify table)]
-        (let [existing-name-field (sync.db/name-field-count-for-table table-id)
+        (let [existing-name-field (warehouse-schema.db/name-field-count-of-table {:table-id table-id})
               {:keys [fields-failed]}
               (dependencies.hooks/with-batched-marks
                 (reduce (fn [state field]

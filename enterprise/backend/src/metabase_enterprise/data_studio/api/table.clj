@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.collections.core :as collection]
    [metabase.collections.db :as collections.db]
    [metabase.events.core :as events]
@@ -14,7 +15,8 @@
    [metabase.users.db :as users.db]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -104,11 +106,11 @@
   (when (seq seed-table-ids)
     (let [downstream-ids      (all-downstream-table-ids {:table-ids seed-table-ids})
           table-ids-to-update (when (seq downstream-ids)
-                                (data-studio.db/published-table-ids downstream-ids))]
+                                (warehouse-schema.db/published-table-ids {:table-ids downstream-ids}))]
       (when (seq table-ids-to-update)
         (data-studio.db/unpublish-tables! table-ids-to-update)
         ;; Publish events for audit log and remote sync tracking
-        (let [updated-tables (data-studio.db/tables table-ids-to-update)]
+        (let [updated-tables (warehouse-schema.db/tables-by-ids {:table-ids table-ids-to-update})]
           (doseq [table updated-tables]
             (events/publish-event! :event/table-unpublish {:object  table
                                                            :user-id api/*current-user-id*})))))))
@@ -135,7 +137,7 @@
   (when-let [{:keys [timestamp topic], user-id :user_id}
              ;; Serialization can restore `is_published` without a publish event, so a later unpublish
              ;; invalidates older publishing details.
-             (data-studio.db/latest-table-publishing-event table-id)]
+             (audit-app.db/latest-table-publishing-event {:table-id table-id})]
     (when (= topic :table-publish)
       {:published_at timestamp
        :published_by (when user-id
@@ -164,7 +166,7 @@
   "This function returns `true` iff you have permission to publish every table passed."
   [table-ids]
   (every? can-publish? (when (seq table-ids)
-                         (data-studio.db/tables table-ids))))
+                         (warehouse-schema.db/tables-by-ids {:table-ids table-ids}))))
 
 (api.macros/defendpoint :post "/publish-tables" :- ::publish-tables-response
   "Set collection for each of selected tables and all upstream dependencies recursively."
@@ -185,7 +187,7 @@
     (when (seq table-ids-to-update)
       (data-studio.db/publish-tables! table-ids-to-update (:id target-collection))
       ;; Publish events for audit log and remote sync tracking
-      (let [updated-tables (data-studio.db/tables table-ids-to-update)]
+      (let [updated-tables (warehouse-schema.db/tables-by-ids {:table-ids table-ids-to-update})]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-publish {:object  table
                                                        :user-id api/*current-user-id*}))))
@@ -204,10 +206,10 @@
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
       (run! (comp api/write-check collections.db/collection)
-            (into #{} (keep :collection_id) (data-studio.db/tables table-ids-to-update)))
+            (into #{} (keep :collection_id) (warehouse-schema.db/tables-by-ids {:table-ids table-ids-to-update})))
       (data-studio.db/unpublish-tables! table-ids-to-update)
       ;; Publish events for audit log and remote sync tracking
-      (let [updated-tables (data-studio.db/tables table-ids-to-update)]
+      (let [updated-tables (warehouse-schema.db/tables-by-ids {:table-ids table-ids-to-update})]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-unpublish {:object  table
                                                          :user-id api/*current-user-id*}))))

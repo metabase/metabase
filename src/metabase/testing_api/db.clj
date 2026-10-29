@@ -50,21 +50,10 @@
                   ::security-center.schema/security-advisory.update]]
   (t2/insert-returning-instances! :model/SecurityAdvisory advisories))
 
-(mu/defn permissions-group-id
-  "The id of the PermissionsGroup named `group-name`, or nil."
-  [group-name :- :string]
-  (t2/select-one-pk :model/PermissionsGroup :name group-name))
-
 (mu/defn insert-permissions-group!
   "Insert a PermissionsGroup named `group-name` and return its id."
   [group-name :- :string]
   (t2/insert-returning-pk! :model/PermissionsGroup {:name group-name}))
-
-(mu/defn group-membership-exists?
-  "Whether the User with `user-id` is a member of the PermissionsGroup with `group-id`."
-  [user-id  :- ::lib.schema.id/user
-   group-id :- ms/PositiveInt]
-  (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id))
 
 (mu/defn delete-ai-usage-logs-for-conversations!
   "Delete the AiUsageLog rows for `conversation-ids`."

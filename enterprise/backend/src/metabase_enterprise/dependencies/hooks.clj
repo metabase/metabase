@@ -13,6 +13,7 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.transforms.db :as transforms.db]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -167,7 +168,7 @@
   (when (seq field-ids)
     (if-let [batched *batched-marks*]
       (swap! batched update :remap-targets (fnil into #{}) field-ids)
-      (mark-remapped-tables! (dependencies.db/remapped-table-ids field-ids)))))
+      (mark-remapped-tables! (warehouse-schema.db/table-ids-of-fields-remapped-to {:field-ids field-ids})))))
 
 (mu/defn- mark-dimension!
   "Mark what reads the remap of the Dimension `row`, whose Field's Table's entities show it."
@@ -185,7 +186,7 @@
     (boolean
      (when (and (= :full (keyword (:type row)))
                 (not= (readable before) (readable after))
-                (dependencies.db/internal-remap? (:field_id row)))
+                (warehouse-schema.db/internal-dimension-exists? {:field-id (:field_id row)}))
        (mark-dimension! row)
        true))))
 
@@ -289,7 +290,7 @@
               (dependencies.db/mark-dependents-analysis-finding-statuses-stale! entity-type entity-ids))
             (mark-remapped-tables! (into (set remapped-tables)
                                          (when (seq remap-targets)
-                                           (dependencies.db/remapped-table-ids remap-targets)))))
+                                           (warehouse-schema.db/table-ids-of-fields-remapped-to {:field-ids remap-targets})))))
           (trigger-jobs!))))))
 
 (defenterprise before-insert
@@ -331,7 +332,7 @@
   (when-let [entity-type (deps.dependency-types/model->dependency-type model)]
     (mark-output-changed! entity-type row))
   (when (= model :model/Database)
-    (when-let [transform-ids (not-empty (dependencies.db/source-database-transform-ids (:id row)))]
+    (when-let [transform-ids (not-empty (transforms.db/transform-ids-of-source-database {:database-id (:id row)}))]
       (dependencies.db/mark-dependency-statuses-stale! {:transform transform-ids})
       (dependencies.db/mark-analysis-finding-statuses-stale! {:transform transform-ids})))
   (trigger-jobs!))

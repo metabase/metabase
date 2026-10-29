@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.indexes.db :as indexes.db]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -23,9 +24,12 @@
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.schema]
    [metabase.transforms.util :as transforms.u]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -158,7 +162,7 @@
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
   (let [target-db-id (transforms-base.i/target-db-id transform)
-        valid-db-id? (and target-db-id (transforms.db/database-exists? target-db-id))]
+        valid-db-id? (and target-db-id (warehouses.db/database-exists? {:database-id target-db-id}))]
     ;; Don't warn when target-db-id is nil — that's an orphan source (e.g. a
     ;; serdes-imported transform whose source database is missing), not a
     ;; misconfiguration. Only warn when an id is supplied but invalid.
@@ -181,7 +185,7 @@
     (if (and (transforms-base.u/merge-target? {:target target})
              table-id
              (some #(nil? (:field-id %)) unique-key))
-      (let [name->id (transforms.db/active-field-ids-by-name table-id)]
+      (let [name->id (warehouse-schema.db/field-name->id-of-table {:table-id table-id})]
         (assoc transform :target
                (assoc-in target [:target-incremental-strategy :unique-key]
                          (mapv (fn [e] (cond-> e (:name e) (assoc :field-id (name->id (:name e)))))
@@ -317,7 +321,7 @@
   (if-not (seq transforms)
     transforms
     (let [creator-ids (into #{} (map :creator_id) transforms)
-          id->creator (transforms.db/user-summaries-by-id creator-ids)]
+          id->creator (users.db/user-summaries-by-id {:user-ids creator-ids})]
       (for [transform transforms]
         (assoc transform :creator (get id->creator (:creator_id transform)))))))
 
@@ -329,7 +333,7 @@
     transforms
     (let [owner-user-ids (into #{} (keep :owner_user_id) transforms)
           id->owner (when (seq owner-user-ids)
-                      (transforms.db/user-summaries-by-id owner-user-ids))]
+                      (users.db/user-summaries-by-id {:user-ids owner-user-ids}))]
       (for [transform transforms]
         (assoc transform :owner
                (cond
@@ -426,7 +430,7 @@
     (let [transform-ids (into #{} (map u/the-id) transforms)
           idx-mappings  (group-by :transform_id
                                   (filter table-index/applicable?
-                                          (transforms.db/table-indexes-for-transforms transform-ids)))]
+                                          (indexes.db/table-indexes-for-transforms {:transform-ids transform-ids})))]
       (for [transform transforms]
         (assoc transform :indexes (get idx-mappings (u/the-id transform) []))))))
 
@@ -436,7 +440,7 @@
   [transforms]
   (let [table-ids (into #{} (keep :target_table_id) transforms)
         id->table (when (seq table-ids)
-                    (m/index-by :id (-> (transforms.db/tables table-ids)
+                    (m/index-by :id (-> (warehouse-schema.db/tables-by-ids {:table-ids table-ids})
                                         (t2/hydrate :db :fields))))]
     (for [transform transforms]
       (assoc transform :table
@@ -461,7 +465,7 @@
   "Portable ref for the checkpoint field. A dangling id (field since deleted) is exported as-is:
   the importer passes numbers through, so one stale config can't fail the whole import."
   [field-id]
-  (if (transforms.db/field-exists? field-id)
+  (if (warehouse-schema.db/field-exists? {:field-id field-id})
     (serdes/*export-field-fk* field-id)
     field-id))
 

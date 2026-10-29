@@ -12,7 +12,9 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -158,8 +160,7 @@
   "Add to each `user` a list of :user_group_memberships where each item is a map with 2 keys [:name :entity_id]."
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (scim.db/user-group-memberships (map u/the-id users)
-                                                                                  (hidden-group-ids)))
+    (let [user-id->memberships (group-by :user_id (permissions.db/user-group-memberships {:user-ids (map u/the-id users) :excluded-group-ids (hidden-group-ids)}))
           membership->group    (fn [membership] (select-keys membership [:name :entity_id]))]
       (for [user users]
         (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
@@ -238,7 +239,7 @@
           results-count  (count hydrated-users)
           items-per-page (if (< results-count limit) results-count limit)
           result         {:schemas      [list-schema-uri]
-                          :totalResults (scim.db/scim-user-count lower-email)
+                          :totalResults (users.db/personal-user-count {:email lower-email})
                           :startIndex   (inc offset)
                           :itemsPerPage items-per-page
                           :Resources    (map mb-user->scim hydrated-users)}]
@@ -269,7 +270,7 @@
   (with-prometheus-counters
     (let [mb-user (scim-user->mb scim-user)
           email   (:email mb-user)]
-      (when (scim.db/user-email-exists? email)
+      (when (users.db/user-email-exists? (u/lower-case-en email))
         (throw-scim-error 409 "Email address is already in use"))
       (let [new-user (t2/with-transaction [_]
                        (scim.db/insert-user! mb-user)
@@ -372,7 +373,7 @@
   "Add to each `group` a list of :members where each item is a map with 2 keys [:email :entity_id]."
   [groups]
   (when (seq groups)
-    (let [group-id->members (group-by :group_id (scim.db/group-members (map u/the-id groups)))
+    (let [group-id->members (group-by :group_id (permissions.db/group-member-emails-and-entity-ids {:group-ids (map u/the-id groups)}))
           group->member     (fn [member] (select-keys member [:email :entity_id]))]
       (for [group groups]
         (assoc group :members (->> (group-id->members (u/the-id group))
@@ -432,7 +433,7 @@
           results-count  (count groups)
           items-per-page (if (< results-count limit) results-count limit)
           result         {:schemas      [list-schema-uri]
-                          :totalResults (scim.db/scim-group-count excluded-ids group-name)
+                          :totalResults (permissions.db/group-count {:excluded-group-ids excluded-ids :group-name group-name})
                           :startIndex   (inc offset)
                           :itemsPerPage items-per-page
                           :Resources    (map mb-group->scim groups)}]
@@ -458,8 +459,8 @@
   emptying of the group: the IdP is referring to users this instance never provisioned, and wiping the group
   would hide that drift behind a successful response."
   [group-id user-entity-ids]
-  (let [desired-ids (set (scim.db/user-ids-by-entity-ids user-entity-ids))
-        current-ids (set (scim.db/group-member-user-ids group-id))]
+  (let [desired-ids (set (users.db/user-ids-by-entity-ids {:entity-ids user-entity-ids}))
+        current-ids (set (permissions.db/group-member-user-ids {:group-id group-id}))]
     (if (empty? desired-ids)
       (log/warnf "SCIM group %d membership push named %d member(s), none of them known users; leaving membership alone"
                  group-id (count user-entity-ids))
@@ -481,7 +482,7 @@
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
           entity-ids (map :value (:members scim-group))]
-      (when (scim.db/group-name-exists? group-name)
+      (when (permissions.db/group-exists-with-lower-name? (u/lower-case-en group-name))
         (throw-scim-error 409 "A group with that name already exists"))
       (t2/with-transaction [_conn]
         (let [new-group (scim.db/insert-group! {:name group-name})]

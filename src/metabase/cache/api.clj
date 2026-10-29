@@ -2,19 +2,21 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.cache.db :as cache.db]
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.config.core :as config]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
+   [metabase.queries.db :as queries.db]
    [metabase.request.core :as request]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru tru trun]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 ;; Data shape
@@ -106,9 +108,9 @@
 
     :else
     (api/check-404 (case model
-                     "database"  (cache.db/database-with-ids ids)
-                     "dashboard" (cache.db/dashboard-with-ids ids)
-                     "question"  (cache.db/card-with-ids ids)))))
+                     "database"  (warehouses.db/database-among {:database-ids ids})
+                     "dashboard" (first (dashboards.db/dashboards-by-ids {:dashboard-ids ids}))
+                     "question"  (queries.db/any-card-among {:card-ids ids})))))
 
 (mr/def ::cache-config-item
   [:map

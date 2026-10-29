@@ -17,6 +17,7 @@
    [metabase-enterprise.search.semantic.settings :as semantic-settings]
    [metabase-enterprise.search.semantic.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.collections.db :as collections.db]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.config :as search.config]
@@ -138,7 +139,8 @@
    Uses at most 2 queries regardless of the number of collection-ids."
   [collection-ids]
   (when-let [collection-ids (not-empty (set (remove nil? collection-ids)))]
-    (let [colls                (semantic-search.db/collection-owners-and-locations collection-ids)
+    (let [colls                (collections.db/collections-of-ids {:collection-ids collection-ids
+                                                                   :columns        [:id :personal_owner_id :location]})
           {personal     true
            non-personal false} (group-by (comp some? :personal_owner_id) colls)
           direct               (into {} (map (juxt :id :personal_owner_id)) personal)
@@ -150,7 +152,9 @@
           root-id->owner       (into direct
                                      (map (juxt :id :personal_owner_id))
                                      (when (seq unknown-roots)
-                                       (semantic-search.db/personal-collection-owners unknown-roots)))]
+                                       (filter :personal_owner_id
+                                               (collections.db/collections-of-ids {:collection-ids unknown-roots
+                                                                                   :columns        [:id :personal_owner_id]}))))]
       (into direct
             (keep (fn [[coll-id root-id]]
                     (when-let [owner (get root-id->owner root-id)]

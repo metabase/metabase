@@ -25,6 +25,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.memory :as u.mem]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.models.database :as database]
    [toucan2.realize :as t2.realize])
@@ -463,7 +464,7 @@
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
   set."
   [database]
-  (let [ids (sync.db/sync-table-ids (u/the-id database))]
+  (let [ids (warehouse-schema.db/sync-table-ids {:database-id (u/the-id database)})]
     (reduce (fn [acc ids']
               (+ acc (sync.db/update-tables! ids' {:initial_sync_status "complete"})))
             0
@@ -495,19 +496,19 @@
   [database                       :- i/DatabaseInstance
    & {:keys [schema-names table-names]} :- [:maybe ::driver/describe-fks.options]]
   (eduction (map t2.realize/realize)
-            (sync.db/sync-tables-reducible (u/the-id database) schema-names table-names)))
+            (warehouse-schema.db/sync-tables-reducible {:database-id (u/the-id database) :schema-names schema-names :table-names table-names})))
 
 (defn sync-tables-count
   "The count of all tables that should be synced for `database`."
   [database]
-  (sync.db/sync-tables-count (u/the-id database)))
+  (warehouse-schema.db/sync-tables-count {:database-id (u/the-id database)}))
 
 (defn refingerprint-reducible-sync-tables
   "A reducible collection of all the Tables that should go through the sync processes for `database`, in the
    order they should be refingerprinted (by earliest last_analyzed timestamp)."
   [database]
   (eduction (map t2.realize/realize)
-            (sync.db/sync-tables-by-earliest-analyzed-reducible (u/the-id database))))
+            (warehouse-schema.db/sync-tables-by-earliest-analyzed-reducible {:database-id (u/the-id database)})))
 
 (defn sync-schemas
   "Returns all the Schemas that have their metadata sync'd for `database`.

@@ -1,8 +1,8 @@
 (ns metabase-enterprise.transform-testing.models.transform-test-run
   (:require
-   [metabase-enterprise.transform-testing.db :as transform-testing.db]
    [metabase.audit-app.core :as audit-app]
    [metabase.models.interface :as mi]
+   [metabase.users.db :as users.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -21,6 +21,6 @@
   "Add the user who started each run, or nil."
   [_model _k runs]
   (let [user-ids (into #{} (keep :initiated_by) runs)
-        id->user (when (seq user-ids) (transform-testing.db/users-by-id user-ids))]
+        id->user (when (seq user-ids) (users.db/user-summaries-by-id {:user-ids user-ids}))]
     (for [run runs]
       (assoc run :initiated_by_user (get id->user (:initiated_by run))))))

@@ -65,11 +65,6 @@
     [(u/the-id (perms/data-analyst-group))]
     (usage-controls/simple-mode-group-ids)))
 
-(mu/defn visible-group-ids :- [:set ms/PositiveInt]
-  "The IDs of the groups the mode selected by `advanced?` shows."
-  [advanced? :- :boolean]
-  (t2/select-pks-set :model/PermissionsGroup {:where (usage-controls/visible-groups-clause :id advanced?)}))
-
 (mu/defn group-permissions-for-user
   "The McpGroupPermission rows of the groups of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
@@ -79,11 +74,6 @@
                       {:select [:group_id]
                        :from   [(t2/table-name :model/PermissionsGroupMembership)]
                        :where  [:= :user_id user-id]}]}))
-
-(mu/defn all-group-ids
-  "Every PermissionsGroup id, in ID order."
-  []
-  (t2/select-pks-vec :model/PermissionsGroup {:order-by [[:id :asc]]}))
 
 (mu/defn all-group-permissions
   "Every McpGroupPermission row, in group order."

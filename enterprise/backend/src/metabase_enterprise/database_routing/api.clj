@@ -38,7 +38,7 @@
                                                     [:name               ms/NonBlankString]
                                                     [:details            ms/DatabaseDetails]]]]]]
   (api/check-400 (database-routing.db/router-exists? router_database_id))
-  (api/check-400 (not (database-routing.db/destination-name-exists? router_database_id (map :name destinations)))
+  (api/check-400 (not (warehouses.db/destination-name-exists? {:router-database-id router_database_id :names (map :name destinations)}))
                  "A destination database with that name already exists.")
   (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (warehouses.db/database router_database_id)]
     (if-let [invalid-destinations (->> destinations

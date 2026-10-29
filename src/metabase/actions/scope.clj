@@ -2,6 +2,7 @@
   (:require
    [metabase.actions.db :as actions.db]
    [metabase.actions.types :as types]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.lib.core :as lib]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]))
@@ -23,7 +24,7 @@
 (defn- hydrate-from-dashcard [scope]
   (if (and (contains? scope :card-id) (contains? scope :dashboard-id))
     scope
-    (let [dashboard-id (actions.db/dashcard-dashboard-id (:dashcard-id scope))]
+    (let [dashboard-id (:dashboard_id (dashboards.db/dashboard-card (:dashcard-id scope)))]
       (merge {:dashboard-id (or dashboard-id missing-id)} scope))))
 
 (defn- hydrate-from-card [scope card-id]
@@ -41,7 +42,7 @@
     (:dashcard-id scope) hydrate-from-dashcard
 
     (:dashboard-id scope)
-    (update :collection-id #(or % (actions.db/dashboard-collection-id (:dashboard-id scope)) missing-id))
+    (update :collection-id #(or % (:collection_id (dashboards.db/dashboard (:dashboard-id scope))) missing-id))
 
     (:model-id scope) (hydrate-from-card (:model-id scope))
 

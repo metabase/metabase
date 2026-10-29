@@ -6,7 +6,8 @@
    [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (defn- source-card-allowed-field-ids
   "Extract the set of allowed field IDs from a sandbox source card's result_metadata.
@@ -23,7 +24,7 @@
               name->fid    (when (seq col-names)
                              (into {}
                                    (map (juxt :name :id))
-                                   (sandbox.db/fields-of-table-named table-id col-names)))]
+                                   (warehouse-schema.db/field-id-names-of-table {:table-id table-id :field-names col-names})))]
           (not-empty (set (vals name->fid))))))))
 
 (defenterprise sandbox-restricted-fields

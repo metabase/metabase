@@ -3,6 +3,7 @@
    [metabase.explorations.db :as explorations.db]
    [metabase.models.interface :as mi]
    [metabase.timeline.core :as timeline]
+   [metabase.timeline.db :as timeline.db]
    [metabase.util.date-2 :as u.date]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -25,7 +26,7 @@
           timelines    (when (seq timeline-ids)
                          (timeline/include-events
                           (filterv mi/can-read?
-                                   (explorations.db/timelines timeline-ids))
+                                   (timeline.db/timelines-of-ids {:timeline-ids timeline-ids}))
                           {:events/all? false}))]
       (into {} (map (juxt :id identity)) timelines))
    :timeline_id))

@@ -1,5 +1,6 @@
 (ns metabase.sso.slack-connect
   (:require
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.server.settings :as server.settings]
    [metabase.sso.db :as sso.db]
    [metabase.sso.settings :as sso-settings]))
@@ -16,7 +17,7 @@
 (defn slack-account-status
   "Return \"active\" or \"inactive\" for the user's Slack identity, or nil when none exists."
   [user-id]
-  (when-let [identity (sso.db/slack-connect-identity user-id)]
+  (when-let [identity (auth-identity.db/auth-identity-columns {:user-id user-id :provider "slack-connect" :columns [:provider_id :metadata]})]
     (if (slack-connect-identity-active? identity)
       "active"
       "inactive")))

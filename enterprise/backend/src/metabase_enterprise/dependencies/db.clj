@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.data-apps.core :as data-apps]
@@ -313,11 +314,6 @@
    [:map {:closed true}
     [:entity-type ::deps.dependency-types/dependency-types]]])
 
-(mu/defn- personal-root-collection-ids :- [:sequential ::lib.schema.id/collection]
-  "The IDs of the personal Collections."
-  []
-  (or (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/") []))
-
 (mu/defn action-root-namespace :- [:maybe [:= :data-actions]]
   "The namespace of the root collection an action without a collection sits in: the data actions root for a
   `model-less?` action, and the default root for an action of a model."
@@ -453,7 +449,7 @@
         personal-expr (when-not include-personal-collections?
                         (case entity-type
                           (:card :dashboard :document :snippet :action)
-                          (let [personal-ids (personal-root-collection-ids)]
+                          (let [personal-ids (collections.db/personal-root-collection-ids)]
                             (when (seq personal-ids)
                               {:expr [:or
                                       [:= :entity.collection_id nil]
@@ -663,36 +659,11 @@
   (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
                  :id id (entity-source entity-type)))
 
-(mu/defn implicit-action-table-ids
-  "The `:table_id` of the ImplicitActions of the Actions with `action-ids`, keyed by Action id."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select-fn->fn :action_id :table_id :model/ImplicitAction :action_id [:in action-ids]))
-
-(mu/defn query-action-queries
-  "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
-
 (mu/defn ids-in-collections
   "The `:id` and `:collection_id` of the `model` rows in the Collections with `collection-ids`."
   [model          :- [:enum :model/Card :model/Action]
    collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [model :id :collection_id] :collection_id [:in collection-ids]))
-
-(mu/defn card-types-by-id
-  "A map of Card ID to type for `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-fn->fn :id :type [:model/Card :id :type] :id [:in card-ids]))
-
-(mu/defn tables
-  "The Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn source-database-transform-ids :- [:set ::lib.schema.id/transform]
-  "The IDs of the Transforms reading from the Database with `db-id`."
-  [db-id :- ::lib.schema.id/database]
-  (or (t2/select-pks-set :model/Transform :source_database_id db-id) #{}))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
@@ -1059,29 +1030,6 @@
   "Delete the ResultMetadataStatuses of the Cards with `card-ids`, returning the number deleted."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/delete! :model/ResultMetadataStatus :entity_type :card :entity_id [:in card-ids]))
-
-(mu/defn remapped-table-ids :- [:set ::lib.schema.id/table]
-  "The IDs of the Tables of the Fields remapped to one of the Fields with `field-ids` as their human-readable field."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (or (t2/select-fn-set :table_id [:model/Field :metabase_field.table_id]
-                        {:from  [(warehouse-schema-overlay/field-query {:user-settings? false})]
-                         :join  [:dimension [:= :dimension.field_id :metabase_field.id]]
-                         :where [:in :dimension.human_readable_field_id field-ids]})
-      #{}))
-
-(mu/defn internal-remap? :- :boolean
-  "Whether the Field with `field-id` has an internal remap, which shows its FieldValues' human-readable values."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Dimension :field_id field-id :type "internal"))
-
-(mu/defn card-state :- [:maybe ::dependencies.schema/card-state]
-  "The `updated_at` and `result_metadata` of the Card with `card-id`, locking its row until the transaction ends when
-  `lock?`, or nil."
-  [card-id :- ::lib.schema.id/card
-   lock?   :- :boolean]
-  (some-> (t2/select-one [:model/Card :updated_at :result_metadata]
-                         (cond-> {:where [:= :id card-id]} lock? (assoc :for :update)))
-          (select-keys [:updated_at :result_metadata])))
 
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id` to `result-metadata` through the Card model, without touching

@@ -13,16 +13,6 @@
   [embedding-theme-id :- ms/PositiveInt]
   (t2/select-one :model/EmbeddingTheme :id [:auto/param embedding-theme-id]))
 
-(mu/defn count-embedded-cards
-  "Number of Cards that have embedding enabled."
-  []
-  (t2/count :model/Card :enable_embedding true))
-
-(mu/defn count-embedded-dashboards
-  "Number of Dashboards that have embedding enabled."
-  []
-  (t2/count :model/Dashboard :enable_embedding true))
-
 (mu/defn delete-sdk-react-18-hosts-last-seen-before!
   "Delete the EmbeddingSdkReact18Hosts last seen before `cutoff`."
   [cutoff :- ms/TemporalInstant]

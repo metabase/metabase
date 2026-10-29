@@ -136,7 +136,7 @@
   (when (seq deletables)
     (let [db-id->db    (into {}
                              (map (fn [{:keys [id]}] [id (driver.u/lib-database id)]))
-                             (model-persistence.db/databases (distinct (map :database_id deletables))))
+                             (warehouses.db/databases (distinct (map :database_id deletables))))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
@@ -396,7 +396,7 @@
   `:persist-models-enabled` in the settings at
   interval [[model-persistence.settings/persisted-model-refresh-cron-schedule]]."
   []
-  (let [dbs-with-persistence (filter (comp :persist-models-enabled :settings) (model-persistence.db/all-databases))
+  (let [dbs-with-persistence (filter (comp :persist-models-enabled :settings) (warehouses.db/all-databases))
         cron-schedule        (model-persistence.settings/persisted-model-refresh-cron-schedule)]
     (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]

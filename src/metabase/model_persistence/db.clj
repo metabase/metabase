@@ -216,28 +216,6 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/PersistedInfo :id id))
 
-(mu/defn unpersisted-models-for-database
-  "The model Cards of the Database with `database-id` that have no PersistedInfo."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Card
-             {:where [:and
-                      [:= :database_id database-id]
-                      [:= :type "model"]
-                      [:not [:exists ^:allow-subquery
-                             {:select [1]
-                              :from [:persisted_info]
-                              :where [:= :persisted_info.card_id :report_card.id]}]]]}))
-
-(mu/defn databases
-  "The Databases with `database-ids`."
-  [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
-
-(mu/defn all-databases
-  "Every Database."
-  []
-  (t2/select :model/Database))
-
 (mu/defn update-database!
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database

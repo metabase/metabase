@@ -18,6 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -58,7 +59,7 @@
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
-    (sync.db/inactive-fields-by-lower-name (u/the-id table) parent-id (map common/canonical-name new-field-metadatas))))
+    (warehouse-schema.db/inactive-fields-by-lower-name {:table-id (u/the-id table) :parent-id parent-id :lower-names (map common/canonical-name new-field-metadatas)})))
 
 (mu/defn- insert-new-fields! :- [:maybe [:sequential ::lib.schema.id/field]]
   "Insert new Field rows for for all the Fields described by `new-field-metadatas`. Returns IDs of newly inserted
@@ -128,7 +129,7 @@
           new-field-ids (insert-new-fields! table (remove reactivated? new-field-metadatas) parent-id)]
       ;; now return the newly created or reactivated Fields
       (when-let [new-and-updated-fields (seq (map u/the-id (concat fields-to-reactivate new-field-ids)))]
-        (sync.db/fields new-and-updated-fields)))))
+        (warehouse-schema.db/fields-by-ids {:field-ids new-and-updated-fields :user-settings? false})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          SYNCING INSTANCES OF 'ACTIVE' FIELDS (FIELDS IN DB METADATA)                          |

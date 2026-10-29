@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase.actions.db :as actions.db]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
@@ -28,9 +29,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.metrics.core :as metrics]
-   [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.notification.db :as notification.db]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
@@ -47,6 +48,7 @@
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.sync.field-values :as sync.field-values]
+   [metabase.timeline.db :as timeline.db]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -54,6 +56,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -546,7 +549,7 @@
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
-  (when-let [action-ids (queries.db/implicit-action-ids-for-model model-id)]
+  (when-let [action-ids (actions.db/implicit-action-ids-for-model {:model-id model-id})]
     (queries.db/delete-actions! action-ids)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -899,7 +902,7 @@
             unhidden-ids (into [] (remove hidden-ids) (excluded-event-ids previous-visibility))]
         (into added-ids
               (filter selected-ids)
-              (models.db/timeline-ids-of-events unhidden-ids))))))
+              (timeline.db/timeline-ids-of-events {:event-ids unhidden-ids}))))))
 
 (defn- check-id-setting!
   [visibility k message]
@@ -925,8 +928,8 @@
                                  (tru "Selected timeline IDs must be a sequence of positive integers."))
           ;; Timelines the card already showed stay visible whatever the user saves, so only the difference is
           ;; checked. Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
-          (doseq [timeline (queries.db/timelines
-                            (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))]
+          (doseq [timeline (timeline.db/timelines-of-ids
+                            {:timeline-ids (newly-revealed-timeline-ids visibility previous-visibility reveals-all?)})]
             (api/read-check timeline)))))))
 
 (defn card-exposed-timeline-ids
@@ -953,7 +956,7 @@
   (when (and api/*current-user-id*
              (or (:public_uuid dashboard) (:enable_embedding dashboard)))
     (let [timeline-ids (into #{} (mapcat card-exposed-timeline-ids) cards)]
-      (doseq [timeline (queries.db/timelines timeline-ids)]
+      (doseq [timeline (timeline.db/timelines-of-ids {:timeline-ids timeline-ids})]
         (api/read-check timeline)))))
 
 (defn check-shared-dashboard-timeline-permissions-for-card-ids!
@@ -1052,10 +1055,11 @@
       (throw (data-app-card-error (tru "A card in a data app''s collection can use only metrics from the Library, not the metric {0}."
                                        (card-labels query outside)))))
     (when-not mi/*deserializing?*
-      (when-let [unpublished (seq (some-> (not-empty (set/union (tables-read query)
-                                                                (macro-tables-read query)
-                                                                (remapped-tables-read query)))
-                                          queries.db/unpublished-table-names))]
+      (when-let [unpublished (seq (some->> (not-empty (set/union (tables-read query)
+                                                                 (macro-tables-read query)
+                                                                 (remapped-tables-read query)))
+                                           (hash-map :table-ids)
+                                           warehouse-schema.db/unpublished-table-names))]
         (throw (data-app-card-error (tru "A card in a data app''s collection can read only tables published to the Library, not {0}. Publish them, or read other tables."
                                          (str/join ", " (sort unpublished)))))))
     metric-ids))
@@ -1210,7 +1214,7 @@
   ;; delete any card-type notifications for this card — must materialize IDs first because
   ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
   ;; return empty by the time the actual DELETE executes.
-  (when-let [notification-ids (seq (queries.db/card-notification-ids id))]
+  (when-let [notification-ids (seq (notification.db/card-notification-ids {:card-id id}))]
     (queries.db/delete-notifications! notification-ids)))
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
@@ -1520,7 +1524,7 @@
         breakouts-before (card->breakouts card-before)
         breakouts-after  (card->breakouts card-after)]
     (when-some [identifier->action (breakouts->identifier->action breakouts-before breakouts-after)]
-      (let [dashcards (queries.db/dashcards-for-card (some :id [card-after card-before]))
+      (let [dashcards (dashboards.db/dashcards-for-card {:card-id (some :id [card-after card-before])})
             updates   (updates-for-dashcards identifier->action dashcards)]
         ;; Beware. This can have negative impact on card update performance as queries are fired in sequence. I'm not
         ;; aware of more reasonable way.
@@ -1613,10 +1617,10 @@
   an action event for each action of the card that the update deletes, archives, unarchives, or moves."
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   ;; The card hooks delete, archive, or move a card's actions without events, so compare the actions before and after.
-  (let [actions-before (queries.db/actions-for-model (:id card-before-update))]
+  (let [actions-before (actions.db/actions-for-model {:model-id (:id card-before-update)})]
     (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)
     (when (seq actions-before)
-      (doseq [[topic action] (changed-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
+      (doseq [[topic action] (changed-action-events actions-before (actions.db/actions-for-model {:model-id (:id card-before-update)}))]
         (events/publish-event! topic {:object action :user-id api/*current-user-id*}))))
   ;; Fetch the updated Card from the DB
   (let [card (queries.db/card (:id card-before-update))]

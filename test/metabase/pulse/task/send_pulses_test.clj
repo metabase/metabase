@@ -5,10 +5,10 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.channel.core :as channel]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.driver :as driver]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
@@ -217,14 +217,13 @@
           (is (some? (:ended_at run)))
           (is (= [:failed] (t2/select-fn-vec :status :model/TaskHistory :run_id (:id run) :task "send-pulse"))))))))
 
-(deftest dashboard-archived?-test
+(deftest archived-dashboard-exists-test
   (mt/with-temp [:model/Dashboard {live-id :id}     {}
                  :model/Dashboard {archived-id :id} {:archived true}]
-    (is (false? (pulse.db/dashboard-archived? live-id)))
-    (is (true? (pulse.db/dashboard-archived? archived-id)))
-    (testing "a Pulse with no Dashboard, or a missing Dashboard, is not archived"
-      (is (false? (pulse.db/dashboard-archived? nil)))
-      (is (false? (pulse.db/dashboard-archived? Integer/MAX_VALUE))))))
+    (is (false? (dashboards.db/dashboard-exists? {:dashboard-id live-id :archived? true})))
+    (is (true? (dashboards.db/dashboard-exists? {:dashboard-id archived-id :archived? true})))
+    (testing "a missing Dashboard is not archived"
+      (is (false? (dashboards.db/dashboard-exists? {:dashboard-id Integer/MAX_VALUE :archived? true}))))))
 
 (deftest init-dashboard-subscription-triggers!-group-runs-test
   (testing "a SendPulse trigger will send pulse to channels that have the same schedueld time"

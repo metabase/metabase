@@ -7,6 +7,7 @@
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]))
 
 (def ^:private empty-stats
@@ -20,7 +21,7 @@
     (let [normal-indexes           (->> indexes (filter #(= (:type %) :normal-column-index)) (map :value))
           nested-indexes           (->> indexes (filter #(= (:type %) :nested-column-index)) (map :value))
           normal-indexes-field-ids (when (seq normal-indexes)
-                                     (sync.db/top-level-field-ids-by-name table-id normal-indexes))
+                                     (warehouse-schema.db/top-level-field-ids-by-name {:table-id table-id :field-names normal-indexes}))
           nested-indexes-field-ids (remove nil? (map #(field/nested-field-names->field-id table-id %) nested-indexes))]
       (set (filter some? (concat normal-indexes-field-ids nested-indexes-field-ids))))))
 
@@ -31,7 +32,7 @@
     (sync-util/with-error-handling (format "Error syncing Indexes for %s" (sync-util/name-for-logging table))
       (let [indexes                    (fetch-metadata/index-metadata database table)
             indexed-field-ids          (indexes->field-ids (:id table) indexes)
-            existing-indexed-field-ids (sync.db/indexed-field-ids-for-table (:id table))
+            existing-indexed-field-ids (warehouse-schema.db/indexed-field-ids-of-table {:table-id (:id table)})
             [removing adding]          (data/diff existing-indexed-field-ids indexed-field-ids)]
         (doseq [field-id removing]
           (log/infof "Unmarking Field %d as indexed" field-id))
@@ -77,7 +78,7 @@
                     (driver/describe-indexes (driver.u/database->driver database) database))
           database-id (:id database)
           indexed-field-ids (all-indexes->field-ids database-id indexes)
-          existing-indexed-field-ids (sync.db/indexed-top-level-field-ids-for-database database-id)
+          existing-indexed-field-ids (warehouse-schema.db/indexed-top-level-field-ids-of-database {:database-id database-id})
           [removing adding]           (data/diff existing-indexed-field-ids indexed-field-ids)
           removing-count              (count removing)
           adding-count                (count adding)]

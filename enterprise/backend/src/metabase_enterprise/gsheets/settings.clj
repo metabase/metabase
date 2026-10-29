@@ -2,15 +2,16 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.gsheets.constants :as gsheets.constants]
-   [metabase-enterprise.gsheets.db :as gsheets.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.db :as settings.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (mr/def :gsheets/response
   [:or
@@ -93,7 +94,7 @@
                         :folder-upload-time :created-at})
       (dissoc :status)
       (cond->
-       (and (seq (dissoc value :status)) (nil? (:db-id value))) (assoc :db-id (gsheets.db/attached-dwh-database-id)))
+       (and (seq (dissoc value :status)) (nil? (:db-id value))) (assoc :db-id (warehouses.db/attached-dwh-database-id)))
       (u/prog1 (when-not (= (set (keys <>)) (set (keys value)))
                  (setting/set-value-of-type! :json :gsheets <>)))))
 
@@ -123,6 +124,6 @@
             (or
              ;; This NEEDS to be up to date between instances on a cluster, so:
              ;; we are going around the settings cache:
-             (some-> (gsheets.db/setting "gsheets") :value json/decode+kw migrate-gsheet-value)
+             (some-> (settings.db/setting-value "gsheets") json/decode+kw migrate-gsheet-value)
              (u/prog1 gsheets.constants/not-connected
                (setting/set-value-of-type! :json :gsheets <>)))))

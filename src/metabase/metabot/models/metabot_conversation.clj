@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
+   [metabase.users.db :as users.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -40,5 +41,5 @@
   [_model k conversations]
   (mi/instances-with-hydrated-data
    conversations k
-   #(metabot.db/user-summaries-by-id (keep :user_id conversations))
+   #(users.db/user-summaries-by-id {:user-ids (keep :user_id conversations)})
    :user_id {:default nil}))

@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
+   [metabase.users.db :as users.db]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -311,7 +312,7 @@
   [_model k tasks]
   (mi/instances-with-hydrated-data
    tasks k
-   #(remote-sync.db/users-by-id (map :initiated_by tasks))
+   #(users.db/users-by-id {:user-ids (map :initiated_by tasks)})
    :initiated_by))
 
 (methodical/defmethod t2/batched-hydrate [:model/RemoteSyncTask :status]

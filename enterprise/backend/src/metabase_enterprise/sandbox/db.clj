@@ -115,21 +115,6 @@
   [sandbox-ids :- [:set ::lib.schema.id/sandbox]]
   (t2/delete! :model/Sandbox :id [:in sandbox-ids]))
 
-(mu/defn impersonations-for-groups
-  "The ConnectionImpersonations of the groups with `group-ids`."
-  [group-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/ConnectionImpersonation :group_id [:in group-ids]))
-
-(mu/defn user-group-ids
-  "The IDs of the groups of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
-
-(mu/defn personal-user
-  "The personal User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id user-id :type :personal))
-
 (mu/defn set-user-login-attributes!
   "Set the login attributes of the User with `user-id`, returning the number of rows updated."
   [user-id          :- ::lib.schema.id/user
@@ -150,33 +135,6 @@
                                     [:not= :login_attributes nil]
                                     [:not= :login_attributes "{}"]]]}))
 
-(mu/defn tables-of-database
-  "The `:id`, `:db_id`, and `:schema` of the Tables of the Database with `db-id`, restricted to `schema` when
-  `schema-only?`."
-  [db-id        :- ::lib.schema.id/database
-   schema-only? :- :boolean
-   schema       :- [:maybe :string]]
-  (t2/select [:model/Table :id :db_id :schema]
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
-              :where [:and
-                      [:= :db_id db-id]
-                      (when schema-only?
-                        [:= :schema schema])]}))
-
-(mu/defn database-of-table
-  "The Database of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Database
-                 :id ^:allow-subquery {:select [:t.db_id]
-                                       :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
-                                       :where  [:= :t.id table-id]}))
-
-(mu/defn fields-of-table-named
-  "The `:id` and `:name` of the Fields of the Table with `table-id` named one of `field-names`."
-  [table-id    :- ::lib.schema.id/table
-   field-names :- [:set :string]]
-  (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
 (mu/defn cards-by-id
   "A map of Card ID to the query-related columns of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
@@ -187,20 +145,30 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (queries/cards-queries-info card-ids))
 
-(mu/defn sandboxing-cards
-  "The `:id`, `:dataset_query`, and `:database_id` of the Cards Sandboxes are built on."
-  []
-  (t2/select :model/Card
-             {:select [:c.id :c.dataset_query :c.database_id :c.card_schema
-                       ;; required alongside :card_schema for the Card schema upgrade
-                       :c.type :c.entity_id :c.result_metadata :c.dimensions :c.dimension_mappings]
-              :from   [[(t2/table-name :model/Card) :c]]
-              :where  [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                                 :from   [[(t2/table-name :model/Sandbox) :s]]
-                                                 :where  [:= :s.card_id :c.id]}]}))
-
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id`, returning the number updated."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
   (t2/update! :model/Card card-id {:result_metadata result-metadata}))
+
+(mu/defn sandbox-exists?
+  "Whether any Sandbox exists."
+  []
+  (t2/exists? :model/Sandbox))
+
+(mu/defn sandbox-exists-for-table?
+  "Whether a Sandbox exists on the Table with `table-id`."
+  [{:keys [table-id]} :- [:map {:closed true}
+                          [:table-id ::lib.schema.id/table]]]
+  (t2/exists? :model/Sandbox :table_id [:auto/param table-id]))
+
+(mu/defn sandbox-card-ids
+  "The set of ids of the Cards Sandboxes are built on."
+  []
+  (t2/select-fn-set :card_id :model/Sandbox :card_id [:not= nil]))
+
+(mu/defn sandboxed-group-ids
+  "The subset of `group-ids` with a Sandbox."
+  [{:keys [group-ids]} :- [:map {:closed true}
+                           [:group-ids [:sequential ms/PositiveInt]]]]
+  (t2/select-fn-set :group_id :model/Sandbox :group_id [:in group-ids]))

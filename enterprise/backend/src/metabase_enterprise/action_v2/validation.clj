@@ -7,8 +7,8 @@
   Though we do want to have a light validation to gives users nice error messages."
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.action-v2.db :as action-v2.db]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.warehouse-schema.db :as warehouse-schema.db])
   (:import
    (java.time OffsetDateTime LocalDate LocalTime LocalDateTime)
    (java.time.format DateTimeParseException)))
@@ -136,7 +136,7 @@
   "Validate rows of a given table"
   [table-id-or-fields inputs]
   (let [fields (if (int? table-id-or-fields)
-                 (action-v2.db/field-requirements-by-name table-id-or-fields)
+                 (warehouse-schema.db/field-requirements-by-name {:table-id table-id-or-fields})
                  (u/index-by :name table-id-or-fields))
         errors (mapv #(validate-input % fields) inputs)]
     (when (some some? errors)

@@ -75,21 +75,6 @@
    changes  :- (mut/select-keys ::support-access-grants.schema/support-access-grant-log.update [:revoked_at :revoked_by_user_id])]
   (t2/update! :model/SupportAccessGrantLog grant-id changes))
 
-(mu/defn user-by-email
-  "The User with `email`, or nil."
-  [email :- :string]
-  (t2/select-one :model/User :email email))
-
-(mu/defn user-superuser-flag-by-email
-  "The `:id` and `:is_superuser` of the User with `email`, or nil."
-  [email :- :string]
-  (t2/select-one [:model/User :id :is_superuser] :email email))
-
-(mu/defn user-names-and-emails
-  "A map of User ID to first name and email for `user-ids`."
-  [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in user-ids]))
-
 (mu/defn insert-user!
   "Insert `user` and return the new instance."
   [user :- (mut/select-keys ::users.schema/user.update [:email :first_name :last_name :is_superuser])]
@@ -100,21 +85,6 @@
   [user-id :- ::lib.schema.id/user
    changes :- (mut/select-keys ::users.schema/user.update [:is_active :is_superuser])]
   (t2/update! :model/User user-id changes))
-
-(mu/defn unended-session-exists-for-user?
-  "Whether the User with `user-id` has a Session whose ending has not been recorded."
-  [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/Session :user_id user-id :ended_at nil))
-
-(mu/defn auth-identity-ids-of-user
-  "The IDs of the AuthIdentities of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-pks-vec :model/AuthIdentity :user_id user-id))
-
-(mu/defn support-access-auth-identity-id
-  "The ID of the support-access-grant AuthIdentity of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "support-access-grant"))
 
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."

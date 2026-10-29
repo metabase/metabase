@@ -9,6 +9,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -138,7 +139,7 @@
   (when (seq dashcards)
     (let [dashcard-ids        (map :id dashcards)
           dashcard-id->series (when (seq dashcard-ids)
-                                (as-> (dashboards.db/series-cards-for-dashcards dashcard-ids) series
+                                (as-> (queries.db/series-cards-for-dashcards {:dashcard-ids dashcard-ids}) series
                                   (group-by :dashboardcard_id series)
                                   ;; :result_metadata, :dimensions and :dimension_mappings are selected only so the
                                   ;; Card schema upgrade can run; they are not part of the series payload.
@@ -243,7 +244,7 @@
     (t2/with-transaction [_conn]
       (let [card-ids (keep :card_id dashboard-cards)]
         (when (seq card-ids)
-          (let [in-report-cards (dashboards.db/document-cards-among card-ids)]
+          (let [in-report-cards (queries.db/document-cards-among {:card-ids card-ids})]
             (when (seq in-report-cards)
               (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
                               {:status-code 400

@@ -1,11 +1,11 @@
 (ns metabase-enterprise.remote-sync.stats
   "Counts of Git-synced content for the anonymous stats ping."
   (:require
-   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.spec :as spec]
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.db :as queries.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +26,7 @@
 
 (defn- card-type-counts
   [card-ids]
-  (let [counts (transduce (map #(remote-sync.db/card-counts-by-type (vec %)))
+  (let [counts (transduce (map #(queries.db/card-counts-by-type {:card-ids (vec %)}))
                           (partial merge-with +)
                           {}
                           (partition-all impl/app-db-batch-size card-ids))]

@@ -954,8 +954,8 @@
          (let [hash-input (params.field-values/hash-input-for-field-values field constraints)
                hash-key   (str (hash hash-input))]
            (if (not= hash-input {:field-id field-id})
-             (parameters.db/advanced-field-values-exist? field-id hash-key)
-             (parameters.db/full-field-values-exist? field-id))))))
+             (warehouse-schema.db/advanced-field-values-without-extras-exist? {:field-id field-id :hash-key hash-key})
+             (warehouse-schema.db/full-field-values-without-extras-exist? {:field-id field-id}))))))
 
 (defn- cached-field-values-search
   [field-id query constraints {:keys [limit]}]

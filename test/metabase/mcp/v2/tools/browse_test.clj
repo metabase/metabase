@@ -19,7 +19,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
-   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -33,6 +32,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -514,11 +514,11 @@
             rows       [{:id     -1
                          :fields (for [id target-ids] {:target {:table_id id}})}]
             looked-up  (atom [])
-            related    (let [active-tables-by-ids (mt/original-fn #'mcp.db/active-tables-by-ids)]
-                         (mt/with-dynamic-fn-redefs [mcp.db/active-tables-by-ids
-                                                     (fn [ids]
+            related    (let [active-tables-by-ids (mt/original-fn #'warehouse-schema.db/active-tables-by-ids)]
+                         (mt/with-dynamic-fn-redefs [warehouse-schema.db/active-tables-by-ids
+                                                     (fn [{ids :table-ids :as opts}]
                                                        (swap! looked-up conj (set ids))
-                                                       (active-tables-by-ids ids))]
+                                                       (active-tables-by-ids opts))]
                            (mt/with-test-user :crowberto
                              (#'tools.browse/related-tables-by-requested-table #{db-id} rows))))]
         (is (= [(set (take 50 target-ids))] @looked-up)

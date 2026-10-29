@@ -52,7 +52,7 @@
   (let [db-ids (model-persistence.db/persisted-database-ids)
         writable-db-ids (when (seq db-ids)
                           (perms/prime-database-perms-cache {:db-ids db-ids})
-                          (->> (model-persistence.db/databases db-ids)
+                          (->> (warehouses.db/databases db-ids)
                                (filter mi/can-write?)
                                (map :id)
                                set))
@@ -139,7 +139,7 @@
   - remove `:persist-models-enabled` from relevant [[Database]] settings
   - schedule a task to [[metabase.driver.ddl.interface/unpersist]] each table"
   []
-  (let [id->db      (m/index-by :id (model-persistence.db/all-databases))
+  (let [id->db      (m/index-by :id (warehouses.db/all-databases))
         enabled-dbs (filter (comp :persist-models-enabled :settings) (vals id->db))]
     (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]

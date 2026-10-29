@@ -5,11 +5,14 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.db :as collections.db]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
    [metabase.query-processor.util :as qp.util]
+   [metabase.revisions.db :as revisions.db]
+   [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -114,15 +117,15 @@
 
 (defn- metrics-for-table
   [table]
-  (filter-visible (xrays.db/unarchived-metrics-for-table (:id table))))
+  (filter-visible (queries.db/unarchived-metric-cards-of-table {:table-id (:id table)})))
 
 (defn- segments-for-table
   [table]
-  (filter-visible (xrays.db/unarchived-segments-for-table (:id table))))
+  (filter-visible (segments.db/unarchived-segments-of-table {:table-id (:id table)})))
 
 (defn- linking-to
   [table]
-  (->> (xrays.db/fk-target-field-ids-for-table (:id table))
+  (->> (warehouse-schema.db/fk-target-field-ids-of-table {:table-id (:id table)})
        (map (comp warehouse-schema.db/table
                   :table_id
                   warehouse-schema.db/field))
@@ -132,8 +135,8 @@
 
 (defn- linked-from
   [table]
-  (if-let [fields (not-empty (xrays.db/active-field-ids-for-table (:id table)))]
-    (->> (xrays.db/table-ids-of-fields-targeting fields)
+  (if-let [fields (not-empty (warehouse-schema.db/active-field-ids-for-table (:id table)))]
+    (->> (warehouse-schema.db/table-ids-of-fields-targeting {:field-ids fields})
          (map warehouse-schema.db/table)
          filter-visible
          (take max-matches))
@@ -141,8 +144,9 @@
 
 (defn- cards-sharing-dashboard
   [card]
-  (if-let [dashboards (some-> (:id card) xrays.db/dashboard-ids-for-card not-empty)]
-    (->> (xrays.db/other-card-ids-on-dashboards dashboards (:id card))
+  (if-let [dashboards (when-let [card-id (:id card)]
+                        (not-empty (dashboards.db/dashboard-ids-for-card {:card-id card-id})))]
+    (->> (set (dashboards.db/dashcard-card-ids-in-dashboards {:dashboard-ids dashboards :except-card-id (:id card)}))
          (map queries.db/card)
          filter-visible
          (take max-matches))
@@ -150,22 +154,22 @@
 
 (defn- similar-questions
   [card]
-  (->> (xrays.db/unarchived-cards-for-table-of-types (:table_id card) [:model :question])
+  (->> (queries.db/unarchived-cards-of-table-with-types {:table-id (:table_id card) :card-types [:model :question]})
        filter-visible
        (rank-by-similarity card)
        (filter (comp pos? :similarity))))
 
 (defn- similar-metrics
   [card]
-  (->> (xrays.db/unarchived-cards-for-table-of-types (:table_id card) [:metric])
+  (->> (queries.db/unarchived-cards-of-table-with-types {:table-id (:table_id card) :card-types [:metric]})
        filter-visible
        (rank-by-similarity card)
        (filter (comp pos? :similarity))))
 
 (defn- recently-modified-dashboards
   []
-  (when-let [dashboard-ids (not-empty (xrays.db/recently-edited-dashboard-ids-for-user api/*current-user-id*))]
-    (->> (xrays.db/dashboards dashboard-ids)
+  (when-let [dashboard-ids (not-empty (revisions.db/dashboard-ids-edited-by-user {:user-id api/*current-user-id*}))]
+    (->> (dashboards.db/dashboards-by-ids {:dashboard-ids dashboard-ids})
          filter-visible
          (take max-serendipity-matches))))
 
@@ -181,7 +185,7 @@
                            (map :dashboard_id)
                            distinct)
         best          (when (seq dashboard-ids)
-                        (->> (xrays.db/dashboards dashboard-ids)
+                        (->> (dashboards.db/dashboards-by-ids {:dashboard-ids dashboard-ids})
                              filter-visible
                              (take max-best-matches)))]
     (concat best recent)))
@@ -246,7 +250,7 @@
      :metrics     (metrics-for-table table)
      :linking-to  linking-to
      :linked-from linked-from
-     :tables      (->> (xrays.db/sibling-tables (:db_id table) (:schema table) (:id table))
+     :tables      (->> (warehouse-schema.db/sibling-tables {:database-id (:db_id table) :schema (:schema table) :table-id (:id table)})
                        (remove (set (concat linking-to linked-from)))
                        filter-visible
                        interesting-mix)}))
@@ -264,13 +268,13 @@
                     (rank-by-similarity field)
                     (filter (comp pos? :similarity))
                     interesting-mix)
-     :fields   (->> (xrays.db/other-visible-fields-in-table (:id table) (:id field))
+     :fields   (->> (warehouse-schema.db/other-visible-fields-of-table {:table-id (:id table) :field-id (:id field)})
                     filter-visible
                     interesting-mix)}))
 
 (defmethod related :model/Dashboard
   [dashboard]
-  (let [cards (map queries.db/card (xrays.db/card-ids-for-dashboard (:id dashboard)))]
+  (let [cards (map queries.db/card (set (dashboards.db/dashcard-card-ids (:id dashboard))))]
     {:cards (->> cards
                  (mapcat similar-questions)
                  (remove (set cards))

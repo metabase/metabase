@@ -82,11 +82,6 @@
                                                                 [:= :newer.transform_test_id :transform_test_run.transform_test_id]
                                                                 [:> :newer.id :transform_test_run.id]]}]]]}))
 
-(mu/defn users-by-id
-  "A map of User id to the id, email, and name of the Users with `user-ids`."
-  [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
-
 (mu/defn finish-started-transform-test-run!
   "Set `status` and the end time of TransformTestRun `run-id` if it is still started."
   [run-id :- ms/PositiveInt
@@ -111,11 +106,6 @@
   "Delete the TransformTests of the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (t2/delete! :model/TransformTest :transform_id transform-id))
-
-(mu/defn database-exists?
-  "Whether a Database with `database-id` exists."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
 
 (mu/defn transform-test-by-entity-id :- [:maybe ::transform-testing.schema/transform-test]
   "The TransformTest with `entity-id`, or nil."

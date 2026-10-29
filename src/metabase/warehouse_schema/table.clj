@@ -5,6 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -209,7 +210,7 @@
                            (filter (partial can-read-schema? id) schemas)))
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? exclude-unpublished-tables?)
-                                     (let [tables (warehouse-schema.db/active-tables-for-database id)
+                                     (let [tables (warehouse-schema.db/active-tables-for-database {:database-id id})
                                            _ (perms/prime-table-perms-cache {:db-ids #{id}})
                                            filtered-tables (cond->> tables
                                                              can-query?                  (filter mi/can-query?)
@@ -218,7 +219,7 @@
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
     (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
-    (->> (warehouse-schema.db/active-table-schemas id include-hidden?)
+    (->> (warehouse-schema.db/active-table-schemas {:database-id id :include-hidden? include-hidden?})
          filter-schemas
          filter-schemas-by-tables
          ;; for `nil` schemas return the empty string
@@ -237,8 +238,8 @@
      (api/read-check :model/Database db-id)
      (api/check-403 (can-read-schema? db-id schema)))
    (let [candidate-tables (if include-hidden?
-                            (warehouse-schema.db/active-tables-in-schema db-id schema)
-                            (warehouse-schema.db/active-visible-tables-in-schema db-id schema))
+                            (warehouse-schema.db/active-tables-in-schema {:database-id db-id :schema schema})
+                            (warehouse-schema.db/active-visible-tables-in-schema {:database-id db-id :schema schema}))
          _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (filter-tables-by-data-model-perms candidate-tables)
@@ -371,7 +372,7 @@
   "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped."
   [ids {:keys [include-database?]}]
   (when (seq ids)
-    (let [cards (warehouse-schema.db/cards-with-moderated-status ids)
+    (let [cards (queries.db/cards-with-moderated-status {:card-ids ids})
           dbs (if (seq cards)
                 (warehouse-schema.db/databases-by-id (into #{} (map :database_id) cards))
                 {})

@@ -8,7 +8,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.db :as driver.db]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -19,6 +18,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [some mapv select-keys empty? not-empty get-in]]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical])
   (:import
    (java.sql Connection SQLException)))
@@ -278,7 +278,7 @@
     (let [field-names (driver-api/cached-value
                        [::correct-columns-name table-id]
                        (fn []
-                         (driver.db/table-field-names table-id)
+                         (warehouse-schema.db/field-names-of-table {:table-id table-id})
                          ;; can't use lib here because fields from lib only return active fields and visible fields
                          ;; :/
                          #_(let [database (driver-api/cached-database-via-table-id table-id)]

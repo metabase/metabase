@@ -20,11 +20,6 @@
   "Required columns when fetching groups for SCIM."
   [:model/PermissionsGroup :id :name :entity_id])
 
-(mu/defn scim-api-key
-  "The SCIM ApiKey, or nil."
-  []
-  (t2/select-one :model/ApiKey :scope :scim))
-
 (mu/defn delete-scim-api-keys!
   "Delete every SCIM ApiKey, returning the number deleted."
   []
@@ -62,21 +57,6 @@
               :offset   offset
               :order-by [[:id :asc]]}))
 
-(mu/defn scim-user-count
-  "The number of personal Users, narrowed to the optional `email` (case-insensitive)."
-  [email :- [:maybe :string]]
-  (t2/count :model/User {:where (personal-user-expr email)}))
-
-(mu/defn user-email-exists?
-  "Whether a User with `email` (case-insensitive) exists."
-  [email :- :string]
-  (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
-
-(mu/defn user-ids-by-entity-ids
-  "The IDs of the Users with `entity-ids`."
-  [entity-ids :- [:sequential :string]]
-  (t2/select-fn-set :id :model/User {:where [:in :entity_id entity-ids]}))
-
 (mu/defn insert-user!
   "Insert the User `row`, returning the number inserted."
   [row :- ::users.schema/user.update]
@@ -87,18 +67,6 @@
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
   (t2/update! :model/User user-id changes))
-
-(mu/defn user-group-memberships
-  "Rows of User ID, group name, and group entity ID for the memberships of the Users with `user-ids`, excluding the
-  groups with `excluded-group-ids`."
-  [user-ids           :- [:sequential ::lib.schema.id/user]
-   excluded-group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
-             {:from  [[:permissions_group_membership :pgm]]
-              :join  [[:permissions_group :pg] [:= :pg.id :group_id]]
-              :where (into [:and [:in :user_id user-ids]]
-                           (map (fn [group-id] [:not= :pg.id group-id]))
-                           excluded-group-ids)}))
 
 (defn- manageable-group-expr
   [excluded-group-ids group-name]
@@ -125,17 +93,6 @@
               :offset   offset
               :order-by [[:id :asc]]}))
 
-(mu/defn scim-group-count
-  "The number of PermissionsGroups other than `excluded-group-ids`, narrowed to the optional `group-name`."
-  [excluded-group-ids :- [:sequential ms/PositiveInt]
-   group-name         :- [:maybe :string]]
-  (t2/count :model/PermissionsGroup {:where (manageable-group-expr excluded-group-ids group-name)}))
-
-(mu/defn group-name-exists?
-  "Whether a PermissionsGroup with `group-name` (case-insensitive) exists."
-  [group-name :- :string]
-  (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name)))
-
 (mu/defn insert-group!
   "Insert `group` and return the new instance."
   [group :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
@@ -151,17 +108,3 @@
   "Delete the PermissionsGroup with `group-id`, returning the number deleted."
   [group-id :- ms/PositiveInt]
   (t2/delete! :model/PermissionsGroup group-id))
-
-(mu/defn group-member-user-ids
-  "The user IDs of the members of the PermissionsGroup with `group-id`."
-  [group-id :- ms/PositiveInt]
-  (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id))
-
-(mu/defn group-members
-  "Rows of group ID, member email, and member entity ID for the memberships of the PermissionsGroups with
-  `group-ids`."
-  [group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
-             {:from  [[:permissions_group_membership :pgm]]
-              :join  [[:core_user :u] [:= :u.id :pgm.user_id]]
-              :where [:in :pgm.group_id group-ids]}))

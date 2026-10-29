@@ -2,7 +2,7 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.cmd.db :as cmd.db]
+   [metabase.users.db :as users.db]
    [metabase.util.i18n :refer [deferred-trs trs]]))
 
 (set! *warn-on-reflection* true)
@@ -11,7 +11,7 @@
   "Set and return a new `reset_token` for the user with EMAIL-ADDRESS."
   [email-address]
   (let [{user-id :id, active? :is_active}
-        (or (cmd.db/user-id-and-active-by-email email-address)
+        (or (users.db/user-by-lower-email {:email email-address :columns [:id :is_active]})
             (throw (Exception. (str (deferred-trs "No user found with email address ''{0}''. " email-address)
                                     (deferred-trs "Please check the spelling and try again.")))))]
     (when-not active?

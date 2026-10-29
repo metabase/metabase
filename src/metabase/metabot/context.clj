@@ -13,7 +13,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.metabot.curation :as curation]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.settings :as metabot.settings]
@@ -23,7 +22,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -347,7 +347,7 @@
   which is too restrictive for MBQL viewing context enrichment."
   [[database-id table-ids]]
   (try
-    (let [raw-tables    (metabot.db/visible-table-summaries database-id table-ids)
+    (let [raw-tables    (warehouse-schema.db/active-visible-tables-of-database {:database-id database-id :table-ids table-ids :columns [:id :name :schema :description]})
           queryable-ids (metabot.perms/queryable-table-ids (map :id raw-tables))]
       (into []
             (comp (filter (comp queryable-ids :id))

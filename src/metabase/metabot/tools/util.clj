@@ -12,7 +12,8 @@
    [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
    [metabase.util :as u]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]))
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
@@ -201,7 +202,7 @@
   card exists but the current user cannot read it, `api/read-check` raises a 403 instead of
   silently letting the representations resolver use an inaccessible card."
   [entity-id]
-  (some-> (metabot.db/card-by-entity-id entity-id)
+  (some-> (queries.db/card-by-entity-id {:entity-id entity-id})
           api/read-check))
 
 (defn card-query-metadata
@@ -242,7 +243,7 @@
   [[metabase.metabot.tools.resources/check-resource-database]])."
   [db-ids]
   (when (seq db-ids)
-    (metabot.db/destination-database-ids db-ids)))
+    (warehouses.db/destination-database-ids {:database-ids db-ids})))
 
 (defn get-metrics-and-models
   "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.
@@ -276,7 +277,7 @@
   (when (seq card-ids)
     (into {}
           (comp (filter mi/can-read?) (map (juxt :id identity)))
-          (metabot.db/card-source-rows card-ids))))
+          (queries.db/card-source-rows {:card-ids card-ids}))))
 
 (defn card-source-table-id
   "Return the ID of the table that the card with `card-id` reads from, following its source cards.

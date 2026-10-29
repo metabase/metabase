@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.segments.db :as segments.db]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.db :as usage-metadata.db]
@@ -74,6 +75,6 @@
   (testing "GHY-4588: the table id still narrows the Segments"
     (mt/with-temp [:model/Segment {in-table :id}    {:table_id (mt/id :venues)}
                    :model/Segment {other-table :id} {:table_id (mt/id :checkins)}]
-      (let [ids (set (map :id (usage-metadata.db/unarchived-segments (mt/id :venues))))]
+      (let [ids (set (map :id (segments.db/unarchived-segment-summaries {:table-id (mt/id :venues)})))]
         (is (contains? ids in-table))
         (is (not (contains? ids other-table)))))))

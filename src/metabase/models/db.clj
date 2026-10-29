@@ -220,20 +220,10 @@
    entity-ids    :- [:sequential :string]]
   (t2/delete! model parent-column parent-id :entity_id [:not-in entity-ids]))
 
-(mu/defn collection-paths-columns
-  "The id, entity id, location, name, and namespace of every Collection."
-  []
-  (t2/select [:model/Collection :id :entity_id :location :name :namespace]))
-
 (mu/defn dashboard-entity-ids-and-names
   "The entity id and name of every Dashboard."
   []
   (t2/select [:model/Dashboard :entity_id :name]))
-
-(mu/defn document-entity-ids-and-names
-  "The entity id and name of every Document."
-  []
-  (t2/select [:model/Document :entity_id :name]))
 
 (mu/defn field-hierarchy-rows
   "The name and Table id of the Field with `field-id` and each of its ancestors, deepest first."
@@ -253,16 +243,6 @@
   "The id, Database id, name, and schema of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn database-name
-  "The name of the Database with `database-id`, or nil."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
-
-(mu/defn database-id-by-name
-  "The id of the Database named `database-name`, or nil."
-  [database-name :- :string]
-  (t2/select-one-fn :id :model/Database :name database-name))
 
 (mu/defn table-id-by-name
   "The id of the Table named `table-name` in `schema` of the Database with `database-id`, or nil."
@@ -343,6 +323,27 @@
    table-name  :- :string]
   (t2/select :metadata/table :db_id database-id :schema schema :name table-name))
 
+(mu/defn collection-paths-columns
+  "The id, entity id, location, name, and namespace of every Collection."
+  []
+  (t2/select [:model/Collection :id :entity_id :location :name :namespace]))
+
+(mu/defn document-entity-ids-and-names
+  "The entity id and name of every Document."
+  []
+  (t2/select [:model/Document :entity_id :name]))
+
+(mu/defn timeline-ids-of-events
+  "The distinct Timeline ids of the TimelineEvents with `event-ids`."
+  [event-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in event-ids]))
+
+(mu/defn entity-by-own-pk
+  "The `model` row identified by `id`, using whatever column is that model's own primary key."
+  [model :- [:or :keyword symbol?]
+   id    :- [:or :int :string]]
+  (t2/select-one model (first (t2/primary-keys model)) id))
+
 (mu/defn card-serdes-columns
   "The id, entity id, Collection id, and Database id of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -358,13 +359,12 @@
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id))
 
-(mu/defn timeline-ids-of-events
-  "The distinct Timeline ids of the TimelineEvents with `event-ids`."
-  [event-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in event-ids]))
+(mu/defn database-name
+  "The name of the Database with `database-id`, or nil."
+  [database-id :- [:maybe ::lib.schema.id/database]]
+  (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
 
-(mu/defn entity-by-own-pk
-  "The `model` row identified by `id`, using whatever column is that model's own primary key."
-  [model :- [:or :keyword symbol?]
-   id    :- [:or :int :string]]
-  (t2/select-one model (first (t2/primary-keys model)) id))
+(mu/defn database-id-by-name
+  "The id of the Database named `database-name`, or nil."
+  [database-name :- :string]
+  (t2/select-one-fn :id :model/Database :name database-name))

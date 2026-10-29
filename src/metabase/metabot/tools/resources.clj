@@ -68,8 +68,11 @@
    [clojure.string :as str]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.documents.core :as documents]
+   [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.measures.db :as measures.db]
    [metabase.metabot.agent.streaming :as streaming]
@@ -90,10 +93,13 @@
    [metabase.queries.db :as queries.db]
    [metabase.segments.db :as segments.db]
    [metabase.transforms.core :as transforms]
+   [metabase.transforms.db :as transforms.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.match :as match]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.db :as warehouses.db]
    [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
@@ -534,7 +540,7 @@
 ;; ----- Fetch handlers (one per URI shape) -----
 
 (defn- fetch-databases-list [query-params]
-  (let [all (metabot.db/non-audit-databases)
+  (let [all (warehouses.db/non-audit-database-summaries)
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) all)})
         dbs (->> all
                  (filter mi/can-read?)
@@ -545,7 +551,7 @@
   "metabase://collections (root only) and metabase://collections?tree=true (flat list of all)."
   [{:keys [tree] :as query-params}]
   (let [tree?    (= "true" tree)
-        colls    (->> (metabot.db/navigable-collections tree?)
+        colls    (->> (collections.db/navigable-collections {:include-nested? tree?})
                       (filter mi/can-read?))
         ;; For tree mode, compute path names by chaining ancestor names.
         id->name (when tree? (into {} (map (juxt :id :name)) colls))
@@ -593,7 +599,7 @@
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
         _      (perms/prime-table-perms-cache {:db-ids #{db-id}})
-        tables (->> (metabot.db/active-tables-for-database db-id)
+        tables (->> (warehouse-schema.db/active-table-summaries-of-database {:database-id db-id})
                     (filter mi/can-read?)
                     (mapv present-table))]
     (list-result :database-tables tables query-params)))
@@ -601,7 +607,7 @@
 (defn- fetch-database-models [id-str query-params]
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
-        models (->> (metabot.db/models-for-database db-id)
+        models (->> (queries.db/model-summaries-of-database {:database-id db-id})
                     (filter mi/can-read?)
                     (mapv present-card))]
     (list-result :database-models models query-params)))
@@ -622,7 +628,7 @@
 (defn- fetch-database-schema-tables [id-str schema-name query-params]
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
-        rows   (metabot.db/active-tables-in-schema db-id schema-name)
+        rows   (warehouse-schema.db/active-table-summaries-in-schema {:database-id db-id :schema schema-name})
         _      (when-not (seq rows)
                  (missing-schema! {:database-id db-id :schema schema-name}))
         tables (->> rows
@@ -645,16 +651,16 @@
   (documents/with-content-gate-cache
     (let [coll-id        (parse-long id-str)
           coll           (when-not (= id-str "root") (readable-collection id-str))
-          cards          (->> (metabot.db/cards-in-collection coll-id)
+          cards          (->> (queries.db/card-summaries-in-collection {:collection-id coll-id})
                               (filter mi/can-read?))
-          dashboards     (->> (metabot.db/dashboards-in-collection coll-id)
+          dashboards     (->> (dashboards.db/unarchived-dashboards-in-collection {:collection-id coll-id})
                               (filter mi/can-read?))
           ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
-          documents      (->> (metabot.db/documents-in-collection coll-id)
+          documents      (->> (documents.db/unarchived-document-summaries-in-collection {:collection-id coll-id})
                               (filter mi/can-read?))
           subcollections (->> (if (= id-str "root")
-                                (metabot.db/navigable-collections false)
-                                (metabot.db/unarchived-collections-at-location (collection/children-location coll)))
+                                (collections.db/navigable-collections {:include-nested? false})
+                                (collections.db/unarchived-collections-at-location {:location (collection/children-location coll)}))
                               (filter mi/can-read?))
           items          (concat (map present-collection subcollections)
                                  (map present-card cards)
@@ -665,8 +671,8 @@
 (defn- fetch-collection-subcollections [id-str query-params]
   (let [coll    (when-not (= id-str "root") (readable-collection id-str))
         subs    (->> (if (= id-str "root")
-                       (metabot.db/navigable-collections false)
-                       (metabot.db/unarchived-collections-at-location (collection/children-location coll)))
+                       (collections.db/navigable-collections {:include-nested? false})
+                       (collections.db/unarchived-collections-at-location {:location (collection/children-location coll)}))
                      (filter mi/can-read?)
                      (mapv present-collection))]
     (list-result :collection-subcollections subs query-params)))
@@ -765,7 +771,7 @@
   (let [table-id   (parse-long id-str)
         table      (active-table-resource table-id)
         db-id      (:db_id table)
-        cards      (->> (metabot.db/cards-for-table table-id)
+        cards      (->> (queries.db/card-summaries-of-table {:table-id table-id})
                         (filter mi/can-read?)
                         (mapv present-card))
         ;; SQL-narrow transforms by source_database_id (a transform can only reference
@@ -773,7 +779,7 @@
         ;; table ids in memory — no per-row re-fetch. Apply the can-read? check last,
         ;; on the already-narrowed candidate set.
         transforms (when db-id
-                     (->> (metabot.db/transforms-for-source-database db-id)
+                     (->> (transforms.db/transform-summaries-for-source-database {:database-id db-id})
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))
                           (filter mi/can-read?)
                           (mapv present-transform)))]
@@ -859,7 +865,7 @@
   (let [transform        (transforms/get-transform (parse-long id-str))
         source-table-ids (transform-source-table-ids transform)
         source-tables    (when (seq source-table-ids)
-                           (->> (metabot.db/table-summaries (set source-table-ids))
+                           (->> (warehouse-schema.db/tables-by-ids {:table-ids (set source-table-ids) :columns [:id :name :display_name :schema :db_id :description]})
                                 (filter mi/can-read?)
                                 (mapv present-table)))
         db-id            (:source_database_id transform)
@@ -932,11 +938,11 @@
   [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
-        tabs         (metabot.db/dashboard-tabs dashboard-id)
-        dashcards    (metabot.db/dashcards dashboard-id)
+        tabs         (dashboards.db/dashboard-tabs {:dashboard-id dashboard-id})
+        dashcards    (dashboards.db/dashcards {:dashboard-id dashboard-id :layout-order? true})
         card-ids     (into #{} (keep :card_id) dashcards)
         readable     (when (seq card-ids)
-                       (->> (metabot.db/unarchived-card-summaries card-ids)
+                       (->> (queries.db/card-summaries {:card-ids card-ids})
                             (filter mi/can-read?)
                             (into {} (map (juxt :id identity)))))
         ->item       (fn [{:keys [id card_id action_id] :as dashcard}]

@@ -7,12 +7,12 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.fn :as mu.fn]))
+   [metabase.util.malli.fn :as mu.fn]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (defmacro log-if-error
   "Logs an error message if an exception is thrown while executing the body. The sync step that catches the exception
@@ -67,7 +67,7 @@
     (eduction
      (mapcat (fn [table-id]
                (try
-                 (let [table (sync.db/table table-id)
+                 (let [table (warehouse-schema.db/table-without-user-settings {:table-id table-id})
                        table-fields (table-fields-metadata database table)]
                    ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
                    ;; connection is closed before moving to the next table.

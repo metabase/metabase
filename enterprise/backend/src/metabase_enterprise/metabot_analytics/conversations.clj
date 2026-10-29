@@ -59,7 +59,7 @@
   [rows]
   (let [conversation-ids (map :id rows)
         messages-by-conv (when (seq conversation-ids)
-                           (->> (metabot-analytics.db/message-data-for-conversations conversation-ids)
+                           (->> (metabot.db/message-data-for-conversations {:conversation-ids conversation-ids})
                                 (group-by :conversation_id)))]
     (map (fn [row]
            (let [msgs (get messages-by-conv (:id row) [])]
@@ -104,7 +104,7 @@
    thread can yield multiple rows for the same message — so the submitter is
    hydrated as `:user` for display."
   [conversation-id]
-  (let [rows (metabot-analytics.db/feedback-for-conversation conversation-id)]
+  (let [rows (metabot.db/feedback-for-conversation {:conversation-id conversation-id})]
     (t2/hydrate rows :user)))
 
 (defn- fork-boundary-external-id
@@ -123,7 +123,7 @@
   [conversation-id]
   (let [conversation (metabot.db/metabot-conversation conversation-id)]
     (api/check-404 conversation)
-    (let [all-messages (metabot-analytics.db/messages-for-conversation conversation-id)
+    (let [all-messages (metabot.db/messages-for-conversation {:conversation-id conversation-id})
           forked-from  (:forked_from_conversation_id conversation)
           hydrated     (t2/hydrate conversation :user)]
       {:conversation_id             (:id conversation)

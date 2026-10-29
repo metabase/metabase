@@ -4,6 +4,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.users.db :as users.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -36,7 +37,7 @@
   [_model k advisories]
   (let [user-ids (keep :acknowledged_by advisories)
         id->user (when (seq user-ids)
-                   (update-vals (security-center.db/user-summaries-by-id (set user-ids))
+                   (update-vals (users.db/user-summaries-by-id {:user-ids (set user-ids)})
                                 #(select-keys % [:id :common_name :email])))]
     (mi/instances-with-hydrated-data
      advisories k

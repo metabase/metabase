@@ -13,6 +13,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -307,7 +308,7 @@
       ;; enable `is_group_manager` require advanced-permissions enabled
       (perms/check-advanced-permissions-enabled :group-manager)
       (api/check
-       (permissions-rest.db/non-admin-user-exists? user_id)
+       (users.db/user-exists? {:user-id user_id :superuser? false})
        [400 (tru "Admin cannot be a group manager.")]))
     (perms/add-user-to-group! user_id group_id is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
@@ -334,7 +335,7 @@
     (perms/check-tenant-groups-visible! [(:group_id old)])
     (perms/check-manager-of-group (:group_id old))
     (api/check
-     (permissions-rest.db/non-admin-user-exists? (:user_id old))
+     (users.db/user-exists? {:user-id (:user_id old) :superuser? false})
      [400 (tru "Admin cannot be a group manager.")])
     (permissions-rest.db/set-group-membership-manager! (:id old) is_group_manager)
     (permissions.db/permissions-group-membership (:id old))))

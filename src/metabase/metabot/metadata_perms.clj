@@ -1,11 +1,11 @@
 (ns metabase.metabot.metadata-perms
   (:require
    [metabase.api.common :as api]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +38,7 @@
 (defn- table-rows
   [table-ids]
   (memoized :table-row table-ids
-            metabot.db/tables-by-id
+            #(into {} (map (juxt :id identity)) (warehouse-schema.db/tables-by-ids {:table-ids %}))
             nil))
 
 (defn- permitted-table-ids
@@ -128,6 +128,6 @@
   "Returns a `{field-id table-id}` map for the given `field-ids`."
   [field-ids]
   (->> (memoized :field-table field-ids
-                 metabot.db/field-table-ids
+                 #(warehouse-schema.db/field-id->table-id {:field-ids %})
                  nil)
        (into {} (remove #(nil? (val %))))))

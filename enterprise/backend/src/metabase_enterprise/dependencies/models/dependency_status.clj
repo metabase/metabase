@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase.actions.db :as actions.db]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -32,9 +33,9 @@
 (defmethod hydrate-for-deps :action [_ entities]
   (let [action-ids (mapv :id entities)
         queries    (when (seq action-ids)
-                     (dependencies.db/query-action-queries action-ids))
+                     (into {} (map (juxt :action_id :dataset_query)) (actions.db/query-actions action-ids)))
         table-ids  (when (seq action-ids)
-                     (dependencies.db/implicit-action-table-ids action-ids))]
+                     (into {} (map (juxt :action_id :table_id)) (actions.db/implicit-actions action-ids)))]
     (mapv (fn [{:keys [id] :as action}]
             (cond-> action
               (contains? queries id)   (assoc :dataset_query (queries id))

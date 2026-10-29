@@ -38,6 +38,7 @@
    [metabase.models.interface :as mi]
    [metabase.notification.db :as notification.db]
    [metabase.pulse.core :as pulse]
+   [metabase.pulse.db :as pulse.db]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -439,7 +440,7 @@
    an unrelated notification that happens to share the numeric id."
   [id-or-eid]
   (let [pulse-id (subscription-pulse-id id-or-eid)]
-    (if (and pulse-id (mcp.db/subscription-pulse-exists? pulse-id))
+    (if (and pulse-id (pulse.db/subscription-pulse-exists? {:pulse-id pulse-id}))
       (let [pulse-row (pulse/retrieve-pulse pulse-id)]
         (if (and pulse-row (mi/can-read? pulse-row))
           (projections/subscription-row (redaction/redact-pulse pulse-row))

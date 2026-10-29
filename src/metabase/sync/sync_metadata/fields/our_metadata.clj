@@ -5,11 +5,11 @@
   comparing the differences in the two sets of Metadata."
   (:require
    [medley.core :as m]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         FETCHING OUR CURRENT METADATA                                          |
@@ -74,7 +74,7 @@
 (mu/defn- table->fields :- [:maybe [:sequential i/FieldInstance]]
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
-  (sync.db/active-fields-metadata-for-table (u/the-id table)))
+  (warehouse-schema.db/active-fields-metadata-of-table {:table-id (u/the-id table)}))
 
 (mu/defn our-metadata :- [:set common/TableMetadataFieldWithID]
   "Return information we have about Fields for a `table` in the application database in (almost) exactly the same

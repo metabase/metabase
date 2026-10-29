@@ -10,6 +10,7 @@
    [metabase.audit-app.db :as audit-app.db]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -65,7 +66,7 @@
     (-> (select-keys dashboard [:description :name :parameters :dashcards])
         (update :dashcards (fn [dashcards]
                              (for [{:keys [id card_id]} dashcards]
-                               (-> (audit-app.db/card-name-and-description card_id)
+                               (-> (queries.db/card card_id)
                                    (assoc :id id)
                                    (assoc :card_id card_id))))))
 

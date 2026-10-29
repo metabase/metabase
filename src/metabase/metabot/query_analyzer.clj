@@ -8,8 +8,8 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-analyzer.parameter-substitution :as nqa.sub]
+   [metabase.queries.db :as queries.db]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]))
 
@@ -41,7 +41,7 @@
   ([db-id table]
    (table-reference db-id nil table))
   ([db-id schema table]
-   (metabot.db/query-table-reference db-id (some-> schema name) (name table))))
+   (queries.db/query-table-reference {:db-id db-id :schema (some-> schema name) :table (name table)})))
 
 (defn- strip-redundant-table-refs
   "Strip out duplicate references, and unqualified references that are shadowed by found or qualified ones."
@@ -71,7 +71,7 @@
   (consolidate-tables
    tables
    (when (seq tables)
-     (metabot.db/query-table-references db-id tables))))
+     (queries.db/query-table-references {:db-id db-id :tables tables}))))
 
 (defn- tables-via-sql-tools
   "Returns a set of table identifiers that (may) be referenced in the given card's query.

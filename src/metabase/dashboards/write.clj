@@ -50,7 +50,7 @@
 
 (defn- stored-references
   [dashboard-id]
-  {:cards   (into (set (dashboards.db/parameter-card-card-ids dashboard-id))
+  {:cards   (into (set (queries.db/parameter-card-card-ids "dashboard" dashboard-id))
                   (concat (dashboards.db/dashcard-card-ids dashboard-id)
                           (dashboards.db/dashcard-series-card-ids dashboard-id)))
    :actions (set (dashboards.db/dashcard-action-ids dashboard-id))})
@@ -138,7 +138,7 @@
   (when (seq parameter-mappings)
     (let [card-ids       (into #{} (keep :card-id) parameter-mappings)
           card-id->query (when (seq card-ids)
-                           (dashboards.db/card-queries card-ids))
+                           (queries.db/card-dataset-queries {:card-ids card-ids}))
           field-ids      (into []
                                (keep (fn [{:keys [target card-id]}]
                                        (when target
@@ -214,9 +214,7 @@
   [existing-dashboard new-dashcards]
   (let [grandfathered-ids (into #{} (mapcat dashcard-card-ids) (:dashcards existing-dashboard))]
     (when-let [card-ids (seq (remove grandfathered-ids (mapcat dashcard-card-ids new-dashcards)))]
-      (api/check-400 (not (dashboards.db/card-internal-to-other-dashboard?
-                           (u/the-id existing-dashboard)
-                           (set card-ids)))))))
+      (api/check-400 (not (queries.db/card-internal-to-other-dashboard-exists? {:dashboard-id (u/the-id existing-dashboard) :card-ids (set card-ids)}))))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
@@ -580,7 +578,7 @@
   "Does the dashboard with `id` hold any live questions saved inside it? Such a dashboard cannot be
   shallow-copied — the questions would have nowhere to live."
   [id]
-  (dashboards.db/dashboard-question-exists? id))
+  (queries.db/unarchived-dashboard-question-exists? {:dashboard-id id}))
 
 (defn copy-dashboard!
   "Copy the dashboard with `from-dashboard-id` into `:collection_id` (nil = root) and return the saved

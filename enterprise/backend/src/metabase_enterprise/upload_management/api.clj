@@ -1,6 +1,5 @@
 (ns metabase-enterprise.upload-management.api
   (:require
-   [metabase-enterprise.upload-management.db :as upload-management.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -10,15 +9,16 @@
    [metabase.upload.core :as upload]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]))
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defn- attached-dwh-tables
   "Used for adding attached DWH tables to the list of tables visible to the user. In practice these are to manage
   google sheets uploads. Excludes tables with is_upload=true since those are already included in the main query."
   []
   (when (premium-features/has-feature? :attached-dwh)
-    (when-let [dw-db-id (upload-management.db/attached-dwh-database-id)]
-      (when-let [dw-tables (upload-management.db/non-upload-tables-for-database dw-db-id)]
+    (when-let [dw-db-id (warehouses.db/attached-dwh-database-id)]
+      (when-let [dw-tables (warehouse-schema.db/non-upload-active-tables-of-database {:database-id dw-db-id})]
         dw-tables))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -28,7 +28,7 @@
 (api.macros/defendpoint :get "/tables"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []
-  (as-> (upload-management.db/upload-tables) tables
+  (as-> (warehouse-schema.db/active-upload-tables) tables
     ;; See https://github.com/metabase/metabase/issues/41023
     (concat tables (attached-dwh-tables))
     (map #(update % :schema str) tables)

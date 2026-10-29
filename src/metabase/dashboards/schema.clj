@@ -19,6 +19,12 @@
     [:map
      [:type {:optional true} [:ref ::lib.schema.parameter/type]]]]])
 
+(mr/def ::dashboard-ids
+  "Some Dashboard ids, as a set or a sequence."
+  [:or
+   [:set ::lib.schema.id/dashboard]
+   [:sequential ::lib.schema.id/dashboard]])
+
 (mr/def ::dashboard.parameter
   "One entry of the `:parameters` column of a Dashboard, decoded."
   ::parameters.schema/parameter)

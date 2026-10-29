@@ -15,6 +15,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
@@ -84,7 +85,7 @@
   (let [segments  (segments.db/unarchived-segments)
         table-ids (into #{} (keep :table_id) segments)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (segments.db/table-database-ids table-ids))
+                                                 (warehouse-schema.db/database-ids-of-tables {:table-ids table-ids}))
                                     :table-ids table-ids})
     (-> (filterv mi/can-read? segments)
         (t2/hydrate :creator :definition_description))))

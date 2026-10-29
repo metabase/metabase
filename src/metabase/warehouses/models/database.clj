@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.provider-detection :as provider-detection]
    [metabase.warehouses.schema]
@@ -406,7 +407,7 @@
   ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
   ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
   ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
-  (when (warehouses.db/fields-exist-for-database? database-id)
+  (when (warehouse-schema.db/database-has-fields? {:database-id database-id})
     (loop []
       (let [deleted (warehouses.db/delete-childless-fields-for-database! database-id)]
         (when (pos? deleted)
@@ -570,7 +571,7 @@
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
-  (warehouses.db/active-tables-for-database id))
+  (warehouse-schema.db/active-tables-of-databases {:database-ids [id]}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Database :tables]
   "Batch hydrate `Tables` for the given `Database`."
@@ -579,16 +580,16 @@
    databases k
    #(group-by :db_id
               ;; TODO - do we want to include tables that should be `:hidden`?
-              (warehouses.db/active-tables-for-databases (map :id databases)))
+              (warehouse-schema.db/active-tables-of-databases {:database-ids (vec (map :id databases))}))
    :id
    {:default []}))
 
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
   [{:keys [id]}]
-  (let [table-ids (warehouses.db/active-table-ids-for-database id)]
+  (let [table-ids (warehouse-schema.db/table-ids-of-database {:database-id id :active? true})]
     (when (seq table-ids)
-      (warehouses.db/pk-fields-for-tables table-ids))))
+      (warehouse-schema.db/pk-fields-of-tables {:table-ids table-ids}))))
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
@@ -756,7 +757,7 @@
   (mdb/memoize-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
-     (warehouses.db/table-database-id table-id))))
+     (warehouse-schema.db/database-id-of-table {:table-id table-id}))))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

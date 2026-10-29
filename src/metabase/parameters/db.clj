@@ -75,41 +75,10 @@
             :limit  1})
           (update :mapping_type mapping-type-code->name)))
 
-(mu/defn fields
-  "The Fields with `field-ids`."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn fields-fk-info
-  "The id, FK target, and semantic type of the Fields with `field-ids`."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn full-field-values-exist?
-  "Whether complete, non-remapped FieldValues of type `full` exist for the Field with `field-id`."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldValues
-              :field_id field-id, :values [:not= nil], :human_readable_values nil, :has_more_values false
-              :type "full"))
-
-(mu/defn advanced-field-values-exist?
-  "Whether complete, non-remapped FieldValues of type `advanced` with `hash-key` exist for the Field with `field-id`."
-  [field-id :- ::lib.schema.id/field
-   hash-key :- :string]
-  (t2/exists? :model/FieldValues
-              :field_id field-id, :values [:not= nil], :human_readable_values nil, :has_more_values false
-              :type "advanced", :hash_key hash-key))
-
 (mu/defn delete-field-values!
   "Delete the FieldValues with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
   (t2/delete! :model/FieldValues :id id))
-
-(mu/defn advanced-field-values
-  "The advanced FieldValues of the Field with `field-id` and `hash-key`, or nil."
-  [field-id :- ::lib.schema.id/field
-   hash-key :- :string]
-  (t2/select-one :model/FieldValues :field_id field-id, :type :advanced, :hash_key hash-key))
 
 (mu/defn find-or-insert-advanced-field-values!
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling
@@ -118,22 +87,6 @@
    hash-key  :- :string
    insert-fn :- fn?]
   (mdb/select-or-insert! :model/FieldValues {:field_id field-id, :type :advanced, :hash_key hash-key} insert-fn))
-
-(mu/defn active-name-fields-for-tables
-  "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`."
-  [columns   :- [:sequential :keyword]
-   table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select (into [:model/Field] columns)
-             :table_id      [:in table-ids]
-             :semantic_type (mdb/isa :type/Name)
-             :active        true
-             {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn fields-with-columns
-  "The `columns` of the Fields with `field-ids`."
-  [columns   :- [:sequential :keyword]
-   field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field] columns) :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn fk-relationships-for-database
   "Rows describing FK -> PK Field relationships (`:f1`/`:t1` FK Field/Table ids, `:f2`/`:t2` PK Field/Table ids)
