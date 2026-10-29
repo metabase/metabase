@@ -127,13 +127,11 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id"
+  ;; partial schema only
+  :- [:map {:closed false}
+      [:data_authority ::data-authority-read]]
   "Get `Table` with ID."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
@@ -143,9 +141,6 @@
        [:include_editable_data_model {:optional true} [:maybe :boolean]]]
    _body
    request]
-  ;; partial schema only
-  :- [:map {:closed false}
-      [:data_authority ::data-authority-read]]
   (some-> (data-apps/request-data-app request) (data-apps/check-table id))
   (let [api-perm-check-fn (if include_editable_data_model
                             schema.table/check-data-model-perms

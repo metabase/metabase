@@ -14,7 +14,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent Callable ExecutorService SynchronousQueue ThreadPoolExecutor TimeUnit)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory)
    (org.quartz.spi MutableTrigger)))
 
 (set! *warn-on-reflection* true)
@@ -29,7 +29,7 @@
      100 TimeUnit/SECONDS  ;; keep-alive time for idle threads
      (SynchronousQueue.)   ;; direct handoff
      (.build
-      (doto (BasicThreadFactory$Builder.)
+      (doto (BasicThreadFactory/builder)
         (.namingPattern "preemptive-caching-thread-pool-%d"))))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}

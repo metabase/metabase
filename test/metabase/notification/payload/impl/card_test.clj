@@ -562,7 +562,7 @@
       (t2/delete! :model/TaskHistory)
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Failed to execute card with error: Division by zero: " 1 ""
+           #"Failed to execute card with error: Division by zero: "
            (#'notification.send/send-notification-sync! notification)))
       (is (=? [{:status :failed
                 :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]

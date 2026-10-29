@@ -38,7 +38,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv not-empty select-keys some]]
+   [metabase.util.performance :as perf :refer [mapv not-empty select-keys some]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -671,8 +671,8 @@
   [driver db-id table-name column-definitions & args]
   ;; Snowflake doesn't support adding multiple columns in one statement, so add them one at a time
   (let [add-column! (get-method driver/add-columns! :sql-jdbc)]
-    (doseq [[column definition] column-definitions]
-      (apply add-column! driver db-id table-name {column definition} args))))
+    (perf/run! (fn [[column definition]] (apply add-column! driver db-id table-name {column definition} args))
+               column-definitions)))
 
 (defmethod driver/allowed-promotions :snowflake
   [_driver]

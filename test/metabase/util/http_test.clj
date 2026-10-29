@@ -66,11 +66,11 @@
 (deftest ^:parallel host-allowed-host-shapes-test
   (testing "hosts are accepted in any of the shapes `->hostname` understands"
     (are [host expected] (= expected (http/host-allowed-for-network-policy? :external-only host))
-      "127.0.0.1"                         false
-      "127.0.0.1:5432"                    false
-      "[::1]:5432"                        false
-      "jdbc:postgresql://10.0.0.1/db"     false
-      (java.net.URL. "http://10.0.0.1/x") false)))
+      "127.0.0.1"                                  false
+      "127.0.0.1:5432"                             false
+      "[::1]:5432"                                 false
+      "jdbc:postgresql://10.0.0.1/db"              false
+      (.toURL (java.net.URI. "http://10.0.0.1/x")) false)))
 
 (deftest ^:parallel host-allowed-alternate-encodings-test
   (testing "alternate encodings of a non-public address are refused, however they resolve"
