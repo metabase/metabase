@@ -150,7 +150,7 @@ export function DataStudioLayout() {
             ) : null
           }
         />
-        {PLUGIN_DATA_APPS.isEnabled && isAdmin && (
+        {isAdmin && (
           <AreaTab
             label={t`Data apps`}
             icon="app"
@@ -158,8 +158,11 @@ export function DataStudioLayout() {
             isSelected={currentTab === "data-apps"}
             showLabel={isNavbarOpened}
             rightSection={
-              isNavbarOpened ? <Badge color="brand">{t`Beta`}</Badge> : null
+              PLUGIN_DATA_APPS.isEnabled && isNavbarOpened ? (
+                <Badge color="brand">{t`Beta`}</Badge>
+              ) : null
             }
+            isGated={!PLUGIN_DATA_APPS.isEnabled}
           />
         )}
         <AreaTab
