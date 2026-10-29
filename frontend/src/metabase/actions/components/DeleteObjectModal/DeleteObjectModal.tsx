@@ -23,10 +23,11 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
   onSuccess,
 }) => {
   const [sendToast] = useToast();
-  const [executeAction] = useExecuteActionMutation();
+  const [executeAction, { isLoading: isSubmitting }] =
+    useExecuteActionMutation();
 
   const handleSubmit = async () => {
-    if (actionId == null) {
+    if (actionId == null || isSubmitting) {
       return;
     }
 
@@ -65,6 +66,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
         <Button
           variant="filled"
           color="negative"
+          loading={isSubmitting}
           disabled={
             typeof actionId === "undefined" ||
             typeof objectId === "undefined" ||
