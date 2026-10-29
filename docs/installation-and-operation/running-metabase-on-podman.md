@@ -139,7 +139,7 @@ PublishPort=3000:3000
 WantedBy=default.target
 ```
 
-Replace the `MB_DB` variables with your Postgres login information and ports. As with the Podman command above, you can replace `my-database-host` with `host.containers.internal` if Postgres is on your localhost and not in a container. Make sure you pick a port that is available to your user.
+Replace the `MB_DB` variables with your Postgres login information and ports. As with the Podman command above, you can replace `my-database-host` with `host.containers.internal` if Postgres is on your localhost and not in a container and if it is configured to listen on a non-loopback IP address. Make sure you pick a port that is available to your user.
 
 Save your unit file.
 
