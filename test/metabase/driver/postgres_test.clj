@@ -2697,3 +2697,13 @@
                     (lib.metadata/database (mt/metadata-provider)) [(format "SELECT generate_series(1, %d) AS i" n)])]
         (testing "only the first rows are pulled, not all ~2 billion"
           (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 5432 :user "u" :db "a?b"}
+                   {:host "localhost:5432/d?b" :port 5432 :user "u" :db "d"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :postgres details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))
