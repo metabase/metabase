@@ -850,9 +850,12 @@ describe("sample repo update PRs", () => {
     const bodyOf = (repo: SampleRepo) =>
       store.load().pullRequests.find((pr) => pr.repo === repo.name)?.body ?? "";
     expect(bodyOf(SHOPPY)).toContain(
-      "Usually we wait for https://shoppy.metabaseapp.com to run Metabase 65 before we merge this PR",
+      "⚠️ Merge this PR only after https://shoppy.metabaseapp.com runs Metabase 65.",
     );
-    expect(bodyOf(MODULAR)).not.toContain("Usually we wait");
+    expect(bodyOf(SHOPPY)).toContain(
+      "Merging it deploys the Shoppy frontend to production, with Embedding SDK 0.65.",
+    );
+    expect(bodyOf(MODULAR)).not.toContain("Merge this PR only after");
   });
 });
 

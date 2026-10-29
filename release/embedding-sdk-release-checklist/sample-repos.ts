@@ -52,8 +52,9 @@ export type SampleRepo = {
   // package.json files that pin "@metabase/embedding-sdk-react": "^0.<major>.0";
   // the lockfile next to each one changes with it
   embeddingSdkPins: string[];
-  // the production site, when a merge to main deploys it
-  productionUrl?: string;
+  // the production frontend that a merge to main deploys, and the Metabase
+  // instance it embeds from
+  production?: { app: string; metabaseUrl: string };
 };
 
 export const NEXTJS: SampleRepo = {
@@ -82,7 +83,7 @@ export const SHOPPY: SampleRepo = {
   name: "metabase/shoppy",
   imagePins: ["docker-compose.yml"],
   embeddingSdkPins: ["package.json"],
-  productionUrl: SHOPPY_PRODUCTION_URL,
+  production: { app: "Shoppy", metabaseUrl: SHOPPY_PRODUCTION_URL },
 };
 
 // the hourly workflow in nextjs and react that creates <major>-stable from main
@@ -486,9 +487,11 @@ async function openUpdatePr(
   if (repo.embeddingSdkPins.length > 0) {
     changes.push(`- \`@metabase/embedding-sdk-react@^0.${major}.0\``);
   }
-  const productionWarning = repo.productionUrl
+  const productionWarning = repo.production
     ? [
-        `⚠️ Usually we wait for ${repo.productionUrl} to run Metabase ${major} before we merge this PR: merging deploys production.`,
+        `⚠️ Merge this PR only after ${repo.production.metabaseUrl} runs Metabase ${major}.`,
+        "",
+        `Merging it deploys the ${repo.production.app} frontend to production, with Embedding SDK 0.${major}.`,
         "",
       ]
     : [];
