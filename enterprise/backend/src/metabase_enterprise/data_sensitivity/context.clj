@@ -213,7 +213,9 @@
                                        (run-sample database table fields opts))
                                      (run-sample database table fields opts))]
       (if exception
-        (do (log/warnf exception "Failed to sample rows for table %d" (:id table))
+        (do (log/warnf "Failed to sample rows for table %d (%s); the debug log has the error" (:id table)
+                       (.getName (class exception)))
+            (log/debugf exception "Failed to sample rows for table %d" (:id table))
             {:values nil :error (ex-message exception)})
         (let [columns (if (seq rows)
                         (apply map vector rows)
