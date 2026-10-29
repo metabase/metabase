@@ -1,9 +1,10 @@
 # The dbt source
 
 Imports the metrics of a dbt project's semantic layer into Metabase. It reads the `manifest.json` a dbt project writes
-and parses it into the import's intermediate representation (IR); the shared part of the import turns that into
-Metabase metric cards, as a serdes export tree that `import` loads. See [the module's README](../README.md) for how the
-import fits together, the IR, the config, the report, importing the result and the SQL that converts. This one covers
+and parses it into the import's intermediate representation (IR); the shared part of the import turns that into Metabase
+metric cards, as a serdes export tree that `import` loads. See [the module's README](../README.md) for how the import
+fits together, and the documents it links to for [the IR](../ir.md), [the config](../config.md), [the
+report](../report.md), [importing the result](../importing.md) and [the SQL that converts](../sql.md). This one covers
 what is dbt's: producing a manifest, running an import of one, and how each dbt construct converts or why it does not.
 
 The dbt source is a nested module, `enterprise/semantic-layer-import.dbt`:
@@ -90,11 +91,12 @@ From a dev REPL (needs the `:ee` alias on the classpath for the serdes YAML writ
             :creator-email "admin@example.com"}})  ; the user the cards are created as
 ```
 
-A relative `:out-dir` (or `:raw`) resolves against the JVM's working directory (`user.dir`): the repo root for a
-REPL started there. `convert!` returns the report the module's README describes, and the tree it writes is checked
-with `metabase-enterprise.semantic-layer-import.core/preflight` before importing it (see "Importing the result" there).
+A relative `:out-dir` (or `:raw`) resolves against the JVM's working directory (`user.dir`): the repo root for a REPL
+started there. `convert!` returns [the import's report](../report.md), and the tree it writes is checked with
+`metabase-enterprise.semantic-layer-import.core/preflight` before importing it (see [Importing the
+result](../importing.md)).
 
-The `:config` is the import's, described in the module's README. For dbt:
+The `:config` is [the import's](../config.md). For dbt:
 
 - `:databases` maps the warehouse database as dbt knows it, `node_relation.database` in the manifest, to the Metabase
   Database's name. The key is `nil` for an adapter that writes `database: null` (dbt-mysql, whose MySQL database is the
@@ -125,7 +127,7 @@ manifest`, with the schema errors in the exception's data).
 
 ### The report
 
-The report is the import's (see the module's README); a dbt metric is listed under its `name`. A metric the parse
+The report is [the import's](../report.md); a dbt metric is listed under its `name`. A metric the parse
 stage failed on is listed under `:errors` as `error parsing metric (<class>): <message>`, and a semantic model that
 could not be parsed is listed the same way under its own name, with `:kind :table` (`error parsing semantic model
 (<class>): ...`), with every metric over it under `:unsupported` as over a semantic model that was not found.
@@ -133,18 +135,18 @@ could not be parsed is listed the same way under its own name, with `:kind :tabl
 
 ### Importing the result
 
-Import the tree and check it first with `preflight`, as the module's README describes. The names it writes are the
-ones sync would see, which the import works out from how dbt quoted them: dbt writes `node_relation` and the column
-names in the project's spelling, and only the parts it quoted when it built the table reach the warehouse as written.
-The manifest records which: `relation_name` is the relation as dbt rendered it (`"dbt_bi"."public"."fact_sales"` from
-dbt-postgres, which quotes by default; `analytics.dbt_alice.dim_customers` from dbt-snowflake, which does not;
-backticks and square brackets are read too), and `columns[].quote` says whether a column's name is quoted. A relation
-with no `relation_name` (an ephemeral model) counts as unquoted throughout. The end-to-end test under "Fixtures and
-tests" imports a converted project into a test instance.
+Import the tree and check it first with `preflight`, as [Importing the result](../importing.md) describes. The names it
+writes are the ones sync would see, which the import works out from how dbt quoted them: dbt writes `node_relation` and
+the column names in the project's spelling, and only the parts it quoted when it built the table reach the warehouse as
+written. The manifest records which: `relation_name` is the relation as dbt rendered it
+(`"dbt_bi"."public"."fact_sales"` from dbt-postgres, which quotes by default; `analytics.dbt_alice.dim_customers` from
+dbt-snowflake, which does not; backticks and square brackets are read too), and `columns[].quote` says whether a
+column's name is quoted. A relation with no `relation_name` (an ephemeral model) counts as unquoted throughout. The
+end-to-end test under "Fixtures and tests" imports a converted project into a test instance.
 
 ### Identifiers and re-import
 
-The ids are the import's (see the module's README), prefixed `dbt-import/`. A metric's unique id is dbt's `unique_id`,
+The ids are [the import's](../ids.md), prefixed `dbt-import/`. A metric's unique id is dbt's `unique_id`,
 `metric.<project>.<name>`, built from its `name`, so a metric renamed in dbt is a new card on import, and the old card
 stays in the instance; a new `label` or `description` keeps the card and updates it. The collection's id carries the
 manifest's `metadata.project_name`, so two dbt projects with the same `project_name` collide only when they are also
@@ -252,7 +254,7 @@ dimension's validity window, or because the join behind its foreign entity canno
 
 A measure's `expr` may be SQL rather than a column, and a metric or measure may carry a `filter` of Jinja-wrapped
 MetricFlow references around SQL. The SQL is the warehouse's, and the subset of it that converts is the import's: see
-"SQL in the IR" in the module's README, with its caveat on weeks, which dbt, like ISO, starts on Monday.
+[SQL in the IR](../sql.md), with its [caveat on weeks](../sql.md#weeks), which dbt, like ISO, starts on Monday.
 
 `dbt.filters` stands a placeholder in for each MetricFlow reference in a `where_sql_template` and says what it refers
 to in the IR's terms (`::ir/reference`):
@@ -330,14 +332,15 @@ the import reports nothing about it. A driver with no percentile at all (MySQL, 
 ### SQL in `expr` and `filter`
 
 A measure's `expr` and a `filter` are parsed with sqlglot and mapped onto MBQL clause by clause; what of the SQL itself
-does not map is listed under "SQL in the IR" in the module's README, with the reasons. What is dbt's own:
+does not map is listed under [What does not convert](../sql.md#what-does-not-convert), with the reasons. What is dbt's
+own:
 
 | dbt | Example | Why it is unsupported | What it would take |
 | -- | -- | -- | -- |
 | a custom calendar granularity | `TimeDimension('order__ordered_at', 'retail_month')`, defined on the project's time spine | Metabase buckets by its standard truncation units, `millisecond` through `year`. `fiscal_quarter` is read as `quarter` until custom calendars are supported. | Custom calendars in Metabase, then a mapping from a dbt custom granularity onto one. |
 | a dimension reached through two entities | `Dimension('order__customer__region')` | A dimension mapping is one implicit join, a foreign key on the metric's table to the joined table's key. A two-hop path has no representation. | Extend Metabase metrics so a dimension mapping can carry a multi-hop join path, or so a metric query can hold explicit joins. |
 | an `entity_path` argument on a reference | `Dimension('customer__region', entity_path=['order'])` | The import reaches a dimension through the entity named in the reference, as the one implicit join above. A path through other entities is the same multi-hop join, and the argument is reported rather than dropped so that the filter is not resolved against the wrong entity. | The same multi-hop join path as above. |
-| a method other than `.grain()` chained onto a reference | `Dimension('metric_time').date_part('month')`, `Dimension('order__status').descending(True)` | `.grain('month')` is read and means what `TimeDimension('...', 'month')` does. `.date_part()` extracts a part of a date (dbt's `dow` and `doy` depend on the first day of the week, see the caveat on weeks in the module's README), and the rest are ordering hints that mean nothing in a filter; all are reported, naming the call, rather than dropped. | Map `.date_part('year'|'quarter'|'month'|'day')` onto `get-year` and friends; `dow`/`doy` need the week-start agreement below. |
+| a method other than `.grain()` chained onto a reference | `Dimension('metric_time').date_part('month')`, `Dimension('order__status').descending(True)` | `.grain('month')` is read and means what `TimeDimension('...', 'month')` does. `.date_part()` extracts a part of a date (dbt's `dow` and `doy` depend on the first day of the week, see [the caveat on weeks](../sql.md#weeks)), and the rest are ordering hints that mean nothing in a filter; all are reported, naming the call, rather than dropped. | Map `.date_part('year'|'quarter'|'month'|'day')` onto `get-year` and friends; `dow`/`doy` need the week-start agreement below. |
 | Jinja other than a MetricFlow reference | `{{ var('status_col') }} = 'x'`, `{{ Dimension(some_macro()) }}`, `status = '{{ var("x") }}'`, `{% if ... %}` | Only `Dimension(...)`, `TimeDimension(...)`, `Entity(...)` and `Metric(...)` with quoted names are read. Anything else, a `{{`, `{%` or `{#` anywhere in the template, inside a string literal included, is reported as Jinja the import could not parse. | Render the filter with dbt (`dbt compile`) before importing, or evaluate the manifest's `var`s in the import. |
 
 ### Dimensions and joins
@@ -515,7 +518,7 @@ legacy-spec one over a `count_distinct` is.
 ### Running the tests
 
 The tests live under `enterprise/backend/test/metabase_enterprise/semantic_layer_import/dbt/`, apart from the two that
-are not dbt's (see the module's README), and the regular backend test run picks them up. Run them in a fresh JVM with
+are not dbt's (see [Tests](../tests.md)), and the regular backend test run picks them up. Run them in a fresh JVM with
 
 ```sh
 ./bin/test-agent :module enterprise/semantic-layer-import
