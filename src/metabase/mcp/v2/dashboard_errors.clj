@@ -23,7 +23,7 @@
 
    :invalid-payload
    (fn [{:keys [explanation]}]
-     (message/msg ["The requested ops produce an invalid dashboard: %s"] (common/humanize-detail explanation)))
+     (message/msg ["This change would produce an invalid dashboard: %s"] (common/humanize-detail explanation)))
 
    :duplicate-new-id
    (fn [{:keys [id]}]
