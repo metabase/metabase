@@ -52,6 +52,17 @@ const DTS_ROLLUPS = [
     ),
   },
   {
+    name: "testing",
+    configPath: path.join(
+      __dirname,
+      "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-testing-api-extractor.json",
+    ),
+    entryPointPath: path.join(
+      __dirname,
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/testing.d.ts",
+    ),
+  },
+  {
     name: "data-app-dev",
     configPath: path.join(
       __dirname,
