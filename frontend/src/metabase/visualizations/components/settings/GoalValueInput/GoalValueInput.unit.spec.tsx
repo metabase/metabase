@@ -167,6 +167,47 @@ describe("GoalValueInput", () => {
     expect(onChange).toHaveBeenCalledWith("sum");
   });
 
+  it("keeps the menu open when navigating to the column level with the keyboard (GDGT-3278)", async () => {
+    setup();
+
+    await openMenuWithKeyboard();
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("menuitem", { name: /Sum of Total/ }),
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: /Count/ })).toHaveFocus();
+  });
+
+  it("keeps the menu open when navigating back to the root level with the keyboard (GDGT-3278)", async () => {
+    setup();
+
+    await openMenuWithKeyboard();
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("menuitem", { name: /Sum of Total/ });
+
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /Value from another question/,
+      }),
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toHaveFocus();
+  });
+
   it("selects the sole numeric column directly from the root menu", async () => {
     const { onChange } = setup({
       data: createMockDatasetData({
@@ -1400,4 +1441,14 @@ async function openMenu() {
   await userEvent.click(
     screen.getByRole("button", { name: "Pick a dynamic value" }),
   );
+}
+
+async function openMenuWithKeyboard() {
+  await userEvent.click(screen.getByRole("textbox", { name: "Min" }));
+  await userEvent.tab();
+  const trigger = screen.getByRole("button", { name: "Pick a dynamic value" });
+  expect(trigger).toHaveFocus();
+  await userEvent.keyboard("{Enter}");
+  await screen.findByRole("menu");
+  await waitFor(() => expect(trigger).not.toHaveFocus());
 }
