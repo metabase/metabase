@@ -1,20 +1,13 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import type { InsightsLinkProps } from "metabase/plugins";
-import { Flex, Icon } from "metabase/ui";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useGetAuditInfoQuery } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
-import S from "./InsightsLink.module.css";
-
-export const InsightsLink = ({
-  question,
-  dashboard,
-  ...linkProps
-}: InsightsLinkProps) => {
+export const InsightsLink = ({ question, dashboard }: InsightsLinkProps) => {
   const { data: auditInfo, error, isLoading } = useGetAuditInfoQuery();
 
   const collection = dashboard
@@ -60,16 +53,17 @@ export const InsightsLink = ({
     Urls.dashboard({ id: entityId, name: "" }) + `?${linkQueryParams}`;
 
   return (
-    <Link
-      to={instanceAnalyticsUrl}
-      className={S.InsightsLink}
-      role="link"
-      {...linkProps}
-    >
-      <Flex gap="xxs" className={SidesheetS.TabSibling}>
-        <Icon name="external" />
-        {t`Insights`}
-      </Flex>
-    </Link>
+    <Tooltip label={t`Insights`}>
+      <ActionIcon
+        component={Link}
+        to={instanceAnalyticsUrl}
+        variant="subtle"
+        size="md"
+        c="text-primary"
+        aria-label={t`Insights`}
+      >
+        <Icon name="insight" />
+      </ActionIcon>
+    </Tooltip>
   );
 };

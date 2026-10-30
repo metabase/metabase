@@ -8,7 +8,11 @@ import {
 } from "metabase/common/collections/utils";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { Flex } from "metabase/ui";
-import type { Collection, UpdateCollectionRequest } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionItemModel,
+  UpdateCollectionRequest,
+} from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
 
@@ -30,6 +34,8 @@ export interface CollectionHeaderProps {
   canUpload: boolean;
   uploadsEnabled: boolean;
   onSaveFile: (file: File) => void;
+  /** filters the collection's items list to one item type */
+  onFilterByType?: (model: CollectionItemModel) => void;
 }
 
 export const CollectionHeader = ({
@@ -41,6 +47,7 @@ export const CollectionHeader = ({
   onSaveFile,
   canUpload,
   uploadsEnabled,
+  onFilterByType,
 }: CollectionHeaderProps): JSX.Element => {
   const [updateCollection] = useUpdateCollectionMutation();
 
@@ -111,6 +118,7 @@ export const CollectionHeader = ({
           <CollectionInfoSidebarToggle
             collection={collection}
             onUpdateCollection={handleUpdateCollection}
+            onFilterByType={onFilterByType}
           />
           {showCollectionMenu && (
             <CollectionMenu

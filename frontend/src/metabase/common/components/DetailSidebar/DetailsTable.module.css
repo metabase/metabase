@@ -1,0 +1,8 @@
+.detailsTable {
+  overflow: hidden;
+
+  /* Dividers come from CSS so rows that render nothing leave no stray line. */
+  & > * + * {
+    border-top: 1px solid var(--mb-color-border-neutral);
+  }
+}

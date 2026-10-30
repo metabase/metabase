@@ -5,15 +5,18 @@ import { c, t } from "ttag";
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { getCollectionName } from "metabase/common/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
+import {
+  DetailsRow,
+  DetailsTable,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
-import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Styles from "metabase/css/core/index.css";
-import { Box, Flex, FixedSizeIcon as Icon, Loader, Text } from "metabase/ui";
+import { Group, FixedSizeIcon as Icon, Loader, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import type Question from "metabase-lib/v1/Question";
 
-import SidebarStyles from "./QuestionInfoSidebar.module.css";
 import { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover/QuestionPublicLinkPopover";
 import { QuestionSources } from "./components/QuestionSources";
 
@@ -30,53 +33,47 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
   );
 
   return (
-    <>
-      <SidesheetCardSection title={t`Creator and last editor`}>
-        <Flex gap="sm" align="top">
-          <Icon name="ai" className={SidebarStyles.IconMargin} />
-          <Text>
-            {c(
-              "Describes when a question was created. {0} is a date/time and {1} is a person's name",
-            ).jt`${(
-              <DateTime unit="day" value={createdAt} key="date" />
-            )} by ${getUserName(createdBy)}`}
-          </Text>
-        </Flex>
-
-        {lastEditInfo && (
-          <Flex gap="sm" align="top">
-            <Icon name="pencil" className={SidebarStyles.IconMargin} />
-            <Text>
+    <SidebarSection title={t`Details`}>
+      <DetailsTable>
+        <DetailsRow
+          label={t`Created`}
+          value={
+            <Text c="text-primary">
               {c(
-                "Describes when a question was last edited. {0} is a date/time and {1} is a person's name",
+                "Describes when a question was created. {0} is a date/time and {1} is a person's name",
               ).jt`${(
-                <DateTime
-                  unit="day"
-                  value={lastEditInfo.timestamp}
-                  key="date"
-                />
-              )} by ${getUserName(lastEditInfo)}`}
+                <DateTime unit="day" value={createdAt} key="date" />
+              )} by ${getUserName(createdBy)}`}
             </Text>
-          </Flex>
-        )}
-      </SidesheetCardSection>
-      <SidesheetCardSection title={t`Saved in`}>
-        <Flex gap="sm" align="top" c="core-brand">
-          <Icon
-            name={isDashboardQuestion ? "dashboard" : "folder"}
-            c="core-brand"
-            className={SidebarStyles.IconMargin}
+          }
+        />
+        {lastEditInfo && (
+          <DetailsRow
+            label={t`Last edited`}
+            value={
+              <Text c="text-primary">
+                {c(
+                  "Describes when a question was last edited. {0} is a date/time and {1} is a person's name",
+                ).jt`${(
+                  <DateTime
+                    unit="day"
+                    value={lastEditInfo.timestamp}
+                    key="date"
+                  />
+                )} by ${getUserName(lastEditInfo)}`}
+              </Text>
+            }
           />
-          <Text>
-            {isDashboardQuestion ? (
+        )}
+        <DetailsRow
+          label={t`Saved in`}
+          value={
+            isDashboardQuestion ? (
               isLoading || !dashboard ? (
-                <Loader />
+                <Loader size="xs" />
               ) : (
                 <Link to={Urls.dashboard(dashboard)} variant="brand">
-                  {
-                    // We need to use getCollectionName or the name of the root collection will not be displayed
-                    dashboard.name
-                  }
+                  {dashboard.name}
                 </Link>
               )
             ) : (
@@ -86,17 +83,17 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
                   getCollectionName(collection)
                 }
               </Link>
-            )}
-          </Text>
-        </Flex>
-      </SidesheetCardSection>
-      <SharingDisplay question={question} />
-      <QuestionSources />
-    </>
+            )
+          }
+        />
+        <VisibilityRow question={question} />
+        <QuestionSources />
+      </DetailsTable>
+    </SidebarSection>
   );
 };
 
-function SharingDisplay({ question }: { question: Question }) {
+function VisibilityRow({ question }: { question: Question }) {
   const publicUUID = question.publicUUID();
   const embeddingEnabled = question._card.enable_embedding;
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -106,38 +103,30 @@ function SharingDisplay({ question }: { question: Question }) {
   }
 
   return (
-    <SidesheetCardSection title={t`Visibility`}>
-      {publicUUID && (
-        <Flex gap="sm" align="center">
-          <Icon name="globe" c="core-brand" />
-          <Text>{t`Shared publicly`}</Text>
-
-          <QuestionPublicLinkPopover
-            target={
-              <Icon
-                name="link"
-                onClick={() => setIsPopoverOpen((prev) => !prev)}
-                className={cx(
-                  Styles.cursorPointer,
-                  Styles.textBrandHover,
-                  SidebarStyles.IconMargin,
-                )}
+    <DetailsRow
+      label={t`Visibility`}
+      value={
+        <Stack gap="xs">
+          {publicUUID && (
+            <Group gap="sm" wrap="nowrap">
+              <Text c="text-primary">{t`Shared publicly`}</Text>
+              <QuestionPublicLinkPopover
+                target={
+                  <Icon
+                    name="link"
+                    onClick={() => setIsPopoverOpen((prev) => !prev)}
+                    className={cx(Styles.cursorPointer, Styles.textBrandHover)}
+                  />
+                }
+                isOpen={isPopoverOpen}
+                onClose={() => setIsPopoverOpen(false)}
+                question={question}
               />
-            }
-            isOpen={isPopoverOpen}
-            onClose={() => setIsPopoverOpen(false)}
-            question={question}
-          />
-        </Flex>
-      )}
-      {embeddingEnabled && (
-        <Flex gap="sm" align="center">
-          <Box className={SidebarStyles.BrandCircle}>
-            <Icon name="embed" size="14px" />
-          </Box>
-          <Text>{t`Embedded`}</Text>
-        </Flex>
-      )}
-    </SidesheetCardSection>
+            </Group>
+          )}
+          {embeddingEnabled && <Text c="text-primary">{t`Embedded`}</Text>}
+        </Stack>
+      }
+    />
   );
 }

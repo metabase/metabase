@@ -54,6 +54,7 @@ import UploadOverlay from "../UploadOverlay";
 import S from "./CollectionContent.module.css";
 import { CollectionItemsTable } from "./CollectionItemsTable";
 import { useCollectionChartPaste } from "./use-collection-chart-paste";
+import { useCollectionTypeFilter } from "./use-collection-type-filter";
 
 const itemKeyFn = (item: CollectionItem) => `${item.id}:${item.model}`;
 
@@ -106,6 +107,8 @@ export const CollectionContentView = ({
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
   const previousSelectedCount = usePrevious(selected.length);
+  // Shared so the info panel's Contents table can filter the items list
+  const typeFilter = useCollectionTypeFilter(collectionId);
 
   useEffect(() => {
     if (previousCollection && previousCollection.id !== collection.id) {
@@ -287,6 +290,7 @@ export const CollectionContentView = ({
             canUpload={canCreateUpload}
             uploadsEnabled={uploadsEnabled}
             onSaveFile={saveFile}
+            onFilterByType={(model) => typeFilter.setSelectedFilters([model])}
           />
         </ErrorBoundary>
 
@@ -321,6 +325,7 @@ export const CollectionContentView = ({
             clear={clear}
             handleMove={handleMove}
             handleCopy={handleCopy}
+            typeFilter={typeFilter}
           />
           <CollectionBulkActions
             collection={collection}
