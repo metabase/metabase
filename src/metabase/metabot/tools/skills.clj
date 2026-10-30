@@ -62,7 +62,7 @@
           (log/info "Skill not available to current request" {:id id})
           (log/info "Unknown skill requested by load_skill"))
         (unknown-skill! {:id id :loadable (loadable-skill-ids)}))
-      {:output (format "<skill id=\"%s\">\n%s\n</skill>" (name (:id skill)) (:body skill))}))
+      {:output (format "<skill id=\"%s\">\n%s\n</skill>" (name (:id skill)) (skills/localize-body (:body skill)))}))
 
   tools/BatchedTool
   (batched-declaration [_ declared]

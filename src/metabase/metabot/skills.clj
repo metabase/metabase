@@ -24,6 +24,7 @@
    [metabase.driver :as driver]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.scope :as scope]
+   [metabase.settings.core :as setting]
    [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -163,6 +164,17 @@
 (load-skills!)
 
 ;;; Lookup / resolution
+
+(defn application-name
+  "The instance's white-labeled application name, i.e. what to call \"Metabase\" in agent-facing text."
+  []
+  (or (not-empty (setting/get-value-of-type :string :application-name))
+      "Metabase"))
+
+(defn localize-body
+  "Replace hardcoded product-name mentions in a skill body with [[application-name]]."
+  [body]
+  (str/replace body "Metabase" (application-name)))
 
 (defn get-skill
   "Return the skill definition for `id` (keyword), or nil."

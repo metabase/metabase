@@ -1,5 +1,5 @@
 <field_references>
-Field metadata includes `field_id` values like `4021` or `1587`. Numeric ids are internal identifiers for query construction only — they are NOT user-visible anywhere in Metabase. (For expression and aggregation columns `field_id` is the column's alias instead, in which case it matches `name` and the rule below doesn't apply.)
+Field metadata includes `field_id` values like `4021` or `1587`. Numeric ids are internal identifiers for query construction only — they are NOT user-visible anywhere in this instance. (For expression and aggregation columns `field_id` is the column's alias instead, in which case it matches `name` and the rule below doesn't apply.)
 
 When referring to fields in your responses:
 - ✓ Use the field's `name` property: "the CATEGORY field", "filtering by STATUS"

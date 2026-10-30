@@ -16,6 +16,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
    [metabase.metabot.agent.prompts :as prompts]
+   [metabase.metabot.skills :as skills]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.util :as metabot.u]
@@ -246,7 +247,7 @@
   "Render a Selmer template with the supplied context."
   [type context]
   (let [template (prompts/get-cached-llm-shape-template)
-        payload (merge (type-flags type) context)]
+        payload (merge {:application_name (skills/application-name)} (type-flags type) context)]
     (if template
       (try
         (-> (selmer/render template payload)

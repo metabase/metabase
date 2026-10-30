@@ -13,6 +13,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.skills :as skills]
+   [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
 
@@ -176,6 +177,8 @@
                                       has-sql?
                                       (scope/sql-execution-allowed?))
             template-context     {:metabot_name              (metabot.settings/metabot-name)
+                                  :application_name         (skills/application-name)
+                                  :show_metabase_links      (setting/get-value-of-type :boolean :show-metabase-links)
                                   :sql_dialect              sql-dialect
                                   ;; Must agree with the preload gate in `messages/build-message-history`: the
                                   ;; template says the dialect skill "has already been loaded", which is only
@@ -187,7 +190,7 @@
                                   ;; skills … load the skill(s) you need" header with nothing to
                                   ;; load, nudging the model into pointless `load_skill` calls.
                                   :skill_catalog            (not-empty catalog)
-                                  :skill_always_on          (mapv :body always-on)
+                                  :skill_always_on          (mapv skills/localize-body always-on)
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
                                   :has_notebook_query       has-notebook?
@@ -215,7 +218,7 @@
       ;; Fallback if template not found
       (do
         (log/error "System prompt template not found:" template-name)
-        (str "You are " (metabot.settings/metabot-name) ", a data analysis assistant for Metabase.")))))
+        (str "You are " (metabot.settings/metabot-name) ", a data analysis assistant for " (skills/application-name) ".")))))
 
 (defn inject-context
   "Prepends a formatted context to a string, message."
