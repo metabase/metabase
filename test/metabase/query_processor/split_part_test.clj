@@ -7,6 +7,14 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
+;; A row limit stops the read at the limit, and Metabase then cancels the statement. We think that on Redshift this
+;; cancel can arrive late and cancel another query on the same session. The filter gives fewer rows than the default
+;; row cap, so the query reads its result to the end and Metabase sends no cancel.
+(defn- people-with-id-at-most
+  "Restricts `query` to the people with an id up to `n`, and adds no `lib/limit`."
+  [query mp n]
+  (lib/filter query (lib/<= (lib.metadata/field mp (mt/id :people :id)) n)))
+
 (deftest ^:parallel split-part-test
   (mt/test-drivers (mt/normal-drivers-with-feature :split-part)
     (let [mp (mt/metadata-provider)
@@ -23,11 +31,12 @@
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                           (lib/with-fields [main-string])
                           (lib/expression "SPLITPART" (lib/split-part main-string delimiter index))
-                          (lib/limit 100))
+                          (people-with-id-at-most mp 100))
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
             (is (= :type/Text (-> cols last :base_type)))
+            (is (= 100 (count rows)))
             (doseq [[main-string split-string] rows]
               (is (string? split-string))
               (is (= (-> main-string
@@ -53,11 +62,12 @@
                           (lib/with-fields [main-string])
                           (lib/expression "INDEX" (index))
                           (lib/expression "SPLITPART" (lib/split-part main-string delimiter (index)))
-                          (lib/limit 100))
+                          (people-with-id-at-most mp 100))
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
             (is (= :type/Text (-> cols last :base_type)))
+            (is (= 100 (count rows)))
             (doseq [[main-string index split-string] rows]
               (is (string? split-string))
               (is (= (-> main-string
@@ -87,11 +97,12 @@
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                           (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))])
                           (lib/expression "SPLITPART" (lib/split-part text delimiter position))
-                          (lib/limit 1))
+                          (people-with-id-at-most mp 1))
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
             (is (= :type/Text (-> cols last :base_type)))
+            (is (= 1 (count rows)))
             (doseq [[_id split-string] rows]
               (is (string? split-string))
               (is (= expected split-string)
@@ -107,11 +118,12 @@
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                           (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))])
                           (lib/expression "SPLITPART" (lib/split-part "ABC-123-XYZ" "-" position))
-                          (lib/limit 1))
+                          (people-with-id-at-most mp 1))
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
             (is (= :type/Text (-> cols last :base_type)))
+            (is (= 1 (count rows)))
             (doseq [[_id split-string] rows]
               (is (string? split-string))
               (is (= "" split-string)))))))))
