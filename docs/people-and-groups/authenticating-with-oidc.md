@@ -12,7 +12,7 @@ By integrating your OpenID Connect (OIDC) provider with Metabase, you can:
 - [Provision a Metabase account](#user-provisioning) when someone logs in via your identity provider (IdP).
 - Let people access Metabase without re-authenticating.
 - Automatically pass user attributes (name, email) from your IdP to Metabase.
-- [Synchronize group membership](#synchronize-group-membership) so that people are automatically assigned to Metabase groups based on their IdP groups.
+- [Map IdP groups to Metabase groups](#group-mapping) so that people are automatically assigned when they log in.
 
 ## Self-hosted Metabases must set an encryption key
 
@@ -36,7 +36,9 @@ _Admin > Settings > Authentication > OIDC_
 
 You can also configure OIDC with [environment variables](#environment-variables).
 
-You'll need to enter the following:
+Fill out **Server settings**, then click **Save and enable**. Until you save, the **Group mapping** section stays locked. You can edit **User provisioning** and **Attributes** before you save.
+
+Every field except **Scopes** is required.
 
 | Field             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -44,48 +46,66 @@ You'll need to enter the following:
 | **Login prompt**  | The button label on Metabase's sign-in screen. You can put something like "Sign in with Keycloak", or "Ye who wish to enter Metabase".                                                                                                                                                                                                                                                                                                                          |
 | **Issuer URI**    | Your IdP's issuer URI. Metabase fetches the discovery document from `{issuer-uri}/.well-known/openid-configuration`. This request is made from Metabase's server, not from the browser. In containerized deployments (like Docker), the URI must be reachable from Metabase's container, not just from your browser.                                                                                                                                            |
 | **Client ID**     | The Client ID assigned for Metabase in your OIDC provider.                                                                                                                                                                                                                                                                                                                                                                                                      |
-| **Client Secret** | The client secret from your OIDC provider. When editing an existing configuration, leave this blank to keep the current value.                                                                                                                                                                                                                                                                                                                                  |
+| **Client secret** | The client secret from your OIDC provider. When editing an existing configuration, leave this blank to keep the current value.                                                                                                                                                                                                                                                                                                                                  |
+| **Scopes**        | The OIDC scopes to request. Enter them as a comma-separated string, for example `openid, email, profile`. Defaults to `openid, email, profile`. Most providers don't require changes here. If you're setting this with the `MB_OIDC_PROVIDERS` environment variable, use an array, for example `["openid", "email", "profile"]`.                                                                                                                                |
 
-### Optional settings
-
-**Scopes**: The OIDC scopes to request. In the admin UI, enter scopes as a comma-separated string (e.g., `openid, email, profile`). Defaults to `openid, email, profile`. Most providers don't require changes here. If you're setting this with the `MB_OIDC_PROVIDERS` environment variable JSON, use an array (e.g., `["openid", "email", "profile"]`).
-
-### Attribute mapping
+### Attributes
 
 Metabase maps OIDC claims to account fields. The defaults work for most providers:
 
 | Metabase field | Default claim |
 | -------------- | ------------- |
-| Email          | `email`       |
 | First name     | `given_name`  |
 | Last name      | `family_name` |
 
-If your IdP uses different claim names, update these fields to match.
+If your IdP uses different claim names, update these fields to match. A blank claim name counts as unset, so Metabase falls back to the default.
 
-## Synchronize group membership
+Metabase always takes the email address from the standard `email` claim. You can't map email to a different claim, and Metabase ignores an `email` entry in `attribute-map` rather than reporting an error.
+
+## Group mapping
 
 You can configure Metabase to automatically sync group memberships from your IdP, so that people are added to (or removed from) Metabase groups based on their IdP groups.
 
 OIDC doesn't define a standard groups claim. You'll need to configure your IdP to include a groups claim in the ID token. Some IdPs (like Azure AD/Entra ID) require a specific `groups` scope or API permission to include group claims — check your provider's docs. Keycloak includes groups via a client scope mapper without needing an extra scope. For a Keycloak example, see [Sync groups from Keycloak to Metabase](./oidc-keycloak.md#sync-groups-from-keycloak-to-metabase).
 
-### Configure group sync in Metabase
+### Configure group mapping in Metabase
 
-> If your provider is configured via the `MB_OIDC_PROVIDERS` environment variable, group sync settings are read-only in the admin UI. Manage group mappings in the environment variable instead. See [Environment variables](#environment-variables).
+> If your provider is configured via the `MB_OIDC_PROVIDERS` environment variable, group mapping settings are read-only in the admin UI. Manage group mappings in the environment variable instead. See [Environment variables](#environment-variables).
 
 1. Go to **Admin** > **Settings** > **Authentication** > **OIDC** and select your provider.
-2. Turn on **Synchronize Group Memberships**. You can click **About mappings** to learn more about how group mappings work.
-3. Click **New mapping** and enter the group name exactly as your IdP sends it (case-sensitive).
-4. Select one or more Metabase groups to map it to.
-5. Repeat for each group you want to map.
-6. Set the **Group attribute name** to the claim name your IdP uses for groups (defaults to `groups`). This must match the claim name in the ID token exactly.
-7. Click **Save**.
+2. In the **Group mapping** section, turn on the toggle.
+3. Next to **Manual group mappings**, click **New**.
+4. Enter the group name exactly as your IdP sends it (case-sensitive).
+5. Select the Metabase groups to map the group name to.
+6. Click **Add mapping**.
+7. Repeat steps 3 to 6 for each group you want to map.
+8. In **Group attribute name**, enter the OIDC claim that contains group membership information. Defaults to `groups`. This must match the claim name in the ID token exactly.
+9. Click **Save and enable**.
 
-### How group sync works
+Metabase saves each mapping as soon as you add, edit, or remove the mapping. To edit a mapping, hover over the mapping and click the pencil icon.
+
+![OIDC group mapping](images/oidc-group-mapping.png)
+
+### How group mapping works
 
 - Metabase updates group memberships on each login based on the groups claim in the ID token.
 - If a person's groups claim no longer includes a mapped group, Metabase removes them from the corresponding Metabase group.
-- Only mapped groups are affected. Memberships in unmapped Metabase groups (including Admin) aren't changed.
+- Only mapped groups are affected. Memberships in unmapped Metabase groups (including Administrators) aren't changed.
 - If the groups claim is missing from the token entirely, Metabase leaves existing group memberships unchanged.
+
+### Remove a group mapping
+
+To remove a mapping, hover over the mapping and click the trash icon. Metabase asks what should happen to the Metabase group:
+
+- **Nothing, just remove the mapping**
+- **Also remove all members from this group**. Members keep their Metabase accounts.
+- **Also delete the group**
+
+Then click **Remove mapping**. Removing members or deleting a group takes effect immediately and can't be undone.
+
+If the mapping points to a built-in group such as Administrators, Metabase doesn't offer these options. It removes the mapping without changing the group or its members.
+
+**Also delete the group** isn't available when another mapping uses the same Metabase group.
 
 ## Check connection
 
@@ -97,7 +117,7 @@ If the check reports "OIDC discovery succeeded, but credentials could not be ver
 
 By default, Metabase creates accounts for people who authenticate successfully via OIDC but don't yet have a Metabase account. Metabase uses the email claim to identify and create accounts, so the `email` scope must be included in what your IdP returns.
 
-You can turn auto-provisioning off under **Admin settings** > **Authentication** > **OIDC** > **User provisioning**. If you've set up [User provisioning with SCIM](./user-provisioning.md), turn off automatic account creation to avoid conflicts.
+You can turn auto-provisioning off under **Admin** > **Settings** > **Authentication** > **OIDC** > **User provisioning**. The switch saves on its own, so you don't need to click **Save and enable** after you change it. If you've set up [User provisioning with SCIM](./user-provisioning.md), turn off automatic account creation to avoid conflicts.
 
 ### How auto-provisioning works
 
@@ -113,48 +133,47 @@ You can also configure OIDC via environment variables instead of the admin UI. S
 - [`MB_OIDC_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_oidc_user_provisioning_enabled): toggle auto-provisioning (`true` by default).
 - [`MB_OIDC_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_oidc_providers): JSON string containing the full provider configuration. The value is an array of provider objects. Here's an example:
 
-   ```json
-   [
-     {
-       "key": "keycloak",
-       "login-prompt": "Sign in with Keycloak",
-       "issuer-uri": "http://keycloak:8080/realms/metabase",
-       "client-id": "metabase-client",
-       "client-secret": "metabase-client-secret",
-       "scopes": ["openid", "email", "profile"],
-       "enabled": true,
-       "attribute-map": {
-         "email": "email",
-         "first_name": "given_name",
-         "last_name": "family_name"
-       },
-       "group-sync": {
-         "enabled": true,
-         "group-attribute": "groups",
-         "group-mappings": {
-           "engineering": [5, 6],
-           "data-team": [3]
-         }
-       }
-     }
-   ]
-   ```
+  ```json
+  [
+    {
+      "key": "keycloak",
+      "login-prompt": "Sign in with Keycloak",
+      "issuer-uri": "http://keycloak:8080/realms/metabase",
+      "client-id": "metabase-client",
+      "client-secret": "metabase-client-secret",
+      "scopes": ["openid", "email", "profile"],
+      "enabled": true,
+      "attribute-map": {
+        "first_name": "given_name",
+        "last_name": "family_name"
+      },
+      "group-sync": {
+        "enabled": true,
+        "group-attribute": "groups",
+        "group-mappings": {
+          "engineering": [5, 6],
+          "data-team": [3]
+        }
+      }
+    }
+  ]
+  ```
 
-   | Field                          | Required | Default                          |
-   | ------------------------------ | -------- | -------------------------------- |
-   | **key**                        | Yes      |                                  |
-   | **login-prompt**               | Yes      |                                  |
-   | **issuer-uri**                 | Yes      |                                  |
-   | **client-id**                  | Yes      |                                  |
-   | **client-secret**              | Yes      |                                  |
-   | **enabled**                    | No       | `true`                           |
-   | **scopes**                     | No       | `["openid", "email", "profile"]` |
-   | **attribute-map**              | No       | See attribute map above          |
-   | **group-sync.enabled**         | No       | `false`                          |
-   | **group-sync.group-attribute** | No       | `"groups"`                       |
-   | **group-sync.group-mappings**  | No       | `{}`                             |
+  | Field                          | Required | Default                          |
+  | ------------------------------ | -------- | -------------------------------- |
+  | **key**                        | Yes      |                                  |
+  | **login-prompt**               | Yes      |                                  |
+  | **issuer-uri**                 | Yes      |                                  |
+  | **client-id**                  | Yes      |                                  |
+  | **client-secret**              | Yes      |                                  |
+  | **enabled**                    | No       | `true`                           |
+  | **scopes**                     | No       | `["openid", "email", "profile"]` |
+  | **attribute-map**              | No       | See attribute map above          |
+  | **group-sync.enabled**         | No       | `false`                          |
+  | **group-sync.group-attribute** | No       | `"groups"`                       |
+  | **group-sync.group-mappings**  | No       | `{}`                             |
 
-   The `group-sync` fields are nested inside each provider object. In `group-mappings`, keys are IdP group names and values are arrays of Metabase group IDs. You can find group IDs under **Admin** > **People** > **Groups**, or via the `GET /api/permissions/group` API endpoint.
+  The `group-sync` fields are nested inside each provider object. In `group-mappings`, keys are IdP group names and values are arrays of Metabase group IDs. You can find group IDs under **Admin** > **People** > **Groups**, or via the `GET /api/permissions/group` API endpoint.
 
 See [Environment variables](../configuring-metabase/environment-variables.md).
 
@@ -162,7 +181,7 @@ See [Environment variables](../configuring-metabase/environment-variables.md).
 
 > **Avoid locking yourself out.** Disabling password logins applies to all accounts, including your Metabase admin account. Before doing this, verify that you can log in with SSO.
 
-To require SSO for all logins, go to **Admin settings** > **Authentication** and turn off **Enable Password Authentication**.
+To require SSO for all logins, go to **Admin** > **Settings** > **Authentication** > **Overview** and turn off **Enable password authentication**.
 
 ## OIDC example provider guide
 

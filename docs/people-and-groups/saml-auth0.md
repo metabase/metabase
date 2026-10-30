@@ -9,7 +9,7 @@ redirect_from:
 {% include plans-blockquote.html feature="SAML authentication" %}
 
 1. [Configure SAML in Auth0](#working-in-the-auth0-console) (the identity provider).
-2. [Configure SAML in Metabase](./authenticating-with-saml.md#enabling-saml-authentication-in-metabase) (the service provider).
+2. [Configure SAML in Metabase](./authenticating-with-saml.md#setting-up-saml-with-your-idp-in-metabase) (the service provider).
 
 For more information, check out our guide for [authenticating with SAML](./authenticating-with-saml.md).
 
@@ -28,7 +28,7 @@ Enter “Metabase” as the application name with type “Regular Web Applicatio
 Now go to the Settings tab inside Auth0's Metabase App and fill in the following values:
 
 - Application Login URI: the URL of your Metabase instance.
-- Allowed Callback URLs: the URL that's below **Configure your identity provider (IdP)** in SAML settings inside Metabase (it ends with `/auth/sso`).
+- Allowed Callback URLs: the URL that's below **Identity provider (IdP) configuration** in SAML settings inside Metabase (it ends with `/auth/sso`).
 
 ![Auth0 SAML Settings Page](images/auth0callbackurl.png)
 
@@ -69,11 +69,11 @@ Next, in the Auth0 Addon: SAML2 Web App popup, click on the **Usage** tab and th
 
 | Metabase                           | Auth0                                                                                      |
 | ---------------------------------- | ------------------------------------------------------------------------------------------ |
-| SAML Identity Provider URL         | Identity Provider Login URL                                                                |
-| SAML Identity Provider Issuer      | Issuer                                                                                     |
-| SAML Identity Provider Certificate | Open the Identity Provider Metadata link and copy the string under the X509Certificate tag |
+| SAML identity provider URL         | Identity Provider Login URL                                                                |
+| SAML identity provider issuer      | Issuer                                                                                     |
+| SAML identity provider certificate | Open the Identity Provider Metadata link and copy the string under the X509Certificate tag |
 
-The "SAML Application Name" value can be left as the default (Metabase).
+The "SAML application name" value can be left as the default (Metabase).
 
 Save your settings, then [enable SAML](authenticating-with-saml.md) in Metabase, and you should be good to go!
 

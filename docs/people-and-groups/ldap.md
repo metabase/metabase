@@ -24,11 +24,7 @@ Your LDAP directory must have the email field populated for each entry that will
 
 To enable LDAP authentication, go to **Admin** > **Settings** > **Authentication** > **LDAP** and click **Set up**. Fill out the form, then click **Save and enable**.
 
-## User provisioning
-
-User provisioning is enabled by default. When someone logs in via LDAP, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated.
-
-If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in.
+Until you save your server settings, the **Attributes** and **Group mapping** sections stay locked. You can edit **User provisioning** before you save.
 
 ## Server settings
 
@@ -39,6 +35,12 @@ If you disable user provisioning, users without accounts or with deactivated acc
 - **Password**: The password to bind with for the lookup user.
 
 Then save your changes. Metabase will automatically pull the [required attributes](#required-ldap-attributes) from your LDAP directory.
+
+## User provisioning
+
+User provisioning is enabled by default. When someone logs in via LDAP, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated. The switch saves on its own, so you don't need to click **Save changes** after you change it.
+
+If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in.
 
 ## User schema
 
@@ -75,21 +77,37 @@ To map an LDAP group to a Metabase group:
 5. Click **Add mapping**.
 6. Repeat steps 2 to 5 for each group you want to map.
 
+Metabase saves each mapping as soon as you add, edit, or remove it. To edit a mapping, hover over it and click the pencil icon.
+
 Some LDAP directories list each person's groups on their own entry. If yours does, leave **Group search base** empty. Otherwise, enter the DN where your group entries live.
 
 ![Group Mapping](images/ldap-group-mapping.png)
 
 Some things to keep in mind regarding group mapping:
 
-- The Administrators group works like any other group.
+- Metabase syncs membership of the Administrators group like any other group.
 - Updates to a person's group membership based on LDAP mappings are not instantaneous; the changes will take effect only _after_ people log back in.
 - People are only ever added to or removed from mapped groups. The sync has no effect on Metabase groups that don't have an LDAP mapping.
 
-## LDAP group membership filter
+### Remove a group mapping
+
+To remove a mapping, hover over it and click the trash icon. Metabase asks what should happen to the Metabase group:
+
+- **Nothing, just remove the mapping**
+- **Also remove all members from this group**. Members keep their Metabase accounts.
+- **Also delete the group**
+
+Then click **Remove mapping**. Removing members or deleting a group takes effect immediately and can't be undone.
+
+If the mapping points to a built-in group such as Administrators, Metabase doesn't offer these options. It removes the mapping without changing the group or its members.
+
+**Also delete the group** isn't available when another mapping uses the same Metabase group.
+
+### Group membership filter
 
 {% include plans-blockquote.html feature="LDAP advanced features" is_plural=true %}
 
-Group membership lookup filter. The placeholders {dn} and {uid} will be replaced by the user's Distinguished Name and UID, respectively.
+If your directory doesn't list each person's groups on their own entry, Metabase looks up membership on the group entries instead. **Group membership filter** sets that lookup filter. Metabase replaces the placeholders `{dn}` and `{uid}` with the person's distinguished name and UID.
 
 ## Syncing user attributes with LDAP
 
