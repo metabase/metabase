@@ -291,6 +291,13 @@ export interface TreeTableProps<
   /** When false, renders as a flat table without expand buttons or indentation. Defaults to true. */
   hierarchical?: boolean;
 
+  /**
+   * Renders rows as plain content: no hover or active highlight, no row click,
+   * and no keyboard navigation between rows. Controls inside cells and header
+   * sorting keep working.
+   */
+  static?: boolean;
+
   ariaLabel?: string;
   ariaLabelledBy?: string;
 }
@@ -329,6 +336,7 @@ export interface TreeTableRowProps<
   renderSubRow?: RenderSubRow<TData>;
   hierarchical?: boolean;
   isClickable?: boolean;
+  isStatic?: boolean;
 }
 
 /**

@@ -89,7 +89,9 @@ function RowsTable({ name, data }: RowsTableProps) {
     getNodeId: (entry) => entry.id,
   });
 
-  return <TreeTable instance={instance} ariaLabel={t`Rows of ${name}`} />;
+  return (
+    <TreeTable instance={instance} static ariaLabel={t`Rows of ${name}`} />
+  );
 }
 
 function formatValue(value: TransformTestRowValue | undefined): string {
