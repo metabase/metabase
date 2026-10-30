@@ -35,6 +35,7 @@ import type {
   User,
 } from "metabase-types/api";
 
+import { DashboardContentsSection } from "./DashboardContentsSection";
 import { DashboardDetails } from "./DashboardDetails";
 
 export function DashboardInfoSidebar() {
@@ -210,6 +211,7 @@ const Overview = ({
         </Stack>
       </SidebarSection>
       <DashboardDetails dashboard={dashboard} />
+      <DashboardContentsSection dashboard={dashboard} />
     </Stack>
   );
 };
