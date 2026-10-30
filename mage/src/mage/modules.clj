@@ -1,7 +1,5 @@
 (ns mage.modules
   (:require
-   ;; mage runs under babashka, which bundles cheshire; metabase.util.json isn't on its classpath
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
