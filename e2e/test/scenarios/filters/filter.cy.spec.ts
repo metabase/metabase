@@ -939,6 +939,41 @@ describe("scenarios > filters", () => {
           expect(message.scrollWidth).to.be.lte(message.clientWidth);
         });
     });
+
+    it("should truncate a long column name and keep the operator picker inside the filter popover (metabase#85298)", () => {
+      const LONG_COLUMN_NAME =
+        "What Are The Main Reasons For Rating This Product";
+
+      cy.request("PUT", `/api/field/${PRODUCTS.TITLE}`, {
+        display_name: LONG_COLUMN_NAME,
+      });
+
+      H.openProductsTable();
+      H.filter();
+      H.popover().findByText(LONG_COLUMN_NAME).click();
+      H.selectFilterOperator("Contains");
+
+      H.popover()
+        .should("have.length", 1)
+        .then(([popover]) => {
+          H.popover()
+            .findByText(LONG_COLUMN_NAME)
+            .should(([columnName]) => {
+              expect(columnName.scrollWidth).to.be.gt(columnName.clientWidth);
+            });
+          H.popover()
+            .findByLabelText("Filter operator")
+            .should(([operatorPicker]) => {
+              H.assertDescendantNotOverflowsContainer(operatorPicker, popover);
+            })
+            .findByText("Contains")
+            .should(([operatorLabel]) => {
+              expect(operatorLabel.scrollWidth).to.be.lte(
+                operatorLabel.clientWidth,
+              );
+            });
+        });
+    });
   });
 });
 
