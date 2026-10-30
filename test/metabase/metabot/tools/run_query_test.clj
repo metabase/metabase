@@ -28,8 +28,10 @@
    ;; this one, so once other tests have patched both, redefining the copy no longer takes effect.
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.parameters.values :as params.values]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
@@ -1170,6 +1172,36 @@
       (let [query (venues-sql)]
         (mt/with-dynamic-fn-redefs [qp.compile/compile mut/reject-app-db-lookup]
           (is (= mut/internal-failure (run-sql-tool! {"q1" query} {:query_id "q1"}))))))))
+
+(defn- sql-over-question
+  "SQL that selects from the saved question `card-id` through a `{{#<card-id>}}` tag."
+  [card-id]
+  (let [tag-name (str "#" card-id)]
+    (mt/native-query {:query         (format "SELECT * FROM {{%s}}" tag-name)
+                      :template-tags {tag-name {:id           (str (random-uuid))
+                                                :name         tag-name
+                                                :display-name tag-name
+                                                :type         :card
+                                                :card-id      card-id}}})))
+
+(deftest run-query-referenced-question-app-db-failure-test
+  (testing "an app DB failure while SQL expands a `{{#id}}` question is an internal error, and the log gets the detail"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-sql)}]
+      (mt/with-log-messages-for-level [messages [metabase.metabot.tools.runtime :error]]
+        ;; The QP loads the question before it expands `{{#id}}`. That load also asks `can-substitute?`, so it needs a
+        ;; cache query too. The app DB failure then happens in the permission check of the expansion.
+        (mt/with-dynamic-fn-redefs [qp.persistence/can-substitute?                       (constantly true)
+                                    qp.persistence/persisted-info-native-query           (constantly "SELECT 1")
+                                    params.values/persisted-cache-allowed-for-current-user? mut/reject-app-db-lookup]
+          (is (= mut/internal-failure (run-sql-tool! {"q1" (sql-over-question card-id)} {:query_id "q1"}))))
+        (is (some #(re-find #"(?i)no_such_column" (str (some-> (:e %) ex-message))) (messages)))))))
+
+(deftest run-query-referenced-question-rejected-sql-test
+  (testing "a `{{#id}}` question whose SQL the database rejects reaches the model as a query error to fix"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT * FROM NO_SUCH_TABLE"})}]
+      (is (=? {:output #"(?s)Query failed\..*NO_SUCH_TABLE.*Fix the query and retry\."
+               :error  {:class :recoverable, :code ::sql.common/query-failed}}
+              (run-sql-tool! {"q1" (sql-over-question card-id)} {:query_id "q1"}))))))
 
 (def ^:private run-query-profiles
   "The profiles that offer `run_query`."
