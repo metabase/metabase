@@ -371,7 +371,7 @@ export async function sendReleaseSlackMessage({
   const title = version ? getReleaseTitle(version) : null;
   const thread =
     title && !startThread
-      ? await findMessageInChannel({ channelId, text: title })
+      ? await findMessageInChannel({ channelId, text: title }).catch(() => null)
       : null;
   const text = emoji ? `:${emoji}: ${message}` : message;
 
@@ -545,33 +545,6 @@ export async function sendPublishStartMessage({
       repo,
     ),
   });
-}
-
-export async function sendDockerReadmeFailureMessage({
-  channelName,
-  version,
-  runId,
-  owner,
-  repo,
-  edition,
-}: {
-  channelName: string;
-  version: string;
-  runId: number;
-  owner: string;
-  repo: string;
-  edition: string;
-}) {
-  const message = `:warning: ${githubRunLink(`Updating the ${edition} Docker Hub README for ${getGenericVersion(version)} failed`, runId.toString(), owner, repo)}. The release itself is fine.`;
-
-  const buildThread = await getExistingSlackMessage(version, channelName);
-
-  if (!buildThread?.id) {
-    await sendSlackMessage({ channelName, message });
-    return;
-  }
-
-  await sendSlackReply({ channelName, message, messageId: buildThread.id });
 }
 
 export async function sendPublishCompleteMessage({

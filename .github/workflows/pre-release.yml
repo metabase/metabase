@@ -333,7 +333,7 @@ jobs:
       - containerize-oss
       - containerize-ee
       - tests-complete-message
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -345,7 +345,7 @@ jobs:
       - name: Send release failure message
         uses: ./.github/actions/notify-release-failure
         with:
-          title: Pre-release tests for ${{ inputs.version }}
+          title: Pre-release tests for
           version: ${{ inputs.version }}
           needs: ${{ toJSON(needs) }}
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}

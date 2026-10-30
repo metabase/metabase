@@ -26,12 +26,15 @@ jobs:
   check-milestone:
     # Only run milestone check in https://github.com/metabase/metabase since this is the only place milestones are used.
     if: github.repository == 'metabase/metabase'
+    continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
       - name: Install bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -72,24 +75,12 @@ jobs:
               issueCount,
               version,
             });
-
-  notify-failure:
-    needs:
-      - check-milestone
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          sparse-checkout: |
-            release
-            .github
-      - name: Send release failure message
+      - name: Send warning message
+        if: failure() || cancelled()
         uses: ./.github/actions/notify-release-failure
         with:
-          title: Milestone check for ${{ inputs.version }}
+          title: Milestone check for
           version: ${{ inputs.version }}
-          needs: ${{ toJSON(needs) }}
+          warning: true
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

@@ -149,7 +149,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Send release failure message
-        if: failure()
+        if: failure() || cancelled()
         uses: ./.github/actions/notify-release-failure
         with:
           title: Auto ${{ inputs.kind }} release for v${{ inputs.version }}

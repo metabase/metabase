@@ -27,6 +27,7 @@ jobs:
   manage-milestones:
     # Only run milestone management in https://github.com/metabase/metabase since this is the only place milestones are used.
     if: github.repository == 'metabase/metabase'
+    continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
@@ -63,24 +64,12 @@ jobs:
             repo: context.repo.repo,
             version,
           }).catch(console.error);
-
-  notify-failure:
-    needs:
-      - manage-milestones
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          sparse-checkout: |
-            release
-            .github
-      - name: Send release failure message
-        uses: ./.github/actions/notify-release-failure
-        with:
-          title: Milestone management for ${{ inputs.version }}
-          version: ${{ inputs.version }}
-          needs: ${{ toJSON(needs) }}
-          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
-          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+    - name: Send warning message
+      if: failure() || cancelled()
+      uses: ./.github/actions/notify-release-failure
+      with:
+        title: Milestone management for
+        version: ${{ inputs.version }}
+        warning: true
+        slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+        slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
