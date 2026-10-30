@@ -93,23 +93,43 @@ export function canFormatForEngine(engine: string) {
   return getFormatterDialect(engine) != null;
 }
 
+const getFormatOptions = (
+  language: SqlLanguage,
+): FormatOptionsWithLanguage => ({
+  language,
+  tabWidth: 2,
+  keywordCase: "upper",
+  linesBetweenQueries: 2,
+  paramTypes: {
+    // Snippets, parameters, nested questions, and optional clauses
+    custom: [
+      { regex: "\\{\\{[^\\{\\}]*\\}\\}" },
+      { regex: "\\[\\[((.|\\n|\\r)*?)\\]\\]" },
+    ],
+  },
+});
+
 export function formatQuery(queryText: string, engine: string) {
   const dialect = getFormatterDialect(engine);
   if (!dialect) {
     throw new Error(`No formatter dialect for engine ${engine}`);
   }
 
-  return formatSql(queryText, {
-    language: dialect,
-    tabWidth: 2,
-    keywordCase: "upper",
-    linesBetweenQueries: 2,
-    paramTypes: {
-      // Snippets, parameters, nested questions, and optional clauses
-      custom: [
-        { regex: "\\{\\{[^\\{\\}]*\\}\\}" },
-        { regex: "\\[\\[((.|\\n|\\r)*?)\\]\\]" },
-      ],
-    },
-  });
+  return formatSql(queryText, getFormatOptions(dialect));
+}
+
+/**
+ * Formats SQL only to compare it with other SQL, e.g. to ignore formatting
+ * changes in a diff. The result is never written back to the query, so engines
+ * whose dialect can't format optional clauses use the generic SQL dialect.
+ */
+export function formatQueryForComparison(queryText: string, engine: string) {
+  if (getEngineNativeType(engine) === "json") {
+    throw new Error(`No formatter dialect for engine ${engine}`);
+  }
+
+  return formatSql(
+    queryText,
+    getFormatOptions(getFormatterDialect(engine) ?? "sql"),
+  );
 }
