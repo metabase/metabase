@@ -1,5 +1,6 @@
 (ns metabase.dashboards.write
-  "Permission-checked create/update operations for Dashboards, shared by the REST API and other callers.
+  "Permission-checked create/update operations for Dashboards, used by MCP's tools and the Metabot toolkit.
+  The REST API keeps its own copies in `metabase.dashboards-rest.api`, so a change here may need making there too.
 
   These functions return the saved Dashboard row; response-shaping concerns such as hydration and
   `:last-edit-info` belong to the callers."
