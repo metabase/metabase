@@ -3,12 +3,14 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details-tools]
    [metabase.metabot.tools.field-stats :as field-stats-tools]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.resources :as resources-tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
@@ -48,6 +50,8 @@
   [requested-type entity-id]
   (if (= requested-type :table)
     (do (resources-tools/check-table-resource-database entity-id)
+        ;; an inactive table is missing, as the details treat it, not uncurated
+        (tools.u/get-table entity-id :db_id)
         :table)
     (let [{card-type :type} (resources-tools/check-card-resource-database entity-id)]
       (cond
@@ -60,26 +64,40 @@
         :else
         (tools.u/wrong-source-type! {:id entity-id :expected-type requested-type :actual-type card-type})))))
 
+(defn- check-curated!
+  "Under curated-only, throw unless the source is within curated content. `entity-type` is the type
+  that `source-entity-type` returned."
+  [entity-type entity-id]
+  (when (shared/curated-only?)
+    (curation/check-curated-subject! (str (name entity-type) " " entity-id)
+                                     (case entity-type
+                                       :table    ["table" entity-id]
+                                       :metric   ["metric" entity-id]
+                                       (:model :question) ["card" entity-id]))))
+
 (defn- source-metadata
   [{:keys [entity-type entity-id]}]
   (let [entity-type (source-entity-type entity-type entity-id)]
-    (if (= entity-type :metric)
-      (entity-details-tools/get-metric-details
-       {:metric-id entity-id
-        :with-default-temporal-breakout? false
-        :with-field-values? false
-        :with-queryable-dimensions? false
-        :with-segments? true})
-      (entity-details-tools/get-table-details
-       {:entity-type entity-type
-        :entity-id entity-id
-        :with-fields? true
-        :with-field-values? false
-        :with-related-tables? false
-        :with-metrics? false
-        :with-default-temporal-breakout? false
-        :with-measures? true
-        :with-segments? true}))))
+    (check-curated! entity-type entity-id)
+    (cond-> (if (= entity-type :metric)
+              (entity-details-tools/get-metric-details
+               {:metric-id entity-id
+                :with-default-temporal-breakout? false
+                :with-field-values? false
+                :with-queryable-dimensions? false
+                :with-segments? true})
+              (entity-details-tools/get-table-details
+               {:entity-type entity-type
+                :entity-id entity-id
+                :with-fields? true
+                :with-field-values? false
+                :with-related-tables? false
+                :with-metrics? false
+                :with-default-temporal-breakout? false
+                :with-measures? true
+                :with-segments? true}))
+      ;; under curated-only a card's details omit its definition, as read_resource's do
+      (shared/curated-only?) (update :structured-output dissoc :query_json))))
 
 (defn- metadata-fault-entry
   [{:keys [entity-type entity-id] :as item} e]
@@ -181,10 +199,17 @@
     (when-not (:id metabot)
       (unknown-metabot! {}))
     (add-output
-     (entity-details-tools/answer-sources {:metabot metabot
-                                           :with-field-values? false
-                                           :with-measures? true
-                                           :with-segments? true})
+     (cond-> (entity-details-tools/answer-sources {:metabot metabot
+                                                   :with-field-values? false
+                                                   :with-measures? true
+                                                   :with-segments? true})
+       ;; under curated-only a card's details omit its definition, as read_resource's do
+       (shared/curated-only?)
+       (update :structured-output
+               (fn [so]
+                 (-> so
+                     (update :metrics (fn [rows] (mapv #(dissoc % :query_json) rows)))
+                     (update :models (fn [rows] (mapv #(dissoc % :query_json) rows)))))))
      format-answer-sources-output)))
 
 (def list-available-data-sources-tool
@@ -224,6 +249,7 @@
     (let [kind        (if (= data-source "report") :question (keyword data-source))
           entity-type (tools/with-entity {:kind kind :id source-id}
                         (source-entity-type kind source-id))]
+      (check-curated! entity-type source-id)
       (tools/with-entity {:kind :field :id field-id}
         (add-output (field-stats-tools/field-values {:entity-type (name entity-type)
                                                      :entity-id source-id

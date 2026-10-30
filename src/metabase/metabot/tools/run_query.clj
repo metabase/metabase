@@ -9,6 +9,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
@@ -21,7 +22,6 @@
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
-   [metabase.queries.db :as queries.db]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -221,7 +221,7 @@
    can't read the source card or query the base table."
   [metric]
   (let [{:keys [kind card-id table-id]} (tools.u/metric-required-source metric)
-        source-card (when (= :card kind) (queries.db/card card-id))]
+        source-card (when (= :card kind) (metabot.db/card card-id))]
     (cond
       (some-> source-card mi/can-read?)
       {:card-type (:type source-card)
@@ -249,10 +249,14 @@
                        (when (and (pos-int? parsed) (= query-id (str parsed)))
                          parsed))]
     ;; A question the user can't read is treated like one that doesn't exist, so its id tells them nothing.
-    (let [card (queries.db/card card-id)]
+    (let [card (metabot.db/card card-id)]
       (when (some-> card mi/can-read?)
         (when (= :metric (:type card))
           (metric-not-runnable! {:query-id query-id, :source (metric-source card)}))
+        ;; The rows go to the model: a curated-only Metabot runs a saved question only when `read_resource` would
+        ;; read it.
+        (when (shared/curated-only?)
+          (curation/check-curated-subject! (str "question " card-id) ["card" card-id]))
         {:saved-card card
          :query      {:lib/type :mbql/query
                       :database (:database_id card)
@@ -437,7 +441,7 @@
    through another saved question.
    Holds a nil for each question that no longer exists."
   [query]
-  (map queries.db/card (:card (lib/all-referenced-entity-ids-recursive query))))
+  (map metabot.db/card (:card (lib/all-referenced-entity-ids-recursive query))))
 
 (defn- metabot-sql-card?
   "Whether `card` is a SQL question that Metabot saved and nobody has edited since.
@@ -698,6 +702,12 @@
   (check-private-conversation!)
   (let [{:keys [query saved-card]} (stored-query query_id allow-non-sql?)
         runnable                   (runnable-query query_id query allow-non-sql?)]
+    ;; A query the conversation holds came from construct_notebook_query, which judged it, or from the user's
+    ;; viewing context, which nothing judged: the rows go to the model either way. A saved question was judged
+    ;; in [[saved-question]]. SQL the query holds itself is left to the SQL gates above; its structured stages,
+    ;; and a notebook query over a SQL question Metabot saved, are judged like any other.
+    (when (and (shared/curated-only?) (nil? saved-card))
+      (curation/check-curated-query! (str "query " query_id) (:query runnable)))
     (when-not (or allow-non-sql? (:checked-sql runnable))
       (not-sql! {:query-id query_id, :hint (recovery-hint allow-non-sql?)}))
     (let [page                                 (execute-page! query_id runnable (or row_limit default-row-limit)

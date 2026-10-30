@@ -18,7 +18,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
@@ -366,7 +365,7 @@
                        (assoc :parameters
                               (resolve-parameters
                                parameters
-                               (:parameters (dashboards.db/dashboard (:dashboard_id subscription)))))
+                               (mcp.db/dashboard-parameters (:dashboard_id subscription))))
 
                        (channel-affecting? args)
                        (assoc :channels (patched-channels (:channels subscription) channel

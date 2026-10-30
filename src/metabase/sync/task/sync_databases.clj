@@ -27,8 +27,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.core :as warehouses]
-   [metabase.warehouses.db :as warehouses.db])
+   [metabase.warehouses.core :as warehouses])
   (:import
    (org.quartz
     JobDetail)))
@@ -72,7 +71,7 @@
 (defn- sync-and-analyze-database*!
   [database-id]
   (log/infof "Starting sync task for Database %d." database-id)
-  (when-let [database (or (warehouses.db/database database-id)
+  (when-let [database (or (sync.db/database database-id)
                           (do
                             (sync-databases-trigger/unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                             (log/warnf "Cannot sync Database %d: Database does not exist." database-id)))]
@@ -118,7 +117,7 @@
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
 
-      (:is_stub (warehouses.db/database database-id))
+      (sync.db/database-stub? database-id)
       (log/warnf "Skipping scheduled sync for Database %d: it is a stub." database-id)
 
       :else
@@ -139,7 +138,7 @@
       (log/debugf "Skipping scheduled field-values update for Database %d: disable-auto-sync is on." database-id)
       (do
         (log/infof "Update Field values task triggered for Database %d." database-id)
-        (when-let [database (or (warehouses.db/database database-id)
+        (when-let [database (or (sync.db/database database-id)
                                 (do
                                   (sync-databases-trigger/unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                                   (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]

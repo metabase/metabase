@@ -19,6 +19,8 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
+(set! *warn-on-reflection* true)
+
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]
@@ -257,10 +259,7 @@
             [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
         model-name (name entity)
-        serialized-instance (let [revision (revisions.db/revision revision-id)]
-                              (when (and (= model-name (:model revision))
-                                         (= id (:model_id revision)))
-                                (:object revision)))]
+        serialized-instance (revisions.db/revision-object model-name id revision-id)]
     (t2/with-transaction [_conn]
       (let [already-in-target-state? (= serialized-instance
                                         (revisions.db/latest-revision-object model-name id))]

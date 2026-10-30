@@ -5,11 +5,13 @@
   (:require
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.curation :as curation]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.notification.api :as notification.api]
-   [metabase.queries.db :as queries.db]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [tru]]))
 
@@ -140,7 +142,9 @@
   (handle [_ {:keys [card_id send_condition schedule send_once]} ctx]
     (let [channel (current-slack-channel ctx)
           card    (tools/with-entity {:kind :card :id card_id}
-                    (api/read-check (queries.db/card card_id)))
+                    (api/read-check (metabot.db/card card_id)))
+          _       (when (shared/curated-only?)
+                    (curation/check-curated-subject! (str "card " card_id) ["card" card_id]))
           alert   (create-alert! {:card-id        card_id
                                   :channel        channel
                                   :schedule       schedule

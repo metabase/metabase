@@ -115,7 +115,7 @@
                  (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
                  (group-access/add-groups! app [(:id group)])
                  (deps.test/synchronously-run-dependency-job!)
-                 (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "CHECKINS"})
+                 (t2/update! :model/NativeQuerySnippet :id (:id snippet) {:content "CHECKINS"})
                  (deps.test/synchronously-run-dependency-job!)
                  (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)}]}]
                          (group-access/permission-warnings app))))))))))))

@@ -262,12 +262,12 @@
                        :model/TransformRun {run-id :id} {:transform_id   transform-id
                                                          :transform_name "Hidden Transform"}]
           ;; deleting the source database makes the transform unreadable to data analysts
-          (t2/delete! :model/Database db-id)
+          (t2/delete! :model/Database :id db-id)
           (testing "a data analyst who cannot read the transform gets a 403"
             (mt/user-http-request :lucky :get 403 (str "transform/run/" run-id)))
           (testing "a superuser still reads the run"
             (is (= run-id (:id (mt/user-http-request :crowberto :get 200 (str "transform/run/" run-id))))))
           (testing "an orphaned run (transform deleted, transform_id nulled) is superuser-only"
-            (t2/delete! :model/Transform transform-id)
+            (t2/delete! :model/Transform :id transform-id)
             (mt/user-http-request :lucky :get 403 (str "transform/run/" run-id))
             (is (= run-id (:id (mt/user-http-request :crowberto :get 200 (str "transform/run/" run-id)))))))))))

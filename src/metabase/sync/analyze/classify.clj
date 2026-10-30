@@ -31,8 +31,9 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]))
+   [metabase.util.malli :as mu]))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CLASSIFYING INDIVIDUAL FIELDS                                          |
@@ -85,7 +86,7 @@
               (or (:fingerprint field)
                   (when (qp.store/initialized?)
                     (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
-                  (:fingerprint (warehouse-schema.db/field (u/the-id field))))))
+                  (sync.db/field-fingerprint (u/the-id field)))))
 
   ([field       :- i/FieldInstance
     {:keys [exists-name]} :- ClassifyOpts

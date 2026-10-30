@@ -34,6 +34,8 @@
   (:import
    (org.bson.types Binary ObjectId)))
 
+(set! *warn-on-reflection* true)
+
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
 (def ^:private table-names
