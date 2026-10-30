@@ -182,12 +182,7 @@
                     :measure    measure
                     :collect    collect}]
     (health-inspector/register-check! (:check-name descriptor) #(run-measure! descriptor))
-    ;; A live upgrade may leave the defonce'd registry in its former vector representation.
-    (swap! index-measures (fn [measures]
-                            (let [keyed (if (map? measures)
-                                          measures
-                                          (into {} (map (juxt :check-name identity)) measures))]
-                              (assoc keyed (:check-name descriptor) descriptor))))
+    (swap! index-measures assoc (:check-name descriptor) descriptor)
     descriptor))
 
 (defn refresh-index-check!

@@ -17,15 +17,15 @@
                                analytics/remove-series! (fn [& args#] (swap! ~calls conj (into [:remove] args#)))]
      ~@body))
 
-(deftest ^:synchronized register-index-check!-migrates-a-legacy-registry-test
-  (testing "a live upgrade migrates the defonce'd registry's former vector value"
-    (let [measures (atom [{:check-name :legacy-measure, :collect (constantly nil)}])
+(deftest ^:synchronized register-index-check!-registers-a-descriptor-test
+  (testing "registration keys the measure by check name and installs its health check"
+    (let [measures (atom {})
           checks   (atom {})]
       (with-redefs [index-health/index-measures measures
                     health-inspector/checks     checks]
         (let [{:keys [check-name]}
-              (index-health/register-index-check! :test-migration :coverage (constantly nil))]
-          (is (= #{:legacy-measure check-name} (set (keys @measures))))
+              (index-health/register-index-check! :test-registration :coverage (constantly nil))]
+          (is (= #{check-name} (set (keys @measures))))
           (is (contains? @checks check-name)))))))
 
 (deftest ^:parallel coverage-result-test
