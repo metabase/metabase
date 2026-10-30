@@ -53,6 +53,6 @@
   (testing "an unsupported reason the column callback throws propagates as it is"
     (is (= "no such column"
            (reason #(sql/expression->mbql "postgres" "name" (fn [_identifier]
-                                                               (unsupported/throw-reason "no such column")))))))
+                                                              (unsupported/throw-reason "no such column")))))))
   (testing "SQL that converts comes back as the converter returns it"
     (is (= :upper (first (sql/expression->mbql "postgres" "upper(name)" resolve-name))))))
