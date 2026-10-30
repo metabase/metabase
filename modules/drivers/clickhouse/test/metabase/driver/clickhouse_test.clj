@@ -967,8 +967,10 @@
     (testing "Slow query is cancelled when *query-timeout-ms* elapses"
       ;; The query would take 120 s. `sleepEachRow` sleeps at most 3 s for each block, so use blocks of one row.
       (binding [driver.settings/*query-timeout-ms* 2000]
-        (let [timer   (u/start-timer)
-              query   (mt/native-query {:query "SELECT sleepEachRow(1) FROM numbers(120) SETTINGS max_block_size = 1"})
+        ;; make the query before the timer starts, so that a failed test DB setup does not look like a cancel
+        (let [query   (lib/native-query (mt/metadata-provider)
+                                        "SELECT sleepEachRow(1) FROM numbers(120) SETTINGS max_block_size = 1")
+              timer   (u/start-timer)
               result  (try
                         (qp/process-query query)
                         (catch Throwable e e))
