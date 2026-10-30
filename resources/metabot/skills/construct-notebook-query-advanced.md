@@ -155,7 +155,7 @@ Instead of `source-table`, use `source-card` to query an existing question or mo
 
 1. Get the `portable_entity_id` from a tool response. `search` and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
 2. Copy it **verbatim** into `source-card`. The id is opaque — never guess, construct, or abbreviate.
-3. Reference the card's columns by their output **name** (a string in slot 3), not by portable FK. If you don't know the names and `read_resource` is available, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`). If `read_resource` is unavailable, use `list_available_fields` for a **model**, with its numeric ID in `model_ids` and `[]` in the required `table_ids` and `metric_ids`. The tool cannot look up a **saved question**; passing a question ID in `model_ids` returns an error ("is a question, not a model"). Reuse column names from an earlier `search` or tool result rather than guessing.
+3. Reference the card's columns by their output **name** (a string in slot 3), not by portable FK. If you don't know the names and `read_resource` is available, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`). If `read_resource` is unavailable, use `list_available_fields` with the card's numeric ID in `model_ids` and `[]` in the required `table_ids` and `metric_ids`. For a **saved question**, the tool returns a `<metabase_question>` block with the question's saved query. Reuse column names from an earlier `search` or tool result rather than guessing.
 
 ```json
 {"lib/type": "mbql.stage/mbql",

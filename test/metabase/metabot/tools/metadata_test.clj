@@ -250,14 +250,11 @@
 
 (deftest metadata-wrong-source-types-are-recoverable-test
   (mt/as-admin
-    (mt/with-temp [:model/Card {question-id :id} {:type :question}
-                   :model/Card {model-id :id} {:type :model}
+    (mt/with-temp [:model/Card {model-id :id} {:type :model}
                    :model/Card {metric-id :id} {:type :metric}]
       (doseq [profile [:document-generate-content :slackbot]
-              [source-id actual-type expected-type] [[question-id "question" "model"]
-                                                     [metric-id "metric" "model"]
-                                                     [model-id "model" "metric"]
-                                                     [question-id "question" "metric"]]
+              [source-id actual-type expected-type] [[metric-id "metric" "model"]
+                                                     [model-id "model" "metric"]]
               :let [message (str (if (= expected-type "metric") "Card " "ID ")
                                  source-id " is a " actual-type ", not a " expected-type "."
                                  "\nRetry using a " expected-type " ID.")]]
@@ -272,12 +269,42 @@
                 (invoke-metadata profile "list_available_fields"
                                  (assoc {:table_ids [] :model_ids [] :metric_ids []}
                                         (keyword (str expected-type "_ids")) [source-id])))))
-      (doseq [profile [:document-generate-content :slackbot]
-              [source-id actual-type] [[question-id "question"] [model-id "model"]]]
+      (doseq [profile [:document-generate-content :slackbot]]
         (is (= {:error {:class :recoverable :code ::tools.u/wrong-source-type}
-                :output (str "Card " source-id " is a " actual-type ", not a metric.\nRetry using a metric ID.")}
+                :output (str "Card " model-id " is a model, not a metric.\nRetry using a metric ID.")}
                (invoke-metadata profile "get_field_values"
-                                {:data_source "metric" :source_id source-id :field_id (mt/id :orders :id)})))))))
+                                {:data_source "metric" :source_id model-id :field_id (mt/id :orders :id)})))))))
+
+(deftest question-passed-as-metric-or-model-is-returned-as-question-test
+  (testing "A user can call a saved question a metric, and the field tools have no question ID argument (BOT-2545)"
+    (mt/as-admin
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :quantity)) 5)))]
+        (mt/with-temp [:model/Card {question-id :id} {:type :question :name "Big orders" :dataset_query query}]
+          (doseq [profile [:document-generate-content :slackbot]
+                  ids-key [:metric_ids :model_ids]]
+            (testing (str profile " " ids-key)
+              (let [{:keys [error output structured-output]}
+                    (invoke-metadata profile "list_available_fields"
+                                     (assoc {:table_ids [] :model_ids [] :metric_ids []} ids-key [question-id]))]
+                (is (nil? error))
+                (is (=? {:metrics   []
+                         :models    []
+                         :errors    []
+                         :questions [{:id question-id :type :question :name "Big orders" :fields seq}]}
+                        structured-output))
+                (testing "the output names the card as a question and includes its saved query with the filter"
+                  (is (str/includes? output (str "<metabase_question id=\"" question-id "\"")))
+                  (is (str/includes? output (str "Card " question-id " is a saved question, not a metric or a model.")))
+                  (is (re-find #"(?s)<query>.*\"ORDERS\".*\"QUANTITY\".*</query>" output)))))
+            (doseq [data-source ["metric" "model"]]
+              (testing (str profile " get_field_values with data_source " data-source)
+                (is (=? {:structured-output {:field_id (mt/id :orders :quantity) :result-type :field-metadata}}
+                        (invoke-metadata profile "get_field_values"
+                                         {:data_source data-source
+                                          :source_id   question-id
+                                          :field_id    (mt/id :orders :quantity)})))))))))))
 
 (deftest pivot-question-fields-round-trip-test
   (mt/as-admin
@@ -356,7 +383,11 @@
                 [actual-type source-id] [["model" model-id] ["question" question-id] ["metric" metric-id]]
                 data-source ["model" "question" "report" "metric"]
                 :let [expected-type (if (= data-source "report") "question" data-source)]
-                :when (not= actual-type expected-type)]
+                :when (and (not= actual-type expected-type)
+                           ;; `get_field_values` reads a question requested as a metric or model as a question.
+                           (not (and (not= profile :internal)
+                                     (= actual-type "question")
+                                     (#{"metric" "model"} data-source))))]
           (let [{:keys [error output]} (invoke-field-detail profile data-source source-id (mt/id :orders :id))]
             (is (= {:class :recoverable
                     :code (if (= profile :internal)

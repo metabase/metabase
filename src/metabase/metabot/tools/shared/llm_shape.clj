@@ -971,9 +971,10 @@
                                 (field-values-metadata->xml value_metadata))}))
 
 (defn get-metadata-result->xml
-  "Format get_metadata result for LLM consumption.
-   Matches Python GetMetadataResultSchema.llm_representation exactly."
-  [{:keys [metrics tables models errors]}]
+  "Format the `list_available_fields` result for LLM consumption.
+
+  A question in `questions` was requested as a metric or a model; the output says so for each one."
+  [{:keys [metrics tables models questions errors]}]
   (let [metadata-metrics (when (seq metrics)
                            (str "<metrics>\n"
                                 (str/join "\n" (map metric->xml metrics))
@@ -985,13 +986,19 @@
         metadata-models (when (seq models)
                           (str "<metabase-models>\n"
                                (str/join "\n" (map model->xml models))
-                               "\n</metabase-models>\n"))]
+                               "\n</metabase-models>\n"))
+        metadata-questions (when (seq questions)
+                             (str "<questions>\n"
+                                  (str/join "\n" (map question->xml questions))
+                                  "\n</questions>\n"))]
     (render-llm-template
      :get_metadata_result
-     {:metadata_has_any (boolean (or metadata-metrics metadata-tables metadata-models))
+     {:metadata_has_any (boolean (or metadata-metrics metadata-tables metadata-models metadata-questions))
       :metadata_metrics_xml metadata-metrics
       :metadata_tables_xml metadata-tables
       :metadata_models_xml metadata-models
+      :metadata_question_ids (mapv :id questions)
+      :metadata_questions_xml metadata-questions
       :metadata_errors (when (seq errors) (str/join "\n" errors))})))
 
 (defn transform->xml

@@ -39,30 +39,48 @@
    [:model_ids [:sequential :int]]
    [:metric_ids [:sequential :int]]])
 
+(defn- read-as-question?
+  "Whether the field tools read `card`, requested as `requested-type`, as a question.
+
+  Users call saved questions metrics, and `list_available_fields` has no argument for questions, so a
+  question requested as a metric or a model is read as a question."
+  [card requested-type]
+  (and (= :question (:type card))
+       (contains? #{:metric :model} requested-type)))
+
+(defn- source-entity-type
+  "Check that the current user can read `entity-id` as a Metabot resource, and return the entity type to read
+  it as. Throws a recoverable error when a card is not of `entity-type` and is not read as a question."
+  [entity-type entity-id]
+  (if (= entity-type :table)
+    (do (resources-tools/check-table-resource-database entity-id)
+        :table)
+    (let [card (resources-tools/check-card-resource-database entity-id)]
+      (if (read-as-question? card entity-type)
+        :question
+        (do (tools.u/get-card entity-id entity-type)
+            entity-type)))))
+
 (defn- source-metadata
   [{:keys [entity-type entity-id]}]
-  (if (= entity-type :table)
-    (resources-tools/check-table-resource-database entity-id)
-    (do
-      (resources-tools/check-card-resource-database entity-id)
-      (tools.u/get-card entity-id entity-type)))
-  (if (= entity-type :metric)
-    (entity-details-tools/get-metric-details
-     {:metric-id entity-id
-      :with-default-temporal-breakout? false
-      :with-field-values? false
-      :with-queryable-dimensions? false
-      :with-segments? true})
-    (entity-details-tools/get-table-details
-     {:entity-type entity-type
-      :entity-id entity-id
-      :with-fields? true
-      :with-field-values? false
-      :with-related-tables? false
-      :with-metrics? false
-      :with-default-temporal-breakout? false
-      :with-measures? true
-      :with-segments? true})))
+  (let [entity-type (source-entity-type entity-type entity-id)]
+    (if (= entity-type :metric)
+      (entity-details-tools/get-metric-details
+       {:metric-id entity-id
+        :with-default-temporal-breakout? false
+        :with-field-values? false
+        :with-queryable-dimensions? false
+        :with-segments? true})
+      (entity-details-tools/get-table-details
+       {:entity-type entity-type
+        :entity-id entity-id
+        :with-fields? true
+        :with-field-values? false
+        :with-related-tables? false
+        :with-metrics? false
+        :with-default-temporal-breakout? false
+        :with-measures? true
+        :with-segments? true}))))
 
 (defn- metadata-fault-entry
   [{:keys [entity-type entity-id] :as item} e]
@@ -103,12 +121,14 @@
     (let [metadata (reduce (fn [metadata {:keys [item failed? output structured-output]}]
                              (if failed?
                                (update metadata :errors conj output)
-                               (update metadata (case (:entity-type item)
-                                                  :table :tables
-                                                  :model :models
-                                                  :metric :metrics)
+                               (update metadata (if (= :question (:type structured-output))
+                                                  :questions
+                                                  (case (:entity-type item)
+                                                    :table :tables
+                                                    :model :models
+                                                    :metric :metrics))
                                        conj structured-output)))
-                           {:result-type :metadata :tables [] :models [] :metrics [] :errors []}
+                           {:result-type :metadata :tables [] :models [] :metrics [] :questions [] :errors []}
                            entries)]
       {:output (llm-shape/get-metadata-result->xml metadata)
        :structured-output metadata})))
@@ -203,16 +223,21 @@
      :scope scope/agent-metadata-read
      :args get-field-values-schema})
   (handle [_ {data-source :data_source source-id :source_id field-id :field_id} _ctx]
-    (tools/with-entity {:kind (if (= data-source "report") :question (keyword data-source)) :id source-id}
-      (if (= data-source "table")
-        (resources-tools/check-table-resource-database source-id)
-        (resources-tools/check-card-resource-database source-id)))
-    (tools/with-entity {:kind :field :id field-id}
-      (add-output (field-stats-tools/field-values {:entity-type data-source
-                                                   :entity-id source-id
-                                                   :field-id field-id
-                                                   :limit nil})
-                  format-field-metadata-output))))
+    (let [data-source (tools/with-entity {:kind (if (= data-source "report") :question (keyword data-source))
+                                          :id   source-id}
+                        (if (= data-source "table")
+                          (do (resources-tools/check-table-resource-database source-id)
+                              data-source)
+                          (let [card (resources-tools/check-card-resource-database source-id)]
+                            (if (read-as-question? card (keyword data-source))
+                              "question"
+                              data-source))))]
+      (tools/with-entity {:kind :field :id field-id}
+        (add-output (field-stats-tools/field-values {:entity-type data-source
+                                                     :entity-id source-id
+                                                     :field-id field-id
+                                                     :limit nil})
+                    format-field-metadata-output)))))
 
 (def get-field-values-tool
   "The `get_field_values` tool."
