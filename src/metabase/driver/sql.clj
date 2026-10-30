@@ -340,10 +340,28 @@
    native-query :- :metabase.lib.schema/native-only-query]
   (sql-tools/validate-query driver native-query))
 
+(mu/defn impersonated-query-refusal :- [:fn #(instance? clojure.lang.ExceptionInfo %)]
+  "The [[metabase.query-processor.error-type/invalid-query]] `ex-info` refusing the impersonated native `sql`
+  with `result`: `:unparseable`, `:unvalidatable` (with the validator's `reason`) or `:invalid`. `write?` says
+  whether the query had to be a write statement rather than a select."
+  [result :- [:enum :unparseable :unvalidatable :invalid]
+   sql    :- :string
+   write? :- [:maybe :boolean]
+   reason :- [:maybe :string]]
+  (ex-info (case result
+             :unparseable   (tru "Unable to parse native query. There might be something wrong with your query.")
+             :unvalidatable (tru "Unable to validate this native query on an impersonated database. Reduce the size of any large VALUES, IN, or ARRAY lists.")
+             :invalid       (if write?
+                              (tru "Invalid impersonated native query. Must be a single insert, update, or delete statement.")
+                              (tru "Invalid impersonated native query. Must be a single select statement.")))
+           (cond-> {:type                 qp.error-type/invalid-query
+                    :impersonation/result result
+                    :sql                  sql}
+             reason (assoc :reason reason))))
+
 (defn- validate-impersonated-native-stage
   "Validate one native `stage` for `driver`, returning it with `:native` replaced by the reconstructed,
-  validated SQL — or throwing a [[metabase.query-processor.error-type/invalid-query]] `ex-info` when it must
-  be refused.
+  validated SQL — or throwing an [[impersonated-query-refusal]] when it must be refused.
 
   `admin?` users run as the full connection user and are never actually impersonated."
   [driver stage admin?]
@@ -355,9 +373,7 @@
       error
       (do
         (log/warnf "Failed to parse native query: %s" error)
-        (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
-                        {:type qp.error-type/invalid-query
-                         :sql  (:native stage)})))
+        (throw (impersonated-query-refusal :unparseable (:native stage) write? nil)))
 
       ;; The SQL was not checked at all, as opposed to checked and found to be two statements. Admins run as
       ;; the full connection user and are never actually impersonated, so validating their native SQL
@@ -368,10 +384,7 @@
         stage
         (do
           (log/warnf "Refusing impersonated native query on %s: cannot validate (%s)" driver reason)
-          (throw (ex-info (tru "Unable to validate this native query on an impersonated database. Reduce the size of any large VALUES, IN, or ARRAY lists.")
-                          {:type   qp.error-type/invalid-query
-                           :reason reason
-                           :sql    (:native stage)}))))
+          (throw (impersonated-query-refusal :unvalidatable (:native stage) write? reason))))
 
       ;; Admins may also run a single statement that is not of the required type (e.g. `SHOW TIMEZONE`),
       ;; but never more than one statement.
@@ -379,11 +392,7 @@
       (assoc stage :native sql)
 
       :else
-      (throw (ex-info (if write?
-                        (tru "Invalid impersonated native query. Must be a single insert, update, or delete statement.")
-                        (tru "Invalid impersonated native query. Must be a single select statement."))
-                      {:type qp.error-type/invalid-query
-                       :sql  (:native stage)})))))
+      (throw (impersonated-query-refusal :invalid (:native stage) write? nil)))))
 
 (defn validate-impersonated-query*
   "Validates a native query by parsing it and ensuring that it is a single statement.

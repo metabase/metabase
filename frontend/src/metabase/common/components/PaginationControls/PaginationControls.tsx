@@ -53,7 +53,7 @@ export const PaginationControls = ({
         {rangeStart} - {rangeEnd}
         {showTotal && (
           <>
-            <Text component="span" c="text-disabled">
+            <Text component="span" c="text-secondary">
               &nbsp;
               {c(
                 "Appears in phrases like '1-10 of 100', referring to a page of results",

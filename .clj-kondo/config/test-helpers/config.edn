@@ -72,6 +72,7 @@
      metabase.driver.postgres-test/create-enums-db!
      metabase.driver.postgres-test/drop-if-exists-and-create-db!
      metabase.driver.sql-jdbc.execute/execute-statement!
+     metabase.driver.util/validate-connection-parameters!
      metabase.indexed-entities.models.model-index/add-values!
      metabase.driver.sql-jdbc.connection.ssh-tunnel-test/start-mock-servers!
      metabase.driver.sql-jdbc.connection.ssh-tunnel-test/stop-mock-servers!

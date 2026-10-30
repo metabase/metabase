@@ -66,7 +66,7 @@ export const NameDescriptionInput = ({
         leftSection={
           <Group
             align="center"
-            c="text-disabled"
+            c="text-secondary"
             gap={10}
             flex="1"
             fs="lg"
@@ -84,7 +84,7 @@ export const NameDescriptionInput = ({
                 lines={1}
                 tooltip={namePrefix}
               >
-                <Text c="text-disabled" component="span" size="lg">
+                <Text c="text-secondary" component="span" size="lg">
                   {namePrefix}
                   {":"}
                 </Text>
