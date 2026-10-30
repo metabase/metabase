@@ -515,8 +515,8 @@
 .pillSelected {
   border-radius: 0.75rem;
   box-shadow:
-    0 0 0 2px var(--mb-color-background_page-primary),
-    0 0 0 4px var(--mb-color-core-brand);
+    0 0 0 1px var(--mb-color-background_page-primary),
+    0 0 0 3px color-mix(in srgb, var(--mb-color-core-brand) 35%, transparent);
 }
 
 /* While a pill is selected the focused input stays for the keys, but draws no caret. */
