@@ -8,8 +8,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useNavigate } from "metabase/router";
 import {
   Alert,
-  Box,
-  type BoxProps,
   Button,
   Icon,
   Input,
@@ -86,8 +84,8 @@ export const DeleteDatabaseModal = ({
   const isDatabaseNameConfirmed =
     databaseNameConfirmation.trim().toLowerCase() ===
     database.name.trim().toLowerCase();
-  const canDelete =
-    (isContentRemovalConfirmed || !hasContent) && isDatabaseNameConfirmed;
+  const canConfirmName = isContentRemovalConfirmed || !hasContent;
+  const canDelete = canConfirmName && isDatabaseNameConfirmed;
 
   const deleteButtonLabel = t`Delete this DB connection`;
 
@@ -96,10 +94,10 @@ export const DeleteDatabaseModal = ({
 
   const databaseNameConfirmationRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (isContentRemovalConfirmed || !hasContent) {
+    if (canConfirmName) {
       databaseNameConfirmationRef.current?.focus();
     }
-  }, [isContentRemovalConfirmed, hasContent]);
+  }, [canConfirmName, loading]);
 
   return (
     <Modal
@@ -112,65 +110,60 @@ export const DeleteDatabaseModal = ({
       <LoadingAndErrorWrapper loading={loading}>
         <form onSubmit={canDelete ? handleSubmit : undefined}>
           <Stack gap="xl">
-            {hasContent && (
-              <DeleteDatabaseModalSection isHidden={isContentRemovalConfirmed}>
-                <Alert icon={<Icon name="info" />}>
-                  {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
-                    <UnstyledButton
-                      key="button"
-                      onClick={handleEditConnectionDetailsClick}
-                      c="core-brand"
-                      fw="bold"
-                    >{t`edit your connection details.`}</UnstyledButton>
-                  )}`}
-                </Alert>
-              </DeleteDatabaseModalSection>
+            {hasContent && !isContentRemovalConfirmed && (
+              <Alert icon={<Icon name="info" />}>
+                {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
+                  <UnstyledButton
+                    key="button"
+                    onClick={handleEditConnectionDetailsClick}
+                    c="core-brand"
+                    fw="bold"
+                  >{t`edit your connection details.`}</UnstyledButton>
+                )}`}
+              </Alert>
             )}
             {hasContent && (
               <>
-                <DeleteDatabaseModalSection>
+                <Text>
                   {hasMoreThanOneEntityType
                     ? t`Deleting this database will also delete everything based on it. If you’re really trying to do this, please check each of these boxes:`
                     : t`Deleting this database will also delete everything based on it. If you’re really trying to do this, please check the box below:`}
-                </DeleteDatabaseModalSection>
-
-                <DeleteDatabaseModalSection>
-                  <ContentRemovalConfirmation
-                    usageInfo={usageInfo}
-                    onChange={setIsContentRemovalConfirmed}
-                  />
-                </DeleteDatabaseModalSection>
+                </Text>
+                <ContentRemovalConfirmation
+                  usageInfo={usageInfo}
+                  onChange={setIsContentRemovalConfirmed}
+                />
               </>
             )}
-            <DeleteDatabaseModalSection
-              isHidden={!isContentRemovalConfirmed && hasContent}
-            >
-              <Alert
-                size="compact"
-                icon={<Icon name="warning" />}
-                color="error"
-              >
-                {defaultDatabaseRemovalMessage}
-              </Alert>
-            </DeleteDatabaseModalSection>
-            <DeleteDatabaseModalSection
-              isHidden={!isContentRemovalConfirmed && hasContent}
-            >
-              <p>
-                {jt`If you’re sure, please type ${(
-                  <strong key="name">{database.name}</strong>
-                )} in this box:`}
-              </p>
-              <Input
-                w="20rem"
-                data-testid="database-name-confirmation-input"
-                data-autofocus="true"
-                placeholder={t`Are you completely sure?`}
-                value={databaseNameConfirmation}
-                ref={databaseNameConfirmationRef}
-                onChange={(e) => setDatabaseNameConfirmation(e.target.value)}
-              />
-            </DeleteDatabaseModalSection>
+            {canConfirmName && (
+              <>
+                <Alert
+                  size="compact"
+                  icon={<Icon name="warning" />}
+                  color="error"
+                >
+                  {defaultDatabaseRemovalMessage}
+                </Alert>
+                <Stack gap="sm">
+                  <Text>
+                    {jt`If you’re sure, please type ${(
+                      <strong key="name">{database.name}</strong>
+                    )} in this box:`}
+                  </Text>
+                  <Input
+                    w="20rem"
+                    data-testid="database-name-confirmation-input"
+                    data-autofocus="true"
+                    placeholder={t`Are you completely sure?`}
+                    value={databaseNameConfirmation}
+                    ref={databaseNameConfirmationRef}
+                    onChange={(e) =>
+                      setDatabaseNameConfirmation(e.target.value)
+                    }
+                  />
+                </Stack>
+              </>
+            )}
           </Stack>
           <Modal.Footer>
             {errorMessage && (
@@ -191,23 +184,5 @@ export const DeleteDatabaseModal = ({
         </form>
       </LoadingAndErrorWrapper>
     </Modal>
-  );
-};
-
-export const DeleteDatabaseModalSection = ({
-  isHidden,
-  ...props
-}: { isHidden?: boolean; children: React.ReactNode } & BoxProps) => {
-  return (
-    <Box
-      h={isHidden ? 0 : "unset"}
-      opacity={isHidden ? 0 : 1}
-      p="xxs"
-      style={{
-        transition: "all 350ms, opacity 200ms",
-        overflow: "hidden",
-      }}
-      {...props}
-    />
   );
 };

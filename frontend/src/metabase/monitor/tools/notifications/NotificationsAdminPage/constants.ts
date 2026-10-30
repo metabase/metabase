@@ -7,8 +7,6 @@ import type {
 
 import type { NotificationsTab, TabFilters } from "./types";
 
-export const PAGE_SIZE = 50;
-
 export const DEFAULT_TAB: NotificationsTab = "all";
 
 export const DEFAULT_ACTIVE: boolean | null = true;

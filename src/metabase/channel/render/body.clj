@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [hiccup.core :refer [h]]
+   [hiccup.util :as hiccup.util]
    [medley.core :as m]
    [metabase.appearance.core :as appearance]
    [metabase.channel.render.image-bundle :as image-bundle]
@@ -258,7 +258,7 @@
                               viz-settings)))))
 
 (defn- strong-limit-text [number]
-  [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-scalar-number number))])
+  [:strong {:style (style/style {:color style/color-gray-3})} (hiccup.util/escape-html (formatter/format-scalar-number number))])
 
 (defn- render-truncation-warning
   [row-limit row-count]
@@ -407,7 +407,7 @@
                    bg         (get cell-colors [r c])]
                [(if (or header? label?) :th :td)
                 {:style (style/style (style/pivot-cell-style header? label? first-col? bg))}
-                (h (pivot-cell->str cell))]))
+                (hiccup.util/escape-html (pivot-cell->str cell))]))
            row)])
        rows)]]))
 
@@ -617,12 +617,12 @@
   [label value label-style value-style last?]
   (let [border {:border-bottom (if last? 0 style/object-detail-border)}]
     [:tr
-     [:td {:style (style/style label-style border)} (h label)]
+     [:td {:style (style/style label-style border)} (hiccup.util/escape-html label)]
      [:td {:style (style/style value-style border)}
       (if (nil? value)
         ;; Match the live viz: missing values show a muted "Empty" placeholder rather than a blank cell.
         [:span {:style (style/style (style/object-detail-empty-value-style))} (tru "Empty")]
-        (h value))]]))
+        (hiccup.util/escape-html value))]]))
 
 (mu/defmethod render :object :- ::RenderedPartCard
   [_chart-type
@@ -790,7 +790,7 @@
 
      :content
      [:div {:style (style/style (style/scalar-style color))}
-      (h value)]
+      (hiccup.util/escape-html value)]
      :render/text (str value)}))
 
 (defn- series-cards-with-data
@@ -1102,7 +1102,7 @@
           {:attachments nil
            :content     [:div
                          [:div {:style (style/style (style/scalar-style))}
-                          (h value)]
+                          (hiccup.util/escape-html value)]
                          [:p {:style (style/style {:color         style/color-text-medium
                                                    :font-size     :16px
                                                    :font-weight   700
@@ -1114,7 +1114,7 @@
         {:attachments nil
          :content     [:div
                        [:div {:style (style/style (style/scalar-style))}
-                        (h last-value)]
+                        (hiccup.util/escape-html last-value)]
                        [:p {:style (style/style {:color         style/color-text-medium
                                                  :font-size     :16px
                                                  :font-weight   700

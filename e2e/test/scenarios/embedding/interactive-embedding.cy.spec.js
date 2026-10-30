@@ -1742,3 +1742,216 @@ const signInForCollectionCase = ({ user, readCollectionIds }) => {
   }
   cy.signIn(user);
 };
+
+describe("issue 51934 (EMB-189)", () => {
+  const COLLECTION_NAME = "Model Collection";
+  const MODEL_IN_ROOT_NAME = "Products Model";
+  const MODEL_IN_COLLECTION_NAME = "QA Postgres12 Orders Model";
+  const QUESTION_IN_COLLECTION_NAME = "Orders Question";
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.createModelFromTableName({
+      tableName: "products",
+      modelName: MODEL_IN_ROOT_NAME,
+    });
+    H.createCollection({
+      name: COLLECTION_NAME,
+      alias: "collectionId",
+    });
+    H.createModelFromTableName({
+      tableName: "orders",
+      modelName: MODEL_IN_COLLECTION_NAME,
+      idAlias: "modelId",
+    });
+    moveToCollection({
+      collectionIdAlias: "collectionId",
+      cardIdAlias: "modelId",
+    });
+    H.createQuestion(
+      {
+        name: QUESTION_IN_COLLECTION_NAME,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "questionId",
+      },
+    );
+    moveToCollection({
+      collectionIdAlias: "collectionId",
+      cardIdAlias: "questionId",
+    });
+  });
+
+  it("should set the starting join step based on the query source", () => {
+    startNewEmbeddingQuestion();
+    const QA_DB_NAME = "QA Postgres12";
+    const DATA_SOURCE_NAME = "Orders";
+
+    // Before the picker can auto-navigate into the data source's collection it
+    // resolves the target path asynchronously: a card-metadata fetch plus one
+    // `listCollectionItems` request per collection level (root -> Model
+    // Collection). On a throttled CI runner that serial chain routinely outlasts
+    // Cypress's default 4 s command timeout, so the picker is still showing the
+    // parent (root) collections when a default-timeout query gives up — the
+    // dominant "cannot find menuitem '...' (only the root collections are
+    // present)" flake. Wait for the loader to clear, then give the item lookup a
+    // generous timeout so it waits for the path to finish resolving, and assert
+    // it is visible (positive anchor) before clicking.
+    const PICKER_ITEM_TIMEOUT = 15000;
+    const clickPickerItem = (name) => {
+      cy.get('[data-testid="mini-picker-list-loader"]').should("not.exist");
+      cy.findByRole("menuitem", { name }, { timeout: PICKER_ITEM_TIMEOUT })
+        .should("be.visible")
+        .click();
+    };
+
+    // The data-source picker and the join picker are both rendered by the same
+    // embedding DataSourceSelector, so a generic popover query could not tell
+    // them apart. When a click swaps one for the other they can briefly overlap
+    // (the outgoing one is still in its close transition while the incoming one
+    // is already mounted), which made matching ambiguous and flaky on slow CI
+    // runners.
+    //
+    // Each picker now carries its trigger's label as the dropdown's accessible
+    // name (`aria-label`), so we can target each popover deterministically by
+    // name regardless of any transition overlap. `.filter(":visible").last()`
+    // guards against a same-named popover that is still animating closed.
+    const pickerPopover = (name) =>
+      cy
+        .get(`[data-element-id=mantine-popover][aria-label="${name}"]`)
+        .filter(":visible")
+        .should("have.length.at.least", 1)
+        .last();
+    const dataSourcePopover = () => pickerPopover("Pick your starting data");
+    const joinPopover = () => pickerPopover("Pick data to join");
+
+    cy.log("select a table as a data source");
+    dataSourcePopover().within(() => {
+      cy.findByText("Raw Data").click();
+    });
+    dataSourcePopover().within(() => {
+      cy.findByRole("heading", { name: QA_DB_NAME }).click();
+    });
+    dataSourcePopover().within(() => {
+      cy.findByRole("option", { name: DATA_SOURCE_NAME }).click();
+    });
+    H.getNotebookStep("data").button("Join data").click();
+
+    cy.log(
+      'select the "Join" step when the data source is a table will open a table in the same database',
+    );
+    joinPopover().within(() => {
+      cy.findByText(QA_DB_NAME).should("be.visible");
+      cy.findByRole("option", { name: "Orders" }).should("be.visible");
+    });
+
+    cy.log(
+      "changing the data source while not selecting the join step should refresh the data picker on the join step",
+    );
+    H.getNotebookStep("data").findByText(DATA_SOURCE_NAME).click();
+
+    cy.log('go back to the "Bucket" step');
+    dataSourcePopover().within(() => {
+      cy.icon("chevronleft").click();
+    });
+    dataSourcePopover().within(() => {
+      cy.icon("chevronleft").click();
+    });
+
+    cy.log(
+      "select a question as a data source should open the saved question step in the same collection as the data source (metabase#58357)",
+    );
+    dataSourcePopover().within(() => {
+      cy.findByText("Saved Questions").click();
+    });
+    dataSourcePopover().within(() => clickPickerItem(COLLECTION_NAME));
+    dataSourcePopover().within(() =>
+      clickPickerItem(QUESTION_IN_COLLECTION_NAME),
+    );
+
+    cy.log("the join popover is automatically opened");
+    joinPopover().within(() => {
+      cy.log("the collection of the data source should be selected");
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 226)",
+      );
+      clickPickerItem(QUESTION_IN_COLLECTION_NAME);
+    });
+
+    cy.log(
+      "select a model as a data source should open the model step in the same collection as the data source",
+    );
+    H.getNotebookStep("data").findByText(QUESTION_IN_COLLECTION_NAME).click();
+
+    // Go back to the "Bucket" step
+    dataSourcePopover().within(() => {
+      cy.findByText("Saved Questions").click();
+    });
+    // We're now at the "Bucket" step
+    dataSourcePopover().within(() => {
+      cy.findByText("Models").click();
+    });
+    dataSourcePopover().within(() => clickPickerItem(MODEL_IN_COLLECTION_NAME));
+
+    cy.log("the join popover is automatically opened");
+    joinPopover().within(() => {
+      cy.log("the collection of the data source should be selected");
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 226)",
+      );
+      clickPickerItem(MODEL_IN_COLLECTION_NAME);
+    });
+
+    cy.log(
+      "select a data source after selecting a join step should refresh the data picker on the join step",
+    );
+    H.getNotebookStep("data").findByText(MODEL_IN_COLLECTION_NAME).click();
+    dataSourcePopover().within(() => clickPickerItem("Our analytics"));
+    dataSourcePopover().within(() => clickPickerItem(MODEL_IN_ROOT_NAME));
+
+    joinPopover().within(() => {
+      cy.log("the collection of the new data source should be selected");
+      cy.findByRole("menuitem", { name: "Our analytics" }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 226)",
+      );
+      cy.findByRole("menuitem", { name: MODEL_IN_ROOT_NAME }).should(
+        "be.visible",
+      );
+    });
+  });
+
+  function startNewEmbeddingQuestion() {
+    H.visitFullAppEmbeddingUrl({
+      url: "/question/notebook",
+      qs: {
+        data_picker: "staged",
+        entity_types: "table,model,question",
+      },
+    });
+  }
+
+  function moveToCollection({ collectionIdAlias, cardIdAlias }) {
+    cy.get(`@${collectionIdAlias}`).then((collectionId) => {
+      cy.get(`@${cardIdAlias}`).then((cardId) => {
+        cy.request("PUT", `/api/card/${cardId}`, {
+          collection_id: collectionId,
+        });
+      });
+    });
+  }
+});

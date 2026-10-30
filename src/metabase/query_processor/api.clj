@@ -6,6 +6,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -123,6 +124,7 @@
    _query-params
    query :- ::lib-be.schema/maybe-legacy-or-internal-query
    request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (run-streaming-query
    (-> query
        (dissoc :cache-strategy :referenced-entities)
@@ -176,7 +178,9 @@
                                                                         (string? x) (json/decode viz-setting-key-fn)))})]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]
-       [:csv_include_bom         {:default false} ms/BooleanValue]]]
+       [:csv_include_bom         {:default false} ms/BooleanValue]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
@@ -213,7 +217,9 @@
   {:scope api-scope/data-app}
   [_route-params
    _query-params
-   query :- ::lib-be.schema/maybe-legacy-query]
+   query :- ::lib-be.schema/maybe-legacy-query
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (queries/batch-fetch-query-metadata
    [query]
    (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
@@ -230,7 +236,9 @@
    _query-params
    {:keys [database pretty] :as query} :- [:map {:closed true}
                                            [:pretty {:default true} [:maybe :boolean]]
-                                           [::mc/default ::lib-be.schema/maybe-legacy-query]]]
+                                           [::mc/default ::lib-be.schema/maybe-legacy-query]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-query (dissoc query :pretty)))
   (model-persistence/with-persisted-substituion-disabled
     (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
                     (dissoc :constraints :middleware)
@@ -263,7 +271,9 @@
   {:scope api-scope/data-app}
   [_route-params
    _query-params
-   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query]
+   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
@@ -311,7 +321,9 @@
    {:keys     [parameter]
     field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field-ids))
   (parameter-values parameter field-ids nil))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -327,7 +339,9 @@
    {:keys     [parameter]
     field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field-ids))
   (parameter-values parameter field-ids query))
 
 (defn param-remapped-value
@@ -356,5 +370,7 @@
    {:keys [parameter value field_ids]} :- [:map {:closed true}
                                            [:parameter ::parameters.schema/parameter]
                                            [:value [:ref ::lib.schema.parameter/parameter.value]]
-                                           [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
+                                           [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field_ids))
   (param-remapped-value field_ids parameter value))

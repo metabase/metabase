@@ -139,6 +139,7 @@
     :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
+    :model/AnalysisFindingStatus
     :model/ApiKeyUsageLog
     :model/CacheConfig
     :model/CardFavorite
@@ -146,13 +147,13 @@
     :model/ContentTranslation
     :model/DashboardFavorite
     :model/DataApp
-    :model/DataAppGroupAssignment
     :model/DataComplexityScore
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
     :model/EmbeddingSdkReact18Host
     :model/ExplorationQueryResult
+    :model/ImpersonationQueryCache
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog
@@ -167,6 +168,7 @@
     :model/RemoteSyncObject
     :model/RemoteSyncTask
     :model/ReplacementRun
+    :model/ResultMetadataStatus
     :model/SearchIndexMetadata
     :model/SecurityAdvisory
     :model/SemanticSearchTokenTracking

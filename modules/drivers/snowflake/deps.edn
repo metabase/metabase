@@ -21,6 +21,7 @@
                                                    ;; pinned in and resolved from /deps.edn
                                                    com.fasterxml.jackson.core/jackson-core
                                                    com.fasterxml.jackson.core/jackson-databind
+                                                   com.google.guava/guava
                                                    io.opentelemetry/opentelemetry-api
                                                    org.bouncycastle/bcpkix-jdk18on
                                                    org.bouncycastle/bcprov-jdk18on

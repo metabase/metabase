@@ -167,7 +167,7 @@ Always return a single object matching the supplied schema. Do not respond with 
   [{:keys [card-description] :as inputs}]
   (try
     (let [response (metabot.self/call-llm-structured
-                    (metabot.settings/llm-metabot-provider)
+                    (metabot.settings/llm-mini-model)
                     [{:role "system" :content rubric-preamble}
                      {:role "user"   :content (build-user-message inputs)}]
                     (response-schema (str/blank? card-description))

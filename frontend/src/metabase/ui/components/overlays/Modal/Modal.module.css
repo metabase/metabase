@@ -79,14 +79,25 @@
 }
 
 .root[data-layout="centered"] {
+  /* Zero height so the content sits in the same place with or without the
+     close button, while staying sticky so the button doesn't scroll away */
   .header {
     justify-content: flex-end;
+    min-height: 0;
+    height: 0;
+    padding-block: 0;
+    background-color: transparent;
+
+    .ModalCloseButton {
+      margin-top: var(--mantine-spacing-xl);
+    }
   }
 
   .body {
     padding-inline: var(--mantine-spacing-xxl);
-    padding-bottom: rem(64px);
+    padding-block: rem(64px);
     text-align: center;
+    text-wrap: pretty;
   }
 
   .footer {

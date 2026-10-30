@@ -1,4 +1,3 @@
-import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import console from "node:console";
 import fs from "node:fs";
@@ -34,7 +33,7 @@ try {
     ),
   );
 
-  // Install the packed sdk and runtime dependencies
+  // Install the packed sdk
   execFileSync(
     "npm",
     [
@@ -46,46 +45,6 @@ try {
     ],
     NPM_COMMAND_OPTIONS,
   );
-
-  const installedPackage = path.join(
-    SMOKE_TEST_PATH,
-    "node_modules/@metabase/embedding-sdk-react",
-  );
-
-  const manifest = JSON.parse(
-    fs.readFileSync(path.join(installedPackage, "package.json"), "utf8"),
-  );
-
-  // Check that the esbuild module the CLI bundles definition files with is installed and can be used
-  execFileSync(
-    process.execPath,
-    [
-      "--eval",
-      `
-        const { createRequire } = require("node:module");
-        const sdkRequire = createRequire(${JSON.stringify(path.join(installedPackage, "package.json"))});
-
-        sdkRequire("esbuild").transformSync("const value: number = 1", { loader: "ts" });
-      `,
-    ],
-    NPM_COMMAND_OPTIONS,
-  );
-
-  for (const command of ["write-resources", "check-resources"]) {
-    const output = execFileSync(
-      process.execPath,
-      [
-        path.join(installedPackage, manifest.bin),
-        "data-apps",
-        command,
-        "--help",
-      ],
-      NPM_COMMAND_OPTIONS,
-    );
-
-    assert.match(output, new RegExp(`Usage: .*${command}`));
-    assert.match(output, /--app-root/);
-  }
 
   console.log("SDK package smoke test passed.");
 } finally {

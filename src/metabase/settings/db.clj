@@ -63,4 +63,4 @@
   "Store `settings-json` as the user-local settings of the User with `user-id`, returning the number updated."
   [user-id       :- ::lib.schema.id/user
    settings-json :- :string]
-  (t2/update! :model/User user-id {:settings settings-json}))
+  (t2/update! :model/User :id [:auto/param user-id] {:settings settings-json}))

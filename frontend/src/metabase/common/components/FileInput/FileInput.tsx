@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ChangeEvent, FocusEvent, HTMLAttributes, Ref } from "react";
+import type { ChangeEvent, FocusEvent, HTMLAttributes, JSX, Ref } from "react";
 import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
 

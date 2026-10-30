@@ -61,6 +61,7 @@ export interface VisualizationProps {
   dashcard?: DashboardCard;
   card: SeriesCard;
   getHref?: () => string | undefined;
+  getCardHref?: (nextCard: SeriesCard) => string | undefined;
   data: DatasetData;
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;

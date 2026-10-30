@@ -1,6 +1,5 @@
 import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
-import { useSet } from "react-use";
 
 import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { assignLazily } from "metabase/utils/merge-lazily";
@@ -9,7 +8,9 @@ import { DataPointsVisiblePopover } from "metabase/visualizations/components/Dat
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
+import type { LegendChart } from "metabase/visualizations/components/legend/plots";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import { useLegendHiddenSeries } from "metabase/visualizations/hooks/use-legend-hidden-series";
 import { useReportGoalWarning } from "metabase/visualizations/hooks/use-report-goal-warning";
 import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -64,10 +65,9 @@ function BoxPlotInner({
   titleMenuItems,
 }: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<EChartsType>();
+  const chartRef = useRef<EChartsType>(undefined);
   const [chartInstance, setChartInstance] = useState<EChartsType>();
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
-  const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
 
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -91,6 +91,10 @@ function BoxPlotInner({
     errors: goalErrors,
   } = useResolvedGoalSettings(card, rawSeries[0].data, adjustedSettings);
   useReportGoalWarning(goalErrors.length > 0, onUpdateGoalWarning);
+
+  const [hiddenSeries, toggleSeriesVisibility] = useLegendHiddenSeries<string>(
+    settings["legend.position"],
+  );
 
   const renderingContext = useBrowserRenderingContext({
     fontFamily,
@@ -144,17 +148,38 @@ function BoxPlotInner({
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
+  const layoutInput = useMemo(
+    () => ({ ...chartModel, dataset: chartModel.boxDataset }),
+    [chartModel],
+  );
+
   const cartesianLayout = useMemo(
     () =>
       getChartLayout(
-        { ...chartModel, dataset: chartModel.boxDataset },
+        layoutInput,
         settings,
         false,
         chartSize.width,
         chartSize.height,
         renderingContext,
       ),
-    [chartModel, settings, chartSize.width, chartSize.height, renderingContext],
+    [
+      layoutInput,
+      settings,
+      chartSize.width,
+      chartSize.height,
+      renderingContext,
+    ],
+  );
+
+  const legendChart: LegendChart = useMemo(
+    () => ({
+      layoutInput,
+      settings,
+      hasTimelineEvents: false,
+      renderingContext,
+    }),
+    [layoutInput, settings, renderingContext],
   );
 
   const layoutModel = useMemo(
@@ -242,6 +267,7 @@ function BoxPlotInner({
         <CartesianChartLegendLayout
           isReversed={settings["legend.is_reversed"]}
           hasLegend={hasLegend}
+          legendPosition={settings["legend.position"]}
           alwaysVisible={isVisualizer}
           items={legendItems}
           actionButtons={!showTitle ? actionButtons : undefined}
@@ -254,8 +280,7 @@ function BoxPlotInner({
           onHoverChange={onHoverChange}
           width={width}
           height={height}
-          chartHeight={chartSize.height || undefined}
-          indent={cartesianLayout.padding.left - cartesianLayout.padding.right}
+          chart={legendChart}
         >
           <ResponsiveEChartsRenderer
             key={hasValidOption ? "chart" : "measuring"}

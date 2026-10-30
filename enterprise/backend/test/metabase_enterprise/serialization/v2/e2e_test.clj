@@ -110,7 +110,7 @@
 (defn- clean-entity
   "Removes any comparison-confounding fields, like `:created_at`."
   [entity]
-  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule))
+  (dissoc entity :created_at :result_metadata))
 
 ;; one generated random dump feeds all storage+ingestion assertions; splitting regenerates it per test
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
@@ -297,7 +297,7 @@
                              clean-entity)))))
               (testing "for Databases"
                 (doseq [{:keys [name] :as db} (get @entities "Database")]
-                  (is (= (assoc (clean-entity db) :initial_sync_status "complete")
+                  (is (= (clean-entity db)
                          (-> (ts/extract-one "Database" [:= :name name])
                              clean-entity)))))
               (testing "for Tables"
@@ -501,16 +501,22 @@
                                    dashboard-name :name}    {:name          "Test Dashboard"
                                                              :collection_id coll-id}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    0
                                                              :visualization_settings (link-card-viz-setting "collection" coll-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    1
                                                              :visualization_settings (link-card-viz-setting "database" db-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    2
                                                              :visualization_settings (link-card-viz-setting "table" table-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    3
                                                              :visualization_settings (link-card-viz-setting "dashboard" dash-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    4
                                                              :visualization_settings (link-card-viz-setting "card" card-id)}
              :model/DashboardCard _                         {:dashboard_id           dashboard-id
+                                                             :row                    5
                                                              :visualization_settings (link-card-viz-setting "dataset" model-id)}]
             (testing "extract and store"
               (let [extraction          (serdes/with-cache (into [] (extract/extract {})))
@@ -630,16 +636,20 @@
                                   tab-eid-2 :entity_id}     {:name "Tab 2" :position 1 :dashboard_id dashboard-id}
              :model/DashboardCard       _                          {:dashboard_id     dashboard-id
                                                                     :card_id          card-id-1
-                                                                    :dashboard_tab_id tab-id-1}
+                                                                    :dashboard_tab_id tab-id-1
+                                                                    :row              0}
              :model/DashboardCard       _                          {:dashboard_id     dashboard-id
                                                                     :card_id          card-id-2
-                                                                    :dashboard_tab_id tab-id-1}
+                                                                    :dashboard_tab_id tab-id-1
+                                                                    :row              1}
              :model/DashboardCard       _                          {:dashboard_id     dashboard-id
                                                                     :card_id          card-id-1
-                                                                    :dashboard_tab_id tab-id-2}
+                                                                    :dashboard_tab_id tab-id-2
+                                                                    :row              0}
              :model/DashboardCard       _                          {:dashboard_id     dashboard-id
                                                                     :card_id          card-id-2
-                                                                    :dashboard_tab_id tab-id-2}]
+                                                                    :dashboard_tab_id tab-id-2
+                                                                    :row              1}]
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
               (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
             (testing "ingest and load"
@@ -704,9 +714,9 @@
                         new-coll-id (t2/select-one-pk :model/Collection :entity_id coll-eid)
                         new-card-id (t2/select-one-pk :model/Card :entity_id card-eid)]
                     (is (= new-dash-id (:dashboard_id
-                                        (t2/select-one :model/Card new-card-id))))
+                                        (t2/select-one :model/Card :id new-card-id))))
                     (is (= new-coll-id (:collection_id
-                                        (t2/select-one :model/Card new-card-id))))))))))))))
+                                        (t2/select-one :model/Card :id new-card-id))))))))))))))
 
 (deftest database-routing-test
   (testing "Destination Databases and Database Routers are excluded from serialization"
@@ -1005,10 +1015,10 @@
                                                                                                               [:field %products.category {:join-alias "Products"}]]}]})}]
             ;; Populate the native source card's result_metadata the way the app does when a user runs and
             ;; saves the query. This is the state serdes must preserve across the round-trip.
-            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query (card-schema/selection) native-id))
+            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query (card-schema/selection) :id native-id))
                                    (get-in [:data :results_metadata :columns]))
                   source-names (mapv :name source-cols)]
-              (t2/update! :model/Card native-id {:result_metadata source-cols})
+              (t2/update! :model/Card :id native-id {:result_metadata source-cols})
               (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
                 (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
               (ts/with-db dest-db

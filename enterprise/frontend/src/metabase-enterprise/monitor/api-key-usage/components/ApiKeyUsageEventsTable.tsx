@@ -7,6 +7,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import {
   Box,
   Ellipsified,
@@ -34,8 +35,6 @@ import type {
   TableMetadata,
 } from "metabase-lib";
 import type { RowValue, RowValues, SortingOptions } from "metabase-types/api";
-
-export const EVENTS_PAGE_SIZE = 25;
 
 const DEFAULT_SORTING: SortingOptions<ApiKeyUsageEventSortColumn> = {
   sort_column: "occurred_at",
@@ -232,7 +231,7 @@ function ApiKeyUsageEventsTableInner({
   const { data, isFetching, error } = useApiKeyUsageEventsQuery(
     query,
     page,
-    EVENTS_PAGE_SIZE,
+    PAGE_SIZE,
   );
 
   // The result columns (`data.data.cols`) are the full, warehouse-ordered set the query returns —
@@ -324,7 +323,10 @@ function ApiKeyUsageEventsTableInner({
           <TreeTableSkeleton columnWidths={skeletonColumnWidths} />
         ) : (
           <>
-            <LoadingOverlay visible={isFetching} />
+            <LoadingOverlay
+              visible={isFetching}
+              data-testid="loading-overlay"
+            />
             <TreeTable
               instance={treeTableInstance}
               hierarchical={false}
@@ -340,7 +342,7 @@ function ApiKeyUsageEventsTableInner({
         <Flex justify="flex-end">
           <PaginationControls
             page={page}
-            pageSize={EVENTS_PAGE_SIZE}
+            pageSize={PAGE_SIZE}
             itemsLength={rows.length}
             total={total}
             showTotal

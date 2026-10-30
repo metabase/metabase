@@ -24,7 +24,10 @@ import {
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_LIBRARY,
+} from "metabase/plugins";
 import { useParams } from "metabase/router";
 import {
   ActionIcon,
@@ -79,7 +82,9 @@ function DataModelContent() {
     data: databasesData,
     error: databasesError,
     isLoading: isLoadingDatabases,
-  } = useListDatabasesQuery();
+  } = useListDatabasesQuery(
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  );
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );

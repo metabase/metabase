@@ -9,7 +9,6 @@
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
@@ -288,20 +287,17 @@
                              :files         file-names}
                             (first ingest-errors)))))
         (log/infof "Starting deserialization, total %s documents" (count contents))
-        (try
-          (reduce (fn [ctx item]
-                    (try
-                      (load-one! ctx item)
-                      (catch Exception e
-                        (when-not continue-on-error
-                          (throw e))
-                        ;; eschew big and scary stacktrace
-                        (log/warnf (u/strip-error e "Skipping deserialization error"))
-                        (update ctx :errors conj e))))
-                  ctx
-                  contents)
-          (finally
-            (dependencies.hooks/after-serdes-load))))
+        (reduce (fn [ctx item]
+                  (try
+                    (load-one! ctx item)
+                    (catch Exception e
+                      (when-not continue-on-error
+                        (throw e))
+                      ;; eschew big and scary stacktrace
+                      (log/warnf (u/strip-error e "Skipping deserialization error"))
+                      (update ctx :errors conj e))))
+                ctx
+                contents))
       (when reindex?
         ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
         ;; search index entries; this ensures the index reflects the final state.

@@ -86,7 +86,7 @@
   (mt/with-temp [:model/Card {:keys [id] :as card} {:name "A card"}]
     (create-card-revision! (:id card) true :rasta)
     (doseq [i (range (inc revision/max-revisions))]
-      (t2/update! :model/Card (:id card) {:name (format "New name %d" i)})
+      (t2/update! :model/Card :id (:id card) {:name (format "New name %d" i)})
       (create-card-revision! (:id card) false :rasta))
     (is (= ["renamed this Card from \"New name 14\" to \"New name 15\"."
             "renamed this Card from \"New name 13\" to \"New name 14\"."
@@ -161,7 +161,7 @@
                                        :type     "native"
                                        :native   {:query "SELECT 2 --comment"}}}}]
         (create-transform-revision! transform-id true :crowberto)
-        (t2/update! :model/Transform transform-id
+        (t2/update! :model/Transform :id transform-id
                     {:source {:type  "query"
                               :query {:database y-db-id
                                       :type     "native"
@@ -303,6 +303,18 @@
           ;; with-non-admin-groups-no-root-collection-perms wrapper)
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post "revision/revert" update-req))))))))
+
+(deftest revert-card-to-revision-with-sensitive-field-test
+  (testing "a non-admin can revert a card to a revision that references a :sensitive column (SEC-829)"
+    (mt/with-temp [:model/Card {card-id :id} {:creator_id    (mt/user->id :crowberto)
+                                              :dataset_query (mt/mbql-query users {:fields [$id $password]})}]
+      (create-card-revision! card-id true :crowberto)
+      (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query users {:fields [$id]})})
+      (create-card-revision! card-id false :crowberto)
+      (let [[_ {earlier-revision-id :id}] (revision/revisions :model/Card card-id)]
+        (mt/user-http-request :rasta :post 200 "revision/revert"
+                              {:entity :card, :id card-id, :revision_id earlier-revision-id})
+        (is (= 2 (-> (t2/select-one :model/Card :id card-id) :dataset_query lib/fields count)))))))
 
 (deftest dashboard-revision-description-test
   (testing "revision description for dashboard are generated correctly"
@@ -706,7 +718,7 @@
                      :model/Card {card-id :id} {}]
         (update-dashcards! dash-id [card-id dq-id])
         (update-dashcards! dash-id [])
-        (t2/update! :model/Card dq-id {:dashboard_id other-dash-id})
+        (t2/update! :model/Card :id dq-id {:dashboard_id other-dash-id})
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
         (is (= #{card-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))
         (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))))))
@@ -719,7 +731,7 @@
                      :model/Card {card-id :id} {}]
         (update-dashcards! dash-id [card-id dq-id])
         ;; make it a non-DQ before removing it, otherwise it will be auto-archived
-        (t2/update! :model/Card dq-id {:dashboard_id nil})
+        (t2/update! :model/Card :id dq-id {:dashboard_id nil})
         (update-dashcards! dash-id [])
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
         (is (= #{dq-id card-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))
@@ -734,7 +746,7 @@
                      :model/Card {card-id :id} {}]
         (update-dashcards! dash-id [card-id dq-id])
         (update-dashcards! dash-id [])
-        (t2/update! :model/Card card-id {:dashboard_id other-dash-id})
+        (t2/update! :model/Card :id card-id {:dashboard_id other-dash-id})
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
         (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))
         (is (= #{dq-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))))))
@@ -758,7 +770,7 @@
                                                             :breakout     [!month.orders.created_at]}})}]
         (update-dashcards! dash-id [dq-id])
         ;; turn it into a model outside the DQ
-        (t2/update! :model/Card dq-id {:dashboard_id nil :type :model})
+        (t2/update! :model/Card :id dq-id {:dashboard_id nil :type :model})
         ;; remove it from the dashboard
         (update-dashcards! dash-id [])
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
@@ -1005,7 +1017,7 @@
   (testing "Reverting a Card through the API works"
     (mt/with-temp [:model/Card {card-id :id} {:name "revert test"}]
       (create-card-revision! card-id true :crowberto)
-      (t2/update! :model/Card card-id {:description "hi"})
+      (t2/update! :model/Card :id card-id {:description "hi"})
       (create-card-revision! card-id false :crowberto)
       (let [[_ {prev-id :id}] (revision/revisions :model/Card card-id)]
         (is (=? {:description "reverted to an earlier version."}
@@ -1059,7 +1071,7 @@
       (let [original-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
             original-names    (map :display_name original-metadata)]
         (create-card-revision! card-id true :crowberto)
-        (t2/update! :model/Card card-id
+        (t2/update! :model/Card :id card-id
                     {:result_metadata        (mapv #(assoc % :display_name "EDITED") original-metadata)
                      :visualization_settings {:some_setting true}})
         (create-card-revision! card-id false :crowberto)
@@ -1124,7 +1136,7 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
         (create-dashboard-revision! public-id true :crowberto)
         ;; the card stays on the dashboard, but as a visualizer dashcard its events are no longer shown
-        (t2/update! :model/DashboardCard dashcard-id
+        (t2/update! :model/DashboardCard :id dashcard-id
                     {:visualization_settings {:visualization {:display "line" :columnValuesMapping {} :settings {}}}})
         (create-dashboard-revision! public-id false :crowberto)
         (let [[_ {revision-id :id}] (revision/revisions :model/Dashboard public-id)]

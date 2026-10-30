@@ -54,7 +54,7 @@
         ;; means the pivot-grouping bitmask varies per row and needs to lead the ORDER BY.
         multi-set?         (some? (nnext (first (:group-by result))))]
     (assoc result :order-by
-           (into (if multi-set? [[[:inline pivot-grouping-pos] :asc]] [])
+           (into (if multi-set? [[[:inline pivot-grouping-pos] :desc]] [])
                  (map (fn [p] [[:inline p] :asc]))
                  breakout-positions))))
 

@@ -98,7 +98,8 @@ const MetabotMentionSuggestionComponent = forwardRef<
       model !== "action" &&
       model !== "segment" &&
       model !== "user" &&
-      model !== "measure",
+      model !== "measure" &&
+      model !== "data-app",
   );
 
   const shouldHide = useMemo(() => {

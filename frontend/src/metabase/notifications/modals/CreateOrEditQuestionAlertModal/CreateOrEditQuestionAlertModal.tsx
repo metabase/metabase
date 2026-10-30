@@ -312,7 +312,6 @@ export const CreateOrEditQuestionAlertModal = ({
       opened
       size={rem(680)}
       onClose={onClose}
-      padding="2.5rem"
       title={isEditMode ? t`Edit alert` : t`New alert`}
       styles={{
         body: {
@@ -322,7 +321,7 @@ export const CreateOrEditQuestionAlertModal = ({
         },
       }}
     >
-      <Stack gap="xxl" mt="1.5rem" mb="2rem" px="2.5rem">
+      <Stack gap="xxl" mt="1.5rem" mb="2rem" px="xl">
         <AlertModalSettingsBlock
           title={t`What do you want to be alerted about?`}
         >
@@ -407,11 +406,6 @@ export const CreateOrEditQuestionAlertModal = ({
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Delete this Alert after it's triggered`}
-            styles={{
-              label: {
-                lineHeight: "1.5rem",
-              },
-            }}
             labelPosition="right"
             checked={notification.payload?.send_once}
             onChange={(event) => {
@@ -433,7 +427,7 @@ export const CreateOrEditQuestionAlertModal = ({
       <Flex
         justify="space-between"
         align="center"
-        px="2.5rem"
+        px="xl"
         pt="xl"
         className={CS.borderTop}
       >

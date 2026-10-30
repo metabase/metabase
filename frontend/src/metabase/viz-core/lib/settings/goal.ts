@@ -1,44 +1,13 @@
 import { t } from "ttag";
 
-import type {
-  ColumnSettings,
-  DatasetColumn,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 
 import { getFormattingOptionsWithoutScaling } from "../../echarts/cartesian/model/util";
 import { getDefaultGoalLabel } from "../../shared/settings/cartesian-chart";
-import type { ChartGoal } from "../../shared/types/settings";
 import type {
   ComputedVisualizationSettings,
   VisualizationSettingsDefinitions,
 } from "../../types";
-import { getGoalAxisValue, getNumericGoalValue } from "../dynamic-goals";
-
-import { getStackOffset } from "./stacking";
-
-export const getChartGoal = (
-  settings: VisualizationSettings,
-): ChartGoal | null => {
-  if (!settings["graph.show_goal"]) {
-    return null;
-  }
-
-  // an unset goal has always drawn the line at 0
-  const goalValue =
-    settings["graph.goal_value"] == null ? 0 : getNumericGoalValue(settings);
-
-  if (goalValue === null) {
-    return null;
-  }
-
-  const isNormalized = getStackOffset(settings) === "expand";
-
-  return {
-    value: getGoalAxisValue(goalValue, isNormalized),
-    label: settings["graph.goal_label"] ?? getDefaultGoalLabel(),
-  };
-};
 
 export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.show_goal": {

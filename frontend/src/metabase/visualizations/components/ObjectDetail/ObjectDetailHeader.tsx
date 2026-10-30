@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import type { ActionItem } from "metabase/actions/utils";

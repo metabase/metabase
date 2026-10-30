@@ -3,7 +3,7 @@
   (`{instructions, synonyms[], examples[]}`) for the entity identified by `entity_type`/`entity_local_id`.
 
   Identity is the logical `(entity_type, entity_local_id)` pair — that compound key is the primary key, so
-  there is one row per entity and no surrogate id or serialization NanoID.
+  there is one row per entity and no surrogate id. The `entity_id` NanoID only orders exported rows.
 
   This table is authoritative.
   An enterprise pgvector index (`library_entity_index`) is reconciled against this table plus live
@@ -28,6 +28,7 @@
 
 (doto :model/OsiAiContext
   (derive :metabase/model)
+  (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 ;; The logical (entity_type, entity_local_id) pair is the primary key — no surrogate id.
@@ -78,7 +79,7 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 ;;;
-;;; A row's identity is its entity ref: `entity_type` plus the entity it describes. Rather than a separate
+;;; A row's identity is its entity ref: `entity_type` plus the entity it describes. Rather than its `entity_id`
 ;;; NanoID, serdes nests the row under its entity's portable path (mirroring
 ;;; [[metabase.warehouse-schema.models.field-user-settings]], which hangs off its Field): the path is the
 ;;; entity's path plus a constant `OsiAiContext` segment. So both key columns are carried by the path —
@@ -156,10 +157,8 @@
 ;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
 ;; verbatim. The key columns are exported so [[serdes/ingested-path]] can rebuild the path, and imported from that path.
 (defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
-  {:copy      [:ai_context]
-   :transform {:created_at      (serdes/date)
-               :updated_at      (serdes/date)
-               :entity_type     {:export identity
+  {:copy      [:ai_context :entity_id]
+   :transform {:entity_type     {:export identity
                                  :import-with-context
                                  (fn [current _ _] (:entity_type (parent-path->entity (pop (serdes/path current)))))}
                :entity_local_id {::serdes/fk true

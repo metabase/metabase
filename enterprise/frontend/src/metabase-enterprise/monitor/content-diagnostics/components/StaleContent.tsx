@@ -1,5 +1,5 @@
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { useListStaleFindingsQuery } from "metabase-enterprise/api";
-import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 
 import { type StaleContentParams, staleContentConfig } from "../config";
 

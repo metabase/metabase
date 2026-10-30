@@ -283,8 +283,6 @@
   [& args]
   `(logf :error ~@args))
 
-;; part of the public log API; its callers live in test and EE code outside this lint's view
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro fatal
   "Log one or more args at the `:fatal` level."
   {:arglists '([& args] [e & args])}
@@ -316,7 +314,6 @@
      :clj  `(clojure.tools.logging/spy ~level ~expr))))
 
 ;; legacy REPL/debug API with no in-tree callers; retained pending a compatibility/removal audit
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro spyf
   "Evaluates an expression, and may write both the form and its formatted result to the log.
   Defaults to the `:debug` level."

@@ -119,11 +119,12 @@
 
 (deftest ^:parallel one-breakout-rows-only-test
   (testing "single breakout, rows-only, both totals: SELECT gets GROUPING(..) AS pivot-grouping; GROUP BY becomes
-            GROUPING SETS with detail + grand-total; ORDER BY prefixed with GROUPING(..) ASC."
+            GROUPING SETS with detail + grand-total; ORDER BY prefixed with GROUPING(..) DESC so rollups
+            survive truncation."
     (is (=? {:select  [:b1
                        [[::sql.pivot/grouping-fn some?] "pivot-grouping"]]
              :group-by [[::sql.pivot/grouping-sets [some?] []]]
-             :order-by [[[::sql.pivot/grouping-fn some?] :asc]]}
+             :order-by [[[::sql.pivot/grouping-fn some?] :desc]]}
             (compile-grouping-sets [(b1)] {:rows [b1-uuid] :columns []
                                            :show-row-totals true :show-column-totals true})))))
 
@@ -172,13 +173,14 @@
         (#'sql.pivot/compile-grouping-sets-pivot :sql starting stage)))))
 
 (deftest ^:parallel order-by-prepends-grouping-test
-  (testing "GROUPING(...) ASC is prepended as the primary sort; existing :order-by entries pass through untouched
-            (callers are expected to have already stripped non-aggregation order-bys upstream)"
+  (testing "GROUPING(...) DESC is prepended as the primary sort so rollups come first; existing :order-by
+            entries pass through untouched (callers are expected to have already stripped non-aggregation
+            order-bys upstream)"
     (let [out (compile-grouping-sets-with-order-by
                [(b1)]
                {:rows [b1-uuid] :columns [] :show-row-totals true :show-column-totals true}
                [[:count :desc]])]
-      (is (=? [[[::sql.pivot/grouping-fn some?] :asc]
+      (is (=? [[[::sql.pivot/grouping-fn some?] :desc]
                [:count :desc]]
               (:order-by out))))))
 

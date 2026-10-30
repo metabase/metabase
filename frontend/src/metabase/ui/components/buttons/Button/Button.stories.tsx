@@ -383,9 +383,21 @@ const OnDarkTemplate = () => (
       sizes={MATRIX_SIZES}
     />
     <MatrixSection
+      title="Primary · Negative"
+      variant="on-dark-primary"
+      color="negative"
+      sizes={MATRIX_SIZES}
+    />
+    <MatrixSection
       title="Secondary"
       variant="on-dark-secondary"
       color="brand"
+      sizes={MATRIX_SIZES}
+    />
+    <MatrixSection
+      title="Secondary · Negative"
+      variant="on-dark-secondary"
+      color="negative"
       sizes={MATRIX_SIZES}
     />
   </StoryBoard>

@@ -4,6 +4,7 @@ import {
   createSlice,
 } from "@reduxjs/toolkit";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { combineReducers, handleActions } from "metabase/redux";
 import type {
   DetailViewState,
@@ -14,6 +15,7 @@ import type {
 import { LOCATION_CHANGE, navigate } from "metabase/router";
 import { shouldOpenInBlankWindow } from "metabase/urls";
 import { isSmallScreen, openInBlankWindow } from "metabase/utils/dom";
+import { isObject } from "metabase-types/guards/common";
 
 interface LocationChangeAction {
   type: string; // "@@router/LOCATION_CHANGE"
@@ -54,7 +56,10 @@ export const openUrl = (url: string) => () => {
 
 const errorPage = handleActions(
   {
-    [SET_ERROR_PAGE]: (_, { payload }) => payload,
+    [SET_ERROR_PAGE]: (_, { payload }: { payload: unknown }) =>
+      isObject(payload)
+        ? { ...payload, message: findErrorMessage(payload) }
+        : payload,
     [RESET_ERROR_PAGE]: () => null,
     [LOCATION_CHANGE]: () => null,
   },

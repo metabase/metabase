@@ -67,7 +67,7 @@
 (mu/defn transform-last-checkpoint-value
   "The last checkpoint value of the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id))
+  (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] :id [:auto/param transform-id]))
 
 (mu/defn transform-collection-id
   "The Collection ID of the Transform with `transform-id`."
@@ -83,12 +83,12 @@
   "Apply `changes` to the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform
    changes      :- ::transforms.schema/transform.update]
-  (t2/update! :model/Transform transform-id changes))
+  (t2/update! :model/Transform :id transform-id changes))
 
 (mu/defn delete-transform!
   "Delete the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/Transform transform-id))
+  (t2/delete! :model/Transform :id transform-id))
 
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
@@ -183,6 +183,11 @@
   "The active TransformJobs."
   []
   (t2/select :model/TransformJob :active true))
+
+(mu/defn inactive-job-ids
+  "The IDs of the inactive TransformJobs."
+  []
+  (t2/select-pks-set :model/TransformJob :active false))
 
 (mu/defn job-snapshot
   "The name, entity ID, and built-in type of the TransformJob with `job-id`."
@@ -333,28 +338,28 @@
   "Builds a `:order-by` clause for the paged run listing, translating display values for sortable columns per
   `status-labels`/`run-method-labels`/`tag-name-labels` (maps of raw value to display label)."
   [sort-column sort-direction status-labels run-method-labels tag-name-labels]
-  (let [sort-column    (or (keyword sort-column) :start-time)
-        sort-direction (or (keyword sort-direction) :desc)
-        nulls-sort     (if (= sort-direction :asc)
-                         :nulls-last
-                         :nulls-first)]
+  (let [sort-column               (or (keyword sort-column) :start-time)
+        sort-direction            (or (keyword sort-direction) :desc)
+        sort-direction-with-nulls (case sort-direction
+                                    :asc  :asc-nulls-last
+                                    :desc :desc-nulls-first)]
     (conj
      (case sort-column
-       :transform-name  [[:transform.name sort-direction]]
-       :start-time      [[:start_time sort-direction]]
-       :end-time        [[:end_time sort-direction nulls-sort]]
-       :status          [[(label-case :status status-labels) sort-direction]]
-       :run-method      [[(label-case :run_method run-method-labels) sort-direction]]
-       :transform-tags  [[(first-tag-name-subquery tag-name-labels) sort-direction nulls-sort]]
+       :transform-name [[:transform.name sort-direction]]
+       :start-time     [[:start_time sort-direction]]
+       :end-time       [[:end_time sort-direction-with-nulls]]
+       :status         [[(label-case :status status-labels) sort-direction]]
+       :run-method     [[(label-case :run_method run-method-labels) sort-direction]]
+       :transform-tags [[(first-tag-name-subquery tag-name-labels) sort-direction-with-nulls]]
        ;; In-progress runs (end_time = nil) sink to the bottom in BOTH
        ;; directions — null means "no measurable duration yet," not
        ;; "longest duration."
-       :duration        [[[:is :end_time nil] :asc]
-                         [(h2x/calculate-interval-honeysql-form
-                           (mdb/db-type) :end_time :start_time)
-                          sort-direction]]
+       :duration       [[[:is :end_time nil] :asc]
+                        [(h2x/calculate-interval-honeysql-form
+                          (mdb/db-type) :end_time :start_time)
+                         sort-direction]]
        [[:start_time sort-direction]
-        [:end_time   sort-direction nulls-sort]])
+        [:end_time   sort-direction-with-nulls]])
      [:transform_run.id sort-direction])))
 
 (def ^:private RunFilters
@@ -466,7 +471,7 @@
   [transform-ids :- [:maybe [:or
                              [:set ::lib.schema.id/transform]
                              [:sequential ::lib.schema.id/transform]]]]
-  (t2/select :model/TransformRun (latest-run-start-times-query transform-ids)))
+  (t2/select :model/TransformRun (h2x/assert-map-or-nil! (latest-run-start-times-query transform-ids))))
 
 (mu/defn insert-run!
   "Insert `run` and return the new instance."
@@ -570,13 +575,15 @@
 
 (defn- job-run-order-by
   [sort-column sort-direction]
-  (let [sort-direction (or (keyword sort-direction) :desc)
-        nulls-sort     (if (= sort-direction :asc) :nulls-last :nulls-first)]
+  (let [sort-direction            (or (keyword sort-direction) :desc)
+        sort-direction-with-nulls (case sort-direction
+                                    :asc  :asc-nulls-last
+                                    :desc :desc-nulls-first)]
     (case (keyword sort-column)
       :start_time [[:start_time sort-direction]]
-      :end_time   [[:end_time sort-direction nulls-sort]]
+      :end_time   [[:end_time sort-direction-with-nulls]]
       [[:start_time sort-direction]
-       [:end_time   sort-direction nulls-sort]])))
+       [:end_time   sort-direction-with-nulls]])))
 
 (mu/defn job-runs
   "Up to `limit` (offset by `offset`) TransformJobRuns, optionally narrowed to `job-id`, `status`, `run-method`, and
@@ -663,11 +670,13 @@
 ;;; ------------------------------------------ Root run listing ------------------------------------------
 
 ;; Each branch must project the same columns in the same order for the UNION ALL to line up;
-;; `[nil :col]` fills in columns a table lacks.
+;; `[nil :col]` fills in columns a table lacks. The `run_type`/`run_method` discriminators have to be real SQL
+;; literals rather than plain strings: a string compiles to a `?` parameter, and H2 cannot work out the type of
+;; a parameter in the select list of a derived table (`Unknown data type: "RUN_TYPE"`).
 
 (defn- job-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "job"] :run_type]
+  {:select [[(h2x/literal "job") :run_type]
             :id
             [:job_id :entity_id]
             [:job_name :entity_name]
@@ -688,13 +697,13 @@
 
 (defn- dag-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "dag"] :run_type]
+  {:select [[(h2x/literal "dag") :run_type]
             :id
             [:source_transform_id :entity_id]
             [:source_transform_name :entity_name]
             :direction
             :transform_count
-            [^:allow-raw-sql [:inline "manual"] :run_method]
+            [(h2x/literal "manual") :run_method]
             :status :is_active :start_time :end_time :message
             :user_id]
    :from   [:transform_dag_run]
@@ -708,7 +717,7 @@
 
 (defn- transform-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "transform"] :run_type]
+  {:select [[(h2x/literal "transform") :run_type]
             :id
             [:transform_id :entity_id]
             [:transform_name :entity_name]
@@ -751,15 +760,18 @@
 (defn- root-run-order-by
   "Standard `:order-by` clause for a paged root-run listing. Sorts by `sort-column` (`:start_time` or `:end_time`;
   anything else — including nil — falls back to ordering by start_time then end_time) in `sort-direction`
-  (`:asc`/`:desc`, defaulting to `:desc`), with in-progress rows (null `end_time`) always ordered last."
+  (`:asc`/`:desc`, defaulting to `:desc`), with in-progress rows (null `end_time`) ordered as the most recent: last
+  ascending, first descending."
   [sort-column sort-direction]
-  (let [sort-direction (or (keyword sort-direction) :desc)
-        nulls-sort     (if (= sort-direction :asc) :nulls-last :nulls-first)]
+  (let [sort-direction            (or (keyword sort-direction) :desc)
+        sort-direction-with-nulls (case sort-direction
+                                    :asc  :asc-nulls-last
+                                    :desc :desc-nulls-first)]
     (case (keyword sort-column)
       :start_time [[:start_time sort-direction]]
-      :end_time   [[:end_time sort-direction nulls-sort]]
+      :end_time   [[:end_time sort-direction-with-nulls]]
       [[:start_time sort-direction]
-       [:end_time   sort-direction nulls-sort]])))
+       [:end_time   sort-direction-with-nulls]])))
 
 (mu/defn root-run-summaries-page
   "Up to `limit` (offset by `offset`) root-run summary rows -- see [[metabase.transforms.run-listing]] -- of `types`
@@ -813,7 +825,7 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

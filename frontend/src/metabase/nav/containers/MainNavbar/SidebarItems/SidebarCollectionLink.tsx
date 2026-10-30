@@ -51,7 +51,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
     ref,
   ) {
     const wasHovered = usePrevious(isHovered);
-    const timeoutId = useRef<number>();
+    const timeoutId = useRef<number>(undefined);
     const isTenantUser = useSelector(getIsTenantUser);
 
     useEffect(() => {

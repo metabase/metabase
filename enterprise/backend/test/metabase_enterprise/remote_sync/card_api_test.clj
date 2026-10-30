@@ -2,12 +2,14 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.card-api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(use-fixtures :each (fn [f]
-                      (mt/with-temporary-setting-values [remote-sync-type :read-write]
-                        (f))))
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections (fn [f]
+                                                   (mt/with-temporary-setting-values [remote-sync-type :read-write]
+                                                     (f))))
 
 (deftest bulk-move-into-remote-synced-with-non-remote-synced-deps-test
   (testing "POST /api/card/collections rejects bulk-moving a card with non-remote-synced dependencies into a remote-synced collection (GHY-3791)"
@@ -27,7 +29,7 @@
         (is (= "Uses content that is not remote synced." (:message response)))
         (is (seq (:non-remote-synced-models response))))
       (testing "card is not moved - transaction rolled back"
-        (is (nil? (t2/select-one-fn :collection_id :model/Card root-card-id)))))))
+        (is (nil? (t2/select-one-fn :collection_id :model/Card :id root-card-id)))))))
 
 (deftest bulk-move-depended-on-card-out-of-remote-synced-test
   (testing "POST /api/card/collections rejects bulk-moving a remote-synced card that is depended on by other remote-synced content out of the synced set (GHY-3791)"
@@ -45,7 +47,7 @@
         (is (= "Used by remote synced content." (:message response)))
         (is (seq (:remote-synced-models response))))
       (testing "card is not moved - transaction rolled back"
-        (is (= synced-id (t2/select-one-fn :collection_id :model/Card source-card-id)))))))
+        (is (= synced-id (t2/select-one-fn :collection_id :model/Card :id source-card-id)))))))
 
 (deftest bulk-move-into-remote-synced-with-remote-synced-deps-succeeds-test
   (testing "POST /api/card/collections allows bulk-moving a card whose dependencies are all remote-synced into a remote-synced collection (GHY-3791)"
@@ -60,4 +62,4 @@
              (mt/user-http-request :crowberto :post 200 "card/collections"
                                    {:collection_id synced-id
                                     :card_ids [mover-id]})))
-      (is (= synced-id (t2/select-one-fn :collection_id :model/Card mover-id))))))
+      (is (= synced-id (t2/select-one-fn :collection_id :model/Card :id mover-id))))))

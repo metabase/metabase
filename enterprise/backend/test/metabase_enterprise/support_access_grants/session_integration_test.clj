@@ -340,7 +340,7 @@
                                                         :ticket_number "TICKET-FIRST"))))
             ;; Deactivate the support user (simulates admin action or cleanup)
             (let [support-user (t2/select-one [:model/User :id :is_active] :email email)]
-              (t2/update! :model/User (:id support-user) {:is_active false})
+              (t2/update! :model/User :id (:id support-user) {:is_active false})
               (is (false? (:is_active (t2/select-one [:model/User :is_active]
                                                      :id (:id support-user))))
                   "User should be deactivated"))

@@ -117,6 +117,18 @@ describe("QueryVisualization", () => {
     jest.useRealTimers();
   });
 
+  it("should show the loading message while the query runs", async () => {
+    setupWithoutResult({ isRunning: true });
+
+    expect(await screen.findByText("Doing science...")).toBeInTheDocument();
+  });
+
+  it("should not show the loading message when the query does not run", () => {
+    setupWithoutResult({ isRunning: false });
+
+    expect(screen.queryByText("Doing science...")).not.toBeInTheDocument();
+  });
+
   it("shows a red warning that opens the display settings when the goal value cannot be resolved", async () => {
     const { onOpenChartSettings } = await setup({
       referencedEntities: createMockFailedReferencedEntitiesResults(),
@@ -207,6 +219,26 @@ describe("QueryVisualization", () => {
     expect(queryWarningIcon()).not.toBeInTheDocument();
   });
 });
+
+function setupWithoutResult({ isRunning }: { isRunning: boolean }) {
+  const question = new Question(
+    {
+      dataset_query: {
+        type: "query",
+        query: { "source-table": ORDERS_ID },
+        database: SAMPLE_DB_ID,
+      },
+      display: "table",
+      visualization_settings: {},
+    },
+    metadata,
+  );
+
+  renderWithProviders(
+    <QueryVisualization question={question} isRunning={isRunning} />,
+    { storeInitialState: state },
+  );
+}
 
 function createResult({ referencedEntities, rowsTruncated }: ResultOpts = {}) {
   return createMockDataset({

@@ -94,7 +94,7 @@
                find-table-body
                cell-value->background-color)))))
 
-(deftest header-truncation-test []
+(deftest header-truncation-test
   (let [[normal-heading long-heading :as row] ["Count" (apply str (repeat 120 "A"))]
         [normal-rendered long-rendered]       (->> (#'table/render-table-head row {:row row} nil {} false)
                                                    (tree-seq vector? rest)

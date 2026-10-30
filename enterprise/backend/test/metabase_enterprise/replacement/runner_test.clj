@@ -189,7 +189,7 @@
               ;; populate dependencies
               (events/publish-event! :event/card-create {:object old-card :user-id (mt/user->id :rasta)})
               (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :rasta)})
-              (deps.test/synchronously-run-backfill!)
+              (deps.test/synchronously-run-dependency-job!)
               (testing "child card initially points to old model"
                 (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
                                       [:stages 0 :source-card]))))
@@ -243,7 +243,7 @@
             (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               (doseq [card [old-card child-1 child-2]]
                 (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
-              (deps.test/synchronously-run-backfill!)
+              (deps.test/synchronously-run-dependency-job!)
               (let [original-swap! (mt/original-fn #'replacement.source-swap/swap-source!)]
                 (mt/with-dynamic-fn-redefs [replacement.source-swap/swap-source!
                                             (fn [entity object old-source new-source]

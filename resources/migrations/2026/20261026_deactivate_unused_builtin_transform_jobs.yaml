@@ -1,0 +1,27 @@
+## The built-in transform jobs from migration 057 exist on every instance and run any transform with a matching tag,
+## also transforms that remote sync pulls into a development instance. Built-in jobs that no transform uses become
+## inactive, so a user must enable them. Built-in jobs that a transform uses keep running.
+## When the app changes a built-in job, the TransformJob before-update hook sets built_in_type to NULL. A serdes import
+## never sets active: a job that the import inserts gets the column default (active).
+## The rollback activates all inactive built-in jobs.
+
+databaseChangeLog:
+  - changeSet:
+      id: pyz33j
+      author: tplude
+      comment: Deactivate the built-in transform jobs that no transform uses
+      changes:
+        - sql:
+            sql: >-
+              UPDATE transform_job SET active = FALSE
+              WHERE built_in_type IS NOT NULL
+                AND active = TRUE
+                AND NOT EXISTS (SELECT 1 FROM transform_job_transform_tag jt
+                                JOIN transform_transform_tag tt ON tt.tag_id = jt.tag_id
+                                WHERE jt.job_id = transform_job.id);
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE transform_job SET active = TRUE
+              WHERE built_in_type IS NOT NULL
+                AND active = FALSE;

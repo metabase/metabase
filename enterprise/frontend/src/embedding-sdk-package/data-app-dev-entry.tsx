@@ -26,10 +26,10 @@ import {
   sdkVersion,
 } from "virtual:metabase-data-app-dev-config";
 
-import { DATA_APP_PROVIDER_PROP_KEYS } from "metabase-enterprise/data_apps/sandbox/types";
+import { DATA_APP_PROVIDER_PROP_KEYS } from "metabase-enterprise/data-apps/sandbox/types";
 // The same baseline reset the production iframe loads (`iframe-vendors.ts`), so the
 // dev preview matches production. style-loader injects it at runtime.
-import "metabase-enterprise/data_apps/sandbox/iframe-baseline.css";
+import "metabase-enterprise/data-apps/sandbox/iframe-baseline.css";
 
 const authConfig = {
   metabaseInstanceUrl: import.meta.env.DATA_APP_MB_URL ?? "",

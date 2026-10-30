@@ -1,13 +1,14 @@
 import cx from "classnames";
-import { useLayoutEffect, useRef, useState } from "react";
-import { t } from "ttag";
+import { useRef } from "react";
 
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Popover } from "metabase/ui";
+import { useLegendOverflow } from "metabase/visualizations/hooks/use-legend-overflow";
 
 import LegendS from "./Legend.module.css";
 import { LegendItem } from "./LegendItem";
+import { getOverflowLabel } from "./legend/measure";
 import type { LegendProps } from "./types";
 
 export function LegendVertical({
@@ -19,62 +20,19 @@ export function LegendVertical({
   onHoverChange,
   onToggleSeriesVisibility,
 }: LegendProps) {
-  const [overflowCount, setOverflowCount] = useState(0);
-  const [size, setSize] = useState<DOMRect | null>(null);
-  const listContainerRef = useRef<HTMLOListElement>(null);
-  const itemRefs = useRef<Record<number, HTMLLIElement | null>>({});
-  const legendItemRefs = useRef<Record<number, HTMLSpanElement | null>>({});
-  const prevOverflowCountRef = useRef(overflowCount);
-
-  // Measures whether legend items overflow the widget area. Runs after every
-  // render because the container can resize without any prop or state change.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useLayoutEffect(() => {
-    const prevOverflowCount = prevOverflowCountRef.current;
-    prevOverflowCountRef.current = overflowCount;
-
-    const containerRect = listContainerRef.current?.getBoundingClientRect();
-    if (!containerRect) {
-      return;
-    }
-
-    // check the height, width may fluctuate depending on the browser causing an infinite loop
-    // check overflowCount, because after setting overflowCount the height changes and it causing an infinite loop too
-    if (
-      size &&
-      containerRect.height !== size.height &&
-      prevOverflowCount === overflowCount
-    ) {
-      setOverflowCount(0);
-      setSize(containerRect);
-    } else if (overflowCount === 0) {
-      let currentOverflowCount = 0;
-      for (let i = 0; i < titles.length; i++) {
-        const itemRect = itemRefs.current[i]?.getBoundingClientRect();
-        if (
-          itemRect &&
-          (containerRect.top > itemRect.top ||
-            containerRect.bottom < itemRect.bottom)
-        ) {
-          currentOverflowCount++;
-        }
-      }
-      if (currentOverflowCount !== overflowCount) {
-        setOverflowCount(currentOverflowCount);
-        setSize(containerRect);
-      }
-    }
+  const { visibleCount, containerRef, itemRefs } = useLegendOverflow({
+    titles,
+    minVisibleCount: 0,
+    axis: "vertical",
   });
-
-  const hasOverflow = overflowCount > 0;
-  const items = hasOverflow ? titles.slice(0, -overflowCount - 1) : titles;
+  const legendItemRefs = useRef<Record<number, HTMLSpanElement | null>>({});
 
   return (
     <ol
       className={cx(className, LegendS.Legend, LegendS.vertical)}
-      ref={listContainerRef}
+      ref={containerRef}
     >
-      {items.map((title, index) => {
+      {titles.slice(0, visibleCount).map((title, index) => {
         const isMuted = hovered?.index != null && index !== hovered.index;
         const legendItemTitle = Array.isArray(title) ? title[0] : title;
         const isVisible = !hiddenIndices.includes(index);
@@ -142,34 +100,61 @@ export function LegendVertical({
           </li>
         );
       })}
-      {hasOverflow ? (
-        <Popover>
-          <Popover.Target>
-            <li className={cx(CS.flex, CS.flexNoShrink, CS.cursorPointer)}>
-              <LegendItem
-                title={overflowCount + 1 + " " + t`more`}
-                color="gray"
-                showTooltip={false}
-              />
-            </li>
-          </Popover.Target>
-          <Popover.Dropdown>
-            <LegendVertical
-              className={CS.p2}
-              titles={titles.slice(-overflowCount - 1)}
-              colors={colors
-                .slice(-overflowCount - 1)
-                .concat(colors.slice(0, -overflowCount - 1))}
-              hiddenIndices={hiddenIndices
-                .filter((i) => i >= items.length - 1)
-                .map((i) => i - items.length)}
-              onToggleSeriesVisibility={(event, sliceIndex) =>
-                onToggleSeriesVisibility?.(event, sliceIndex + items.length)
-              }
-            />
-          </Popover.Dropdown>
-        </Popover>
-      ) : null}
+      {visibleCount < titles.length && (
+        <LegendOverflow
+          titles={titles}
+          colors={colors}
+          hiddenIndices={hiddenIndices}
+          visibleCount={visibleCount}
+          onToggleSeriesVisibility={onToggleSeriesVisibility}
+        />
+      )}
     </ol>
+  );
+}
+
+type LegendOverflowProps = Pick<
+  LegendProps,
+  "titles" | "colors" | "hiddenIndices" | "onToggleSeriesVisibility"
+> & {
+  visibleCount: number;
+};
+
+export function LegendOverflow({
+  titles,
+  colors,
+  hiddenIndices = [],
+  visibleCount,
+  onToggleSeriesVisibility,
+}: LegendOverflowProps) {
+  const foldedCount = titles.length - visibleCount;
+
+  return (
+    <Popover>
+      <Popover.Target>
+        <li className={cx(CS.flex, CS.flexNoShrink, CS.cursorPointer)}>
+          <LegendItem
+            title={getOverflowLabel(foldedCount)}
+            color="gray"
+            showTooltip={false}
+          />
+        </li>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <LegendVertical
+          className={CS.p2}
+          titles={titles.slice(-foldedCount)}
+          colors={colors
+            .slice(-foldedCount)
+            .concat(colors.slice(0, -foldedCount))}
+          hiddenIndices={hiddenIndices
+            .filter((i) => i >= visibleCount)
+            .map((i) => i - visibleCount)}
+          onToggleSeriesVisibility={(event, sliceIndex) =>
+            onToggleSeriesVisibility?.(event, sliceIndex + visibleCount)
+          }
+        />
+      </Popover.Dropdown>
+    </Popover>
   );
 }

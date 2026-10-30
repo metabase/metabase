@@ -23,7 +23,8 @@ export type VersionComparisonResult = "upgrade" | "downgrade" | "same";
 
 export const isHead = (version: string): boolean => version === "HEAD";
 
-export const isRollingTag = (version: string): boolean => version.endsWith(".x");
+export const isRollingTag = (version: string): boolean =>
+  version.endsWith(".x");
 
 // ============================================================================
 // Pure helpers for HEAD versions

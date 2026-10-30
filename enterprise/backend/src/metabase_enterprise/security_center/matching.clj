@@ -2,6 +2,7 @@
   "Advisory matching engine. Evaluates HoneySQL queries against the appdb
    and combines with version checks to determine match status."
   (:require
+   [honey.sql :as sql]
    [metabase-enterprise.security-center.db :as security-center.db]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
@@ -68,7 +69,9 @@
       even if the driver doesn't enforce read-only
    3. setQueryTimeout — kills the query if it exceeds [[*query-timeout-seconds*]]"
   [hsql-query]
-  (let [[sql & params] (mdb/compile hsql-query)
+  (let [[sql & params] (sql/format hsql-query {:quoted       true
+                                               :dialect      :metabase.app-db.setup/application-db
+                                               :quoted-snake false})
         driver         (mdb/db-type)]
     (with-open [^java.sql.Connection conn (.getConnection (mdb/data-source))]
       (.setReadOnly conn true)

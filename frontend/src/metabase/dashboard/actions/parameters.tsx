@@ -947,16 +947,17 @@ export const setParameterFilteringParameters = createThunkAction(
 
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: unknown) => (_dispatch, getState) => {
-    const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
-    const isValueEmpty = isParameterValueEmpty(value);
+  (parameterId: ParameterId, value: ParameterValuesMap[ParameterId]) =>
+    (_dispatch, getState) => {
+      const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+      const isValueEmpty = isParameterValueEmpty(value);
 
-    return {
-      id: parameterId,
-      value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
-      isDraft: isSettingDraftParameterValues,
-    };
-  },
+      return {
+        id: parameterId,
+        value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
+        isDraft: isSettingDraftParameterValues,
+      };
+    },
 );
 
 // Auto-apply filters

@@ -185,6 +185,37 @@
    [:status            ::run-status]
    [:last_heartbeat    ms/TemporalInstant]])
 
+(mr/def ::user
+  "The user who started a run."
+  [:map {:closed true}
+   [:id          ::lib.schema.id/user]
+   [:email       :string]
+   [:first_name  [:maybe :string]]
+   [:last_name   [:maybe :string]]
+   [:common_name {:optional true} [:maybe :string]]])
+
+(mr/def ::transform-test-run.response
+  "A transform test run as the API returns it, with the user who started it."
+  [:merge
+   ::transform-test-run
+   [:map {:closed true}
+    [:initiated_by_user [:maybe ::user]]]])
+
+(mr/def ::transform-test-runs.response
+  "A page of transform test runs."
+  [:map {:closed true}
+   [:data   [:sequential ::transform-test-run.response]]
+   [:limit  pos-int?]
+   [:offset :int]
+   [:total  :int]])
+
+(mr/def ::transform-test.response
+  "A transform test as the read endpoints return it, with its newest run."
+  [:merge
+   ::transform-test
+   [:map {:closed true}
+    [:last_run [:maybe ::transform-test-run]]]])
+
 (mr/def ::status
   "The outcome of a transform test run, or of one of its expectations.
 

@@ -163,9 +163,8 @@ describe("metabot usage stats charts", () => {
     setupBreakoutChart("conversations", "row");
 
     expect(await screen.findByText(TITLES.conversations)).toBeInTheDocument();
-    expect(
-      await screen.findByTestId("row-chart-container"),
-    ).toBeInTheDocument();
+    const container = await screen.findByTestId("chart-container");
+    expect(container.querySelector("svg")).toBeInTheDocument();
   });
 
   it.each(METRICS)("renders the daily timeseries for %s", async (metric) => {

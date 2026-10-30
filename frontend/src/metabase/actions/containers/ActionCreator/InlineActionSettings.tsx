@@ -8,14 +8,14 @@ import {
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
-import { FormField } from "metabase/common/components/FormField";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { TextArea } from "metabase/common/components/TextArea";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { getUserIsAdmin } from "metabase/current-user";
+import { FormField } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
-import { ActionIcon, Box, Icon, Switch, Tooltip } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Stack, Switch, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
@@ -104,14 +104,14 @@ export function InlineActionSettings({
       onClose={onClose}
       onBack={onBack}
     >
-      <Box mx="xl" my="lg">
+      <Stack mx="xl" my="lg" gap="lg">
         {action && hasSharingPermission && (
-          <FormField
-            title={t`Make public`}
-            description={t`Creates a publicly shareable link to this action form.`}
-            orientation="horizontal"
-            htmlFor={`${id}-public`}
-          >
+          <Flex justify="space-between" align="flex-start" gap="sm">
+            <FormField
+              title={t`Make public`}
+              description={t`Creates a publicly shareable link to this action form.`}
+              htmlFor={`${id}-public`}
+            />
             <Tooltip
               disabled={isSavedAction(action)}
               label={t`To enable creating a shareable link you first need to save your action`}
@@ -125,15 +125,13 @@ export function InlineActionSettings({
                 />
               </div>
             </Tooltip>
-          </FormField>
+          </Flex>
         )}
         {action?.public_uuid && hasSharingPermission && (
-          <Box mb="1.25rem">
-            <CopyTextInput
-              value={Urls.publicAction(siteUrl, action.public_uuid)}
-              aria-label={t`Public action form URL`}
-            />
-          </Box>
+          <CopyTextInput
+            value={Urls.publicAction(siteUrl, action.public_uuid)}
+            aria-label={t`Public action form URL`}
+          />
         )}
         <ConfirmModal
           opened={modalOpened}
@@ -152,7 +150,7 @@ export function InlineActionSettings({
             onChange={handleSuccessMessageChange}
           />
         </FormField>
-      </Box>
+      </Stack>
     </SidebarContent>
   );
 }

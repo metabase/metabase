@@ -4,6 +4,15 @@ import type {
   DependencyFilterOptions,
   DependencySortOptions,
 } from "metabase-enterprise/dependencies/types";
+import {
+  getCardTypes,
+  getDependencyTypes,
+} from "metabase-enterprise/dependencies/utils";
+import type {
+  CardType,
+  DependencyType,
+  GetDependencyCountsRequest,
+} from "metabase-types/api";
 
 import { BROKEN_GROUP_TYPES, UNREFERENCED_GROUP_TYPES } from "./constants";
 import type { DependencyDiagnosticsMode } from "./types";
@@ -29,6 +38,42 @@ export function getDefaultFilterOptions(
   mode: DependencyDiagnosticsMode,
 ): DependencyFilterOptions {
   return getFilterOptions(mode, {});
+}
+
+type ListFilterParams = {
+  types: DependencyType[];
+  "card-types": CardType[];
+  "include-personal-collections": boolean;
+};
+
+export function getListFilterParams({
+  groupTypes,
+  includePersonalCollections,
+}: DependencyFilterOptions): ListFilterParams {
+  return {
+    types: getDependencyTypes(groupTypes),
+    "card-types": getCardTypes(groupTypes),
+    "include-personal-collections": includePersonalCollections,
+  };
+}
+
+/** Counts the Broken and Unreferenced lists as their pages show them by default. */
+export function getDependencyCountsRequest(): GetDependencyCountsRequest {
+  const broken = getListFilterParams(getDefaultFilterOptions("broken"));
+  const unreferenced = getListFilterParams(
+    getDefaultFilterOptions("unreferenced"),
+  );
+
+  return {
+    "breaking-types": broken.types,
+    "breaking-card-types": broken["card-types"],
+    "breaking-include-personal-collections":
+      broken["include-personal-collections"],
+    "unreferenced-types": unreferenced.types,
+    "unreferenced-card-types": unreferenced["card-types"],
+    "unreferenced-include-personal-collections":
+      unreferenced["include-personal-collections"],
+  };
 }
 
 export function getSortOptions({

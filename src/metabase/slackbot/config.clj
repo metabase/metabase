@@ -3,7 +3,6 @@
   (:require
    [metabase.channel.settings :as channel.settings]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.settings :as slackbot.settings]
    [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
@@ -68,14 +67,3 @@
         (slackbot.settings/metabot-slack-signing-secret)
         (channel.settings/unobfuscated-slack-app-token)
         (encryption/default-encryption-enabled?))))
-
-;; referenced from with-slackbot-setup's syntax-quoted with-redefs, which clojure-lsp cannot see
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-(defn validate-bot-token!
-  "Validate a Slack bot token using the auth.test endpoint.
-   Throws an exception with appropriate status code if validation fails:
-   - 400 for invalid/revoked tokens
-   - 502 for Slack API errors (e.g., Slack is down)
-   Returns the response map on success."
-  [token]
-  (slackbot.client/auth-test {:token token}))
