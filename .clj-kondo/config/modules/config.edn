@@ -21,8 +21,9 @@
 ;;
 ;; It is not inherited, but it covers the module's directories. A nested module inside them that does not set it keeps
 ;; its own team if an opted-in module around it has that team, and is left unowned otherwise. A nested module with an
-;; `:ns-prefix` outside its parent's directories needs its own. Plugin code under `modules/<plugin>/src` is not
-;; supported: give it an owner by hand.
+;; `:ns-prefix` outside its parent's directories needs its own, and so does an `enterprise/X` module: it is `X`'s child
+;; but lives under `enterprise/backend`, as `enterprise/search` does beside `search`. Plugin code under
+;; `modules/<plugin>/src` is not supported: give it an owner by hand.
 ;;
 ;;    search
 ;;    {:team       "Metabot"

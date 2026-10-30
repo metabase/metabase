@@ -707,7 +707,7 @@
              (shadowed (str "src/metabase/lib/util.clj @metabase/other\n"
                             "/src/metabase/lib.cljc @metabase/other\n"
                             begin "\n")))))
-    (testing "broader, neighbouring, commented and below-the-block lines are not"
+    (testing "broader, neighboring, commented and below-the-block lines are not"
       (is (= []
              (shadowed (str "src/metabase @metabase/other\n"
                             "src/metabase/lib_be @metabase/other\n"
