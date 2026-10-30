@@ -535,12 +535,25 @@ export function ExpressionBar({
       setFresh(new Set());
       setMovedKey(undefined);
     }, FRESH_MS);
+    // Already last among the filters: only its connector or its group changed.
+    const filtersOf = (stream: readonly Token[]) =>
+      stream.filter((token) => token.type === "filter");
+    const didMove =
+      filtersOf(nextTokens).indexOf(moved) !==
+      filtersOf(relocation.tokens).indexOf(moved);
+    const reason = relocation.hadOr
+      ? t`A filter on the summary can't be one of the "or" options, because it checks the summarized rows, not the original ones.`
+      : t`A filter on the summary can't share a group with filters on the original rows.`;
     setCallout({
       tokenKey: keyOf(moved),
-      title: t`${movedLabel} moved to the end`,
-      message: relocation.hadOr
-        ? t`Summary filters can't sit inside an "or". It now applies after ${rest}.`
-        : t`Summary filters can't be grouped with row filters. It now applies after ${rest}.`,
+      title: didMove
+        ? t`${movedLabel} now applies on its own`
+        : relocation.hadOr
+          ? t`Changed "or" to "and"`
+          : t`${movedLabel} now applies on its own`,
+      message: didMove
+        ? t`${reason} It now applies after ${rest}.`
+        : t`${reason} It applies on top of the rest instead.`,
       undo: { tokens, caret: caretIndex },
     });
     return true;
