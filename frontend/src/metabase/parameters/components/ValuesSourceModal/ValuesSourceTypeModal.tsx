@@ -725,13 +725,13 @@ function ValuesSourceTypeModalLoader({
   const { card_id } = props.sourceConfig;
   const virtualTableId =
     card_id != null ? getQuestionVirtualTableId(card_id) : undefined;
-  const { isLoading: isMetadataLoading, error: metadataError } =
+  const { isFetching: isMetadataFetching, error: metadataError } =
     useGetTableQueryMetadataQuery(
       virtualTableId != null ? { id: virtualTableId } : skipToken,
     );
   const {
     data: card,
-    isLoading: isCardLoading,
+    isFetching: isCardFetching,
     error: cardError,
   } = useGetCardQuery(card_id != null ? { id: card_id } : skipToken);
   const question = useQuestionFromCard(card);
@@ -746,7 +746,7 @@ function ValuesSourceTypeModalLoader({
       onClose={props.onClose}
     >
       <ModalLoadingAndErrorWrapper
-        loading={isMetadataLoading || isCardLoading}
+        loading={isMetadataFetching || isCardFetching}
         error={metadataError ?? cardError}
         noWrapper
       >
