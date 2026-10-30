@@ -17,15 +17,21 @@ import {
   TextInput,
 } from "metabase/ui";
 import { isConcreteTableId } from "metabase-types/api";
-import type { ConcreteTableId, TableId } from "metabase-types/api";
+import type { ConcreteTableId, Table, TableId } from "metabase-types/api";
+
+import S from "./EventTablePicker.module.css";
 
 const EVENT_TABLE_ENTITY_TYPE = "entity/EventTable";
 
 const SEARCH_MODELS: MiniPickerPickableItem["model"][] = ["table"];
 
-// The label is a flex item, so a long table name would push past the dropdown
-// instead of truncating.
-const ITEM_STYLES = { itemLabel: { minWidth: 0 } };
+const ITEM_CLASS_NAMES = {
+  itemLabel: S.itemLabel,
+  itemSection: S.itemSection,
+};
+
+const getTableLocation = (table: Table) =>
+  table.schema ? `${table.db?.name} (${table.schema})` : table.db?.name;
 
 type EventTablePickerProps = {
   tableId: ConcreteTableId | undefined;
@@ -94,8 +100,9 @@ export const EventTablePicker = ({
         opened={isOpened && !isBrowsing}
         onChange={handleOpenedChange}
         position="bottom-start"
-        // Matches the mini picker, which widens for its location column.
-        width={isSearching ? "40rem" : "target"}
+        // Matches the mini picker's width when it shows its location column,
+        // which both lists here always do.
+        width="40rem"
         shadow="md"
         // The search box takes focus instead of the first item.
         trapFocus={false}
@@ -110,7 +117,7 @@ export const EventTablePicker = ({
             {label}
           </Button>
         </Menu.Target>
-        <Menu.Dropdown miw="18rem" px={0} py="sm">
+        <Menu.Dropdown px={0} py="sm">
           <Stack mah="60vh" gap={0}>
             <TextInput
               placeholder={t`Search for tables…`}
@@ -143,12 +150,12 @@ export const EventTablePicker = ({
                     key={item.id}
                     leftSection={<Icon name="table" />}
                     rightSection={
-                      <Text size="sm" c="text-disabled" maw="8rem" truncate>
-                        {item.db?.name}
+                      <Text size="sm" c="text-secondary" miw={0}>
+                        <Ellipsified>{getTableLocation(item)}</Ellipsified>
                       </Text>
                     }
                     fw={item.id === tableId ? "bold" : undefined}
-                    styles={ITEM_STYLES}
+                    classNames={ITEM_CLASS_NAMES}
                     onClick={() => handleChange(item.id)}
                   >
                     <Ellipsified>{item.display_name}</Ellipsified>
