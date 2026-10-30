@@ -421,7 +421,7 @@
 (mu/defn database-summary
   "The ID, name, description, and engine of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one [:model/Database :id :name :description :engine] database-id))
+  (t2/select-one [:model/Database :id :name :description :engine] :id [:auto/param database-id]))
 
 (mu/defn database-with-columns
   "The `columns` of the Database with `database-id`."
@@ -516,9 +516,12 @@
              {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-curation-rows
-  "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
+  "The ID, Database ID, active flag, visibility type, published flag, data layer, and data authority of the Tables with
+  `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :is_published :data_layer :data_authority] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :db_id :active :visibility_type :is_published :data_layer :data_authority]
+             :id [:in table-ids]
+             {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn visible-table-summaries
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
@@ -949,12 +952,12 @@
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard dashboard-id))
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-summary
   "The ID, description, name, Collection ID, and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters] dashboard-id))
+  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters] :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
@@ -1054,22 +1057,27 @@
   "The ID, email, and names of the User with `user-id`, or nil if `user-id` is nil or matches no User."
   [user-id :- [:maybe ::lib.schema.id/user]]
   (when user-id
-    (t2/select-one [:model/User :id :email :first_name :last_name] user-id)))
+    (t2/select-one [:model/User :id :email :first_name :last_name] :id [:auto/param user-id])))
 
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(mu/defn card-collection-ids
-  "The ID and Collection ID of the Cards with `ids`."
+(mu/defn archived-card-ids
+  "The subset of `ids` that are archived Cards."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Card :id :collection_id] :id [:in ids]))
+  (t2/select-fn-set :id :model/Card :id [:in ids] :archived true))
 
-(mu/defn dashboard-collection-ids
-  "The ID and Collection ID of the Dashboards with `ids`."
+(mu/defn card-curation-rows
+  "The ID, Collection ID, archived flag, and Document ID of the Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Dashboard :id :collection_id] :id [:in ids]))
+  (t2/select [:model/Card :id :collection_id :archived :document_id] :id [:in ids]))
+
+(mu/defn dashboard-curation-rows
+  "The ID, Collection ID, and archived flag of the Dashboards with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Dashboard :id :collection_id :archived] :id [:in ids]))
 
 (mu/defn measure-table-id
   "The Table ID of the Measure with `id`, or nil."
@@ -1080,6 +1088,16 @@
   "The Table ID of the Segment with `id`, or nil."
   [id :- ::lib.schema.id/segment]
   (t2/select-one-fn :table_id :model/Segment :id id))
+
+(mu/defn live-measure-table-id
+  "The Table ID of the Measure with `id`, or nil when it is missing or in the trash."
+  [id :- ::lib.schema.id/measure]
+  (t2/select-one-fn :table_id :model/Measure :id id :archived false))
+
+(mu/defn live-segment-table-id
+  "The Table ID of the Segment with `id`, or nil when it is missing or in the trash."
+  [id :- ::lib.schema.id/segment]
+  (t2/select-one-fn :table_id :model/Segment :id id :archived false))
 
 (mu/defn measure-entity-id
   "The entity ID of the Measure with `id`."

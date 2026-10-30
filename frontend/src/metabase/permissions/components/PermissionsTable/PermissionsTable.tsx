@@ -179,7 +179,7 @@ export function PermissionsTable({
                           name="info"
                           size={16}
                           ml="xs"
-                          c="text-disabled"
+                          c="text-secondary"
                         />
                       </Tooltip>
                     )}
@@ -231,7 +231,7 @@ const EntityRow = memo(function EntityRow({
             name="info"
             size={16}
             ml="xs"
-            c="text-disabled"
+            c="text-secondary"
           />
         </Tooltip>
       )}

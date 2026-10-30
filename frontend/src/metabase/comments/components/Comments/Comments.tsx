@@ -252,7 +252,7 @@ export const Comments = ({
                 alt={t`No comments`}
               />
 
-              <Text fw="700" c="text-disabled">{t`No comments`}</Text>
+              <Text fw="700" c="text-secondary">{t`No comments`}</Text>
             </Flex>
           )}
 

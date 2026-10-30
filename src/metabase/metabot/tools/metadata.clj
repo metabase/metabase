@@ -3,12 +3,14 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details-tools]
    [metabase.metabot.tools.field-stats :as field-stats-tools]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.resources :as resources-tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
@@ -42,27 +44,38 @@
 (defn- source-metadata
   [{:keys [entity-type entity-id]}]
   (if (= entity-type :table)
-    (resources-tools/check-table-resource-database entity-id)
+    (do
+      (resources-tools/check-table-resource-database entity-id)
+      ;; an inactive table is missing, as the details treat it, not uncurated
+      (tools.u/get-table entity-id :db_id))
     (do
       (resources-tools/check-card-resource-database entity-id)
       (tools.u/get-card entity-id entity-type)))
-  (if (= entity-type :metric)
-    (entity-details-tools/get-metric-details
-     {:metric-id entity-id
-      :with-default-temporal-breakout? false
-      :with-field-values? false
-      :with-queryable-dimensions? false
-      :with-segments? true})
-    (entity-details-tools/get-table-details
-     {:entity-type entity-type
-      :entity-id entity-id
-      :with-fields? true
-      :with-field-values? false
-      :with-related-tables? false
-      :with-metrics? false
-      :with-default-temporal-breakout? false
-      :with-measures? true
-      :with-segments? true})))
+  (when (shared/curated-only?)
+    (curation/check-curated-subject! (str (name entity-type) " " entity-id)
+                                     (case entity-type
+                                       :table  ["table" entity-id]
+                                       :model  ["card" entity-id]
+                                       :metric ["metric" entity-id])))
+  (cond-> (if (= entity-type :metric)
+            (entity-details-tools/get-metric-details
+             {:metric-id entity-id
+              :with-default-temporal-breakout? false
+              :with-field-values? false
+              :with-queryable-dimensions? false
+              :with-segments? true})
+            (entity-details-tools/get-table-details
+             {:entity-type entity-type
+              :entity-id entity-id
+              :with-fields? true
+              :with-field-values? false
+              :with-related-tables? false
+              :with-metrics? false
+              :with-default-temporal-breakout? false
+              :with-measures? true
+              :with-segments? true}))
+    ;; under curated-only a card's details omit its definition, as read_resource's do
+    (shared/curated-only?) (update :structured-output dissoc :query_json)))
 
 (defn- metadata-fault-entry
   [{:keys [entity-type entity-id] :as item} e]
@@ -163,10 +176,17 @@
     (when-not (:id metabot)
       (unknown-metabot! {}))
     (add-output
-     (entity-details-tools/answer-sources {:metabot metabot
-                                           :with-field-values? false
-                                           :with-measures? true
-                                           :with-segments? true})
+     (cond-> (entity-details-tools/answer-sources {:metabot metabot
+                                                   :with-field-values? false
+                                                   :with-measures? true
+                                                   :with-segments? true})
+       ;; under curated-only a card's details omit its definition, as read_resource's do
+       (shared/curated-only?)
+       (update :structured-output
+               (fn [so]
+                 (-> so
+                     (update :metrics (fn [rows] (mapv #(dissoc % :query_json) rows)))
+                     (update :models (fn [rows] (mapv #(dissoc % :query_json) rows)))))))
      format-answer-sources-output)))
 
 (def list-available-data-sources-tool
@@ -205,8 +225,17 @@
   (handle [_ {data-source :data_source source-id :source_id field-id :field_id} _ctx]
     (tools/with-entity {:kind (if (= data-source "report") :question (keyword data-source)) :id source-id}
       (if (= data-source "table")
-        (resources-tools/check-table-resource-database source-id)
+        (do
+          (resources-tools/check-table-resource-database source-id)
+          ;; an inactive table is missing, as `field-values` treats it, not uncurated
+          (tools.u/get-table source-id :db_id))
         (resources-tools/check-card-resource-database source-id)))
+    (when (shared/curated-only?)
+      (curation/check-curated-subject! (str data-source " " source-id)
+                                       (case data-source
+                                         "table"                       ["table" source-id]
+                                         "metric"                      ["metric" source-id]
+                                         ("model" "question" "report") ["card" source-id])))
     (tools/with-entity {:kind :field :id field-id}
       (add-output (field-stats-tools/field-values {:entity-type data-source
                                                    :entity-id source-id
