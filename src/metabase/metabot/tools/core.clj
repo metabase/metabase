@@ -474,6 +474,11 @@
       (let [{:keys [agent-error? status-code error humanized]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
+          ;; Already declared, e.g. by a nested `with-entity`: its payload and recovery steps are more specific
+          ;; than anything below would rebuild. A declared not-found carries a 404 and would lose its entity.
+          (contains? (ex-data e) tools.error/error-key)
+          (throw e)
+
           ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
           (and agent-error? code)
           (tools.error/throw-recoverable!
