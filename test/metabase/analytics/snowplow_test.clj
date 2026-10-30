@@ -189,6 +189,34 @@
               (analytics/track-event! :snowplow/account {:event :new_instance_created} nil)
               (is (= [] (pop-event-data-and-user-id!))))))))))
 
+(deftest ai-service-event-shape-test
+  (testing "an ai_service_event admits only the details of its own event"
+    (let [event (fn [name details]
+                  {:hashed-metabase-license-token "token"
+                   :request-id                    "request"
+                   :source                        "metabot_agent"
+                   :event                         name
+                   :event-details                 details})
+          tool  {"tool_name" "search" "step" 1 "error_class" "validation" "error_code" "invalid-arguments"}
+          turn  {"finish_reason" "stop" "steps" 2}]
+      (with-fake-snowplow-collector
+        (is (true? (snowplow/track-event! :snowplow/ai_service_event (event "agent_used_tool" tool) nil)))
+        (is (true? (snowplow/track-event! :snowplow/ai_service_event (event "agent_turn_finished" turn) nil)))
+        ;; the collector also holds new_instance_created
+        (is (= ["agent_used_tool" "agent_turn_finished"]
+               (->> (pop-event-data-and-user-id!)
+                    (map #(get-in % [:data "event"]))
+                    (filter #{"agent_used_tool" "agent_turn_finished"})))))
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (snowplow/track-event! :snowplow/ai_service_event (event "agent_used_tool" turn) nil))
+          "turn details on the tool event")
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (snowplow/track-event! :snowplow/ai_service_event (event "agent_turn_finished" tool) nil))
+          "tool details on the turn event")
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (snowplow/track-event! :snowplow/ai_service_event (event "agent_took_a_nap" {}) nil))
+          "an event without a shape"))))
+
 (deftest ^:parallel http-timeouts-test
   (testing "the Snowplow HTTP client has finite timeouts"
     (let [^RequestConfig config (#'snowplow/request-config)]
