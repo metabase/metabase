@@ -1,12 +1,14 @@
 (ns metabase-enterprise.sandbox.api.card-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.card-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -213,3 +215,40 @@
                                        :dataset_query (mt/mbql-query categories)}]
         (is (=? {:data {:is_sandboxed true}}
                 (qp/process-query (qp/userland-query (:dataset_query card)))))))))
+
+(deftest sandboxed-card-endpoints-omit-internal-remap-values-test
+  (testing "A Card whose result_metadata was saved with a custom mapping does not send the values and labels of hidden rows"
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                      :attributes {"cat" 50}}
+      ;; set up inside the sandbox, which runs against a temp copy of the test DB
+      (mt/with-column-remappings [venues.category_id {50 "Mexican", 2 "HIDDEN-2", 40 "HIDDEN-40"}]
+        (let [query (mt/mbql-query venues {:fields [$id $category_id], :order-by [[:asc $id]], :limit 2})
+              remap {:lib/type              :metadata.column.remapping/internal
+                     :id                    1
+                     :name                  "Category ID [internal remap]"
+                     :values                [50 2 40]
+                     :human-readable-values ["Mexican" "HIDDEN-2" "HIDDEN-40"]}]
+          (mt/with-temp [:model/Collection    {collection-id :id} {}
+                         :model/Card          {card-id :id}       {:dataset_query   query
+                                                                   :collection_id   collection-id
+                                                                   :result_metadata (mapv #(cond-> %
+                                                                                             (= (:name %) "CATEGORY_ID")
+                                                                                             (assoc :lib/internal-remap remap))
+                                                                                          (qp.preprocess/query->expected-cols query))}
+                         :model/Dashboard     {dashboard-id :id}  {:collection_id collection-id}
+                         :model/DashboardCard {dashcard-id :id}   {:dashboard_id dashboard-id
+                                                                   :card_id      card-id}]
+            (perms/grant-collection-read-permissions! &group collection-id)
+            (doseq [url [(format "card/%d" card-id)
+                         (format "table/card__%d/query_metadata" card-id)
+                         (format "dashboard/%d" dashboard-id)]]
+              (testing url
+                (is (not (str/includes? (pr-str (mt/user-http-request :rasta :get 200 url)) "HIDDEN")))))
+            (doseq [url [(format "card/%d/query" card-id)
+                         (format "dashboard/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id)]]
+              (testing url
+                (let [result (mt/user-http-request :rasta :post 202 url)]
+                  (is (true? (-> result :data :is_sandboxed)))
+                  (is (= [[22 50 "Mexican"] [23 50 "Mexican"]]
+                         (mt/rows result)))
+                  (is (not (str/includes? (pr-str result) "HIDDEN"))))))))))))
