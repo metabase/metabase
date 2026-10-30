@@ -3,7 +3,6 @@
     {
       "name": "Querying Platform",
       "label": ".Team/QueryingPlatform",
-      "assignee": "@metabase/core-backend-querying-platform",
       "members": [
         "metamben",
         "rileythomp",
@@ -14,7 +13,6 @@
     {
       "name": "Graphy",
       "label": ".Team/Graphy",
-      "assignee": "@metabase/graphy",
       "members": [
         "ranquild",
         "ericnormand",
@@ -139,6 +137,12 @@
         "enthym-aa",
         "johnswanson"
       ]
+    },
+    {
+      "name": "Data Apps",
+      "label": ".Team/DataApps",
+      "assignee": "@metabase/data-apps",
+      "members": []
     }
   ]
 }

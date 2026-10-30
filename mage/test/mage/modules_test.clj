@@ -549,35 +549,17 @@
 ;;; CODEOWNERS generation
 ;;; =============================================================================
 
-(deftest codeowners-stanza-active-test
-  (testing "a module whose team has an :assignee and no suppression gets live owner lines"
+(deftest codeowners-stanza-lines-test
+  (testing "a header naming the module and team, then one owner line per directory"
     (is (= ["# lib (Querying Platform)"
             "src/metabase/lib @metabase/qp"
             "test/metabase/lib @metabase/qp"]
            (#'mage.modules/codeowners-stanza-lines
-            {:module 'lib :team "Querying Platform" :handle "@metabase/qp" :suppress? false
-             :dirs ["src/metabase/lib" "test/metabase/lib"]})))))
-
-(deftest codeowners-stanza-suppressed-test
-  (testing "a suppressed module is commented out but keeps its known handle, ready to uncomment"
-    (is (= ["# driver (Querying Platform, suppressed via :suppress-codeowners)"
-            "# src/metabase/driver @metabase/qp"]
-           (#'mage.modules/codeowners-stanza-lines
-            {:module 'driver :team "Querying Platform" :handle "@metabase/qp" :suppress? true
-             :dirs ["src/metabase/driver"]})))))
-
-(deftest codeowners-stanza-no-assignee-test
-  (testing "a module whose team has no :assignee is commented out with no handle"
-    (is (= ["# audit-app (UX West, no :assignee in team.json)"
-            "# enterprise/backend/src/metabase_enterprise/audit_app"]
-           (#'mage.modules/codeowners-stanza-lines
-            {:module 'enterprise/audit-app :team "UX West" :handle nil :suppress? false
-             :dirs ["enterprise/backend/src/metabase_enterprise/audit_app"]})))))
-
-(deftest codeowners-stanza-no-dirs-test
+            {:module 'lib :team "Querying Platform" :handle "@metabase/qp"
+             :dirs ["src/metabase/lib" "test/metabase/lib"]}))))
   (testing "a module that owns no existing directory produces no stanza"
     (is (nil? (#'mage.modules/codeowners-stanza-lines
-               {:module 'ghost :team "UX West" :handle nil :suppress? false :dirs []})))))
+               {:module 'ghost :team "UX West" :handle "@metabase/ux" :dirs []})))))
 
 (deftest codeowners-splice-idempotent-test
   (testing "splicing a block in replaces only the marked region and is idempotent"
@@ -618,8 +600,8 @@
     ;; `lib` and `lib.schema` are used because the generator only emits directories that exist on
     ;; disk, so an invented nested path would silently drop its stanza and the ordering assertion
     ;; would pass on a one-element list.
-    (let [config    '{lib        {:team "Querying Platform"}
-                      lib.schema {:team "Querying Platform"}}
+    (let [config    '{lib        {:team "Querying Platform" :codeowners true}
+                      lib.schema {:team "Querying Platform" :codeowners true}}
           assignees {"Querying Platform" "@metabase/querying-platform"}
           block     (#'mage.modules/codeowners-block config assignees)
           lines     (->> (str/split-lines block)
@@ -629,13 +611,21 @@
               "src/metabase/lib/schema @metabase/querying-platform"]
              lines)))))
 
-(deftest codeowners-block-comments-out-unknown-teams
-  (testing (str "A module whose :team has no matching team.json entry degrades to a commented "
-                "stanza rather than emitting a bad handle or being dropped silently.")
-    (let [config    '{lib {:team "Nonexistent Team"}}
-          block     (#'mage.modules/codeowners-block config {"Querying Platform" "@metabase/querying-platform"})
-          src-lines (->> (str/split-lines block)
-                         (filter #(str/includes? % "src/metabase/lib")))]
-      (is (seq src-lines) "the module still appears in the block")
-      (is (every? #(str/starts-with? % "#") src-lines)
-          "but every one of its path lines is commented out"))))
+(deftest codeowners-block-opt-in-test
+  (let [assignees {"Querying Platform" "@metabase/querying-platform"}
+        owned     (fn [config]
+                    (->> (str/split-lines (#'mage.modules/codeowners-block config assignees))
+                         (remove #(or (str/blank? %) (str/starts-with? % "#")))))]
+    (testing "only modules with :codeowners true get owner lines"
+      (is (= ["src/metabase/lib @metabase/querying-platform"
+              "test/metabase/lib @metabase/querying-platform"]
+             (owned '{lib             {:team "Querying Platform" :codeowners true}
+                      query-processor {:team "Querying Platform"}}))))
+    (testing "a nested module without its own :team takes its ancestor's"
+      (is (= ["src/metabase/lib/schema @metabase/querying-platform"
+              "test/metabase/lib/schema @metabase/querying-platform"]
+             (owned '{lib        {:team "Querying Platform"}
+                      lib.schema {:codeowners true}}))))
+    (testing "an opted-in module whose team has no assignee fails instead of losing its owner"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Module lib sets :codeowners but its team \"UX West\""
+                            (owned '{lib {:team "UX West" :codeowners true}}))))))

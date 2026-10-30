@@ -12,6 +12,17 @@
 ;; The team that owns this module. This has to match one of the team names in `.github/team.json` EXACTLY. You can
 ;; run [[metabase.core.modules-test/all-modules-have-teams-test]] to make sure you did this correctly.
 ;;
+;; ## `codeowners`:
+;;
+;; `true` makes the module's team a required reviewer for its src and test directories. Ownership goes to the team's
+;; `assignee` handle in `.github/team.json`, which the team must have. Run `./bin/mage update-codeowners` after
+;; changing it to regenerate `.github/CODEOWNERS`. Leave it out for modules whose team has not agreed to review them.
+;;
+;;    search
+;;    {:team       "Metabot"
+;;     :codeowners true
+;;     ...}
+;;
 ;; ## `api`:
 ;;
 ;; Map of module name => the "core" external public-facing API namespace(s). You have three options here:
@@ -867,7 +878,8 @@
                     :model/User}}
 
   data-apps
-  {:team "Embedding"
+  {:team "Data Apps"
+   :codeowners true
    :api #{metabase.data-apps.core}
    :uses #{actions
            analytics
@@ -904,7 +916,8 @@
    :uses #{lib.schema premium-features}}
 
   dependencies
-  {:team "Graphy"
+  {:team "Data Apps"
+   :codeowners true
    :api  #{metabase.dependencies.hooks}
    :uses #{premium-features}}
 
@@ -2420,7 +2433,8 @@
    :uses #{models util}}
 
   remote-sync
-  {:team "UX West"
+  {:team "Data Apps"
+   :codeowners true
    :api  #{metabase.remote-sync.core
            metabase.remote-sync.init}
    :uses #{api
@@ -2525,6 +2539,7 @@
 
   search
   {:team "Metabot"
+   :codeowners true
    :module-exports #{search.embeddings
                      search.entity-retrieval}
    :api  #{metabase.search.api
@@ -3848,7 +3863,8 @@
    :model-exports #{:model/CustomVizPlugin}}
 
   enterprise/data-apps
-  {:team "Embedding"
+  {:team "Data Apps"
+   :codeowners true
    :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{actions
            api
@@ -3923,7 +3939,8 @@
    :model-imports #{:model/Database :model/Transform}}
 
   enterprise/dependencies
-  {:team "Graphy"
+  {:team "Data Apps"
+   :codeowners true
    :module-exports #{enterprise/dependencies.replacement}
    :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
    :uses #{actions
@@ -4312,7 +4329,8 @@
    :uses #{premium-features}}
 
   enterprise/remote-sync
-  {:team "UX West"
+  {:team "Data Apps"
+   :codeowners true
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
            metabase-enterprise.remote-sync.init}
@@ -4358,6 +4376,7 @@
 
   enterprise/search
   {:team "Metabot"
+   :codeowners true
    :module-exports #{enterprise/search.embeddings
                      enterprise/search.entity-retrieval
                      enterprise/search.semantic}
