@@ -401,8 +401,7 @@ export type ReleaseKind = "patch" | "minor";
 export type AutoReleaseSkipReason =
   | "no-next-version"
   | "no-green-commit"
-  | "already-released"
-  | "error";
+  | "already-released";
 
 type AutoReleaseSkipArgs = {
   kind: ReleaseKind;
@@ -411,7 +410,6 @@ type AutoReleaseSkipArgs = {
   runId: string;
   owner: string;
   repo: string;
-  error?: string;
 };
 
 export function buildAutoReleaseSkipMessage({
@@ -421,7 +419,6 @@ export function buildAutoReleaseSkipMessage({
   runId,
   owner,
   repo,
-  error,
 }: AutoReleaseSkipArgs): string {
   const runLink = githubRunLink("workflow run", runId, owner, repo);
   const label = kind === "patch" ? "Auto-patch" : "Auto-minor";
@@ -438,7 +435,6 @@ export function buildAutoReleaseSkipMessage({
     "no-green-commit": `:x: ${label} for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`,
     "no-next-version": noNextVersion,
     "already-released": `:information_source: ${label} for *v${majorVersion}* skipped: latest green commit has already been released — ${alreadyReleasedSuffix}. ${mentionSlackTeam("release-managers")} monitor the v${majorVersion} branch and manually release the next green commit. ${runLink}`,
-    error: `:x: ${label} for *v${majorVersion}* failed: ${error}. ${runLink}`,
   };
 
   return messageByReason[reason];
@@ -450,7 +446,6 @@ export async function sendAutoReleaseFailureMessage(
   return sendReleaseSlackMessage({
     channelName: args.channelName,
     message: buildAutoReleaseSkipMessage(args),
-    status: args.reason === "error" ? "failure" : undefined,
   });
 }
 

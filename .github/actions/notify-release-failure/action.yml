@@ -10,8 +10,9 @@ inputs:
     required: false
     default: ""
   needs:
-    description: toJSON(needs) of the calling job
-    required: true
+    description: toJSON(needs) of the calling job. Empty sends no job list.
+    required: false
+    default: "{}"
   slack-channel:
     description: Slack release channel name
     required: true
@@ -47,6 +48,6 @@ runs:
             channelName: process.env.SLACK_RELEASE_CHANNEL,
             version: process.env.VERSION || undefined,
             emoji: 'x',
-            message: `${runLink}\n${jobs}`,
+            message: jobs ? `${runLink}\n${jobs}` : runLink,
             status: 'failure',
           });
