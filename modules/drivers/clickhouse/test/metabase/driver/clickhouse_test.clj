@@ -918,9 +918,12 @@
   (mt/test-driver :clickhouse
     (testing "Slow query is cancelled when *query-timeout-ms* elapses"
       (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
+      ;; Make the pool before the binding. c3p0 sets `unreturnedConnectionTimeout` from `*query-timeout-ms*`.
+      (qp/process-query (lib/native-query (mt/metadata-provider) "SELECT 1"))
       (binding [driver.settings/*query-timeout-ms* 5000]
         (let [timer   (u/start-timer)
-              query   (mt/native-query {:query "SELECT sleepEachRow(1) FROM numbers(120) SETTINGS max_block_size = 1"})
+              query   (lib/native-query (mt/metadata-provider)
+                                        "SELECT sleepEachRow(1) FROM numbers(120) SETTINGS max_block_size = 1")
               result  (try
                         (qp/process-query query)
                         (catch Throwable e e))
