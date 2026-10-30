@@ -1,4 +1,3 @@
-import { Group } from "@visx/group";
 import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
@@ -19,11 +18,9 @@ import {
 import Watermark from "../../watermark.svg?component";
 import { DataOutOfRangeOverlay } from "../DataOutOfRangeOverlay/DataOutOfRangeOverlay";
 import { Legend } from "../Legend";
-import { calculateLegendRows } from "../Legend/utils";
+import { getPlotBounds, layoutChartWithBottomLegend } from "../Legend/layout";
 
 registerEChartsModules();
-
-const LEGEND_PADDING = 8;
 
 export function BoxPlotChart({
   rawSeries,
@@ -53,40 +50,40 @@ export function BoxPlotChart({
     renderingContext.cartesianSize,
   );
 
-  const legendItems = getLegendItems(chartModel.seriesModels);
-  const isReversed = settings["legend.is_reversed"];
-  const { height: legendHeight, items: legendLayoutItems } =
-    calculateLegendRows({
-      items: legendItems,
-      width,
-      horizontalPadding: LEGEND_PADDING,
-      verticalPadding: LEGEND_PADDING,
-      isReversed,
-    });
+  // The box plot always fits its legend within the given height.
+  const {
+    chartHeight,
+    legend,
+    layout: layoutModel,
+  } = layoutChartWithBottomLegend({
+    items: getLegendItems(chartModel.seriesModels),
+    chartWidth: width,
+    height,
+    fitWithinBounds: true,
+    isReversed: settings["legend.is_reversed"],
+    getLayout: (chartHeight) =>
+      getBoxPlotLayoutModel({
+        chartModel,
+        cartesianLayout: getChartLayout(
+          { ...chartModel, dataset: chartModel.boxDataset },
+          settings,
+          false,
+          width,
+          chartHeight,
+          renderingContext,
+        ),
+        settings,
+        chartWidth: width,
+        renderingContext,
+      }),
+    getPlot: (layout) => getPlotBounds(layout.adjustedPadding, width),
+  });
 
-  const chartHeight = height - legendHeight;
   const chart = init(null, null, {
     renderer: "svg",
     ssr: true,
     width,
     height: chartHeight,
-  });
-
-  const cartesianLayout = getChartLayout(
-    { ...chartModel, dataset: chartModel.boxDataset },
-    settings,
-    false,
-    width,
-    chartHeight,
-    renderingContext,
-  );
-
-  const layoutModel = getBoxPlotLayoutModel({
-    chartModel,
-    cartesianLayout,
-    settings,
-    chartWidth: width,
-    renderingContext,
   });
 
   const option = getBoxPlotOption(
@@ -104,10 +101,8 @@ export function BoxPlotChart({
 
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height}>
-      <Legend items={legendLayoutItems} />
-      <Group top={legendHeight}>
-        <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
-      </Group>
+      <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
+      <Legend top={chartHeight} items={legend.items} />
       {hasDevWatermark && (
         <Watermark
           x="0"
