@@ -168,7 +168,8 @@
               [:visualization_settings {:optional true}
                [:maybe [:map {:description "Visualization settings to merge into the dashcard's own."}]]]
               [:parameter_mappings {:optional true}
-               [:maybe [:sequential [:map {:description "A parameter mapping, replacing the dashcard's list."}
+               [:maybe [:sequential [:map {:closed      true
+                                           :description "A parameter mapping, replacing the dashcard's list."}
                                      [:parameter_id [:string {:min 1}]]
                                      [:card_id {:optional true}
                                       [:maybe [:int {:min         1

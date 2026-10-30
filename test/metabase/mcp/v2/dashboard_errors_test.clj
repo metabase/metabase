@@ -66,7 +66,9 @@
   (testing "a patched mapping naming a card that is not on the dashcard says which cards it may name"
     (is (= (str "op 0 (\"patch_dashcard\"): card 3 is not on dashcard 7 — a mapping's card_id must be the "
                 "dashcard's card or one of its series. Omit it to filter the dashcard's card.")
-           (error-text (assoc empty-dash :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}])
+           (error-text (assoc empty-dash
+                              :dashcards  [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}]
+                              :parameters [{:id "p1" :name "P1" :type "category"}])
                        [{:op          "patch_dashcard"
                          :dashcard_id 7
                          :patch       {:parameter_mappings [{:parameter_id "p1"

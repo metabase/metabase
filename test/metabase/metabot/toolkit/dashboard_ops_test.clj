@@ -388,6 +388,11 @@
       (is (= {"p1" [7] "p2" [8]} (inline-parameter-owners dashcards))
           "each parameter is still owned by exactly the dashcard it was placed on"))))
 
+(defn- p1-dash
+  "A dashboard holding `dashcard` and a parameter `p1`."
+  [dashcard]
+  (assoc (dash-with [dashcard]) :parameters [{:id "p1" :name "P1" :type "category"}]))
+
 (def ^:private a-dashcard
   {:id 7 :card_id 9 :row 2 :col 3 :size_x 4 :size_y 4 :dashboard_tab_id nil
    :visualization_settings {:card.title "Old"}
@@ -456,7 +461,7 @@
   (testing "a patch whose other properties are null, as strict clients send them, leaves those properties alone"
     (let [mapping {:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}
           dc      (-> (compile-with-stub-cards
-                       (dash-with [(assoc a-dashcard :parameter_mappings [mapping] :inline_parameters ["p1"])])
+                       (p1-dash (assoc a-dashcard :parameter_mappings [mapping] :inline_parameters ["p1"]))
                        [{:op          "patch_dashcard"
                          :dashcard_id 7
                          :patch       {:visualization_settings {:card.description "New"}
@@ -471,7 +476,7 @@
   (testing "a patched mapping keeps the series card it names"
     (is (=? [{:parameter_id "p1", :card_id 11, :target [:dimension [:field 1 nil]]}]
             (-> (compile-with-stub-cards
-                 (dash-with [a-dashcard])
+                 (p1-dash a-dashcard)
                  [{:op          "patch_dashcard"
                    :dashcard_id 7
                    :patch       {:parameter_mappings [{:parameter_id "p1"
@@ -482,7 +487,7 @@
                 :parameter_mappings))))
   (testing "a patched mapping naming a card that is not on the dashcard is refused"
     (is (=? {::dashboard-ops/error :mapping-card-not-on-dashcard, :dashcard-id 7, :card-id 3, :op-index 0}
-            (op-error (dash-with [a-dashcard])
+            (op-error (p1-dash a-dashcard)
                       [{:op          "patch_dashcard"
                         :dashcard_id 7
                         :patch       {:parameter_mappings [{:parameter_id "p1"
@@ -492,12 +497,64 @@
     (doseq [k [:parameter_id :target]]
       (testing k
         (is (=? {::dashboard-ops/error :invalid-op, :explanation {:patch {:parameter_mappings [{k some?}]}}}
-                (op-error (dash-with [a-dashcard])
+                (op-error (p1-dash a-dashcard)
                           [{:op          "patch_dashcard"
                             :dashcard_id 7
                             :patch       {:parameter_mappings [(dissoc {:parameter_id "p1"
                                                                         :target       ["dimension" ["field" 1 nil]]}
                                                                        k)]}}])))))))
+
+(defn- patch-mappings
+  "The op that patches dashcard 7's mappings to `mappings`."
+  [mappings]
+  {:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings mappings}})
+
+(deftest patch-dashcard-mapping-checks-test
+  (testing "a patched mapping without a card_id gets the dashcard's card, which the query processor matches on"
+    (is (=? {:dashcards [{:parameter_mappings [{:parameter_id "p1", :card_id 9}]}]}
+            (compile-with-stub-cards (p1-dash a-dashcard)
+                                     [(patch-mappings [{:parameter_id "p1" :target ["dimension" ["field" 1 nil]]}])]))))
+  (testing "a new mapping must name a parameter on the dashboard"
+    (is (=? {::dashboard-ops/error :unknown-parameter, :parameter-id "nope", :op-index 0}
+            (op-error (p1-dash a-dashcard)
+                      [(patch-mappings [{:parameter_id "nope" :target ["dimension" ["field" 1 nil]]}])]))))
+  (testing "a new mapping the save would refuse fails in the op, with its index"
+    (is (=? {::dashboard-ops/error :invalid-op, :op-index 0, :explanation {:target some?}}
+            (op-error (p1-dash a-dashcard)
+                      [(patch-mappings [{:parameter_id "p1" :target ["nonsense"]}])]))))
+  (testing "a mapping takes only its three keys"
+    (is (=? {::dashboard-ops/error :invalid-op, :op-index 0}
+            (op-error (p1-dash a-dashcard)
+                      [(patch-mappings [{:parameter_id "p1" :target ["dimension" ["field" 1 nil]] :extra 1}])]))))
+  (testing "a stored mapping sent back unchanged is not checked again, so a stale one doesn't block the patch"
+    (let [stale {:parameter_id "gone" :card_id 9 :target [:dimension [:field 1 nil]]}]
+      (is (=? {:dashcards [{:parameter_mappings [stale]}]}
+              (compile-with-stub-cards (p1-dash (assoc a-dashcard :parameter_mappings [stale]))
+                                       [(patch-mappings [{:parameter_id "gone"
+                                                          :card_id      9
+                                                          :target       ["dimension" ["field" 1 nil]]}])]))))))
+
+(deftest set-series-drops-mappings-to-removed-series-test
+  (testing "set_series drops the mappings on series cards it removes, and keeps the rest"
+    (let [mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}
+                    {:parameter_id "p1" :card_id 11 :target [:dimension [:field 2 nil]]}
+                    {:parameter_id "p1" :card_id 12 :target [:dimension [:field 3 nil]]}]
+          dc       (assoc a-dashcard :series [{:id 11} {:id 12}] :parameter_mappings mappings)]
+      (is (=? {:dashcards [{:series             [{:id 12}]
+                            :parameter_mappings [{:card_id 9} {:card_id 12}]}]}
+              (compile-with-stub-cards (p1-dash dc) [{:op "set_series" :dashcard_id 7 :card_ids [12]}])))
+      (is (=? {:dashcards [{:series [], :parameter_mappings [{:card_id 9}]}]}
+              (compile-with-stub-cards (p1-dash dc) [{:op "set_series" :dashcard_id 7 :card_ids []}]))))))
+
+(deftest payload-series-are-ids-test
+  (testing "the payload's series carry only card ids, which is all the save's dashcard schema allows"
+    (is (= [{:id 11}]
+           (-> (compile-with-stub-cards
+                (dash-with [(assoc a-dashcard :series [{:id 11 :name "Overlay" :display "bar"}])])
+                [{:op "resize" :dashcard_id 7 :size {:size_x 6 :size_y 4}}])
+               :dashcards
+               first
+               :series)))))
 
 (deftest patch-dashcard-rejects-layout-keys-test
   (testing "GHY-4147: layout and identity keys in a patch are rejected, naming the op that owns them"
