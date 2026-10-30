@@ -11,6 +11,8 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (def ^:dynamic *scim-api-key* nil)

@@ -53,6 +53,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(set! *warn-on-reflection* true)
+
 (defn- check-results-and-metadata-keys-match
   "Primarily for dev and debugging purposes. We can probably take this out when shipping the finished product."
   [results metadata]
