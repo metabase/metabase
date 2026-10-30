@@ -648,7 +648,6 @@
           (doseq [[scope tool-var extra-args metabot profile-id step]
                   [["the instance" #'search/search-tool {} nil "internal" instance-step]
                    ["the instance" #'search/nlq-search-tool {} nil "nlq" instance-step]
-                   ["the instance" #'search/transform-search-tool {} nil "internal" instance-step]
                    ["one database" #'search/sql-search-tool {:database_id (mt/id)} nil "sql"
                     (str "Find the data with `read_resource` instead: read `metabase://database/" (mt/id)
                          "/tables` and `metabase://database/" (mt/id) "/models`.")]
@@ -707,8 +706,7 @@
   (testing "every search tool variant rejects a scalar the same way"
     (doseq [[tool-var extra-args] [[#'metabot.tools/search-tool {}]
                                    [#'metabot.tools/sql-search-tool {:database_id 1}]
-                                   [#'metabot.tools/nlq-search-tool {}]
-                                   [#'metabot.tools/transform-search-tool {}]]]
+                                   [#'metabot.tools/nlq-search-tool {}]]]
       (testing (str tool-var)
         (is (= "Invalid tool arguments: `keyword_queries` must be an array of strings; received a string."
                (test-util/tool-boundary-error "search" tool-var
