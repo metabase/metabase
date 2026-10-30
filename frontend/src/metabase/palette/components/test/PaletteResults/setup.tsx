@@ -8,6 +8,7 @@ import {
   setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -26,6 +27,7 @@ import type {
   RecentItem,
   SearchResult,
   Settings,
+  UserMetabotPermissions,
 } from "metabase-types/api";
 import {
   createMockCollection,
@@ -34,6 +36,7 @@ import {
   createMockRecentCollectionItem,
   createMockTokenFeatures,
   createMockUser,
+  createMockUserMetabotPermissions,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 
@@ -141,6 +144,7 @@ export interface CommonSetupProps {
   isEE?: boolean;
   isAdmin?: boolean;
   databases?: Database[];
+  metabotPermissions?: Partial<UserMetabotPermissions>;
 }
 
 export const commonSetup = ({
@@ -151,8 +155,12 @@ export const commonSetup = ({
   isEE,
   isAdmin = false,
   databases = [DATABASE],
+  metabotPermissions,
 }: CommonSetupProps = {}) => {
   setupDatabasesEndpoints(databases);
+  setupUserMetabotPermissionsEndpoint(
+    createMockUserMetabotPermissions(metabotPermissions),
+  );
   setupSearchEndpoints(searchItems);
   setupRecentViewsEndpoints(recents);
   setupCollectionByIdEndpoint({
