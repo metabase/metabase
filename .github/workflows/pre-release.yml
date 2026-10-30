@@ -314,16 +314,14 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
-            const { sendReleaseSlackMessage, githubRunLink, getGenericVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { sendTestsCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const version = '${{ inputs.version }}';
-            const runLink = githubRunLink('Pre-release Tests Passed', '${{ github.run_id }}', context.repo.owner, context.repo.repo);
-
-            await sendReleaseSlackMessage({
+            await sendTestsCompleteMessage({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              version,
-              emoji: 'very-green-check',
-              message: `${getGenericVersion(version)} ${runLink}`,
             }).catch(console.error);
 
   notify-failure:

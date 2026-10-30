@@ -1,4 +1,6 @@
 import "dotenv/config";
+import fs from "fs";
+
 import { WebClient } from "@slack/web-api";
 import type { Block, KnownBlock, MessageAttachment } from "@slack/web-api";
 import dayjs from "dayjs";
@@ -11,7 +13,8 @@ import _githubSlackMap from "../github-slack-map.json";
 
 const githubSlackMap: Record<string, string> = _githubSlackMap;
 
-import type { Issue } from "./types";
+import { findMilestone } from "./github";
+import type { Issue, ReleaseProps } from "./types";
 import { getGenericVersion } from "./version-helpers";
 
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
@@ -391,6 +394,225 @@ export async function sendReleaseSlackMessage({
   }
 
   return { ts };
+}
+
+export type ReleaseKind = "patch" | "minor";
+
+export type AutoReleaseSkipReason =
+  | "no-next-version"
+  | "no-green-commit"
+  | "already-released"
+  | "error";
+
+type AutoReleaseSkipArgs = {
+  kind: ReleaseKind;
+  majorVersion: number;
+  reason: AutoReleaseSkipReason;
+  runId: string;
+  owner: string;
+  repo: string;
+  error?: string;
+};
+
+export function buildAutoReleaseSkipMessage({
+  kind,
+  majorVersion,
+  reason,
+  runId,
+  owner,
+  repo,
+  error,
+}: AutoReleaseSkipArgs): string {
+  const runLink = githubRunLink("workflow run", runId, owner, repo);
+  const label = kind === "patch" ? "Auto-patch" : "Auto-minor";
+
+  const noNextVersion =
+    kind === "patch"
+      ? `:x: ${label} for *v${majorVersion}* skipped: could not determine next patch version. ${runLink}`
+      : `:information_source: ${label} for *v${majorVersion}* skipped: no gold release yet — cut it manually. ${runLink}`;
+
+  const alreadyReleasedSuffix =
+    kind === "patch" ? "nothing new to patch" : "nothing new to ship";
+
+  const messageByReason: Record<AutoReleaseSkipReason, string> = {
+    "no-green-commit": `:x: ${label} for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`,
+    "no-next-version": noNextVersion,
+    "already-released": `:information_source: ${label} for *v${majorVersion}* skipped: latest green commit has already been released — ${alreadyReleasedSuffix}. ${mentionSlackTeam("release-managers")} monitor the v${majorVersion} branch and manually release the next green commit. ${runLink}`,
+    error: `:x: ${label} for *v${majorVersion}* failed: ${error}. ${runLink}`,
+  };
+
+  return messageByReason[reason];
+}
+
+export async function sendAutoReleaseFailureMessage(
+  args: AutoReleaseSkipArgs & { channelName: string },
+) {
+  return sendReleaseSlackMessage({
+    channelName: args.channelName,
+    message: buildAutoReleaseSkipMessage(args),
+    status: args.reason === "error" ? "failure" : undefined,
+  });
+}
+
+export async function sendPreReleaseMessage({
+  github,
+  owner,
+  repo,
+  version,
+  runId,
+  releaseSha,
+  channelName,
+  userName,
+}: ReleaseProps & {
+  version: string;
+  runId: string;
+  releaseSha: string;
+  channelName: string;
+  userName: string;
+}) {
+  const milestone = await findMilestone({ version, github, owner, repo });
+  console.log("Milestone", milestone);
+  const milestoneLink = milestone?.number
+    ? slackLink(
+        `_:direction-sign: Milestone_`,
+        `https://github.com/${owner}/${repo}/milestone/${milestone.number}?closed=1`,
+      )
+    : "";
+
+  const releaseCommitLink = slackLink(
+    `_:merged: Release Commit_`,
+    `https://github.com/${owner}/${repo}/commit/${releaseSha}`,
+  );
+
+  const githubBuildLink = githubRunLink("_🏗️ CI Build_", runId, owner, repo);
+
+  const message = [
+    releaseCommitLink,
+    milestoneLink,
+    githubBuildLink,
+    userName
+      ? `started from ${owner}/${repo} by ${mentionUserByGithubLogin(userName)}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" - ");
+
+  await sendReleaseSlackMessage({
+    channelName,
+    version,
+    message,
+    startThread: true,
+  });
+}
+
+export async function sendTestsCompleteMessage({
+  channelName,
+  version,
+  runId,
+  owner,
+  repo,
+}: {
+  channelName: string;
+  version: string;
+  runId: number;
+  owner: string;
+  repo: string;
+}) {
+  await sendReleaseSlackMessage({
+    channelName,
+    version,
+    emoji: "very-green-check",
+    message: `${getGenericVersion(version)} ${githubRunLink("Pre-release Tests Passed", runId.toString(), owner, repo)}`,
+  });
+}
+
+export async function sendPublishStartMessage({
+  channelName,
+  version,
+  runId,
+  owner,
+  repo,
+}: {
+  channelName: string;
+  version: string;
+  runId: number;
+  owner: string;
+  repo: string;
+}) {
+  await sendReleaseSlackMessage({
+    channelName,
+    version,
+    emoji: "loading",
+    message: githubRunLink(
+      `Publishing ${getGenericVersion(version)}`,
+      runId.toString(),
+      owner,
+      repo,
+    ),
+  });
+}
+
+export async function sendPublishCompleteMessage({
+  channelName,
+  version,
+  runId,
+  owner,
+  repo,
+}: {
+  channelName: string;
+  version: string;
+  runId: number;
+  owner: string;
+  repo: string;
+}) {
+  const baseMessage = `*${githubRunLink(`${getGenericVersion(version)} Release is Complete`, runId.toString(), owner, repo)}* :partydeploy:`;
+
+  const fullMessage = `\n
+    • ${slackLink("Ops Issues", `https://github.com/${owner}/metabase-ops/issues`)} - ${mentionSlackTeam("successengineers")}
+    • ${slackLink("Release Notes", `https://github.com/${owner}/${repo}/releases`)} - ${mentionSlackTeam("tech-writers")}`;
+
+  const isPatch = version.split(".").length > 3;
+
+  await sendReleaseSlackMessage({
+    channelName,
+    version,
+    emoji: "partydeploy",
+    message: `${baseMessage}${isPatch ? "" : fullMessage}`,
+    status: "success",
+  });
+}
+
+const milestoneCheckProjectUrl = "https://github.com/orgs/metabase/projects/93";
+
+export async function sendMilestoneCheckMessage({
+  channelName,
+  issueCount,
+  version,
+}: {
+  channelName: string;
+  issueCount: number;
+  version: string;
+}) {
+  console.log("Sending milestone check slack message to ", channelName);
+
+  const { ts } = await sendReleaseSlackMessage({
+    channelName,
+    version,
+    emoji: "mag",
+    message: `${getGenericVersion(version)} has ${slackLink(`${issueCount} issues that need to be checked`, milestoneCheckProjectUrl)}`,
+  });
+
+  const fileName = `milestone-audit-${version}.md`;
+  const file = fs.readFileSync("./" + fileName);
+  const fileMessage = `:page_with_curl: ${getGenericVersion(version)} milestone audit`;
+
+  return uploadFileToSlack({
+    channelName,
+    thread_ts: ts,
+    fileName,
+    file,
+    message: fileMessage,
+  });
 }
 
 export async function sendFlakeStatusReport({

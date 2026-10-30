@@ -136,16 +136,16 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
-            const { sendReleaseSlackMessage, githubRunLink, getGenericVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { sendPublishStartMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const version = '${{ inputs.version }}';
-
-            await sendReleaseSlackMessage({
+            await sendPublishStartMessage({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              version,
-              emoji: 'loading',
-              message: githubRunLink(`Publishing ${getGenericVersion(version)}`, '${{ github.run_id }}', context.repo.owner, context.repo.repo),
             }).catch(console.error);
+
 
   download-uberjar:
     needs: check-version
@@ -637,28 +637,14 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
-            const {
-              sendReleaseSlackMessage,
-              githubRunLink,
-              getGenericVersion,
-              slackLink,
-              mentionSlackTeam,
-            } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { sendPublishCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const { owner, repo } = context.repo;
-            const version = '${{ inputs.version }}';
-            const runLink = githubRunLink(`${getGenericVersion(version)} Release is Complete`, '${{ github.run_id }}', owner, repo);
-            const isPatch = version.split('.').length > 3;
-            const links = `
-              • ${slackLink('Ops Issues', `https://github.com/${owner}/metabase-ops/issues`)} - ${mentionSlackTeam('successengineers')}
-              • ${slackLink('Release Notes', `https://github.com/${owner}/${repo}/releases`)} - ${mentionSlackTeam('tech-writers')}`;
-
-            await sendReleaseSlackMessage({
+            await sendPublishCompleteMessage({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              version,
-              emoji: 'partydeploy',
-              message: `*${runLink}* :partydeploy:${isPatch ? '' : `\n${links}`}`,
-              status: 'success',
             }).catch(console.error);
 
   notify-failure:

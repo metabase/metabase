@@ -48,12 +48,8 @@ jobs:
           script: | # js
             const {
               checkMilestoneForRelease,
-              sendReleaseSlackMessage,
-              uploadFileToSlack,
-              getGenericVersion,
-              slackLink,
+              sendMilestoneCheckMessage,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const fs = require('fs');
 
             const version = '${{ inputs.version }}';
             const commitHash = '${{ inputs.commit }}';
@@ -71,23 +67,10 @@ jobs:
               return;
             }
 
-            const channelName = process.env.SLACK_RELEASE_CHANNEL;
-            const genericVersion = getGenericVersion(version);
-            const fileName = `milestone-audit-${version}.md`;
-
-            const { ts } = await sendReleaseSlackMessage({
-              channelName,
+            await sendMilestoneCheckMessage({
+              channelName: process.env.SLACK_RELEASE_CHANNEL,
+              issueCount,
               version,
-              emoji: 'mag',
-              message: `${genericVersion} has ${slackLink(`${issueCount} issues that need to be checked`, 'https://github.com/orgs/metabase/projects/93')}`,
-            });
-
-            await uploadFileToSlack({
-              channelName,
-              thread_ts: ts,
-              fileName,
-              file: fs.readFileSync(`./${fileName}`),
-              message: `:page_with_curl: ${genericVersion} milestone audit`,
             });
 
   notify-failure:
