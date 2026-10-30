@@ -89,7 +89,7 @@ export function EmbeddingDataPicker({
     const isJoinStep = !canChangeDatabase;
     const canSelectMetric = !isJoinStep && hasNestedQueriesEnabled;
     const ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES: EmbeddingEntityType[] = [
-      "model",
+      ...(hasNestedQueriesEnabled ? (["model"] as const) : []),
       "table",
       "semantic-layer",
       ...(canSelectMetric ? (["metric"] as const) : []),
