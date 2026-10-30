@@ -10,9 +10,9 @@
 
    A whole dashboard's JSON cannot survive a round trip through model context, so callers send
    *ops*. This namespace reads current state and hands it, with the ops, to the shared pipeline in
-   [[metabase.metabot.toolkit.dashboard-write]]. That compiles the ops and saves through the same domain
-   fns the REST endpoints use, so write permission enforcement, transactionality, and event publishing
-   are inherited, never reimplemented. This namespace words the pipeline's errors through
+   [[metabase.metabot.toolkit.dashboard-write]]. That compiles the ops and saves through
+   [[metabase.dashboards.write]], so write permission enforcement, transactionality, and event
+   publishing are inherited, never reimplemented. This namespace words the pipeline's errors through
    [[metabase.mcp.v2.dashboard-errors]] and projects the result for the model."
   (:require
    [metabase.mcp.v2.common :as common]
