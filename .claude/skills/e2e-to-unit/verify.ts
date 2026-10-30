@@ -369,13 +369,15 @@ function planMutants(
     scoped.mutants = mutants;
     byFile.set(scoped.file, [...(byFile.get(scoped.file) ?? []), ...mutants]);
   }
+  let overBudget = 0;
   for (const [scoped] of planned) {
     if (scoped.mutants.length === 0) {
       scoped.status = "unmeasured";
       scoped.detail = "over --max-mutants";
+      overBudget += 1;
     }
   }
-  return byFile;
+  return { byFile, overBudget };
 }
 
 const escapeRegex = (text: string) =>
@@ -578,6 +580,7 @@ function toReport(
   functions: ScopedFunction[],
   reports: TestReport[],
   mutantCount: number,
+  overBudget: number,
   cleanRerunWarning?: CleanRerunWarning,
   passTimedOut?: boolean,
 ): VerifyReport {
@@ -599,6 +602,8 @@ function toReport(
     sha: index.sha,
     unitSpecs: options.unitSpecs,
     mutantCount,
+    overBudget,
+    maxMutants: options.maxMutants,
     cleanRerunWarning,
     passTimedOut,
     tests: reports,
@@ -665,6 +670,7 @@ async function main() {
   }
 
   let mutantCount = 0;
+  let overBudget = 0;
   let cleanRerunWarning: CleanRerunWarning | undefined;
   let passTimedOut = false;
   if (pending.length > 0 && options.unitSpecs.length > 0) {
@@ -685,7 +691,14 @@ async function main() {
     log(`${executedCount} functions executed by the unit specs`);
 
     if (!options.scopeOnly && executedCount > 0) {
-      const byFile = planMutants(repoRoot, functions, options);
+      const plan = planMutants(repoRoot, functions, options);
+      const byFile = plan.byFile;
+      overBudget = plan.overBudget;
+      if (overBudget > 0) {
+        log(
+          `WARNING: ${overBudget} of ${executedCount} executed function(s) got no mutant, because --max-mutants is ${options.maxMutants}. This run says nothing about them. Raise --max-mutants, lower --per-function, or narrow the scope with --exclude.`,
+        );
+      }
       mutantCount = [...byFile.values()].flat().length;
       if (mutantCount > 0) {
         const { fast, confirm, timedOut } = runMutants(
@@ -738,6 +751,7 @@ async function main() {
     functions,
     reports,
     mutantCount,
+    overBudget,
     cleanRerunWarning,
     passTimedOut,
   );

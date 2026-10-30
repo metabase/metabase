@@ -38,6 +38,9 @@ export interface VerifyReport {
   sha: string;
   unitSpecs: string[];
   mutantCount: number;
+  /** Functions the unit specs execute that the --max-mutants budget never reached. */
+  overBudget?: number;
+  maxMutants?: number;
   cleanRerunWarning?: CleanRerunWarning;
   /** A jest pass hit --pass-timeout, so the rows are only what finished. */
   passTimedOut?: boolean;
@@ -124,6 +127,12 @@ export function renderMarkdown(report: VerifyReport): string {
   if (report.passTimedOut) {
     lines.push(
       "**A jest pass hit `--pass-timeout` and was killed.** The rows below are the test results that finished first; mutants whose wrapper never ran report as `unmeasured`. Raise `--pass-timeout`, or narrow the run, for the rest.",
+    );
+    lines.push("");
+  }
+  if (report.overBudget) {
+    lines.push(
+      `**${report.overBudget} function(s) that the unit specs execute got no mutant**, because the \`--max-mutants\` budget of ${report.maxMutants ?? "the run"} ran out. They report as \`unmeasured\`, and this run says nothing about them. Mutants are dealt rarest first, so the functions left out are the widely fired ones. Raise \`--max-mutants\`, lower \`--per-function\`, or narrow the scope with \`--exclude\`.`,
     );
     lines.push("");
   }

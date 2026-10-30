@@ -965,6 +965,29 @@ describe("progress from a killed pass", () => {
   });
 });
 
+describe("the budget warning in the report", () => {
+  const report = (overBudget?: number): VerifyReport => ({
+    runId: "1",
+    sha: "abcdef1234",
+    unitSpecs: ["a.unit.spec.tsx"],
+    mutantCount: 300,
+    overBudget,
+    maxMutants: 300,
+    tests: [],
+  });
+
+  it("names how many executed functions got no mutant", () => {
+    const markdown = renderMarkdown(report(694));
+    expect(markdown).toContain("694 function(s)");
+    expect(markdown).toContain("`--max-mutants` budget of 300");
+  });
+
+  it("says nothing when the budget reached every function", () => {
+    expect(renderMarkdown(report(0))).not.toContain("got no mutant");
+    expect(renderMarkdown(report(undefined))).not.toContain("got no mutant");
+  });
+});
+
 describe("the pass-timeout warning in the report", () => {
   const report = (passTimedOut?: boolean): VerifyReport => ({
     runId: "1",
