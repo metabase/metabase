@@ -2083,6 +2083,19 @@ def _unbracketed(stmt: exp.Expression) -> exp.Expression:
     return stmt
 
 
+def _statement_reason(stmt: exp.Expression, sql: str, dialect: str):
+    """`(reason, detail)` for why `stmt`, parsed from `sql`, fails the checks every statement type shares, else None."""
+    function = _session_effect_function(stmt)
+    if function is not None:
+        return ("session-function", function)
+    executor = _sql_executing_function(stmt)
+    if executor is not None:
+        return ("sql-executing-function", executor)
+    if _dynamic_function_call(stmt):
+        return ("dynamic-function-call", None)
+    return _hidden_sql(sql, dialect)
+
+
 def _not_read_only_reason(stmts, sql: str, dialect: str):
     """`(reason, detail)` for why `stmts`, parsed from `sql`, are not one read-only SELECT, else None."""
     if not stmts:
@@ -2093,24 +2106,17 @@ def _not_read_only_reason(stmts, sql: str, dialect: str):
         return ("not-a-select", None)
     if not _read_only(stmts[0]):
         return ("writes-or-locks", None)
-    function = _session_effect_function(stmts[0])
-    if function is not None:
-        return ("session-function", function)
-    executor = _sql_executing_function(stmts[0])
-    if executor is not None:
-        return ("sql-executing-function", executor)
-    if _dynamic_function_call(stmts[0]):
-        return ("dynamic-function-call", None)
-    return _hidden_sql(sql, dialect)
+    return _statement_reason(stmts[0], sql, dialect)
 
 
 def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None) -> str:
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
 
+    Every mode applies the checks the statement types share.
     `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
-    its tree, and statements holding only a comment after the last semicolon are not counted. When the SQL is not a
-    read-only SELECT, `reason` says why, with `reason_detail` for the reasons that have one.
+    its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
+    refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2120,7 +2126,12 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             stmts = _nonempty_statements(stmts)
         elif stmt_type != "read":
             allowed_types = (exp.Update, exp.Insert, exp.Delete)
-        problem = _not_read_only_reason(stmts, sql, dialect) if stmt_type == "read-only" else None
+        if stmt_type == "read-only":
+            problem = _not_read_only_reason(stmts, sql, dialect)
+        elif len(stmts) == 1:
+            problem = _statement_reason(stmts[0], sql, dialect)
+        else:
+            problem = None
         if problem is not None:
             result["reason"], result["reason_detail"] = problem
         if len(stmts) == 1:
