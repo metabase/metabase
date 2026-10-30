@@ -1,9 +1,10 @@
 # Tests
 
 The tests live under `enterprise/backend/test/metabase_enterprise/semantic_layer_import/`, and the regular backend test
-run picks them up. `sql_test.clj` tests the SQL subset on its own, and `core_test.clj` an IR written by hand; the rest
-run dbt manifests through the import and live under `dbt/` (see [the dbt README](dbt/README.md#running-the-tests)). Run
-them all in a fresh JVM with
+run picks them up. `sql_test.clj` tests the import's side of the SQL (the conversion itself is tested in the
+`sql-to-mbql` module's `test/metabase/sql_to_mbql/`), and `core_test.clj` an IR written by hand; the rest run dbt
+manifests through the import and live under `dbt/` (see [the dbt README](dbt/README.md#running-the-tests)). Run them
+all in a fresh JVM with
 
 ```sh
 ./bin/test-agent :module enterprise/semantic-layer-import

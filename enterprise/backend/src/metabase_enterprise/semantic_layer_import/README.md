@@ -43,8 +43,8 @@ serdes `import`         YAML tree ──► Cards in the app DB             ente
    the project was written for, since the driver decides how the project's column types and SQL are read.
 3. **Resolve.** Builds an in-memory Lib metadata provider from the IR (`metadata`), with Tables and Fields named the way
    sync would see them in the warehouse. It then builds each metric's query with Lib against that provider: the source
-   table, one aggregation and the filters, with SQL translated by `sql` (through sqlglot; see [SQL in the IR](sql.md)).
-   Each metric also gets its curated dimensions and a deterministic `entity_id` (see [Identifiers and
+   table, one aggregation and the filters, with SQL translated by the `sql-to-mbql` module (see [SQL in the
+   IR](sql.md)). Each metric also gets its curated dimensions and a deterministic `entity_id` (see [Identifiers and
    re-import](ids.md)). Ratio and derived metrics refer to the cards of their input metrics, so metrics are resolved in
    dependency order and each one is added to the provider as a card. What cannot be a Metabase metric is reported here,
    in [the report](report.md).
@@ -64,10 +64,10 @@ A few principles hold throughout:
   shared stages, and anything added to the IR works for every source.
 - **Lib, not hand-written MBQL.** Queries are built with `metabase.lib.core`, what the import needs to know about them
   comes from Lib, and serdes writes them. The output tracks Metabase's query format as it changes.
-- **Report, don't fail.** A construct with no Metabase equivalent is thrown deep in a stage with `unsupported/throw!`
-  and caught where the stage knows which entry it is about. That entry is reported and the run goes on. An unexpected
-  exception is an `:errors` entry, not a failed run. A metric built on a reported metric is reported with that
-  metric's reason.
+- **Report, don't fail.** A construct with no Metabase equivalent is thrown deep in a stage with
+  `unsupported/throw-reason` and caught where the stage knows which entry it is about. That entry is reported and the
+  run goes on. An unexpected exception is an `:errors` entry, not a failed run. A metric built on a reported metric is
+  reported with that metric's reason.
 - **Deterministic ids.** Every id is derived from the project (`ids`; see [Identifiers and re-import](ids.md)), so a
   re-run writes the same ids and a re-import updates what the previous import created instead of duplicating it.
 
@@ -126,7 +126,7 @@ MB_DB_CONNECTION_URI=... clojure -M:run:ee import /path/to/serdes-out -e
 | [Importing the result](importing.md) | Loading the tree with serdes, how the import spells warehouse names the way sync sees them, and checking a tree with `preflight` |
 | [Identifiers and re-import](ids.md) | How every id is derived from the project, and what that means for importing again |
 | [The IR](ir.md) | The intermediate representation every source parses into: its concepts next to dbt's, Cube's and OSI's, how aggregations map onto Metabase, and how a metric's dimension set is built |
-| [SQL in the IR](sql.md) | The subset of warehouse SQL that converts to MBQL, what does not and what it would take, and the caveat on weeks |
+| [SQL in the IR](sql.md) | The SQL the IR holds, how the `sql-to-mbql` module converts it (its README lists the subset of warehouse SQL that converts, what does not and what it would take), and the caveat on weeks |
 | [Namespaces](namespaces.md) | What each namespace does, and which stage it belongs to |
 | [Extending the import](extending.md) | Adding a source, and adding a kind of content besides metrics |
 | [Tests](tests.md) | Where the tests are and how to run them |

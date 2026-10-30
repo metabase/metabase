@@ -32,6 +32,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.sql-to-mbql.core :as sql-to-mbql]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -47,7 +48,7 @@
    [:source    ::ir/source]
    [:providers [:map-of :string ::lib.schema.metadata/metadata-provider]]
    [:tables    [:map-of :string ::ir/table]]
-   [:dialect   ::sql/dialect]])
+   [:dialect   ::sql-to-mbql/dialect]])
 
 (mr/def ::context
   "What resolving one metric's SQL needs, over the run's [[env]]: the provider for the metric's database, the query
@@ -63,7 +64,7 @@
    [:metric-unique-id :string]
    [:time-dimension   [:maybe :string]]
    [:time-grain       [:maybe ::ir/grain]]
-   [:resolve-column   ::sql/resolve-column]])
+   [:resolve-column   ::sql-to-mbql/resolve-column]])
 
 (mu/defn env :- ::env
   "The `::env` of a run of the resolve stage over the IR `ir` with `config`: built once, shared by every metric."
@@ -75,16 +76,16 @@
    :tables    (:tables ir)
    :dialect   (sql-tools/driver->dialect (:driver config))})
 
-(mu/defn- check-declared-type! :- :nil
-  "[[unsupported/throw!]] when `column`, as the project documents it, declares a `data_type` the driver does not map
-  to a base type; the fix is a mapping in the driver (see [[metadata/base-type]] and the `::config/driver` schema).
+(mu/defn- check-declared-type :- :nil
+  "[[unsupported/throw-reason]] when `column`, as the project documents it, declares a `data_type` the driver does not
+  map to a base type; the fix is a mapping in the driver (see [[metadata/base-type]] and the `::config/driver` schema).
   No column, or no `data_type`, is fine: the column's type is unknown and the instance supplies it."
   [config :- ::config/config
    column :- [:maybe ::ir/column]]
   (when-let [data-type (some-> (:data-type column) str/trim not-empty)]
     (when-not (metadata/base-type (:driver config) data-type)
-      (unsupported/throw! "no base type known for column %s of type %s: the %s driver has no mapping for it"
-                          (pr-str (:name column)) (pr-str data-type) (name (:driver config))))))
+      (unsupported/throw-reason "no base type known for column %s of type %s: the %s driver has no mapping for it"
+                                (pr-str (:name column)) (pr-str data-type) (name (:driver config))))))
 
 (mu/defn column-ref :- ::lib.schema.ref/ref
   "Lib ref for `column-name` on `table-id`, by its documented spelling when the project documents it in `columns`
@@ -95,7 +96,7 @@
    columns     :- [:map-of :string ::ir/column]
    column-name :- :string]
   (let [column (metadata/find-named (vals columns) column-name)]
-    (check-declared-type! config column)
+    (check-declared-type config column)
     (lib/ref (metadata/column provider table-id (or (:name column) column-name)))))
 
 (mu/defn known-type? :- :boolean
@@ -103,7 +104,7 @@
   [base-type :- [:maybe ::lib.schema.common/base-type]]
   (boolean (and base-type (not= base-type :type/*))))
 
-(mu/defn column-or-sql :- ::sql/value
+(mu/defn column-or-sql :- ::sql-to-mbql/expression
   "The Lib expression for a dimension's or key's `expr`: a bare column name, or a SQL expression."
   [{:keys [env resolve-column]} :- ::context
    expr                         :- :string]
@@ -111,44 +112,44 @@
     (case kind
       :column (resolve-column column-name)
       :sql    (sql/expression->mbql (:dialect env) expr resolve-column)
-      (unsupported/throw! "%s is neither a column nor a SQL expression" (pr-str expr)))))
+      (unsupported/throw-reason "%s is neither a column nor a SQL expression" (pr-str expr)))))
 
 (mu/defn table-key :- ::ir/key
   "The key named `key-name` on `context`'s table."
   [{:keys [table]} :- ::context
    key-name        :- :string]
   (or (m/find-first #(= key-name (:name %)) (:keys table))
-      (unsupported/throw! "key %s is not on table %s" (pr-str key-name) (pr-str (:name table)))))
+      (unsupported/throw-reason "key %s is not on table %s" (pr-str key-name) (pr-str (:name table)))))
 
 (mu/defn table-join :- ::ir/join
   "The join named `join-name` on `context`'s table."
   [{:keys [table]} :- ::context
    join-name       :- :string]
   (or (m/find-first #(= join-name (:name %)) (:joins table))
-      (unsupported/throw! "join %s is not on table %s" (pr-str join-name) (pr-str (:name table)))))
+      (unsupported/throw-reason "join %s is not on table %s" (pr-str join-name) (pr-str (:name table)))))
 
 (mu/defn join-context :- ::context
   "A context for the table `join` from `context`'s table leads to: bare column names resolve to that table's columns,
   reached through the join's source column on this one. Metabase spells that `:source-field` on the ref and joins
-  implicitly, so the instance's metadata has to know the foreign key for the query to run. [[unsupported/throw!]]
+  implicitly, so the instance's metadata has to know the foreign key for the query to run. [[unsupported/throw-reason]]
   with the reason of a join the source could not make, or when the joined table is in another Metabase database."
   [{:keys [env provider resolve-column] :as context} :- ::context
    join                                              :- ::ir/join]
   (b/cond
     (:reason join)
-    (unsupported/throw! (:reason join))
+    (unsupported/throw-reason (:reason join))
 
     :let [target (get-in env [:tables (:table join)])]
 
     (not target)
-    (unsupported/throw! "join %s leads to table %s, which is not in the semantic layer"
-                        (pr-str (:name join)) (pr-str (:table join)))
+    (unsupported/throw-reason "join %s leads to table %s, which is not in the semantic layer"
+                              (pr-str (:name join)) (pr-str (:table join)))
 
     :let [database (metadata/table-database (:config env) target)]
 
     (not= database (metadata/database-name provider))
-    (unsupported/throw! "table %s is in Metabase database %s, not %s; a join across databases is not supported"
-                        (pr-str (:name target)) (pr-str database) (pr-str (metadata/database-name provider)))
+    (unsupported/throw-reason "table %s is in Metabase database %s, not %s; a join across databases is not supported"
+                              (pr-str (:name target)) (pr-str database) (pr-str (metadata/database-name provider)))
 
     :let [fk-ref (resolve-column (:source-column join))
           table  (metadata/table-metadata provider target)]
@@ -164,15 +165,15 @@
   "The context for resolving the metric `ir` against `table` in `env`: the provider for the table's database, a query
   over it and a callback for its columns. `time-dimension` is the metric's own for a simple metric; a ratio or derived
   metric takes its inputs' (see [[metabase-enterprise.semantic-layer-import.resolve.metrics/resolve-composed]]).
-  [[unsupported/throw!]] when the config maps the table's warehouse database to no Metabase database."
+  [[unsupported/throw-reason]] when the config maps the table's warehouse database to no Metabase database."
   [{:keys [config providers] :as env} :- ::env
    {:keys [columns] :as table}        :- ::ir/table
    {:keys [unique-id time-grain]}     :- ::ir/metric
    time-dimension                     :- [:maybe :string]]
   (let [database (metadata/table-database config table)]
     (when-not database
-      (unsupported/throw! "no Metabase database configured for warehouse database %s; add it to :databases"
-                          (pr-str (-> table :relation :database))))
+      (unsupported/throw-reason "no Metabase database configured for warehouse database %s; add it to :databases"
+                                (pr-str (-> table :relation :database))))
     (let [provider       (get providers database)
           table-metadata (metadata/table-metadata provider table)]
       {:env              env

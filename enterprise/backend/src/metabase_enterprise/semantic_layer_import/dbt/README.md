@@ -4,7 +4,7 @@ Imports the metrics of a dbt project's semantic layer into Metabase. It reads th
 and parses it into the import's intermediate representation (IR); the shared part of the import turns that into Metabase
 metric cards, as a serdes export tree that `import` loads. See [the module's README](../README.md) for how the import
 fits together, and the documents it links to for [the IR](../ir.md), [the config](../config.md), [the
-report](../report.md), [importing the result](../importing.md) and [the SQL that converts](../sql.md). This one covers
+report](../report.md), [importing the result](../importing.md) and [the SQL in the IR](../sql.md). This one covers
 what is dbt's: producing a manifest, running an import of one, and how each dbt construct converts or why it does not.
 
 The dbt source is a nested module, `enterprise/semantic-layer-import.dbt`:
@@ -253,8 +253,9 @@ dimension's validity window, or because the join behind its foreign entity canno
 ### Filters and SQL expressions
 
 A measure's `expr` may be SQL rather than a column, and a metric or measure may carry a `filter` of Jinja-wrapped
-MetricFlow references around SQL. The SQL is the warehouse's, and the subset of it that converts is the import's: see
-[SQL in the IR](../sql.md), with its [caveat on weeks](../sql.md#weeks), which dbt, like ISO, starts on Monday.
+MetricFlow references around SQL. The SQL is the warehouse's, and the subset of it that converts is the `sql-to-mbql`
+module's: see [SQL in the IR](../sql.md), with its [caveat on weeks](../sql.md#weeks), which dbt, like ISO, starts on
+Monday.
 
 `dbt.filters` stands a placeholder in for each MetricFlow reference in a `where_sql_template` and says what it refers
 to in the IR's terms (`::ir/reference`):
@@ -331,8 +332,9 @@ the import reports nothing about it. A driver with no percentile at all (MySQL, 
 
 ### SQL in `expr` and `filter`
 
-A measure's `expr` and a `filter` are parsed with sqlglot and mapped onto MBQL clause by clause; what of the SQL itself
-does not map is listed under [What does not convert](../sql.md#what-does-not-convert), with the reasons. What is dbt's
+A measure's `expr` and a `filter` are parsed with sqlglot and mapped onto MBQL clause by clause by the `sql-to-mbql`
+module; what of the SQL itself does not map is listed under [What does not
+convert](../../../../../../src/metabase/sql_to_mbql/README.md#what-does-not-convert), with the reasons. What is dbt's
 own:
 
 | dbt | Example | Why it is unsupported | What it would take |

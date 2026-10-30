@@ -380,23 +380,23 @@
               input-name))
           inputs)))
 
-(mu/defn- check-inputs! :- :nil
-  "[[unsupported/throw!]] when one of a ratio or derived metric's `inputs` is shifted in time (see [[offset-reason]])
-  or is not among the metrics its `depends_on` resolved (see [[undeclared-input]])."
+(mu/defn- check-inputs :- :nil
+  "[[unsupported/throw-reason]] when one of a ratio or derived metric's `inputs` is shifted in time (see
+  [[offset-reason]]) or is not among the metrics its `depends_on` resolved (see [[undeclared-input]])."
   [{depends-on :depends_on} :- ::manifest/metric
    inputs                   :- [:sequential ::manifest/metric-input]]
-  (some-> (offset-reason inputs) unsupported/throw!)
+  (some-> (offset-reason inputs) unsupported/throw-reason)
   (when-let [input-name (undeclared-input depends-on inputs)]
-    (unsupported/throw! (str "input metric %s is not among the metrics depends_on lists: the manifest did not resolve"
-                             " it, so it is not read")
-                        (pr-str input-name))))
+    (unsupported/throw-reason (str "input metric %s is not among the metrics depends_on lists: the manifest did not"
+                                   " resolve it, so it is not read")
+                              (pr-str input-name))))
 
 (mu/defn- parse-ratio :- ::ir/metric.ratio
   [{type-params :type_params, metric-filter :filter, :as metric} :- ::manifest/metric]
   (let [{numerator-input :numerator, denominator-input :denominator} type-params]
     (when (or (nil? numerator-input) (nil? denominator-input))
-      (unsupported/throw! "ratio metric without a numerator and a denominator"))
-    (check-inputs! metric [numerator-input denominator-input])
+      (unsupported/throw-reason "ratio metric without a numerator and a denominator"))
+    (check-inputs metric [numerator-input denominator-input])
     (let [[numerator denominator] (unsupported/with-reason-prefix "ratio"
                                     #(mapv parse-metric-input [numerator-input denominator-input]))]
       (assoc (metric-common :ratio metric (parse-filters metric-filter))
@@ -407,10 +407,10 @@
   [{type-params :type_params, metric-filter :filter, :as metric} :- ::manifest/metric]
   (let [{:keys [expr metrics]} type-params]
     (when (str/blank? expr)
-      (unsupported/throw! "derived metric without an expr"))
+      (unsupported/throw-reason "derived metric without an expr"))
     (when (empty? metrics)
-      (unsupported/throw! "derived metric without input metrics"))
-    (check-inputs! metric metrics)
+      (unsupported/throw-reason "derived metric without input metrics"))
+    (check-inputs metric metrics)
     (assoc (metric-common :derived metric (parse-filters metric-filter))
            :expr   expr
            :inputs (unsupported/with-reason-prefix (str "expr " (pr-str expr))
@@ -487,7 +487,7 @@
 (mu/defn- cumulative-input :- [:maybe ::cumulative-input]
   "The metric a cumulative `metric` runs over: on the 1.12 inline spec the simple metric in
   `cumulative_type_params.metric`, resolved through `depends_on` into `metrics`, the manifest's own metrics by unique
-  id. Nil for a legacy-spec cumulative metric, which points at a measure instead. [[unsupported/throw!]] when the
+  id. Nil for a legacy-spec cumulative metric, which points at a measure instead. [[unsupported/throw-reason]] when the
   input metric is not in `metrics`, is not a simple metric, is not the metric `cumulative_type_params.metric` names,
   or is shifted in time by an `offset_window` or `offset_to_grain` (see [[offset-reason]])."
   [metrics                                           :- [:map-of :string ::manifest/metric]
@@ -496,16 +496,16 @@
     (let [input-metric (get metrics input-metric-id)
           reference    (get-in type-params [:cumulative_type_params :metric])]
       (when-not input-metric
-        (unsupported/throw! "input metric %s not found in manifest" (pr-str input-metric-id)))
+        (unsupported/throw-reason "input metric %s not found in manifest" (pr-str input-metric-id)))
       (when-not (= :simple (:type input-metric))
-        (unsupported/throw! (str "a cumulative metric over the %s metric %s has no Metabase equivalent: only a simple"
-                                 " aggregation can run cumulatively")
-                            (name (:type input-metric)) (pr-str (:name input-metric))))
+        (unsupported/throw-reason (str "a cumulative metric over the %s metric %s has no Metabase equivalent: only a"
+                                       " simple aggregation can run cumulatively")
+                                  (name (:type input-metric)) (pr-str (:name input-metric))))
       (when (and reference (not= (:name reference) (:name input-metric)))
-        (unsupported/throw! (str "cumulative_type_params.metric names %s but depends_on resolved to the metric %s:"
-                                 " the manifest disagrees with itself")
-                            (pr-str (:name reference)) (pr-str (:name input-metric))))
-      (some-> (when reference (offset-reason [reference])) unsupported/throw!)
+        (unsupported/throw-reason (str "cumulative_type_params.metric names %s but depends_on resolved to the"
+                                       " metric %s: the manifest disagrees with itself")
+                                  (pr-str (:name reference)) (pr-str (:name input-metric))))
+      (some-> (when reference (offset-reason [reference])) unsupported/throw-reason)
       {:metric    input-metric
        :reference reference})))
 
@@ -525,9 +525,9 @@
   `type_params.expr` is nil, and the metric is reported when the two disagree. When both a measure and
   `metric_aggregation_params` are present, the measure wins.
 
-  [[unsupported/throw!]] when the semantic model or the measure is not in the manifest, when the metric has neither a
-  measure nor `metric_aggregation_params`, and when `metric_aggregation_params.semantic_model` names another semantic
-  model than `depends_on` resolved to."
+  [[unsupported/throw-reason]] when the semantic model or the measure is not in the manifest, when the metric has
+  neither a measure nor `metric_aggregation_params`, and when `metric_aggregation_params.semantic_model` names another
+  semantic model than `depends_on` resolved to."
   [models                                                                :- [:map-of :string ::model]
    {metric-name :name, type-params :type_params, depends-on :depends_on} :- ::manifest/metric]
   (b/cond
@@ -536,7 +536,7 @@
           model-name (-> model :table :name)]
 
     (not model)
-    (unsupported/throw! "semantic model %s not found in manifest" (pr-str model-id))
+    (unsupported/throw-reason "semantic model %s not found in manifest" (pr-str model-id))
 
     :let [input-measure (:measure type-params)
           measure       (when input-measure
@@ -544,27 +544,28 @@
           inline-params (:metric_aggregation_params type-params)]
 
     (and input-measure (not measure))
-    (unsupported/throw! "measure %s not found on semantic model %s" (pr-str (:name input-measure)) (pr-str model-name))
+    (unsupported/throw-reason "measure %s not found on semantic model %s"
+                              (pr-str (:name input-measure)) (pr-str model-name))
 
     measure
     {:model model, :aggregation measure}
 
     (not inline-params)
-    (unsupported/throw! "simple metric has neither a measure nor metric_aggregation_params")
+    (unsupported/throw-reason "simple metric has neither a measure nor metric_aggregation_params")
 
     :let [inline-model (:semantic_model inline-params)]
 
     (and inline-model (not= inline-model model-name))
-    (unsupported/throw! (str "metric_aggregation_params names semantic model %s but depends_on resolved to %s: the"
-                             " manifest disagrees with itself")
-                        (pr-str inline-model) (pr-str model-name))
+    (unsupported/throw-reason (str "metric_aggregation_params names semantic model %s but depends_on resolved to %s:"
+                                   " the manifest disagrees with itself")
+                              (pr-str inline-model) (pr-str model-name))
 
     :let [type-expr   (:expr type-params)
           inline-expr (:expr inline-params)]
 
     (and type-expr inline-expr (not= type-expr inline-expr))
-    (unsupported/throw! "metric_aggregation_params.expr %s disagrees with type_params.expr %s"
-                        (pr-str inline-expr) (pr-str type-expr))
+    (unsupported/throw-reason "metric_aggregation_params.expr %s disagrees with type_params.expr %s"
+                              (pr-str inline-expr) (pr-str type-expr))
 
     :else
     {:model       model
@@ -637,17 +638,17 @@
   with the filters and `fill_nulls_with` [[simple-metric-extras]] gathers. Its time dimension is the aggregation's
   `agg_time_dimension`. An inline-spec (dbt 1.12) cumulative metric points at the simple metric it runs over instead
   (see [[cumulative-input]]) and takes that metric's aggregation and semantic model. A cumulative metric with a window,
-  a `grain_to_date` or a `period_agg` other than `last` is [[unsupported/throw!]] (see [[cumulative-reason]]), as is
-  an aggregation Metabase cannot express (see [[aggregation-reason]])."
+  a `grain_to_date` or a `period_agg` other than `last` is [[unsupported/throw-reason]] (see [[cumulative-reason]]), as
+  is an aggregation Metabase cannot express (see [[aggregation-reason]])."
   [models  :- [:map-of :string ::model]
    metrics :- [:map-of :string ::manifest/metric]
    {metric-type :type, type-params :type_params :as metric} :- ::manifest/metric]
   (when (= metric-type :cumulative)
-    (some-> (cumulative-reason type-params) unsupported/throw!))
+    (some-> (cumulative-reason type-params) unsupported/throw-reason))
   (let [{input-metric :metric, :keys [reference]} (when (= metric-type :cumulative)
                                                     (cumulative-input metrics metric))
         {:keys [model aggregation]}               (aggregation-source models (or input-metric metric))]
-    (some-> (aggregation-reason aggregation) unsupported/throw!)
+    (some-> (aggregation-reason aggregation) unsupported/throw-reason)
     (let [{:keys [filters fill-nulls-with]} (simple-metric-extras metric input-metric reference)]
       (assoc (metric-common metric-type metric filters)
              :fill-nulls-with fill-nulls-with
@@ -689,8 +690,8 @@
           (:simple :cumulative) (parse-simple models metrics metric)
           :ratio                (parse-ratio metric)
           :derived              (parse-derived metric)
-          :conversion           (unsupported/throw! (str "conversion metrics are out of scope: a per-entity funnel is"
-                                                         " nothing a Metabase metric expresses"))))
+          :conversion           (unsupported/throw-reason (str "conversion metrics are out of scope: a per-entity"
+                                                               " funnel is nothing a Metabase metric expresses"))))
       (fn [reason]
         (unsupported/report :metric metric-name unique-id reason)))
      (catch Exception e

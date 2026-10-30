@@ -41,12 +41,13 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.util :as lib.util]
+   [metabase.sql-to-mbql.core :as sql-to-mbql]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mu/defn- aggregated-expression :- [:maybe ::sql/value]
+(mu/defn- aggregated-expression :- [:maybe ::sql-to-mbql/expression]
   "The Lib expression an aggregation with `operator` aggregates `expr` as: nil for a row count (`1` under `:sum` or
   `:count`, or `*` under `:count`); for `:count-where` the condition to count rows by, a bare boolean column counting
   where it is true; otherwise a column or value expression. An aggregation over any other literal has no Metabase
@@ -56,12 +57,12 @@
    expr                               :- :string]
   (let [{:keys [kind], column-name :name, literal :value} (sql/parse-expr expr)
         literal-unsupported (fn [literal]
-                              (unsupported/throw! "%s over the literal %s has no Metabase equivalent"
-                                                  (name operator) literal))]
+                              (unsupported/throw-reason "%s over the literal %s has no Metabase equivalent"
+                                                        (name operator) literal))]
     (case kind
       ;; `count(*)`, like `count(1)`, is a row count
       :wildcard (when-not (= operator :count)
-                  (unsupported/throw! "%s over * has no Metabase equivalent" (name operator)))
+                  (unsupported/throw-reason "%s over * has no Metabase equivalent" (name operator)))
       :literal  (when-not (and (= literal "1") (#{:sum :count} operator))
                   (literal-unsupported literal))
       :column   (let [column (resolve-column column-name)]
@@ -69,12 +70,11 @@
                     (let [base-type (lib/type-of query column)]
                       ;; a column the project types as anything but boolean is no condition; an untyped one is trusted
                       (when (and (resolve.columns/known-type? base-type) (not (isa? base-type :type/Boolean)))
-                        (unsupported/throw! "count-where over the non-boolean column %s" (pr-str column-name)))
+                        (unsupported/throw-reason "count-where over the non-boolean column %s" (pr-str column-name)))
                       (lib/= column true))
                     column))
-      :sql      (let [value (if (= operator :count-where)
-                              (sql/condition->mbql (:dialect env) expr resolve-column)
-                              (sql/expression->mbql (:dialect env) expr resolve-column))]
+      :sql      (let [value (sql/expression->mbql (:dialect env) expr resolve-column
+                                                  {:condition? (= operator :count-where)})]
                   (if (lib/clause? value)
                     value
                     (literal-unsupported (pr-str value)))))))
@@ -87,7 +87,7 @@
   [:map {:closed true}
    [:agg        [:enum :row-count :count-non-null :count-where
                  :sum :avg :min :max :median :count-distinct :percentile]]
-   [:expression [:maybe ::sql/value]]
+   [:expression [:maybe ::sql-to-mbql/expression]]
    [:percentile {:optional true} :double]])
 
 (mu/defn- canonical-aggregation :- ::canonical-aggregation
@@ -95,7 +95,7 @@
   the special cases are decided once and [[aggregation-clause]] and [[filtered-aggregation-clause]] are each a flat
   `case`."
   [{:keys [operator percentile]} :- ::ir/aggregation
-   expression                    :- [:maybe ::sql/value]]
+   expression                    :- [:maybe ::sql-to-mbql/expression]]
   (cond
     ;; aggregated-expression gives no expression for a row count only
     (nil? expression)         {:agg :row-count, :expression nil}
@@ -129,8 +129,8 @@
       :row-count      (lib/cum-count)
       :count-non-null (lib/cum-sum (lib/case [[(lib/not-null expression) 1]] 0))
       :sum            (lib/cum-sum expression)
-      (unsupported/throw! "a running %s has no Metabase equivalent: only a running sum or row count does"
-                          (name agg)))
+      (unsupported/throw-reason "a running %s has no Metabase equivalent: only a running sum or row count does"
+                                (name agg)))
     (case agg
       :row-count      (lib/count)
       :count-non-null (lib/count-where (lib/not-null expression))
@@ -184,7 +184,7 @@
   "The driver feature a clause needs, for the clauses the converter emits that some driver lacks: a median or
   percentile on MySQL, SQLite, H2 or Vertica, a regex on SQL Server or SQLite, a cast to an integer on H2. The
   query processor checks only a few of these before it compiles, so a metric using one would import and fail when it
-  is queried; see [[check-features!]]."
+  is queried; see [[check-features]]."
   {:median            :percentile-aggregations
    :percentile        :percentile-aggregations
    :stddev            :standard-deviation-aggregations
@@ -208,15 +208,15 @@
    :get-minute        :temporal-extract
    :get-second        :temporal-extract})
 
-(mu/defn- check-features! :- :nil
-  "[[unsupported/throw!]] when a clause of `query` needs a driver feature the config's driver lacks (see
+(mu/defn- check-features :- :nil
+  "[[unsupported/throw-reason]] when a clause of `query` needs a driver feature the config's driver lacks (see
   [[clause-features]] and [[metadata/driver-features]]), naming the clause and the feature."
   [query :- ::lib.schema/query]
   (doseq [clause (clauses query)
           :let   [feature (clause-features (first clause))]
           :when  (and feature (not (lib.metadata/database-supports? query feature)))]
-    (unsupported/throw! "the %s driver does not support the %s clause, which the metric needs (feature %s)"
-                        (name (:engine (lib.metadata/database query))) (name (first clause)) feature)))
+    (unsupported/throw-reason "the %s driver does not support the %s clause, which the metric needs (feature %s)"
+                              (name (:engine (lib.metadata/database query))) (name (first clause)) feature)))
 
 (def ^:private week-note
   (str "a week grain is read as a Metabase week, which starts on the day the instance's start-of-week setting names;"
@@ -265,7 +265,7 @@
    filters                                                       :- [:sequential ::lib.schema.expression/boolean]]
   (let [dimensions (resolve.dimensions/dimension-set context)
         query      (without-ref-types (reduce lib/filter (lib/aggregate query aggregation) filters))
-        _          (check-features! query)
+        _          (check-features query)
         nano-id    (ids/metric-entity-id (:source env) (metadata/database-name provider) ir)
         card-id    (metadata/add-metric! provider {:name          (:label ir)
                                                    :description   (:description ir)
@@ -289,7 +289,7 @@
    :- ::ir/metric.simple]
   (let [table (get (:tables env) table-name)]
     (when-not table
-      (unsupported/throw! "table %s not found" (pr-str table-name)))
+      (unsupported/throw-reason "table %s not found" (pr-str table-name)))
     (let [{:keys [query] :as context}            (resolve.columns/metric-context env table ir time-dimension)
           {:keys [agg expression] :as canonical} (canonical-metric-aggregation context ir)
           filter-clauses                         (resolve.filters/filter-clauses context filters)
@@ -297,8 +297,8 @@
                                                    (lib/type-of query expression))]
       ;; COALESCE(MAX(text), 0) fails in the warehouse; every other aggregation has a numeric result
       (when (and (resolve.columns/known-type? result-type) (not (isa? result-type :type/Number)))
-        (unsupported/throw! "filling nulls with %s on a non-numeric aggregation: %s of %s, which is %s"
-                            fill-nulls-with (name agg) (pr-str (:expr aggregation)) result-type))
+        (unsupported/throw-reason "filling nulls with %s on a non-numeric aggregation: %s of %s, which is %s"
+                                  fill-nulls-with (name agg) (pr-str (:expr aggregation)) result-type))
       (resolved-metric context ir
                        (with-fill-nulls (aggregation-clause metric-type canonical) fill-nulls-with)
                        filter-clauses))))
@@ -331,14 +331,14 @@
     []))
 
 (mu/defn- resolved-input :- ::outcome
-  "What the metric `metric-input` refers to became. [[unsupported/throw!]] when it is not in the semantic layer, or was
-  not converted."
+  "What the metric `metric-input` refers to became. [[unsupported/throw-reason]] when it is not in the semantic layer,
+  or was not converted."
   [{:keys [resolved failed]} :- ::outcomes
    {:keys [metric]}          :- ::ir/metric-input]
   (or (get resolved metric)
       (if (contains? failed metric)
-        (unsupported/throw! "metric %s was not converted: %s" (pr-str metric) (get failed metric))
-        (unsupported/throw! "metric %s not found" (pr-str metric)))))
+        (unsupported/throw-reason "metric %s was not converted: %s" (pr-str metric) (get failed metric))
+        (unsupported/throw-reason "metric %s not found" (pr-str metric)))))
 
 (mu/defn- filtered-input :- ::lib.schema.aggregation/aggregation
   "A reference to `input` that carries a filter of its own, inlined as the filtered form of the input's aggregation
@@ -349,12 +349,13 @@
    {:keys [metric filters]} :- ::ir/metric-input]
   (let [{input-type :type, :keys [fill-nulls-with], input-filters :filters} input-ir]
     (when-not (= input-type :simple)
-      (unsupported/throw! "metric %s is a %s metric; only a simple metric can take a filter where it is referred to"
-                          (pr-str metric) (name input-type)))
+      (unsupported/throw-reason (str "metric %s is a %s metric; only a simple metric can take a filter where it is"
+                                     " referred to")
+                                (pr-str metric) (name input-type)))
     (let [aggregation (canonical-metric-aggregation context input-ir)
+          clauses     (resolve.filters/filter-clauses context (into (vec input-filters) filters))
           ;; the filters as one condition: the clause itself when there is one, otherwise their `:and`
-          condition   (sql/variadic lib/and
-                                    (resolve.filters/filter-clauses context (into (vec input-filters) filters)))]
+          condition   (if (next clauses) (apply lib/and clauses) (first clauses))]
       (with-fill-nulls (filtered-aggregation-clause aggregation condition) fill-nulls-with))))
 
 (mu/defn- input-leaf :- ::lib.schema.aggregation/aggregation
@@ -389,13 +390,13 @@
                                         (fn [identifier]
                                           (if-let [input (get by-name identifier)]
                                             (input-leaf context outcomes input)
-                                            (unsupported/throw! "%s is not one of the metric's inputs (%s)"
-                                                                (pr-str identifier)
-                                                                (str/join ", " (map pr-str (keys by-name)))))))]
+                                            (unsupported/throw-reason "%s is not one of the metric's inputs (%s)"
+                                                                      (pr-str identifier)
+                                                                      (str/join ", " (map pr-str (keys by-name)))))))]
       (if (lib/clause? value)
         value
-        (unsupported/throw! "expr %s is the constant %s, not arithmetic over the inputs"
-                            (pr-str expr) (pr-str value))))))
+        (unsupported/throw-reason "expr %s is the constant %s, not arithmetic over the inputs"
+                                  (pr-str expr) (pr-str value))))))
 
 (mu/defn- resolve-composed :- ::resolved/metric
   "Resolve a ratio or derived metric against what its inputs became (see [[resolved-input]]). Its table, and so its
@@ -411,8 +412,8 @@
                                #(mapv (partial resolved-input outcomes) (metric-inputs ir)))
         table-names          (distinct (map :table inputs))]
     (when (next table-names)
-      (unsupported/throw! "inputs are on different tables (%s); a metric has one table"
-                          (str/join ", " (map #(format "%s on %s" (-> % :ir :name) (:table %)) inputs))))
+      (unsupported/throw-reason "inputs are on different tables (%s); a metric has one table"
+                                (str/join ", " (map #(format "%s on %s" (-> % :ir :name) (:table %)) inputs))))
     (let [time-dimension (let [candidates (distinct (map :time-dimension inputs))]
                            (when-not (next candidates)
                              (first candidates)))
@@ -443,8 +444,8 @@
   tables), or explain why it cannot be a Metabase metric. `outcomes` is what the metrics a ratio or derived metric
   refers to became (see [[resolve-metrics]]); a simple metric needs none.
 
-  A metric the import does not support is reported with the reason (see [[unsupported/throw!]]). Anything else thrown
-  while resolving a metric is a bug in the import or an input it did not anticipate; it is logged with its
+  A metric the import does not support is reported with the reason (see [[unsupported/throw-reason]]). Anything else
+  thrown while resolving a metric is a bug in the import or an input it did not anticipate; it is logged with its
   stack and returned as a `::resolved/error` naming it, so one bad metric does not stop the others from being
   written."
   ([env :- ::resolve.columns/env

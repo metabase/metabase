@@ -15,7 +15,7 @@ architecture](README.md#architecture):
 | `resolve.columns` | resolve | Binds a metric to its table and columns: the run's shared env, the per-metric context, column refs, keys and joins |
 | `resolve.filters` | resolve | A metric's IR filters as Lib filter clauses, each placeholder resolved to a dimension, a key or the time dimension |
 | `resolve.dimensions` | resolve | A metric's curated dimension set: its table's dimensions, those reached through joins, and its time dimension as the default |
-| `sql` | resolve | Warehouse SQL snippets as Lib expressions and filter clauses, parsed by sqlglot; see [SQL in the IR](sql.md) for the subset. It knows nothing about the IR (a callback resolves columns), so sources use it too |
+| `sql` | resolve | The import's side of the SQL in the IR, which the OSS `sql-to-mbql` module converts to Lib expressions and filter clauses: what an `expr` is, Jinja left in the SQL, and the conversion with what it cannot convert as the import's unsupported reasons. See [SQL in the IR](sql.md). Sources use it too |
 | `metadata` | resolve | The in-memory Lib metadata provider built from the IR, named as sync would name things, with converted metrics added as cards; also maps its made-up ids back to portable serdes references |
 | `ids` | resolve | Every id the import writes, derived by hashing the project's own identifiers. See [Identifiers and re-import](ids.md) |
 | `unsupported` | all | How "no Metabase equivalent" is thrown deep in a stage and turned into a report entry |
