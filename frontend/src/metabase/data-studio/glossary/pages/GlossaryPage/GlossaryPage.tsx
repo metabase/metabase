@@ -1,12 +1,9 @@
 import { t } from "ttag";
 
-import {
-  useCreateGlossaryMutation,
-  useDeleteGlossaryMutation,
-  useListGlossaryQuery,
-  useUpdateGlossaryMutation,
-} from "metabase/api";
+import { useListGlossaryQuery } from "metabase/api";
+import { GlossaryDescription } from "metabase/common/components/Glossary/GlossaryDescription";
 import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
+import { useGlossaryMutations } from "metabase/common/components/Glossary/use-glossary-mutations";
 import {
   trackDataStudioGlossaryTermCreated,
   trackDataStudioGlossaryTermDeleted,
@@ -16,18 +13,17 @@ import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/Da
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { Box, Card } from "metabase/ui";
-
-import S from "./GlossaryPage.module.css";
 
 export function GlossaryPage() {
   usePageTitle(t`Glossary`);
   const { data } = useListGlossaryQuery();
   const glossary = data?.data ?? [];
   const canWrite = data?.can_write ?? false;
-  const [createGlossary] = useCreateGlossaryMutation();
-  const [updateGlossary] = useUpdateGlossaryMutation();
-  const [deleteGlossary] = useDeleteGlossaryMutation();
+  const { createTerm, updateTerm, deleteTerm } = useGlossaryMutations({
+    onCreated: trackDataStudioGlossaryTermCreated,
+    onUpdated: trackDataStudioGlossaryTermUpdated,
+    onDeleted: trackDataStudioGlossaryTermDeleted,
+  });
 
   return (
     <PageContainer gap={0}>
@@ -36,28 +32,14 @@ export function GlossaryPage() {
           <DataStudioBreadcrumbs role="heading">{t`Glossary`}</DataStudioBreadcrumbs>
         }
       />
-      <Box w="100%" className={S.contentWrapper}>
-        <Card px="xl" pb="sm" withBorder shadow="none">
-          <GlossaryTable
-            glossary={glossary}
-            readOnly={!canWrite}
-            onCreate={async (term, definition) => {
-              const { data } = await createGlossary({ term, definition });
-              if (data?.id) {
-                trackDataStudioGlossaryTermCreated(data.id);
-              }
-            }}
-            onEdit={async (id, term, definition) => {
-              await updateGlossary({ id, term, definition });
-              trackDataStudioGlossaryTermUpdated(id);
-            }}
-            onDelete={async (id) => {
-              await deleteGlossary({ id });
-              trackDataStudioGlossaryTermDeleted(id);
-            }}
-          />
-        </Card>
-      </Box>
+      <GlossaryDescription mb="lg" />
+      <GlossaryTable
+        glossary={glossary}
+        readOnly={!canWrite}
+        onCreate={createTerm}
+        onEdit={updateTerm}
+        onDelete={deleteTerm}
+      />
     </PageContainer>
   );
 }

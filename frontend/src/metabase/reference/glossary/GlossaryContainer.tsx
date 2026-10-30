@@ -1,26 +1,20 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import {
-  useCreateGlossaryMutation,
-  useDeleteGlossaryMutation,
-  useListGlossaryQuery,
-  useUpdateGlossaryMutation,
-} from "metabase/api";
-import S from "metabase/common/components/Glossary/Glossary.module.css";
+import { useListGlossaryQuery } from "metabase/api";
+import { GlossaryDescription } from "metabase/common/components/Glossary/GlossaryDescription";
 import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
+import { useGlossaryMutations } from "metabase/common/components/Glossary/use-glossary-mutations";
 import CS from "metabase/css/core/index.css";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
-import { Card, Group, Stack, Text } from "metabase/ui";
+import { Group, Stack, Text } from "metabase/ui";
 
 export function GlossaryContainer() {
   const { data } = useListGlossaryQuery();
   const glossary = data?.data ?? [];
   const canWrite = data?.can_write ?? false;
-  const [createGlossary] = useCreateGlossaryMutation();
-  const [updateGlossary] = useUpdateGlossaryMutation();
-  const [deleteGlossary] = useDeleteGlossaryMutation();
+  const { createTerm, updateTerm, deleteTerm } = useGlossaryMutations();
 
   return (
     <SidebarLayout
@@ -44,22 +38,14 @@ export function GlossaryContainer() {
           m={0}
           className={cx(CS.wrapper, CS.wrapperTrim)}
         >
-          <Card px="xl" pb="sm" withBorder shadow="none" className={S.card}>
-            <GlossaryTable
-              className={S.table}
-              glossary={glossary}
-              readOnly={!canWrite}
-              onCreate={async (term, definition) => {
-                await createGlossary({ term, definition });
-              }}
-              onEdit={async (id, term, definition) => {
-                await updateGlossary({ id, term, definition });
-              }}
-              onDelete={async (id) => {
-                await deleteGlossary({ id });
-              }}
-            />
-          </Card>
+          <GlossaryDescription mb="lg" />
+          <GlossaryTable
+            glossary={glossary}
+            readOnly={!canWrite}
+            onCreate={createTerm}
+            onEdit={updateTerm}
+            onDelete={deleteTerm}
+          />
         </Stack>
       </Stack>
     </SidebarLayout>

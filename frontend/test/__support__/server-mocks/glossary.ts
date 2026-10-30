@@ -16,6 +16,10 @@ export function setupCreateGlossaryEndpoint(
   fetchMock.post("path:/api/glossary", response);
 }
 
+export function setupCreateGlossaryEndpointWithError() {
+  fetchMock.post("path:/api/glossary", { status: 500, body: {} });
+}
+
 export function setupUpdateGlossaryEndpoint(item: GlossaryItem) {
   fetchMock.put(`path:/api/glossary/${item.id}`, item);
 }
