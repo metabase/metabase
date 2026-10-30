@@ -202,7 +202,7 @@
       (is (=? {:credentials {:user "mylogin@srv", :password "p@ss"}}
               (parse-db-url url)))))
   (testing "the host list may name several hosts, IPv6 addresses, or none"
-    (doseq [url ["jdbc:postgresql://db1:5432,db2,[::1]:5433,[fe80::1%25eth0]/mb_semantic_search"
+    (doseq [url ["jdbc:postgresql://db1:5432,db2,[::1]:5433,[fe80::1%25eth0],[fe80::1%25br-test]:5432/mb_semantic_search"
                  "jdbc:postgresql:///mb_semantic_search"
                  "jdbc:postgresql://?service=pgvector"
                  "jdbc:postgresql:mb_semantic_search"]]
@@ -235,6 +235,10 @@
                  "jdbc:postgresql://alice:se/cret?service=word@db/mb"
                  "jdbc:postgresql://alice:se/c?x=cret@db"
                  "jdbc:postgresql://alice:se/c?x=cret@db:5432"
+                 "jdbc:postgresql://alice:5432?sslmode=cret&password=word@db/mb"  ; digits and then `?` in the password
+                 "jdbc:postgresql://alice:5432,cret?password=word@db/mb"
+                 "jdbc:postgresql://alice:se?user=cret@db/mb"
+                 "jdbc:postgresql://db?user=mylogin@srv"                         ; hosts but no path
                  (str base-url "?sslrootcert=/certs/a@b/ca.pem")]]  ; `@` in a non-credential value
       (testing url
         (let [e (is (thrown? clojure.lang.ExceptionInfo (parse-db-url url)))]
@@ -244,7 +248,7 @@
                  {:message (ex-message e), :data (ex-data e)}))))))
   (testing "a host list that isn't hosts and ports throws without quoting it"
     (doseq [url ["jdbc:postgresql://alice:se/c?password=cret@db/mb"  ; `/` and then `?` in the password
-                 "jdbc:postgresql://alice:se?user=cret@db/mb"
+                 "jdbc:postgresql://alice:se/c?user=cret@db/mb"
                  "jdbc:postgresql://db:port/mb"
                  "jdbc:postgresql://db:5432,/mb"]]
       (testing url

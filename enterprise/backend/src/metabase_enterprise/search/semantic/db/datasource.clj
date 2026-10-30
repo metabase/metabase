@@ -139,11 +139,15 @@
   ;; An `@` left on `url` means a password with an unencoded `/`, or an `@` that pgjdbc requires encoded anyway.
   ;; An unencoded `/` or `?` in a password ends the host part early and moves the `@` into `pairs`.
   ;; A credential value may hold a plain `@`, such as Azure's `user=name@server`; any other `@` must be encoded.
+  ;; A URL with hosts but no path can't have its query `@` checked that way: the `?` that ended its host part
+  ;; may belong to the credentials, so every `@` there must be encoded.
   ;; Refuse a stray `@` before an error or the URL can quote the part of the password it may hold.
   (when (or (str/includes? url "@")
             (some (fn [[k v]]
                     (or (str/includes? k "@")
-                        (and (str/includes? v "@") (not (credential-params k)))))
+                        (and (str/includes? v "@")
+                             (or (not (credential-params k))
+                                 (re-matches #"[^/]*//[^/]+" url)))))
                   pairs))
     (throw (ex-info (str "MB_PGVECTOR_DB_URL has an unencoded @ outside its credentials. "
                          "Percent-encode reserved characters, e.g. @ as %40, / as %2F and ? as %3F.")
@@ -151,7 +155,7 @@
 
 (def ^:private host-list-re
   "An empty host list, or comma-separated hosts, each a name or a bracketed IPv6 address with an optional port."
-  (let [host "(?:[A-Za-z0-9._-]+|\\[[0-9A-Za-z:.%]+\\])(?::[0-9]+)?"]
+  (let [host "(?:[A-Za-z0-9._-]+|\\[[0-9A-Za-z:.%_~-]+\\])(?::[0-9]+)?"]
     (re-pattern (format "(?:%s(?:,%s)*)?" host host))))
 
 (defn- check-host-list!
