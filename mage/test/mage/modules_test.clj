@@ -560,132 +560,111 @@
   (#'mage.modules/codeowners-entries modules-config test-team->codeowner))
 
 (defn- owners
-  "`[module tree handle]` for each block entry for `modules-config`, in block order."
+  "`[module handle]` for each block entry for `modules-config`, in block order."
   [modules-config]
-  (mapv (juxt :module :tree :handle) (entries modules-config)))
+  (mapv (juxt :module :handle) (entries modules-config)))
 
 (deftest codeowners-entries-test
-  (testing "only modules that set :codeowners get entries, covering their directories and root files"
+  (testing "only modules that set :codeowners true get entries, covering their directories and root files"
     (is (= [{:module    'lib
-             :tree      "src"
              :dir       "src/metabase/lib"
              :team      "Querying Platform"
              :handle    "@metabase/querying-platform"
              :opted-in? true
-             :patterns  ["src/metabase/lib" "src/metabase/lib.*"]}
-            {:module    'lib
-             :tree      "test"
-             :dir       "test/metabase/lib"
-             :team      "Querying Platform"
-             :handle    "@metabase/querying-platform"
-             :opted-in? true
-             :patterns  ["test/metabase/lib" "test/metabase/lib_test.*"]}]
+             :patterns  ["src/metabase/lib" "src/metabase/lib.*" "test/metabase/lib" "test/metabase/lib_test.*"]}]
            (entries '{lib             {:team "Querying Platform", :codeowners true}
                       query-processor {:team "Querying Platform"}}))))
-  (testing ":src-only owns the src code only"
-    (is (= [['lib "src" "@metabase/querying-platform"]]
-           (owners '{lib {:team "Querying Platform", :codeowners :src-only}}))))
   (testing "enterprise modules own their enterprise/backend code"
     (is (= ["enterprise/backend/src/metabase_enterprise/sso"
             "enterprise/backend/src/metabase_enterprise/sso.*"
             "enterprise/backend/test/metabase_enterprise/sso"
             "enterprise/backend/test/metabase_enterprise/sso_test.*"]
            (mapcat :patterns (entries '{enterprise/sso {:team "Querying Platform", :codeowners true}})))))
-  (testing "an unknown value, even nil, owns src and test, so the shadowed-line check sees its paths"
-    (is (= [['lib "src" "@metabase/querying-platform"]
-            ['lib "test" "@metabase/querying-platform"]]
-           (owners '{lib {:team "Querying Platform", :codeowners nil}}))))
+  (testing "any value other than true does not opt in"
+    (is (= []
+           (owners '{lib {:team "Querying Platform", :codeowners :test}}))))
   (testing "a nested module without its own :team takes its ancestor's"
-    (is (= [['lib.schema "src" "@metabase/querying-platform"]]
+    (is (= [['lib.schema "@metabase/querying-platform"]]
            (owners '{lib        {:team "Querying Platform"}
-                     lib.schema {:codeowners :src-only}})))))
+                     lib.schema {:codeowners true}})))))
 
 (deftest codeowners-entries-nested-test
   ;; CODEOWNERS applies the last matching pattern, so an entry inside another module's directory must follow it.
   (testing "a nested module of the same team that opts in follows its parent"
-    (is (= [['lib "src" "@metabase/querying-platform"]
-            ['lib.schema "src" "@metabase/querying-platform"]]
-           (owners '{lib.schema {:team "Querying Platform", :codeowners :src-only}
-                     lib        {:team "Querying Platform", :codeowners :src-only}}))))
+    (is (= [['lib "@metabase/querying-platform"]
+            ['lib.schema "@metabase/querying-platform"]]
+           (owners '{lib.schema {:team "Querying Platform", :codeowners true}
+                     lib        {:team "Querying Platform", :codeowners true}}))))
   (testing "a nested module of the same team that does not opt in needs no entry"
-    (is (= [['lib "src" "@metabase/querying-platform"]]
-           (owners '{lib        {:team "Querying Platform", :codeowners :src-only}
+    (is (= [['lib "@metabase/querying-platform"]]
+           (owners '{lib        {:team "Querying Platform", :codeowners true}
                      lib.schema {:team "Querying Platform"}}))))
-  (testing "a nested module of another team that does not opt in is left unowned in each tree its parent owns"
-    (is (= [['lib "src" "@metabase/querying-platform"]
-            ['lib "test" "@metabase/querying-platform"]
-            ['lib.schema "src" nil]
-            ['lib.schema "test" nil]]
+  (testing "a nested module of another team that does not opt in is left unowned"
+    (is (= [['lib "@metabase/querying-platform"]
+            ['lib.schema nil]]
            (owners '{lib        {:team "Querying Platform", :codeowners true}
                      lib.schema {:team "UX West"}}))))
-  (testing "a nested module of another team keeps its own team where it opts in, and is unowned elsewhere"
-    (is (= [['lib "src" "@metabase/querying-platform"]
-            ['lib "test" "@metabase/querying-platform"]
-            ['lib.schema "src" "@metabase/ux-west"]
-            ['lib.schema "test" nil]]
+  (testing "a nested module of another team that opts in keeps its own team"
+    (is (= [['lib "@metabase/querying-platform"]
+            ['lib.schema "@metabase/ux-west"]]
            (owners '{lib        {:team "Querying Platform", :codeowners true}
-                     lib.schema {:team "UX West", :codeowners :src-only}})))))
+                     lib.schema {:team "UX West", :codeowners true}})))))
 
 (deftest codeowners-entries-deep-nesting-test
   (testing "a grandchild that inherits the team of an opted-in nested module needs no entry"
-    (is (= [['lib "src" "@metabase/querying-platform"]
-            ['lib.schema "src" "@metabase/ux-west"]]
-           (owners '{lib             {:team "Querying Platform", :codeowners :src-only}
-                     lib.schema      {:team "UX West", :codeowners :src-only}
+    (is (= [['lib "@metabase/querying-platform"]
+            ['lib.schema "@metabase/ux-west"]]
+           (owners '{lib             {:team "Querying Platform", :codeowners true}
+                     lib.schema      {:team "UX West", :codeowners true}
                      lib.schema.util {}}))))
   (testing "a grandchild inside another team's opted-in module keeps an outer opted-in module of its team"
-    (is (= [['lib "src" "@metabase/querying-platform"]
-            ['lib.schema "src" "@metabase/ux-west"]
-            ['lib.schema.util "src" "@metabase/querying-platform"]]
-           (owners '{lib             {:team "Querying Platform", :codeowners :src-only}
-                     lib.schema      {:team "UX West", :codeowners :src-only}
+    (is (= [['lib "@metabase/querying-platform"]
+            ['lib.schema "@metabase/ux-west"]
+            ['lib.schema.util "@metabase/querying-platform"]]
+           (owners '{lib             {:team "Querying Platform", :codeowners true}
+                     lib.schema      {:team "UX West", :codeowners true}
                      lib.schema.util {:team "Querying Platform"}}))))
   (testing "a grandchild of the owning team inside an unowned module gets that team back"
-    (is (= [['lib "src" "@metabase/querying-platform"]
-            ['lib.schema "src" nil]
-            ['lib.schema.util "src" "@metabase/querying-platform"]]
-           (owners '{lib             {:team "Querying Platform", :codeowners :src-only}
+    (is (= [['lib "@metabase/querying-platform"]
+            ['lib.schema nil]
+            ['lib.schema.util "@metabase/querying-platform"]]
+           (owners '{lib             {:team "Querying Platform", :codeowners true}
                      lib.schema      {:team "UX West"}
                      lib.schema.util {:team "Querying Platform"}}))))
   (testing "a module inside an unowned module of its own team stays unowned, with no entry of its own"
-    (is (= [['lib "src" "@metabase/querying-platform"]
-            ['lib.a "src" nil]]
-           (owners '{lib     {:team "Querying Platform", :codeowners :src-only}
+    (is (= [['lib "@metabase/querying-platform"]
+            ['lib.a nil]]
+           (owners '{lib     {:team "Querying Platform", :codeowners true}
                      lib.a   {:team "UX West"}
                      lib.a.b {:team "UX West"}}))))
   (testing "a deep chain alternates between teams, with a team that never opted in left unowned"
-    (is (= [['lib "src" "@metabase/querying-platform"]
-            ['lib.a "src" "@metabase/ux-west"]
-            ['lib.a.b "src" nil]
-            ['lib.a.b.c "src" "@metabase/ux-west"]
-            ['lib.a.b.c.d "src" "@metabase/querying-platform"]]
-           (owners '{lib         {:team "Querying Platform", :codeowners :src-only}
-                     lib.a       {:team "UX West", :codeowners :src-only}
+    (is (= [['lib "@metabase/querying-platform"]
+            ['lib.a "@metabase/ux-west"]
+            ['lib.a.b nil]
+            ['lib.a.b.c "@metabase/ux-west"]
+            ['lib.a.b.c.d "@metabase/querying-platform"]]
+           (owners '{lib         {:team "Querying Platform", :codeowners true}
+                     lib.a       {:team "UX West", :codeowners true}
                      lib.a.b     {:team "Gadget"}
                      lib.a.b.c   {:team "UX West"}
-                     lib.a.b.c.d {:team "Querying Platform"}}))))
-  (testing "an outer module's team reaches only the trees that module owns"
-    (is (= [['lib "src" "@metabase/querying-platform"]
-            ['lib.a "src" "@metabase/ux-west"]
-            ['lib.a "test" "@metabase/ux-west"]
-            ['lib.a.b "src" "@metabase/querying-platform"]
-            ['lib.a.b "test" nil]]
-           (owners '{lib     {:team "Querying Platform", :codeowners :src-only}
-                     lib.a   {:team "UX West", :codeowners true}
-                     lib.a.b {:team "Querying Platform"}})))))
+                     lib.a.b.c.d {:team "Querying Platform"}})))))
 
 (deftest codeowners-config-problems-test
-  (let [problems #(vec (#'mage.modules/codeowners-config-problems %1 test-team->codeowner %2))]
+  (let [problems (fn [config source? & [team->codeowner]]
+                   (vec (#'mage.modules/codeowners-config-problems
+                         config (or team->codeowner test-team->codeowner) source?)))]
     (testing "a valid config has none"
       (is (= []
              (problems '{lib {:team "Querying Platform", :codeowners true}} (constantly true)))))
-    (testing "an unknown :codeowners value is the only problem reported for its module"
-      (is (= [{:type :unknown-value, :module 'lib, :value :test}]
-             (problems '{lib {:team "Gadget", :codeowners :test}} (constantly false)))))
-    (testing "a team without a codeowner and a module without source are both reported"
-      (is (= [{:type :no-codeowner, :module 'lib, :team "Gadget"}
+    (testing "every problem of a module is reported in one run"
+      (is (= [{:type :unknown-value, :module 'lib, :value :test}
+              {:type :no-codeowner, :module 'lib, :team "Gadget"}
               {:type :no-source, :module 'lib, :src-dir "src/metabase/lib"}]
-             (problems '{lib {:team "Gadget", :codeowners :src-only}} (constantly false)))))
+             (problems '{lib {:team "Gadget", :codeowners :test}} (constantly false)))))
+    (testing "a team whose codeowner is not a GitHub handle is reported as such"
+      (doseq [value ["" "metabase/metabot" "@" 42]]
+        (is (= [{:type :bad-codeowner, :module 'lib, :team "Gadget", :value value}]
+               (problems '{lib {:team "Gadget", :codeowners true}} (constantly true) {"Gadget" value})))))
     (testing "modules that do not set :codeowners are not checked"
       (is (= []
              (problems '{lib {:team "Gadget"}} (constantly false)))))))
@@ -741,7 +720,7 @@
   (let [begin    @#'mage.modules/codeowners-begin-marker
         end      @#'mage.modules/codeowners-end-marker
         problems #(#'mage.modules/codeowners-file-problems % (entries '{lib {:team       "Querying Platform"
-                                                                             :codeowners :src-only}}))]
+                                                                             :codeowners true}}))]
     (testing "a file with nothing above the block inside an owned path has none"
       (is (empty? (problems "docs @writers\n"))))
     (testing "a line above the block inside an owned path is a problem"
@@ -756,26 +735,18 @@
 (deftest codeowners-outcome-test
   (let [outcome (fn [existing config check?]
                   (#'mage.modules/codeowners-outcome existing config test-team->codeowner (constantly true) check?))
-        config  '{lib {:team "Querying Platform", :codeowners :src-only}}
-        written (str "docs @writers\n"
-                     "\n"
-                     @#'mage.modules/codeowners-begin-marker "\n"
-                     "#\n"
-                     "# Generated by `./bin/mage update-codeowners`. Do not edit by hand.\n"
-                     "# A module opts in with `:codeowners` in .clj-kondo/config/modules/config.edn.\n"
-                     "# Its directories and root namespace files go to its team's \"codeowner\" handle in"
-                     " .github/team.json.\n"
-                     "# A nested module that has not opted in goes to its own team if an opted-in module around it"
-                     " belongs to that\n"
-                     "# team, and is left unowned otherwise.\n"
-                     "# Exceptions inside these paths go below the END marker: lines above this block lose to it.\n"
-                     "#\n"
-                     "\n"
-                     "# lib (Querying Platform)\n"
-                     "src/metabase/lib @metabase/querying-platform\n"
-                     "src/metabase/lib.* @metabase/querying-platform\n"
-                     "\n"
-                     @#'mage.modules/codeowners-end-marker "\n")]
+        config  '{lib {:team "Querying Platform", :codeowners true}}
+        written (str "docs @writers\n\n"
+                     (#'mage.modules/codeowners-block
+                      [{:module    'lib
+                        :team      "Querying Platform"
+                        :handle    "@metabase/querying-platform"
+                        :opted-in? true
+                        :patterns  ["src/metabase/lib"
+                                    "src/metabase/lib.*"
+                                    "test/metabase/lib"
+                                    "test/metabase/lib_test.*"]}])
+                     "\n")]
     (testing "a file without the block gets it appended"
       (is (= {:status :write, :desired written}
              (outcome "docs @writers\n" config false))))
@@ -788,11 +759,21 @@
       (doseq [check? [false true]]
         (is (= {:status   :problems
                 :problems [{:type :no-codeowner, :module 'lib, :team "Gadget"}]}
-               (outcome "docs @writers\n" '{lib {:team "Gadget", :codeowners :src-only}} check?)))))
-    (testing "config and file problems are reported together, even for a module with an unknown value"
-      (is (= [{:type :unknown-value, :module 'lib, :value :test}
-              {:type :shadowed-lines, :lines ["test/metabase/lib_test.clj @metabase/other"]}]
-             (:problems (outcome "test/metabase/lib_test.clj @metabase/other\n"
+               (outcome "docs @writers\n" '{lib {:team "Gadget", :codeowners true}} check?)))))
+    (testing "config and file problems are reported together"
+      (is (= [{:type :no-codeowner, :module 'lib, :team "Gadget"}
+              {:type :shadowed-lines, :lines ["src/metabase/lib/x.clj @metabase/other"]}]
+             (:problems (outcome "src/metabase/lib/x.clj @metabase/other\n"
+                                 '{lib {:team "Gadget", :codeowners true}}
+                                 false)))))
+    (testing "config problems and broken markers are reported together"
+      (is (= [:no-codeowner :broken-markers]
+             (map :type (:problems (outcome (str @#'mage.modules/codeowners-begin-marker "\n")
+                                            '{lib {:team "Gadget", :codeowners true}}
+                                            false))))))
+    (testing "a module with an unknown value is left out of the shadowed-line check"
+      (is (= [{:type :unknown-value, :module 'lib, :value :test}]
+             (:problems (outcome "src/metabase/lib/x.clj @metabase/other\n"
                                  '{lib {:team "Querying Platform", :codeowners :test}}
                                  false)))))))
 
@@ -801,6 +782,7 @@
     (are [problem expected] (str/includes? (#'mage.modules/codeowners-problem-message problem) expected)
       {:type :unknown-value, :module 'lib, :value :test}            "Module lib sets :codeowners to :test. Use true"
       {:type :no-codeowner, :module 'lib, :team "Gadget"}           "its team \"Gadget\" has no \"codeowner\""
+      {:type :bad-codeowner, :module 'lib, :team "Gadget", :value ""} "Use a GitHub handle such as"
       {:type :no-source, :module 'lib, :src-dir "src/metabase/lib"} "has no code at src/metabase/lib."
       {:type :shadowed-lines, :lines ["a/b.clj @x"]}                "Move them below the END marker:\n  a/b.clj @x"
       {:type :broken-markers, :begin 0, :end nil}                   "Fix the markers by hand.")))
@@ -811,21 +793,21 @@
             "src/metabase/lib @metabase/qp"
             "src/metabase/lib.* @metabase/qp"]
            (#'mage.modules/codeowners-stanza-lines
-            [{:module    'lib
-              :team      "Querying Platform"
-              :handle    "@metabase/qp"
-              :opted-in? true
-              :patterns  ["src/metabase/lib" "src/metabase/lib.*"]}]))))
+            {:module    'lib
+             :team      "Querying Platform"
+             :handle    "@metabase/qp"
+             :opted-in? true
+             :patterns  ["src/metabase/lib" "src/metabase/lib.*"]}))))
   (testing "an unowned entry has no handle, and its header says it did not opt in"
     (is (= ["# lib.schema (UX West, not opted in)"
             "src/metabase/lib/schema"
             "src/metabase/lib/schema.*"]
            (#'mage.modules/codeowners-stanza-lines
-            [{:module    'lib.schema
-              :team      "UX West"
-              :handle    nil
-              :opted-in? false
-              :patterns  ["src/metabase/lib/schema" "src/metabase/lib/schema.*"]}])))))
+            {:module    'lib.schema
+             :team      "UX West"
+             :handle    nil
+             :opted-in? false
+             :patterns  ["src/metabase/lib/schema" "src/metabase/lib/schema.*"]})))))
 
 (deftest codeowners-splice-test
   (let [begin  @#'mage.modules/codeowners-begin-marker

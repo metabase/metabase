@@ -269,14 +269,10 @@
 ;;;; CODEOWNERS
 ;;;; =============================================================================
 
-;;;; The generated block in `.github/CODEOWNERS` sits between BEGIN/END markers, with one stanza per module that opts
-;;;; in with `:codeowners` in config.edn.
-;;;; The stanza gives the module's directories and root namespace files to its team's `codeowner` handle in team.json.
-;;;; A nested module that has not opted in goes to its own team when an opted-in module around it belongs to that
-;;;; team, and gets lines with no owner otherwise.
-;;;; The block's text depends only on those two files, so a new directory or file never makes it stale.
-;;;; The generator also refuses an opted-in module whose src directory has no code, which reads the disk.
-;;;; Lines outside the markers are hand-maintained (frontend, e2e, docs, single files).
+;;;; The generated block in `.github/CODEOWNERS` sits between BEGIN/END markers.
+;;;; Its lines come from [[codeowners-entries]].
+;;;; Its text depends only on config.edn and team.json; the one disk read refuses an opted-in module with no code.
+;;;; Lines outside the markers are hand-maintained.
 
 (def ^:private codeowners-path ".github/CODEOWNERS")
 (def ^:private team-config-path ".github/team.json")
@@ -288,23 +284,29 @@
   "# ===== END generated module ownership =====")
 
 (def ^:private tree->root-file-suffix
-  "Pattern suffix matching a module's root namespace file next to its directory in each tree, such as
-  `src/metabase/driver.clj` or `test/metabase/driver_test.clj`."
-  {"src"  ".*"
-   "test" "_test.*"})
+  "Each tree an opted-in module owns => the suffix added to the module's directory to match its root namespace file.
+  Examples: `src/metabase/driver.*` and `test/metabase/driver_test.*`."
+  (array-map "src"  ".*"
+             "test" "_test.*"))
 
 (defn- read-team->codeowner
-  "Team name => GitHub CODEOWNERS handle, from the `codeowner` field in team.json.
-  Teams without a `codeowner`, or with a blank or non-string one, are omitted."
+  "Team name => the `codeowner` value in team.json, for each team that has the field, whatever its value."
   []
   (into {}
-        (keep (fn [{:keys [name codeowner]}]
-                (when (and (string? codeowner) (not (str/blank? codeowner)))
-                  [name codeowner])))
+        (keep (fn [{:keys [name] :as team}]
+                (when (contains? team :codeowner)
+                  [name (:codeowner team)])))
         (:teams (json/parse-string (slurp team-config-path) true))))
 
+(defn- valid-codeowner?
+  "Whether `value` can stand as a CODEOWNERS owner: a string starting with `@`."
+  [value]
+  (and (string? value)
+       (str/starts-with? value "@")
+       (not (str/blank? (subs value 1)))))
+
 (defn- has-source?
-  "Whether `src-dir` exists, or a root namespace file sits next to where it would be."
+  "Whether `src-dir` exists as a directory, or a root namespace file sits next to where it would be."
   [src-dir]
   (or (.isDirectory (io/file ^String src-dir))
       (some #(.isFile (io/file (str src-dir %))) [".clj" ".cljc"])))
@@ -315,67 +317,71 @@
   (or (= dir path)
       (str/starts-with? path (str dir "/"))))
 
+(defn- opts-in?
+  "Whether `module` sets `:codeowners true`."
+  [modules-config module]
+  (true? (get-in modules-config [module :codeowners])))
+
 (defn- codeowners-entries
-  "One entry per module and tree the block must name, in block order:
-  `{:module, :tree, :dir, :team, :handle, :opted-in?, :patterns}`.
-  A module's code goes to its team's handle when it, or an opted-in module enclosing it, belongs to that team.
-  Inside an opted-in module's directory it is otherwise unowned, with a `nil` handle.
-  An opted-in module always gets an entry; another module gets one only where its owner would otherwise differ from
-  this rule.
-  An unknown `:codeowners` value counts as `true`, so the shadowed-line check still sees that module's paths.
-  [[codeowners-config-problems]] reports the value, and the block is not written until it is fixed."
+  "One entry per module the block must name, in block order: `{:module, :dir, :team, :handle, :opted-in?, :patterns}`.
+  A module's src and test code go to its team's handle when it, or an opted-in module around it, belongs to that team.
+  Inside an opted-in module's directory, other code is unowned, with a `nil` handle.
+  An opted-in module always gets an entry.
+  Another module gets one only where the nearest entry around it would give its code a different owner.
+  Only `:codeowners true` opts in; [[codeowners-config-problems]] reports any other value."
   [modules-config team->codeowner]
+  ;; config.edn's `codeowners` section states this rule for module authors; change the two together.
   (reduce
    (fn [entries module]
-     (let [team  (modules/module-team modules-config module)
-           cfg   (get modules-config module)
-           trees (set (when (contains? cfg :codeowners)
-                        (get modules/codeowners-value->trees
-                             (:codeowners cfg)
-                             (modules/codeowners-value->trees true))))]
-       (into entries
-             (for [tree   ["src" "test"]
-                   :let   [dir       (modules/module-dir modules-config module tree)
-                           ;; Entries come parent first, so the last one containing `dir` is the nearest.
-                           around    (filter #(and (= tree (:tree %)) (path-within? (:dir %) dir)) entries)
-                           current   (last around)
-                           owners    (filter :opted-in? around)
-                           opted-in? (contains? trees tree)
-                           own-team? (or opted-in? (some #(= team (:team %)) owners))
-                           handle    (when own-team? (get team->codeowner team))]
-                   :when  (or opted-in?
-                              (and (seq owners) (not= handle (:handle current))))]
-               {:module    module
-                :tree      tree
-                :dir       dir
+     (let [team      (modules/module-team modules-config module)
+           src-dir   (modules/module-dir modules-config module "src")
+           ;; Entries come parent first, so the last one around `src-dir` is the nearest.
+           around    (filter #(path-within? (:dir %) src-dir) entries)
+           owners    (filter :opted-in? around)
+           opted-in? (opts-in? modules-config module)
+           handle    (when (or opted-in? (some #(= team (:team %)) owners))
+                       (get team->codeowner team))]
+       (cond-> entries
+         (or opted-in?
+             (and (seq owners) (not= handle (:handle (last around)))))
+         (conj {:module    module
+                :dir       src-dir
                 :team      team
                 :handle    handle
                 :opted-in? opted-in?
-                :patterns  [dir (str dir (tree->root-file-suffix tree))]}))))
+                :patterns  (for [[tree suffix] tree->root-file-suffix
+                                 :let          [dir (modules/module-dir modules-config module tree)]
+                                 pattern       [dir (str dir suffix)]]
+                             pattern)}))))
    []
-   ;; CODEOWNERS applies the last matching pattern, so a nested module's entries must follow its parent's. Sorting
-   ;; by source path does that, and the test tree mirrors the source tree.
+   ;; CODEOWNERS applies the last matching pattern, so a nested module's entry must follow its parent's. Sorting by
+   ;; source path does that, and the test tree mirrors the source tree.
    (sort-by #(modules/module-dir modules-config % "src") (keys modules-config))))
 
 (defn- codeowners-config-problems
-  "Problems with the modules that set `:codeowners`, as maps keyed by `:type`:
-  `:unknown-value` (`:module`, `:value`), `:no-codeowner` (`:module`, `:team`) and `:no-source` (`:module`,
-  `:src-dir`).
-  `source?` says whether a module's src directory has code."
+  "Problems with the modules that set `:codeowners`, as maps keyed by `:type`, several per module when it has several.
+  An `:unknown-value` problem has `:module` and `:value`, and `:no-source` has `:module` and `:src-dir`.
+  The `:no-codeowner` and `:bad-codeowner` problems have `:module` and `:team`, and a bad one also has `:value`.
+  The predicate `source?` takes a module's src directory and says whether its code is there."
   [modules-config team->codeowner source?]
   (for [[module cfg] (sort-by key modules-config)
         :when        (contains? cfg :codeowners)
         :let         [value   (:codeowners cfg)
                       team    (modules/module-team modules-config module)
+                      handle  (get team->codeowner team)
                       src-dir (modules/module-dir modules-config module "src")]
-        problem      (if-not (contains? modules/codeowners-value->trees value)
-                       [{:type :unknown-value, :module module, :value value}]
-                       (cond-> []
-                         (not (contains? team->codeowner team))
-                         (conj {:type :no-codeowner, :module module, :team team})
+        problem      (cond-> []
+                       (not (true? value))
+                       (conj {:type :unknown-value, :module module, :value value})
 
-                         (not (source? src-dir))
-                         (conj {:type :no-source, :module module, :src-dir src-dir})))]
+                       (not (contains? team->codeowner team))
+                       (conj {:type :no-codeowner, :module module, :team team})
+
+                       (and (contains? team->codeowner team) (not (valid-codeowner? handle)))
+                       (conj {:type :bad-codeowner, :module module, :team team, :value handle})
+
+                       (not (source? src-dir))
+                       (conj {:type :no-source, :module module, :src-dir src-dir}))]
     problem))
 
 (defn- pattern-covers?
@@ -387,11 +393,10 @@
            (not (str/includes? (subs path (count stem)) "/"))))
     (path-within? pattern path)))
 
-;; The block comes later in the file than these lines, so it overrides them.
 (defn- shadowed-lines
-  "Rule lines above the generated block in `existing` (the whole file when it has no block) whose path falls inside
-  one of `patterns`.
-  Lines whose path has wildcards are compared as literal text, so they are only found when the text matches."
+  "Rule lines above the generated block in `existing` whose path falls inside one of `patterns`.
+  With no block, every line counts as above it.
+  Paths with wildcards are compared as literal text, so they are found only when the text matches."
   [existing patterns]
   (let [above (subs existing 0 (or (str/index-of existing codeowners-begin-marker) (count existing)))]
     (for [line  (str/split-lines above)
@@ -400,8 +405,8 @@
       (str/trim line))))
 
 (defn- markers-problem
-  "A `:broken-markers` problem (`:begin`, `:end`) unless `existing` has no marker, or each marker exactly once with
-  BEGIN first."
+  "A `:broken-markers` problem (`:begin`, `:end`), or nil when the markers are sound.
+  Sound means no marker at all, or each marker exactly once with BEGIN before END."
   [existing]
   (let [begin (str/index-of existing codeowners-begin-marker)
         end   (str/index-of existing codeowners-end-marker)]
@@ -415,8 +420,9 @@
       {:type :broken-markers, :begin begin, :end end})))
 
 (defn- codeowners-file-problems
-  "Problems with the `existing` CODEOWNERS text for the block's `entries`: a [[markers-problem]], or else
-  `:shadowed-lines` (`:lines`).
+  "Problems with the `existing` CODEOWNERS text for the block's `entries`, as maps keyed by `:type`.
+  Broken markers give a [[markers-problem]].
+  Otherwise, lines above the block inside its paths give a `:shadowed-lines` problem listing them under `:lines`.
   Lines are not checked while the markers are broken, since the block's position is then unknown."
   [existing entries]
   (if-let [markers (markers-problem existing)]
@@ -428,10 +434,12 @@
   "One problem from [[codeowners-config-problems]] or [[codeowners-file-problems]] as a sentence saying what to fix."
   [{:keys [module] :as problem}]
   (case (:type problem)
-    :unknown-value  (format "Module %s sets :codeowners to %s. Use true (src and test) or :src-only."
+    :unknown-value  (format "Module %s sets :codeowners to %s. Use true, or leave it out."
                             module (pr-str (:value problem)))
     :no-codeowner   (format "Module %s sets :codeowners, but its team %s has no \"codeowner\" in %s."
                             module (pr-str (:team problem)) team-config-path)
+    :bad-codeowner  (format "Team %s has \"codeowner\" %s in %s. Use a GitHub handle such as \"@metabase/metabot\"."
+                            (pr-str (:team problem)) (pr-str (:value problem)) team-config-path)
     :no-source      (format (str "Module %s sets :codeowners, but has no code at %s. The generator does not handle"
                                  " plugin code under modules/<plugin>/src; give that directory an owner by hand.")
                             module (:src-dir problem))
@@ -442,13 +450,12 @@
                          " marker, in that order. Fix the markers by hand.")))
 
 (defn- codeowners-stanza-lines
-  "Lines for consecutive entries of one module with one handle: a `# module (team)` header, then one line per
-  pattern. Lines without a handle leave their paths unowned."
-  [[{:keys [module team handle opted-in?]} :as entries]]
+  "Lines for one entry: a `# module (team)` header, with `, not opted in` after the team when it did not opt in.
+  Then one `pattern handle` line per pattern, or the bare pattern when the entry is unowned."
+  [{:keys [module team handle opted-in? patterns]}]
   (into [(format "# %s (%s%s)" module team (if opted-in? "" ", not opted in"))]
-        (comp (mapcat :patterns)
-              (map #(cond-> % handle (str " " handle))))
-        entries))
+        (map #(cond-> % handle (str " " handle)))
+        patterns))
 
 (defn- codeowners-block
   "Generated block as one string, marker to marker, rendering `entries` in order."
@@ -458,15 +465,11 @@
    (concat
     [codeowners-begin-marker
      "#"
-     "# Generated by `./bin/mage update-codeowners`. Do not edit by hand."
-     "# A module opts in with `:codeowners` in .clj-kondo/config/modules/config.edn."
-     "# Its directories and root namespace files go to its team's \"codeowner\" handle in .github/team.json."
-     "# A nested module that has not opted in goes to its own team if an opted-in module around it belongs to that"
-     "# team, and is left unowned otherwise."
+     "# Generated by `./bin/mage update-codeowners` from .clj-kondo/config/modules/config.edn. Do not edit by hand."
+     "# The `codeowners` section at the top of that file says which modules are owned, and by whom."
      "# Exceptions inside these paths go below the END marker: lines above this block lose to it."
      "#"]
-    (mapcat #(cons "" (codeowners-stanza-lines %))
-            (partition-by (juxt :module :handle :opted-in?) entries))
+    (mapcat #(cons "" (codeowners-stanza-lines %)) entries)
     [""
      codeowners-end-marker])))
 
@@ -475,7 +478,7 @@
   Returns text ending in one newline.
   Throws on a [[markers-problem]]."
   [existing block]
-  ;; Callers check the markers first; this guard keeps a bad file from being spliced at the wrong place regardless.
+  ;; Callers check the markers first, but splicing a bad file would put the block in the wrong place.
   (when-let [problem (markers-problem existing)]
     (throw (ex-info (codeowners-problem-message problem) problem)))
   (if-let [begin (str/index-of existing codeowners-begin-marker)]
@@ -487,8 +490,9 @@
     (str (str/trimr existing) "\n\n" block "\n")))
 
 (defn- codeowners-outcome
-  "What `update-codeowners` should do with the `existing` CODEOWNERS text, as a map keyed by `:status`:
-  `:problems` (`:problems`), `:up-to-date`, `:stale` (with `check?`) or `:write` (`:desired`)."
+  "What `update-codeowners` should do with the `existing` CODEOWNERS text, as a map keyed by `:status`.
+  The statuses are `:problems`, `:up-to-date`, `:stale` (only with `check?`) and `:write`.
+  A `:problems` outcome carries `:problems`, and a `:write` outcome carries the `:desired` text."
   [existing modules-config team->codeowner source? check?]
   (let [entries  (codeowners-entries modules-config team->codeowner)
         problems (into (vec (codeowners-config-problems modules-config team->codeowner source?))

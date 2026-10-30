@@ -221,21 +221,17 @@ describe("file-paths.yaml", () => {
     ".clj-kondo/src/hooks/common/modules.clj",
     ".github/CODEOWNERS",
     ".github/team.json",
-    "dev/src/dev/module_cycle_names.clj",
-    "dev/src/dev/module_explorer.clj",
-    "dev/src/dev/module_graph.clj",
-    "mage/src/mage/be_dev.clj",
-    "mage/src/mage/cli.clj",
     "mage/src/mage/modules.clj",
   ])("checks the generated CODEOWNERS block when %s changes", (path) => {
     expect(matches("project_codeowners_checks", path)).toBe(true);
   });
 
-  it("does not check the CODEOWNERS block for a backend source change", () => {
-    expect(
-      matches("project_codeowners_checks", "src/metabase/search/core.clj"),
-    ).toBe(false);
-  });
+  it.each(["src/metabase/search/core.clj", "dev/src/dev/module_explorer.clj"])(
+    "does not check the CODEOWNERS block when %s changes",
+    (path) => {
+      expect(matches("project_codeowners_checks", path)).toBe(false);
+    },
+  );
 
   it.each([
     "loki.config.js",

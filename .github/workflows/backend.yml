@@ -82,8 +82,7 @@ jobs:
             || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
           run: ./bin/mage kondo-ratchets
 
-  # Needs only the checkout: the runner's Java resolves bb.edn's deps, so it skips the back-end environment that
-  # project-checks prepares.
+  # Only a checkout is needed: bin/mage fetches babashka, and the runner's Java resolves bb.edn's deps.
   codeowners-check:
     name: 'Project tests: CODEOWNERS'
     needs: gate
