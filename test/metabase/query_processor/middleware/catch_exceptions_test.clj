@@ -452,3 +452,18 @@
           (is (str/includes? (:error (catch-exceptions throw-schema-error {:database (mt/id)})) "fingerprint")))))
     (testing "control: with no current user, every message is kept"
       (is (str/includes? (:error (catch-exceptions throw-driver-error {:database (mt/id)})) compiled-sql)))))
+
+(deftest ^:synchronized user-visible-message-test
+  (let [driver-error (try (throw-driver-error) (catch Exception e e))
+        written      (ex-info "You do not have permissions to run this query."
+                              {:type qp.error-type/missing-required-permissions})]
+    (mt/with-test-user :rasta
+      (mt/with-dynamic-fn-redefs [perms/data-access-token (constantly {})]
+        (testing "an unrestricted user gets the message itself"
+          (is (= (ex-message driver-error) (catch-exceptions/user-visible-message driver-error (mt/id)))))
+        (mt/with-dynamic-fn-redefs [perms/sandboxed-user-for-db? (constantly true)]
+          (testing "a row-restricted user gets the generic message in place of one not written for them"
+            (is (= "An error occurred while running the query."
+                   (catch-exceptions/user-visible-message driver-error (mt/id)))))
+          (testing "a row-restricted user still gets a message written for them"
+            (is (= (ex-message written) (catch-exceptions/user-visible-message written (mt/id))))))))))

@@ -152,7 +152,8 @@
       ;; The outer message, not `:error`: `:error` swaps in an inner exception's text, which can drop curated text
       ;; such as the saturated-pool message, or the tag and question that a `{{#123}}` failure names.
       (if (query-execution/caller-facing-failure? (qp.catch-exceptions/exception-response e))
-        (sql.common/query-failed! {:error-message (without-stack-frames (ex-message e))})
+        (sql.common/query-failed! {:error-message (without-stack-frames
+                                                   (qp.catch-exceptions/user-visible-message e (:database query)))})
         (throw e)))))
 
 (defrecord DocumentConstructSqlChartTool []

@@ -289,6 +289,21 @@
                (merge (some #(not-empty (select-keys (ex-data %) [:type])) chain)
                       (some #(not-empty (select-keys (ex-data %) [:status-code])) chain))))))
 
+(defn- exception-for-user
+  "`e` as the current user may see it when a query against database `database-id` throws it: unchanged, or
+  the [[restricted-exception]] for a row-restricted user."
+  ^Throwable [^Throwable e database-id]
+  (if (row-restricted-user? database-id)
+    (restricted-exception e)
+    e))
+
+(defn user-visible-message
+  "The message of `e`, thrown by a query against database `database-id`, that the current user may see. A
+  row-restricted user gets the generic message in place of one not written for them; see [[restricted-exception]].
+  For code that shows a query's exception to the user outside of a query response, such as Metabot's tools."
+  [^Throwable e database-id]
+  (ex-message (exception-for-user e database-id)))
+
 (defn- query-log-context
   "Ids for the error log line that tie it to `query` and to the user's report: the user, Database, Card, Dashboard and
   run context, and what restricts the user's row access, if anything (their response then has a generic message in
@@ -315,9 +330,7 @@
       (try
         (qp query rff)
         (catch Throwable e
-          (let [e' (if (row-restricted-user? (:database query))
-                     (restricted-exception e)
-                     e)]
+          (let [e' (exception-for-user e (:database query))]
             (when-not (identical? e e')
               (log/with-thread-context (merge (query-log-context query) (log-error/log-data e))
                 (log/errorf "Error processing query: %s" (ex-message e))))
