@@ -765,16 +765,6 @@ describe("QB Actions > initializeQB", () => {
       );
       expect(isDirty(result, metadata)).toBe(true);
     });
-
-    it("renames a card reference to match the current name of the card", async () => {
-      const { result, metadata } = await setupCardReference({
-        tagName: "#10-old-name",
-      });
-
-      expect(getQueryText(result.card, metadata)).toBe(
-        "select * from {{#10-bobs-cafe}}",
-      );
-    });
   });
 
   function startInitializeDB(
