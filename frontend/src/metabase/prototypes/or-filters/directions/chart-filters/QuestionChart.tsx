@@ -82,6 +82,8 @@ type QuestionChartProps = {
   xAxisTitle?: (frame: AxisTitleFrame) => ReactNode;
   /** Bar-click thresholds read "Count ≥ 12", plus a "Count…" entry with the full picker. */
   hasSymbolThresholds?: boolean;
+  /** Without it, symbol thresholds drop the "Count…" entry. */
+  hasAnyOperatorThreshold?: boolean;
 };
 
 type OpenMenu = { model: DrillMenuModel; x: number; y: number };
@@ -106,6 +108,7 @@ export function QuestionChart({
   yAxisTitle,
   xAxisTitle,
   hasSymbolThresholds,
+  hasAnyOperatorThreshold = true,
 }: QuestionChartProps) {
   const metadataProvider = useMetadataProviderUnfiltered(Lib.databaseID(query));
   const jsQuery = useMemo(() => Lib.toJsQuery(query), [query]);
@@ -183,6 +186,7 @@ export function QuestionChart({
           groupCount,
           markNoun,
           hasSymbolThresholds,
+          hasAnyOperatorThreshold,
         })
       : undefined;
     setMenu(

@@ -189,6 +189,7 @@ function summaryOptions(
   formattedValue: string,
   markNoun: string,
   hasSymbols = false,
+  hasAnyOperator = true,
 ): DrillOption[] {
   const summaryQuery = withSummaryStage(query);
   const target = Lib.filterableColumns(summaryQuery, SUMMARY_STAGE).find(
@@ -238,14 +239,18 @@ function summaryOptions(
         detail: t`Hides the ${markNoun} over ${formattedValue}`,
         apply: withThreshold("<="),
       },
-      {
-        id: "any-operator",
-        target: "summary",
-        title: t`${measureName}…`,
-        detail: t`Pick any operator`,
-        apply: (current) => current,
-        picker: { query: summaryQuery, column: target },
-      },
+      ...(hasAnyOperator
+        ? [
+            {
+              id: "any-operator",
+              target: "summary" as const,
+              title: t`${measureName}…`,
+              detail: t`Pick any operator`,
+              apply: (current: Lib.Query) => current,
+              picker: { query: summaryQuery, column: target },
+            },
+          ]
+        : []),
     ];
   }
   return [
@@ -376,6 +381,8 @@ type GetDrillMenuOpts = {
   markNoun: string;
   /** Thresholds read "Count ≥ 12", plus an entry that opens the full picker. */
   hasSymbolThresholds?: boolean;
+  /** With symbol thresholds, adds the "Count…" entry that opens the full picker. */
+  hasAnyOperatorThreshold?: boolean;
 };
 
 /**
@@ -389,6 +396,7 @@ export function getDrillMenu({
   groupCount,
   markNoun,
   hasSymbolThresholds,
+  hasAnyOperatorThreshold = true,
 }: GetDrillMenuOpts): DrillMenuModel | undefined {
   const rowsQuery = rowsOnly(query);
   // The click comes from the full query's results, so the drills must see the
@@ -455,6 +463,7 @@ export function getDrillMenu({
         formattedMeasure,
         markNoun,
         hasSymbolThresholds,
+        hasAnyOperatorThreshold,
       ),
     );
   }

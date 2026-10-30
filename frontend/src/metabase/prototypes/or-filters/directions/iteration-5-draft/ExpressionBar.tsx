@@ -508,6 +508,8 @@ export function ExpressionBar({
       // A click in the bar moves the caret; one elsewhere closes the pill.
       if (!isPointerInBarRef.current) {
         close();
+        // Closing removes the focused input, which fires no blur: fold the bar here.
+        setHasFocus(false);
       }
       return;
     }
@@ -563,7 +565,12 @@ export function ExpressionBar({
       onChange(writeTokens(baseQuery, stageIndex, tokens));
     }
     close();
-    inputRef.current?.blur();
+    // The focus may sit in the open pill's input rather than the caret's.
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && barRef.current?.contains(focused)) {
+      focused.blur();
+    }
+    setHasFocus(false);
   };
 
   // The bar's own keys in the pill's column step: logic tokens, caret moves

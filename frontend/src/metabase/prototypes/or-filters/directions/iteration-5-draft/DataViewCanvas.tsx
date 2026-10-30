@@ -154,6 +154,7 @@ export function DataViewCanvas({
             display={display}
             onPick={question.apply}
             hasSymbolThresholds
+            hasAnyOperatorThreshold={false}
             onLegacyDrill={(nextQuery) => question.apply(nextQuery)}
             yAxisTitle={
               AxisTitle && isAggregated
