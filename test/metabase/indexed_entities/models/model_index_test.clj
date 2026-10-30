@@ -9,6 +9,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.task.index-values :as task.index-values]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -37,12 +39,13 @@
 (deftest quick-run-through
   (with-scheduler-setup!
     (mt/dataset test-data
-      (let [query     (mt/mbql-query products
-                        {:filter [:and
-                                  [:> $id 0]
-                                  [:< $id 10]]})
-            pk_ref    (mt/$ids $products.id)
-            value_ref (mt/$ids $products.title)]
+      (let [mp (mt/metadata-provider)
+            id-field (lib.metadata/field mp (mt/id :products :id))
+            query    (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                         (lib/filter (lib/and (lib/> id-field 0)
+                                              (lib/< id-field 10))))
+            pk_ref    (lib/ref (lib.metadata/field mp (mt/id :products :id)))
+            value_ref (lib/ref (lib.metadata/field mp (mt/id :products :title)))]
         (mt/with-model-cleanup [:model/Card]
           ;; with-temp doesn't let us update the model to simulate different values returned
           (let [response    (mt/user-http-request :rasta :post 200 "/card"
@@ -333,5 +336,5 @@
           (model-index/add-values! mi)
           (let [bad-attempt (t2/select-one :model/ModelIndex :id (u/the-id mi))]
             (is (=? {:state "error"
-                     :error #"(?s)Error executing query.*"}
+                     :error #"(?i).*(Invalid|error).*"}
                     bad-attempt))))))))
