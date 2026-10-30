@@ -41,6 +41,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import {
+  getEmbeddedParameterVisibilityGetter,
   getIsResultDirty,
   getIsVisualized,
   getNativeEditorCursorOffset,
@@ -634,5 +635,92 @@ describe("getSubmittableQuestion", () => {
     const question = checkNotNull(getQuestion(state));
 
     expect(getSubmittableQuestion(state, question).display()).toBe("table");
+  });
+});
+
+describe("getEmbeddedParameterVisibilityGetter", () => {
+  it("returns the same function for the same card", () => {
+    const card = createMockCard();
+    const state = getBaseState({ card });
+    const nextState = getBaseState({ card });
+
+    expect(nextState).not.toBe(state);
+    expect(getEmbeddedParameterVisibilityGetter(nextState)).toBe(
+      getEmbeddedParameterVisibilityGetter(state),
+    );
+  });
+
+  it("returns a new function when the card changes", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        enable_embedding: true,
+        embedding_params: { category: "enabled" },
+      }),
+    });
+    const nextState = getBaseState({
+      card: createMockCard({
+        enable_embedding: true,
+        embedding_params: { category: "locked" },
+      }),
+    });
+
+    const getVisibility = getEmbeddedParameterVisibilityGetter(state);
+    const getNextVisibility = getEmbeddedParameterVisibilityGetter(nextState);
+
+    expect(getNextVisibility).not.toBe(getVisibility);
+    expect(getNextVisibility("category")).toBe("locked");
+  });
+
+  it("returns null when embedding is off", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        enable_embedding: false,
+        embedding_params: { category: "enabled" },
+      }),
+    });
+
+    expect(getEmbeddedParameterVisibilityGetter(state)("category")).toBeNull();
+  });
+
+  it.each(["enabled", "locked"] as const)(
+    "returns the stored %s value for a known slug",
+    (visibility) => {
+      const state = getBaseState({
+        card: createMockCard({
+          enable_embedding: true,
+          embedding_params: { category: visibility },
+        }),
+      });
+
+      expect(getEmbeddedParameterVisibilityGetter(state)("category")).toBe(
+        visibility,
+      );
+    },
+  );
+
+  it("returns disabled for a missing slug", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        enable_embedding: true,
+        embedding_params: { category: "enabled" },
+      }),
+    });
+
+    expect(getEmbeddedParameterVisibilityGetter(state)("vendor")).toBe(
+      "disabled",
+    );
+  });
+
+  it("returns disabled when the card has no embedding params", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        enable_embedding: true,
+        embedding_params: null,
+      }),
+    });
+
+    expect(getEmbeddedParameterVisibilityGetter(state)("category")).toBe(
+      "disabled",
+    );
   });
 });
