@@ -1,11 +1,23 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import type {
   RevokeSessionsResponse,
   Session,
+  SessionCountsResponse,
   SessionListResponse,
 } from "metabase-types/api";
 import { createMockRevokeSessionsResponse } from "metabase-types/api/mocks";
+
+export function setupSessionCountsEndpoint(
+  response: SessionCountsResponse = { active: 0, ended: 0 },
+  options?: UserRouteConfig,
+) {
+  fetchMock.get("path:/api/ee/session-management/counts", response, options);
+}
+
+export function setupSessionCountsErrorEndpoint() {
+  fetchMock.get("path:/api/ee/session-management/counts", { status: 500 });
+}
 
 export const setupListSessionsEndpoint = (
   sessions: Session[] = [],

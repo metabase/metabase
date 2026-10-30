@@ -11,7 +11,7 @@ const MOUSEMOVE_THROTTLE_MS = 50;
 export const useTooltipMouseLeave = (
   chartRef?: React.MutableRefObject<EChartsType | undefined>,
   onHoverChange?: VisualizationProps["onHoverChange"],
-  containerRef?: React.RefObject<HTMLDivElement>,
+  containerRef?: React.RefObject<HTMLDivElement | null>,
 ) => {
   const isMouseOverTooltipRef = useRef(false);
 

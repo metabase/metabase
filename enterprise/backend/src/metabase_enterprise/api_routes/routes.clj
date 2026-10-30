@@ -38,8 +38,8 @@
    [metabase-enterprise.replacement.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
+   [metabase-enterprise.search.semantic.api]
    [metabase-enterprise.security-center.api]
-   [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.session-management.api]
    [metabase-enterprise.stale.api]
@@ -51,7 +51,6 @@
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
-   [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me)
@@ -100,10 +99,6 @@
 
   TODO -- Please fix them! See #22687"
   {"/moderation-review" metabase-enterprise.content-verification.api.routes/routes
-   ;; Data-app bundle hosting. Naughty because the FE route lives at `/apps/:slug`
-   ;; (and `/api/apps/...`), NOT `/api/ee/...` — `/app/*` is reserved for static
-   ;; assets, so we keep the public path stable here. Superuser-only inside the handler.
-   (str "/" request/data-app-url-segment) (premium-handler metabase-enterprise.data-apps.api/routes :data-apps)
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 
@@ -120,6 +115,7 @@
                                     (handlers/route-map-handler
                                      {"/mcp-permissions" metabase-enterprise.mcp.api.permissions/routes})
                                     (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls))
+   "/apps"                         (premium-handler metabase-enterprise.data-apps.api/routes :data-apps)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-diagnostics"          (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
@@ -166,7 +162,7 @@
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
-   "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
+   "/semantic-search"              (premium-handler metabase-enterprise.search.semantic.api/routes :semantic-search)
    "/security-center"              (premium-handler metabase-enterprise.security-center.api/routes :admin-security-center)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/session-management"           (premium-handler metabase-enterprise.session-management.api/routes :session-management)

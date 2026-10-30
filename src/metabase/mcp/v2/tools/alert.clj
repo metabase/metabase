@@ -379,8 +379,7 @@
   "An alert is a scheduled run of its question with the results delivered, so establishing one — or
    redirecting where one delivers — needs the same scope that seeing those results in-session
    would. The send itself happens later, tokenlessly, under the creator's permissions; this check
-   at write time is the only place the token's scopes can bound that deferred execution. No-op for
-   unscoped callers (cookie sessions bind the unrestricted sentinel, which matches everything)."
+   at write time is the only place the token's scopes can bound that deferred execution."
   [token-scopes action]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
     (common/throw-insufficient-scope!
@@ -481,7 +480,9 @@
   {:name           "alert_write"
    :default-access :allowed
    :scope          metabot.scope/agent-delivery-write
-   :annotations    {:readOnlyHint false :destructiveHint false}
+   ;; `destructiveHint`: an update can replace the recipients.
+   ;; `openWorldHint`: it sends to email addresses and Slack channels outside Metabase.
+   :annotations    {:readOnlyHint false, :destructiveHint true, :openWorldHint true}
    :args           alert-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write {:create-required [:card_id :schedule]} args)]

@@ -52,13 +52,11 @@
                       (initialize/initialize-if-needed! :db)
                       (thunk)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *save-chan*
   "Gets a message whenever results are saved to the test backend, or if the reducing function stops serializing results
   because of an Exception or if the byte threshold is passed."
   nil)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *purge-chan*
   "Gets a message whenever old entries are purged from the test backend."
   nil)
@@ -143,10 +141,8 @@
 (defmacro with-mock-cache! [[& bindings] & body]
   `(do-with-mock-cache! (fn [{:keys [~@bindings]}] ~@body)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *query-caching-min-ttl*
   "Set this to zero to prevent flakes - we don't want a query to slip under the wire here."
   0)
@@ -164,7 +160,6 @@
           :stages         [{:lib/type :mbql.stage/mbql, :source-table 2}]}
          query-kvs))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *rows*
   "Rows the mock query execution returns. Bind to `[]` to exercise the empty-result path."
   [[:toucan      71]
@@ -685,9 +680,9 @@
       ;; the QP pipeline on worker threads that don't inherit *local-redefs* — use with-redefs.
       ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-      (with-redefs [process-userland-query/save-execution-metadata!*          (fn [& args]
+      (with-redefs [process-userland-query/save-execution-metadata!*          (fn [query-executions]
                                                                                 (swap! save-execution-metadata-count inc)
-                                                                                (apply save-execution-metadata-original args)
+                                                                                (save-execution-metadata-original query-executions)
                                                                                 (deliver called-promise true))
                     query/save-queries-and-update-average-execution-times! (fn [entries]
                                                                              (swap! update-avg-execution-count + (count entries))

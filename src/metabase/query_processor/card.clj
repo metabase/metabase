@@ -283,7 +283,8 @@
                                                             (pr-str parameter-name))
                                                        {:type               qp.error-type/invalid-parameter
                                                         :invalid-parameter  request-parameter
-                                                        :allowed-parameters (keys template-tags)})))]
+                                                        :allowed-parameters (keys template-tags)
+                                                        :response/keys      #{:invalid-parameter :allowed-parameters}})))]
           ;; now make sure the type agrees as well
           (check-allowed-parameter-value-type parameter-name matching-widget-type (:type request-parameter)))))))
 

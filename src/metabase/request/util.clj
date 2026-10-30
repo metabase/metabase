@@ -41,10 +41,8 @@
   (re-matches #"^/embed/.*$" uri))
 
 (def data-app-url-segment
-  "URL path segment identifying data-app routes. Single source of truth on the
-   BE: the `/apps` page route, the `/embed/apps` iframe prefix, and the
-   `/api/apps` API mount all derive from it (mirrors the FE
-   `DATA_APP_URL_SEGMENT`)."
+  "URL path segment of data-app pages: the `/apps` page route and the `/embed/apps` iframe prefix derive from it
+   (mirrors the FE `DATA_APP_URL_SEGMENT`)."
   "apps")
 
 (def data-app-embed-prefix

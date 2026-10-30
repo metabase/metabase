@@ -55,7 +55,7 @@
   (testing "Inactive Entity Name fields should not be hydrated (#65207)"
     (let [name-field-id (mt/id :venues :name)]
       (try
-        (t2/update! :model/Field name-field-id {:active false})
+        (t2/update! :model/Field :id name-field-id {:active false})
         (is (= {:name          "ID"
                 :table_id      (mt/id :venues)
                 :semantic_type :type/PK
@@ -64,7 +64,7 @@
                    (t2/hydrate :name_field)
                    mt/derecordize)))
         (finally
-          (t2/update! :model/Field name-field-id {:active true}))))))
+          (t2/update! :model/Field :id name-field-id {:active true}))))))
 
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 
@@ -299,3 +299,14 @@
                        (t2/with-call-count [call-count]
                          (params/dashcards->param-field-ids dashcards)
                          (call-count)))))))))))
+
+(deftest ^:parallel invalid-parameters-errors-are-humanized-test
+  (testing "`:errors` are client-facing, so they are humanized messages rather than Malli explanations"
+    (doseq [[thunk desc] [[#(params/assert-valid-parameters {:parameters [{:id 1}]})
+                           "parameters"]
+                          [#(params/assert-valid-parameter-mappings {:parameter_mappings [{:card_id "x"}]})
+                           "parameter mappings"]]]
+      (testing desc
+        (let [errors (:errors (try (thunk) (catch clojure.lang.ExceptionInfo e (ex-data e))))]
+          (is (some? errors))
+          (is (not-any? #(and (map? %) (contains? % :schema)) (tree-seq coll? seq errors))))))))

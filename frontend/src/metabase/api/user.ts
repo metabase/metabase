@@ -67,6 +67,14 @@ export const userApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
+    disconnectSlack: builder.mutation<void, UserId>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/user/${id}/slack`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("current-user")]),
+    }),
     deactivateUser: builder.mutation<void, UserId>({
       query: (id) => ({
         method: "DELETE",
@@ -128,6 +136,7 @@ export const {
   useGetUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
+  useDisconnectSlackMutation,
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useUpdateUserMutation,

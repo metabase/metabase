@@ -1,6 +1,5 @@
 name: hourly_product_stats
 display_name: Hourly Product Stats
-created_at: '2026-04-02T03:01:23.703545Z'
 db_id: Sample Database
 schema: TRANSFORMS
 active: false

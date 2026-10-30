@@ -25,8 +25,8 @@ const { colors: LIGHT_THEME_COLORS } = deriveFullMetabaseTheme({
 });
 
 const PANEL_BACKGROUNDS: Record<ResolvedColorScheme, string> = {
-  light: LIGHT_THEME_COLORS["background-primary"],
-  dark: LIGHT_THEME_COLORS["background-primary-inverse"],
+  light: LIGHT_THEME_COLORS["background_page-primary"],
+  dark: LIGHT_THEME_COLORS["background_page-primary-inverse"],
 };
 
 const DEFAULT_PADDING = "96px";

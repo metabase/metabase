@@ -8,6 +8,7 @@ import {
   useListNotificationsQuery,
 } from "metabase/api";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
@@ -25,13 +26,11 @@ import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { useNavigate } from "metabase/router";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
-
-import S from "./MetricToolbar.module.css";
 
 type MetricModalType =
   | "move"
@@ -117,16 +116,9 @@ function MetricToolbarButtons({
     PLUGIN_CACHING.hasQuestionCacheSection(new Question(card));
 
   return (
-    <Menu position="bottom-end">
+    <Menu>
       <Menu.Target>
-        <ActionIcon
-          variant="default"
-          size="lg"
-          className={S.moreOptionsButton}
-          aria-label={t`More options`}
-        >
-          <Icon name="ellipsis" />
-        </ActionIcon>
+        <MoreMenuButton aria-label={t`More options`} />
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item

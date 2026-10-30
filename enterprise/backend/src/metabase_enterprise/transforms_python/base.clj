@@ -8,7 +8,6 @@
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -16,6 +15,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -262,7 +262,7 @@
    Options:
    - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
   [{:keys [source] :as transform} :- ::transforms-base.schema/transform
-   db :- :metabase.warehouses.schema/database
+   db :- ::lib.schema.metadata/database
    run-id :- pos-int?
    cancel-chan :- ::transforms-base.schema/chan
    message-log :- ::transforms-base.schema/atom
@@ -366,7 +366,7 @@
       (when (and cancelled? (cancelled?))
         (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
       (let [{:keys [target] transform-id :id} transform
-            db (transforms-python.db/database (:database target))
+            db (driver.u/lib-database (:database target))
             ;; Use run-id if provided, otherwise generate a temp one for python runner
             effective-run-id (or run-id (rand-int Integer/MAX_VALUE))
             cancel-chan (or cancel-chan
@@ -416,7 +416,8 @@
 
             :else
             (do
-              (log/errorf "Error executing Python transform: %s" (ex-message e))
+              ;; the caller owns the failure (and logs it); this returns it in the result map
+              (log/debugf "Error executing Python transform: %s" (ex-message e))
               {:status :failed
                :error e
                :logs (str logs "\n" error-message)})))))))

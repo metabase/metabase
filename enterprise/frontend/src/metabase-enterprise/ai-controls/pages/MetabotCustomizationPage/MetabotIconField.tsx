@@ -151,6 +151,7 @@ export function MetabotIconField() {
             {!isDefaultIcon && (
               <Tooltip label={t`Remove custom icon`}>
                 <ActionIcon
+                  variant="subtle"
                   onClick={handleIconRemove}
                   aria-label={t`Remove custom icon`}
                 >

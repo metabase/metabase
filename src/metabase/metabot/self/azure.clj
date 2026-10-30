@@ -84,11 +84,11 @@
    "claude-opus-4-7"   1000000
    "claude-opus-4-6"   1000000
    "claude-opus-4-5"    200000
-   "claude-opus-4-1"    200000
    "claude-sonnet-5-5" 1000000
    "claude-sonnet-5"   1000000
    "claude-sonnet-4-6" 1000000
    "claude-sonnet-4-5"  200000
+   "claude-haiku-5-5"  1000000
    "claude-haiku-4-5"   200000
    "gpt-6-astra"        922000
    "gpt-5.6-sol"        922000

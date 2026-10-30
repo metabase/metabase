@@ -59,6 +59,7 @@ export function SidebarHeader({ node, onClose, mode }: SidebarHeaderProps) {
         {link != null && (
           <Tooltip label={link.label} openDelay={TOOLTIP_OPEN_DELAY_MS}>
             <ActionIcon
+              variant="subtle"
               component={ForwardRefLink}
               to={link.url}
               target="_blank"
@@ -73,6 +74,7 @@ export function SidebarHeader({ node, onClose, mode }: SidebarHeaderProps) {
           openDelay={TOOLTIP_OPEN_DELAY_MS}
         >
           <ActionIcon
+            variant="subtle"
             component={ForwardRefLink}
             to={Urls.dependencyGraph({ entry: node })}
             target="_blank"
@@ -83,7 +85,7 @@ export function SidebarHeader({ node, onClose, mode }: SidebarHeaderProps) {
             <FixedSizeIcon name="dependencies" />
           </ActionIcon>
         </Tooltip>
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>

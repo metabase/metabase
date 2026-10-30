@@ -136,17 +136,17 @@ describe("scenarios > visualizations > boxplot", () => {
       cy.findByText("Show values on data points").click();
     });
 
-    // After enabling, "Values to display" option appears with segmented buttons
+    // After enabling, "Values to display" option appears as a segmented control
     H.leftSidebar().within(() => {
       cy.findByText("Values to display").should("exist");
-      cy.findByRole("button", { name: "Median only" }).should("exist");
+      cy.findByRole("radio", { name: "Median only" }).should("be.checked");
     });
 
     // With "Median only", the median labels show (2025 median is 35), but not the other values
     H.echartsContainer().findAllByText("35").should("exist");
     H.echartsContainer().findByText("412").should("not.exist");
 
-    H.leftSidebar().findByRole("button", { name: "All" }).click();
+    H.leftSidebar().findByText("All").click();
 
     // Verify label value appears
     H.echartsContainer().findByText("412").should("exist");
@@ -154,15 +154,11 @@ describe("scenarios > visualizations > boxplot", () => {
     H.leftSidebar().findByText("Hide overlapping labels").click();
     H.echartsContainer().findByText("91.75").should("exist");
 
-    // Test "Auto formatting" segmented button
+    // Test "Auto formatting" segmented control
     H.leftSidebar().within(() => {
       cy.findByText("Auto formatting").should("exist");
-      cy.findByRole("button", { name: "Full" }).click();
-      cy.findByRole("button", { name: "Full" }).should(
-        "have.attr",
-        "data-variant",
-        "filled",
-      );
+      cy.findByText("Full").click();
+      cy.findByRole("radio", { name: "Full" }).should("be.checked");
     });
 
     H.leftSidebar().findByText("Goal line").click();
@@ -172,8 +168,27 @@ describe("scenarios > visualizations > boxplot", () => {
       cy.findByLabelText("Goal label").clear().type("Target");
     });
 
-    H.echartsContainer().findByText("Target").should("exist");
     H.goalLine().should("exist");
+    H.goalLineMarker().should("be.visible");
+  });
+
+  it("should show the goal in a tooltip when hovering the goal marker", () => {
+    H.visitQuestionAdhoc({
+      ...singleSeriesQuestion,
+      visualization_settings: {
+        ...singleSeriesQuestion.visualization_settings,
+        "graph.show_goal": true,
+        "graph.goal_value": 100,
+        "graph.goal_label": "Target",
+      },
+    });
+
+    H.goalLineMarker().trigger("mousemove");
+
+    H.tooltip().within(() => {
+      cy.findByText("Target:").should("be.visible");
+      cy.findByText("100").should("be.visible");
+    });
   });
 
   it("should render in dashboard and support drill-through on boxes and outliers", () => {
@@ -466,10 +481,10 @@ describe("scenarios > visualizations > boxplot", () => {
     H.leftSidebar().findByText("Axes").click();
 
     // Default: pinned to zero, y-axis should include 0
-    H.echartsContainer().findByText("$0").should("be.visible");
+    H.echartsContainer().findByText("$0.00").should("be.visible");
     H.leftSidebar().findByText("Unpin from zero").click();
 
     // After unpinning, 0 should not be visible (y-axis starts higher since prices are ~$40-80)
-    H.echartsContainer().findByText("$0").should("not.exist");
+    H.echartsContainer().findByText("$0.00").should("not.exist");
   });
 });

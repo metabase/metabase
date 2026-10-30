@@ -14,7 +14,6 @@ const baseColors = {
   },
   transparent: "hsla(0, 0%, 100%, 0)",
   gold: "hsla(50.6, 100%, 50%, 1)",
-  upsellGem: "hsla(190, 100%, 50%, 1)",
 
   // Brand colors (dynamic based on --mb-color-core-brand). Expanded to roughly match the values in the new color palette (but these should be reworked).
   brand: {
@@ -117,7 +116,7 @@ const baseColors = {
     50: "hsla(204, 66%, 8%, 0.51)",
     40: "hsla(204, 66%, 8%, 0.44)",
     30: "hsla(204, 66%, 8%, 0.29)",
-    20: "hsla(204, 66%, 8%, 0.17)",
+    20: "hsla(204, 66%, 8%, 0.14)",
     10: "hsla(204, 66%, 8%, 0.05)",
     5: "hsla(204, 66%, 8%, 0.02)",
   },
@@ -214,6 +213,11 @@ const baseColors = {
     20: "hsla(46, 94%,  74%, 1)",
     10: "hsla(46, 96%,  90%, 1)",
     5: "hsla(45, 100%, 96%, 1)",
+  },
+
+  dubloonAlpha: {
+    40: "hsla(44, 100%, 44%, 0.78)",
+    30: "hsla(46, 100%, 49%, 0.51)",
   },
 
   // Palm

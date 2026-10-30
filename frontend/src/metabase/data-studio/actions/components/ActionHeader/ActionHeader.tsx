@@ -15,6 +15,7 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import { useMetadataToasts } from "metabase/common/hooks";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import type { StackProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction, WritebackActionId } from "metabase-types/api";
@@ -115,6 +116,14 @@ function ActionTabs({ actionId }: ActionTabsProps) {
     },
     { label: t`Run`, to: Urls.dataStudioActionRun(actionId) },
     { label: t`Settings`, to: Urls.dataStudioActionSettings(actionId) },
+    ...(PLUGIN_DEPENDENCIES.isEnabled
+      ? [
+          {
+            label: t`Dependencies`,
+            to: Urls.dataStudioActionDependencies(actionId),
+          },
+        ]
+      : []),
   ];
   return <PillTabNavigation tabs={tabs} />;
 }

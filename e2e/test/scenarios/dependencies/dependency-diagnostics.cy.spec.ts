@@ -667,7 +667,7 @@ describe(
         });
 
         H.DependencyDiagnostics.filterButton().click();
-        H.popover().findByText("Snippet").click();
+        H.popover().findByText("SQL snippet").click();
         checkList({
           visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG],
           hiddenEntities: [SNIPPET_FOR_SNIPPET_TAG],
@@ -689,7 +689,7 @@ describe(
 
         cy.log("type");
         H.DependencyDiagnostics.filterButton().click();
-        H.popover().findByText("Snippet").click();
+        H.popover().findByText("SQL snippet").click();
         checkList({ visibleEntities: SEARCHABLE_ENTITY_NAMES });
 
         H.popover().findByText("Model").click();

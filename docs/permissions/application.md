@@ -27,6 +27,8 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Appearance](../configuring-metabase/appearance.md)
 - [Public sharing](../embedding/public-links.md)
 
+Embedding settings aren't included. They live in the **Embedding hub**, which only admins can open.
+
 ## Monitoring access
 
 People in groups with Monitoring access can view:
@@ -44,6 +46,9 @@ The following Monitor pages aren't included in Monitoring access:
 
 - [Dependency diagnostics](../monitor/dependency-diagnostics.md): Available to admins and people in the [Data Analysts](../people-and-groups/managing.md#data-analysts) group
 - [Alerts management](../monitor/alerts-management.md): Available to admins only
+- [Session management](../monitor/session-management.md): Available to admins only
+- [API key usage](../monitor/api-key-usage.md): Available to admins only
+- [AI auditing](../monitor/start.md#ai-auditing) pages, like [CLI analytics](../monitor/cli-analytics.md) and [Data app analytics](../monitor/data-app-analytics.md): Available to admins only
 
 ## Subscriptions and alerts
 

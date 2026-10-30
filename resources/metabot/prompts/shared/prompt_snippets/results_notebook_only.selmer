@@ -1,0 +1,1 @@
+`run_query` runs notebook queries only, so when the answer needs a value, build the query with `construct_notebook_query`, not as SQL. If a figure takes two steps, such as a change between two periods or a count within the top item, run one notebook query per step and combine the results yourself rather than writing SQL for it.

@@ -63,7 +63,8 @@
 
 (t2/define-before-update :model/TransformTag [tag]
   (if (or (nil? (:built_in_type tag))
-          mi/*deserializing?*)
+          mi/*deserializing?*
+          (empty? (dissoc (t2/changes tag) :updated_at)))
     tag
     (-> (merge (translate-name tag) ;; translated default names
                {:built_in_type nil} ;; never translate this again
@@ -98,8 +99,7 @@
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]
   {:copy [:entity_id :built_in_type]
-   :transform {:name {:export str :import identity}
-               :created_at (serdes/date)}})
+   :transform {:name {:export str :import identity}}})
 
 (defmethod serdes/storage-path "TransformTag" [tt _ctx]
   [{:label "transforms"} {:label "transform_tags"} {:label (:name tt) :key (:entity_id tt)}])

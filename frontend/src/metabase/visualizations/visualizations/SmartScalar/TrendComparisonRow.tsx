@@ -1,31 +1,34 @@
-import { Badge, Box, Flex, Text, Tooltip } from "metabase/ui";
+import { Badge, Box, Flex, Tooltip } from "metabase/ui";
 import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/viz-core";
 import type { ColumnSettings } from "metabase-types/api";
 
-import { PreviousValueComparisonTooltip } from "./PreviousValueComparisonTooltip";
+import {
+  COMPARISON_PANEL_TOOLTIP_PROPS,
+  TrendComparisonPanel,
+} from "./TrendComparisonPanel";
 import S from "./TrendComparisonRow.module.css";
 import {
-  type ComparisonResult,
-  type Trend,
-  getComparisonDisplay,
-} from "./compute";
-import { TEXT_SPACING } from "./constants";
-
-const SIZE_GAPS = { sm: TEXT_SPACING, lg: 6 };
+  COMPARISON_TEXT_GAPS,
+  TrendComparisonText,
+  type TrendComparisonTextSize,
+} from "./TrendComparisonText";
+import type { ComparisonResult, Trend } from "./compute";
 
 interface TrendComparisonRowProps {
   trend: Trend;
   formatOptions: ColumnSettings;
   percentOnly?: boolean;
-  size?: "sm" | "lg";
+  showComparisonCount?: boolean;
+  size?: TrendComparisonTextSize;
   compactValue?: boolean;
 }
 
 export function TrendComparisonRow({
   trend,
   formatOptions,
-  percentOnly,
+  percentOnly = false,
+  showComparisonCount = true,
   size = "sm",
   compactValue = true,
 }: TrendComparisonRowProps) {
@@ -39,45 +42,23 @@ export function TrendComparisonRow({
     return null;
   }
 
-  const { comparisonDescStr, comparisonDescShortStr } = comparison;
-  const {
-    isChanged,
-    signedPercent,
-    valueDisplay: comparisonValueDisplay,
-    sentimentColor,
-  } = getComparisonDisplay(comparison, formatOptions, {
-    compact: compactValue,
-  });
-
-  const changeColor = sentimentColor ?? "text-secondary";
-  const changeDesc = isChanged
-    ? (comparisonDescShortStr ?? comparisonDescStr)
-    : comparisonDescStr;
-  const changeText = [signedPercent, changeDesc].filter(Boolean).join(" ");
   const extraComparisonsCount = comparisons.length - 1;
 
   const showsPanel = percentOnly || extraComparisonsCount > 0 || isTruncated;
 
   return (
     <Tooltip
-      position="bottom"
+      {...COMPARISON_PANEL_TOOLTIP_PROPS}
       disabled={!showsPanel}
-      classNames={{ tooltip: S.comparisonPanel }}
       label={
-        <div className={S.comparisonTable}>
-          {comparisons.map((comparison, index) => (
-            <PreviousValueComparisonTooltip
-              comparison={comparison}
-              key={index}
-              formatOptions={formatOptions}
-              className={S.comparisonRow}
-            />
-          ))}
-        </div>
+        <TrendComparisonPanel
+          comparisons={comparisons}
+          formatOptions={formatOptions}
+        />
       }
     >
       <Flex
-        gap={SIZE_GAPS[size]}
+        gap={COMPARISON_TEXT_GAPS[size]}
         align="center"
         justify="center"
         maw="100%"
@@ -87,41 +68,16 @@ export function TrendComparisonRow({
         data-testid="scalar-previous-value"
       >
         <Box ref={comparisonTextRef} className={S.comparisonText}>
-          {percentOnly ? (
-            <Text component="span" fz={size} lh={size} c={changeColor}>
-              {signedPercent}
-            </Text>
-          ) : (
-            <>
-              {display.date != null && display.date !== "" && (
-                <Text
-                  component="span"
-                  fz={size}
-                  lh={size}
-                  c="text-secondary"
-                  mr={SIZE_GAPS[size]}
-                >
-                  <span data-testid="scalar-period">{display.date}</span>
-                  {","}
-                </Text>
-              )}
-              <Text component="span" fz={size} lh={size} c={changeColor}>
-                {changeText}
-              </Text>
-              {comparisonValueDisplay != null &&
-                comparisonValueDisplay !== "" && (
-                  <Text component="span" fz={size} lh={size} c={changeColor}>
-                    {isChanged ? (
-                      <> ({comparisonValueDisplay})</>
-                    ) : (
-                      <> {comparisonValueDisplay}</>
-                    )}
-                  </Text>
-                )}
-            </>
-          )}
+          <TrendComparisonText
+            comparison={comparison}
+            date={display.date}
+            formatOptions={formatOptions}
+            size={size}
+            percentOnly={percentOnly}
+            compactValue={compactValue}
+          />
         </Box>
-        {!percentOnly && extraComparisonsCount > 0 && (
+        {showComparisonCount && extraComparisonsCount > 0 && (
           <Badge
             px={6}
             size="xs"

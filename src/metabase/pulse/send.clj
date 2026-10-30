@@ -124,7 +124,8 @@
              {:status-code     502
               :error-code      :notification/delivery-failed
               :notification-id (:id pulse)
-              :failed-handlers failed-handlers})))
+              :failed-handlers failed-handlers
+              :response/keys   #{:failed-handlers}})))
 
 (defn- send-pulse!*
   [{:keys [channels channel-ids] :as pulse} dashboard async?]
@@ -135,7 +136,11 @@
     (let [delivery-failures (volatile! [])]
       (doseq [pulse-channel channels]
         (try
-          (notification/send-notification! (notification-info pulse dashboard pulse-channel) :notification/sync? (not async?))
+          ;; every channel has the pulse id as `:id`, so each one gets its own queue key: the notification queue would
+          ;; otherwise replace a queued channel with the next one
+          (notification/send-notification! (vary-meta (notification-info pulse dashboard pulse-channel)
+                                                      assoc :notification/queue-key [(:id pulse) (:id pulse-channel)])
+                                           :notification/sync? (not async?))
           (catch Exception e
             (log/errorf "[Pulse %d] Error sending to %s channel: %s" (:id pulse) (:channel_type pulse-channel) (ex-message e))
             (when (delivery-failure? e)

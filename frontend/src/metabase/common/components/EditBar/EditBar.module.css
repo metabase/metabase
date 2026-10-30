@@ -3,7 +3,7 @@
 }
 
 .root[data-location="admin"] {
-  background-color: var(--mb-color-admin-navbar);
+  background-color: var(--mb-color-navbar-admin);
 }
 
 .root[data-location="embedding-hub"] {

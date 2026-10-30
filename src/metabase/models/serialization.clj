@@ -280,8 +280,8 @@
   "Return specification for serialization, should be a map of:
 
   - `:copy`: a vector of field names, to directly copy from db into output and ingest back with no changes.
-  - `:skip`: a vector of field names, used it tests to check if all fields were specified (`:id` and `:updated_at`
-    are always skipped, no need to mention them).
+  - `:skip`: a vector of field names, used in tests to check if all fields were specified (`:id`, `:created_at` and
+    `:updated_at` are always skipped, no need to mention them).
   - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
     on `extract-one` and `xform-one`. There are a number of transformers, see this field for `fk` and similar.
   - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
@@ -442,33 +442,23 @@
             reducible))
 
 (def stable-storage-order
-  "A deterministic `:order-by` for serdes export queries, so that entities sharing a name within a folder get
-  reproducible filename de-dup suffixes (`foo.yaml` vs `foo_2.yaml`) across exports — otherwise re-exports swap which
-  entity lands in which file and produce large phantom git-sync diffs (GHY-3754).
-
-  Orders by `created_at` first so the *oldest* sibling keeps the unsuffixed file: adding a new same-named entity
-  appends a `_2` rather than displacing the existing file. `entity_id` (random NanoID) would not have this property —
-  a newcomer with a smaller id would steal the base file. `entity_id` is then a deterministic tiebreaker for entities
-  created in the same instant. Assumes the model serializes both columns; use [[stable-storage-order-by]] to gate on a
-  spec."
-  [[:created_at :asc] [:entity_id :asc]])
-
-(defn stable-storage-order-by
-  "[[stable-storage-order]] restricted to the columns `spec` actually serializes (via `:copy` or `:transform`).
-  Returns nil when the model serializes neither column."
-  [spec]
-  (let [serialized? (into (set (:copy spec)) (keys (:transform spec)))]
-    (not-empty (filterv (comp serialized? first) stable-storage-order))))
+  "A deterministic `:order-by` for serdes export queries, so that entities sharing a name within a folder get the same
+  filename de-dup suffixes (`foo.yaml` vs `foo_2.yaml`) on every export and on every instance, by `entity_id` alone
+  since `created_at` is local to each instance; the `entity_id` columns compare byte by byte on every app DB."
+  [[:entity_id :asc]])
 
 (defn extract-order-columns
-  "The ascending order columns for `model-name`'s extract query: [[stable-storage-order]] restricted to the columns the
-  model's spec actually serializes.
+  "The ascending order columns for `model-name`'s extract query: [[stable-storage-order]] when the model's spec
+  serializes `entity_id`, else its primary key.
 
   Empty for a nested fetch (e.g. a Dashboard's DashboardCards): those are embedded as lists inside the parent's file
   rather than written to their own files, so they keep their natural order and are left untouched."
   [model-name opts]
   (when-not (::nested-fetch opts)
-    (mapv first (stable-storage-order-by (*make-spec* model-name opts)))))
+    (let [spec (*make-spec* model-name opts)]
+      (if (some #{:entity_id} (concat (:copy spec) (keys (:transform spec))))
+        (mapv first stable-storage-order)
+        [(primary-key model-name)]))))
 
 (defn extract-query-collections
   "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
@@ -786,12 +776,12 @@
 
 (defn collection-namespace-folder
   "The folder under `collections/` that holds the collections of `collection-namespace`, `main` for the default one.
-  The `data-apps` namespace is the `data_apps` folder, spelled like the top-level directory of the apps themselves."
+  A dashed namespace is spelled with an underscore, like the top-level `data_apps` directory of the apps themselves."
   [collection-namespace]
   (case (some-> collection-namespace keyword)
     :snippets     "snippets"
     :transforms   "transforms"
-    :data-actions "data-actions"
+    :data-actions "data_actions"
     :data-apps    "data_apps"
     "main"))
 
@@ -1112,7 +1102,7 @@
   [x :- MBQLNode]
   (set
    (match/match-many x
-     [:aggregation (_opts :guard map?) (uuid :guard string?)]
+     [:aggregation #'map? (uuid :guard string?)]
      uuid)))
 
 (declare export-mbql)
@@ -1187,13 +1177,52 @@
     [:measure opts id]
     [:measure (export-mbql-map opts) id]))
 
+(defn card-template-tag-export-rename
+  "Exported name for a card template tag whose `#<id>-slug` name embeds a local card id: the id is swapped for the
+  `entity_id` of the tag's card, the slug is kept verbatim. Nil when the name doesn't embed an id."
+  [{tag-type :type, :keys [card-id], tag-name :name}]
+  (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
+    (when-let [[_ _embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
+      (when-let [card-entity-id (fk-elide (*export-fk* card-id :model/Card))]
+        (str "#" card-entity-id suffix)))))
+
+(defn card-template-tag-rename
+  "New name for a card template tag whose name embeds the `entity_id` of its (already remapped) `:card-id`, a
+  different local id, or another `entity_id`: the embedded value is swapped for the id, the slug is kept verbatim. Nil
+  when they already agree or the name doesn't embed an id."
+  [{tag-type :type, :keys [card-id], tag-name :name}]
+  (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
+    (let [entity-id-prefix (some->> (fk-elide (*export-fk* card-id :model/Card)) (str "#"))
+          entity-id-suffix (when (and entity-id-prefix (str/starts-with? tag-name entity-id-prefix))
+                             (subs tag-name (count entity-id-prefix)))]
+      (if (and entity-id-suffix (or (= "" entity-id-suffix) (str/starts-with? entity-id-suffix "-")))
+        (str "#" card-id entity-id-suffix)
+        (if-let [[_ embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
+          (when (not= (parse-long embedded-id) card-id)
+            (str "#" card-id suffix))
+          (when-let [[_ suffix] (re-matches #"#[A-Za-z0-9_-]{21}(-.*)?" tag-name)]
+            (str "#" card-id suffix)))))))
+
+(defn card-template-tag-renames
+  "The `{old-name new-name}` map of the `tags` that `rename`, a fn of one tag, gives a new name."
+  [rename tags]
+  (into {}
+        (keep (fn [{tag-name :name, :as tag}]
+                (some->> (rename tag) (vector tag-name))))
+        tags))
+
+(defn- rename-card-template-tags
+  "Renames the template tags of `query`, and the `{{#id-slug}}` refs in its native text, with `rename`."
+  [query rename]
+  (lib/replace-template-tag-names query (card-template-tag-renames rename (lib/all-template-tags query))))
+
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
   [x]
   (let [x (cond-> x
             (and (map? x) (= :mbql/query (:lib/type x)))
-            lib/prepare-for-serialization)]
+            (-> (rename-card-template-tags card-template-tag-export-rename) lib/prepare-for-serialization))]
     ;; if required UUIDs are already calculated don't recalculate when we recurse.
     (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
       (cond
@@ -1324,30 +1353,13 @@
       import-mbql-update-refs
       import-mbql-update-maps))
 
-(defn card-template-tag-rename
-  "New name for a card template tag whose `#<id>-slug` name embeds a different id than its (already
-  remapped) `:card-id`: the id is swapped, the slug is kept verbatim. Nil when they already agree or
-  the name doesn't embed an id."
-  [{tag-type :type, :keys [card-id], tag-name :name}]
-  (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
-    (when-let [[_ embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
-      (when (not= (parse-long embedded-id) card-id)
-        (str "#" card-id suffix)))))
-
 (defn- repair-card-template-tag-names
-  "Card template tag names (and the `{{#id-slug}}` refs in the native text) embed the referenced
-  card's id, which goes stale when [[import-mbql-map]] remaps `:card-id` to the local card's id.
-  Swap the embedded id for the remapped one, leaving the slug as it was exported."
+  "Card template tag names (and the `{{#id-slug}}` refs in the native text) embed the referenced card's `entity_id`,
+  or in older exports its source id, which [[import-mbql-map]] doesn't remap. Swap it for the local id of the remapped
+  `:card-id`, leaving the slug as it was exported."
   [x]
-  (if (= (:lib/type x) :mbql/query)
-    (lib/replace-template-tag-names
-     x
-     (into {}
-           (keep (fn [{tag-name :name, :as tag}]
-                   (when-let [new-name (card-template-tag-rename tag)]
-                     [tag-name new-name])))
-           (lib/all-template-tags x)))
-    x))
+  (cond-> x
+    (= (:lib/type x) :mbql/query) (rename-card-template-tags card-template-tag-rename)))
 
 (defn- legacy-mbql-query->mbql5
   "Converts an imported legacy MBQL query to MBQL 5, returning `x` unchanged if it isn't one or conversion fails.
@@ -1399,7 +1411,7 @@
     ;; --- serialized (portable) refs, walked at load time ---
     ;; A serialized `:field` clause has no dependencies: its Database, Table and Field are synthesized on import, and
     ;; a field clause never nests metric/segment/card refs, so we don't descend.
-    [#{:field "field"} (_opts :guard map?) (_ref :guard vector?)]
+    [#{:field "field"} #'map? #'vector?]
     nil
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
@@ -1418,7 +1430,7 @@
     ;; --- raw (numeric) refs, walked at export time before serialization ---
     ;; The referenced Field/Table are real appdb ids, existence-checked so a deleted row can't produce a malformed
     ;; portable reference. `allow-int-ids?` gates these so a stray numeric in serialized data isn't mistaken for a ref.
-    [#{:field "field"} (_opts :guard map?) (id :guard (raw-ref-id? allow-int-ids? id))]
+    [#{:field "field"} #'map? (id :guard (raw-ref-id? allow-int-ids? id))]
     #{[{:model "Field" :id id}]}
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
@@ -1746,7 +1758,7 @@
         export-visualizer-settings
         export-pivot-table
         export-timeline-events
-        (update :column_settings export-column-settings))))
+        (m/update-existing :column_settings export-column-settings))))
 
 (defn- import-viz-link-card
   [settings]
@@ -1838,6 +1850,13 @@
       (m/update-existing :timeline.selected_timeline_ids import-fks entity-id? :model/Timeline)
       (m/update-existing :timeline.excluded_timeline_event_ids import-fks timeline-event-ref? :model/TimelineEvent)))
 
+(defn- import-viz-column-settings
+  "Import `:column_settings`, dropping the `nil` that older exports wrote for settings without any."
+  [settings]
+  (if (some? (:column_settings settings))
+    (update settings :column_settings import-column-settings)
+    (dissoc settings :column_settings)))
+
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
   references into Field IDs."
@@ -1850,7 +1869,7 @@
         import-visualizer-settings
         import-pivot-table
         import-timeline-events
-        (update :column_settings import-column-settings))))
+        import-viz-column-settings)))
 
 (defn- viz-link-card-deps
   [allow-int-ids? settings]
@@ -1950,10 +1969,14 @@
                                        :import #(*import-fk* % model)))))
 
 (defn nested
-  "Nested entities; `opts` may give `:sort-by`, `:key-field` and `:delete-children!`, a fn of the parent id."
+  "Nested entities. `opts` may give `:key-field`, `:delete-children!` (a fn of the parent id), and either `:sort-by`
+  or `:sort-by-parent`, a fn of the parent returning the `:sort-by` fn, which wins over `:sort-by` and is not passed
+  on to the children's own nested entities."
   [model backward-fk opts]
   (let [model-name       (name model)
-        sorter           (:sort-by opts :created_at)
+        sorter           (if-let [sort-by-parent (:sort-by-parent opts)]
+                           sort-by-parent
+                           (constantly (:sort-by opts :entity_id)))
         key-field        (:key-field opts :entity_id)
         delete-children! (:delete-children! opts #(models.db/delete-children! model backward-fk %))]
     {::nested             true
@@ -1966,8 +1989,8 @@
                             ;; `nil? data` check is for `extract-one` case in tests; make sure to add empty vectors in
                             ;; `extract-query` implementations for nested collections
                             (try
-                              (->> (sort-by sorter data)
-                                   (mapv #(extract-one model-name opts %)))
+                              (->> (sort-by (sorter current) data)
+                                   (mapv #(extract-one model-name (dissoc opts :sort-by-parent) %)))
                               (catch Exception e
                                 (throw (ex-info (format "Error extracting nested %s" model)
                                                 {:model     model

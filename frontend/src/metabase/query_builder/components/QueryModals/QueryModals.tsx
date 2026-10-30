@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -32,7 +33,7 @@ import { NewDatasetModal } from "../NewDatasetModal";
 import { PreviewQueryModal } from "../view/PreviewQueryModal";
 
 interface QueryModalsProps {
-  modal: QueryModalType;
+  modal: QueryModalType | null;
   question: Question;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   originalQuestion: Question;
@@ -69,6 +70,11 @@ export function QueryModals({
   const initialCollectionId = useGetDefaultCollectionId();
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
   const visualizationSettings = useSelector(getVisualizationSettings);
+  const questionRef = useLatest(question);
+  const questionToCopy = useMemo(
+    () => (modal === MODAL_TYPES.CLONE ? questionRef.current : undefined),
+    [modal, questionRef],
+  );
 
   const handleAlertCreatedOrUpdated = useCallback(() => {
     dispatch(updateUrl(question, { dirty: false }));
@@ -244,13 +250,17 @@ export function QueryModals({
         />
       );
     case MODAL_TYPES.CLONE:
+      if (!questionToCopy) {
+        return null;
+      }
+
       return (
         <CopyModal
           entityType="cards"
           entityObject={{
-            ...question.card(),
-            collection_id: question.canWrite()
-              ? question.collectionId()
+            ...questionToCopy.card(),
+            collection_id: questionToCopy.canWrite()
+              ? questionToCopy.collectionId()
               : initialCollectionId,
           }}
           copy={async (formValues) => {

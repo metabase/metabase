@@ -108,11 +108,18 @@ export type PulseChannelDetails = {
   [specFieldName: string]: string | boolean | undefined;
 };
 
+/** An address outside Metabase, which the API returns without a user id. */
+export type ExternalEmailRecipient = {
+  email: string;
+};
+
+export type ChannelRecipient = User | ExternalEmailRecipient;
+
 export type Channel = {
   channel_type: ChannelType;
   details?: PulseChannelDetails;
   enabled?: boolean;
-  recipients?: User[];
+  recipients?: ChannelRecipient[];
   channel_id?: number;
 } & Pick<
   ScheduleSettings,

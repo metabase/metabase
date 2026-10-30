@@ -75,7 +75,7 @@ export const commitToRepo = (
 export function configureGit(
   syncType: "read-write" | "read-only",
   syncUrl = "file://" + LOCAL_GIT_PATH + "/.git",
-  collections?: Record<number, boolean>,
+  collections?: Record<string, boolean>,
 ) {
   cy.request("PUT", "/api/ee/remote-sync/settings", {
     "remote-sync-branch": "main",

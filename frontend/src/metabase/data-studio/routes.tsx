@@ -2,6 +2,7 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { canAccessDataModel, useUserKeyValue } from "metabase/current-user";
 import {
+  PLUGIN_DATA_APPS,
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,
   PLUGIN_SCHEMA_VIEWER,
@@ -78,6 +79,13 @@ const libraryUpsellPage = () =>
     Component: LibraryUpsellPage,
   }));
 
+const dataAppsUpsellPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/DataAppsUpsellPage"
+  ).then(({ DataAppsUpsellPage }) => ({
+    Component: DataAppsUpsellPage,
+  }));
+
 const schemaViewerUpsellPage = () =>
   import(
     /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/SchemaViewerUpsellPage"
@@ -111,12 +119,24 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           </Route>
           {getDataStudioGlossaryRoutes()}
           {getDataStudioSnippetRoutes()}
-          {getDataStudioActionRoutes()}
+          {getDataStudioActionRoutes(IsAdmin)}
+          {PLUGIN_DATA_APPS.isEnabled ? (
+            PLUGIN_DATA_APPS.getDataStudioRoutes(IsAdmin)
+          ) : (
+            <Route path={Urls.DATA_APP_URL_SEGMENT} element={<IsAdmin />}>
+              <Route index lazy={dataAppsUpsellPage} />
+            </Route>
+          )}
           {getDataStudioSettingsRoutes()}
           {PLUGIN_LIBRARY.isEnabled ? (
             PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
           ) : (
             <Route path="library" lazy={libraryUpsellPage} />
+          )}
+          {PLUGIN_LIBRARY.isEnabled ? (
+            PLUGIN_LIBRARY.getDataStudioDashboardRoutes()
+          ) : (
+            <Route path="dashboards" lazy={libraryUpsellPage} />
           )}
           {PLUGIN_DEPENDENCIES.isEnabled ? (
             <Route path="dependencies" lazy={dependenciesSectionLayout}>

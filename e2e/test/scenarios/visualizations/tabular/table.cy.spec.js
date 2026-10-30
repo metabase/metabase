@@ -203,6 +203,63 @@ describe("scenarios > visualizations > table", () => {
     headerCells().contains("QUANTITY").should("not.exist");
   });
 
+  it("should preserve set widths after reordering", () => {
+    cy.intercept(
+      "GET",
+      "/api/search?models=dataset&models=table&table_db_id=*",
+    ).as("getSearchResults");
+    cy.intercept("POST", "/api/dataset").as("getDataset");
+    H.startNewNativeQuestion({
+      query: 'select 1 "first_column", 2 "second_column"',
+      display: "table",
+    });
+
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.wait(["@getSearchResults", "@getDataset"]);
+
+    // Resizing a single column stores a widths array shorter than the column count
+    H.resizeTableColumn("first_column", 100);
+
+    H.getColumnWidth("first_column")
+      .should("be.gt", 150)
+      .as("firstWidth", { type: "static" });
+    H.getColumnWidth("second_column").as("secondWidth", { type: "static" });
+
+    H.tableHeaderColumn("first_column").as("dragElement");
+    // The drop target is found by pointer position, so the pointer has to end inside the second column
+    cy.get("@dragElement").then(($dragElement) => {
+      headerCells()
+        .filter(":contains(second_column)")
+        .then(($target) => {
+          const targetRect = $target[0].getBoundingClientRect();
+          const dragRect = $dragElement[0].getBoundingClientRect();
+          H.moveDnDKitElementByAlias("@dragElement", {
+            horizontal: targetRect.left + targetRect.width / 2 - dragRect.left,
+          });
+        });
+    });
+    headerCells().eq(0).should("contain.text", "second_column");
+
+    const assertUnchangedWidths = () => {
+      cy.get("@firstWidth").then((firstWidth) => {
+        H.getColumnWidth("first_column").should("eq", firstWidth);
+      });
+
+      cy.get("@secondWidth").then((secondWidth) => {
+        H.getColumnWidth("second_column").should("eq", secondWidth);
+      });
+    };
+
+    assertUnchangedWidths();
+    cy.reload();
+
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    // Wait for column widths to be set
+    cy.wait(["@getSearchResults", "@getDataset"]);
+    H.tableHeaderColumn("first_column").should("be.visible");
+    assertUnchangedWidths();
+  });
+
   it("should close the column popover on subsequent click and display any column as link with extrapolated url and text (metabase#16789)", () => {
     H.openPeopleTable({ limit: 2 });
 
@@ -931,6 +988,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
 
       // Ensure resizing did not permanently changed the row height
       cy.reload();
+      H.closeNavigationSidebar();
       H.assertRowHeight(0, wrappedRowInitialHeight);
 
       // Disable text wrapping from dashcard settings

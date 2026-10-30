@@ -1,9 +1,9 @@
-import React, { useState } from "react";
 import {
   MetabaseProvider,
   defineMetabaseAuthConfig,
   useMetabot,
 } from "@metabase/embedding-sdk-react";
+import React, { useState } from "react";
 
 const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://your-metabase.example.com",

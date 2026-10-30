@@ -6,7 +6,7 @@ import type { BaseCartesianChartModel } from "../model/types";
 
 import { getSeriesYAxisIndex } from "./utils";
 
-export const TREND_LINE_DASH = [5, 5];
+export const TREND_LINE_WIDTH = 1.15;
 
 export function getTrendLinesOption(
   chartModel: BaseCartesianChartModel,
@@ -25,8 +25,8 @@ export function getTrendLinesOption(
       showSymbol: false,
       lineStyle: {
         color: trendSeries.color,
-        type: TREND_LINE_DASH,
-        width: 2,
+        type: trendSeries.style,
+        width: TREND_LINE_WIDTH,
       },
       z: Z_INDEXES.trendLine,
     })) ?? []

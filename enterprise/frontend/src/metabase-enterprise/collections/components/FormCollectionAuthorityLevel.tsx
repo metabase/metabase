@@ -2,8 +2,8 @@ import { useField } from "formik";
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
-import { FormField } from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { FormField } from "metabase/forms";
 import { SegmentedControl } from "metabase/ui";
 
 import { OFFICIAL_COLLECTION, REGULAR_COLLECTION } from "../constants";
@@ -49,6 +49,7 @@ export function FormCollectionAuthorityLevel({
       error={touched ? error : undefined}
     >
       <SegmentedControl
+        w="fit-content"
         value={String(value)}
         onChange={handleChange}
         data={getOptions().map((option) => ({

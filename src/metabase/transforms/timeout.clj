@@ -18,9 +18,11 @@
     (when-let [timed-out (not-empty (transform-run/timeout-old-runs! (transforms.settings/transform-timeout) :minute))]
       (log/infof "Timed out %d transform run(s)." (count timed-out)))))
 
-(task/defjob  ^{:doc "Timeout long-running tasks that have been lost by a worker."
-                org.quartz.DisallowConcurrentExecution true}
-  TimeoutTransforms [ctx]
+(task/defjob TimeoutTransforms
+  "Timeout long-running tasks that have been lost by a worker."
+  {:saved-class "metabase.transforms.timeout.TimeoutTransforms"
+   :concurrent? false}
+  [ctx]
   (timeout-transform-runs! ctx))
 
 (defn- start-job! []

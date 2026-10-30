@@ -1,10 +1,13 @@
-.iconWrapper {
+.iconSlot {
   padding: 0.75rem;
+  width: 3em;
+  height: 3em;
+}
+
+.iconWrapper {
   background-color: transparent;
   cursor: pointer;
   color: var(--mb-color-core-brand);
-  width: 3em;
-  height: 3em;
 
   &.pinned {
     color: var(--mb-color-accent4);

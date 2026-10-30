@@ -26,7 +26,7 @@ export type ColumnsReordering = {
 
 export const useColumnsReordering = <TData,>(
   table: ReactTable<TData>,
-  gridRef: React.RefObject<HTMLDivElement>,
+  gridRef: React.RefObject<HTMLDivElement | null>,
   onColumnReorder?: (columnNames: string[]) => void,
 ): ColumnsReordering => {
   const prevOrder = useRef<string[] | null>(null);

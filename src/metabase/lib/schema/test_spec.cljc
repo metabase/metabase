@@ -97,7 +97,7 @@
   [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::test-operator-spec]
-   [:args {:default []} [:sequential [:ref ::test-expression-spec]]]
+   [:args {:default []} [:sequential [:ref ::test-operator-arg-spec]]]
    ;; For an aggregation: the name of its result column, which a later stage refers to.
    [:name {:optional true} string?]])
 
@@ -107,6 +107,16 @@
    [:column [:ref ::test-column-spec]]
    [:literal [:ref ::test-literal-expression-spec]]
    [:operator [:ref ::test-operator-expression-spec]]])
+
+(mr/def ::test-operator-arg-spec
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:column [:ref ::test-column-spec]]
+   [:literal [:ref ::test-literal-expression-spec]]
+   [:operator [:ref ::test-operator-expression-spec]]
+   [:segment [:ref ::test-segment-spec]]
+   [:measure [:ref ::test-measure-spec]]
+   [:metric [:ref ::test-metric-spec]]])
 
 (mr/def ::test-segment-spec
   [:map {:closed true}

@@ -45,6 +45,10 @@ const getMockErrorStream = () =>
   createMockSSEStream([{ type: "error", errorText: "boom" }]);
 
 describe("processChatResponse", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("should be able to process a valid stream", async () => {
     const mockStream = getMockSuccessStream();
     const result = await processChatResponse(mockStream, expectNoStreamedError);
@@ -101,7 +105,7 @@ describe("processChatResponse", () => {
     ]);
   });
 
-  it("should fire reasoning callbacks and not append reasoning to result", async () => {
+  it("should fire one reasoning callback per server delta and not append reasoning to result", async () => {
     const mockStream = createMockSSEStream([
       { type: "reasoning-start", id: "r1" },
       { type: "reasoning-delta", id: "r1", delta: "Think" },
@@ -112,14 +116,41 @@ describe("processChatResponse", () => {
 
     const result = await processChatResponse(mockStream, config);
     expect(config.onReasoningStart).toHaveBeenCalledTimes(1);
-    expect(config.onReasoningDelta).toHaveBeenCalledTimes(1);
-    expect(config.onReasoningDelta).toHaveBeenCalledWith(
-      expect.objectContaining({ delta: "Thinking" }),
+    expect(config.onReasoningDelta).toHaveBeenCalledTimes(2);
+    expect(config.onReasoningDelta).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ delta: "Think" }),
+    );
+    expect(config.onReasoningDelta).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ delta: "ing" }),
     );
     expect(config.onReasoningEnd).toHaveBeenCalledTimes(1);
     expect(config.onError).not.toHaveBeenCalled();
     expect(result.data).toEqual([]);
     expect(result.toolCalls).toEqual([]);
+  });
+
+  it("paces reasoning callbacks when shouldPaceReasoning returns true", async () => {
+    const mockStream = createMockSSEStream([
+      { type: "reasoning-delta", id: "r1", delta: "thinking it over" },
+    ]);
+    const config = {
+      ...getMockedCallbacks(),
+      shouldPaceReasoning: () => true,
+    };
+
+    await processChatResponse(mockStream, config);
+
+    expect(config.onReasoningDelta).toHaveBeenCalledTimes(3);
+    expect(config.onReasoningDelta).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ delta: "thinking " }),
+    );
+    expect(config.onReasoningDelta).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ delta: "over" }),
+    );
   });
 
   it("should ignore unhandled event types", async () => {
@@ -246,6 +277,39 @@ describe("processChatResponse", () => {
       "tell ",
       "anyone.",
     ]);
+  });
+
+  it("does not pace deltas while the document is hidden", async () => {
+    jest.spyOn(document, "hidden", "get").mockReturnValue(true);
+    const setTimeoutSpy = jest.spyOn(global, "setTimeout");
+    const config = getMockedCallbacks();
+
+    await processChatResponse(
+      createMockSSEStream([
+        { type: "reasoning-start", id: "r1" },
+        {
+          type: "reasoning-delta",
+          id: "r1",
+          delta: "let me check the orders table ",
+        },
+        { type: "reasoning-end", id: "r1" },
+        { type: "tool-input-start", toolCallId: "c1", toolName: "search" },
+        { type: "text-delta", id: "t1", delta: "Here is the answer." },
+      ]),
+      config,
+    );
+
+    expect(config.onReasoningDelta).toHaveBeenCalledTimes(1);
+    expect(config.onReasoningDelta).toHaveBeenCalledWith({
+      type: "reasoning-delta",
+      id: "r1",
+      delta: "let me check the orders table ",
+    });
+    expect(config.onTextPart.mock.calls).toEqual([["Here is the answer."]]);
+    const pacingWaits = setTimeoutSpy.mock.calls.filter(
+      ([, delayMs]) => delayMs === 10,
+    );
+    expect(pacingWaits).toEqual([]);
   });
 
   it("should resolve with partial response for aborted requests", async () => {

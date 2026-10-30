@@ -68,9 +68,7 @@
 
 (mr/def ::id pos-int?)
 
-;; referenced only inside quoted defendpoint args that parse-args resolves at runtime
-#_{:clj-kondo/ignore [:unused-private-var]}
-(def ^:private RouteParams
+(def RouteParams
   [:map
    [:id [:string {:api/regex #"[abc]{4}"}]]])
 
@@ -179,6 +177,11 @@
         :params {:route {:binding _route-params, :schema [:map {:closed true}]}
                  :query {:binding _query-params, :schema [:map {:closed true}]}}
         :body [(test)]})))
+
+(deftest ^:parallel parse-args-misplaced-response-schema-test
+  (testing "a response schema after the params is rejected instead of being dropped into the body"
+    (is (thrown-with-msg? Exception #"response schema must come right after the route"
+                          (#'api.macros/parse-args '(:get "/test" "A test endpoint." [] :- [:vector :string] (test)))))))
 
 (deftest ^:parallel decode-strips-undeclared-keys-test
   (testing "request decoding drops keys the schema does not name, so an open map cannot carry values downstream"

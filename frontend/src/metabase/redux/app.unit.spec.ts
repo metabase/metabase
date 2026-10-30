@@ -1,6 +1,5 @@
 import appReducer, {
   closeNavbar,
-  isNavbarOpenForPathname,
   openNavbar,
   resetErrorPage,
   setErrorPage,
@@ -8,11 +7,9 @@ import appReducer, {
 } from "metabase/redux/app";
 
 // Characterization tests for the two reducers that react to navigation via the
-// `@@router/LOCATION_CHANGE` action (`isNavbarOpen` collapse-by-pathname and
-// `errorPage` clear-on-navigate). The router migration re-owns this action with
-// a byte-identical type string and payload shape, so these tests must keep
-// passing through the migration — they lock the subtle behaviour most likely to
-// drift.
+// `@@router/LOCATION_CHANGE` action (`isNavbarOpen` preserve-across-navigation
+// and `errorPage` clear-on-navigate). The navbar only changes on explicit user
+// action, so navigation must never collapse it on a regular (non-small) screen.
 
 const LOCATION_CHANGE = "@@router/LOCATION_CHANGE";
 
@@ -29,19 +26,19 @@ describe("app reducer — navigation reactions", () => {
   });
 
   describe("isNavbarOpen on LOCATION_CHANGE", () => {
-    it("collapses when navigating to a path in the collapse list", () => {
-      const state = appReducer(
-        initialState(),
-        locationChange({ pathname: "/question/1" }),
-      );
-      expect(state.isNavbarOpen).toBe(false);
-    });
-
-    it("stays open when navigating to a non-collapsing path", () => {
-      const state = appReducer(
-        initialState(),
-        locationChange({ pathname: "/collection/1" }),
-      );
+    // The navbar no longer collapses based on the destination pathname; it
+    // stays open unless the user closed it themselves.
+    it.each([
+      "/question/1",
+      "/model/1",
+      "/dashboard/1",
+      "/metabot",
+      "/document/1",
+      "/explore",
+      "/collection/1",
+      "/browse/models",
+    ])("stays open when navigating to %s", (pathname) => {
+      const state = appReducer(initialState(), locationChange({ pathname }));
       expect(state.isNavbarOpen).toBe(true);
     });
 
@@ -56,29 +53,11 @@ describe("app reducer — navigation reactions", () => {
       expect(state.isNavbarOpen).toBe(true);
     });
 
-    // Word-boundary cases pinned by the regex comment in app.ts: a partial match
-    // must not collapse the navbar.
-    it.each([
-      ["/model/1", false], // a model — collapses
-      ["/browse/models", true], // listing — must NOT collapse
-      ["/question/1", false], // a question — collapses
-      ["/reference/segments/1/questions", true], // listing — must NOT collapse
-      ["/dashboard/1", false],
-      ["/metabot", false],
-      ["/document/1", false],
-      ["/explore", false],
-      ["/collection/root", true],
-      ["/browse/databases", true],
-    ])("pathname %s => isNavbarOpen %s", (pathname, expected) => {
-      const state = appReducer(initialState(), locationChange({ pathname }));
-      expect(state.isNavbarOpen).toBe(expected);
-    });
-
-    it("does not reopen a closed navbar just because the path is non-collapsing", () => {
+    it("keeps a manually-closed navbar closed across navigation", () => {
       const closed = appReducer(initialState(), closeNavbar());
       const state = appReducer(
         closed,
-        locationChange({ pathname: "/collection/1" }),
+        locationChange({ pathname: "/question/1" }),
       );
       expect(state.isNavbarOpen).toBe(false);
     });
@@ -122,18 +101,5 @@ describe("app reducer — navigation reactions", () => {
       const reset = appReducer(withError, resetErrorPage());
       expect(reset.errorPage).toBeNull();
     });
-  });
-});
-
-describe("isNavbarOpenForPathname", () => {
-  it.each([
-    ["/question/1", true, false],
-    ["/collection/1", true, true],
-    ["/browse/models", true, true],
-    ["/model/1", true, false],
-    // a collapsing path can never force the navbar open when it was closed
-    ["/collection/1", false, false],
-  ])("pathname %s with prevState %s => %s", (pathname, prevState, expected) => {
-    expect(isNavbarOpenForPathname(pathname, prevState)).toBe(expected);
   });
 });

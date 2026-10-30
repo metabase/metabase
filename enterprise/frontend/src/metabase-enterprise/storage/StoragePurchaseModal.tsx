@@ -1,13 +1,6 @@
 import { c, t } from "ttag";
 
-import {
-  Button,
-  Group,
-  Modal,
-  type ModalProps,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Button, Modal, type ModalProps, Stack, Text } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import type { ICloudAddOnProduct } from "metabase-types/api";
 
@@ -52,11 +45,10 @@ export const StoragePurchaseModal = ({
       opened={opened}
       onClose={onClose}
       size="35rem"
-      padding="2.5rem"
       // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins
       title={t`Add Metabase Storage`}
     >
-      <Stack gap="lg" mt="lg">
+      <Stack gap="lg">
         <Text>
           {t`Get secure, fully managed data storage where you can upload your CSVs and sync data from Google Sheets.`}
         </Text>
@@ -69,17 +61,16 @@ export const StoragePurchaseModal = ({
             // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins
             .t`By clicking "Add Metabase Storage," you agree to be charged in accordance with our terms of service. You will not be charged until you reach ${includedRows} stored rows, after which it's ${pricePerBlock}/mo. for each additional ${additionalRows} rows.`}
         </Text>
-
-        <Group justify="flex-end" mt="sm">
-          <Button variant="subtle" color="neutral" onClick={onClose}>
-            {t`Cancel`}
-          </Button>
-          <Button variant="filled" onClick={handleConfirm}>
-            {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins */}
-            {t`Add Metabase Storage`}
-          </Button>
-        </Group>
       </Stack>
+      <Modal.Footer>
+        <Button variant="subtle" color="neutral" onClick={onClose}>
+          {t`Cancel`}
+        </Button>
+        <Button variant="filled" onClick={handleConfirm}>
+          {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins */}
+          {t`Add Metabase Storage`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };

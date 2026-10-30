@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box, Stack, Text, rem } from "metabase/ui";
+import { Box, Stack, Text } from "metabase/ui";
+import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 import { assignLazily } from "metabase/utils/merge-lazily";
 import {
   ScalarCardShell,
@@ -12,7 +13,10 @@ import {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
-import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
+import {
+  compactifyValue,
+  estimateScalarValueWidth,
+} from "metabase/visualizations/lib/scalar_utils";
 import type {
   VisualizationPassThroughProps,
   VisualizationProps,
@@ -20,6 +24,7 @@ import type {
 
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
+import { TrendCardComparison } from "./TrendCardComparison";
 import { TrendComparisonList } from "./TrendComparisonList";
 import { TrendComparisonRow } from "./TrendComparisonRow";
 import { TrendSymbol } from "./TrendSymbol";
@@ -36,6 +41,7 @@ function SmartScalarComponent(
     series,
     rawSeries,
     width,
+    height,
     fontFamily,
     onRenderError,
     actionButtons,
@@ -44,15 +50,8 @@ function SmartScalarComponent(
   } = props;
 
   const scalarRef = useRef(null);
-  const {
-    tier,
-    rootFontScale,
-    availableWidth,
-    title,
-    titleElement,
-    showsTitleTooltip,
-    innerTooltipHoverHandlers,
-  } = useScalarCardShell(props);
+  const { isTruncated: isValueTruncated, ref: valueRef } =
+    useIsTruncated<HTMLHeadingElement>({ ignoreHeightTruncation: true });
   const { getColor } = useBrowserRenderingContext({ fontFamily });
 
   const insights = rawSeries?.[0].data?.insights;
@@ -66,6 +65,12 @@ function SmartScalarComponent(
       onRenderError(error.message);
     }
   }, [error, onRenderError]);
+
+  const { tier, rootFontScale, availableWidth, titleElement, description } =
+    useScalarCardShell(props, {
+      shouldHideDescription: (tier) =>
+        tier.size === 150 && (trend?.comparisons.length ?? 0) > 1,
+    });
 
   if (trend == null) {
     return null;
@@ -91,11 +96,15 @@ function SmartScalarComponent(
     }
   };
 
-  const isSmallestTier = !tier.showsTitle;
+  const isCompact = tier.size < 200;
+  const listsAllComparisons =
+    comparisons.length > 1 &&
+    tier.multiComparisonMinHeight != null &&
+    (height ?? 0) >= tier.multiComparisonMinHeight;
 
   const primaryComparison = comparisons[0];
   const symbolDirection =
-    isSmallestTier || primaryComparison == null
+    isCompact || primaryComparison == null
       ? null
       : getComparisonDisplay(primaryComparison, formatOptions).symbolDirection;
 
@@ -103,29 +112,47 @@ function SmartScalarComponent(
     symbolDirection != null
       ? (tier.symbolSize + tier.symbolGap) * rootFontScale
       : 0;
-  const valueMaxWidth = Math.max(
+  const centeredValueMaxWidth = Math.max(
     width - 2 * Math.max(tier.xPadding * rootFontScale, symbolAllowance),
     0,
   );
 
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
-    valueMaxWidth,
+    centeredValueMaxWidth,
     tier.valueFontSize,
     formatOptions,
   );
 
-  const hasValueTooltip = fullScalarValue !== displayValue;
+  const isValueWide =
+    typeof displayValue === "string" &&
+    estimateScalarValueWidth(displayValue, tier.valueFontSize) >
+      centeredValueMaxWidth;
+  const valueMaxWidth = isValueWide
+    ? Math.max(availableWidth - symbolAllowance, 0)
+    : centeredValueMaxWidth;
+  const valueBoxProps = {
+    pos: "relative" as const,
+    style: {
+      maxWidth: `${valueMaxWidth}px`,
+      marginLeft: isValueWide ? `${symbolAllowance}px` : undefined,
+      alignSelf: isValueWide ? ("flex-start" as const) : undefined,
+    },
+    "data-testid": "scalar-value-box",
+  };
+
+  const hasValueTooltip = fullScalarValue !== displayValue || isValueTruncated;
 
   const valueElement = (
     <ScalarValueContainer
       className={DashboardS.fullscreenNormalText}
       tooltip={fullScalarValue}
-      alwaysShowTooltip={fullScalarValue !== displayValue}
+      alwaysShowTooltip={hasValueTooltip}
       isClickable={isClickable}
     >
       <span onClick={handleClick} ref={scalarRef}>
         <ScalarValue
+          ref={valueRef}
           fontSize={tier.valueFontSize}
           // Unjustified type cast. FIXME
           value={displayValue as string}
@@ -157,7 +184,7 @@ function SmartScalarComponent(
       <ScalarWrapper xPadding={tier.xPadding}>
         <Stack align="center" gap="lg" maw="100%" data-testid="scalar-content">
           {hasSingleComparison ? (
-            <Box pos="relative" maw={`${valueMaxWidth}px`}>
+            <Box {...valueBoxProps}>
               {valueElement}
               {symbolElement}
             </Box>
@@ -198,40 +225,19 @@ function SmartScalarComponent(
   }
 
   return (
-    <ScalarCardShell
-      tier={tier}
-      title={title}
-      showsTitleTooltip={showsTitleTooltip}
-      actionButtons={actionButtons}
-      innerTooltipHoverHandlers={innerTooltipHoverHandlers}
-    >
-      <Box
-        pos="relative"
-        // measured pixels, not a design size — must not be rem-scaled
-        maw={`${valueMaxWidth}px`}
-        {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}
-      >
+    <ScalarCardShell tier={tier} actionButtons={actionButtons}>
+      <Box {...valueBoxProps}>
         {valueElement}
         {symbolElement}
       </Box>
-      {titleElement}
-      {comparisons.length > 0 && (
-        <Box
-          pos="absolute"
-          top={`calc(100% + ${rem(tier.comparisonGap)})`}
-          left="50%"
-          // measured pixels, not a design size — must not be rem-scaled
-          w={`${availableWidth}px`}
-          style={{ transform: "translateX(-50%)" }}
-          {...innerTooltipHoverHandlers}
-        >
-          <TrendComparisonRow
-            trend={trend}
-            formatOptions={formatOptions}
-            percentOnly={isSmallestTier}
-          />
-        </Box>
-      )}
+      <TrendCardComparison
+        tier={tier}
+        title={titleElement}
+        description={description}
+        trend={trend}
+        availableWidth={availableWidth}
+        listsAllComparisons={listsAllComparisons}
+      />
     </ScalarCardShell>
   );
 }

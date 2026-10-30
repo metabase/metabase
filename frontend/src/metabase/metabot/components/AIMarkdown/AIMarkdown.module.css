@@ -106,7 +106,7 @@
 
 .copyCodeButton {
   position: absolute;
-  top: 0.375rem;
+  top: calc(0.625rem + 1px);
   right: 0.375rem;
 }
 

@@ -7,6 +7,7 @@ import {
 } from "react-router";
 
 import { AppShell } from "./AppShell";
+import { withChunkFallback } from "./lazy-page";
 import { setRouter, setRouterExpected } from "./navigator";
 
 export type MemoryTestRouter = DataRouter;
@@ -24,15 +25,17 @@ export type MemoryTestRouterHolder = { current: MemoryTestRouter | null };
  * relative redux navigation resolves from the root (see `AppShell`) and as the
  * seat for anything the app shell needs above the route tree.
  *
- * `hydrateFallback` is what the router shows before it initializes. That window
- * is empty unless the first URL matches a `lazy` route, in which case the whole
- * tree, chrome included, waits on the chunk. Without a fallback the page is
- * blank for that time. The router cannot build one itself, so the app passes it
- * in.
+ * `loadingFallback` is what stands in for a page whose chunk has not arrived.
+ * The router shows it before it initializes, which is only ever a wait on a
+ * chunk: the first URL matching a `lazy` route makes the whole tree, chrome
+ * included, wait on it, and without a fallback the page is blank for that time.
+ * `withChunkFallback` then shows the same thing in a single page's place once a
+ * navigation has waited long enough. The router cannot build one itself, so the
+ * app passes it in.
  */
 function withAppShell(
   routes: RouteObject[],
-  hydrateFallback?: ReactNode,
+  loadingFallback?: ReactNode,
 ): RouteObject[] {
   // Every router this module builds gets an `AppShell`, and every `AppShell`
   // registers a `navigate`. That is what lets the navigator hold a navigation
@@ -41,8 +44,8 @@ function withAppShell(
   return [
     {
       element: <AppShell />,
-      hydrateFallbackElement: hydrateFallback,
-      children: routes,
+      hydrateFallbackElement: loadingFallback,
+      children: withChunkFallback(routes, loadingFallback),
     },
   ];
 }
@@ -59,10 +62,10 @@ function register(router: DataRouter): DataRouter {
 export function createAppRouter(
   routes: RouteObject[],
   basename?: string,
-  hydrateFallback?: ReactNode,
+  loadingFallback?: ReactNode,
 ): DataRouter {
   return register(
-    createBrowserRouter(withAppShell(routes, hydrateFallback), { basename }),
+    createBrowserRouter(withAppShell(routes, loadingFallback), { basename }),
   );
 }
 
@@ -70,13 +73,13 @@ export function createMemoryAppRouter(
   routes: RouteObject[],
   initialRoute: string,
   basename?: string,
-  hydrateFallback?: ReactNode,
+  loadingFallback?: ReactNode,
 ): DataRouter {
   const entry = initialRoute.startsWith("/")
     ? initialRoute
     : `/${initialRoute}`;
   return register(
-    createMemoryRouter(withAppShell(routes, hydrateFallback), {
+    createMemoryRouter(withAppShell(routes, loadingFallback), {
       basename,
       initialEntries: [entry],
     }),

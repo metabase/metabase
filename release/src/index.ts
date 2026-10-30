@@ -3,6 +3,7 @@ export * from "./backports";
 export * from "./github";
 export * from "./linked-issues";
 export * from "./milestones";
+export * from "./release-artifacts";
 export * from "./release-notes";
 export * from "./slack";
 export * from "./version-helpers";

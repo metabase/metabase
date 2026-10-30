@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Flex, Modal, Stack, Text } from "metabase/ui";
+import { Button, Modal, Text } from "metabase/ui";
 
 interface DeleteThemeModalProps {
   isOpen: boolean;
@@ -15,19 +15,16 @@ export function DeleteThemeModal({
 }: DeleteThemeModalProps) {
   return (
     <Modal opened={isOpen} onClose={onCancel} title={t`Delete theme`}>
-      <Stack>
-        <Text>{t`Are you sure you want to delete this theme? This action cannot be undone.`}</Text>
+      <Text>{t`Are you sure you want to delete this theme? This action cannot be undone.`}</Text>
+      <Modal.Footer>
+        <Button variant="subtle" color="neutral" onClick={onCancel}>
+          {t`Cancel`}
+        </Button>
 
-        <Flex justify="flex-end" gap="lg">
-          <Button variant="subtle" color="neutral" onClick={onCancel}>
-            {t`Cancel`}
-          </Button>
-
-          <Button variant="filled" color="negative" onClick={onDelete}>
-            {t`Delete`}
-          </Button>
-        </Flex>
-      </Stack>
+        <Button variant="filled" color="negative" onClick={onDelete}>
+          {t`Delete`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 }

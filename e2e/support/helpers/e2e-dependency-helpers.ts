@@ -13,6 +13,7 @@ export const DependencyGraph = {
   entrySearchInput: () => cy.findByTestId("graph-entry-search-input"),
   selectionButton: () => cy.findByTestId("graph-selection-button"),
   dependencyPanel: () => cy.findByTestId("graph-dependency-panel"),
+  infoPanel: () => cy.findByTestId("graph-info-panel"),
 };
 
 export const DependencyDiagnostics = {

@@ -174,17 +174,16 @@
       (qp.compile/compile (query-fn (mp-fn))))
     {})))
 
-;; kept for REPL perf work: single-run timing alternative to the criterium helper above
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defn- compile-time1
-  "Times a single run rather than [[crit/quick-benchmark]]."
-  [mp-fn query-fn _mem-fn]
-  ;; REPL-only single-run timing helper; time's console report is the output
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (time (mu/disable-enforcement
-          (qp.compile/compile (query-fn (mp-fn))))))
-
 (comment
+  ;; Single-run timing alternative to the criterium helper above
+  (defn- compile-time1
+    "Times a single run rather than [[crit/quick-benchmark]]."
+    [mp-fn query-fn _mem-fn]
+    ;; REPL-only single-run timing helper; time's console report is the output
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (time (mu/disable-enforcement
+            (qp.compile/compile (query-fn (mp-fn))))))
+
   ;; Preprocesses and compiles a query, with the `lib.computed` cache set throughout.
   ;; Useful for testing performance impact from the REPL for the large queries above.
   ;; Returns [nanoseconds result].

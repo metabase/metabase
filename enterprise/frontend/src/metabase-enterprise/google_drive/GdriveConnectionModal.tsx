@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { c, t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
@@ -80,7 +81,7 @@ const ModalWrapper = ({
   children: React.ReactNode;
   onClose: () => void;
 }) => (
-  <Modal opened onClose={onClose} padding="3rem" title={title} size="44rem">
+  <Modal opened onClose={onClose} title={title} size="44rem">
     <Flex gap="lg" pt="xxl" direction="column" justify="center">
       {children}
     </Flex>
@@ -126,7 +127,7 @@ function GoogleSheetsConnectModal({
         onClose(true);
       })
       .catch((response) => {
-        setErrorMessage(response?.data?.message ?? "Something went wrong");
+        setErrorMessage(getErrorMessage(response));
       });
   };
 

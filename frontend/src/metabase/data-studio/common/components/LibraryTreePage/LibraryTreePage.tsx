@@ -28,7 +28,10 @@ import {
 import type { CollectionId } from "metabase-types/api";
 
 import { LibraryBulkActions } from "./LibraryBulkActions";
+import { LibraryPageMenu, type LibraryPageMenuProps } from "./LibraryPageMenu";
 import { useLibraryTreeTableInstance } from "./hooks";
+
+const NO_EXPANDED_IDS: readonly string[] = [];
 
 type LibraryTreePageProps = {
   title: string;
@@ -37,9 +40,10 @@ type LibraryTreePageProps = {
   isSearchActive: boolean;
   searchQuery: string;
   emptyMessage: string;
-  defaultExpandedIds: string[];
+  defaultExpandedIds?: readonly string[];
   defaultMoveCollectionIds?: Partial<Record<LibrarySection, CollectionId>>;
   createMenu?: ReactNode;
+  pageMenu?: LibraryPageMenuProps;
   emptyState?: ReactNode;
   children?: ReactNode;
   renderRowMenu: (item: TreeItem) => ReactNode;
@@ -60,9 +64,10 @@ export function LibraryTreePage({
   isSearchActive,
   searchQuery,
   emptyMessage: defaultEmptyMessage,
-  defaultExpandedIds,
+  defaultExpandedIds = NO_EXPANDED_IDS,
   defaultMoveCollectionIds,
   createMenu,
+  pageMenu,
   emptyState,
   children,
   renderRowMenu,
@@ -94,6 +99,7 @@ export function LibraryTreePage({
     getSelectionState,
     getRowCovered,
     onCheckboxClick,
+    onSelectAllClick,
     clear: clearSelection,
   } = useLibraryBulkSelection(allRows);
 
@@ -133,6 +139,7 @@ export function LibraryTreePage({
                   onChange={(e) => onSearchQueryChange(e.target.value)}
                 />
                 {!isRemoteSyncReadOnly && createMenu}
+                {pageMenu && <LibraryPageMenu {...pageMenu} />}
               </Flex>
               <Card withBorder p={0}>
                 {isLoading ? (
@@ -144,6 +151,8 @@ export function LibraryTreePage({
                     getSelectionState={getSelectionState}
                     isRowDisabled={getRowCovered}
                     onCheckboxClick={onCheckboxClick}
+                    onHeaderCheckboxClick={onSelectAllClick}
+                    headerCheckboxAriaLabel={t`Select all`}
                     emptyState={<ListEmptyState label={emptyMessage} />}
                     onRowClick={(row) => {
                       if (row.original.model === "empty-state") {

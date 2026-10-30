@@ -3,7 +3,7 @@ import { adjustBrightness, tryIsDark } from "metabase/ui/colors/palette";
 import type { DataGridTheme } from "../types";
 
 export const DEFAULT_STRIPED_BACKGROUND_COLOR =
-  "var(--mb-color-background-hover)";
+  "var(--mb-color-background_surface-hover)";
 
 const STRIPE_LIGHTEN_BY = 0.08;
 const STRIPE_DARKEN_BY = 0.04;

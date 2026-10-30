@@ -34,8 +34,3 @@
   (t2/insert! :model/PremiumFeaturesCache {:token_hash        token-hash
                                            :token_status_hash token-status-hash
                                            :updated_at        updated-at}))
-
-(mu/defn delete-token-status-cache!
-  "Delete every cached token status."
-  []
-  (t2/delete! :model/PremiumFeaturesCache))

@@ -7,7 +7,7 @@ import {
   createMockMetabotTextMessage,
   createMockMetabotTextPart,
 } from "__support__/server-mocks";
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import { forkConversation } from "metabase/metabot/state";
 import * as Urls from "metabase/urls";
 
@@ -123,13 +123,15 @@ describe("metabot > fork", () => {
     });
     mockForkEndpoint(forkedConversation);
 
-    await store.dispatch(
-      forkConversation({
-        agentId: "ask",
-        conversationId: "original-convo-id",
-        messageId: "msg_test_favorite",
-      }),
-    );
+    await act(async () => {
+      await store.dispatch(
+        forkConversation({
+          agentId: "ask",
+          conversationId: "original-convo-id",
+          messageId: "msg_test_favorite",
+        }),
+      );
+    });
 
     await waitFor(() =>
       expect(router?.location.pathname).toBe(

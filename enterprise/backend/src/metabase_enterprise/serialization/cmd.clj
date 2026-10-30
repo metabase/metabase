@@ -10,7 +10,6 @@
    [metabase-enterprise.serialization.v2.storage.files :as v2.storage.files]
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
-   [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features]
@@ -53,9 +52,8 @@
   ;;(when-not (load/compatible? path)
   ;;  (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
   (log/infof "Loading serialized Metabase files from %s" path)
-  (u/prog1 (serdes/with-cache
-             (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts))
-    (events/publish-event! :event/serdes-load {})))
+  (serdes/with-cache
+    (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
 
 (mu/defn v2-load!
   "SerDes v2 load entry point.
@@ -114,8 +112,6 @@
                  (serdes/with-cache
                    (-> (v2.extract/extract opts)
                        (v2.storage/store! (v2.storage.files/file-writer path))))
-                 ;; we could publish :event/serdes-dump to go with :event/serdes-load above, but
-                 ;; nothing would listen to it currently
                  (catch Exception e
                    (reset! err e)))]
     (analytics/track-event! :snowplow/serialization

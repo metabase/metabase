@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { hasAuthenticationSettings } from "metabase/account/utils";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import { Box, Flex, Tabs, Title, rem } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { getFullName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";
 
@@ -21,23 +22,17 @@ export const AccountHeader = ({
   path,
   onChangeLocation,
 }: AccountHeaderProps) => {
-  const canChangePassword = useMemo(
-    () => PLUGIN_IS_PASSWORD_USER.every((predicate) => predicate(user)),
-    [user],
-  );
   const mfaEnforcement = useSetting("mfa-enforcement");
-  const isMfaEnabled = mfaEnforcement != null && mfaEnforcement !== "off";
-  const hasAuthenticationTab =
-    canChangePassword || (isMfaEnabled && user.sso_source === "ldap");
+  const hasAuthenticationTab = hasAuthenticationSettings(user, mfaEnforcement);
 
   const tabs = useMemo(
     () => [
-      { name: t`Profile`, value: "/account/profile" },
+      { name: t`Profile`, value: Urls.accountSettings() },
       ...(hasAuthenticationTab
-        ? [{ name: t`Authentication`, value: "/account/password" }]
+        ? [{ name: t`Authentication`, value: Urls.accountAuthentication() }]
         : []),
-      { name: t`Login History`, value: "/account/login-history" },
-      { name: t`Notifications`, value: "/account/notifications" },
+      { name: t`Login History`, value: Urls.accountLoginHistory() },
+      { name: t`Notifications`, value: Urls.accountNotifications() },
     ],
     [hasAuthenticationTab],
   );
@@ -46,7 +41,6 @@ export const AccountHeader = ({
 
   return (
     <Flex
-      className={S.root}
       data-testid="account-header"
       direction="column"
       justify="center"

@@ -12,7 +12,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn active-card
   "The non-archived Card with `card-id`, or nil. A trashed Card keeps its DashboardCard rows, so the dashcard routes
@@ -33,7 +33,7 @@
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard dashboard-id))
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-embedding-params
   "The embedding parameters of the Dashboard with `dashboard-id`, or nil."
@@ -48,7 +48,7 @@
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard dashcard-id))
+  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id]))
 
 (mu/defn embedding-themes
   "The id, entity id, name, settings, default flag, and timestamps of every EmbeddingTheme, oldest first."
@@ -81,9 +81,18 @@
   "Apply `changes` to the EmbeddingTheme with `id`."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings])]
-  (t2/update! :model/EmbeddingTheme id changes))
+  (t2/update! :model/EmbeddingTheme :id id changes))
 
 (mu/defn delete-embedding-theme!
   "Delete the EmbeddingTheme with `id`."
   [id :- ms/PositiveInt]
   (t2/delete! :model/EmbeddingTheme :id id))
+
+(mu/defn sdk-react-18-hosts-last-seen-after :- [:sequential ::embedding.schema/sdk-react-18-host]
+  "The EmbeddingSdkReact18Hosts last seen after `cutoff`, newest first, at most `limit`."
+  [cutoff :- ms/TemporalInstant
+   limit  :- ms/PositiveInt]
+  (t2/select :model/EmbeddingSdkReact18Host {:select   [:id :host :created_at :last_seen_at]
+                                             :where    [:> :last_seen_at [:auto/param cutoff]]
+                                             :order-by [[:last_seen_at :desc] [:id :desc]]
+                                             :limit    limit}))

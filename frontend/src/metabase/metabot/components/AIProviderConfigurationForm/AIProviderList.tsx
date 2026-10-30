@@ -117,7 +117,7 @@ export function AIProviderList() {
   const loadError = connectionsError ?? providerTypesError;
   if (loadError) {
     return (
-      <Text c="error">
+      <Text c="feedback-negative">
         {getErrorMessage(loadError, t`Unable to load your AI providers.`)}
       </Text>
     );
@@ -252,7 +252,7 @@ function ProviderConnectionRow({
             >
               <Icon
                 name="warning"
-                c="error"
+                c="feedback-negative"
                 size={WARNING_ICON_SIZE}
                 aria-label={t`Incomplete configuration`}
               />
@@ -265,7 +265,7 @@ function ProviderConnectionRow({
           </Text>
         )}
         {modelsError && (
-          <Text size="sm" c="error" lh={ROW_LINE_HEIGHT}>
+          <Text size="sm" c="feedback-negative" lh={ROW_LINE_HEIGHT}>
             {modelsError}
           </Text>
         )}
@@ -302,7 +302,7 @@ function ProviderConnectionRow({
           {!isEnvManaged && (
             <Menu position="bottom-end">
               <Menu.Target>
-                <ActionIcon aria-label={t`Provider options`}>
+                <ActionIcon variant="subtle" aria-label={t`Provider options`}>
                   <Icon name="ellipsis" />
                 </ActionIcon>
               </Menu.Target>
@@ -317,7 +317,7 @@ function ProviderConnectionRow({
                 )}
                 <Menu.Item
                   leftSection={<Icon name="trash" />}
-                  c="error"
+                  c="feedback-negative"
                   onClick={onDelete}
                 >
                   {t`Remove`}

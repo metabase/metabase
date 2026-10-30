@@ -17,7 +17,7 @@ BackButton: (props: InteractiveQuestionBackButtonProps) =>
 **`Function`**
 
 A navigation button that returns to the previous view.
-Only visible when rendered within the [InteractiveDashboardProps.renderDrillThroughQuestion](./api/InteractiveDashboardProps.md#renderdrillthroughquestion) prop.
+Only visible when rendered within the [InteractiveDashboardProps.renderDrillThroughQuestion](/docs/latest/embedding/sdk/api/InteractiveDashboardProps.md#renderdrillthroughquestion) prop.
 
 <!-- [<endsnippet ~~backbutton()~~>] -->
 
@@ -25,9 +25,9 @@ Only visible when rendered within the [InteractiveDashboardProps.renderDrillThro
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                | Description |
-| :-------- | :---------------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionBackButtonProps`](./api/InteractiveQuestionBackButtonProps.md) |             |
+| Parameter | Type                                                                                                         | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionBackButtonProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionBackButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -35,7 +35,7 @@ Only visible when rendered within the [InteractiveDashboardProps.renderDrillThro
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 <!-- [<endsnippet returns>] -->
@@ -71,7 +71,7 @@ Uses question context for breakout functionality.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -98,9 +98,9 @@ Dropdown button for the Breakout component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                            | Description |
-| :-------- | :---------------------------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionBreakoutDropdownProps`](./api/InteractiveQuestionBreakoutDropdownProps.md) |             |
+| Parameter | Type                                                                                                                     | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionBreakoutDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionBreakoutDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -108,7 +108,7 @@ Dropdown button for the Breakout component.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -135,9 +135,9 @@ Automatically updates to show recommended visualization types for the current da
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                              | Description |
-| :-------- | :------------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | [`InteractiveQuestionChartTypeDropdownProps`](./api/InteractiveQuestionChartTypeDropdownProps.md) |             |
+| Parameter | Type                                                                                                                       | Description |
+| :-------- | :------------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionChartTypeDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionChartTypeDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -145,7 +145,7 @@ Automatically updates to show recommended visualization types for the current da
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -179,7 +179,7 @@ Detailed chart type selection interface with recommended visualization options.
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -215,7 +215,7 @@ Provides a UI widget for downloading data in different formats (`CSV`, `XLSX`, `
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -252,7 +252,7 @@ Provides a button that contains a dropdown that shows the `DownloadWidget`.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -280,9 +280,9 @@ Includes filtering, aggregation, custom expressions, and joins.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                        | Description |
-| :-------- | :-------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionEditorProps`](./api/InteractiveQuestionEditorProps.md) |             |
+| Parameter | Type                                                                                                 | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionEditorProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -290,7 +290,7 @@ Includes filtering, aggregation, custom expressions, and joins.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -310,7 +310,7 @@ EditorButton: (props: InteractiveQuestionEditorButtonProps) =>
 **`Function`**
 
 Toggle button for showing/hiding the Editor interface.
-In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](./api/InteractiveQuestionEditorButtonProps.md#onclick)` handler or the button won't do anything when clicked.
+In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md#onclick)` handler or the button won't do anything when clicked.
 
 <!-- [<endsnippet editorbutton()>] -->
 
@@ -318,9 +318,9 @@ In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorB
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                    | Description |
-| :-------- | :-------------------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionEditorButtonProps`](./api/InteractiveQuestionEditorButtonProps.md) |             |
+| Parameter | Type                                                                                                             | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionEditorButtonProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -328,7 +328,7 @@ In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorB
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -354,9 +354,9 @@ Displays current filters as badges with an "Add another filter" option.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                        | Description |
-| :-------- | :-------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionFilterProps`](./api/InteractiveQuestionFilterProps.md) |             |
+| Parameter | Type                                                                                                 | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionFilterProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionFilterProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -364,7 +364,7 @@ Displays current filters as badges with an "Add another filter" option.
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -390,9 +390,9 @@ A dropdown button for the Filter component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                        | Description |
-| :-------- | :------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | [`InteractiveQuestionFilterDropdownProps`](./api/InteractiveQuestionFilterDropdownProps.md) |             |
+| Parameter | Type                                                                                                                 | Description |
+| :-------- | :------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionFilterDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionFilterDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -400,7 +400,7 @@ A dropdown button for the Filter component.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -428,9 +428,9 @@ Includes filtering, aggregation, custom expressions, and joins.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                        | Description |
-| :-------- | :-------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionEditorProps`](./api/InteractiveQuestionEditorProps.md) |             |
+| Parameter | Type                                                                                                 | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionEditorProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -438,7 +438,7 @@ Includes filtering, aggregation, custom expressions, and joins.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 <!-- [<endsnippet returns>] -->
@@ -466,7 +466,7 @@ NotebookButton: (props: InteractiveQuestionEditorButtonProps) =>
 **`Function`**
 
 Toggle button for showing/hiding the Editor interface.
-In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](./api/InteractiveQuestionEditorButtonProps.md#onclick)` handler or the button won't do anything when clicked.
+In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md#onclick)` handler or the button won't do anything when clicked.
 
 <!-- [<endsnippet ~~notebookbutton()~~>] -->
 
@@ -474,9 +474,9 @@ In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorB
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                    | Description |
-| :-------- | :-------------------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionEditorButtonProps`](./api/InteractiveQuestionEditorButtonProps.md) |             |
+| Parameter | Type                                                                                                             | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionEditorButtonProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -484,7 +484,7 @@ In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorB
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 <!-- [<endsnippet returns>] -->
@@ -530,7 +530,7 @@ Uses question context for settings.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -557,9 +557,9 @@ Dropdown button that contains the QuestionSettings component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                                            | Description |
-| :-------- | :-------------------------------------------------------------------------------------------------------------- | :---------- |
-| `props?`  | [`InteractiveQuestionQuestionSettingsDropdownProps`](./api/InteractiveQuestionQuestionSettingsDropdownProps.md) |             |
+| Parameter | Type                                                                                                                                     | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props?`  | [`InteractiveQuestionQuestionSettingsDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionQuestionSettingsDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -567,7 +567,7 @@ Dropdown button that contains the QuestionSettings component.
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -599,9 +599,9 @@ The main visualization component that renders the question results as a chart, t
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                                                                                                                                                                                                                              | Description |
-| :-------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | \{ `className?`: `string`; `style?`: [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L2579); \} & \{ `height?`: `Height`\<`string` \| `number`\>; `width?`: `Width`\<`string` \| `number`\>; \} & \{ \} |             |
+| Parameter | Type                                                                                                                                                                                                                                                            | Description |
+| :-------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | \{ `className?`: `string`; `style?`: [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L2571); \} & \{ `height?`: `Height`\<`string` \| `number`\>; `width?`: `Width`\<`string` \| `number`\>; \} & \{ \} |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -609,7 +609,7 @@ The main visualization component that renders the question results as a chart, t
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -635,9 +635,9 @@ Button to run the current query. Only appears when automatic reruns are turned o
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                      | Description |
-| :-------- | :---------------------------------------------------------------------------------------- | :---------- |
-| `props?`  | [`InteractiveQuestionRefreshButtonProps`](./api/InteractiveQuestionRefreshButtonProps.md) |             |
+| Parameter | Type                                                                                                               | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props?`  | [`InteractiveQuestionRefreshButtonProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionRefreshButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -645,7 +645,7 @@ Button to run the current query. Only appears when automatic reruns are turned o
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -672,9 +672,9 @@ Button to reset question modifications. Only appears when there are unsaved chan
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                  | Description |
-| :-------- | :------------------------------------ | :---------- |
-| `props?`  | [`ButtonProps`](./api/ButtonProps.md) |             |
+| Parameter | Type                                                           | Description |
+| :-------- | :------------------------------------------------------------- | :---------- |
+| `props?`  | [`ButtonProps`](/docs/latest/embedding/sdk/api/ButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -682,7 +682,7 @@ Button to reset question modifications. Only appears when there are unsaved chan
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -709,9 +709,9 @@ _Note_: Currently, in custom layouts, the `SaveButton` must have an `onClick` ha
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                | Description |
-| :-------- | :---------------------------------------------------------------------------------- | :---------- |
-| `props?`  | [`InteractiveQuestionSaveButtonProps`](./api/InteractiveQuestionSaveButtonProps.md) |             |
+| Parameter | Type                                                                                                         | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------- | :---------- |
+| `props?`  | [`InteractiveQuestionSaveButtonProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionSaveButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -719,7 +719,7 @@ _Note_: Currently, in custom layouts, the `SaveButton` must have an `onClick` ha
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -739,9 +739,9 @@ SaveQuestionForm: (props: InteractiveQuestionSaveQuestionFormProps) =>
 
 Form for saving a question, including title and description. When saved:
 
-- For existing questions: Calls [SdkQuestionProps.onSave](./api/SdkQuestionProps.md#onsave)
+- For existing questions: Calls [SdkQuestionProps.onSave](/docs/latest/embedding/sdk/api/SdkQuestionProps.md#onsave)
 - Both callbacks receive the updated question object
-- Form can be cancelled via the [InteractiveQuestionSaveQuestionFormProps.onCancel](./api/InteractiveQuestionSaveQuestionFormProps.md#oncancel)
+- Form can be cancelled via the [InteractiveQuestionSaveQuestionFormProps.onCancel](/docs/latest/embedding/sdk/api/InteractiveQuestionSaveQuestionFormProps.md#oncancel)
 
 <!-- [<endsnippet savequestionform()>] -->
 
@@ -749,9 +749,9 @@ Form for saving a question, including title and description. When saved:
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                            | Description |
-| :-------- | :---------------------------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionSaveQuestionFormProps`](./api/InteractiveQuestionSaveQuestionFormProps.md) |             |
+| Parameter | Type                                                                                                                     | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionSaveQuestionFormProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionSaveQuestionFormProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -759,7 +759,7 @@ Form for saving a question, including title and description. When saved:
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -786,7 +786,7 @@ Parameters list for SQL questions
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -812,7 +812,7 @@ Uses question context for summarization functionality.
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -838,9 +838,9 @@ Dropdown button for the Summarize component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                              | Description |
-| :-------- | :------------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | [`InteractiveQuestionSummarizeDropdownProps`](./api/InteractiveQuestionSummarizeDropdownProps.md) |             |
+| Parameter | Type                                                                                                                       | Description |
+| :-------- | :------------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionSummarizeDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionSummarizeDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -848,7 +848,7 @@ Dropdown button for the Summarize component.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -881,11 +881,11 @@ Displays a title based on the question's state. Shows:
 
 <!-- [<snippet parameters>] -->
 
-| Parameter          | Type                                                                                                                                                                                      | Description                                            |
-| :----------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------- |
-| `props`            | \{ `className?`: `string`; `style?`: [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L2579); \} |                                                        |
-| `props.className?` | `string`                                                                                                                                                                                  | A custom class name to be added to the root element.   |
-| `props.style?`     | [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L2579)                                          | A custom style object to be added to the root element. |
+| Parameter          | Type                                                                                                                                                    | Description                                            |
+| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------- |
+| `props`            | \{ `className?`: `string`; `style?`: [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L2571); \} |                                                        |
+| `props.className?` | `string`                                                                                                                                                | A custom class name to be added to the root element.   |
+| `props.style?`     | [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L2571)                                          | A custom style object to be added to the root element. |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -893,7 +893,7 @@ Displays a title based on the question's state. Shows:
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `undefined`
 
 ---
@@ -920,7 +920,7 @@ A button that triggers the visualization of the current question.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 <!-- [<endsnippet returns>] -->
@@ -945,41 +945,23 @@ AlertsButton: () => Element;
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
 <!-- [<endsnippet returns>] -->
 
-### NavigationBackButton()
+### NavigationBackButton
 
-<!-- [<snippet navigationbackbutton()>] -->
+<!-- [<snippet navigationbackbutton>] -->
 
 ```ts
-NavigationBackButton: (props: { className?: string; style?: CSSProperties }) =>
-  ReactNode;
+NavigationBackButton: FC<{
+  className?: string;
+  style?: CSSProperties;
+}>;
 ```
 
 Back button to navigate back after drills and internal navigation. It will render null if there's nothing to go back to
 
-<!-- [<endsnippet navigationbackbutton()>] -->
-
-#### Parameters
-
-<!-- [<snippet parameters>] -->
-
-| Parameter          | Type                                                                                                                                                                                      |
-| :----------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `props`            | \{ `className?`: `string`; `style?`: [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L2579); \} |
-| `props.className?` | `string`                                                                                                                                                                                  |
-| `props.style?`     | [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L2579)                                          |
-
-<!-- [<endsnippet parameters>] -->
-
-#### Returns
-
-<!-- [<snippet returns>] -->
-
-[`ReactNode`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L478)
-
-<!-- [<endsnippet returns>] -->
+<!-- [<endsnippet navigationbackbutton>] -->

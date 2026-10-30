@@ -3,8 +3,11 @@
 // enterprise/backend/src/metabase_enterprise/dependencies/api.clj
 // (See entity-select-fields map)
 
+import type { WritebackActionBase, WritebackActionType } from "./actions";
 import type { Card, CardType } from "./card";
+import type { Collection } from "./collection";
 import type { Dashboard } from "./dashboard";
+import type { DataApp } from "./data-app";
 import type { Document } from "./document";
 import type { Measure } from "./measure";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
@@ -13,6 +16,20 @@ import type { NativeQuerySnippet } from "./snippets";
 import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, Table } from "./table";
 import type { Transform } from "./transform";
+
+export type GetDependencyCountsRequest = {
+  "breaking-types"?: DependencyType[];
+  "breaking-card-types"?: CardType[];
+  "breaking-include-personal-collections"?: boolean;
+  "unreferenced-types"?: DependencyType[];
+  "unreferenced-card-types"?: CardType[];
+  "unreferenced-include-personal-collections"?: boolean;
+};
+
+export type DependencyCountsResponse = {
+  breaking: number;
+  unreferenced: number;
+};
 
 export type DependencyId = number;
 
@@ -26,6 +43,8 @@ export const DEPENDENCY_TYPES = [
   "sandbox",
   "segment",
   "measure",
+  "action",
+  "data-app",
 ] as const;
 export type DependencyType = (typeof DEPENDENCY_TYPES)[number];
 
@@ -41,6 +60,8 @@ export const DEPENDENCY_GROUP_TYPES = [
   "sandbox",
   "segment",
   "measure",
+  "action",
+  "data-app",
 ] as const;
 export type DependencyGroupType = (typeof DEPENDENCY_GROUP_TYPES)[number];
 
@@ -197,6 +218,35 @@ export type MeasureDependencyNode = BaseDependencyNode<
   MeasureDependencyNodeData
 >;
 
+export type ActionDependencyNodeData = Pick<
+  WritebackActionBase,
+  | "name"
+  | "description"
+  | "model_id"
+  | "parameters"
+  | "created_at"
+  | "creator_id"
+  | "creator"
+  | "collection_id"
+> & {
+  type: WritebackActionType;
+  collection?: Collection | null;
+};
+
+export type ActionDependencyNode = BaseDependencyNode<
+  "action",
+  ActionDependencyNodeData
+>;
+
+// The API sends `description` and `created_at` to admins only.
+export type DataAppDependencyNodeData = Pick<DataApp, "name" | "display_name"> &
+  Partial<Pick<DataApp, "description" | "created_at">>;
+
+export type DataAppDependencyNode = BaseDependencyNode<
+  "data-app",
+  DataAppDependencyNodeData
+>;
+
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
@@ -206,7 +256,9 @@ export type DependencyNode =
   | DocumentDependencyNode
   | SandboxDependencyNode
   | SegmentDependencyNode
-  | MeasureDependencyNode;
+  | MeasureDependencyNode
+  | ActionDependencyNode
+  | DataAppDependencyNode;
 
 export type AnalysisFindingErrorId = number;
 

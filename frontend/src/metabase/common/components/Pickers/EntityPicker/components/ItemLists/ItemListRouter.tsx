@@ -6,8 +6,11 @@ import {
 } from "metabase/common/components/Pickers";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 
+import { DATA_APPS_ROOT_ID } from "../../constants";
+
 import { CollectionItemList } from "./CollectionItemList";
 import { DashboardItemList } from "./DashboardItemList";
+import { DataAppItemList } from "./DataAppItemList";
 import { DbItemList } from "./DbItemList";
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
 import { RecentsItemList } from "./RecentsItemList";
@@ -51,6 +54,10 @@ export const ItemListRouter = ({
 
     if (parentItem.id === "recents") {
       return <RecentsItemList />;
+    }
+
+    if (parentItem.id === DATA_APPS_ROOT_ID) {
+      return <DataAppItemList pathIndex={pathIndex} />;
     }
 
     if (

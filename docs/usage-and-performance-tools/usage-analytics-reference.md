@@ -604,6 +604,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - group-membership-update
 - group-update
 - install
+- mcp-jwt-token-issued
 - measure-create
 - measure-delete
 - measure-update
@@ -616,6 +617,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - notification-unsubscribe-ex
 - notification-unsubscribe-undo-ex
 - notification-update
+- password-changed
 - password-reset-initiated
 - password-reset-successful
 - remote-sync-create-branch
@@ -689,6 +691,7 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - exploration
 - json-download
 - map-tiles
+- metabot
 - metric
 - public-action-execute
 - public-csv-download

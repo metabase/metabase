@@ -526,12 +526,3 @@
 
   ;; should be 1
   (format-string-specifier-count "%-02d"))
-
-(defn add-lsp-ignore-unused-public-var-metadata
-  "Add
-
-    ^{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-
-  metadata to a node to suppress LSP warnings."
-  [node]
-  (update-ignored-linters node conj :clojure-lsp/unused-public-var))

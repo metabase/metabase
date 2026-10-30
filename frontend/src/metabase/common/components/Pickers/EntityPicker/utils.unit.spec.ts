@@ -402,6 +402,12 @@ describe("EntityPicker utils", () => {
       expect(getNamespacesFromModels(["transform"])).toContain("transforms");
     });
 
+    it("should return data actions and normal namespaces if action model is present", () => {
+      const namespaces = getNamespacesFromModels(["action"]);
+      expect(namespaces).toContain("data-actions");
+      expect(namespaces).toContain(null);
+    });
+
     it("should return normal namespaces for other models", () => {
       const namespaces = getNamespacesFromModels(["card"]);
       expect(namespaces).toContain(null);

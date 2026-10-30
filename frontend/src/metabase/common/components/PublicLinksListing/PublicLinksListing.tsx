@@ -83,6 +83,7 @@ export const PublicLinksListing = <
                 {revoke && (
                   <td className={cx(CS.flex, CS.layoutCentered)}>
                     <ActionIcon
+                      variant="subtle"
                       aria-label={t`Revoke link`}
                       onClick={() => setLinkToRevoke(item)}
                     >

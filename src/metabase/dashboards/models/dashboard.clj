@@ -49,7 +49,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
@@ -85,7 +86,8 @@
 (t2/define-before-insert :model/Dashboard
   [dashboard]
   (let [defaults  {:parameters []}
-        dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
+        dashboard (-> (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))
+                      maybe-populate-initially-published-at)]
     (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
@@ -402,24 +404,30 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- dashcard-sort-key
+  "The sort key fn for the dashcards of `dashboard` in its file: the position and the `entity_id` of their tab, then
+  row, column and `entity_id`, so the order does not depend on local ids."
+  [dashboard]
+  (let [tab-order (into {} (map (juxt :id (juxt :position :entity_id))) (:tabs dashboard))]
+    (juxt (comp tab-order :dashboard_tab_id) :row :col :entity_id)))
+
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]
   {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
-   :skip      [;; those stats are inherently local state
+   :skip      [:initially_published_at
+               ;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
                :cache_ttl
                ;; always re-derived from public_uuid on import
                :public_uuid_prefix]
-   :transform {:created_at             (serdes/date)
-               :initially_published_at (serdes/date)
-               :collection_id          (serdes/fk :model/Collection)
+   :transform {:collection_id          (serdes/fk :model/Collection)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
-               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id (merge {:sort-by (juxt :position :created_at)} opts))
-               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id (merge {:sort-by (juxt :dashboard_tab_id :row :col)} opts))}
+               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id (merge {:sort-by (juxt :position :entity_id)} opts))
+               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id (merge {:sort-by-parent dashcard-sort-key} opts))}
    :coerce    {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}
    :defaults  {:archived                false
                :archived_directly       false

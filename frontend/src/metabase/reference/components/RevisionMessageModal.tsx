@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Flex, Modal, Textarea } from "metabase/ui";
+import { Button, Modal, Textarea } from "metabase/ui";
 
 interface RevisionMessageModalProps {
   opened: boolean;
@@ -42,26 +42,24 @@ export function RevisionMessageModal({
       title={t`Reason for changes`}
       size="lg"
     >
-      <Flex direction="column" gap="lg">
-        <Textarea
-          placeholder={t`Leave a note to explain what changes you made and why they were required`}
-          value={field.value}
-          onChange={field.onChange}
-          name={field.name}
-          autosize
-          minRows={4}
-        />
-        <Flex justify="flex-end" gap="sm">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button
-            variant="filled"
-            onClick={handleAction}
-            disabled={submitting || !!field.error}
-          >
-            {t`Save changes`}
-          </Button>
-        </Flex>
-      </Flex>
+      <Textarea
+        placeholder={t`Leave a note to explain what changes you made and why they were required`}
+        value={field.value}
+        onChange={field.onChange}
+        name={field.name}
+        autosize
+        minRows={4}
+      />
+      <Modal.Footer>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button
+          variant="filled"
+          onClick={handleAction}
+          disabled={submitting || !!field.error}
+        >
+          {t`Save changes`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 }

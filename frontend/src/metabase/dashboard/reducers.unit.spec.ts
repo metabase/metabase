@@ -10,6 +10,7 @@ import {
   SET_DASHBOARD_ATTRIBUTES,
   SET_EDITING_DASHBOARD,
   SET_SIDEBAR,
+  clearCardData,
   fetchCardDataAction,
   fetchDashboard,
   markTimelineEventsShown,
@@ -438,6 +439,26 @@ describe("dashboard reducers", () => {
         },
       });
       expect(result.dashcardData).toEqual({ 5: { 2: { data: [] } } });
+    });
+
+    it("keeps every dashcard's results readable as more results arrive and clear", () => {
+      const fulfilled = (dashcard_id: number, card_id: number) => ({
+        type: fetchCardDataAction.fulfilled.type,
+        payload: { dashcard_id, card_id, result: { data: [card_id] } },
+      });
+      const state = [
+        fulfilled(1, 10),
+        fulfilled(2, 20),
+        fulfilled(3, 30),
+        clearCardData(30, 3),
+        fulfilled(1, 11),
+      ].reduce(reducer, initState);
+
+      expect(state.dashcardData).toEqual({
+        1: { 10: { data: [10] }, 11: { data: [11] } },
+        2: { 20: { data: [20] } },
+        3: {},
+      });
     });
   });
 

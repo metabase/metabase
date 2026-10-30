@@ -2,6 +2,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { hasActionsEnabled } from "metabase/common/utils/database";
 import type { ButtonProps } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
@@ -9,6 +10,7 @@ import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   ActionDashboardCard,
+  ActionDisplayType,
   ActionFormOption,
   ActionFormSettings,
   BaseDashboardCard,
@@ -168,6 +170,18 @@ export function isActionDashCard(
 export const isActionCard = (card?: Card | VirtualCard) =>
   card?.display === "action";
 
+/**
+ * How an action dashcard is shown: the given `actionDisplayType` (from the
+ * dashcard's visualization settings), else the action's own setting, else a
+ * button.
+ */
+export function getActionDisplayType(
+  actionDisplayType: ActionDisplayType | undefined,
+  action: Pick<WritebackAction, "visualization_settings"> | undefined,
+): ActionDisplayType {
+  return actionDisplayType ?? action?.visualization_settings?.type ?? "button";
+}
+
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
@@ -209,7 +223,7 @@ export function getActionExecutionMessage(
 
 export function getActionErrorMessage(error: unknown) {
   return (
-    Errors.getResponseErrorMessage(error) ??
+    findErrorMessage(error) ??
     t`Something went wrong while executing the action`
   );
 }

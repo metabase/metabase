@@ -8,15 +8,7 @@ import { t } from "ttag";
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
 import { getCopyTextFieldProps } from "metabase/common/components/CopyTextField/copy-text-field-props";
 import { useMetadataToasts } from "metabase/common/hooks";
-import {
-  Button,
-  Group,
-  Loader,
-  Modal,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { Button, Loader, Modal, Stack, Text, TextInput } from "metabase/ui";
 
 import S from "./FormSecretKey.module.css";
 
@@ -72,7 +64,7 @@ export const SecretKeyModal = ({
       closeOnClickOutside={false}
       closeOnEscape={false}
     >
-      <Stack gap="xl" mt="lg">
+      <Stack gap="xl">
         <Text>
           {t`Store this key somewhere safe. For security reasons, we can't show it to you again.`}
         </Text>
@@ -86,19 +78,18 @@ export const SecretKeyModal = ({
             !secretKey ? <Loader size="xs" /> : copyFieldProps.rightSection
           }
         />
-
-        <Group justify="flex-end" gap="sm">
-          {withCancelButton && <Button onClick={onClose}>{t`Cancel`}</Button>}
-          <Button
-            data-autofocus
-            disabled={!secretKey}
-            onClick={() => onConfirm(secretKey)}
-            variant="filled"
-          >
-            {confirmLabel}
-          </Button>
-        </Group>
       </Stack>
+      <Modal.Footer>
+        {withCancelButton && <Button onClick={onClose}>{t`Cancel`}</Button>}
+        <Button
+          data-autofocus
+          disabled={!secretKey}
+          onClick={() => onConfirm(secretKey)}
+          variant="filled"
+        >
+          {confirmLabel}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };

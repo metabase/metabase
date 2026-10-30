@@ -51,7 +51,7 @@
  "metabase/druid:29.0.1-json-no-ingestion"     8888
 
  ;; Presto
- "metabase/presto-mb-ci:latest"                8443
+ "metabase/presto-mb-ci:0.295"                 8443
 
  ;; SparkSQL
  "metabase/spark:3.2.1"                        10000

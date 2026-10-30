@@ -57,6 +57,7 @@ export const MetabotConversationHistory = ({
       <Menu.Target>
         <Tooltip label={t`Recent conversations`} position="bottom">
           <ActionIcon
+            variant="subtle"
             aria-label={t`Recent conversations`}
             data-testid="metabot-conversation-history"
           >

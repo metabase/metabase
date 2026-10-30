@@ -40,6 +40,7 @@ import {
   isHistoryEnabledProfile,
 } from "../constants";
 import { PLUGIN_METABOT_SLASH_COMMANDS } from "../plugins";
+import { isReasoningVisible } from "../utils/reasoning-visibility";
 
 import { metabot } from "./reducer";
 import {
@@ -64,7 +65,11 @@ import type {
   MetabotUserChatMessage,
   SlashCommand,
 } from "./types";
-import { createMessageId, parseSlashCommand } from "./utils";
+import {
+  createMessageId,
+  getServerErrorDisplay,
+  parseSlashCommand,
+} from "./utils";
 
 export const {
   addAgentTextDelta,
@@ -520,6 +525,7 @@ export const sendAgentRequest = createAsyncThunk<
           sourceId: conversationId,
         },
         {
+          shouldPaceReasoning: () => isReasoningVisible(conversationId),
           onDataPart: function handleDataPart(part) {
             const pushDataPart = (
               message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
@@ -717,22 +723,7 @@ export const sendAgentRequest = createAsyncThunk<
           shouldRetry: true,
           serverStarted,
           error: streamedError,
-          display: isMatching(
-            {
-              type: P.union(
-                "ai_usage_limit_reached",
-                "ai_provider_billing",
-                "ai_provider_rate_limit",
-                "ai_provider_auth",
-                "ai_provider_unavailable",
-              ),
-              message: P.string,
-            },
-            streamedError,
-          )
-            ? // special case where we want to show the returned error from the backend
-              { type: "message" as const, message: streamedError.message }
-            : undefined,
+          display: getServerErrorDisplay(streamedError),
         });
       }
 
@@ -770,6 +761,9 @@ export const sendAgentRequest = createAsyncThunk<
         error,
         getSetting(getState(), "metabot-name"),
       );
+      if (handled.error.type === "unknown") {
+        console.error(error);
+      }
       return rejectWithValue({
         type: "error" as const,
         conversation_id: request.conversation_id,

@@ -52,6 +52,10 @@ import type {
   ParameterChangePayload,
   SdkDashboardId,
 } from "embedding-sdk-bundle/types/dashboard";
+import type {
+  NavigatedEntityParameterChangePayload,
+  NavigatedEntityParameters,
+} from "embedding-sdk-bundle/types/navigation";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
@@ -177,7 +181,7 @@ export type SdkDashboardProps = PropsWithChildren<
      * - omitted (or set to `undefined`): falls back to the parameter's default (or `null` if it has no default).
      * <br/>
      * <br/>
-     * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+     * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/authentication#security-warning-each-end-user-must-have-their-own-metabase-account).
      * <br/>
      * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
      */
@@ -195,7 +199,7 @@ export type SdkDashboardProps = PropsWithChildren<
      * <br/>
      * Pair with {@link SdkDashboardProps.onParametersChange | onParametersChange} to stay in sync with user edits.
      * <br/>
-     * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+     * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/authentication#security-warning-each-end-user-must-have-their-own-metabase-account).
      * <br/>
      * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
      */
@@ -205,6 +209,36 @@ export type SdkDashboardProps = PropsWithChildren<
      * Fires on parameters change. The payload's `source` distinguishes the initial state on load (`'initial-state'`), user edits in the UI (`'manual-change'`), and auto-updates (`'auto-change'`).
      */
     onParametersChange?: (payload: ParameterChangePayload) => void;
+
+    /**
+     * Parameter values for entities the user reaches through entity navigation, keyed by the `navigationId` that {@link SdkDashboardProps.onNavigatedEntityParametersChange | onNavigatedEntityParametersChange} reports.
+     * <br/>
+     * Each navigation gets a new `navigationId`, and going back keeps it. So an entry applies only to the visit it was written for, never to a later visit of the same entity.
+     * <br/>
+     * Inside each entry, keys are filter slugs for a dashboard and template tag names for a SQL question. Each entry works like {@link SdkDashboardProps.parameters | parameters} on the root and replaces the values of that visit: keys you omit use their default. Use `null` to clear a value.
+     * <br/>
+     * To keep the values the click set, start from the `clickParameters` of {@link SdkDashboardProps.onNavigatedEntityParametersChange | onNavigatedEntityParametersChange}.
+     * <br/>
+     * Questions built with the query builder have no named parameters, so they cannot be controlled.
+     * <br/>
+     * A visit without an entry keeps the click-behavior values and is not controlled.
+     * <br/>
+     * Requires {@link SdkDashboardDisplayProps.enableEntityNavigation | enableEntityNavigation}.
+     */
+    navigatedEntityParameters?: NavigatedEntityParameters;
+
+    /**
+     * Fires on parameters change on entities the user reaches through entity navigation. The root dashboard keeps reporting through {@link SdkDashboardProps.onParametersChange | onParametersChange}.
+     * <br/>
+     * The payload's `navigationId` identifies the visit, `entityType` and `entityId` the entity. `source` has the same meaning as in `onParametersChange`: `'initial-state'` fires after each navigation to the entity, also when the user comes back to it. It reports parameter values, it is not a navigation event.
+     * <br/>
+     * `clickParameters` holds the values the click behavior set. To compose your own values, do it on the first `'initial-state'` of a `navigationId` only, so going back keeps the user's edits.
+     * <br/>
+     * Dashboards without filters send `parameters: {}`. SQL questions without template tags and questions built with the query builder send no event.
+     */
+    onNavigatedEntityParametersChange?: (
+      payload: NavigatedEntityParameterChangePayload,
+    ) => void;
   } & SdkDashboardDisplayProps &
     DashboardEventHandlersProps
 >;
@@ -376,7 +410,8 @@ const SdkDashboardInner = ({
     : renderModeState;
 
   // Now only used when rerendering the dashboard after creating a new question from the dashboard.
-  const dashboardContextProviderRef = useRef<DashboardContextProviderHandle>();
+  const dashboardContextProviderRef =
+    useRef<DashboardContextProviderHandle>(undefined);
 
   const [newDashboardQuestionId, setNewDashboardQuestionId] =
     useState<number>();
@@ -560,9 +595,7 @@ const SdkDashboardInner = ({
         className={className}
         style={style}
       >
-        <SdkError
-          message={errorPage.data?.message ?? t`Something's gone wrong`}
-        />
+        <SdkError message={errorPage.message ?? t`Something's gone wrong`} />
       </MaybeStyledWrapper>
     );
   }

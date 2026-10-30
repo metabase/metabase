@@ -77,10 +77,19 @@ export interface User extends BaseUser {
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
+  slack_account_status?: "active" | "inactive" | null;
   can_write_any_collection: boolean;
   personal_collection_id: CollectionId | null;
   tenant_collection_id: CollectionId | null;
-  sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | "oidc" | null;
+  sso_source:
+    | "jwt"
+    | "ldap"
+    | "google"
+    | "scim"
+    | "saml"
+    | "oidc"
+    | "slack"
+    | null;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;

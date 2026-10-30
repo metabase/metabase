@@ -1,13 +1,5 @@
 ```ts
 type ProtectedColorKey =
-  | "metabase-brand"
-  | "metabase-brand-hover"
-  | "admin-navbar"
-  | "admin-navbar-secondary"
-  | "admin-navbar-inverse"
-  | "upsell-primary"
-  | "upsell-secondary"
-  | "upsell-gem"
   | "core-metabase_brand"
   | "core-metabase_brand-hover"
   | "navbar-admin"

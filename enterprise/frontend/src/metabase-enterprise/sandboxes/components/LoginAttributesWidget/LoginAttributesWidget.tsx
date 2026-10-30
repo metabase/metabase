@@ -3,7 +3,7 @@ import { type HTMLAttributes, useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
-import { FormField } from "metabase/common/components/FormField";
+import { FormField } from "metabase/forms";
 import { Accordion, Box, Loader, Text } from "metabase/ui";
 import { useGetTenantQuery } from "metabase-enterprise/api";
 import { getExtraAttributes } from "metabase-enterprise/sandboxes/utils";
@@ -79,7 +79,7 @@ export const LoginAttributesWidget = ({
 
   return (
     <FormField className={className} style={style}>
-      <Accordion mt="xxl">
+      <Accordion>
         <Accordion.Item value="login-attributes">
           <Accordion.Control>
             <Text fz="md">{title}</Text>

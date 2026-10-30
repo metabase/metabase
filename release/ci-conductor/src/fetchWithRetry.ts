@@ -37,14 +37,21 @@ export async function fetchWithRetry(
           ? AbortSignal.any([init.signal, AbortSignal.timeout(timeout)])
           : AbortSignal.timeout(timeout),
       });
-      if (!shouldRetry(res) || attempt === retries) {return res;}
+      if (!shouldRetry(res) || attempt === retries) {
+        return res;
+      }
       res.body?.cancel().catch(() => {}); // don't leak the discarded stream
     } catch (err) {
       // caller cancelled, or we're out of attempts
-      if (init.signal?.aborted || attempt === retries) {throw err;}
+      if (init.signal?.aborted || attempt === retries) {
+        throw err;
+      }
     }
 
-    await sleep(retryAfter(res) ?? backoff(attempt, baseDelay, maxDelay), init.signal);
+    await sleep(
+      retryAfter(res) ?? backoff(attempt, baseDelay, maxDelay),
+      init.signal,
+    );
   }
 }
 
@@ -54,16 +61,22 @@ function backoff(attempt: number, base: number, max: number): number {
 }
 
 function retryAfter(res: Response | undefined): number | null {
-  const header = res?.headers.get('retry-after');
-  if (!header) {return null;}
+  const header = res?.headers.get("retry-after");
+  if (!header) {
+    return null;
+  }
   const seconds = Number(header);
-  const ms = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(header) - Date.now();
+  const ms = Number.isFinite(seconds)
+    ? seconds * 1000
+    : Date.parse(header) - Date.now();
   return ms > 0 ? ms : null;
 }
 
 function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (signal?.aborted) {return reject(signal.reason);}
+    if (signal?.aborted) {
+      return reject(signal.reason);
+    }
 
     const onAbort = () => {
       clearTimeout(timer);
@@ -71,9 +84,9 @@ function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
     };
 
     const timer = setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort);
+      signal?.removeEventListener("abort", onAbort);
       resolve();
     }, ms);
-    signal?.addEventListener('abort', onAbort, { once: true });
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }

@@ -1,21 +1,26 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
+import type {
+  ChartSettingSegmentedControlOption,
+  ChartSettingSegmentedControlProps,
+} from "metabase/viz-core";
 
 import { ChartSettingSegmentedControl } from "./ChartSettingSegmentedControl";
 
-const defaultOptions = [
-  { name: "Option 1", value: "value1" },
-  { name: "Option 2", value: "value2" },
-  { name: "Option 3", value: "value3" },
-];
+interface SetupOpts {
+  options: ChartSettingSegmentedControlOption[];
+  value: ChartSettingSegmentedControlProps["value"];
+}
 
-function setup() {
-  const value = "value1";
-  const onChange = jest.fn();
+function setup({ options, value }: SetupOpts) {
+  const onChange = jest.fn<
+    void,
+    [ChartSettingSegmentedControlProps["value"]]
+  >();
   render(
     <ChartSettingSegmentedControl
-      options={defaultOptions}
+      options={options}
       value={value}
       onChange={onChange}
     />,
@@ -25,42 +30,57 @@ function setup() {
 }
 
 describe("ChartSettingSegmentedControl", () => {
-  it("should render all options", () => {
-    setup();
-
-    const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(defaultOptions.length);
-
-    defaultOptions.forEach((option, index) => {
-      expect(buttons[index]).toHaveTextContent(option.name);
+  it("should show the selected option and report the clicked one", async () => {
+    const { onChange } = setup({
+      options: [
+        { name: "Auto", value: "auto" },
+        { name: "Compact", value: "compact" },
+        { name: "Full", value: "full" },
+      ],
+      value: "auto",
     });
-  });
 
-  it("should call onChange when clicking an option", async () => {
-    const { onChange } = setup();
-    const user = userEvent.setup();
+    expect(screen.getByRole("radio", { name: "Auto" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Compact" })).not.toBeChecked();
 
-    const buttons = screen.getAllByRole("button");
-    await user.click(buttons[1]);
+    await userEvent.click(screen.getByText("Compact"));
 
     expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenCalledWith(defaultOptions[1].value);
+    expect(onChange).toHaveBeenCalledWith("compact");
   });
 
-  it("should handle keyboard navigation and selection", async () => {
-    const { onChange } = setup();
+  it("should support boolean and null option values", async () => {
+    const { onChange } = setup({
+      options: [
+        { name: "Auto", value: null },
+        { name: "On", value: true },
+        { name: "Off", value: false },
+      ],
+      value: false,
+    });
 
-    const buttons = screen.getAllByRole("button");
-    await userEvent.tab();
-    expect(buttons[0]).toHaveFocus();
+    expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
 
-    await userEvent.keyboard("{Enter}");
-    expect(onChange).toHaveBeenCalledWith(defaultOptions[0].value);
+    await userEvent.click(screen.getByText("On"));
+    expect(onChange).toHaveBeenLastCalledWith(true);
 
-    await userEvent.tab();
-    expect(buttons[1]).toHaveFocus();
+    await userEvent.click(screen.getByText("Auto"));
+    expect(onChange).toHaveBeenLastCalledWith(null);
+  });
 
-    await userEvent.keyboard(" ");
-    expect(onChange).toHaveBeenCalledWith(defaultOptions[1].value);
+  it("should name icon options by their name without a tooltip", async () => {
+    setup({
+      options: [
+        { name: "Solid", value: "solid", icon: "line_style_solid" },
+        { name: "Dashed", value: "dashed", icon: "line_style_dashed" },
+      ],
+      value: "solid",
+    });
+
+    expect(screen.getByRole("radio", { name: "Solid" })).toBeChecked();
+
+    await userEvent.hover(screen.getByRole("img", { name: "Dashed" }));
+
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 });

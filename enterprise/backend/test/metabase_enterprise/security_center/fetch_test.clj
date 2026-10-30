@@ -9,6 +9,8 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- make-advisory

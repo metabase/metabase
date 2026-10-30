@@ -1,0 +1,14 @@
+.root {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
+}
+
+/* Runs the header's divider out under the gutters while padding keeps the header itself the
+   normal width. Overshooting is fine: the root clips it, and scrollbar widths vary by OS. */
+.header {
+  margin-inline: -2rem;
+  padding-inline: 2rem;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}

@@ -173,6 +173,7 @@
   (let [target-collection  (api/check-404 (data-studio.db/collection (:collection_id body)))
         _                  (api/check-400 (= (:type target-collection) collection/library-data-collection-type)
                                           (tru "Tables can only be published to Semantic layer/Data collections."))
+        _                  (api/write-check target-collection)
         selectors          (body->table-selectors body)
         upstream-ids       (all-upstream-table-ids selectors)
         ;; Don't move already-published upstream tables; only publish unpublished ones. Get table IDs before update
@@ -200,6 +201,8 @@
         table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors downstream-ids :any)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
+      (run! (comp api/write-check data-studio.db/collection)
+            (into #{} (keep :collection_id) (data-studio.db/tables table-ids-to-update)))
       (data-studio.db/unpublish-tables! table-ids-to-update)
       ;; Publish events for audit log and remote sync tracking
       (let [updated-tables (data-studio.db/tables table-ids-to-update)]

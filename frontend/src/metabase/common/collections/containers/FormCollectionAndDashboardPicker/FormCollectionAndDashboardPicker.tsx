@@ -18,7 +18,6 @@ import {
 } from "metabase/common/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
 import { DashboardName } from "metabase/common/components/DashboardName";
-import { FormField } from "metabase/common/components/FormField";
 import type {
   EntityPickerOptions,
   EntityPickerProps,
@@ -28,10 +27,11 @@ import type {
 } from "metabase/common/components/Pickers";
 import {
   CollectionPickerModal,
-  isInDbTree,
+  isInCollectionTree,
 } from "metabase/common/components/Pickers";
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { FormField } from "metabase/forms";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
 
@@ -193,7 +193,9 @@ export function FormCollectionAndDashboardPicker({
   const handleChange = useCallback(
     async (item: OmniPickerItem) => {
       const { id, model } = item;
-      const collection_id = isInDbTree(item) ? undefined : item.collection?.id;
+      const collection_id = isInCollectionTree(item)
+        ? item.collection?.id
+        : undefined;
 
       collectionIdHelpers.setValue(
         canonicalCollectionId(model === "dashboard" ? collection_id : id),
