@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
@@ -19,7 +18,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1231,10 +1230,37 @@
 (deftest dashboard-catalog-covers-parameter-value-sources-test
   (testing "BOT-2524: get_content can select every key a dashboard parameter's value source config can hold"
     (let [catalog     (set (projections/catalog :dashboard))
-          config-keys (map first (mc/children (mr/resolve-schema ::parameters.schema/values-source-config)))
+          config-keys (mu/map-schema-keys ::parameters.schema/values-source-config)
           paths       (into #{} (map #(str "parameters.values_source_config." (name %))) config-keys)]
       (is (seq config-keys))
       (is (= #{} (set/difference paths catalog))))))
+
+(deftest get-content-dashboard-parameter-value-sources-test
+  (testing "BOT-2524: a fields selection reaches into a static list and a card source"
+    (mt/with-temp [:model/Card {card-id :id} {:name "Countries"}]
+      (let [field-ref   [:field (mt/id :venues :name) nil]
+            static-list {:id                   "country"
+                         :name                 "Country"
+                         :slug                 "country"
+                         :type                 "string/="
+                         :values_source_type   "static-list"
+                         :values_source_config {:values ["US" "CA"]}}
+            card-source {:id                   "region"
+                         :name                 "Region"
+                         :slug                 "region"
+                         :type                 "string/="
+                         :values_source_type   "card"
+                         :values_source_config {:card_id card-id, :value_field field-ref}}]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:parameters [static-list card-source]}]
+          (mt/with-test-user :crowberto
+            (is (=? {:parameters [{:values_source_config {:values ["US" "CA"]}}
+                                  {:values_source_config {:card_id     card-id
+                                                          :value_field ["field" (mt/id :venues :name) nil]}}]}
+                    (content-one {:items [{:type   "dashboard"
+                                           :id     dash-id
+                                           :fields ["parameters.values_source_config.values"
+                                                    "parameters.values_source_config.card_id"
+                                                    "parameters.values_source_config.value_field"]}]})))))))))
 
 (deftest get-content-subscription-fields-covers-notification-shape-test
   (testing "GHY-4140: the subscription fields catalog covers the notification-backed shape, not
