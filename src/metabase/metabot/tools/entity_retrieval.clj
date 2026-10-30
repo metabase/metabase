@@ -86,46 +86,56 @@
                [#{} []])
        second))
 
+(def ^:private search-instead-step
+  {:uses #{"search"}
+   :text "Use `search` to find data for the user's request."})
+
 (tools/defrecoverable library-search-busy!
   "The library index is being updated."
-  {:payload [:map {:closed true}]}
-  [_]
+  {:payload ::tools.search/search-scope}
+  [fallback-scope]
   {:message  "Library search is busy because the index is being updated."
-   :recovery [{:uses #{"retrieve_library_entities"}
-               :text (str "Retry `retrieve_library_entities` once later. If it is still busy, tell the user "
-                          "library search is being updated.")}]})
+   :recovery (-> [{:uses #{"retrieve_library_entities"}
+                   :text "Retry `retrieve_library_entities` once later."}
+                  search-instead-step]
+                 (into (tools.search/browse-steps fallback-scope))
+                 (conj {:uses #{}
+                        :text (str "If you can't find the data another way, tell the user library search is "
+                                   "being updated.")}))})
 
 (tools/defrecoverable library-search-unavailable!
   "The library index or embedding provider cannot serve this search."
-  {:payload [:map {:closed true}]}
-  [_]
+  {:payload ::tools.search/search-scope}
+  [fallback-scope]
   {:message  "Library search is unavailable."
-   :recovery [{:uses #{}
-               :text "Don't retry this call. Tell the user library search is unavailable."}
-              {:uses #{"search"}
-               :text "Use `search` to find data for the user's request."}]})
+   :recovery (-> [search-instead-step]
+                 (into (tools.search/browse-steps fallback-scope))
+                 (conj {:uses #{}
+                        :text (str "Don't retry this call. If you can't find the data another way, tell the user "
+                                   "library search is unavailable.")}))})
 
 #_{:clj-kondo/ignore [:discouraged-var]}
-(defn- search-library [user-search-prompt n]
+(defn- search-library [user-search-prompt n fallback-scope]
   (let [result (try
                  (entity-retrieval/search-unfiltered user-search-prompt n)
                  (catch InterruptedException e
                    (throw e))
                  (catch Exception e
                    (log/error e "Library search failed")
-                   (tools.error/throw-recoverable! ::library-search-unavailable {} {:cause e})))]
+                   (tools.error/throw-recoverable! ::library-search-unavailable fallback-scope {:cause e})))]
     (case result
-      :busy        (library-search-busy! {})
-      :unavailable (library-search-unavailable! {})
+      :busy        (library-search-busy! fallback-scope)
+      :unavailable (library-search-unavailable! fallback-scope)
       result)))
 
 (defn- build-matches
   "Fetch, dedupe to distinct entities, hydrate each match's entity ref into a full search record, and
-  return the top `n` the current user can read.
+  return the top `n` the current user can read. `fallback-scope`, from [[tools.search/search-scope]], is what
+  the agent is told to browse instead when the fetch fails.
   Each match: `{:doc_type :matched_text :usage_instructions :score :similarity :weak? :entity hydrated-hit}`."
-  [user-search-prompt n]
+  [user-search-prompt n fallback-scope]
   (let [fetch-n  (min over-fetch-cap (* over-fetch-factor n))
-        raw      (search-library user-search-prompt fetch-n)
+        raw      (search-library user-search-prompt fetch-n fallback-scope)
         deduped  (dedupe-by-entity raw)
         refs     (distinct (map :entity deduped))
         ;; Hydration permission-filters (entity-refs->search-results drops entities the user can't read),
@@ -226,11 +236,12 @@
      :scope       scope/agent-search
      :args        entity-retrieval-schema})
 
-  (handle [_ {:keys [user_search_prompt limit]} _ctx]
+  (handle [_ {:keys [user_search_prompt limit]} {:keys [metabot profile-id]}]
     (when (str/blank? user_search_prompt)
       (blank-search-prompt! {}))
     (let [n       (min max-limit (or limit default-limit))
-          matches (build-matches user_search_prompt n)]
+          matches (build-matches user_search_prompt n
+                                 (tools.search/search-scope metabot (some-> profile-id name) nil))]
       {:output            (format-output matches)
        :structured-output {:result-type :search
                            :data        (flatten-data matches)

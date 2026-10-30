@@ -21,7 +21,8 @@
    [metabase.search.engine :as search.engine]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -628,6 +629,44 @@
   {:uses #{"read_resource"}
    :text (apply str "Find the data with `read_resource` instead: " uri-text)})
 
+(mr/def ::search-scope
+  "What a search reaches: the collection or database it is limited to, if any. `verified-only` is true when the
+  search is limited to verified content but `read_resource` is not, as in the profiles exempt from curation."
+  [:map {:closed true}
+   [:collection-id [:maybe :int]]
+   [:database-id   [:maybe :int]]
+   [:verified-only :boolean]])
+
+(defn search-scope
+  "The [[::search-scope]] of a search for the Metabot row `metabot`.
+  `profile-id` names the profile the search runs under, and `database-id`, unless nil, is the database it is limited
+  to."
+  [metabot profile-id database-id]
+  {:collection-id (confined-collection-id metabot profile-id)
+   :database-id   database-id
+   :verified-only (and (boolean (:use_verified_content metabot))
+                       (not (shared/curated-only?)))})
+
+(defn browse-steps
+  "The recovery steps that find with `read_resource` what a search over a [[::search-scope]] could have found.
+  They browse only what the search was limited to, so a `verified-only` scope gets none."
+  [{:keys [collection-id database-id verified-only]}]
+  (cond
+    verified-only
+    []
+
+    collection-id
+    [(browse-instead-step "read `metabase://collection/" collection-id "/items`.")]
+
+    database-id
+    [(browse-instead-step "read `metabase://database/" database-id "/tables` and `metabase://database/"
+                          database-id "/models`.")]
+
+    :else
+    [(browse-instead-step "read `metabase://collections` for metrics, models, questions and "
+                          "dashboards, or `metabase://databases`, then `metabase://database/{id}/tables`, "
+                          "for tables.")]))
+
 (def ^:private no-retry-step
   {:uses #{"search"}
    :text (str "Do not call `search` again in this turn. If you cannot find the data another way, "
@@ -636,32 +675,11 @@
 (tools/defrecoverable search-failed!
   "The search backend failed, for example because the search index is missing.
 
-  The browse step browses only the content that the failed search was limited to. `verified-only` is
-  true when the search was limited to verified content but `read_resource` is not, as in the profiles
-  exempt from curation; then there is no browse step. Every failure gets [[no-retry-step]], because
-  each retry uses an iteration and logs a stack trace."
-  {:payload [:map {:closed true}
-             [:collection-id [:maybe :int]]
-             [:database-id   [:maybe :int]]
-             [:verified-only :boolean]]}
-  [{:keys [collection-id database-id verified-only]}]
+  Every failure gets [[no-retry-step]], because each retry uses an iteration and logs a stack trace."
+  {:payload ::search-scope}
+  [scope]
   {:message  "Search failed."
-   :recovery (-> (cond
-                   verified-only
-                   []
-
-                   collection-id
-                   [(browse-instead-step "read `metabase://collection/" collection-id "/items`.")]
-
-                   database-id
-                   [(browse-instead-step "read `metabase://database/" database-id "/tables` and `metabase://database/"
-                                         database-id "/models`.")]
-
-                   :else
-                   [(browse-instead-step "read `metabase://collections` for metrics, models, questions and "
-                                         "dashboards, or `metabase://databases`, then `metabase://database/{id}/tables`, "
-                                         "for tables.")])
-                 (conj no-retry-step))})
+   :recovery (conj (browse-steps scope) no-retry-step)})
 
 (defn- do-search
   [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit]}]
@@ -678,10 +696,7 @@
                   (catch Exception e
                     ;; The runtime logs a recoverable error at debug level, without its cause.
                     (log/error e "Metabot search failed")
-                    (search-failed! {:collection-id (confined-collection-id (:metabot opts) (:profile-id opts))
-                                     :database-id   (:database-id opts)
-                                     :verified-only (and (boolean (:use_verified_content (:metabot opts)))
-                                                         (not (shared/curated-only?)))})))]
+                    (search-failed! (search-scope (:metabot opts) (:profile-id opts) (:database-id opts)))))]
     {:output (format-search-output results)
      :structured-output {:result-type :search
                          :data results

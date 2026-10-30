@@ -32,7 +32,8 @@
           (let [outcome ((:fn (get entries "retrieve_library_entities")) {:user_search_prompt "revenue"})
                 recorded (messages)]
             (is (= {:output (str "Library search is unavailable.\n"
-                                 "Don't retry this call. Tell the user library search is unavailable.")
+                                 "Don't retry this call. If you can't find the data another way, tell the user "
+                                 "library search is unavailable.")
                     :error {:class :recoverable
                             :code :metabase.metabot.tools.entity-retrieval/library-search-unavailable}}
                    outcome))

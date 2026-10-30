@@ -33,17 +33,30 @@
   ([args]
    (invoke args [#'metabot.tools/retrieve-library-entities-tool]))
   ([args tool-vars]
+   (invoke args tool-vars nil))
+  ([args tool-vars metabot]
    (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
-                   (metabot.tools/->entries tool-vars (atom {}) nil :nlq))]
+                   (metabot.tools/->entries tool-vars (atom {}) metabot :nlq))]
      ((:fn (get entries "retrieve_library_entities")) args))))
+
+(def ^:private nlq-discovery-tools
+  "The tools the `:nlq` profile finds data with."
+  [#'metabot.tools/retrieve-library-entities-tool #'metabot.tools/read-resource-tool])
+
+(def ^:private browse-instance-step
+  (str "Find the data with `read_resource` instead: read `metabase://collections` for metrics, models, questions "
+       "and dashboards, or `metabase://databases`, then `metabase://database/{id}/tables`, for tables."))
+
+(def ^:private unavailable-last-step
+  (str "Don't retry this call. If you can't find the data another way, tell the user library search is "
+       "unavailable."))
 
 (deftest tool-shape-oss-fallback-test
   (testing "without the library-retrieval feature the tool reports unavailable"
     ;; Pin the feature off so the defenterprise call takes its OSS fallback regardless of any ambient
     ;; premium token (e.g. an all-features dev token) or rows left in a local pgvector store.
     (mt/with-premium-features #{}
-      (is (= {:output (str "Library search is unavailable.\n"
-                           "Don't retry this call. Tell the user library search is unavailable.")
+      (is (= {:output (str "Library search is unavailable.\n" unavailable-last-step)
               :error  {:class :recoverable :code ::entity-retrieval/library-search-unavailable}}
              (invoke {:user_search_prompt "revenue per region"}))))))
 
@@ -74,7 +87,7 @@
                                     cs.core/ai-context-instructions (constantly {})
                                     cs.core/library-entity-keys    (constantly nil)]
           (testing "asking for 2 returns the 2 readable entities (2 and 3), not just the 1 below the old top-2 cut"
-            (is (= [2 3] (mapv (comp :id :entity) (build-matches "q" 2))))))))))
+            (is (= [2 3] (mapv (comp :id :entity) (build-matches "q" 2 (tools.search/search-scope nil nil nil)))))))))))
 
 (deftest tool-never-exposes-unreadable-index-documents-test
   (testing "neither output channel carries index text for an entity the current user can't read"
@@ -211,16 +224,21 @@
               out)))))
 
 (deftest ^:parallel tool-search-unavailable-test
-  (testing "provider failures give authored advice, including search only when offered"
+  (testing "provider failures offer what the profile's search would reach, through the tools the profile has"
     (with-unfiltered-search (fn [_ _] (throw (ex-info "Embedding service unavailable" {})))
-      (doseq [search? [false true]]
-        (is (= {:output (str "Library search is unavailable.\n"
-                             "Don't retry this call. Tell the user library search is unavailable."
-                             (when search? "\nUse `search` to find data for the user's request."))
-                :error  {:class :recoverable :code ::entity-retrieval/library-search-unavailable}}
-               (invoke {:user_search_prompt "revenue per region"}
-                       (cond-> [#'metabot.tools/retrieve-library-entities-tool]
-                         search? (conj #'metabot.tools/search-tool)))))))))
+      (doseq [[scenario tool-vars metabot steps]
+              [["without other discovery tools" [#'metabot.tools/retrieve-library-entities-tool] nil []]
+               [":nlq" nlq-discovery-tools nil [browse-instance-step]]
+               ["with `search`" (conj nlq-discovery-tools #'metabot.tools/search-tool) nil
+                ["Use `search` to find data for the user's request." browse-instance-step]]
+               [":nlq for a Metabot confined to a collection" nlq-discovery-tools {:collection_id 42}
+                ["Find the data with `read_resource` instead: read `metabase://collection/42/items`."]]
+               [":nlq for a Metabot limited to verified content" nlq-discovery-tools {:use_verified_content true}
+                []]]]
+        (testing scenario
+          (is (= {:output (str/join "\n" (concat ["Library search is unavailable."] steps [unavailable-last-step]))
+                  :error  {:class :recoverable :code ::entity-retrieval/library-search-unavailable}}
+                 (invoke {:user_search_prompt "revenue per region"} tool-vars metabot))))))))
 
 (deftest ^:parallel interrupted-search-test
   (with-unfiltered-search (fn [_ _] (throw (InterruptedException.)))
@@ -230,15 +248,15 @@
   (doseq [[result code output]
           [[:busy ::entity-retrieval/library-search-busy
             (str "Library search is busy because the index is being updated.\n"
-                 "Retry `retrieve_library_entities` once later. If it is still busy, tell the user "
-                 "library search is being updated.")]
+                 "Retry `retrieve_library_entities` once later.\n"
+                 browse-instance-step "\n"
+                 "If you can't find the data another way, tell the user library search is being updated.")]
            [:unavailable ::entity-retrieval/library-search-unavailable
-            (str "Library search is unavailable.\n"
-                 "Don't retry this call. Tell the user library search is unavailable.")]]]
+            (str "Library search is unavailable.\n" browse-instance-step "\n" unavailable-last-step)]]]
     (testing (str result)
       (with-unfiltered-search (constantly result)
         (is (= {:output output :error {:class :recoverable :code code}}
-               (invoke {:user_search_prompt "revenue per region"})))))))
+               (invoke {:user_search_prompt "revenue per region"} nlq-discovery-tools)))))))
 
 (deftest ^:parallel library-miss-test
   (testing "a miss is a successful call that tells the model to rephrase once, then ask the user"
