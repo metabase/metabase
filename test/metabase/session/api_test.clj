@@ -2,6 +2,7 @@
   "Tests for /api/session"
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.appearance.core :as appearance]
@@ -1021,6 +1022,14 @@
     (testing "Test complexity check"
       (is (=? {:errors {:password "password is too common."}}
               (mt/client :post 400 "session/password-check" {:password "blah"}))))))
+
+(deftest ^:parallel password-check-does-not-echo-password-test
+  (testing "POST /api/session/password-check does not echo a rejected password in the response"
+    (let [response (mt/client :post 400 "session/password-check" {:password "password9"})]
+      (is (=? {:errors          {:password "password is too common."}
+               :specific-errors {:password ["valid password that is not too common, received: \"<< REDACTED SECRET >>\""]}}
+              response))
+      (is (not (str/includes? (pr-str response) "password9"))))))
 
 (deftest ^:parallel password-check-test-3
   (testing "POST /api/session/password-check"

@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]))
 
 (deftest ^:parallel schema-test
   (doseq [{:keys [schema failed-cases success-cases]}
@@ -42,9 +43,10 @@
            {:schema        ms/Email
             :failed-cases  ["abc.com" 1]
             :success-cases ["ngoc@metabase.com"]}
+           ;; API request decoding wraps the password in a secret
            {:schema        ms/ValidPassword
-            :failed-cases  ["abc.com" 1 "PASSW0RD"]
-            :success-cases ["unc0mmonpw"]}
+            :failed-cases  ["unc0mmonpw" 1 (u.secret/secret "abc.com") (u.secret/secret 1) (u.secret/secret "PASSW0RD")]
+            :success-cases [(u.secret/secret "unc0mmonpw")]}
            {:schema        ms/TemporalString
             :failed-cases  ["random string"]
             :success-cases ["2019-10-28T13:14:15" "2019-10-28"]}

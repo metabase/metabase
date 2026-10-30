@@ -12,6 +12,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -368,11 +369,18 @@
    (deferred-tru "value must be a valid URL.")))
 
 (def ValidPassword
-  "Schema for a valid password of sufficient complexity which is not found on a common password list."
+  "Schema for a valid password of sufficient complexity which is not found on a common password list.
+
+  API request decoding wraps the password in a [[u.secret/secret]], so validation errors and logs print it redacted.
+  Callers can extract the raw string with [[u.secret/expose]]."
   (mu/with-api-error-message
    [:and
-    :string
-    [:fn {:error/message "valid password that is not too common"} (every-pred string? #'u.password/is-valid?)]]
+    {:decode/api  #(cond-> % (string? %) u.secret/secret)
+     :json-schema {:type "string"}}
+    [:fn {:error/message "valid password that is not too common"}
+     #(and (u.secret/secret? %)
+           (string? (u.secret/expose %))
+           (u.password/is-valid? (u.secret/expose %)))]]
    (deferred-tru "password is too common.")))
 
 (def TemporalInstant
