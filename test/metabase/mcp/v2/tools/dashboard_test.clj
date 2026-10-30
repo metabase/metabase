@@ -91,6 +91,12 @@
     (is (re-find #"\"id\" is required"
                  (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write" (wire {:method "update"})))))))
 
+(deftest unknown-op-lists-the-valid-ops-test
+  (testing "an unknown op, refused by the registry before the handler runs, names the ops there are"
+    (is (re-find #"\"op\": \"should be one of: add_card, add_text, .*, unwire_parameter\""
+                 (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                                         (wire {:method "create" :name "Sales" :ops [{:op "frobnicate"}]})))))))
+
 (deftest create-with-ops-in-one-call-test
   (testing "GHY-4147: create accepts ops, so a dashboard and its cards land in a single call"
     (mt/with-model-cleanup [:model/Dashboard]
