@@ -10,7 +10,7 @@
   cursor: pointer;
 
   &:hover {
-    background-color: var(--mb-color-core-brand-hover);
+    background-color: var(--mb-color-background_surface-brand-strong-hover);
   }
 }
 
