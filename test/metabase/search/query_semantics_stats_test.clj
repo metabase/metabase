@@ -33,32 +33,32 @@
     (testing "same query, with pairwise direction relative to the first engine"
       (is (= {:count     40
               :all-equal 5
-              :mean-hits {:in-place       29/10
+              :mean-hits {:in-place       57/20
                           :appdb-h2       31/20
                           :appdb-postgres 67/40
-                          :semantic       23/8}
+                          :semantic       99/40}
               :pairwise  {[:in-place :appdb-h2]       {:equal 20, :left-superset 20, :left-subset 0,  :incomparable 0}
-                          [:in-place :appdb-postgres] {:equal 6,  :left-superset 28, :left-subset 4,  :incomparable 2}
-                          [:in-place :semantic]       {:equal 21, :left-superset 11, :left-subset 8,  :incomparable 0}
+                          [:in-place :appdb-postgres] {:equal 6,  :left-superset 27, :left-subset 4,  :incomparable 3}
+                          [:in-place :semantic]       {:equal 12, :left-superset 19, :left-subset 9,  :incomparable 0}
                           [:appdb-h2 :appdb-postgres] {:equal 11, :left-superset 13, :left-subset 13, :incomparable 3}
-                          [:appdb-h2 :semantic]       {:equal 8,  :left-superset 8,  :left-subset 24, :incomparable 0}
-                          [:appdb-postgres :semantic] {:equal 8,  :left-superset 3,  :left-subset 28, :incomparable 1}}}
+                          [:appdb-h2 :semantic]       {:equal 8,  :left-superset 10, :left-subset 20, :incomparable 2}
+                          [:appdb-postgres :semantic] {:equal 14, :left-superset 5,  :left-subset 21, :incomparable 0}}}
              same-query)))
     (testing "translated queries, scored against each comparison's correct result set"
       (is (= {:count     18
-              :all-equal 1
-              :mean-hits {:in-place       11/3
-                          :appdb-h2       26/9
+              :all-equal 0
+              :mean-hits {:in-place       65/18
+                          :appdb-h2       17/6
                           :appdb-postgres 41/18
-                          :semantic       10/3}
+                          :semantic       49/18}
               :pairwise  {[:in-place :appdb-h2]       {:equal 10, :left-superset 8,  :left-subset 0,  :incomparable 0}
                           [:in-place :appdb-postgres] {:equal 4,  :left-superset 13, :left-subset 0,  :incomparable 1}
-                          [:in-place :semantic]       {:equal 9,  :left-superset 6,  :left-subset 2,  :incomparable 1}
-                          [:appdb-h2 :appdb-postgres] {:equal 5,  :left-superset 8,  :left-subset 3,  :incomparable 2}
-                          [:appdb-h2 :semantic]       {:equal 6,  :left-superset 3,  :left-subset 8,  :incomparable 1}
-                          [:appdb-postgres :semantic] {:equal 4,  :left-superset 2,  :left-subset 12, :incomparable 0}}
-              :scores    {:in-place       {:precision 2623/3780, :recall 1,       :f1 426677/540540, :exact 6}
-                          :appdb-h2       {:precision 223/270,   :recall 103/108, :f1 35779/41580,   :exact 8}
+                          [:in-place :semantic]       {:equal 7,  :left-superset 8,  :left-subset 2,  :incomparable 1}
+                          [:appdb-h2 :appdb-postgres] {:equal 6,  :left-superset 7,  :left-subset 3,  :incomparable 2}
+                          [:appdb-h2 :semantic]       {:equal 5,  :left-superset 5,  :left-subset 7,  :incomparable 1}
+                          [:appdb-postgres :semantic] {:equal 4,  :left-superset 5,  :left-subset 9,  :incomparable 0}}
+              :scores    {:in-place       {:precision 661/945,   :recall 1,       :f1 143179/180180, :exact 6}
+                          :appdb-h2       {:precision 38/45,     :recall 103/108, :f1 36241/41580,   :exact 9}
                           :appdb-postgres {:precision 89/108,    :recall 23/27,   :f1 2449/2970,     :exact 11}
-                          :semantic       {:precision 83/120,    :recall 95/108,  :f1 9643/13860,    :exact 4}}}
+                          :semantic       {:precision 493/1080,  :recall 73/108,  :f1 20569/41580,   :exact 3}}}
              translations)))))
