@@ -147,6 +147,7 @@ export function ExpressionBar({
     }
   }
 
+  const pillToFocusRef = useRef<number>();
   const focusInput = () => {
     shouldRefocusRef.current = true;
   };
@@ -154,6 +155,14 @@ export function ExpressionBar({
     if (shouldRefocusRef.current) {
       shouldRefocusRef.current = false;
       inputRef.current?.focus();
+    }
+    if (pillToFocusRef.current != null) {
+      barRef.current
+        ?.querySelector<HTMLElement>(
+          `[${PILL_ATTR}="${pillToFocusRef.current}"]`,
+        )
+        ?.focus();
+      pillToFocusRef.current = undefined;
     }
   });
 
@@ -216,6 +225,16 @@ export function ExpressionBar({
     isHiddenAndToken(tokens[index]) && index + 1 < tokens.length
       ? index + 2
       : index + 1;
+
+  // Between caret positions, the arrow keys stop on the filter pill they pass.
+  const pillLeftOf = (index: number) => {
+    const at = isHiddenAndToken(tokens[index - 1]) ? index - 2 : index - 1;
+    return tokens[at]?.type === "filter" ? at : undefined;
+  };
+  const pillRightOf = (index: number) => {
+    const at = isHiddenAndToken(tokens[index]) ? index + 1 : index;
+    return tokens[at]?.type === "filter" ? at : undefined;
+  };
 
   // Two operators can't sit side by side, so next to one the logic row offers none.
   // ANDs are implicit here: an OR may take the place of one next to the caret.
@@ -306,6 +325,30 @@ export function ExpressionBar({
     setCaret(index);
     setIsOpen(open);
     focusInput();
+  };
+
+  // A selected pill takes the focus from the caret, which idles where it was.
+  const selectPill = (index: number) => {
+    resetDraft();
+    setIsOpen(false);
+    pillToFocusRef.current = index;
+  };
+
+  const moveLeft = () => {
+    const pill = pillLeftOf(caretIndex);
+    if (pill != null) {
+      selectPill(pill);
+    } else {
+      moveCaret(caretLeftOf(caretIndex));
+    }
+  };
+  const moveRight = () => {
+    const pill = pillRightOf(caretIndex);
+    if (pill != null) {
+      selectPill(pill);
+    } else {
+      moveCaret(caretRightOf(caretIndex));
+    }
   };
 
   // The shortcut reads the latest caret helper without re-subscribing every render.
@@ -482,7 +525,7 @@ export function ExpressionBar({
       input.selectionStart === 0 &&
       caretIndex > 0
     ) {
-      moveCaret(caretLeftOf(caretIndex), { open: true });
+      moveLeft();
       return true;
     }
     if (
@@ -490,7 +533,7 @@ export function ExpressionBar({
       input.selectionEnd === typed.length &&
       caretIndex < tokens.length
     ) {
-      moveCaret(caretRightOf(caretIndex), { open: true });
+      moveRight();
       return true;
     }
     return false;
@@ -532,12 +575,12 @@ export function ExpressionBar({
     }
     if (event.key === "ArrowLeft" && caretIndex > 0) {
       event.preventDefault();
-      moveCaret(caretLeftOf(caretIndex));
+      moveLeft();
       return;
     }
     if (event.key === "ArrowRight" && caretIndex < tokens.length) {
       event.preventDefault();
-      moveCaret(caretRightOf(caretIndex));
+      moveRight();
     }
   };
 
@@ -681,6 +724,7 @@ export function ExpressionBar({
             ),
             <TokenView
               key={`token-${index}`}
+              index={index}
               query={query}
               stageIndex={stageIndex}
               token={token}
@@ -697,6 +741,7 @@ export function ExpressionBar({
               onPopoverChange={(isOpened) =>
                 setOpenPillCount((count) => count + (isOpened ? 1 : -1))
               }
+              onLeave={(isLeft) => moveCaret(isLeft ? index : index + 1)}
               onRemove={() => {
                 const next = removeTokenAt(tokens, index);
                 setTokens(next);
@@ -802,6 +847,7 @@ function MetabotMenu() {
 }
 
 const SLOT_ATTR = "data-caret-slot";
+const PILL_ATTR = "data-pill-index";
 
 type SeriesColumn = {
   label: string;
@@ -1059,6 +1105,7 @@ function useFlashedLabels(
 }
 
 type TokenViewProps = {
+  index: number;
   query: Lib.Query;
   stageIndex: number;
   token: Token;
@@ -1069,9 +1116,11 @@ type TokenViewProps = {
   onReplace: (token: Token) => void;
   onRemove: () => void;
   onPopoverChange: (isOpened: boolean) => void;
+  onLeave: (isLeft: boolean) => void;
 };
 
 function TokenView({
+  index,
   query,
   stageIndex,
   token,
@@ -1082,6 +1131,7 @@ function TokenView({
   onReplace,
   onRemove,
   onPopoverChange,
+  onLeave,
 }: TokenViewProps) {
   const errorClass = hasError ? S.tokenError : undefined;
 
@@ -1119,6 +1169,7 @@ function TokenView({
 
   return (
     <FilterTokenView
+      index={index}
       query={query}
       stageIndex={stageIndex}
       clause={token.clause}
@@ -1129,11 +1180,13 @@ function TokenView({
       }
       onRemove={onRemove}
       onPopoverChange={onPopoverChange}
+      onLeave={onLeave}
     />
   );
 }
 
 type FilterTokenViewProps = {
+  index: number;
   query: Lib.Query;
   stageIndex: number;
   clause: Lib.FilterClause;
@@ -1142,9 +1195,11 @@ type FilterTokenViewProps = {
   onReplace: (filterable: Lib.Filterable) => void;
   onRemove: () => void;
   onPopoverChange: (isOpened: boolean) => void;
+  onLeave: (isLeft: boolean) => void;
 };
 
 function FilterTokenView({
+  index,
   query,
   stageIndex,
   clause,
@@ -1153,6 +1208,7 @@ function FilterTokenView({
   onReplace,
   onRemove,
   onPopoverChange,
+  onLeave,
 }: FilterTokenViewProps) {
   const [isOpened, setIsOpenedState] = useState(false);
   const setIsOpened = (next: boolean | ((opened: boolean) => boolean)) => {
@@ -1163,6 +1219,36 @@ function FilterTokenView({
     setIsOpenedState(value);
   };
 
+  // Opened from the keyboard, the pill takes the focus back once its editor
+  // closes, unless a click already moved it elsewhere.
+  const pillRef = useRef<HTMLSpanElement>(null);
+  const isOpenedFromKeyRef = useRef(false);
+  useEffect(() => {
+    if (!isOpened && isOpenedFromKeyRef.current) {
+      isOpenedFromKeyRef.current = false;
+      const isFocusLost =
+        document.activeElement == null ||
+        document.activeElement === document.body;
+      if (isFocusLost) {
+        pillRef.current?.focus();
+      }
+    }
+  }, [isOpened]);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      isOpenedFromKeyRef.current = true;
+      setIsOpened(true);
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      onLeave(event.key === "ArrowLeft");
+    }
+  };
+
   return (
     <Popover
       opened={isOpened}
@@ -1171,7 +1257,14 @@ function FilterTokenView({
       onChange={setIsOpened}
     >
       <Popover.Target>
-        <Box component="span" className={cx(S.pill, className)}>
+        <Box
+          ref={pillRef}
+          component="span"
+          className={cx(S.pill, className)}
+          tabIndex={-1}
+          onKeyDown={handleKeyDown}
+          {...{ [PILL_ATTR]: index }}
+        >
           {isInNotebook ? (
             <NotebookCellItem
               color="core-filter"

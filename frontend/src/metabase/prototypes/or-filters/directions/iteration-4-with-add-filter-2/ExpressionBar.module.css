@@ -20,6 +20,12 @@
   border-radius: 0.75rem;
 }
 
+/* A pill the arrow keys landed on: Enter opens its editor. */
+.pill:focus {
+  outline: 2px solid var(--mb-color-core-filter);
+  outline-offset: 1px;
+}
+
 /* AND / OR: small caps chips that read as connectors, not as content. */
 .op {
   padding: 0 0.375rem;

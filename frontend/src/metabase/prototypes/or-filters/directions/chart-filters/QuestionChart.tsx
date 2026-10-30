@@ -78,6 +78,8 @@ type QuestionChartProps = {
    * One measure gets a title even when split into series.
    */
   yAxisTitle?: (frame: AxisTitleFrame) => ReactNode;
+  /** Drawn in place of the x-axis title that names the first breakout, which it hides. */
+  xAxisTitle?: (frame: AxisTitleFrame) => ReactNode;
   /** Bar-click thresholds read "Count ≥ 12", plus a "Count…" entry with the full picker. */
   hasSymbolThresholds?: boolean;
 };
@@ -102,6 +104,7 @@ export function QuestionChart({
   legendAccessory,
   legendWrap,
   yAxisTitle,
+  xAxisTitle,
   hasSymbolThresholds,
 }: QuestionChartProps) {
   const metadataProvider = useMetadataProviderUnfiltered(Lib.databaseID(query));
@@ -114,6 +117,12 @@ export function QuestionChart({
   const axisTitles = useYAxisTitles(
     containerRef,
     yAxisTitle != null ? measureNames : undefined,
+  );
+  const dimensionNames = useMemo(() => getDimensionNames(query), [query]);
+  const xAxisTitles = useYAxisTitles(
+    containerRef,
+    xAxisTitle != null ? dimensionNames : undefined,
+    "horizontal",
   );
   const legendEnd = useLegendEnd(
     containerRef,
@@ -244,6 +253,18 @@ export function QuestionChart({
               {yAxisTitle(axisTitle)}
             </Box>
           ))}
+        {xAxisTitle &&
+          xAxisTitles.map((axisTitle) => (
+            <Box
+              key={axisTitle.text}
+              pos="absolute"
+              left={axisTitle.centerX}
+              top={axisTitle.centerY}
+              style={{ transform: "translate(-50%, -50%)", zIndex: 1 }}
+            >
+              {xAxisTitle(axisTitle)}
+            </Box>
+          ))}
         {legendAccessory && legendEnd && (
           <Box
             pos="absolute"
@@ -303,10 +324,26 @@ function getMeasureNames(query: Lib.Query): string[] {
     .map((info) => info.displayName);
 }
 
-/** The y-axis titles: labels turned a quarter that name a measure. */
+/**
+ * The x-axis title: the first breakout. Past a second stage the chart names it
+ * in full ("User → State"), so both names count.
+ */
+function getDimensionNames(query: Lib.Query): string[] {
+  const breakout = Lib.breakouts(query, 0)[0];
+  if (!breakout) {
+    return [];
+  }
+  const info = Lib.displayInfo(query, 0, breakout);
+  return _.uniq([info.displayName, info.longDisplayName]);
+}
+
+type AxisOrientation = "vertical" | "horizontal";
+
+/** The axis titles: labels that name a measure, turned a quarter on the y-axis. */
 function findYAxisTitles(
   container: HTMLElement,
   measureNames: string[],
+  orientation: AxisOrientation,
 ): SVGTextElement[] {
   return Array.from(container.querySelectorAll("svg text")).filter(
     (text): text is SVGTextElement => {
@@ -317,7 +354,8 @@ function findYAxisTitles(
         return false;
       }
       const matrix = text.transform.baseVal.consolidate()?.matrix;
-      return matrix != null && Math.abs(matrix.a) < 0.01;
+      const isTurned = matrix != null && Math.abs(matrix.a) < 0.01;
+      return orientation === "vertical" ? isTurned : !isTurned;
     },
   );
 }
@@ -330,6 +368,7 @@ function findYAxisTitles(
 function useYAxisTitles(
   containerRef: RefObject<HTMLDivElement>,
   measureNames: string[] | undefined,
+  orientation: AxisOrientation = "vertical",
 ): AxisTitleFrame[] {
   const [frames, setFrames] = useState<AxisTitleFrame[]>([]);
 
@@ -341,20 +380,20 @@ function useYAxisTitles(
     }
     const update = () => {
       const containerRect = container.getBoundingClientRect();
-      const nextFrames = findYAxisTitles(container, measureNames).map(
-        (title) => {
-          title.style.visibility = "hidden";
-          const rect = title.getBoundingClientRect();
-          return {
-            text: title.textContent?.trim() ?? "",
-            centerX: Math.round(
-              rect.left - containerRect.left + rect.width / 2,
-            ),
-            centerY: Math.round(rect.top - containerRect.top + rect.height / 2),
-            fontSize: getComputedStyle(title).fontSize,
-          };
-        },
-      );
+      const nextFrames = findYAxisTitles(
+        container,
+        measureNames,
+        orientation,
+      ).map((title) => {
+        title.style.visibility = "hidden";
+        const rect = title.getBoundingClientRect();
+        return {
+          text: title.textContent?.trim() ?? "",
+          centerX: Math.round(rect.left - containerRect.left + rect.width / 2),
+          centerY: Math.round(rect.top - containerRect.top + rect.height / 2),
+          fontSize: getComputedStyle(title).fontSize,
+        };
+      });
       setFrames((previous) =>
         _.isEqual(previous, nextFrames) ? previous : nextFrames,
       );
@@ -367,7 +406,7 @@ function useYAxisTitles(
       observer.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, [containerRef, measureNames]);
+  }, [containerRef, measureNames, orientation]);
 
   return frames;
 }
@@ -399,6 +438,7 @@ function useLegendEnd(
     if (!container || !isEnabled) {
       return;
     }
+    let movedRow: HTMLElement | undefined;
     const update = () => {
       const items = container.querySelectorAll('[data-testid="legend-item"]');
       const lastItem = items[items.length - 1];
@@ -416,6 +456,7 @@ function useLegendEnd(
         setLegendEnd(undefined);
         return;
       }
+      movedRow = legendRow;
       Object.assign(legendRow.style, {
         order: "-1",
         justifyContent: "flex-start",
@@ -449,6 +490,17 @@ function useLegendEnd(
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", update);
+      // Back where the chart draws it, once nothing sits beside it.
+      if (movedRow) {
+        Object.assign(movedRow.style, {
+          order: "",
+          justifyContent: "",
+          marginTop: "",
+          marginBottom: "",
+          marginLeft: "",
+          paddingLeft: "",
+        });
+      }
     };
   }, [containerRef, isEnabled, wrapRef]);
 
@@ -799,7 +851,7 @@ type NestedMenuButtonProps = {
 };
 
 /** The "horizontal" button of today's popover. */
-function NestedMenuButton({
+export function NestedMenuButton({
   icon,
   title,
   children,

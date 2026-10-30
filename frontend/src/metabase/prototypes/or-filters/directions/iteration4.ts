@@ -15,6 +15,7 @@ import {
 import { SummarizeBar } from "./expression-bar-rows/SummarizeBar";
 import { ExpressionBarNotebook as UnifiedExpressionBarNotebook } from "./expression-bar-unified/ExpressionBarNotebook";
 import { ExpressionBarSplitPrototype } from "./expression-bar-unified/ExpressionBarPrototype";
+import { AxisCanvas } from "./interacting-with-axis/AxisCanvas";
 import {
   DataViewCanvas as InPlaceDataViewCanvas,
   SummaryInBarDataZone as InPlaceSummaryInBarDataZone,
@@ -243,6 +244,25 @@ export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
           }),
         hasThresholdsBesideLegend: false,
       }),
+    NotebookCanvas: (props) =>
+      createElement(AddFilter2ExpressionBarNotebook, {
+        ...props,
+        FilterBar: AddFilter2NotebookRowsBar,
+        SummarizeBar: AddFilter2SummarizeBar,
+        appliesOnVisualize: true,
+      }),
+    initialExample: REALISTIC_EXAMPLES[0],
+  },
+  {
+    id: "iteration-4-interacting-with-axis",
+    get name() {
+      return t`Interacting with axis`;
+    },
+    get description() {
+      return t`"Without AND", with axes that answer back. The y-axis title is the measure: replace it or compare with another. The x-axis title is the dimension: change it, regroup it, split it into series or stop. Both read as the chart draws them, with a pill border on hover; the legend is left alone. Filter, sort and top 10 sit under a line in each menu; filters land in the bar, never on the chart.`;
+    },
+    Component: AddFilter2ExpressionBarSplitPrototype,
+    Canvas: AxisCanvas,
     NotebookCanvas: (props) =>
       createElement(AddFilter2ExpressionBarNotebook, {
         ...props,
