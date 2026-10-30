@@ -2,7 +2,11 @@
 ;; Hits are compared as sets, not ranks.
 ;; A comparison inherits the scenario query and hits unless an engine gives an alternative {:query, :hits}.
 ;; Comparisons belong here only when at least one engine uses a different query.
-;; `:correct` declares the intended results, which no engine need achieve.
+;; A comparison's focus is a user's goal, and `:correct` the results that goal wants, which no engine need achieve.
+;; Each engine's query is the best one a user could plausibly type for that goal, so no alternative may score
+;; worse than the scenario query.
+;; The vector arm keeps cards within cosine distance 0.7 of the query; with this model that admits unrelated
+;; cards and drops related ones, since both sit around 0.6 to 0.75.
 ;; Semantic search returns the union of a keyword arm and a vector arm.
 ;; The keyword arm gives the appdb/PostgreSQL results for every scenario here, but not for every query.
 ;; With a language other than simple, appdb also indexes an unstemmed copy of the text and the semantic index
@@ -24,15 +28,17 @@
            :appdb-postgres [:C :D]
            :semantic       {:keyword [:C :D], :vector [:A :B :C :D]}}
   :comparisons
-  [{:focus   "OR across ordinary tokens"
+  ;; H2 cannot express OR, and in-place cannot express AND, so each falls back to a single word.
+  [{:focus   "anything about revenue or regions"
     :correct [:A :B :C :D]
     :alternatives
     {:appdb-h2       {:query "revenue", :hits [:A :C :D]}
      :appdb-postgres {:query "revenue or region", :hits [:A :B :C :D]}}}
-   {:focus   "conjunction of substrings"
+   {:focus   "revenue broken down by region"
     :correct [:C :D]
     :alternatives
-    {:in-place {:query "revenue", :hits [:A :C :D]}}}]}
+    {:in-place {:query "revenue", :hits [:A :C :D]}
+     :semantic {:query "revenue split by region", :hits [:A :B :C :D]}}}]}
  {:id     "infix-substring"
   :focus  "infix substring versus lexeme-start completion"
   :config "simple"
@@ -102,12 +108,12 @@
            :appdb-postgres [:A :B :C :D]
            :semantic       {:keyword [:A :B :C :D], :vector [:A :B :C :D]}}
   :comparisons
-  [{:focus   "`or` must literally occur"
+  [{:focus   "the card titled \"Refunds or returns\""
     :correct [:D]
     :alternatives
     {:in-place       {:query "or", :hits [:D :E]}
-     :appdb-postgres {:query "refunds \"or\" returns", :hits [:D]}}}
-   {:focus   "explicit alternation"
+     :appdb-postgres {:query "\"refunds or returns\"", :hits [:D]}}}
+   {:focus   "anything about refunds or returns"
     :correct [:A :B :C :D]
     :alternatives
     {:in-place {:query "refunds returns", :hits [:A :B :C :D]}
@@ -127,11 +133,14 @@
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector [:A :B :D]}}
   :comparisons
-  [{:focus   "exclusion"
+  ;; Spelling out the exclusion changes nothing for the vector arm, except that "Test orders" becomes its
+  ;; closest card.
+  [{:focus   "orders, excluding test cards"
     :correct [:A]
     :alternatives
     {:in-place {:query "orders", :hits [:A :B :D]}
-     :appdb-h2 {:query "orders", :hits [:A :B :D]}}}]}
+     :appdb-h2 {:query "orders", :hits [:A :B :D]}
+     :semantic {:query "orders, not test data", :hits [:A :B :D]}}}]}
  {:id     "phrase-boundary"
   :focus  "ordered phrase, including the name/searchable-text boundary"
   :config "simple"
@@ -145,7 +154,7 @@
            :appdb-postgres [:A :C :D]
            :semantic       {:keyword [:A :C :D], :vector [:A :B :C :D]}}
   :comparisons
-  [{:focus   "ordered phrase"
+  [{:focus   "cards named \"Active users\""
     :correct [:A :D]
     :alternatives
     {:in-place {:query "active users", :hits [:A :B :C :D]}
@@ -165,12 +174,12 @@
            :appdb-postgres [:A :B :F]
            :semantic       {:keyword [:A :B :F], :vector [:A :B :C :F]}}
   :comparisons
-  ;; F defeats the phrase "sales and marketing", which would otherwise conform only because no document orders
-  ;; the three words differently.
-  [{:focus   "`and` is a required word"
-    :correct [:B :F]
+  ;; PostgreSQL discards the `and` and requires both words, which is what this user wants.
+  [{:focus   "cards covering both sales and marketing"
+    :correct [:A :B :F]
     :alternatives
-    {:appdb-postgres {:query "sales \"and\" marketing", :hits [:B :F]}}}]}
+    {:in-place {:query "marketing", :hits [:A :B :D :F]}
+     :appdb-h2 {:query "sales marketing", :hits [:A :B :F]}}}]}
  {:id     "english-stopword"
   :focus  "English stopword removal"
   :config "english"
@@ -188,10 +197,11 @@
   ;; A stopword the user typed is probably intentional, e.g. in a show title.
   ;; The English dictionary strips "the" from indexed documents too, so no PostgreSQL query, quoted or not,
   ;; can require it.
-  [{:focus   "`the` is part of the intended match"
+  [{:focus   "the show The Office, not office supplies"
     :correct [:A]
     :alternatives
-    {:appdb-postgres {:query "\"the office\"", :hits [:A :B]}}}]}
+    {:in-place       {:query "office", :hits [:A :B]}
+     :appdb-postgres {:query "\"the office\"", :hits [:A :B]}}}]}
  {:id     "simple-stopword"
   :focus  "same documents/query without English stopword removal"
   :config "simple"
@@ -219,11 +229,13 @@
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A :B :C :D]}}
   :comparisons
-  [{:focus   "English stemming"
+  ;; Substring engines need the shared stem typed out; for in-place, whose words are ORed, that stem alone.
+  [{:focus   "subscription cancellations, however worded"
     :correct [:A :B]
     :alternatives
-    {:in-place {:query "cancel subscription", :hits [:A :B :C :D]}
-     :appdb-h2 {:query "cancel subscription", :hits [:A :B]}}}]}
+    {:in-place {:query "cancel", :hits [:A :B :C]}
+     :appdb-h2 {:query "cancel subscription", :hits [:A :B]}
+     :semantic {:query "subscriptions that were cancelled", :hits [:A :B :C :D]}}}]}
  {:id     "simple-no-stemming"
   :focus  "same documents/query with simple rather than English stemming"
   :config "simple"
@@ -360,11 +372,15 @@
            :semantic       {:keyword [:A :C :E], :vector [:A :B :C :D :E]}}
   :comparisons
   ;; PostgreSQL keeps the stopword's position, so any word can fill it and C matches.
-  ;; Without phrase support, H2 cannot exclude D.
-  [{:focus   "English stopword inside a phrase"
-    :correct [:A :E]
+  ;; The user wants the sets, including "Salt & pepper shakers", which no phrase with "and" finds.
+  ;; Dropping the "and" and the quotes is the best a lexical engine can do, and it returns every card.
+  [{:focus   "salt-and-pepper sets"
+    :correct [:A :B]
     :alternatives
-    {:appdb-h2 {:query "salt and pepper", :hits [:A :D :E]}}}]}
+    {:in-place       {:query "salt pepper", :hits [:A :B :C :D :E]}
+     :appdb-h2       {:query "salt pepper", :hits [:A :B :C :D :E]}
+     :appdb-postgres {:query "salt pepper", :hits [:A :B :C :D :E]}
+     :semantic       {:query "salt and pepper shaker sets", :hits [:A :B :C :D :E]}}}]}
  {:id     "simple-phrase-and"
   :focus  "same phrase with simple configuration retaining and"
   :config "simple"
@@ -393,7 +409,7 @@
            :appdb-postgres [:A :B :D :E :F]
            :semantic       {:keyword [:A :B :D :E :F], :vector [:A :B :C :D :E :F]}}
   :comparisons
-  [{:focus   "unfinished quote with final-word completion"
+  [{:focus   "mid-typing the phrase \"customer ref...\""
     :correct [:A :B :D :E :F]
     :alternatives
     {:in-place {:query "customer ref", :hits [:A :B :C :D :E :F]}
@@ -429,12 +445,15 @@
            :appdb-postgres [:B :C :D :F :G]
            :semantic       {:keyword [:B :C :D :F :G], :vector [:B]}}
   :comparisons
-  ;; Both typed terms are word prefixes; PostgreSQL completes only the last.
-  [{:focus   "prefix completion on every OR branch"
-    :correct [:A :B :C :D :F :G]
+  ;; Both typed terms are abbreviations; PostgreSQL completes only the last, so the user is better off putting
+  ;; the one that needs completing last. "Reviews" also starts with "rev", but is not about revenue.
+  [{:focus   "customer or revenue cards, typed abbreviated"
+    :correct [:A :B :C :F :G]
     :alternatives
-    {:in-place {:query "cust rev", :hits [:A :B :C :D :E :F :G]}
-     :appdb-h2 {:query "rev", :hits [:C :D :E :F :G]}}}]}
+    {:in-place       {:query "cust rev", :hits [:A :B :C :D :E :F :G]}
+     :appdb-h2       {:query "cust", :hits [:A :B :F :G]}
+     :appdb-postgres {:query "rev or cust", :hits [:A :B :F :G]}
+     :semantic       {:query "customer or revenue reports", :hits [:A :C :F :G]}}}]}
  {:id     "negated-prefix"
   :focus  "final negated term is also prefix-completed"
   :config "simple"
@@ -450,11 +469,25 @@
            :appdb-postgres [:A :D]
            :semantic       {:keyword [:A :D], :vector [:A :B :C :D :E]}}
   :comparisons
-  [{:focus   "negation of a prefix"
+  [{:focus   "revenue, excluding estimates"
     :correct [:A :D]
     :alternatives
     {:in-place {:query "revenue", :hits [:A :B :C :D :E]}
      :appdb-h2 {:query "revenue", :hits [:A :B :C :D :E]}}}]}
+ {:id     "vector-negation"
+  :focus  "a natural-language exclusion pulls the vector arm toward the excluded cards"
+  :config "simple"
+  :query  "actual revenue, not estimates"
+  :docs   {:A {:name "Revenue"}
+           :B {:name "Revenue estimates"}
+           :C {:name "Estimated revenue"}
+           :D {:name "Revenue by west region"}
+           :E {:name "Revenue -est"}
+           :F {:name "Cost estimates"}}
+  :expect {:in-place       [:B :F]
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:B :C :E]}}}
  {:id     "negation-only"
   :focus  "negation-only query is a broad PostgreSQL complement"
   :config "simple"
@@ -495,15 +528,8 @@
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
            :appdb-postgres []
-           :semantic       {:keyword [], :vector []}}
-  :comparisons
-  ;; The intended match is the word or a word starting with it; "Store" only contains it.
-  [{:focus   "quoting or recovers the word but not prefix matches"
-    :correct [:A :B]
-    :alternatives
-    {:appdb-postgres {:query "\"or\"", :hits [:A]}}}]}
- ;; Controls: with the simple configuration, every lexical engine can express these intents, some only by
- ;; adapting the query.
+           :semantic       {:keyword [], :vector []}}}
+ ;; Controls: "or" and "and" as words in ordinary titles.
  ;; No document contains the word inside a longer word; see or-only-operator for that trap.
  {:id     "or-word-control"
   :focus  "control: or as a literal word"
@@ -515,12 +541,7 @@
   :expect {:in-place       [:A :C]
            :appdb-h2       [:A :C]
            :appdb-postgres []
-           :semantic       {:keyword [], :vector []}}
-  :comparisons
-  [{:focus   "quoting or makes it a searchable word"
-    :correct [:A :C]
-    :alternatives
-    {:appdb-postgres {:query "\"or\"", :hits [:A :C]}}}]}
+           :semantic       {:keyword [], :vector []}}}
  {:id     "and-word-control"
   :focus  "control: and as a literal word"
   :config "simple"
@@ -531,14 +552,9 @@
   :expect {:in-place       [:A :C]
            :appdb-h2       [:A :C]
            :appdb-postgres []
-           :semantic       {:keyword [], :vector []}}
-  :comparisons
-  [{:focus   "quoting and makes it a searchable word"
-    :correct [:A :C]
-    :alternatives
-    {:appdb-postgres {:query "\"and\"", :hits [:A :C]}}}]}
+           :semantic       {:keyword [], :vector []}}}
  ;; The same controls with English, the default on an English-locale instance with a PostgreSQL app db.
- ;; Both words are English stopwords, so PostgreSQL cannot require them even when quoted.
+ ;; Both words are English stopwords, so PostgreSQL cannot match them even when quoted.
  {:id     "english-or-word"
   :focus  "same or control with English dropping or as a stopword"
   :config "english"
@@ -549,12 +565,7 @@
   :expect {:in-place       [:A :C]
            :appdb-h2       [:A :C]
            :appdb-postgres []
-           :semantic       {:keyword [], :vector []}}
-  :comparisons
-  [{:focus   "quoting or cannot recover an English stopword"
-    :correct [:A :C]
-    :alternatives
-    {:appdb-postgres {:query "\"or\"", :hits []}}}]}
+           :semantic       {:keyword [], :vector []}}}
  {:id     "english-and-word"
   :focus  "same and control with English dropping and as a stopword"
   :config "english"
@@ -565,12 +576,7 @@
   :expect {:in-place       [:A :C]
            :appdb-h2       [:A :C]
            :appdb-postgres []
-           :semantic       {:keyword [], :vector []}}
-  :comparisons
-  [{:focus   "quoting and cannot recover an English stopword"
-    :correct [:A :C]
-    :alternatives
-    {:appdb-postgres {:query "\"and\"", :hits []}}}]}
+           :semantic       {:keyword [], :vector []}}}
  {:id     "field-term-agreement"
   :focus  "ordinary term matches either indexed text field"
   :config "simple"
@@ -643,4 +649,39 @@
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:C]
            :appdb-postgres [:C]
-           :semantic       {:keyword [:C], :vector [:A :B :C]}}}]
+           :semantic       {:keyword [:C], :vector [:A :B :C]}}}
+ ;; Vector-arm precision and recall on one realistic catalogue.
+ ;; Cards that share a word or topic with the query sit around the 0.7 cutoff, on either side of it.
+ {:id     "vector-noise"
+  :focus  "the vector arm returns an unrelated card and misses the relevant one"
+  :config "simple"
+  :query  "sales pipeline"
+  :docs   {:A {:name "Monthly sales"}
+           :B {:name "Sales by region"}
+           :C {:name "Deals closed"}
+           :D {:name "Bookings by quarter"}
+           :E {:name "Sales team headcount"}
+           :F {:name "Salesforce sync errors"}
+           :G {:name "Sales tax settings"}
+           :H {:name "Support tickets"}}
+  ;; "Sales team headcount" passes the cutoff; "Deals closed", the card this user wants, does not.
+  :expect {:in-place       [:A :B :E :F :G]
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector [:E]}}}
+ {:id     "vector-paraphrase"
+  :focus  "a paraphrase finds nothing, though \"Monthly sales\" is in the catalogue"
+  :config "simple"
+  :query  "how much did we sell"
+  :docs   {:A {:name "Monthly sales"}
+           :B {:name "Sales by region"}
+           :C {:name "Deals closed"}
+           :D {:name "Bookings by quarter"}
+           :E {:name "Sales team headcount"}
+           :F {:name "Salesforce sync errors"}
+           :G {:name "Sales tax settings"}
+           :H {:name "Support tickets"}}
+  :expect {:in-place       []
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector []}}}]
