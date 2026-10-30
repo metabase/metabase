@@ -1,3 +1,4 @@
+import { ADMIN_PERMISSIONS_BASE_PATH } from "metabase/common/components/PermissionsBasePath/base-path";
 import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 
@@ -85,11 +86,14 @@ const metabotSystemPromptsUpsellPage = () =>
  * registrations. The registry matches a hovered link against a literal prefix,
  * so a segment renamed in only one of the two places would stop prefetching
  * without failing anything.
+ *
+ * `featureAccess` and `mcpToolAccess` live under `/admin/permissions`; the rest
+ * live under `/admin/metabot`.
  */
 const PATHS = {
-  featureAccess: "usage-controls/ai-feature-access",
-  mcpToolsAccess: "usage-controls/mcp-tools-access",
-  usageLimits: "usage-controls/ai-usage-limits",
+  featureAccess: "ai-feature-access",
+  mcpToolAccess: "mcp-tool-access",
+  usageLimits: "ai-usage-limits",
   customization: "customization",
   systemPrompts: "system-prompts",
   chatPrompt: "system-prompts/metabot-chat",
@@ -98,6 +102,8 @@ const PATHS = {
 } as const;
 
 const adminAiPath = (path: string) => `${Urls.adminAiSettings()}/${path}`;
+const adminPermissionsPath = (path: string) =>
+  `${ADMIN_PERMISSIONS_BASE_PATH}/${path}`;
 
 /**
  * Hovering an AI settings tab starts its fetch, so the chunk is usually in hand
@@ -111,8 +117,14 @@ const adminAiPath = (path: string) => `${Urls.adminAiSettings()}/${path}`;
  * is registered once.
  */
 export function registerAiControlsPagePrefetch(): void {
-  registerPagePrefetch(adminAiPath(PATHS.featureAccess), aiFeatureAccessPage);
-  registerPagePrefetch(adminAiPath(PATHS.mcpToolsAccess), mcpToolsAccessPage);
+  registerPagePrefetch(
+    adminPermissionsPath(PATHS.featureAccess),
+    aiFeatureAccessPage,
+  );
+  registerPagePrefetch(
+    adminPermissionsPath(PATHS.mcpToolAccess),
+    mcpToolsAccessPage,
+  );
   registerPagePrefetch(adminAiPath(PATHS.usageLimits), metabotUsageLimitsPage);
   registerPagePrefetch(
     adminAiPath(PATHS.customization),
@@ -122,12 +134,16 @@ export function registerAiControlsPagePrefetch(): void {
 }
 
 /**
- * The tabs an instance without the license mounts. There is no usage limits tab
- * among them, so nothing registers that path here.
+ * The pages an instance without the license mounts. Usage limits and AI feature
+ * access share one upsell page.
  */
 export function registerAiControlsUpsellPagePrefetch(): void {
   registerPagePrefetch(
-    adminAiPath(PATHS.featureAccess),
+    adminPermissionsPath(PATHS.featureAccess),
+    aiFeatureAccessUpsellPage,
+  );
+  registerPagePrefetch(
+    adminAiPath(PATHS.usageLimits),
     aiFeatureAccessUpsellPage,
   );
   registerPagePrefetch(
@@ -143,11 +159,6 @@ export function registerAiControlsUpsellPagePrefetch(): void {
 export function getAiControlsRoutes() {
   return (
     <Route element={<RequireMetabotConfigured />}>
-      <Route
-        key="ai-feature-access"
-        path={PATHS.featureAccess}
-        lazy={aiFeatureAccessPage}
-      />
       <Route
         key="ai-usage-limits"
         path={PATHS.usageLimits}
@@ -177,15 +188,24 @@ export function getAiControlsRoutes() {
   );
 }
 
-export function getMcpToolsAccessRoutes() {
+export function getAiControlsPermissionsRoutes() {
   return (
-    <Route element={<RequireMcpEnabled />}>
-      <Route
-        key="mcp-tools-access"
-        path={PATHS.mcpToolsAccess}
-        lazy={mcpToolsAccessPage}
-      />
-    </Route>
+    <>
+      <Route element={<RequireMetabotConfigured />}>
+        <Route
+          key="ai-feature-access"
+          path={PATHS.featureAccess}
+          lazy={aiFeatureAccessPage}
+        />
+      </Route>
+      <Route element={<RequireMcpEnabled />}>
+        <Route
+          key="mcp-tool-access"
+          path={PATHS.mcpToolAccess}
+          lazy={mcpToolsAccessPage}
+        />
+      </Route>
+    </>
   );
 }
 
@@ -193,8 +213,8 @@ export function getAiControlsUpsellRoutes() {
   return (
     <>
       <Route
-        key="ai-feature-access"
-        path={PATHS.featureAccess}
+        key="ai-usage-limits"
+        path={PATHS.usageLimits}
         lazy={aiFeatureAccessUpsellPage}
       />
       <Route
@@ -208,5 +228,15 @@ export function getAiControlsUpsellRoutes() {
         lazy={metabotSystemPromptsUpsellPage}
       />
     </>
+  );
+}
+
+export function getAiControlsPermissionsUpsellRoutes() {
+  return (
+    <Route
+      key="ai-feature-access"
+      path={PATHS.featureAccess}
+      lazy={aiFeatureAccessUpsellPage}
+    />
   );
 }

@@ -14,12 +14,11 @@ import {
   PermissionsSidebar,
   type RawDataRouteParams,
   assertNumericId,
-  getDataFocusSidebar,
   getDatabaseFocusPermissionsUrl,
-  getDatabasesBasePath,
   getGroupsDataPermissionEditor,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
+  isEmbeddingHubPermissions,
   loadDataPermissionsForDb,
   parseDataRouteParams,
   updateDataPermission,
@@ -37,6 +36,8 @@ import {
 } from "../../components/PermissionsEditor";
 import { PermissionsEditorSplitPermsMessage } from "../../components/PermissionsEditor/PermissionsEditorSplitPermsMessage";
 
+import { useDatabasesTreeSidebar } from "./useDatabasesTreeSidebar";
+
 export function DatabasesPermissionsPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -45,14 +46,12 @@ export function DatabasesPermissionsPage() {
   // so they take the route params rather than reading them from the store.
   const params = useParams<RawDataRouteParams>();
   const selectorProps = { params };
-  const sidebar = useSelector((state) =>
-    getDataFocusSidebar(state, selectorProps),
-  );
-  const isSidebarLoading = useSelector((state) =>
-    getIsLoadingDatabaseTables(state, selectorProps),
-  );
-  const sidebarError = useSelector((state) =>
+  const sidebar = useDatabasesTreeSidebar(params);
+  const editorError = useSelector((state) =>
     getLoadingDatabaseTablesError(state, selectorProps),
+  );
+  const isEditorLoading = useSelector((state) =>
+    getIsLoadingDatabaseTables(state, selectorProps),
   );
 
   const dataRouteParams = parseDataRouteParams(params);
@@ -64,12 +63,11 @@ export function DatabasesPermissionsPage() {
     navigate(
       getDatabaseFocusPermissionsUrl(
         // The sidebar types `onSelect` with the base tree item, but every node
-        // it renders here comes from `getDataFocusSidebar`, which builds
+        // it renders here comes from `getDatabasesTreeSidebar`, which builds
         // `DataTreeNodeItem`s carrying an `entityId`.
         (item as DataTreeNodeItem).entityId,
       ),
     );
-  const navigateToDatabaseList = () => navigate(getDatabasesBasePath());
 
   const showSplitPermsMessage = useSelector((state) =>
     getSetting(state, "show-updated-permission-banner"),
@@ -127,29 +125,37 @@ export function DatabasesPermissionsPage() {
     PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
     !!permissionEditor?.hasLegacyNoSelfServiceValueInPermissionGraph;
 
+  // The tree stays put while a newly selected database's tables load, so the
+  // editor area carries the spinner.
+  const isBusy = isLoading || isEditorLoading;
+
   return (
     <Fragment>
       <PermissionsSidebar
-        {...(sidebar ?? { entityGroups: [], filterPlaceholder: "" })}
-        error={sidebarError}
-        isLoading={isSidebarLoading}
+        {...sidebar}
+        entityViewFocus="database"
         onSelect={navigateToItem}
-        onBack={params.databaseId == null ? undefined : navigateToDatabaseList}
-        onEntityChange={handleEntityChange}
+        // Admin picks "By group" / "By database" from the side nav instead.
+        onEntityChange={
+          isEmbeddingHubPermissions() ? handleEntityChange : undefined
+        }
       />
-      {isLoading && (
+      {isBusy && (
         <Center style={{ flexGrow: 1 }}>
           <Loader size="lg" />
         </Center>
       )}
-      {!permissionEditor && !isLoading && (
+      {!permissionEditor && !isBusy && (
         <PermissionsEditorEmptyState
           icon="database"
-          message={t`Select a database to see group permissions`}
+          message={
+            editorError ??
+            t`Select a database, schema, or table to see group permissions`
+          }
         />
       )}
 
-      {permissionEditor && !isLoading && (
+      {permissionEditor && !isBusy && (
         <PermissionsEditor
           {...permissionEditor}
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}

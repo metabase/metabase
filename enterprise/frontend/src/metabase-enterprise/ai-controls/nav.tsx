@@ -12,9 +12,16 @@ export function getAiControlsUpsellNavItems() {
   return <AiControlsUpsellNavItems />;
 }
 
+export function getAiControlsPermissionsNavItems() {
+  return <AiControlsPermissionsNavItems />;
+}
+
+export function getAiControlsPermissionsUpsellNavItems() {
+  return <AiControlsPermissionsUpsellNavItems />;
+}
+
 function AiControlsNavItems() {
   const isConfigured = useSetting("llm-metabot-configured?");
-  const isMcpEnabled = useSetting("mcp-enabled?");
   const areAiFeaturesEnabled = useSetting("ai-features-enabled?");
 
   if (!areAiFeaturesEnabled) {
@@ -24,30 +31,11 @@ function AiControlsNavItems() {
   return (
     <>
       <AdminNavItem
-        icon="lock"
-        label={t`Usage controls`}
-        folderPattern="usage-controls"
-        disabled={!isConfigured && !isMcpEnabled}
-      >
-        {isConfigured && (
-          <AdminNavItem
-            label={t`AI feature access`}
-            path="/admin/metabot/usage-controls/ai-feature-access"
-          />
-        )}
-        {isMcpEnabled && (
-          <AdminNavItem
-            label={t`MCP tools access`}
-            path="/admin/metabot/usage-controls/mcp-tools-access"
-          />
-        )}
-        {isConfigured && (
-          <AdminNavItem
-            label={t`Limits`}
-            path="/admin/metabot/usage-controls/ai-usage-limits"
-          />
-        )}
-      </AdminNavItem>
+        icon="gauge"
+        label={t`Usage limits`}
+        path="/admin/metabot/ai-usage-limits"
+        disabled={!isConfigured}
+      />
       <AdminNavItem
         icon="palette"
         label={t`Customization`}
@@ -84,9 +72,9 @@ function AiControlsUpsellNavItems() {
   return (
     <>
       <AdminNavItem
-        icon="lock"
-        label={t`Usage controls`}
-        path="/admin/metabot/usage-controls/ai-feature-access"
+        icon="gauge"
+        label={t`Usage limits`}
+        path="/admin/metabot/ai-usage-limits"
         rightSection={<UpsellGem.New size={14} />}
       />
       <AdminNavItem
@@ -102,5 +90,45 @@ function AiControlsUpsellNavItems() {
         rightSection={<UpsellGem.New size={14} />}
       />
     </>
+  );
+}
+
+function AiControlsPermissionsNavItems() {
+  const isConfigured = useSetting("llm-metabot-configured?");
+  const isMcpEnabled = useSetting("mcp-enabled?");
+  const areAiFeaturesEnabled = useSetting("ai-features-enabled?");
+
+  if (!areAiFeaturesEnabled) {
+    return null;
+  }
+
+  return (
+    <>
+      {isConfigured && (
+        <AdminNavItem
+          icon="ai"
+          label={t`AI feature access`}
+          path="/admin/permissions/ai-feature-access"
+        />
+      )}
+      {isMcpEnabled && (
+        <AdminNavItem
+          icon="mcp"
+          label={t`MCP tool access`}
+          path="/admin/permissions/mcp-tool-access"
+        />
+      )}
+    </>
+  );
+}
+
+function AiControlsPermissionsUpsellNavItems() {
+  return (
+    <AdminNavItem
+      icon="ai"
+      label={t`AI feature access`}
+      path="/admin/permissions/ai-feature-access"
+      rightSection={<UpsellGem.New size={14} />}
+    />
   );
 }

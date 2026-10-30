@@ -126,7 +126,7 @@ const modelPersistence = () =>
     Component: ModelPersistenceConfiguration,
   }));
 
-// `route.lazy` supplies a component and no props, so the four routes that
+// `route.lazy` supplies a component and no props, so the three routes that
 // share this layout bind theirs here.
 const metabotLayout =
   (props: ComponentProps<typeof MetabotAdminLayout> = {}) =>
@@ -157,6 +157,25 @@ const oauthAuthorizations = () =>
   import(/* webpackChunkName: "admin" */ "./ai/OAuthAuthorizationsPage").then(
     ({ OAuthAuthorizationsPage }) => ({ Component: OAuthAuthorizationsPage }),
   );
+
+// Admin only: the embedding hub mounts the same permission editors under its own
+// tabs, without this side nav or the pages below.
+const permissionsLayout = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/permissions/components/PermissionsAdminLayout/PermissionsAdminLayout"
+  ).then(({ PermissionsAdminLayout }) => ({
+    Component: PermissionsAdminLayout,
+  }));
+
+const rolePage = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/permissions/pages/RolePage"
+  ).then(({ RolePage }) => ({ Component: RolePage }));
+
+const dataIsolationPage = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/permissions/pages/DataIsolationPage/DataIsolationPage"
+  ).then(({ DataIsolationPage }) => ({ Component: DataIsolationPage }));
 
 const help = () =>
   import(/* webpackChunkName: "admin" */ "metabase/admin/help").then(
@@ -348,7 +367,13 @@ export const getRoutes = (
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" element={<IsAdmin />}>
-          {getAdminPermissionsRoutes()}
+          <Route lazy={permissionsLayout}>
+            {getAdminPermissionsRoutes()}
+            {PLUGIN_AI_CONTROLS.getPermissionsRoutes()}
+            <Route path="roles" element={redirect("administrators")} />
+            <Route path="roles/:roleId" lazy={rolePage} />
+            <Route path="data-isolation" lazy={dataIsolationPage} />
+          </Route>
         </Route>
 
         {/* PERFORMANCE */}
@@ -386,15 +411,6 @@ export const getRoutes = (
             })}
           >
             <Route path="mcp/authorizations" lazy={oauthAuthorizations} />
-          </Route>
-          <Route
-            key="mcp-tools-access-layout"
-            lazy={metabotLayout({
-              fullWidth: true,
-              innerContentProps: { fullWidth: true, fullHeight: true },
-            })}
-          >
-            {PLUGIN_AI_CONTROLS.getMcpToolsAccessRoutes()}
           </Route>
           <Route
             key="layout"

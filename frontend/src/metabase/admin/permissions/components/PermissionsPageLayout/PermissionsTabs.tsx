@@ -14,7 +14,8 @@ interface PermissionsTabsProps {
   onChangeTab: (tab: PermissionsPageTab) => void;
 }
 
-export const PermissionsTabs = ({ tab, onChangeTab }: PermissionsTabsProps) => {
+/** The permission editor sections, shared by the hub's tabs and the admin nav. */
+export function usePermissionsTabs(): { name: string; value: string }[] {
   const isUsingTenants = useSetting("use-tenants");
 
   const adminPermissionsTabs = isUsingTenants
@@ -25,12 +26,16 @@ export const PermissionsTabs = ({ tab, onChangeTab }: PermissionsTabsProps) => {
           tab.value !== "tenant-specific-collections",
       );
 
-  const tabs = [
+  return [
     { name: t`Data`, value: "data" },
     { name: t`Collections`, value: "collections" },
     ...adminPermissionsTabs,
     ...PLUGIN_APPLICATION_PERMISSIONS.tabs,
   ];
+}
+
+export const PermissionsTabs = ({ tab, onChangeTab }: PermissionsTabsProps) => {
+  const tabs = usePermissionsTabs();
 
   return (
     <Box mt="sm">

@@ -65,7 +65,7 @@ export function McpToolsAccessPage() {
 
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Stack gap="sm">
-          <Title order={1}>{t`MCP tools access`}</Title>
+          <Title order={1}>{t`MCP tool access`}</Title>
           <Text c="text-secondary" lh={1.5} maw="40rem">
             {t`Choose which MCP tools each group's AI clients can use. Administrators always have every tool, and people still need their usual data and collection permissions.`}
           </Text>

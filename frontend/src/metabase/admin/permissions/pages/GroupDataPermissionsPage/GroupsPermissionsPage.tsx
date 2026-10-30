@@ -18,6 +18,7 @@ import {
   getGroupsSidebar,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
+  isEmbeddingHubPermissions,
   loadDataPermissionsForGroup,
   parseGroupRouteParams,
   updateDataPermission,
@@ -137,7 +138,10 @@ export function GroupsPermissionsPage() {
       <PermissionsSidebar
         {...sidebar}
         onSelect={navigateToItem}
-        onEntityChange={handleEntityChange}
+        // Admin picks "By group" / "By database" from the side nav instead.
+        onEntityChange={
+          isEmbeddingHubPermissions() ? handleEntityChange : undefined
+        }
       />
 
       {isLoading && (
