@@ -14,6 +14,7 @@ import { isFeatureGatedRoute } from "metabase-enterprise/settings/feature-gated-
 import { getRoutes as getTableEditingRoutes } from "metabase-enterprise/table-editing/routes";
 import { getInspectorRoutes } from "metabase-enterprise/transforms-inspector/routes";
 import { getPythonTransformsRoutes } from "metabase-enterprise/transforms-python/routes";
+import { getTransformTestRoutes } from "metabase-enterprise/transforms-testing/routes";
 
 /**
  * A plugin route factory names its page in an `import()` rather than importing
@@ -44,10 +45,11 @@ const FACTORIES: [string, ReactNode, number][] = [
   ["transforms inspector", getInspectorRoutes(), 2],
   ["application permissions", getApplicationPermissionsRoutes(), 1],
   ["table editing", getTableEditingRoutes(), 1],
-  ["python transforms", getPythonTransformsRoutes(), 2],
+  ["python transforms", getPythonTransformsRoutes(), 3],
   ["model replacement", getTransformToolsRoutes(), 1],
-  ["data studio dependencies", getDataStudioDependencyRoutes(), 1],
+  ["data studio dependencies", getDataStudioDependencyRoutes(), 2],
   ["data apps", getDataAppRoutes(), 3],
+  ["transform tests", getTransformTestRoutes(), 3],
 ];
 
 describe("lazy plugin routes", () => {

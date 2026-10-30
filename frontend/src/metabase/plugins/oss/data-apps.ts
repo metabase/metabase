@@ -8,7 +8,9 @@ import { definePluginSlot } from "../slot";
 export type DataAppsPlugin = {
   isEnabled: boolean;
   getRoutes: () => ReactNode | null;
-  getDataStudioRoutes: (IsAdmin: ComponentType) => ReactNode | null;
+  // Optional, not a no-op default: an OSS build has no plugin to fill this, and
+  // the mount reads the absence to put its upsell page in its place.
+  getDataStudioRoutes?: (IsAdmin: ComponentType) => ReactNode | null;
   MainNavbarSection: ComponentType<{ onItemSelect: () => void }>;
   /**
    * The data apps the user can read. `data` is undefined until the list loads, and always without the data apps
@@ -24,7 +26,6 @@ export type DataAppsPlugin = {
 const getDefaultPluginDataApps = (): DataAppsPlugin => ({
   isEnabled: false,
   getRoutes: () => null,
-  getDataStudioRoutes: () => null,
   MainNavbarSection: PluginPlaceholder,
   useDataApps: () => ({ data: undefined, isLoading: false }),
 });
