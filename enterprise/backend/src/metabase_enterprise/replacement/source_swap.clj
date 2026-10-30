@@ -2,16 +2,9 @@
   "Swap sources namespace. Entrypoint is [[swap-source!]]. Internally, we rely on the field references having been
   already upgraded. Then we only have to swap concrete usages.
 
-  We also need to update dependencies, which we do in two ways. We explicitly
-  call [[models.dependency/swap-dependency!]] regardless of whether the query actually changed (dependency edges may
-  shift even without query text changes). Then we fire the entity's update event only when actual changes occurred;
-  the event handler will redo dependency calculation, but also triggers other necessary side-effects like revisions.
-  This means dependency analysis runs twice when there are changes, which is intentional: suppressing the event
-  handler's dependency work would be complicated and could risk the dep graph getting out of sync. If we measure a
-  performance problem here, that would be a good optimization step. In practice most swaps don't change queries
-  (the table was already upgraded and the query references are the same), so this is rarely an issue."
+  We write an entity only when the swap changes it, then fire its update event for side effects like revisions. Its
+  dependencies follow from the write: the model hooks mark it stale and the backfill job recomputes its edges."
   (:require
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.walk :as replacement.walk]
@@ -20,7 +13,8 @@
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as queries.query]
    [metabase.source-swap.core :as source-swap]
-   [metabase.visualization-settings.core :as vs]))
+   [metabase.visualization-settings.core :as vs]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,7 +26,6 @@
             changes (cond-> {}
                       (not= query query')
                       (assoc :source (assoc (:source transform) :query query')))]
-        (models.dependency/swap-dependency! :transform (:id transform) old-source new-source)
         (when (seq changes)
           (replacement.db/update-transform! (:id transform) changes)
           (events/publish-event! :event/transform-update
@@ -51,24 +44,49 @@
               card-id))]
     (replacement.walk/walk-parameter-source-card-ids (or parameters []) swap-card-id)))
 
+(defn- reads-card?
+  "Whether `goal-value` is a dynamic goal reading the card with `card-id`."
+  [goal-value card-id]
+  (= {:type "card" :id card-id} (select-keys (dynamic-goals/goal-source goal-value) [:type :id])))
+
+(defn- goal-reads?
+  "Whether a dynamic goal in `viz-settings`, visualizer goals included, reads the card `[:card id]`."
+  [viz-settings [source-type source-id]]
+  (and (= :card source-type)
+       (some #(reads-card? % source-id) (dynamic-goals/dashcard-goal-values viz-settings))))
+
+(defn- swap-goal-refs
+  "Point dynamic goals that read `old-source` at `new-source`. Only a card-to-card swap rewrites them, since a goal
+  can't read a table or a transform."
+  [viz-settings [old-type old-id :as old-source] [new-type new-id]]
+  (if (and (map? viz-settings) (= :card old-type new-type) (goal-reads? viz-settings old-source))
+    (dynamic-goals/update-dashcard-goal-values viz-settings
+                                               #(cond-> % (reads-card? % old-id) (assoc :id new-id)))
+    viz-settings))
+
 (defn- card-swap-source!
   [card old-source new-source]
   (when (replacement.util/valid-query? (:dataset_query card))
-    (let [query       (:dataset_query card)
-          query'      (source-swap/swap-source-in-query query old-source new-source)
-          table-id    (:table_id card)
-          table-id'   (:table-id (queries.query/query->database-and-table-ids query'))
-          parameters  (or (:parameters card) [])
-          parameters' (swap-parameter-source-card-id parameters old-source new-source)
-          changes     (cond-> {}
-                        (not= query query')
-                        (assoc :dataset_query query')
+    (let [query         (:dataset_query card)
+          query'        (source-swap/swap-source-in-query query old-source new-source)
+          table-id      (:table_id card)
+          table-id'     (:table-id (queries.query/query->database-and-table-ids query'))
+          parameters    (or (:parameters card) [])
+          parameters'   (swap-parameter-source-card-id parameters old-source new-source)
+          viz-settings  (:visualization_settings card)
+          viz-settings' (swap-goal-refs viz-settings old-source new-source)
+          changes       (cond-> {}
+                          (not= viz-settings viz-settings')
+                          (assoc :visualization_settings viz-settings')
 
-                        (not= table-id table-id')
-                        (assoc :table_id table-id')
+                          (not= query query')
+                          (assoc :dataset_query query')
 
-                        (not= parameters parameters')
-                        (assoc :parameters parameters'))
+                          (not= table-id table-id')
+                          (assoc :table_id table-id')
+
+                          (not= parameters parameters')
+                          (assoc :parameters parameters'))
           ;; `:result_metadata` is set to nil for native queries if not present in changes.
           ;; `verified-result-metadata?` prevents the Card model hooks from clearing it.
           changes   (cond-> changes
@@ -76,7 +94,6 @@
                            (lib/native-only-query? query'))
                       (assoc :result_metadata (:result_metadata card)
                              :verified-result-metadata? true))]
-      (models.dependency/swap-dependency! :card (:id card) old-source new-source)
       (when (seq changes)
         (replacement.db/update-card! (:id card) changes)
         (events/publish-event! :event/card-update
@@ -96,7 +113,6 @@
                       (assoc :definition query')
                       (not= table-id table-id')
                       (assoc :table_id table-id'))]
-      (models.dependency/swap-dependency! :segment (:id segment) old-source new-source)
       (when (seq changes)
         (replacement.db/update-segment! (:id segment) changes)
         (events/publish-event! :event/segment-update
@@ -114,7 +130,6 @@
                       (assoc :definition query')
                       (not= table-id table-id')
                       (assoc :table_id table-id'))]
-      (models.dependency/swap-dependency! :measure (:id measure) old-source new-source)
       (when (seq changes)
         (replacement.db/update-measure! (:id measure) changes)
         (events/publish-event! :event/measure-update
@@ -139,7 +154,8 @@
         viz-settings'       (some-> viz-settings
                                     vs/db->norm
                                     (replacement.walk/walk-viz-settings-click-behaviors update-fn)
-                                    vs/norm->db)
+                                    vs/norm->db
+                                    (swap-goal-refs old-source new-source))
         changes (cond-> {}
                   (not= parameter-mappings parameter-mappings')
                   (assoc :parameter_mappings parameter-mappings')

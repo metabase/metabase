@@ -215,6 +215,29 @@
         (t2/update! :model/Card :id card-id {:dataset_query (table-query :orders)})
         (is (pending? :card card-id))))))
 
+(deftest card-goal-edit-marks-dependencies-test
+  (testing "editing a card's viz settings, where dynamic goals live, marks its dependencies stale"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
+        (computed! :card card-id)
+        (t2/update! :model/Card :id card-id {:visualization_settings
+                                             {:graph.goal_value {:id card-id :type "card" :column "count"}}})
+        (is (pending? :card card-id))))))
+
+(deftest card-goal-only-edit-recalculates-dependencies-test
+  (testing "adding a dynamic goal to a card, and nothing else, records the card it reads as a dependency"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+        (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (table-query :orders)}
+                       :model/Card {card-id :id}      {:dataset_query (table-query :products)}]
+          (deps.test/synchronously-run-dependency-job!)
+          (t2/update! :model/Card :id card-id {:visualization_settings
+                                               {:graph.goal_value {:id goal-card-id :type "card" :column "count"}}})
+          (deps.test/synchronously-run-dependency-job!)
+          (is (t2/exists? :model/Dependency
+                          :from_entity_type :card :from_entity_id card-id
+                          :to_entity_type :card :to_entity_id goal-card-id)))))))
+
 (deftest dashboard-parts-mark-dashboard-test
   (testing "inserting, updating and deleting a dashboard card, a series or a tab marks the dashboard's dependencies stale"
     (mt/test-helpers-set-global-values!

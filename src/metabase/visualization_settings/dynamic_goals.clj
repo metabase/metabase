@@ -37,6 +37,10 @@
     (cond-> (select-keys goal-value [:id :type :column])
       (keyword? (:type goal-value)) (update :type u/qualified-name))))
 
+(def goal-entity-types
+  "The entity `:type`s a dynamic goal can reference."
+  #{"card" "measure"})
+
 (defn- values-in
   [viz-settings settings]
   (->> settings

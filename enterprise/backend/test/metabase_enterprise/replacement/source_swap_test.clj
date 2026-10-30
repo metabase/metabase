@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
    [metabase.events.core :as events]
@@ -147,6 +148,140 @@
             (is (= old-source-id
                    (-> (t2/select-one :model/Card :id card-id)
                        :parameters first :values_source_config :card_id)))))))))
+
+(deftest card-swap-source!-dynamic-goal-card-to-card-test
+  (testing "swap-source! points a dynamic goal reading the old card at the new one, and moves its dependency with it"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp       (mt/metadata-provider)
+              orders   (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              products (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+          (mt/with-temp [:model/Card {old-source-id :id} {:dataset_query orders}
+                         :model/Card {new-source-id :id} {:dataset_query orders}
+                         :model/Card {card-id :id}
+                         {:dataset_query          products
+                          :visualization_settings {:graph.goal_value {:id old-source-id :type "card" :column "count"}}}]
+            (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+              (deps.test/synchronously-run-dependency-job!)
+              (replacement.source-swap/swap-source! [:card card-id]
+                                                    [:card old-source-id]
+                                                    [:card new-source-id])
+              (deps.test/synchronously-run-dependency-job!)
+              (is (= {:id new-source-id :type "card" :column "count"}
+                     (:graph.goal_value (t2/select-one-fn :visualization_settings :model/Card :id card-id))))
+              (is (not (t2/exists? :model/Dependency
+                                   :from_entity_type :card :from_entity_id card-id
+                                   :to_entity_type :card :to_entity_id old-source-id)))
+              (is (t2/exists? :model/Dependency
+                              :from_entity_type :card :from_entity_id card-id
+                              :to_entity_type :card :to_entity_id new-source-id)))))))))
+
+(deftest card-swap-source!-dynamic-goal-card-to-table-test
+  (testing "swap-source! to a table leaves a dynamic goal, which can't read a table, and its dependency on the old card"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp       (mt/metadata-provider)
+              orders   (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              products (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+          (mt/with-temp [:model/Card {old-source-id :id} {:dataset_query orders}
+                         :model/Card {card-id :id}
+                         {:dataset_query          products
+                          :visualization_settings {:graph.goal_value {:id old-source-id :type "card" :column "count"}}}]
+            (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+              (deps.test/synchronously-run-dependency-job!)
+              (replacement.source-swap/swap-source! [:card card-id]
+                                                    [:card old-source-id]
+                                                    [:table (mt/id :orders)])
+              (deps.test/synchronously-run-dependency-job!)
+              (is (= old-source-id
+                     (-> (t2/select-one-fn :visualization_settings :model/Card :id card-id) :graph.goal_value :id)))
+              (is (t2/exists? :model/Dependency
+                              :from_entity_type :card :from_entity_id card-id
+                              :to_entity_type :card :to_entity_id old-source-id)))))))))
+
+(deftest card-swap-source!-dynamic-goal-refused-write-test
+  (testing "swap-source! leaves a dynamic goal's dependency on the old card when the write of the rewritten goal fails"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp       (mt/metadata-provider)
+              orders   (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              products (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+          (mt/with-temp [:model/Card {old-source-id :id} {:dataset_query orders}
+                         :model/Card {new-source-id :id} {:dataset_query orders}
+                         :model/Card {card-id :id}
+                         {:dataset_query          products
+                          :visualization_settings {:graph.goal_value {:id old-source-id :type "card" :column "count"}}}]
+            (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+              (deps.test/synchronously-run-dependency-job!)
+              (mt/with-dynamic-fn-redefs [replacement.db/update-card! (fn [& _] (throw (ex-info "refused" {})))]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"refused"
+                                      (replacement.source-swap/swap-source! [:card card-id]
+                                                                            [:card old-source-id]
+                                                                            [:card new-source-id]))))
+              (deps.test/synchronously-run-dependency-job!)
+              (is (t2/exists? :model/Dependency
+                              :from_entity_type :card :from_entity_id card-id
+                              :to_entity_type :card :to_entity_id old-source-id))
+              (is (not (t2/exists? :model/Dependency
+                                   :from_entity_type :card :from_entity_id card-id
+                                   :to_entity_type :card :to_entity_id new-source-id))))))))))
+
+(deftest card-swap-source!-dynamic-goal-unreadable-new-source-test
+  (testing "swap-source! to a card the user can't read is refused; the goal and its dependency stay on the old card"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [mp       (mt/metadata-provider)
+              orders   (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              products (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Card {old-source-id :id} {:dataset_query orders}
+                         :model/Card {new-source-id :id} {:dataset_query orders :collection_id collection-id}
+                         :model/Card {card-id :id}
+                         {:dataset_query          products
+                          :visualization_settings {:graph.goal_value {:id old-source-id :type "card" :column "count"}}}]
+            (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+              (deps.test/synchronously-run-dependency-job!)
+              (mt/with-test-user :rasta
+                (is (= 403 (try
+                             (replacement.source-swap/swap-source! [:card card-id]
+                                                                   [:card old-source-id]
+                                                                   [:card new-source-id])
+                             :no-error
+                             (catch clojure.lang.ExceptionInfo e
+                               (:status-code (ex-data e)))))))
+              (deps.test/synchronously-run-dependency-job!)
+              (is (= old-source-id
+                     (-> (t2/select-one-fn :visualization_settings :model/Card :id card-id) :graph.goal_value :id)))
+              (is (t2/exists? :model/Dependency
+                              :from_entity_type :card :from_entity_id card-id
+                              :to_entity_type :card :to_entity_id old-source-id)))))))))
+
+(deftest card-swap-source!-dynamic-goal-and-query-card-to-table-test
+  (testing "swap-source! to a table moves a query's read of the old card to the table and keeps the goal's"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp     (mt/metadata-provider)
+              orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+          (mt/with-temp [:model/Card {old-source-id :id} {:dataset_query orders}
+                         :model/Card {card-id :id}
+                         {:dataset_query          {:lib/type :mbql/query
+                                                   :database (mt/id)
+                                                   :stages   [{:lib/type    :mbql.stage/mbql
+                                                               :source-card old-source-id}]}
+                          :visualization_settings {:graph.goal_value {:id old-source-id :type "card" :column "count"}}}]
+            (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+              (replacement.field-refs/upgrade-field-refs! [:card card-id])
+              (deps.test/synchronously-run-dependency-job!)
+              (replacement.source-swap/swap-source! [:card card-id]
+                                                    [:card old-source-id]
+                                                    [:table (mt/id :orders)])
+              (deps.test/synchronously-run-dependency-job!)
+              (is (= (mt/id :orders)
+                     (get-in (t2/select-one :model/Card :id card-id) [:dataset_query :stages 0 :source-table])))
+              (is (= #{[:card old-source-id] [:table (mt/id :orders)]}
+                     (into #{}
+                           (map (juxt :to_entity_type :to_entity_id))
+                           (t2/select :model/Dependency :from_entity_type :card :from_entity_id card-id)))))))))))
 
 ;;; ------------------------------------------------ Transform --------------------------------------------------------
 
@@ -307,6 +442,39 @@
                    (-> (t2/select-one :model/Dashboard :id dashboard-id)
                        :parameters first :values_source_config :card_id)))))))))
 
+(deftest dashboard-swap-source!-dynamic-goals-card-to-card-test
+  (testing "swap-source! points dashcard dynamic goals reading the old card at the new one, visualizer goals included"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp       (mt/metadata-provider)
+              orders   (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              products (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+          (mt/with-temp [:model/Card          {old-source-id :id} {:dataset_query orders}
+                         :model/Card          {new-source-id :id} {:dataset_query orders}
+                         :model/Card          {shown-card-id :id} {:dataset_query products}
+                         :model/Dashboard     {dashboard-id :id}  {}
+                         :model/DashboardCard {dashcard-id :id}
+                         {:dashboard_id           dashboard-id
+                          :card_id                shown-card-id
+                          :visualization_settings {:progress.goal {:id old-source-id :type "card" :column "count"}}}
+                         :model/DashboardCard {visualizer-dashcard-id :id}
+                         {:dashboard_id           dashboard-id
+                          :card_id                shown-card-id
+                          :visualization_settings {:visualization
+                                                   {:display  "progress"
+                                                    :settings {:progress.goal {:id     old-source-id
+                                                                               :type   "card"
+                                                                               :column "count"}}}}}]
+            (replacement.source-swap/swap-source! [:dashboard dashboard-id]
+                                                  [:card old-source-id]
+                                                  [:card new-source-id])
+            (is (= new-source-id
+                   (-> (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
+                       :progress.goal :id)))
+            (is (= new-source-id
+                   (-> (t2/select-one-fn :visualization_settings :model/DashboardCard :id visualizer-dashcard-id)
+                       (get-in [:visualization :settings :progress.goal :id]))))))))))
+
 (deftest dashboard-swap-source!-parameter-mappings-card-to-card-test
   (testing "swap-source! should walk parameter mapping targets without corruption during card-to-card swap"
     (mt/with-premium-features #{:dependencies}
@@ -427,6 +595,7 @@
               (replacement.source-swap/swap-source! [:card card-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
+              (deps.test/synchronously-run-dependency-job!)
               (is (not (t2/exists? :model/Dependency
                                    :from_entity_type :card :from_entity_id card-id
                                    :to_entity_type :table :to_entity_id (mt/id :orders)))
@@ -456,6 +625,7 @@
               (replacement.source-swap/swap-source! [:segment segment-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
+              (deps.test/synchronously-run-dependency-job!)
               (is (not (t2/exists? :model/Dependency
                                    :from_entity_type :segment :from_entity_id segment-id
                                    :to_entity_type :table :to_entity_id (mt/id :orders)))
@@ -486,6 +656,7 @@
               (replacement.source-swap/swap-source! [:measure measure-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
+              (deps.test/synchronously-run-dependency-job!)
               (is (not (t2/exists? :model/Dependency
                                    :from_entity_type :measure :from_entity_id measure-id
                                    :to_entity_type :table :to_entity_id (mt/id :orders)))
@@ -515,6 +686,7 @@
               (replacement.source-swap/swap-source! [:transform transform-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
+              (deps.test/synchronously-run-dependency-job!)
               (is (not (t2/exists? :model/Dependency
                                    :from_entity_type :transform :from_entity_id transform-id
                                    :to_entity_type :table :to_entity_id (mt/id :orders)))
