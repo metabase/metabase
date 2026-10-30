@@ -2,12 +2,14 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.cmd.core :as cmd]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -25,6 +27,26 @@
                                                          (throw (ex-info "Do not call me!" {})))]
           (is (thrown-with-msg? Exception #"Destination path is not writeable: "
                                 (cmd/export dump-dir))))))))
+
+(deftest import-query-schema-refusal-hint-test
+  (testing "GHY-4971: a query schema refusal tells CLI users how to skip the entity with their own flag"
+    (let [refusal (try
+                    (serdes/import-mbql {:lib/type :mbql/query :database 1 :stages []})
+                    nil
+                    (catch clojure.lang.ExceptionInfo e e))]
+      (is (serdes/query-schema-refusal? refusal))
+      (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal!
+                                  (fn [& _]
+                                    (throw (ex-info "Failed to load into database for Card x" {} refusal)))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"--continue-on-error"
+                              (serialization.cmd/v2-load! "/does/not/matter" {}))))))
+  (testing "other load failures get no hint"
+    (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal!
+                                (fn [& _] (throw (ex-info "Collection 'DoesNotExist' was not found" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"^Collection 'DoesNotExist' was not found$"
+                            (serialization.cmd/v2-load! "/does/not/matter" {}))))))
 
 (deftest snowplow-events-test
   (testing "Snowplow events are correctly sent"

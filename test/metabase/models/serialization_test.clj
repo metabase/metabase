@@ -432,6 +432,21 @@
            #"does not match this Metabase's query schema"
            (serdes/import-mbql query-with-unknown-tag-type))))))
 
+(deftest ^:parallel query-schema-refusal-names-only-universal-options-test
+  (testing (str "GHY-4971: the refusal is shared by every import path, so it suggests only the env var they all honor. "
+                "Remote Sync has no continue-on-error, so naming it there sends admins after an option they lack.")
+    (let [e (try
+              (serdes/import-mbql query-with-unknown-tag-type)
+              nil
+              (catch clojure.lang.ExceptionInfo e e))]
+      (is (some? e))
+      (is (re-find #"MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION" (ex-message e)))
+      (is (not (re-find #"(?i)continue.on.error" (ex-message e))))
+      (testing "callers can recognize the refusal under the wrappers a load adds, to add their own hints"
+        (is (serdes/query-schema-refusal? (ex-info "Failed to load into database for Card x" {} e)))
+        (is (not (serdes/query-schema-refusal? (ex-info "Failed to load into database for Card x" {}))))
+        (is (not (serdes/query-schema-refusal? nil)))))))
+
 (deftest ^:parallel import-mbql-schema-validation-opt-out-test
   (testing "GHY-4241: binding *skip-schema-validation?* disables the schema check"
     ;; Skipping does not make the import succeed - `repair-card-template-tag-names` rejects a tag type it does not
