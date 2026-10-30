@@ -30,12 +30,14 @@ enum DisabledReasonKey {
   NoWriteableTable = "permissions/no-writable-table",
   SyncInProgress = "database-metadata/sync-in-progress",
   DatabaseEmpty = "database-metadata/not-populated",
+  DatabaseRouting = "setting/database-routing",
 }
 
 const VISIBLE_REASONS: string[] = [
   DisabledReasonKey.NoWriteableTable,
   DisabledReasonKey.SyncInProgress,
   DisabledReasonKey.DatabaseEmpty,
+  DisabledReasonKey.DatabaseRouting,
 ];
 
 export function AdminDatabaseTableEditingSection({
