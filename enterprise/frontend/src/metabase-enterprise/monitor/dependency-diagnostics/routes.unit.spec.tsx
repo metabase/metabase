@@ -11,6 +11,7 @@ import {
   setupUpdateCollectionEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   act,
   mockGetBoundingClientRect,
@@ -38,6 +39,7 @@ import {
   createMockCollection,
   createMockListBrokenGraphNodesResponse,
   createMockListUnreferencedGraphNodesResponse,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -126,7 +128,14 @@ function setup({
     {
       withRouter: true,
       initialRoute,
-      storeInitialState: { currentUser: createMockUser() },
+      storeInitialState: {
+        currentUser: createMockUser(),
+        // The pages are gated on the feature at render time, so the tree alone
+        // puts their upsell page on screen.
+        settings: mockSettings({
+          "token-features": createMockTokenFeatures({ dependencies: true }),
+        }),
+      },
     },
   );
 }
