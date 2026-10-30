@@ -720,10 +720,29 @@ describe("QB Actions > initializeQB", () => {
     }
 
     function getQueryText(card: Card, metadata: Metadata) {
-      return checkNotNull(new Question(card, metadata).legacyNativeQuery())
-        .queryText()
-        .toLowerCase();
+      return checkNotNull(
+        new Question(card, metadata).legacyNativeQuery(),
+      ).queryText();
     }
+
+    function isDirty(
+      { card, originalCard }: { card: Card; originalCard: Card },
+      metadata: Metadata,
+    ) {
+      return new Question(card, metadata).isDirtyComparedTo(
+        new Question(originalCard, metadata),
+      );
+    }
+
+    it("fetches the card that the tag references", async () => {
+      await setupCardReference({ tagName: "#10-bobs-cafe" });
+
+      expect(rtkEndpointUtils.runRtkEndpoint).toHaveBeenCalledWith(
+        { id: REFERENCED_CARD.id, ignore_error: true },
+        expect.anything(),
+        cardApi.endpoints.getCard,
+      );
+    });
 
     it("keeps a card reference unchanged when its tag name matches the name the frontend generates", async () => {
       const { result, metadata } = await setupCardReference({
@@ -731,11 +750,20 @@ describe("QB Actions > initializeQB", () => {
       });
 
       expect(getQueryText(result.card, metadata)).toBe(
-        "select * from {{#10-bobs-cafe}}",
+        "SELECT * FROM {{#10-bobs-cafe}}",
       );
+      expect(isDirty(result, metadata)).toBe(false);
+    });
+
+    it("renames a card reference whose tag name does not match the name the frontend generates", async () => {
+      const { result, metadata } = await setupCardReference({
+        tagName: "#10-foo",
+      });
+
       expect(getQueryText(result.card, metadata)).toBe(
-        getQueryText(result.originalCard, metadata),
+        "SELECT * FROM {{#10-bobs-cafe}}",
       );
+      expect(isDirty(result, metadata)).toBe(true);
     });
   });
 
