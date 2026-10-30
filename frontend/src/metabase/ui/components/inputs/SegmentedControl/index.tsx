@@ -1,6 +1,6 @@
 import type { SegmentedControlProps as MantineSegmentedControlProps } from "@mantine/core";
 import { SegmentedControl as MantineSegmentedControl } from "@mantine/core";
-import type { FocusEvent, KeyboardEvent, ReactElement, Ref } from "react";
+import type { FocusEvent, KeyboardEvent, ReactElement } from "react";
 
 import type { IconName } from "metabase-types/api";
 
@@ -167,10 +167,9 @@ function SegmentedControlItemBody({
                 size={LABELLED_ICON_SIZE}
               />
             )}
-            <SegmentedControlItemLabelText
-              label={content.label}
-              textRef={labelTextRef}
-            />
+            <span ref={labelTextRef} className={S.SegmentedControlLabelText}>
+              {content.label}
+            </span>
           </>
         ) : (
           <SegmentedControlItemIcon
@@ -181,30 +180,6 @@ function SegmentedControlItemBody({
         )}
       </span>
     </Tooltip>
-  );
-}
-
-type SegmentedControlItemLabelTextProps = {
-  label: string;
-  textRef: Ref<HTMLSpanElement>;
-};
-
-function SegmentedControlItemLabelText({
-  label,
-  textRef,
-}: SegmentedControlItemLabelTextProps) {
-  return (
-    <span className={S.SegmentedControlLabelText}>
-      <span ref={textRef} className={S.SegmentedControlLabelTextVisible}>
-        {label}
-      </span>
-      {/* Gives the segment its width, see the CSS. Its text comes from CSS, so the label isn't in the DOM twice. */}
-      <span
-        className={S.SegmentedControlLabelTextSizer}
-        data-label={label}
-        aria-hidden
-      />
-    </span>
   );
 }
 

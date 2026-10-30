@@ -15,6 +15,10 @@
   }
 }
 
+.SegmentedControl_Control {
+  min-width: 0;
+}
+
 .SegmentedControlLabel {
   color: var(--mb-color-text-secondary);
   font-weight: bold;
@@ -58,6 +62,7 @@
 .SegmentedControlItemBody {
   display: flex;
   flex: 1;
+  min-width: 0;
   gap: var(--mantine-spacing-xs);
   align-items: center;
   justify-content: center;
@@ -74,44 +79,12 @@
 }
 
 .SegmentedControlLabelText {
-  --segmented-control-label-min-width: 2.5rem;
-
-  display: grid;
+  min-width: 0;
   max-width: var(--segmented-control-label-max-width, none);
-}
-
-.SegmentedControlLabelTextVisible {
-  grid-area: 1 / 1;
-  width: 0;
-  min-width: 100%;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow-x: clip;
   overflow-y: visible;
-}
-
-/* The visible text has no width of its own, so the sizer sets it: ::after
-   asks for the full label, ::before keeps the first few characters when
-   squeezed. */
-.SegmentedControlLabelTextSizer {
-  grid-area: 1 / 1;
-  display: grid;
-  height: 0;
-  visibility: hidden;
-
-  &::before {
-    content: attr(data-label);
-    grid-area: 1 / 1;
-    max-width: var(--segmented-control-label-min-width);
-    white-space: nowrap;
-  }
-
-  &::after {
-    content: attr(data-label);
-    grid-area: 1 / 1;
-    white-space: normal;
-    word-break: break-all;
-  }
 }
 
 .SegmentedControlIndicator {
