@@ -23,6 +23,8 @@
   (:import
    (java.sql SQLException)))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel exception-chain-test
   (testing "Should be able to get a sequence of exceptions by following causes, with the top-level Exception first"
     (let [e1 (ex-info "1" {:level 1})
