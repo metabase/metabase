@@ -449,8 +449,8 @@
       (fn [{:keys [outer]}]
         (mt/with-test-user :rasta
           (is (= 1 (t2/update! :model/Segment :id (:id outer) {:name (mt/random-name), :description "new"
-                                                           :caveats "c", :points_of_interest "p"
-                                                           :show_in_getting_started true}))))))
+                                                               :caveats "c", :points_of_interest "p"
+                                                               :show_in_getting_started true}))))))
     (with-measure-policy
       (fn [{:keys [measure]}]
         (mt/with-test-user :rasta
@@ -460,7 +460,7 @@
         (mt/with-temp [:model/Collection coll {:namespace "snippets"}]
           (mt/with-test-user :rasta
             (is (= 1 (t2/update! :model/NativeQuerySnippet :id (:id outer) {:description "new"
-                                                                        :collection_id (:id coll)})))))))))
+                                                                            :collection_id (:id coll)})))))))))
 
 (deftest non-admin-cannot-rewrite-a-policy-snippet-through-the-api-test
   (testing "SEC-1094: a non-admin with native access to an unrelated Database only cannot rewrite a policy snippet"
