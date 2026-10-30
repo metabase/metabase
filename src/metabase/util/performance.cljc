@@ -593,7 +593,7 @@
         outer)
 
     ;; Don't care much about optimizing seq and generic coll cases. When efficiency is required, use vectors.
-    (seq? form) (outer (add-original-meta (list* (mapv inner form)) form))
+    (seq? form) (outer (add-original-meta (or (seq (mapv inner form)) ()) form))
     (coll? form) (outer (add-original-meta (into (empty form) (map inner) form) form))
     :else (outer form)))
 

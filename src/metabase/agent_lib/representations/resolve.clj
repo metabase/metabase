@@ -28,7 +28,6 @@
   the result is a Clojure map matching the external (keyword-keyed) shape, ready for JSON
   encoding or for handing back to the LLM as the canonical MBQL 5 representation."
   (:require
-   [clojure.walk :as walk]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -88,22 +87,13 @@
 
   Idempotent: clauses that already carry `:base-type` are left unchanged."
   [pmbql-query metadata-provider]
-  (walk/postwalk
-   (fn [node]
-     (if (and (vector? node)
-              (= :field (nth node 0 nil))
-              (map? (nth node 1 nil))
-              (pos-int? (nth node 2 nil))
-              (not (contains? (nth node 1) :base-type)))
-       (let [field (lib.metadata.protocols/field metadata-provider (nth node 2))]
-         (if (:base-type field)
-           (update node 1 (fn [opts]
-                            (cond-> (assoc opts :base-type (:base-type field))
-                              (:effective-type field)
-                              (assoc :effective-type (:effective-type field)))))
-           node))
-       node))
-   pmbql-query))
+  (match/replace-all pmbql-query
+    [:field (opts :guard (and (map? opts) (not (contains? opts :base-type)))) (field-id :guard pos-int?) & _]
+    (let [{:keys [base-type effective-type]} (lib.metadata.protocols/field metadata-provider field-id)]
+      (if base-type
+        (assoc &match 1 (cond-> (assoc opts :base-type base-type)
+                          effective-type (assoc :effective-type effective-type)))
+        &match))))
 
 (defn- annotate-metric-and-measure-ref-types
   "BOT-1901: Stamp `:effective-type` on `:metric` / `:measure` refs missing it, computed
@@ -111,22 +101,18 @@
   :metadata/metric`. Untyped refs poison arithmetic type inference in
   [[metabase.agent-lib.representations.repair/assert-editor-accepts-expressions!]]"
   [pmbql-query]
-  (walk/postwalk
-   (fn [node]
-     (if (and (vector? node)
-              (#{:metric :measure} (nth node 0 nil))
-              (map? (nth node 1 nil))
-              (pos-int? (nth node 2 nil))
-              (not (contains? (nth node 1) :effective-type)))
-       (let [md (case (nth node 0)
-                  :metric  (lib.metadata/metric pmbql-query (nth node 2))
-                  :measure (lib.metadata/measure pmbql-query (nth node 2)))
-             t  (when md (lib.metadata.calculation/type-of pmbql-query md))]
-         (if (and t (isa? t :type/*) (not= t :type/*))
-           (update node 1 assoc :effective-type t)
-           node))
-       node))
-   pmbql-query))
+  (match/replace-all pmbql-query
+    [(tag :guard #{:metric :measure})
+     (opts :guard (and (map? opts) (not (contains? opts :effective-type))))
+     (id :guard pos-int?)
+     & _]
+    (let [md (case tag
+               :metric  (lib.metadata/metric pmbql-query id)
+               :measure (lib.metadata/measure pmbql-query id))
+          t  (when md (lib.metadata.calculation/type-of pmbql-query md))]
+      (if (and t (isa? t :type/*) (not= t :type/*))
+        (assoc &match 1 (assoc opts :effective-type t))
+        &match))))
 
 (defn- assert-parseable-temporal-literal!
   "Throw an agent-facing error if temporal string `s` is not a real date / datetime / year /
