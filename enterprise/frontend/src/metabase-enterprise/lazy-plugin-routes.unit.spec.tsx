@@ -7,6 +7,7 @@ import {
 } from "metabase-enterprise/ai-controls/routes";
 import { getApplicationPermissionsRoutes } from "metabase-enterprise/application_permissions/routes";
 import { getRoutes as getDataAppRoutes } from "metabase-enterprise/data-apps/host/routes";
+import { getTransformTestRoutes } from "metabase-enterprise/data-testing/routes";
 import { getDataStudioDependencyRoutes } from "metabase-enterprise/dependencies/routes";
 import { getTransformToolsRoutes } from "metabase-enterprise/replacement/routes";
 import { getDataStudioSchemaViewerRoutes } from "metabase-enterprise/schema_viewer/routes";
@@ -44,10 +45,11 @@ const FACTORIES: [string, ReactNode, number][] = [
   ["transforms inspector", getInspectorRoutes(), 2],
   ["application permissions", getApplicationPermissionsRoutes(), 1],
   ["table editing", getTableEditingRoutes(), 1],
-  ["python transforms", getPythonTransformsRoutes(), 2],
+  ["python transforms", getPythonTransformsRoutes(), 3],
   ["model replacement", getTransformToolsRoutes(), 1],
-  ["data studio dependencies", getDataStudioDependencyRoutes(), 1],
+  ["data studio dependencies", getDataStudioDependencyRoutes(), 2],
   ["data apps", getDataAppRoutes(), 3],
+  ["transform tests", getTransformTestRoutes(), 3],
 ];
 
 describe("lazy plugin routes", () => {
