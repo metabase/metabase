@@ -49,6 +49,7 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     const [result, setResult] = useState<null | "failed" | "success">(null);
     const timeout = useRef<null | ReturnType<typeof setTimeout>>(null);
     const isMountedRef = useRef(true);
+    const latestActionIdRef = useRef(0);
 
     const resetTimeout = () => {
       if (timeout.current) {
@@ -65,6 +66,8 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     }, []);
 
     const resetState = useCallback(() => {
+      // a reset wins over the result of an action that is still running
+      latestActionIdRef.current += 1;
       resetTimeout();
       setActive(false);
       setResult(null);
@@ -85,19 +88,23 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
       // set state to active
       setActive(true);
       setResult(null);
+      latestActionIdRef.current += 1;
+      const actionId = latestActionIdRef.current;
+      const shouldShowResult = () =>
+        isMountedRef.current && actionId === latestActionIdRef.current;
 
       // run the function we want bound to this button
       actionFn().then(
         () => {
-          if (isMountedRef.current) {
+          if (shouldShowResult()) {
             setActive(false);
             setResult("success");
             resetStateOnTimeout();
           }
         },
         (error: Error) => {
-          if (isMountedRef.current) {
-            console.error(error);
+          console.error(error);
+          if (shouldShowResult()) {
             setActive(false);
             setResult("failed");
             resetStateOnTimeout();
