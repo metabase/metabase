@@ -11,12 +11,12 @@
 [{:id     "multiword-defaults"
   :focus  "default multiword Boolean and cross-field matches"
   :config "simple"
-  :query  "amber cobalt"
-  :docs   {:A {:name "amber"}
-           :B {:name "cobalt"}
-           :C {:name "amber cobalt"}
-           :D {:name "amber", :description "cobalt"}
-           :E {:name "indigo"}}
+  :query  "revenue region"
+  :docs   {:A {:name "Revenue forecast"}
+           :B {:name "Customers by region"}
+           :C {:name "Revenue by region"}
+           :D {:name "Quarterly revenue", :description "Split by sales region"}
+           :E {:name "Product reviews"}}
   ;; In-place's OR favors recall; app-db's AND favors precision.
   ;; Neither default is universally better without knowing the user's intent.
   :expect {:in-place       [:A :B :C :D]
@@ -27,26 +27,26 @@
   [{:focus   "OR across ordinary tokens"
     :correct [:A :B :C :D]
     :alternatives
-    {:appdb-h2       {:query "amber", :hits [:A :C :D]}
-     :appdb-postgres {:query "amber or cobalt", :hits [:A :B :C :D]}}}
+    {:appdb-h2       {:query "revenue", :hits [:A :C :D]}
+     :appdb-postgres {:query "revenue or region", :hits [:A :B :C :D]}}}
    {:focus   "conjunction of substrings"
     :correct [:C :D]
     :alternatives
-    {:in-place {:query "amber", :hits [:A :C :D]}}}]}
+    {:in-place {:query "revenue", :hits [:A :C :D]}}}]}
  {:id     "infix-substring"
   :focus  "infix substring versus lexeme-start completion"
   :config "simple"
-  :query  "hat"
-  :docs   {:A {:name "chatty"}
-           :B {:name "hatter"}
-           :C {:name "top hat"}
-           :D {:name "coat"}}
-  ;; Infix matching finds "hat" in "chatty"; lexeme-prefix matching avoids that likely false positive, but
+  :query  "rate"
+  :docs   {:A {:name "Moderated product reviews"}
+           :B {:name "Exchange rates"}
+           :C {:name "Churn rate"}
+           :D {:name "Average order value"}}
+  ;; Infix matching finds "rate" in "Moderated"; lexeme-prefix matching avoids that likely false positive, but
   ;; cannot serve arbitrary substring lookup.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
            :appdb-postgres [:B :C]
-           :semantic       {:keyword [:B :C], :vector [:C]}}}
+           :semantic       {:keyword [:B :C], :vector [:B]}}}
  {:id     "two-substrings-one-word"
   :focus  "H2 satisfies two required substrings inside one word"
   :config "simple"
@@ -206,15 +206,15 @@
  {:id     "english-stemming"
   :focus  "English stemming of a non-final word"
   :config "english"
-  :query  "running gate"
-  :docs   {:A {:name "running gate"}
-           :B {:name "run gate"}
-           :C {:name "runner gate"}
-           :D {:name "running garden"}
-           :E {:name "run meadow"}}
-  ;; English stemming includes "run gate" for "running gate".
+  :query  "cancelled subscriptions"
+  :docs   {:A {:name "Cancelled subscriptions"}
+           :B {:name "Subscription cancellations"}
+           :C {:name "Cancelled orders"}
+           :D {:name "Active subscriptions"}
+           :E {:name "Refund requests"}}
+  ;; English stemming matches "Subscription cancellations" for "cancelled subscriptions".
   ;; This improves recall for inflections while broadening beyond exact-word matching.
-  :expect {:in-place       [:A :B :C :D]
+  :expect {:in-place       [:A :C :D]
            :appdb-h2       [:A]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A :B :C :D]}}
@@ -222,18 +222,18 @@
   [{:focus   "English stemming"
     :correct [:A :B]
     :alternatives
-    {:in-place {:query "run gate", :hits [:A :B :C :D :E]}
-     :appdb-h2 {:query "run gate", :hits [:A :B :C]}}}]}
+    {:in-place {:query "cancel subscription", :hits [:A :B :C :D]}
+     :appdb-h2 {:query "cancel subscription", :hits [:A :B]}}}]}
  {:id     "simple-no-stemming"
   :focus  "same documents/query with simple rather than English stemming"
   :config "simple"
-  :query  "running gate"
-  :docs   {:A {:name "running gate"}
-           :B {:name "run gate"}
-           :C {:name "runner gate"}
-           :D {:name "running garden"}
-           :E {:name "run meadow"}}
-  :expect {:in-place       [:A :B :C :D]
+  :query  "cancelled subscriptions"
+  :docs   {:A {:name "Cancelled subscriptions"}
+           :B {:name "Subscription cancellations"}
+           :C {:name "Cancelled orders"}
+           :D {:name "Active subscriptions"}
+           :E {:name "Refund requests"}}
+  :expect {:in-place       [:A :C :D]
            :appdb-h2       [:A]
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector [:A :B :C :D]}}}
@@ -266,10 +266,10 @@
   :focus  "vector-only match enters semantic union without lexical overlap"
   :config "simple"
   :query  "customers"
-  :docs   {:A {:name "customers"}
-           :B {:name "clients"}
-           :C {:name "accounts"}
-           :D {:name "amber"}}
+  :docs   {:A {:name "Customers by signup date"}
+           :B {:name "Client list"}
+           :C {:name "Accounts receivable"}
+           :D {:name "Product inventory"}}
   ;; B shares no word with the query but falls within the vector distance cutoff.
   ;; C is related too, but the model places it outside the cutoff.
   :expect {:in-place       [:A]
