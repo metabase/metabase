@@ -29,7 +29,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -257,7 +256,7 @@
   "Uses cache to prevent redundant look-ups with an action call chain."
   [table-id]
   (assert table-id "Id cannot be nil")
-  (cached-database (cached-value [:table-by-db-ids table-id] #(:db_id (warehouse-schema.db/table table-id)))))
+  (cached-database (cached-value [:table-by-db-ids table-id] #(actions.db/table-database-id table-id))))
 
 (mu/defn- check-permissions
   [policy   :- :keyword

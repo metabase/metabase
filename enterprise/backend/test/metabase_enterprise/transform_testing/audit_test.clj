@@ -37,7 +37,7 @@
                 :model    "TransformTest"}
                (mt/latest-audit-log-entry :transform-test-create transform-test-id))))
       (testing "update"
-        (t2/update! :model/TransformTest transform-test-id {:name "Renamed"})
+        (t2/update! :model/TransformTest :id transform-test-id {:name "Renamed"})
         (is (= {:model_id transform-test-id
                 :user_id  (mt/user->id :crowberto)
                 :details  {:transform_id transform-id
@@ -73,7 +73,7 @@
                     :model    "TransformTestRun"}
                    (mt/latest-audit-log-entry :transform-test-run-start run-id))))
           (testing "cluster reaping records the timeout"
-            (t2/update! :model/TransformTestRun run-id {:last_heartbeat (minutes-ago 10)})
+            (t2/update! :model/TransformTestRun :id run-id {:last_heartbeat (minutes-ago 10)})
             (is (= [run-id] (mapv :id (transform-testing.run-tracking/reap-orphaned-runs! 5))))
             (is (= {:model_id run-id
                     :user_id  initiated-by

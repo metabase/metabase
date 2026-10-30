@@ -3,7 +3,7 @@
    [metabase.config.core :as config])
   (:import
    (java.util.concurrent Executors ThreadPoolExecutor)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
+   (org.apache.commons.lang3.concurrent BasicThreadFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -16,7 +16,7 @@
   (delay
     (Executors/newFixedThreadPool thread-pool-max-size
                                   (.build
-                                   (doto (BasicThreadFactory$Builder.)
+                                   (doto (BasicThreadFactory/builder)
                                      (.namingPattern "streaming-response-thread-pool-%d")
                                      ;; Daemon threads do not block shutdown of the JVM
                                      (.daemon true))))))

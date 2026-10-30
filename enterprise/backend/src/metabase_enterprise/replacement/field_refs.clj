@@ -3,15 +3,10 @@
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.walk :as replacement.walk]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.measures.db :as measures.db]
    [metabase.models.visualization-settings :as vs]
-   [metabase.queries.db :as queries.db]
-   [metabase.segments.db :as segments.db]
-   [metabase.source-swap.core :as source-swap]
-   [metabase.transforms.db :as transforms.db]))
+   [metabase.source-swap.core :as source-swap]))
 
 (set! *warn-on-reflection* true)
 
@@ -165,11 +160,11 @@
   `entity` is an optional pre-fetched entity from bulk-load-metadata-for-entities!."
   ([[entity-type entity-id :as entity-ref]]
    (upgrade-field-refs! entity-ref (case entity-type
-                                     :card      (queries.db/card entity-id)
-                                     :transform (transforms.db/transform entity-id)
-                                     :segment   (segments.db/segment entity-id)
-                                     :measure   (measures.db/measure entity-id)
-                                     :dashboard (dashboards.db/dashboard entity-id)
+                                     :card      (replacement.db/card entity-id)
+                                     :transform (replacement.db/transform entity-id)
+                                     :segment   (replacement.db/segment entity-id)
+                                     :measure   (replacement.db/measure entity-id)
+                                     :dashboard (replacement.db/dashboard entity-id)
                                      nil)))
   ([[entity-type _entity-id] entity]
    (case entity-type

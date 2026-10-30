@@ -10,7 +10,6 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
-   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -170,7 +169,7 @@
     (try
       (when (and (= context :ad-hoc)
                  (or (analytics/data-app-client?)
-                     (= :model (:type (queries.db/card card-id)))))
+                     (= :model (view-log.db/card-type card-id))))
         (increment-view-counts! :model/Card card-id)
         (record-views! (generate-view :model :model/Card
                                       :object-id card-id

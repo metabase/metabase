@@ -475,11 +475,10 @@
                                                       (reset! captured llm-opts)
                                                       (mut/mock-llm-response
                                                        [{:type :text :text "Hello"}]))]
-            (into [] (run-agent-loop
-                      {:messages   [{:role :user :content "Hi"}]
-                       :state      {}
-                       :profile-id :sql
-                       :context    {}}))
+            (run-agent-loop! {:messages   [{:role :user :content "Hi"}]
+                              :state      {}
+                              :profile-id :sql
+                              :context    {}})
             (is (= {:tool-choice "required"} @captured)))))
       (testing "runs agent loop with tool execution"
         (let [call-count (atom 0)]
@@ -994,7 +993,7 @@
                                           claude/claude
                                           (fn [opts]
                                             (if (= 1 (count (swap! requests conj (claude/claude-request-body opts))))
-                                              (do (t2/update! :model/Dashboard dashboard-id {:name "Ops updated"})
+                                              (do (t2/update! :model/Dashboard :id dashboard-id {:name "Ops updated"})
                                                   (metabot.settings/metabot-chat-system-prompt! "Use American spelling.")
                                                   (reset! semantic-search false)
                                                   (mut/mock-llm-response [{:type      :tool-input
@@ -1002,12 +1001,11 @@
                                                                            :function  "load_skill"
                                                                            :arguments {:ids ["read-resource"]}}]))
                                               (mut/mock-llm-response [{:type :text :text "Done."}])))]
-                (into [] (run-agent-loop
-                          {:messages   [{:role :user :content "Help me with this dashboard."}]
-                           :state      {}
-                           :profile-id :internal
-                           :context    {:current_user_time "2026-10-05T12:00:00Z"
-                                        :user_is_viewing   [{:type "dashboard" :id dashboard-id}]}}))
+                (run-agent-loop! {:messages   [{:role :user :content "Help me with this dashboard."}]
+                                  :state      {}
+                                  :profile-id :internal
+                                  :context    {:current_user_time "2026-10-05T12:00:00Z"
+                                               :user_is_viewing   [{:type "dashboard" :id dashboard-id}]}})
                 (let [[{system-1 :system tools-1 :tools messages-1 :messages}
                        {system-2 :system tools-2 :tools messages-2 :messages}] @requests]
                   (is (str/includes? (pr-str system-1) "Use British spelling."))

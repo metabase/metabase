@@ -4,14 +4,15 @@
   (:require
    [malli.util :as mut]
    [metabase.indexed-entities.schema :as indexed-entities.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn model-index :- [:maybe ::indexed-entities.schema/model-index]
-  "The ::indexed-entities.schema/model-index with `id`, or nil."
+(mu/defn model-index
+  "The ModelIndex with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/ModelIndex :id [:auto/param id]))
+  (t2/select-one :model/ModelIndex :id id))
 
 (mu/defn model-indexes-for-model
   "The ModelIndexes of the model Card with `model-id`."
@@ -31,7 +32,12 @@
 (mu/defn delete-model-index!
   "Delete the ModelIndex with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/ModelIndex id))
+  (t2/delete! :model/ModelIndex :id id))
+
+(mu/defn card
+  "The Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn model-index-values
   "The ModelIndexValues of the ModelIndex with `model-index-id`."
@@ -47,18 +53,18 @@
   "Record `error-message` on the ModelIndex with `id` and stamp its indexing time, returning the number updated."
   [id            :- ms/PositiveInt
    error-message :- :string]
-  (t2/update! :model/ModelIndex id {:state      "error"
-                                    :error      error-message
-                                    :indexed_at :%now}))
+  (t2/update! :model/ModelIndex :id id {:state      "error"
+                                        :error      error-message
+                                        :indexed_at :%now}))
 
 (mu/defn mark-model-index-indexed!
   "Set the ModelIndex with `id` to `state`, clear its error, and stamp its indexing time, returning the number
   updated."
   [id    :- ms/PositiveInt
    state :- :string]
-  (t2/update! :model/ModelIndex id {:indexed_at :%now
-                                    :error      nil
-                                    :state      state}))
+  (t2/update! :model/ModelIndex :id id {:indexed_at :%now
+                                        :error      nil
+                                        :state      state}))
 
 (mu/defn delete-model-index-values!
   "Delete the ModelIndexValues of the ModelIndex with `model-index-id` for the model primary keys `model-pks`,

@@ -460,14 +460,14 @@
           (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
                                             conversation-id "internal"
                                             {:role "user" :content "hi"})
-                created-at-before          (:created_at (t2/select-one :model/MetabotMessage assistant-msg-id))
+                created-at-before          (:created_at (t2/select-one :model/MetabotMessage :id assistant-msg-id))
                 _                          (metabot-persistence/finalize-assistant-turn!
                                             assistant-msg-id
                                             [{:type :text :text "Hello"}
                                              {:type  :usage
                                               :model "claude-sonnet-4-6"
                                               :usage {:promptTokens 10 :completionTokens 5}}])
-                row                        (t2/select-one :model/MetabotMessage assistant-msg-id)
+                row                        (t2/select-one :model/MetabotMessage :id assistant-msg-id)
                 rows                       (t2/select :model/MetabotMessage
                                                       :conversation_id conversation-id)]
             (is (= 2 (count rows))                 "no extra row inserted on finalize")
@@ -491,7 +491,7 @@
           {:type :text :text "Hello"}
           {:type :usage :model "claude" :usage {:promptTokens 250 :completionTokens 30}}])
         (is (=? {:context_tokens 160 :total_tokens 280}
-                (t2/select-one :model/MetabotMessage assistant-msg-id))))))
+                (t2/select-one :model/MetabotMessage :id assistant-msg-id))))))
   (testing "a turn that observed no usage stores no context size"
     (with-rasta-tx
       (let [conversation-id (str (random-uuid))
@@ -500,7 +500,7 @@
                                         {:role "user" :content "hi"})]
         (metabot-persistence/finalize-assistant-turn!
          assistant-msg-id [{:type :text :text "Hello"}])
-        (is (nil? (:context_tokens (t2/select-one :model/MetabotMessage assistant-msg-id))))))))
+        (is (nil? (:context_tokens (t2/select-one :model/MetabotMessage :id assistant-msg-id))))))))
 
 (deftest ^:parallel messages->client-messages-context-tokens-test
   (testing "a message reports the context it occupied, and omits it when the turn observed no usage"
@@ -525,7 +525,7 @@
            [{:type :text :text "partial"}]
            :finished? false)
           (is (=? {:finished false :error nil}
-                  (t2/select-one :model/MetabotMessage assistant-msg-id)))))
+                  (t2/select-one :model/MetabotMessage :id assistant-msg-id)))))
       (testing "errored: error map JSON-encoded into the error column"
         (let [conversation-id (str (random-uuid))
               error-data      {:message "boom" :type "RuntimeException"}
@@ -535,7 +535,7 @@
           (metabot-persistence/finalize-assistant-turn!
            assistant-msg-id []
            :error error-data)
-          (let [row (t2/select-one :model/MetabotMessage assistant-msg-id)]
+          (let [row (t2/select-one :model/MetabotMessage :id assistant-msg-id)]
             (is (true? (:finished row)))
             (is (= error-data (json/decode+kw (:error row))))))))))
 
@@ -740,7 +740,7 @@
                b-pk [{:type :text :text "reply-B"}])
               ;; soft-delete only turn B's assistant reply — its user row stays undeleted
               ;; and is now the most-recent non-deleted row overall.
-              (t2/update! :model/MetabotMessage b-pk {:deleted_at (java.time.OffsetDateTime/now)})
+              (t2/update! :model/MetabotMessage :id b-pk {:deleted_at (java.time.OffsetDateTime/now)})
               (is (= a-ext (metabot-persistence/leaf-external-id conversation-id))
                   "must not fall through to turn B's undeleted user row"))))))))
 
@@ -834,13 +834,13 @@
             (is (= user-ext user-external-id))
             (testing "old response is soft-deleted with the deleting user stamped"
               (is (=? {:deleted_at some? :deleted_by_user_id (mt/user->id :rasta)}
-                      (t2/select-one :model/MetabotMessage a-pk))))
+                      (t2/select-one :model/MetabotMessage :id a-pk))))
             (testing "prompt row stays live"
               (is (=? {:deleted_at nil}
                       (t2/select-one :model/MetabotMessage :external_id user-ext))))
             (testing "fresh placeholder is the new leaf"
               (is (=? {:finished nil :data [] :deleted_at nil}
-                      (t2/select-one :model/MetabotMessage assistant-msg-id)))
+                      (t2/select-one :model/MetabotMessage :id assistant-msg-id)))
               (is (= assistant-external-id
                      (metabot-persistence/leaf-external-id conversation-id))))
             (testing "conversation-detail shows the prompt exactly once"
@@ -875,8 +875,8 @@
                                            :conversation_id conversation-id :role "user")]
             (metabot-persistence/retry-turn! conversation-id "internal" user-ext
                                              :delete-message-ids [a-pk extra-pk])
-            (is (some? (t2/select-one-fn :deleted_at :model/MetabotMessage a-pk)))
-            (is (some? (t2/select-one-fn :deleted_at :model/MetabotMessage extra-pk)))))))))
+            (is (some? (t2/select-one-fn :deleted_at :model/MetabotMessage :id a-pk)))
+            (is (some? (t2/select-one-fn :deleted_at :model/MetabotMessage :id extra-pk)))))))))
 
 (deftest start-turn-delete-message-ids-test
   (testing "start-turn! soft-deletes :delete-message-ids alongside inserting the replacement rows"
@@ -1080,7 +1080,7 @@
                assistant-msg-id
                [{:type :text :text "x"}]
                finalize-opts)
-        (let [row (t2/select-one :model/MetabotMessage assistant-msg-id)]
+        (let [row (t2/select-one :model/MetabotMessage :id assistant-msg-id)]
           [row (first (metabot-persistence/messages->client-messages
                        [row] {:include-errored? true}))])))))
 
@@ -1180,7 +1180,7 @@
         (metabot-persistence/finalize-assistant-turn!
          assistant-msg-id parts
          :error error-data)
-        (let [row (t2/select-one :model/MetabotMessage assistant-msg-id)]
+        (let [row (t2/select-one :model/MetabotMessage :id assistant-msg-id)]
           (is (= {:message "The model provider failed to complete the response"}
                  (json/decode+kw (:error row)))
               "the streamed errorText is persisted into the error column as a {:message ...} map")
@@ -1202,7 +1202,7 @@
                                       (str (random-uuid)) "metabot-1"
                                       {:role "user" :content "go"})]
       (apply metabot-persistence/finalize-assistant-turn! assistant-msg-id parts finalize-opts)
-      (t2/select-one :model/MetabotMessage assistant-msg-id))))
+      (t2/select-one :model/MetabotMessage :id assistant-msg-id))))
 
 (deftest finalize-assistant-turn-persists-finish-reason-test
   (testing "finalize-assistant-turn! records why a turn stopped early"
@@ -1409,7 +1409,7 @@
                [{:type :text :text "ok"}]))
             (is (=? {:finished true
                      :data     [{:type "text" :text "ok"}]}
-                    (t2/select-one :model/MetabotMessage assistant-msg-id))
+                    (t2/select-one :model/MetabotMessage :id assistant-msg-id))
                 "message UPDATE still landed")
             (is (some #(re-find #"Failed to record metabot used tables" (:message %)) (logs))
                 "warn line captured")))))))
@@ -1625,7 +1625,7 @@
                                [{:type :text :text "reply"}]
                                :turn-state {:queries {"q2" {:database 2}}})]
         (is (= {:queries {"q2" {:database 2}}}
-               (t2/select-one-fn :state :model/MetabotMessage msg-id)))
+               (t2/select-one-fn :state :model/MetabotMessage :id msg-id)))
         (is (nil? (t2/select-one-fn :state :model/MetabotConversation :id conversation-id)))))))
 
 (deftest finalize-skips-empty-turn-state-test
@@ -1634,7 +1634,7 @@
       (doseq [turn-opts [[] [:turn-state {}]]]
         (let [conversation-id (str (random-uuid))
               msg-id (apply seed-turn! conversation-id "hi" [{:type :text :text "reply"}] turn-opts)]
-          (is (nil? (t2/select-one-fn :state :model/MetabotMessage msg-id))))))))
+          (is (nil? (t2/select-one-fn :state :model/MetabotMessage :id msg-id))))))))
 
 (deftest conversation-state-rewinds-on-retry-test
   (testing "a retried turn's soft-deleted state drops out of the reconstruction"

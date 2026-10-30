@@ -226,7 +226,7 @@
             ;; A partial new scan can leave two active rows. Only the newest may count.
             (insert-counted-findings! :dashboard first-id [:duplicate_name])
             (let [newest-stale (first (insert-counted-findings! :dashboard second-id [:stale]))]
-              (t2/update! :model/ContentDiagnosticsFinding (:id newest-stale) {:invalidated_at (t/offset-date-time)}))
+              (t2/update! :model/ContentDiagnosticsFinding :id (:id newest-stale) {:invalidated_at (t/offset-date-time)}))
             (is (= expected (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/counts")))
             (testing "optional table filters and pagination never narrow badge populations"
               (is (= expected (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/counts"
@@ -258,7 +258,7 @@
                   (insert-counted-findings! :dashboard id [:stale :duplicate_name :slow :empty :sparse :crowded]))
                 (is (= (update-vals baseline inc)
                        (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/counts")))
-                (t2/update! :model/Dashboard visible-dash {:collection_id hidden})
+                (t2/update! :model/Dashboard :id visible-dash {:collection_id hidden})
                 (is (= baseline (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/counts")))
                 (perms/grant-collection-read-permissions! (perms/all-users-group) hidden)
                 (is (= (update-vals baseline #(+ % 2))

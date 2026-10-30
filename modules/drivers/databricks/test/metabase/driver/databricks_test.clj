@@ -394,11 +394,11 @@
                               :active true))))
             (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
         (testing "With multi-level-schema on"
-          (t2/update! :model/Database db-id {:details (assoc details
-                                                             :multi-level-schema true
-                                                             :schema-filters-patterns multi-pattern)})
+          (t2/update! :model/Database :id db-id {:details (assoc details
+                                                                 :multi-level-schema true
+                                                                 :schema-filters-patterns multi-pattern)})
           (mt/with-db
-            (t2/select-one :model/Database db-id)
+            (t2/select-one :model/Database :id db-id)
             (sync/sync-database! (mt/id))
             (is (= #{(format "%s.%s" (:catalog details) "test-data")
                      (format "%s.%s" multicatalog multicatalog-schema)}
@@ -410,9 +410,9 @@
                               :active true))))
             (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
         (testing "With multi-level-schema off"
-          (t2/update! :model/Database db-id {:details (assoc details :multi-level-schema false)})
+          (t2/update! :model/Database :id db-id {:details (assoc details :multi-level-schema false)})
           (mt/with-db
-            (t2/select-one :model/Database db-id)
+            (t2/select-one :model/Database :id db-id)
             (sync/sync-database! (mt/id))
             (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
             (is (= 52 (count (t2/select
@@ -441,13 +441,13 @@
             (is (= #{"test-data"}
                    (t2/select-fn-set :schema :model/Table :db_id (mt/id))))))
         (testing "With multi-level-schema on, schemas are qualified"
-          (t2/update! :model/Database db-id {:details (assoc details
-                                                             :multi-level-schema true
-                                                             :schema-filters-patterns multi-pattern)})
+          (t2/update! :model/Database :id db-id {:details (assoc details
+                                                                 :multi-level-schema true
+                                                                 :schema-filters-patterns multi-pattern)})
           ;; Deactivate its tables for testing
           (t2/update! :model/Table {:db_id db-id} {:active false})
           (mt/with-db
-            (t2/select-one :model/Database db-id)
+            (t2/select-one :model/Database :id db-id)
             (sync/sync-database! (mt/id))
             (is (= #{(format "%s.%s" (:catalog details) "test-data")
                      (format "%s.%s" multicatalog multicatalog-schema)}
@@ -469,7 +469,7 @@
                                                                               :schema-filters-type "inclusion"
                                                                               :schema-filters-patterns (str/join ", " schema-filters)))}]
         (mt/with-db
-          (t2/select-one :model/Database db-id)
+          (t2/select-one :model/Database :id db-id)
           (sync/sync-database! (mt/id) {:scan :schema})
           (let [table-schemas (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)]
             (is (= schema-filters table-schemas))
@@ -589,3 +589,19 @@
                      nil
                      (catch clojure.lang.ExceptionInfo e (ex-data e))))
             (str "should be refused: " opts))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host      "abc.cloud.databricks.com:443/;b"
+                    :http-path "/sql/1.0/warehouses/x"
+                    :catalog   "main"
+                    :token     "t"}
+                   {:host      "abc.cloud.databricks.com"
+                    :http-path "/sql/1.0/warehouses/x"
+                    :catalog   "main;b"
+                    :token     "t"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :databricks details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

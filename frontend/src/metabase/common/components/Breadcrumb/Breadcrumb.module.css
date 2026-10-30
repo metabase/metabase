@@ -10,7 +10,7 @@
 }
 
 .content {
-  --color: var(--mb-color-text-disabled);
+  --color: var(--mb-color-text-secondary);
   --active-color: var(--mb-color-core-brand);
 }
 

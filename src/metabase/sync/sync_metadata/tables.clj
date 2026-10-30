@@ -21,8 +21,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
-   [metabase.warehouses.db :as warehouses.db])
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization])
   (:import
    (clojure.lang ITransientSet)))
 
@@ -184,7 +183,7 @@
    Throws an exception if there is already a table with the same name, schema and database ID."
   [database :- i/DatabaseInstance
    table    :- TableMetadata]
-  (insert-table! database table {:sample? (boolean (:is_sample (warehouses.db/database (:id database))))}))
+  (insert-table! database table {:sample? (sync.db/database-sample? (:id database))}))
 
 (mu/defn- reactivate-table!
   "Mark an existing inactive Table active again, refreshing its cruft-dependent columns. `existing`
@@ -206,7 +205,7 @@
   [database :- i/DatabaseInstance
    {schema :schema table-name :name :as table} :- TableMetadata]
   (if-let [existing (sync.db/inactive-table-by-schema-and-name (u/the-id database) schema table-name)]
-    (reactivate-table! database existing {:sample? (boolean (:is_sample (warehouses.db/database (u/the-id database))))})
+    (reactivate-table! database existing {:sample? (sync.db/database-sample? (u/the-id database))})
     (create-table! database table)))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
@@ -536,7 +535,7 @@
            context  (transduce (partition-all table-sync-batch-size)
                                (completing reconcile-batch)
                                {:created 0, :updated 0, :complete? true
-                                :sample? (boolean (:is_sample (warehouses.db/database (:id database))))
+                                :sample? (sync.db/database-sample? (:id database))
                                 :seen (transient #{}), :metabase-metadata []}
                                (:tables db-metadata))
            {:keys [created updated complete?]} context]

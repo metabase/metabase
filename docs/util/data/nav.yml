@@ -235,6 +235,8 @@ categories:
             url: "data-modeling/semantic-layer/segments"
           - name: "Glossary"
             url: "data-modeling/semantic-layer/glossary"
+          - name: "Remote sync"
+            url: "data-modeling/semantic-layer/remote-sync"
       - name: "Tools"
         pages:
           - name: "Schema viewer"
@@ -490,8 +492,6 @@ categories:
             url: "installation-and-operation/observability-with-prometheus"
           - name: "Serialization"
             url: "installation-and-operation/serialization"
-          - name: "Remote Sync"
-            url: "installation-and-operation/remote-sync"
           - name: "Commands"
             url: "installation-and-operation/commands"
           - name: "Metabase CLI"
