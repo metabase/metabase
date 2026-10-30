@@ -282,8 +282,9 @@
            (testing card-type
              (let [base   (mt/metadata-provider)
                    mp     (lib.tu/metadata-provider-with-card-from-query
-                           base 1 (lib/query base (lib.metadata/table base (mt/id :venues))) {:type card-type})
-                   result (run (lib/query mp (lib.metadata/card mp 1)))]
+                           ;; an id no real Card has, so it cannot stand in for the sandbox's own Card
+                           base Integer/MAX_VALUE (lib/query base (lib.metadata/table base (mt/id :venues))) {:type card-type})
+                   result (run (lib/query mp (lib.metadata/card mp Integer/MAX_VALUE)))]
                (is (=? {:status :completed} result))
                (is (= expected (col-names result)))))))))))
 
@@ -313,3 +314,149 @@
              (testing "tables without an enforced sandbox are not affected"
                (is (=? {:status :completed}
                        (run (mt/mbql-query checkins {:fields [$id], :limit 2}))))))))))))
+
+(defn- saved-question
+  "A query whose source is a saved question with `legacy-query` as its query."
+  [legacy-query]
+  (let [base (mt/metadata-provider)
+        mp   (lib.tu/metadata-provider-with-mock-card
+              base
+              {:lib/type      :metadata/card
+               :id            Integer/MAX_VALUE
+               :database-id   (mt/id)
+               :name          "Legacy question"
+               :dataset-query legacy-query})]
+    (lib/query mp (lib.metadata/card mp Integer/MAX_VALUE))))
+
+(deftest bad-field-id-ref-to-joined-sandboxed-table-test
+  (testing (str "A field id ref to an explicitly joined sandboxed table that lacks its join alias (which"
+                " `fix-bad-field-id-refs` repairs) works like the repaired ref")
+    (do-with-each-policy!
+     (fn [{:keys [hides-columns?]}]
+       (let [join          {:source-table (mt/id :venues)
+                            :alias        "v"
+                            :condition    [:= [:field (mt/id :checkins :venue_id) nil]
+                                           [:field (mt/id :venues :id) {:join-alias "v"}]]
+                            :fields       :none}
+             latitude      [:field (mt/id :venues :latitude) nil]
+             price         [:field (mt/id :venues :price) nil]
+             fields-query  (mt/mbql-query checkins {:joins    [join]
+                                                    :fields   [$id latitude]
+                                                    :order-by [[:asc $id]]
+                                                    :limit    3})
+             filter-query  (mt/mbql-query checkins {:joins       [join]
+                                                    :aggregation [[:count]]
+                                                    :filter      [:> latitude 0]})
+             fixed-query   (mt/mbql-query checkins {:joins    [join]
+                                                    :fields   [$id [:field (mt/id :venues :latitude) {:join-alias "v"}]]
+                                                    :order-by [[:asc $id]]
+                                                    :limit    3})]
+         (testing "admin: the ref is repaired"
+           (is (= (mt/rows (run-as-admin fixed-query))
+                  (mt/rows (run-as-admin fields-query)))))
+         (doseq [[shape wrap] {:ad-hoc identity, :saved-question saved-question}]
+           (testing shape
+             (testing "exposed column in :fields"
+               (let [result (run (wrap fields-query))]
+                 (is (=? {:status :completed} result))
+                 (is (= (mt/rows (run fixed-query))
+                        (mt/rows result)))))
+             (testing "exposed column in a filter"
+               (is (=? {:status :completed} (run (wrap filter-query)))))
+             (testing "hidden column in :fields"
+               (let [result (run (wrap (assoc-in fields-query [:query :fields] [[:field (mt/id :checkins :id) nil] price])))]
+                 (is (=? {:status :completed} result))
+                 (is (= (if hides-columns? ["ID"] ["ID" "PRICE"])
+                        (col-names result)))))
+             (testing "hidden column in a filter"
+               (let [result (run (wrap (assoc-in filter-query [:query :filter] [:> price 2])))]
+                 (if hides-columns?
+                   (is (=? refused-hidden-column result))
+                   (is (=? {:status :completed} result))))))))))))
+
+(deftest bad-field-id-ref-to-source-query-join-test
+  (testing (str "A field id ref in a later stage to a column of a sandboxed table joined in the source query (which"
+                " `fix-bad-field-id-refs` repairs into a name ref) works like the repaired ref")
+    (do-with-each-policy!
+     (fn [{:keys [hides-columns?]}]
+       (let [source  {:source-table (mt/id :checkins)
+                      :joins        [{:source-table (mt/id :venues)
+                                      :alias        "v"
+                                      :condition    [:= [:field (mt/id :checkins :venue_id) nil]
+                                                     [:field (mt/id :venues :id) {:join-alias "v"}]]
+                                      :fields       :all}]}
+             query   (mt/mbql-query nil {:source-query source
+                                         :aggregation  [[:count]]
+                                         :breakout     [[:field (mt/id :venues :latitude) nil]]
+                                         :order-by     [[:asc [:field (mt/id :venues :latitude) nil]]]
+                                         :limit        3})
+             hidden  (mt/mbql-query nil {:source-query source
+                                         :aggregation  [[:count]]
+                                         :breakout     [[:field (mt/id :venues :price) nil]]})]
+         (testing "admin"
+           (is (=? {:status :completed} (run-as-admin query))))
+         (doseq [[shape wrap] {:ad-hoc identity, :saved-question saved-question}]
+           (testing shape
+             (testing "exposed column"
+               (is (=? {:status :completed} (run (wrap query)))))
+             (testing "hidden column"
+               (if hides-columns?
+                 (is (=? {:status :failed} (run (wrap hidden))))
+                 (is (=? {:status :completed} (run (wrap hidden)))))))))))))
+
+(defn- venue-names
+  "Every VENUES.NAME value the current user gets from VENUES (all of them for an admin)."
+  []
+  (into #{} (map first) (mt/rows (run (mt/mbql-query venues {:fields [$name]})))))
+
+(deftest external-remap-to-hidden-column-test
+  (testing "An FK whose external remap targets a sandboxed table never returns values the sandbox hides"
+    (do-with-each-policy!
+     (fn [{:keys [hides-columns?]}]
+       (let [mp        (lib.tu/remap-metadata-provider (mt/metadata-provider)
+                                                       (mt/id :checkins :venue_id)
+                                                       (mt/id :venues :name))
+             all-names (request/as-admin (venue-names))]
+         (doseq [[shape query] {:fields   (mt/mbql-query checkins {:fields   [$id $venue_id]
+                                                                   :order-by [[:asc $id]]
+                                                                   :limit    3})
+                                :breakout (mt/mbql-query checkins {:aggregation [[:count]]
+                                                                   :breakout    [$venue_id]
+                                                                   :limit       3})
+                                :order-by (mt/mbql-query checkins {:fields   [$id $venue_id]
+                                                                   :order-by [[:asc $venue_id] [:asc $id]]
+                                                                   :limit    3})}]
+           (testing shape
+             (testing "admin gets the remapped column"
+               (let [result (run-as-admin (lib/query mp query))]
+                 (is (=? {:status :completed} result))
+                 (is (some all-names (mapcat identity (mt/rows result))))))
+             (let [result (run (lib/query mp query))
+                   values (set (mapcat identity (get-in result [:data :rows])))]
+               (if hides-columns?
+                 ;; the query fails here (on master too); ideally it would run without the remap
+                 (testing "no value of the hidden column comes back"
+                   (is (not-any? all-names values)))
+                 (testing "the remap only shows names of venues the sandbox returns"
+                   (is (=? {:status :completed} result))
+                   (is (some #{"NAME"} (col-names result)))
+                   (is (empty? (remove (venue-names) (filter all-names values))))))))))))))
+
+(deftest external-remap-of-hidden-fk-column-test
+  (testing "A column the sandbox hides that has an external remap is not remapped, so neither it nor its remap comes back"
+    (do-with-each-policy!
+     (fn [{:keys [hides-columns?]}]
+       (let [mp    (-> (mt/metadata-provider)
+                       (lib.tu/merged-mock-metadata-provider
+                        {:fields [{:id                 (mt/id :venues :price)
+                                   :semantic-type      :type/FK
+                                   :fk-target-field-id (mt/id :categories :id)}]})
+                       (lib.tu/remap-metadata-provider (mt/id :venues :price) (mt/id :categories :name)))
+             query (mt/mbql-query venues {:fields [$id $price], :order-by [[:asc $id]], :limit 3})]
+         (testing "admin gets the remapped column"
+           (is (= ["ID" "PRICE" "NAME"] (col-names (run-as-admin (lib/query mp query))))))
+         (let [result (run (lib/query mp query))]
+           (is (=? {:status :completed} result))
+           ;; the remapped column comes back as NAME_2 for a sandboxed user
+           (is (=? (if hides-columns? ["ID"] ["ID" "PRICE" #"NAME.*"])
+                   (col-names result)))))))))
