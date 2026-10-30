@@ -1,6 +1,10 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -345,6 +349,70 @@ describe("metabase#28834", () => {
   it("should be able to export unsaved native query results as CSV and XLSX even after the query has changed", () => {
     ["csv", "xlsx"].forEach((fileType) => {
       H.downloadAndAssert({ fileType });
+    });
+  });
+});
+
+describe("issue 70909", () => {
+  const { WEB_PORT } = WEBMAIL_CONFIG;
+  const { admin } = USERS;
+
+  function assertCsvHeaderMatchesTable(csv) {
+    const header = csv.replace(/^\uFEFF/, "").split(/\r?\n/)[0];
+    expect(header).to.include("Tax");
+    expect(header).not.to.include("Discount");
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.request("PUT", `/api/field/${ORDERS.DISCOUNT}`, {
+      visibility_type: "details-only",
+    });
+  });
+
+  it("should not export columns hidden by 'Only in detail views' field visibility (metabase#70909)", () => {
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.tableInteractive().findByText("Tax").should("be.visible");
+    H.tableInteractive().findByText("Discount").should("not.exist");
+
+    H.downloadAndAssert({
+      fileType: "csv",
+      questionId: ORDERS_QUESTION_ID,
+      isDashboard: false,
+      assertResponseBody: assertCsvHeaderMatchesTable,
+    });
+  });
+
+  it("should not attach columns hidden by 'Only in detail views' field visibility to subscriptions (metabase#70909)", () => {
+    H.setupSMTP();
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+    H.toggleDashboardSubscriptionsSidebar();
+    H.sidebar().within(() => {
+      cy.findByText("Email it").click();
+      cy.findByPlaceholderText("Enter user names or email addresses").click();
+    });
+    H.popover().findByText(`${admin.first_name} ${admin.last_name}`).click();
+    H.sidebar().within(() => {
+      // Closes the recipients popover that covers the attachment controls
+      cy.findByText("To").click();
+      cy.findByLabelText("Attach results").click({ force: true });
+      cy.findByText("Questions to attach").click();
+    });
+
+    H.sendEmailAndAssert((email) => {
+      const csvAttachment = email.attachments.find(
+        (attachment) => attachment.contentType === "text/csv",
+      );
+      expect(csvAttachment).to.exist;
+
+      cy.request({
+        method: "GET",
+        url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.generatedFileName}`,
+        encoding: "utf8",
+      }).then(({ body }) => assertCsvHeaderMatchesTable(body));
     });
   });
 });

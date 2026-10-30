@@ -761,6 +761,24 @@
              {::mb.viz/table-column-name "CATEGORY" , ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-name "PRICE"    , ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-details-only-test
+  (testing "details-only columns are hidden by the table viz, so exports drop them too (#70909)"
+    (is (= [0 2]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1", :field_ref [:field 0 nil]}
+             {:id 1, :name "Col2", :field_ref [:field 1 nil], :visibility_type :details-only}
+             {:id 2, :name "Col3", :field_ref [:field 2 nil]}]
+            [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref [:field 2 nil], ::mb.viz/table-column-enabled true}])))
+    (testing "also when table-columns is nil"
+      (is (= [0 2]
+             (@#'qp.streaming/export-column-order
+              [{:id 0, :name "Col1"}
+               {:id 1, :name "Col2", :visibility_type :details-only}
+               {:id 2, :name "Col3"}]
+              nil))))))
+
 ;; QP Nil Fix Tests
 ;; These tests verify that query cancellation returns proper results instead of nil
 
