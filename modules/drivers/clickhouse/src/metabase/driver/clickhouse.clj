@@ -63,8 +63,6 @@
                               :expressions/float                true
                               :expressions/integer              true
                               :expressions/text                 true
-                              ;; ClickHouse uses both index lifecycles: ORDER BY is inlined into the MergeTree engine
-                              ;; clause at creation, while data-skipping indexes are added as separate statements after.
                               ;; The JDBC driver sends the query timeout as the `max_execution_time` server setting,
                               ;; which fails for users with `readonly = 1` (#85850). Long running queries will still
                               ;; be cancelled by `schedule-query-timeout-cancel!`.
