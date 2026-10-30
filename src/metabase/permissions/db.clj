@@ -17,16 +17,6 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn permissions-group-membership :- [:maybe ::permissions.schema/permissions-group-membership]
-  "The ::permissions.schema/permissions-group-membership with `permissions-group-membership-id`, or nil."
-  [permissions-group-membership-id :- ms/PositiveInt]
-  (t2/select-one :model/PermissionsGroupMembership :id [:auto/param permissions-group-membership-id]))
-
-(mu/defn permissions-group :- [:maybe ::permissions.schema/permissions-group]
-  "The ::permissions.schema/permissions-group with `permissions-group-id`, or nil."
-  [permissions-group-id :- ms/PositiveInt]
-  (t2/select-one :model/PermissionsGroup :id [:auto/param permissions-group-id]))
-
 ;;; --------------------------------------------- DataPermissions ---------------------------------------------
 
 (defn- perm-rows-query-base
@@ -342,6 +332,11 @@
   []
   (t2/select :model/PermissionsGroup {:where [:= :magic_group_type nil]}))
 
+(mu/defn tenant-group?
+  "Whether the PermissionsGroup with `group-id` is a tenant group."
+  [group-id :- ms/PositiveInt]
+  (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id group-id))
+
 (mu/defn tenant-group-ids
   "The IDs of every tenant PermissionsGroup."
   []
@@ -545,9 +540,14 @@
   "Apply `changes` to the CollectionPermissionGraphRevision with `revision-id`."
   [revision-id :- ms/PositiveInt
    changes     :- (mut/select-keys ::permissions.schema/collection-permission-graph-revision.update [:before :after])]
-  (t2/update! :model/CollectionPermissionGraphRevision revision-id changes))
+  (t2/update! :model/CollectionPermissionGraphRevision :id revision-id changes))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
+
+(mu/defn collection
+  "The Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn personal-or-descendant-collection-ids
   "The IDs among `collection-ids` that are personal Collections, or descendants of one."
@@ -706,7 +706,7 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id user-id changes))
 
 (mu/defn update-users!
   "Apply `changes` to the Users with `user-ids`."
@@ -744,6 +744,11 @@
   see [[metabase.permissions.models.data-permissions/set-default-table-permissions!]]."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :id :db_id :schema :data_source] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+
+(mu/defn table-database-id
+  "The Database ID of the Table with `table-id`."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-database-ids
   "The ID and Database ID of the Tables with `table-ids`."

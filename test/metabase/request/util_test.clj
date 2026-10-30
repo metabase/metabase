@@ -12,6 +12,8 @@
    [metabase.util.json :as json]
    [ring.mock.request :as ring.mock]))
 
+(set! *warn-on-reflection* true)
+
 (defn- cacheable? [uri]
   (req.util/cacheable? {:request-method :get :uri uri}))
 

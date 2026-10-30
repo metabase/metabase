@@ -58,7 +58,7 @@
 ;; output stream to the null output stream
 (doto ^liquibase.ui.ConsoleUIService (.getUI (Scope/getCurrentScope))
   ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
-  (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
+  (.setOutputStream (java.io.PrintStream. org.apache.commons.io.output.NullOutputStream/INSTANCE)))
 
 ;; Disable phoning home to Liquibase analytics (since 4.28)
 (System/setProperty "liquibase.analytics.enabled" "false")

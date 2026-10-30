@@ -18,6 +18,8 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/NativeQuerySnippet [_model] :native_query_snippet)
@@ -224,7 +226,7 @@
 
 (defmethod serdes/required "NativeQuerySnippet"
   [_model id]
-  (when-let [collection_id (:collection_id (native-query-snippets.db/native-query-snippet id))]
+  (when-let [collection_id (native-query-snippets.db/snippet-collection-id id)]
     {["Collection" collection_id] {"NativeQuerySnippet" id}}))
 
 (defmethod serdes/deserialization-dependencies "NativeQuerySnippet"
@@ -246,7 +248,7 @@
 
 (defmethod serdes/descendants "NativeQuerySnippet" [_model-name id _opts]
   (into {}
-        (for [path                   (serdes/mbql-deps true (:template_tags (native-query-snippets.db/native-query-snippet id)))
+        (for [path                   (serdes/mbql-deps true (:template_tags (native-query-snippets.db/snippet id)))
               :let                   [{:keys [model] ref-id :id} (last path)]
               :when                  (#{"Card" "NativeQuerySnippet"} model)]
           [[model ref-id] {"NativeQuerySnippet" id}])))

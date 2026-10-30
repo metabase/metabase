@@ -154,10 +154,10 @@
                (bookmarked-items :rasta)))
         (testing "moving each item into an unreadable collection (admin action; nothing archived) hides its bookmark"
           ;; stand in for the admin PUT /api/card|document ... {:collection_id hidden} in the attack
-          (t2/update! :model/Card card-id {:collection_id hidden-id})
-          (t2/update! :model/Dashboard dash-id {:collection_id hidden-id})
-          (t2/update! :model/Document doc-id {:collection_id hidden-id})
-          (t2/update! :model/Exploration expl-id {:collection_id hidden-id})
+          (t2/update! :model/Card :id card-id {:collection_id hidden-id})
+          (t2/update! :model/Dashboard :id dash-id {:collection_id hidden-id})
+          (t2/update! :model/Document :id doc-id {:collection_id hidden-id})
+          (t2/update! :model/Exploration :id expl-id {:collection_id hidden-id})
           (is (= #{} (bookmarked-items :rasta))))))))
 
 (deftest bookmark-card-type-tracks-current-card-type-test
@@ -165,7 +165,7 @@
     (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]
       (mt/user-http-request :rasta :post 200 (str "bookmark/card/" card-id))
       (is (= "question" (:card_type (first (mt/user-http-request :rasta :get 200 "bookmark")))))
-      (t2/update! :model/Card card-id {:type :model})
+      (t2/update! :model/Card :id card-id {:type :model})
       (is (= "model" (:card_type (first (mt/user-http-request :rasta :get 200 "bookmark"))))))))
 
 (defn bookmark-models [user-id & models]

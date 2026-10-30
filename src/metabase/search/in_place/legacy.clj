@@ -359,6 +359,7 @@
         [:collection.type :collection_type]
         [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
+        [:card.database_id :database_id]
         :dashboard_id
         bookmark-col dashboardcard-count-col
         [:display :display_type]))

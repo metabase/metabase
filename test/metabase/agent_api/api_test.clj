@@ -253,7 +253,7 @@
   "Canonical name of the application database \u2014 the literal string the LLM is expected
   to put as the first element of every portable FK in a representations query."
   []
-  (t2/select-one-fn :name :model/Database (mt/id)))
+  (t2/select-one-fn :name :model/Database :id (mt/id)))
 
 (defn- orders-query
   "Build a portable MBQL 5 representations external-query map against the `ORDERS` table in

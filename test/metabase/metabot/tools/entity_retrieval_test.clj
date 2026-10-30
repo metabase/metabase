@@ -119,22 +119,22 @@
           (java.util.Locale/setDefault orig))))))
 
 (deftest dedupe-by-entity-test
-  (let [dedupe (var-get #'entity-retrieval/dedupe-by-entity)
-        results [{:entity {:model "metric" :id 9} :score {:total_score 0.95}}   ; entity 9, best
-                 {:entity {:model "metric" :id 9} :score {:total_score 0.80}}   ; entity 9 again (sibling doc)
-                 {:entity {:model "table" :id 1} :score {:total_score 0.70}}]]
+  (let [dedupe-by-entity (var-get #'entity-retrieval/dedupe-by-entity)
+        results          [{:entity {:model "metric" :id 9} :score {:total_score 0.95}}   ; entity 9, best
+                          {:entity {:model "metric" :id 9} :score {:total_score 0.80}}   ; entity 9 again (sibling doc)
+                          {:entity {:model "table" :id 1} :score {:total_score 0.70}}]]
     (testing "collapses to distinct entities, keeping the first (best-scoring) occurrence"
-      (let [out (dedupe results)]
+      (let [out (dedupe-by-entity results)]
         (is (= 2 (count out)))
         (is (= [0.95 0.70] (mapv (comp :total_score :score) out)))))
     (testing "\"card\" and \"question\" are aliases for the same Card, so they collapse to one entity"
-      (let [out (dedupe [{:entity {:model "card" :id 5} :score {:total_score 0.9}}
-                         {:entity {:model "question" :id 5} :score {:total_score 0.8}}])]
+      (let [out (dedupe-by-entity [{:entity {:model "card" :id 5} :score {:total_score 0.9}}
+                                   {:entity {:model "question" :id 5} :score {:total_score 0.8}}])]
         (is (= 1 (count out)))
         (is (= 0.9 (-> out first :score :total_score)))))
     (testing "measures and segments are first-class distinct entities"
-      (let [out (dedupe [{:entity {:model "measure" :id 3} :score {:total_score 0.9}}
-                         {:entity {:model "segment" :id 3} :score {:total_score 0.8}}])]
+      (let [out (dedupe-by-entity [{:entity {:model "measure" :id 3} :score {:total_score 0.9}}
+                                   {:entity {:model "segment" :id 3} :score {:total_score 0.8}}])]
         (is (= 2 (count out)))))))
 
 (deftest format-output-test

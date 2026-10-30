@@ -421,5 +421,5 @@
 
 (deftest ^:parallel default-query-error-evidence-test
   (let [classify (get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc)]
-    (doseq [state ["21000" "22012" "23505" "42S22"]]
+    (doseq [^String state ["21000" "22012" "23505" "42S22"]]
       (is (true? (classify nil (SQLException. "Query error" state)))))))

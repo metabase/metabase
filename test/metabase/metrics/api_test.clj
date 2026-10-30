@@ -218,7 +218,7 @@
                                     %)
                                  dimension_mappings)]
         (is (some? orphan-mapping))
-        (t2/update! :model/Card (:id metric) {:dimension_mappings mappings})
+        (t2/update! :model/Card :id (:id metric) {:dimension_mappings mappings})
         (let [response             (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
               response-ids         (into #{} (map :id) (:dimensions response))
               response-mapping-ids (into #{} (map :dimension_id) (:dimension_mappings response))]

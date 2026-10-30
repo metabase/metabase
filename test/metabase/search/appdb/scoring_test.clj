@@ -419,7 +419,7 @@
                     (do (t2/insert! :model/TableUserSettings
                                     {:table_id table-id :is_published true :collection_id (:id data)})
                         (curated))
-                    (do (t2/update! :model/TableUserSettings table-id {:is_published false :collection_id nil})
+                    (do (t2/update! :model/TableUserSettings :table_id table-id {:is_published false :collection_id nil})
                         (curated))]))))))))
 
 (deftest ^:parallel data-layer-test

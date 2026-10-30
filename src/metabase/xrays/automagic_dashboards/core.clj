@@ -154,7 +154,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.queries.db :as queries.db]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
    [metabase.types.core :as types]
@@ -164,9 +163,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouses.db :as warehouses.db]
    [metabase.xrays.automagic-dashboards.combination :as combination]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.filters :as filters]
@@ -203,7 +200,7 @@
 
 (mu/defmethod ->root :model/Segment :- ::ads/root
   [segment :- [:map [:definition [:maybe ::segments.schema/definition]]]]
-  (let [table (->> segment :table_id warehouse-schema.db/table)]
+  (let [table (->> segment :table_id xrays.db/table)]
     {:entity                     segment
      :full-name                  (tru "{0} in the {1} segment" (:display_name table) (:name segment))
      :short-name                 (:display_name table)
@@ -216,7 +213,7 @@
 
 (mu/defmethod ->root :xrays/Metric :- ::ads/root
   [{:keys [table-id], :as metric} :- ::ads/metric]
-  (let [table (some->> table-id warehouse-schema.db/table)]
+  (let [table (some->> table-id xrays.db/table)]
     {:entity                     metric
      :full-name                  (if (:id metric)
                                    (trun "{0} metric" "{0} metrics" (:name metric))
@@ -259,7 +256,7 @@
 (mu/defn- source-question :- [:maybe (ms/InstanceOf :model/Card)]
   [card-or-question :- ::ads/card-or-question]
   (when-let [source-card-id (source-card-id card-or-question)]
-    (queries.db/card source-card-id)))
+    (xrays.db/card source-card-id)))
 
 (mu/defn- table-like?
   [{query :dataset_query, :as _card-or-question} :- ::ads/card-or-question]
@@ -287,7 +284,7 @@
                                 source-question
                                 (assoc :entity_type :entity/GenericTable))
     (native-query? card)    (-> card (assoc :entity_type :entity/GenericTable))
-    :else                   (->> card table-id warehouse-schema.db/table)))
+    :else                   (->> card table-id xrays.db/table)))
 
 (mu/defmethod ->root :model/Card :- ::ads/root
   [card :- ::ads/card-or-question]
@@ -415,7 +412,7 @@
   (let [db-id (or ((some-fn :db_id :database_id) source)
                   (throw (ex-info "Source is missing Database ID"
                                   {:source source})))]
-    (warehouses.db/database db-id)))
+    (xrays.db/database db-id)))
 
 (defn- relevant-fields
   "Source fields from tables that are applicable to the entity being x-rayed."

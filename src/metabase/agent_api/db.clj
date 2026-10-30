@@ -9,6 +9,22 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
+(mu/defn collection-breadcrumb-columns
+  "The id, name, location, owner, namespace, and archival of the Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one [:model/Collection :id :name :location :personal_owner_id :namespace :archived_directly]
+                 :id [:auto/param collection-id]))
+
+(mu/defn card
+  "The Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id card-id))
+
+(mu/defn dashboard
+  "The Dashboard with `dashboard-id`, or nil."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one :model/Dashboard :id dashboard-id))
+
 (mu/defn dashboard-tab-names
   "The id and name of the DashboardTabs of the Dashboard with `dashboard-id`, in position order."
   [dashboard-id :- ::lib.schema.id/dashboard]
@@ -39,17 +55,23 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select :model/DashboardCard :dashboard_id dashboard-id))
 
+(mu/defn dashcard-in-dashboard
+  "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
+  [dashcard-id  :- ::lib.schema.id/dashcard
+   dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
+
 (mu/defn update-dashcard!
   "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
   [dashcard-id :- ::lib.schema.id/dashcard
    changes     :- (mut/select-keys ::dashboards.schema/dashboard-card.update [:visualization_settings :row :col])]
-  (t2/update! :model/DashboardCard dashcard-id changes))
+  (t2/update! :model/DashboardCard :id dashcard-id changes))
 
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- (mut/select-keys ::dashboards.schema/dashboard.update [:name :description :collection_id :archived :archived_directly])]
-  (t2/update! :model/Dashboard dashboard-id changes))
+  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn active-user-by-email
   "The active User with `email`, compared case-insensitively, or nil."

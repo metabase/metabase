@@ -17,6 +17,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- invoke-metadata
   ([profile tool-name args]
    (invoke-metadata profile tool-name args nil))

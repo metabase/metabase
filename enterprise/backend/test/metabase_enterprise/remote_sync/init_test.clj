@@ -149,7 +149,7 @@
 (deftest remote-sync-shutdown-fails-this-jvms-running-tasks-test
   (testing "shutdown fails every task whose worker runs in this JVM and leaves a stale open row from elsewhere untouched"
     (let [other-id (new-task-id)
-          _        (t2/update! :model/RemoteSyncTask other-id
+          _        (t2/update! :model/RemoteSyncTask :id other-id
                                {:last_progress_report_at (t/minus (t/offset-date-time) (t/hours 2))})
           own-id   (new-task-id)
           release  (promise)
@@ -173,7 +173,7 @@
   (testing "boot closes open task rows whose owner has been silent past the window and leaves fresh ones alone"
     (mt/with-temporary-setting-values [:remote-sync-url nil]
       (let [stale-id (new-task-id)
-            _        (t2/update! :model/RemoteSyncTask stale-id
+            _        (t2/update! :model/RemoteSyncTask :id stale-id
                                  {:last_progress_report_at (t/minus (t/offset-date-time) (t/hours 2))})
             fresh-id (new-task-id)]
         (#'init/remote-sync-init)

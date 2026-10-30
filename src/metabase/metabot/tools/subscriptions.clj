@@ -5,10 +5,12 @@
   (:require
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
-   [metabase.dashboards.db :as dashboards.db]
+   [metabase.metabot.curation :as curation]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.pulse.api :as pulse.api]
@@ -54,9 +56,11 @@
 
 (defn- dashboard-for-subscription [dashboard-id]
   (let [dashboard (tools/with-entity {:kind :dashboard :id dashboard-id}
-                    (-> (dashboards.db/dashboard dashboard-id)
+                    (-> (metabot.db/dashboard dashboard-id)
                         api/read-check
                         (t2/hydrate [:dashcards :card])))
+        _         (when (shared/curated-only?)
+                    (curation/check-curated-subject! (str "dashboard " dashboard-id) ["dashboard" dashboard-id]))
         dashcards (filter (comp int? :id :card) (:dashcards dashboard))]
     (when-not (every? (comp mi/can-read? :card) dashcards)
       (tools/unrecoverable!

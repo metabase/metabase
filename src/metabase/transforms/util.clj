@@ -27,9 +27,7 @@
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
-   [metabase.warehouses.db :as warehouses.db])
+   [metabase.util.log :as log])
   (:import
    (java.sql SQLException)))
 
@@ -76,8 +74,8 @@
                     (if models-cache
                       (get-in models-cache [model id])
                       (case model
-                        :model/Database (warehouses.db/database id)
-                        :model/Table    (warehouse-schema.db/table id))))
+                        :model/Database (transforms.db/database id)
+                        :model/Table    (transforms.db/table id))))
          source   (:source transform)]
      (case (keyword (:type source))
        :query

@@ -12,6 +12,7 @@
 .DS_Store
 .\#*
 .cpcache
+.eastwood
 .bot
 .idea/
 .nrepl-port

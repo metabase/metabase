@@ -438,7 +438,7 @@
                    (collection/check-allowed-content :dashboard-question collection-id))))
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Elsewhere"}]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions, metrics, and query actions"
-                                  (t2/update! :model/Dashboard dashboard-id {:collection_id collection-id})))
+                                  (t2/update! :model/Dashboard :id dashboard-id {:collection_id collection-id})))
             (is (nil? (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id)))))))))
 
 (deftest a-card-in-an-apps-collection-stays-what-a-pull-accepts-test
@@ -454,9 +454,9 @@
             (mt/with-temporary-setting-values [enable-public-sharing true]
               (mt/user-http-request :crowberto :post 400 (str "card/" card-id "/public_link")))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric"
-                                  (t2/update! :model/Card card-id {:archived true})))
+                                  (t2/update! :model/Card :id card-id {:archived true})))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric"
-                                  (t2/update! :model/Card card-id {:type :model})))
+                                  (t2/update! :model/Card :id card-id {:type :model})))
             (is (=? {:archived false :public_uuid nil :type :question} (t2/select-one :model/Card :id card-id))))
           (testing "a card that is already public can't be moved in"
             (mt/with-temp [:model/Card {public-id :id} {:name              "Already public"
@@ -464,7 +464,7 @@
                                                         :public_uuid       (str (random-uuid))
                                                         :made_public_by_id (mt/user->id :crowberto)}]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric"
-                                    (t2/update! :model/Card public-id {:collection_id collection-id})))
+                                    (t2/update! :model/Card :id public-id {:collection_id collection-id})))
               (is (nil? (t2/select-one-fn :collection_id :model/Card :id public-id)))))
           (testing "the export keeps its file"
             (is (= :success (:status (export! mock))))
@@ -575,7 +575,7 @@
         (is (= :success (:status (import-at! mock "main" :force? true))))
         (let [before (resource-files mock)]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stays a top-level collection of data apps"
-                                (t2/update! :model/Collection (shop-collection-id) {:archived true})))
+                                (t2/update! :model/Collection :id (shop-collection-id) {:archived true})))
           (is (= :success (:status (export! mock))))
           (is (= before (resource-files mock)))
           (testing "deleting the app still deletes its collection"
@@ -662,12 +662,12 @@
                                    (let [query-before (t2/select-one-fn :dataset_query :model/Card :id card-id)]
                                      (and (is (thrown-with-msg? clojure.lang.ExceptionInfo message (save! query)))
                                           (is (thrown-with-msg? clojure.lang.ExceptionInfo message
-                                                                (t2/update! :model/Card card-id {:dataset_query query})))
+                                                                (t2/update! :model/Card :id card-id {:dataset_query query})))
                                           (is (= query-before (t2/select-one-fn :dataset_query :model/Card :id card-id))))))]
                (testing "a table published to the Library, and a Library metric, are fine"
                  (save! venues)
                  (save! (lib/aggregate venues (lib.metadata/metric mp library-metric-id)))
-                 (t2/update! :model/Card card-id {:dataset_query (lib/aggregate venues (lib/count))}))
+                 (t2/update! :model/Card :id card-id {:dataset_query (lib/aggregate venues (lib/count))}))
                (testing "a table that isn't published is refused"
                  (refused? #"can read only tables published to the Library, not USERS"
                            (lib/query mp (lib.metadata/table mp (mt/id :users)))))
@@ -700,7 +700,7 @@
         (let [card-id (t2/select-one-pk :model/Card :entity_id question-eid)]
           (mt/with-temporary-setting-values [enable-embedding-modular true]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question or metric"
-                                  (t2/update! :model/Card card-id {:embedding_params {}})))
+                                  (t2/update! :model/Card :id card-id {:embedding_params {}})))
             (testing "a card elsewhere takes them"
               (mt/with-temp [:model/Card {other-id :id} {:name "Elsewhere"}]
                 (mt/user-http-request :crowberto :put 200 (str "card/" other-id) {:embedding_params {}}))))
@@ -715,7 +715,7 @@
         (let [collection-id (shop-collection-id)
               before        (resource-files mock)]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stays a top-level collection of data apps"
-                                (t2/update! :model/Collection collection-id {:authority_level "official"})))
+                                (t2/update! :model/Collection :id collection-id {:authority_level "official"})))
           (mt/with-temp [:model/Collection other {:name "Other root" :namespace :data-apps}]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot move a data app's collection"
                                   (collection/move-collection! (t2/select-one :model/Collection :id collection-id)
@@ -739,7 +739,7 @@
            (let [copy-id (t2/select-one-pk :model/Action :collection_id (shop-collection-id))
                  before  (resource-files mock)]
              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can't be archived"
-                                   (t2/update! :model/Action copy-id {:archived true})))
+                                   (t2/update! :model/Action :id copy-id {:archived true})))
              (testing "the source can still be archived"
                (mt/with-actions-enabled
                  (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived true})))

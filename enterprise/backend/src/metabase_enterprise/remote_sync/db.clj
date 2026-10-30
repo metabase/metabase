@@ -400,6 +400,11 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :is_remote_synced] :id [:in collection-ids]))
 
+(mu/defn collection-name-and-id
+  "The `:name` and `:collection_id` (its own ID) of the Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
+
 (mu/defn library-collection
   "The Library Collection of `library-type`, or nil."
   [library-type :- :string]
@@ -445,6 +450,12 @@
   "The IDs of the Collections of `namespace-name`."
   [namespace-name :- :string]
   (t2/select-pks-vec :model/Collection :namespace namespace-name))
+
+(mu/defn collection-namespace
+  "The namespace of the Collection with `collection-id`, nil for the default namespace or no such Collection."
+  [collection-id :- [:maybe ms/PositiveInt]]
+  (when collection-id
+    (t2/select-one-fn :namespace :model/Collection :id collection-id)))
 
 (mu/defn remote-synced-collection-ids
   "The IDs of the remote-synced Collections."
@@ -667,7 +678,7 @@
   "Apply `changes` to the RemoteSyncObject with `rso-id`."
   [rso-id  :- ms/PositiveInt
    changes :- ::remote-sync.schema/remote-sync-object.update]
-  (t2/update! :model/RemoteSyncObject rso-id changes))
+  (t2/update! :model/RemoteSyncObject :id rso-id changes))
 
 (mu/defn set-rsos-status!
   "Set the status of the RemoteSyncObjects with `rso-ids` to `status` as of `timestamp`."
@@ -711,7 +722,7 @@
 (mu/defn delete-rso!
   "Delete the RemoteSyncObject with `rso-id`."
   [rso-id :- ms/PositiveInt]
-  (t2/delete! :model/RemoteSyncObject rso-id))
+  (t2/delete! :model/RemoteSyncObject :id rso-id))
 
 (mu/defn delete-rsos!
   "Delete the RemoteSyncObjects with `rso-ids`."
@@ -745,8 +756,8 @@
   []
   (t2/delete! :model/RemoteSyncObject))
 
-(mu/defn remote-sync-task :- [:maybe ::remote-sync.schema/remote-sync-task]
-  "The ::remote-sync.schema/remote-sync-task with `task-id`, or nil."
+(mu/defn task
+  "The RemoteSyncTask with `task-id`, or nil."
   [task-id :- ms/PositiveInt]
   (t2/select-one :model/RemoteSyncTask :id [:auto/param task-id]))
 
@@ -754,6 +765,11 @@
   "The RemoteSyncTask with `task-id`, locked for update, or nil."
   [task-id :- ms/PositiveInt]
   (t2/select-one :model/RemoteSyncTask :id task-id {:for :update}))
+
+(mu/defn task-cancelled?
+  "The cancelled flag of the RemoteSyncTask with `task-id`."
+  [task-id :- ms/PositiveInt]
+  (t2/select-one-fn :cancelled :model/RemoteSyncTask :id task-id))
 
 (def ^:private last-alive-at
   "The time the task's owning thread last proved it was alive: its heartbeat, or its last progress write for
@@ -805,19 +821,19 @@
   "Apply `changes` to the RemoteSyncTask with `task-id`."
   [task-id :- ms/PositiveInt
    changes :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/update! :model/RemoteSyncTask task-id changes))
+  (t2/update! :model/RemoteSyncTask :id task-id changes))
 
 (mu/defn end-task!
   "Apply `changes` to the RemoteSyncTask with `task-id` and mark it ended now."
   [task-id :- ms/PositiveInt
    changes :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/update! :model/RemoteSyncTask task-id (assoc changes :ended_at :%now)))
+  (t2/update! :model/RemoteSyncTask :id task-id (assoc changes :ended_at :%now)))
 
 (mu/defn report-task-progress!
   "Record `progress` for the RemoteSyncTask with `task-id`, stamping the progress report time."
   [task-id  :- ms/PositiveInt
    progress :- number?]
-  (t2/update! :model/RemoteSyncTask task-id {:progress progress, :last_progress_report_at :%now}))
+  (t2/update! :model/RemoteSyncTask :id task-id {:progress progress, :last_progress_report_at :%now}))
 
 (mu/defn touch-task!
   "Stamp the heartbeat time of the RemoteSyncTask with `task-id` if it has not ended, returning the number of rows
