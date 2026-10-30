@@ -353,15 +353,22 @@
   (testing "BOT-2524: the response shows each parameter's default, required flag, and value source"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
       (let [write! (fn [ops] (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
-                                                      (wire {:method "update" :id (:id dash) :ops ops}))))]
-        (write! [{:op "add_parameter" :parameter_id "country" :name "Country" :type "string/="}])
+                                                      (wire {:method "update", :id (:id dash), :ops ops}))))]
+        (write! [{:op           "add_parameter"
+                  :parameter_id "country"
+                  :name         "Country"
+                  :type         "string/="}])
         (is (=? {:parameters [{:id                   "country"
                                :default              ["US"]
                                :required             true
                                :values_source_type   "static-list"
                                :values_source_config {:values ["US" "CA"]}}]}
-                (write! [{:op "update_parameter" :parameter_id "country" :default ["US"] :required true
-                          :values_source_type "static-list" :values_source_config {:values ["US" "CA"]}}])))))))
+                (write! [{:op                   "update_parameter"
+                          :parameter_id         "country"
+                          :default              ["US"]
+                          :required             true
+                          :values_source_type   "static-list"
+                          :values_source_config {:values ["US" "CA"]}}])))))))
 
 (deftest unknown-card-is-a-teaching-error-test
   (testing "GHY-4147: add_card referencing a card the user cannot read fails before any write"
