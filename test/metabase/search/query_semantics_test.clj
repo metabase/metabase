@@ -84,4 +84,10 @@
           (check-in-place-query! docs query hits))
         (when dialect
           (let [{:keys [query hits]} (fixtures/comparison-spec case comparison dialect)]
-            (check-appdb-query! config docs query hits)))))))
+            (check-appdb-query! config docs query hits)))
+        ;; Semantic search falls back to app-db, modelled here as PostgreSQL, so a rewrite records what app-db
+        ;; returns for it.
+        (when-let [{:keys [query fallback]} (and (= dialect :appdb-postgres)
+                                                 (get-in comparison [:alternatives :semantic]))]
+          (testing "semantic fallback"
+            (check-appdb-query! config docs query (set fallback))))))))

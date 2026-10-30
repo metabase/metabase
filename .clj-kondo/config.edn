@@ -974,7 +974,12 @@
    :name    agent-exit-namespaces}]
 
  :config-in-ns
- {metabase.app-db.custom-migrations
+ {dev.search-semantics-report
+  {:linters
+   ;; a babashka script, which bundles cheshire; metabase.util.json is not on its classpath.
+   {:discouraged-namespace {cheshire.core {:level :off}}}}
+
+  metabase.app-db.custom-migrations
   {:linters
    ;; a migration reads the rows as they were when it ran; applying today's user settings would make it drift
    {:metabase/table-or-field-query {:level :off}}}

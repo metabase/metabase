@@ -329,6 +329,16 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-module-tree parsed))}
 
+  search-semantics-report
+  {:doc "Write a browsable HTML report comparing the search engines' results on the shared semantics fixture"
+   :requires [[babashka.process :as p]
+              [mage.util :as u]]
+   :examples [["./bin/mage search-semantics-report" "Write target/search-semantics-report/index.html"]
+              ["./bin/mage search-semantics-report /tmp/report.html" "Write the report to /tmp/report.html"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "output" :description "Where to write the HTML file"}]]]
+   :task (let [{:keys [arguments]} (cli/parse! (current-task))]
+           (apply p/shell (str u/project-root-directory "/bin/bb") "-cp" "test:test_resources" "dev/search_semantics_report.bb" arguments))}
+
   can-skip-driver-tests
   {:doc "Can we skip driver tests for this branch?"
    :examples [["./bin/mage can-skip-driver-tests master" "Returns zero (success) if we can skip driver tests based on changes related to `master`"]

@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Search engine comparison · corpus explorer</title>
+  <style>
+    :root { color-scheme: light; font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f7fb; color: #172334; }
+    * { box-sizing: border-box; }
+    body { max-width: 1460px; margin: 0 auto; padding: 32px 28px 80px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: 2rem; letter-spacing: -.04em; margin-bottom: 4px; }
+    h2 { font-size: 1.15rem; margin-bottom: 16px; }
+    h3 { font-size: 1rem; margin-bottom: 10px; }
+    .muted { color: #5b6d83; }
+    .intro { margin-bottom: 22px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .tab { border: 1px solid #c8d4e2; background: white; color: #29405c; border-radius: 9px; padding: 9px 15px; }
+    .tab[aria-selected="true"] { background: #173c71; border-color: #173c71; color: white; }
+    .corpus-description { margin: -8px 0 20px; }
+    .card { background: white; border: 1px solid #dce5ef; border-radius: 14px; box-shadow: 0 2px 9px #213f6610; padding: 20px; }
+    .support-guide { margin: 18px 0 26px; }
+    .support-table { min-width: 680px; table-layout: fixed; }
+    .support-table th, .support-table td { padding: 12px 14px; text-align: left; white-space: normal; }
+    .support-table th:first-child { width: 180px; }
+    .support-table thead th { color: #29405c; background: #f1f5fa; font-size: .88rem; }
+    .support-table tbody th { color: #465a71; font-size: .85rem; }
+    .support-table tbody tr:nth-child(even) { background: #f9fbfd; }
+    .support-table sup { margin-left: 3px; }
+    .footnote-marker { color: #9a4d0a; font-weight: 800; }
+    .support-status { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: .78rem; font-weight: 700; }
+    .support-status.yes { background: #e6f4e8; color: #18632c; }
+    .support-status.no { background: #eef1f5; color: #586879; }
+    .support-notes { margin: 10px 0 0; padding-left: 20px; color: #5b6d83; font-size: .88rem; }
+    .support-notes li + li { margin-top: 5px; }
+    .support-notes ul { margin: 5px 0 0; padding-left: 20px; }
+    .support-notes a { color: #245ea3; }
+    .engine-guide { margin: 18px 0 26px; }
+    .engine-table { min-width: 950px; table-layout: fixed; }
+    .engine-table th, .engine-table td { padding: 12px 14px; text-align: left; vertical-align: top; white-space: normal; }
+    .engine-table th:first-child { width: 150px; }
+    .engine-table thead th { color: #29405c; background: #f1f5fa; font-size: .88rem; }
+    .engine-table tbody th { color: #465a71; font-size: .85rem; }
+    .engine-table tbody tr:nth-child(even) { background: #f9fbfd; }
+    .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .metric { padding: 16px 18px; }
+    .metric .value { font-size: 1.7rem; font-weight: 700; letter-spacing: -.035em; }
+    .metric .label { color: #5b6d83; font-size: .88rem; }
+    .tables { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #e8edf3; text-align: right; white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    th { font-size: .78rem; color: #5b6d83; font-weight: 600; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .note { color: #5b6d83; font-size: .85rem; margin: 12px 0 0; }
+    .explorer { display: grid; grid-template-columns: minmax(280px, 350px) minmax(0, 1fr); gap: 14px; align-items: start; }
+    .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+    .toolbar input { border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 8px 10px; min-width: 0; }
+    .toolbar input { flex: 1; }
+    .sort-toggle { display: flex; gap: 4px; }
+    .sort-button { border: 1px solid #c8d4e2; background: white; color: #29405c; border-radius: 7px; padding: 8px 12px; }
+    .sort-button[aria-pressed="true"] { background: #173c71; border-color: #173c71; color: white; }
+    .sort-button[aria-pressed="true"]::after { margin-left: 6px; font-size: .68rem; }
+    .sort-button[aria-pressed="true"][data-direction="asc"]::after { content: "▲"; }
+    .sort-button[aria-pressed="true"][data-direction="desc"]::after { content: "▼"; }
+    #list-count { margin: 0 0 10px; }
+    .score-guide { display: grid; gap: 6px; margin: -6px 0 14px; font-size: .9rem; }
+    .score-guide p { margin: 0; }
+    .case-list { max-height: 640px; overflow-y: auto; display: grid; gap: 5px; }
+    .case-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; width: 100%; padding: 10px 12px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; color: inherit; }
+    .case-button:hover { background: #f2f6fb; }
+    .case-button[aria-current="true"] { background: #eaf2ff; border-color: #a9c7ec; }
+    .case-button .id { grid-column: 1; min-width: 0; font-weight: 650; overflow-wrap: anywhere; }
+    .case-button .scores { grid-column: 2; grid-row: 1 / span 2; align-self: start; display: grid; justify-items: end; }
+    .case-button .score { flex: none; color: #245ea3; font-size: .78rem; font-weight: 700; }
+    .case-button .focus { grid-column: 1; color: #5b6d83; font-size: .85rem; }
+    .badge { display: inline-block; border-radius: 999px; padding: 2px 7px; background: #e6f4e8; color: #18632c; font-size: .74rem; font-weight: 650; }
+    .badge.divergent { background: #fff0de; color: #8a4d00; }
+    .badge.neutral { background: #eef1f5; color: #465a71; }
+    .badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+    .detail-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+    .detail-head h2 { overflow-wrap: anywhere; margin-bottom: 5px; }
+    .query-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 16px 0 20px; }
+    .query-box { border: 1px solid #e2eaf2; background: #f8fafd; border-radius: 8px; padding: 10px 12px; min-width: 0; }
+    .query-box.conforms { border-color: #6fbf87; background: #eef8f1; }
+    .conforms-tag { margin-left: 6px; color: #176735; font-size: .74rem; font-weight: 650; }
+    th.conforms { background: #e6f4e8; color: #18632c; }
+    .query-box strong { display: block; margin-bottom: 5px; }
+    code { padding: 2px 4px; border-radius: 4px; background: #edf1f6; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .query-box code { display: block; background: transparent; padding: 0; }
+    .query-box .small { display: block; margin-top: 5px; color: #5b6d83; font-size: .82rem; }
+    .hit { color: #176735; font-weight: 750; }
+    .miss { color: #a5afba; }
+    .extra { color: #a44d00; font-weight: 750; }
+    .absent { color: #b42635; font-weight: 750; }
+    .doc-text { white-space: pre-wrap; min-width: 140px; max-width: 360px; overflow-wrap: anywhere; }
+    #detail th:nth-child(2), #detail td:nth-child(2), #pairwise th:nth-child(2), #pairwise td:nth-child(2) { text-align: left; }
+    .empty { color: #5b6d83; padding: 18px 0; }
+    .provenance { font-size: .82rem; margin: -12px 0 18px; }
+    .findings { margin-bottom: 18px; }
+    .findings h2 { margin-bottom: 8px; }
+    .findings ul { margin: 0; padding-left: 20px; }
+    .findings li + li { margin-top: 6px; }
+    .findings a { color: #245ea3; }
+    details.reference { margin-bottom: 8px; }
+    details.reference > summary { cursor: pointer; color: #29405c; font-weight: 650; margin-bottom: 14px; }
+    .distance { color: #5b6d83; font-size: .78rem; margin-left: 4px; font-weight: 400; }
+    .distance.near { color: #9a4d0a; font-weight: 650; }
+    .case-note { border-left: 3px solid #c8d4e2; padding: 2px 0 2px 10px; margin: 0 0 14px; }
+    .goal-scores { margin-bottom: 28px; }
+    .goal-scores h2 { margin-bottom: 6px; }
+    .weights { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 14px 0 16px; }
+    .weights label { display: flex; align-items: center; gap: 8px; font-size: .88rem; }
+    .weights input { width: 90px; }
+    .weights output { min-width: 1.2em; font-variant-numeric: tabular-nums; color: #5b6d83; }
+    .score-table td.score-cell { text-align: center; }
+    .score-table td.score-cell span { display: inline-block; min-width: 92px; border-radius: 6px; padding: 3px 6px; }
+    .score-table .typed { color: #5b6d83; }
+    .score-table .winner { outline: 2px solid #3f8a5a; outline-offset: -2px; }
+    .score-table tr.kind-row th { background: #f1f5fa; color: #29405c; text-align: left; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    .score-table tr.goal-row { cursor: pointer; }
+    .score-table tr.goal-row:hover td:first-child { text-decoration: underline; }
+    .score-table tr.goal-row.muted-row { opacity: .4; }
+    .score-table tfoot td { font-weight: 700; border-top: 2px solid #c8d4e2; }
+    .score-table tfoot td.score-cell span { min-width: 0; }
+    @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } .case-list { max-height: 280px; } }
+    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid, .query-grid { grid-template-columns: 1fr; } .toolbar { flex-wrap: wrap; } .toolbar input { flex-basis: 100%; } }
+    @media (prefers-color-scheme: dark) {
+      :root { color-scheme: dark; background: #101722; color: #e4edf7; }
+      .muted, .note, .support-notes, .metric .label, .case-button .focus, .query-box .small, .empty { color: #aabbd0; }
+      .support-notes a { color: #91c1ff; }
+      .card { background: #1b2839; border-color: #354963; box-shadow: none; }
+      .tab, .toolbar input, .sort-button { background: #1b2839; color: #e4edf7; border-color: #53677e; }
+      .tab[aria-selected="true"] { background: #2e67a8; border-color: #2e67a8; color: white; }
+      .sort-button[aria-pressed="true"] { background: #2e67a8; border-color: #2e67a8; color: white; }
+      th, td { border-color: #34465c; }
+      th, .support-table tbody th, .engine-table tbody th { color: #b7c9de; }
+      .support-table thead th, .engine-table thead th { background: #263a52; color: #e4edf7; }
+      .support-table tbody tr:nth-child(even), .engine-table tbody tr:nth-child(even) { background: #203047; }
+      .support-status.yes { background: #204632; color: #a4e2b6; }
+      .support-status.no { background: #35465a; color: #c3d0dd; }
+      .footnote-marker { color: #ffc26b; }
+      .case-button:hover { background: #263b52; }
+      .case-button[aria-current="true"] { background: #25476c; border-color: #6d9cd4; }
+      .case-button .score { color: #91c1ff; }
+      .query-box { background: #172335; border-color: #344963; }
+      .query-box.conforms { background: #183326; border-color: #3f8a5a; }
+      .conforms-tag { color: #72d999; }
+      th.conforms { background: #204632; color: #a4e2b6; }
+      code { background: #293c52; }
+      .badge { background: #204632; color: #a4e2b6; }
+      .badge.divergent { background: #523b1e; color: #ffd08a; }
+      .badge.neutral { background: #35465a; color: #c3d0dd; }
+      .hit { color: #72d999; }
+      .miss { color: #8295aa; }
+      .extra { color: #ffc26b; }
+      .absent { color: #ff929d; }
+      .score-table .typed, .weights output, .distance { color: #aabbd0; }
+      .distance.near { color: #ffc26b; }
+      .findings a { color: #91c1ff; }
+      details.reference > summary { color: #e4edf7; }
+      .case-note { border-left-color: #53677e; }
+      .score-table tr.kind-row th { background: #263a52; color: #e4edf7; }
+      .score-table .winner { outline-color: #72d999; }
+      .score-table tfoot td { border-top-color: #53677e; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Search engine comparison</h1>
+    <p class="intro muted">
+      Where Metabase's search engines return different cards for the same query, and what each needs typed to find what a user wants.<br>
+      These are hand-picked examples to explain the engines' behavior, not a sample of production traffic. They compare which cards come back, not their order, so they say nothing about ranking.
+    </p>
+    <p class="provenance muted" id="provenance"></p>
+  </header>
+
+  <section class="card findings" aria-labelledby="findings-title">
+    <h2 id="findings-title">What stands out</h2>
+    <ul id="findings"></ul>
+  </section>
+
+  <details class="reference">
+    <summary>How the engines work: availability and matching rules</summary>
+  <section class="support-guide" aria-labelledby="support-guide-title">
+    <h2 id="support-guide-title">Availability by appdb</h2>
+    <div class="card table-wrap" role="region" aria-label="Engine availability by appdb dialect" tabindex="0">
+      <table class="support-table">
+        <thead>
+          <tr><th scope="col">Engine</th><th scope="col">H2</th><th scope="col">MySQL / MariaDB</th><th scope="col">PostgreSQL</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">In-place</th><td><span class="support-status yes">Yes</span></td><td><span class="support-status yes">Yes</span></td><td><span class="support-status yes">Yes</span></td></tr>
+          <tr><th scope="row">appdb</th><td><span class="support-status yes">Yes</span><sup class="footnote-marker">*</sup></td><td><span class="support-status no">No</span><sup class="footnote-marker">†</sup></td><td><span class="support-status yes">Yes</span></td></tr>
+          <tr><th scope="row">Semantic</th><td><span class="support-status yes">Yes</span><sup class="footnote-marker">‡</sup></td><td><span class="support-status yes">Yes</span><sup class="footnote-marker">‡</sup></td><td><span class="support-status yes">Yes</span><sup class="footnote-marker">‡</sup></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="support-notes">
+      <li><span class="footnote-marker">*</span> appdb/H2 matches conjunctive substrings rather than lexemes and lacks support for OR, negation, and phrases. We haven’t established how much of that gap could be closed.</li>
+      <li><span class="footnote-marker">†</span> <a href="https://github.com/metabase/metabase/pull/52384" target="_blank" rel="noopener noreferrer">PR #52384</a> implemented appdb/MySQL, but was never merged. We could probably revive it, but it can't achieve parity with Postgres.</li>
+      <li><span class="footnote-marker">‡</span> Semantic requires feature access, an embedder, and a PostgreSQL/pgvector store. A PostgreSQL appdb can host that store itself; with H2 or MySQL/MariaDB it must be a separate database.</li>
+      <li>Deployment: for which Cloud instances can and do serve semantic search, see the internal <a href="https://stats.metabase.com/dashboard/9850" target="_blank" rel="noopener noreferrer">semantic search availability dashboard</a>. Self-hosted semantic use is not expected: setup is undocumented and not yet recommended.</li>
+    </ul>
+  </section>
+
+  <section class="engine-guide" aria-labelledby="engine-guide-title">
+    <h2 id="engine-guide-title">Query matching rules</h2>
+    <div class="card table-wrap" role="region" aria-label="Search engine matching rules" tabindex="0">
+      <table class="engine-table">
+        <thead>
+          <tr><th scope="col">Behavior</th><th scope="col">In-place</th><th scope="col">appdb/H2</th><th scope="col">appdb/PostgreSQL</th><th scope="col">Semantic vector</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Searches</th>
+            <td>Live entity columns</td>
+            <td>Materialized appdb text</td>
+            <td>Indexed appdb lexemes</td>
+            <td>Document embeddings</td>
+          </tr>
+          <tr>
+            <th scope="row">Multiple words</th>
+            <td>Any query word can suffice.</td>
+            <td>Every query word must match.</td>
+            <td>Every processed term must match, unless using operators.</td>
+            <td>Compares the query's overall meaning; individual words need not match.</td>
+          </tr>
+          <tr>
+            <th scope="row">Partial words</th>
+            <td>Any substring: <code>rate</code> matches <em>Moderated</em>.</td>
+            <td>Any substring, including inside longer words.</td>
+            <td>Prefix of the final eligible word only; no inner substring.</td>
+            <td>No defined prefix or substring rule.</td>
+          </tr>
+          <tr>
+            <th scope="row">Operators</th>
+            <td>Implicit OR across words; <code>or</code>, <code>-</code>, and quotes are literal text.</td>
+            <td>Implicit AND across words; <code>or</code>, <code>-</code>, and quotes are literal text.</td>
+            <td>Conjunction, disjunction, negation, and phrase matching.</td>
+            <td>Contextual interpretation; no guaranteed Boolean or phrase operations.</td>
+          </tr>
+          <tr>
+            <th scope="row">Language</th>
+            <td>No stopword removal or stemming.</td>
+            <td>No stopword removal or stemming.</td>
+            <td>Stopwords and stemming follow the site locale or <code>search-language</code> setting.</td>
+            <td>Stopwords and stemming are model-dependent.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Semantic search unions these vector hits with keyword hits, then ranks the combined results. For every scenario here, the keyword hits are the appdb/PostgreSQL hits. Below its results threshold (100 by default), which a small catalogue always is, it also appends appdb's results, as long as its own arms found something. The pages score semantic search twice: <em>Semantic only</em> is the vector arm alone, and <em>Semantic with fallback</em> is what it returns, modelling appdb as PostgreSQL.</p>
+  </section>
+  </details>
+
+  <nav class="tabs" aria-label="Corpus">
+    <button class="tab" data-corpus="sameQuery" aria-selected="true">Same query for every engine</button>
+    <button class="tab" data-corpus="translations" aria-selected="false">Same goal, adapted queries</button>
+  </nav>
+  <p class="corpus-description muted" id="corpus-description" aria-live="polite">Every engine receives the same query. Differences show how each interprets it.</p>
+
+  <section class="summary-grid" id="metrics" aria-label="Corpus summary"></section>
+  <section class="tables">
+    <div class="card">
+      <h2>Pairwise result-set relationships</h2>
+      <div class="table-wrap" id="pairwise"></div>
+      <p class="note">⊃ and ⊂ describe the left engine relative to the right. “Mixed” means neither result set contains the other.</p>
+    </div>
+    <div class="card">
+      <h2 id="second-table-title">Average results per query</h2>
+      <div class="table-wrap" id="second-table"></div>
+      <p class="note" id="second-table-note"></p>
+    </div>
+  </section>
+
+  <section class="card goal-scores" id="goal-scores" aria-labelledby="goal-scores-title" hidden>
+    <h2 id="goal-scores-title">Scores by goal</h2>
+    <p class="note">Each cell is F1 against the goal's correct results, from 0 to 1: first for the goal's query as typed, then for the adapted query recorded for that engine, which uses only words from the goal and the typed query. An outlined cell is the best, or tied best, for that goal. Hover a cell for precision and recall; click a goal to open it below.</p>
+    <div class="weights" id="weights" role="group" aria-label="Weight per kind of goal"></div>
+    <div class="table-wrap" id="score-table"></div>
+    <p class="note">The means are exploratory. The goals were picked to expose differences between the engines, so they reflect that mix, not production traffic. Each kind's goals are averaged first, so a weight says how much that kind matters, not how many examples it has.</p>
+  </section>
+
+  <h2>Explore cases</h2>
+  <div class="score-guide muted">
+    <p><strong>Agreement</strong> describes how the engines' result sets relate, ignoring order; it says nothing about which is right. “All agree” means all five return the same cards; “Four agree” means one engine differs; “Three and two agree” means two groups; “Three agree” means a group of three and two outliers; “Two pairs agree” and “One pair agrees” count matching pairs; “All differ” means no two engines match.</p>
+    <p id="conformance-guide" hidden><strong>Conformance</strong> compares each engine with the intended results declared for the comparison: how many return exactly those results? Those engines are highlighted in the case detail. The intended results describe what the user most likely meant, so it is possible for no engine to achieve them. Sorting by conformance breaks ties by mean F1, which gives partial credit for near misses.</p>
+  </div>
+  <div class="toolbar">
+    <input id="filter" type="search" placeholder="Filter cases, queries, documents…" aria-label="Filter cases">
+    <div class="sort-toggle" role="group" aria-label="Sort cases; click the selected sort to reverse direction">
+      <button class="sort-button" type="button" data-sort="name" data-direction="asc" aria-pressed="true" aria-label="Sort by name ascending">Name</button>
+      <button class="sort-button" type="button" data-sort="agreement" data-direction="desc" aria-pressed="false" aria-label="Sort by agreement descending">Agreement</button>
+      <button class="sort-button" type="button" data-sort="conformance" data-direction="desc" aria-pressed="false" aria-label="Sort by conformance descending" hidden>Conformance</button>
+    </div>
+  </div>
+  <section class="explorer">
+    <div class="card">
+      <p class="note" id="list-count"></p>
+      <div class="case-list" id="case-list"></div>
+    </div>
+    <article class="card" id="detail" aria-live="polite"></article>
+  </section>
+
+  <script type="application/json" id="report-data">__REPORT_DATA__</script>
+  <script>
+    const data = JSON.parse(document.getElementById("report-data").textContent);
+    const labels = { "in-place": "In-place", "appdb-h2": "appdb/H2", "appdb-postgres": "appdb/PostgreSQL", "semantic-only": "Semantic only", "semantic-with-fallback": "Semantic with fallback" };
+    const state = { corpus: "sameQuery", selected: null, sort: "name", directions: { name: "asc", agreement: "desc", conformance: "desc" } };
+    const $ = id => document.getElementById(id);
+    const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+    const inline = text => escape(text).replace(/`([^`]+)`/g, "<code>$1</code>");
+    const number = value => Number(value).toFixed(2);
+    const fixed = value => Number(value).toFixed(2);
+    const percent = value => `${(100 * value).toFixed(1)}%`;
+    const table = (headers, rows) => `<table><thead><tr>${headers.map(h => typeof h === "string" ? `<th>${escape(h)}</th>` : `<th class="${h.className}">${escape(h.text)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    // Keyed by matching engine pairs; with five engines only these groupings are possible.
+    const agreementLabels = { 10: "All agree", 6: "Four agree", 4: "Three and two agree", 3: "Three agree", 2: "Two pairs agree", 1: "One pair agrees", 0: "All differ" };
+    const agreement = item => agreementLabels[item.matchingPairs];
+    const conformance = item => {
+      const count = item.conforming.length;
+      return count === data.engines.length ? "All conform" : count === 0 ? "None conform" : `${count} conform`;
+    };
+    const agreementTitle = item => `${item.matchingPairs} of ${data.pairCount} engine pairs return identical results`;
+    const conformanceTitle = item => `${item.conforming.length} of ${data.engines.length} engines return the correct results; mean F1 ${percent(item.meanF1)}`;
+    const badge = (text, title, className) => `<span class="badge ${className}" title="${escape(title)}">${escape(text)}</span>`;
+    // Agreement describes how results relate, not whether they are right, so its badge stays neutral.
+    const badges = item => `<div class="badges">${badge(agreement(item), agreementTitle(item), "neutral")}${item.conforming ? badge(conformance(item), conformanceTitle(item), item.conforming.length === data.engines.length ? "" : "divergent") : ""}</div>`;
+    const current = () => data[state.corpus];
+
+    const kindNames = { or: "Either term", and: "Both terms", exclusion: "Exclusion", title: "Exact title", "word-forms": "Word forms", typing: "Typing in progress" };
+    const kindLabel = kind => kindNames[kind] ?? kind;
+    // Weights are a per-viewer preference; the page works the same without storage.
+    let weights = (() => { try { return JSON.parse(localStorage.getItem("goalWeights")) || {}; } catch { return {}; } })();
+    const weightOf = kind => weights[kind] ?? 1;
+
+    // The hash holds the tab, the case, and any weights changed from the default, so a link reproduces the view.
+    function writeHash() {
+      const params = new URLSearchParams({ tab: state.corpus });
+      if (state.selected) params.set("case", state.selected);
+      const changed = data.goalKinds.filter(kind => weightOf(kind) !== 1).map(kind => `${kind}:${weightOf(kind)}`);
+      if (changed.length) params.set("weights", changed.join(","));
+      history.replaceState(null, "", `#${params}`);
+    }
+
+    function readHash() {
+      const params = new URLSearchParams(location.hash.slice(1));
+      if (!params.has("tab")) return false;
+      if (params.get("tab") in data && data[params.get("tab")].cases) state.corpus = params.get("tab");
+      state.selected = params.get("case");
+      // A shared link carries its sender's weights, or none when they were the defaults.
+      weights = {};
+      for (const pair of (params.get("weights") || "").split(",").filter(Boolean)) {
+        const [kind, value] = pair.split(":");
+        if (data.goalKinds.includes(kind) && /^[0-3]$/.test(value)) weights[kind] = Number(value);
+      }
+      return true;
+    }
+
+    function renderFindings() {
+      const { commit, generated, model, cutoff } = data.provenance;
+      $("provenance").textContent = `Built from commit ${commit} on ${generated}. Vectors from ${model}; the vector arm keeps cards within cosine distance ${fixed(cutoff)}.`;
+      $("findings").innerHTML = data.findings.map(finding => `<li><a href="#${new URLSearchParams({ tab: "sameQuery", case: finding.case })}">${escape(finding.case)}</a>: ${inline(finding.text)}</li>`).join("");
+    }
+
+    function renderSummary() {
+      const summary = current().summary;
+      $("corpus-description").textContent = state.corpus === "sameQuery"
+        ? "Every engine receives the same query. Differences show how each interprets it."
+        : "Each goal names the cards a user wants. Engines may get an adapted query, using only words from the goal and the typed query, and are scored against those cards.";
+      $("metrics").innerHTML = [
+        [summary.count, state.corpus === "sameQuery" ? "Scenarios" : "Goals"],
+        [summary.allEqual, "All engines agree"],
+        [data.engines.length, "Engines compared"]
+      ].map(([value, label]) => `<div class="card metric"><div class="value">${escape(value)}</div><div class="label">${escape(label)}</div></div>`).join("");
+
+      $("pairwise").innerHTML = table(["Left engine", "Right engine", "=", "⊃", "⊂", "Mixed"], summary.pairs.map(pair => [
+        escape(labels[pair.left]), escape(labels[pair.right]),
+        pair.counts.equal, pair.counts["left-superset"], pair.counts["left-subset"], pair.counts.incomparable
+      ]));
+
+      $("goal-scores").hidden = state.corpus !== "translations";
+      if (state.corpus === "translations") {
+        renderScoreTable();
+        $("second-table-title").textContent = "Fidelity to correct result sets";
+        $("second-table").innerHTML = table(["Engine", "Precision", "Recall", "F1", "Exact", "F1 as typed", "Exact as typed"], data.engines.map(engine => {
+          const score = summary.scores[engine];
+          const typed = summary.typedScores[engine];
+          return [escape(labels[engine]), percent(score.precision), percent(score.recall), percent(score.f1), `${score.exact}/${summary.count}`, percent(typed.f1), `${typed.exact}/${summary.count}`];
+        }));
+        $("second-table-note").textContent = "Unweighted: each goal counts once, whatever the weights below. Exact counts goals where the engine returns the correct results. As typed scores the goal's query unchanged.";
+      } else {
+        $("second-table-title").textContent = "Average results per query";
+        $("second-table").innerHTML = table(["Engine", "Mean hits"], data.engines.map(engine => [escape(labels[engine]), number(summary.meanHits[engine])]));
+        $("second-table-note").textContent = "Means describe fixture membership only. A larger set is not automatically better.";
+      }
+    }
+
+    const sortKeys = {
+      name: () => 0,
+      agreement: (left, right) => left.matchingPairs - right.matchingPairs,
+      conformance: (left, right) => left.conforming.length - right.conforming.length || left.meanF1 - right.meanF1
+    };
+
+    function visibleCases() {
+      const needle = $("filter").value.trim().toLowerCase();
+      const cases = current().cases.filter(item => !needle || JSON.stringify(item).toLowerCase().includes(needle));
+      const direction = state.directions[state.sort] === "asc" ? 1 : -1;
+      return cases.sort((left, right) => state.sort === "name"
+        ? direction * left.id.localeCompare(right.id)
+        : direction * sortKeys[state.sort](left, right) || left.id.localeCompare(right.id));
+    }
+
+    function renderList() {
+      const cases = visibleCases();
+      if (!cases.some(item => item.id === state.selected)) state.selected = cases[0]?.id ?? null;
+      $("list-count").textContent = `${cases.length} of ${current().cases.length} cases`;
+      $("case-list").innerHTML = cases.map(item => `<button class="case-button" data-id="${escape(item.id)}" aria-current="${item.id === state.selected}">
+          <span class="id">${escape(item.scenario)}</span>
+          <span class="scores">
+            <span class="score" aria-label="${escape(agreement(item))}" title="${escape(agreementTitle(item))}">${escape(agreement(item))}</span>
+            ${item.conforming ? `<span class="score" title="${escape(conformanceTitle(item))}">${escape(conformance(item))}</span>` : ""}
+          </span>
+          <span class="focus">${escape(item.focus)}</span>
+        </button>`).join("");
+      for (const button of $("case-list").querySelectorAll("button")) {
+        button.addEventListener("click", () => { state.selected = button.dataset.id; renderList(); });
+      }
+      renderDetail(cases.find(item => item.id === state.selected));
+      writeHash();
+    }
+
+    function hitList(hits) {
+      return hits.length ? escape(hits.join(", ")) : "none";
+    }
+
+    function renderDetail(item) {
+      if (!item) { $("detail").innerHTML = '<p class="empty">No matching cases.</p>'; return; }
+      const translated = state.corpus === "translations";
+      const cutoff = data.provenance.cutoff;
+      const correct = new Set(item.correct || []);
+      const conforms = engine => translated && item.conforming.includes(engine.id);
+      const notes = [item.scenarioNote, item.note].filter(Boolean).map(note => `<p class="case-note muted">${inline(note)}</p>`).join("");
+      const queries = item.engines.map(engine => `<div class="query-box${conforms(engine) ? " conforms" : ""}"><strong>${escape(labels[engine.id])}${conforms(engine) ? '<span class="conforms-tag">✓ correct</span>' : ""}</strong><code>${escape(translated ? engine.query : item.query)}</code><span class="small">Hits: ${hitList(engine.hits)}</span>${engine.keywordHits ? `<span class="small">Keyword arm: ${hitList(engine.keywordHits)}</span>` : ""}${translated && engine.query !== item.query ? `<span class="small">As typed, <code>${escape(item.query)}</code>: ${hitList(engine.typedHits)}</span>` : ""}</div>`).join("");
+      const headers = ["Document", "Searchable fields", ...item.engines.map(engine => {
+        const text = engine.distances ? `${labels[engine.id]} (≤ ${fixed(cutoff)})` : labels[engine.id];
+        return conforms(engine) ? { text: `${text} ✓`, className: "conforms" } : text;
+      }), ...(translated ? ["Correct"] : [])];
+      const rows = item.docs.map(doc => {
+        const cells = item.engines.map(engine => {
+          const hit = engine.hits.includes(doc.label);
+          const kind = translated ? (hit && !correct.has(doc.label) ? "extra" : !hit && correct.has(doc.label) ? "absent" : hit ? "hit" : "miss") : hit ? "hit" : "miss";
+          const distance = engine.distances?.[doc.label];
+          const shown = distance === undefined ? "" : `<span class="distance${Math.abs(distance - cutoff) <= 0.05 ? " near" : ""}" title="cosine distance">${fixed(distance)}</span>`;
+          return `<span class="${kind}" title="${escape(kind)}">${hit ? "✓" : "·"}</span>${shown}`;
+        });
+        const fields = Object.entries(doc.attributes).map(([key, value]) => `${key}: ${value}`).join(" · ");
+        return [`<strong>${escape(doc.label)}</strong>`, `<span class="doc-text">${escape(fields)}</span>`, ...cells, ...(translated ? [correct.has(doc.label) ? "✓" : "·"] : [])];
+      });
+      const resultTitle = `Result membership${translated ? ` · correct results ${escape(item.correct.join(", ") || "none")}` : ""}`;
+      const distanceNote = `Semantic only shows each card's cosine distance from the query: lower is closer, cards within ${fixed(cutoff)} are hits, and orange marks those within 0.05 of that cutoff.`;
+      const resultNote = translated
+        ? `Highlighted engines return exactly the correct results. Orange ✓ is an extra hit; red · is a missed correct hit. ${distanceNote}`
+        : `✓ is a hit; · is not. ${distanceNote} Semantic with fallback adds the keyword arm and appdb's PostgreSQL hits.`;
+      $("detail").innerHTML = `
+        <div class="detail-head">
+          <div>
+            <h2>${escape(item.scenario)}</h2>
+            <p class="muted">${escape(item.focus)} · text search language: ${escape(item.config)}</p>
+          </div>
+          ${badges(item)}
+        </div>
+        ${notes}
+        <h3>${translated ? "Queries by engine" : "Identical query"}</h3>
+        <div class="query-grid">${queries}</div>
+        <h3>${resultTitle}</h3>
+        <div class="table-wrap">${table(headers, rows)}</div>
+        <p class="note">${resultNote}</p>`;
+    }
+
+    const engineIn = (item, id) => item.engines.find(engine => engine.id === id);
+    const topScore = item => Math.max(...item.engines.map(engine => engine.bestScore.f1));
+    const wins = (item, id) => engineIn(item, id).bestScore.f1 >= topScore(item) - 1e-9;
+    const shade = value => `background: rgba(46, 160, 67, ${(0.06 + 0.5 * value).toFixed(2)})`;
+    const scoreTitle = engine => `As typed: precision ${percent(engine.typedScore.precision)}, recall ${percent(engine.typedScore.recall)}. `
+      + `Adapted query: precision ${percent(engine.bestScore.precision)}, recall ${percent(engine.bestScore.recall)}.`;
+    const scorePair = (typed, best, extra = "", title = "") => `<span class="${extra}" style="${shade(best)}" title="${escape(title)}"><span class="typed">${fixed(typed)}</span> → ${fixed(best)}</span>`;
+    const goalsOf = kind => data.translations.cases.filter(item => item.kind === kind);
+
+    function renderWeights() {
+      $("weights").innerHTML = data.goalKinds.filter(kind => goalsOf(kind).length).map(kind => {
+        const count = goalsOf(kind).length;
+        return `<label>${escape(kindLabel(kind))} <span class="muted">(${count} ${count === 1 ? "goal" : "goals"})</span>
+          <input type="range" min="0" max="3" step="1" value="${weightOf(kind)}" data-kind="${escape(kind)}" aria-label="Weight for ${escape(kindLabel(kind))}">
+          <output>${weightOf(kind)}</output></label>`;
+      }).join("");
+      for (const input of $("weights").querySelectorAll("input")) {
+        input.addEventListener("input", () => {
+          weights[input.dataset.kind] = Number(input.value);
+          input.nextElementSibling.textContent = input.value;
+          try { localStorage.setItem("goalWeights", JSON.stringify(weights)); } catch {}
+          renderScoreTable();
+          writeHash();
+        });
+      }
+    }
+
+    function renderScoreTable() {
+      const kinds = data.goalKinds.filter(kind => goalsOf(kind).length);
+      const totalWeight = kinds.reduce((sum, kind) => sum + weightOf(kind), 0);
+      const kindMean = (kind, id, key) => goalsOf(kind).reduce((sum, item) => sum + engineIn(item, id)[key].f1, 0) / goalsOf(kind).length;
+      // Each kind is averaged first, so a weight sets how much a kind counts, whatever its number of goals.
+      // Only called when some kind has weight; with none, the totals show n/a rather than a misleading zero.
+      const mean = (id, key) => kinds.reduce((sum, kind) => sum + weightOf(kind) * kindMean(kind, id, key), 0) / totalWeight;
+      const header = `<thead><tr><th>Goal</th>${data.engines.map(id => `<th style="text-align:center">${escape(labels[id])}</th>`).join("")}</tr></thead>`;
+      const body = kinds.map(kind => {
+        const goalRows = goalsOf(kind).map(item => `<tr class="goal-row${weightOf(kind) ? "" : " muted-row"}" data-id="${escape(item.id)}"><td>${escape(item.focus)}</td>${data.engines.map(id => {
+          const engine = engineIn(item, id);
+          return `<td class="score-cell">${scorePair(engine.typedScore.f1, engine.bestScore.f1, wins(item, id) ? "winner" : "", scoreTitle(engine))}</td>`;
+        }).join("")}</tr>`).join("");
+        return `<tr class="kind-row"><th colspan="${data.engines.length + 1}">${escape(kindLabel(kind))} · weight ${weightOf(kind)}</th></tr>${goalRows}`;
+      }).join("");
+      const footer = `<tfoot>
+          <tr><td>Mean, by kind</td>${data.engines.map(id => `<td class="score-cell">${totalWeight ? scorePair(mean(id, "typedScore"), mean(id, "bestScore")) : "n/a"}</td>`).join("")}</tr>
+          <tr><td>Gain from adapting</td>${data.engines.map(id => `<td class="score-cell">${totalWeight ? `+${fixed(mean(id, "bestScore") - mean(id, "typedScore"))}` : "n/a"}</td>`).join("")}</tr>
+        </tfoot>`;
+      $("score-table").innerHTML = `<table class="score-table">${header}<tbody>${body}</tbody>${footer}</table>`;
+      for (const row of $("score-table").querySelectorAll("tr.goal-row")) {
+        row.addEventListener("click", () => {
+          $("filter").value = "";
+          state.selected = row.dataset.id;
+          renderList();
+          $("detail").scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    }
+
+    function syncSortButtons() {
+      $("conformance-guide").hidden = state.corpus !== "translations";
+      for (const button of document.querySelectorAll(".sort-button")) {
+        const direction = state.directions[button.dataset.sort];
+        button.hidden = button.dataset.sort === "conformance" && state.corpus !== "translations";
+        button.setAttribute("aria-pressed", String(button.dataset.sort === state.sort));
+        button.setAttribute("data-direction", direction);
+        button.setAttribute("aria-label", `Sort by ${button.dataset.sort} ${direction === "asc" ? "ascending" : "descending"}`);
+      }
+    }
+
+    function render() {
+      if (state.sort === "conformance" && state.corpus !== "translations") state.sort = "name";
+      for (const tab of document.querySelectorAll(".tab")) tab.setAttribute("aria-selected", String(tab.dataset.corpus === state.corpus));
+      syncSortButtons();
+      renderWeights();
+      renderSummary();
+      renderList();
+    }
+
+    for (const tab of document.querySelectorAll(".tab")) {
+      tab.addEventListener("click", () => {
+        state.corpus = tab.dataset.corpus;
+        state.selected = null;
+        render();
+      });
+    }
+    $("filter").addEventListener("input", renderList);
+    for (const button of document.querySelectorAll(".sort-button")) {
+      button.addEventListener("click", () => {
+        const sort = button.dataset.sort;
+        if (state.sort === sort) state.directions[sort] = state.directions[sort] === "asc" ? "desc" : "asc";
+        state.sort = sort;
+        syncSortButtons();
+        renderList();
+      });
+    }
+    // Following a link, from a finding or another page, opens its case.
+    window.addEventListener("hashchange", () => {
+      if (readHash()) {
+        $("filter").value = "";
+        render();
+        $("detail").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+    if (readHash()) $("filter").value = "";
+    renderFindings();
+    render();
+  </script>
+</body>
+</html>
