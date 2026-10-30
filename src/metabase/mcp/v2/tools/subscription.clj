@@ -300,20 +300,14 @@
                       (t2/hydrate [:dashcards :card]))
         cards     (subscription-cards dashboard)
         channel   (build-channel nil (or channel "email") true args)
-        ;; Send `collection_id` and `collection_position` as nil.
-        ;; `create-pulse-with-perm-checks!` ignores both for a dashboard subscription. The subscription
-        ;; goes in the collection of its dashboard. Anyone who can view a dashboard can subscribe to it.
-        ;; The nil values only make this explicit.
         pulse     (pulse.api/create-pulse-with-perm-checks!
                    cards
                    [channel]
-                   {:name                (:name dashboard)
-                    :creator_id          api/*current-user-id*
-                    :dashboard_id        (:id dashboard)
-                    :collection_id       nil
-                    :collection_position nil
-                    :skip_if_empty       (boolean skip_if_empty)
-                    :parameters          (resolve-parameters parameters (:parameters dashboard))})]
+                   {:name          (:name dashboard)
+                    :creator_id    api/*current-user-id*
+                    :dashboard_id  (:id dashboard)
+                    :skip_if_empty (boolean skip_if_empty)
+                    :parameters    (resolve-parameters parameters (:parameters dashboard))})]
     (:id pulse)))
 
 ;;; -------------------------------------------------- Update ------------------------------------------------------

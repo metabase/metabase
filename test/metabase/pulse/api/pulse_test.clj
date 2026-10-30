@@ -451,27 +451,28 @@
                          :model/Card       {pin-2 :id} {:collection_id coll-s :collection_position 2}]
             ;; View-only access to the dashboard's collection A, and no access to S.
             (perms/grant-collection-read-permissions! (perms-group/all-users) coll-a)
-            (let [pulse-name (mt/random-name)
-                  response   (mt/user-http-request :rasta :post 200 "pulse"
-                                                   {:name                pulse-name
-                                                    :dashboard_id        dashboard-id
-                                                    :cards               [{:id                card-id
-                                                                           :include_csv       false
-                                                                           :include_xls       false
-                                                                           :dashboard_card_id nil}]
-                                                    :channels            [daily-email-channel]
-                                                    :skip_if_empty       false
-                                                    :collection_id       coll-s
-                                                    :collection_position 1})]
-              (testing "response"
-                (is (nil? (:errors response))))
-              (testing "pinned cards in the other collection do not move"
-                (is (= {pin-1 1, pin-2 2}
-                       (t2/select-pk->fn :collection_position :model/Card :id [:in [pin-1 pin-2]]))))
-              (testing "the subscription is saved in the dashboard's collection, unpinned"
-                (is (= {:collection_id coll-a, :collection_position nil}
-                       (mt/derecordize (t2/select-one [:model/Pulse :collection_id :collection_position]
-                                                      :name pulse-name))))))))))))
+            ;; :rasta cannot write to S. :crowberto can, so the request would pass the permission check for S.
+            (doseq [user [:rasta :crowberto]]
+              (testing (str "as " user)
+                (let [pulse-name (mt/random-name)]
+                  (mt/user-http-request user :post 200 "pulse"
+                                        {:name                pulse-name
+                                         :dashboard_id        dashboard-id
+                                         :cards               [{:id                card-id
+                                                                :include_csv       false
+                                                                :include_xls       false
+                                                                :dashboard_card_id nil}]
+                                         :channels            [daily-email-channel]
+                                         :skip_if_empty       false
+                                         :collection_id       coll-s
+                                         :collection_position 1})
+                  (testing "pinned cards in the other collection do not move"
+                    (is (= {pin-1 1, pin-2 2}
+                           (t2/select-pk->fn :collection_position :model/Card :id [:in [pin-1 pin-2]]))))
+                  (testing "the subscription is saved in the dashboard's collection, unpinned"
+                    (is (= {:collection_id coll-a, :collection_position nil}
+                           (mt/derecordize (t2/select-one [:model/Pulse :collection_id :collection_position]
+                                                          :name pulse-name))))))))))))))
 
 (deftest validate-email-domains-test
   (mt/when-ee-evailable

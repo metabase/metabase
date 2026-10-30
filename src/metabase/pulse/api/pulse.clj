@@ -93,12 +93,11 @@
      (t2/hydrate pulses :can_write))))
 
 (defn- without-collection-for-dashboard-subscription
-  "Drop `:collection_id` and `:collection_position` from `pulse-data` when it is a dashboard subscription.
+  "Set `:collection_id` and `:collection_position` in `pulse-data` to nil when it is a dashboard subscription.
 
-  A dashboard subscription lives in the collection of its dashboard, and it has no pin position of its own.
-  `before-insert` takes `:collection_id` from the dashboard only when the request sends none. Without this step, a
-  collection from the request would pass the permission check unread, and `maybe-reconcile-collection-position!`
-  would shift the pinned items in it."
+  `before-insert` takes `:collection_id` from the dashboard only when the request sends none. Without this step, the
+  permission check would demand write access to the request's collection. A user who has it would get the
+  subscription saved there, and `maybe-reconcile-collection-position!` would shift the pinned items in it."
   [{:keys [dashboard_id] :as pulse-data}]
   (cond-> pulse-data
     dashboard_id (assoc :collection_id nil :collection_position nil)))
@@ -106,7 +105,9 @@
 (defn create-pulse-with-perm-checks!
   "Create a new Pulse with permissions checks.
 
-  A dashboard subscription ignores `:collection_id` and `:collection_position` in `pulse-data`."
+  A dashboard subscription ignores `:collection_id` and `:collection_position` in `pulse-data`. It goes in the
+  collection of its dashboard, and it has no pin position. View access to the dashboard is enough to subscribe to it:
+  https://github.com/metabase/metabase/pull/17722"
   [cards channels pulse-data]
   (perms/check-has-application-permission :subscription false)
   (let [pulse-data (without-collection-for-dashboard-subscription pulse-data)]
