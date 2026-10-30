@@ -67,7 +67,7 @@
                                                (with-join-alias field-ref new-alias))
                                              fields))))))
 
-(mu/defn- standard-join-condition? :- :boolean
+(mu/defn standard-join-condition? :- :boolean
   "Whether this join condition is a binary condition with two expressions (LHS and RHS), as you'd produce in the
   frontend using functions like [[join-condition-operators]], [[join-condition-lhs-columns]], and
   [[join-condition-rhs-columns]].
@@ -85,7 +85,7 @@
       _
       false)))
 
-(defn- standard-join-condition-lhs
+(defn standard-join-condition-lhs
   "If `condition` is a [[standard-join-condition?]], return the LHS expression. The LHS expression can be arbitrary and
   not only a `:field` reference. The frontend will only use columns from [[join-condition-lhs-columns]] here."
   [condition]
@@ -93,7 +93,7 @@
     (let [[_operator _opts lhs _rhs] condition]
       lhs)))
 
-(defn- standard-join-condition-rhs
+(defn standard-join-condition-rhs
   "If `condition` is a [[standard-join-condition?]], return the RHS.  The RHS expression can be arbitrary and
   not only a `:field` reference. The frontend will only use columns from [[join-condition-rhs-columns]] here."
   [condition]
