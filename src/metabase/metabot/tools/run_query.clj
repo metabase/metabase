@@ -384,7 +384,7 @@
     (:query (qp.compile/compile query))
     (catch Exception e
       (if (query-execution/caller-facing-failure? (qp.catch-exceptions/exception-response e))
-        (sql.common/query-failed! {:error-message (ex-message e)})
+        (sql.common/query-failed! {:error-message (qp.catch-exceptions/user-visible-message e (:database query))})
         (throw e)))))
 
 (defn- read-only-problem

@@ -105,4 +105,7 @@
                               (ex-info "Error executing query: ERROR: canceling statement due to statement timeout"
                                        {:query/query-canceled? true})))))
       (is (= [:error]
-             (search (ex-info "Error executing query: Code: 47. DB::Exception: Identifier cannot be resolved" {})))))))
+             (search (ex-info "Error executing query: Code: 47. DB::Exception: Identifier cannot be resolved" {}))))
+      (testing "a failure the query processor already logged is not logged again"
+        (is (= []
+               (search (ex-info "An error occurred while running the query." {:query/error-logged? true}))))))))

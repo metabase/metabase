@@ -103,7 +103,9 @@
   (try
     (execute-query-action! action request-parameters opts)
     (catch Exception e
-      (log/errorf "Error executing action: %s" (ex-message e))
+      ;; the query processor may have logged the original message already
+      (when-not (some (comp :query/error-logged? ex-data) (u/full-exception-chain e))
+        (log/errorf "Error executing action: %s" (ex-message e)))
       (if-let [ed (ex-data e)]
         (let [ed (cond-> ed
                    (and (nil? (:status-code ed))
