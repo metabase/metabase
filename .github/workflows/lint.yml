@@ -63,6 +63,9 @@ jobs:
             bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash)
           fi
 
+      - name: Create Clojure CLI user config
+        run: clojure -Sdescribe > /dev/null
+
       - parallel:
         # Deliberately ungated. This guards a coupling that drifts silently, so running it only when a
         # path filter says .github changed would reintroduce the failure it exists to catch - and the

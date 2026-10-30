@@ -26,7 +26,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv empty? some]]
-   [metabase.warehouses.schema :as warehouses.schema])
+   [metabase.warehouses.schema :as warehouses.schema]
+   [ring.util.codec :as codec])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -236,17 +237,50 @@
         (when (some #(not (u.http/host-allowed-for-network-policy? policy %)) hosts)
           (throw (blocked-network-address-exception)))))))
 
+(defn- fold-case
+  "`s` with each code point folded the way `String/equalsIgnoreCase` compares it: upper case, then lower case."
+  ^String [^String s]
+  (-> (String/.codePoints s)
+      (.map ^[int] Character/toUpperCase)
+      (.map ^[int] Character/toLowerCase)
+      (.collect ^[] StringBuilder/new
+                ^[int] StringBuilder/.appendCodePoint
+                ^[StringBuffer] StringBuilder/.append)
+      (str)))
+
+(defn- normalize-connection-parameter
+  "Normalize `s` for matching against [[driver/disallowed-connection-parameters]]: percent escapes decoded once, case
+  folded the way `equalsIgnoreCase` does, and `_ . - +` and whitespace removed."
+  [s]
+  ;; (?U) makes \s match Unicode whitespace too
+  (-> (codec/percent-decode (str s)) fold-case (str/replace #"(?U)[_.\-+\s]" "")))
+
 (defn disallowed-connection-parameter
-  "The first name in [[driver/disallowed-connection-parameters]] that the string `s` contains, matched
-  case-insensitively, or nil when it contains none."
+  "The first name in [[driver/disallowed-connection-parameters]] that the string `s` contains, after both are
+  normalized by [[normalize-connection-parameter]], or nil when it contains none."
   [driver s]
-  (let [s (u/lower-case-en (str s))]
-    (some #(when (str/includes? s (u/lower-case-en %)) %)
+  (let [s (normalize-connection-parameter s)]
+    (some #(when (str/includes? s (normalize-connection-parameter %)) %)
           (driver/disallowed-connection-parameters driver))))
+
+(def ^:private url-separators
+  "Characters that end a URL-building detail's part of a connection URL and start a client parameter."
+  [\? \& \; \#])
+
+(defn- validate-url-building-details!
+  [driver details]
+  (doseq [k     (driver/url-building-detail-keys driver)
+          :let  [v (get details k)]
+          ;; some clients percent-decode the URL once before splitting off its parameters, so an encoded separator is
+          ;; refused too
+          :when (and (some? v) (some (set url-separators) (codec/percent-decode (str v))))]
+    (throw (ex-info (str "Connection detail " (name k) " may not contain " (str/join " " url-separators))
+                    {:status-code 400, :detail k}))))
 
 (defn validate-connection-parameters!
   "Throw a 400 if `details` set a connection parameter named in [[driver/disallowed-connection-parameters]], either in
-  `:additional-options` or as a detail key. Returns nil when the details are acceptable.
+  `:additional-options` or as a detail key, or if a value of one of the [[driver/url-building-detail-keys]] contains a
+  URL separator. Returns nil when the details are acceptable.
 
   Reads the details a user supplied rather than the connection spec built from them: the spec also carries properties
   Metabase sets itself, which are not the user's to have chosen. An auth provider's response is merged into the details
@@ -257,7 +291,8 @@
     (when-let [match (some->> (:additional-options details) (disallowed-connection-parameter driver))]
       (refuse! "additional options" match))
     (when-let [match (some #(disallowed-connection-parameter driver (if (keyword? %) (name %) %)) (keys details))]
-      (refuse! "connection details" match))))
+      (refuse! "connection details" match)))
+  (validate-url-building-details! driver details))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
@@ -713,6 +748,19 @@
 
     [conn-prop]))
 
+(defn- strip-hidden-when-hosted
+  "Return `prop` with any option tagged `:hidden-when-hosted` removed. Recurses into group fields."
+  [prop]
+  (cond
+    (= :group (:type prop))
+    (update prop :fields #(mapv strip-hidden-when-hosted %))
+
+    (seq (:options prop))
+    (update prop :options #(filterv (complement :hidden-when-hosted) %))
+
+    :else
+    prop))
+
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
 
@@ -724,7 +772,8 @@
    if one was provided."
   {:added "0.42.0"}
   [driver conn-props]
-  (let [final-props (into [] (mapcat process-connection-prop) conn-props)
+  (let [hosted-filter (if (premium-features/is-hosted?) strip-hidden-when-hosted identity)
+        final-props   (into [] (comp (mapcat process-connection-prop) (map hosted-filter)) conn-props)
         ;; Build complete props-by-name map including nested fields from groups
         props-by-name (collect-all-props-by-name final-props)]
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"

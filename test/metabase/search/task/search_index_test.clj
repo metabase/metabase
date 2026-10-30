@@ -34,7 +34,7 @@
       (let [initial-size (index-size)
             table-name (search.index/active-table)]
         (is (pos? initial-size))
-        (t2/delete! table-name (t2/select-one-pk table-name))
+        (t2/delete! table-name :id (t2/select-one-pk table-name))
         (is (= (dec initial-size) (index-size)))
         (testing "It can cycle the index gracefully"
           (is (search/reindex! {:async? false}))

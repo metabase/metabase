@@ -19,7 +19,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent ArrayBlockingQueue Callable Executors ThreadPoolExecutor)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory)
    (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
@@ -482,7 +482,7 @@
   (let [executor (Executors/newFixedThreadPool
                   pool-size
                   (.build
-                   (doto (BasicThreadFactory$Builder.)
+                   (doto (BasicThreadFactory/builder)
                      (.namingPattern "send-notification-thread-pool-%d"))))
         shutdown-flag (java.util.concurrent.atomic.AtomicBoolean. false)
         start-worker! (fn []

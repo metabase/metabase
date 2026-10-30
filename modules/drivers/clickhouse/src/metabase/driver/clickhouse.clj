@@ -69,6 +69,10 @@
                               :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          true
+                              ;; The JDBC driver sends the query timeout as the `max_execution_time` server setting,
+                              ;; which fails for users with `readonly = 1` (#85850). Long running queries will still
+                              ;; be cancelled by `schedule-query-timeout-cancel!`.
+                              :jdbc/set-query-timeout           false
                               :left-join                        true
                               :metadata/key-constraints         false
                               :native-pivot-tables              true
@@ -174,8 +178,6 @@
          :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
          :custom_http_params             (cond-> "select_sequential_consistency=1"
-                                           (not (some->> clickhouse-settings (re-find #"(?:^|,)\s*join_use_nulls\s*=")))
-                                           (str ",join_use_nulls=1")
                                            (not (str/blank? clickhouse-settings))
                                            (str "," clickhouse-settings))
          :jdbc_metadata_use_show_statements false}

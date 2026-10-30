@@ -32,7 +32,6 @@
    [metabase.metabot.tools.subscriptions :as tools.subscriptions]
    [metabase.metabot.tools.timelines :as tools.timelines]
    [metabase.metabot.tools.todo :as tools.todo]
-   [metabase.metabot.tools.transforms :as tools.transforms]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -43,8 +42,7 @@
   analyze-chart-sql-tool]
  [tools.search search-tool
   sql-search-tool
-  nlq-search-tool
-  transform-search-tool]
+  nlq-search-tool]
  [tools.entity-retrieval
   retrieve-library-entities-tool]
  [tools.construct
@@ -68,8 +66,6 @@
   list-available-data-sources-tool
   list-available-fields-tool
   get-field-values-tool]
- [tools.transforms
-  get-transform-details-tool]
  [tools.sql
   create-sql-query-tool
   create-sql-query-code-edit-tool

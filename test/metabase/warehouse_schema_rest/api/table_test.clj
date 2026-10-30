@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
+   [metabase.collections.core :as collections]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
@@ -573,7 +574,7 @@
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
       (mt/with-temp [:model/Database db    {:details (:details (mt/db))}
-                     :model/Table    table (-> (t2/select-one :model/Table (mt/id :venues))
+                     :model/Table    table (-> (t2/select-one :model/Table :id (mt/id :venues))
                                                (dissoc :id :entity_id)
                                                (assoc :db_id (:id db)))]
         (let [called (atom 0)
@@ -1526,7 +1527,7 @@
         []]]
       (let [db (mt/db)
             db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
-            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
+            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field :id (mt/id :country :continent_id))]
         ;; 1. add FK relationship in the database targeting continent_1
         (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent(id);")
         (sync/sync-database! (:id db) {:scan :schema})
@@ -1608,6 +1609,55 @@
                             {:ids [t1 t2] :visibility_type nil})
       (is (= [nil nil]
              (map #(user-table-fn :visibility_type %) [t1 t2]))))))
+
+(deftest bulk-update-tables-collection-id-persists-test
+  (testing "PUT /api/table with an ids vector sets collection_id on every listed table"
+    (mt/with-temp [:model/Collection {coll-id :id} {:type collections/library-data-collection-type}
+                   :model/Table      {t1 :id}      {:db_id (mt/id)}
+                   :model/Table      {t2 :id}      {:db_id (mt/id)}]
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :collection_id coll-id})
+      (is (= [coll-id coll-id]
+             (map #(user-table-fn :collection_id %) [t1 t2])))
+      (testing "and leaves is_published as it was, as PUT /api/table/:id does"
+        (is (= [false false]
+               (map #(user-table-fn :is_published %) [t1 t2])))))))
+
+(deftest bulk-update-tables-collection-id-checks-test
+  (mt/with-temp [:model/Collection {plain-coll-id :id} {}
+                 :model/Collection {library-coll-id :id} {:type collections/library-data-collection-type}
+                 :model/Table      {t1 :id}            {:db_id (mt/id)}
+                 :model/Table      {t2 :id}            {:db_id (mt/id)}]
+    (doseq [[desc user status coll-id] [["a missing collection is a 404" :crowberto 404 Integer/MAX_VALUE]
+                                        ["a collection outside the Library is a 400" :crowberto 400 plain-coll-id]
+                                        ["a non-admin is a 403" :rasta 403 library-coll-id]]]
+      (testing (str "PUT /api/table with collection_id: " desc)
+        (mt/user-http-request user :put status "table"
+                              {:ids [t1 t2] :collection_id coll-id})
+        (is (= [nil nil]
+               (map #(user-table-fn :collection_id %) [t1 t2])))))))
+
+(deftest bulk-update-tables-field-order-persists-test
+  (testing "PUT /api/table with an ids vector sets field_order on every listed table"
+    (mt/with-temp [:model/Table {t1 :id} {:db_id (mt/id)}
+                   :model/Table {t2 :id} {:db_id (mt/id)}
+                   :model/Field _        {:table_id t1 :name "b" :database_position 0 :position 0}
+                   :model/Field _        {:table_id t1 :name "a" :database_position 1 :position 1}
+                   :model/Field _        {:table_id t2 :name "d" :database_position 0 :position 0}
+                   :model/Field _        {:table_id t2 :name "c" :database_position 1 :position 1}]
+      (let [response (mt/user-http-request :crowberto :put 200 "table"
+                                           {:ids [t1 t2] :field_order "alphabetical"})]
+        (is (= [:alphabetical :alphabetical]
+               (map #(user-table-fn :field_order %) [t1 t2])))
+        (testing "the response lists each table's fields in the new order"
+          (is (= {t1 ["a" "b"] t2 ["c" "d"]}
+                 (into {} (map (juxt :id #(map :name (:fields %)))) response))))
+        (testing "the new positions are stored"
+          (is (= [["a" "b"] ["c" "d"]]
+                 (for [table-id [t1 t2]]
+                   (->> (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)
+                        :fields
+                        (map :name))))))))))
 
 ;;; ---------------------------------- #83937 dimension-backfill canary -----------------------------------
 

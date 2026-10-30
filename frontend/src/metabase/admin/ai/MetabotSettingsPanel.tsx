@@ -90,10 +90,10 @@ function MetabotQueryExecutionToggle() {
     <Box>
       <SettingHeader
         id="metabot-query-execution"
-        title={t`Query execution`}
+        title={t`Allow Metabot to read query results`}
         description={
           <span id={descriptionId}>
-            {t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. This doesn't apply to Metabot in Slack or in embedded apps.`}
+            {t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. Metabot in Slack and in embedded apps doesn't read query results, regardless of this setting.`}
           </span>
         }
       />
@@ -288,11 +288,11 @@ function CollectionInfo({ collection }: { collection: Collection }) {
   const parent = collectionInfo?.effective_ancestors?.slice(-1)?.[0];
 
   return (
-    <Flex align="center" gap="sm" c="text-disabled" mb="sm">
+    <Flex align="center" gap="sm" c="text-secondary" mb="sm">
       {parent && (
         <>
           <CollectionDisplay collection={parent} />
-          <Text c="text-disabled" fw="bold">
+          <Text c="text-secondary" fw="bold">
             /
           </Text>
         </>

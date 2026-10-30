@@ -19,7 +19,7 @@ export function NoWritableDatabasesEmptyState() {
       <TransformsHeader showTabs={false} />
       <Center flex={1}>
         <Stack align="center" maw="30rem" gap="lg">
-          <Icon name="database" size={48} c="text-disabled" />
+          <Icon name="database" size={48} c="text-secondary" />
           <Title
             order={3}
             ta="center"

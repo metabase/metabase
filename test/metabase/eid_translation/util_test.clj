@@ -97,7 +97,7 @@
      :model/Segment            {segment_id              :id segment_eid              :entity_id} {}
      :model/Timeline           {timeline_id             :id timeline_eid             :entity_id} {}]
     (let [core_user_eid (u/generate-nano-id)]
-      (t2/update! :model/User core_user_id {:entity_id core_user_eid})
+      (t2/update! :model/User :id core_user_id {:entity_id core_user_eid})
       (is (= {action_eid               {:id action_id               :type :action            :status :ok}
               collection_eid           {:id collection_id           :type :collection        :status :ok}
               core_user_eid            {:id core_user_id            :type :user              :status :ok}

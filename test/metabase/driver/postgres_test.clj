@@ -466,9 +466,8 @@
     (let [parent     (h2x/identifier :field "public" "test_table" "data")
           nfc-field  {:nfc-path ["data" "key"] :database-type "text"}
           [json-sql] (sql/format-expr (#'sql.qp/json-query :postgres parent nfc-field))
-          stage      {:lib/type :mbql.stage/native :native (str "SELECT " json-sql " AS k FROM t")}
-          out-sql    (-> (driver.sql/validate-impersonated-query* :postgres {:stages [stage]})
-                         :stages first :native)]
+          query      (lib/native-query meta/metadata-provider (str "SELECT " json-sql " AS k FROM t"))
+          out-sql    (lib/raw-native-query (driver.sql/validate-impersonated-query* :postgres query))]
       ;; The broken reconstruction looks like `CAST(parent #>> array[?] AS TEXT[])` — i.e.
       ;; the cast wraps the entire `#>>` expression instead of just the path argument.
       (is (not (re-find #"(?i)#>>\s+array\s*\[\?\]\s+AS\s+TEXT\s*\[\s*\]" out-sql))
@@ -1697,8 +1696,8 @@
               (sync/sync-database! (:id database) {:scan :schema})
               (is (= #{"id" "col_visible" "col_json" "col_json → key_a" "col_json_hidden" "col_json_hidden → key_b" "col_hidden"}
                      (active-fields database))))
-            (t2/update! :model/Database (:id database) {:details (assoc details :user role :password "password")})
-            (let [database (t2/select-one :model/Database (:id database))]
+            (t2/update! :model/Database :id (:id database) {:details (assoc details :user role :password "password")})
+            (let [database (t2/select-one :model/Database :id (:id database))]
               (binding [sync-util/*log-exceptions-and-continue?* false]
                 (sync/sync-database! (:id database) {:scan :schema}))
               (testing "after switching to a user with column-level grants, unreadable columns are retired and readable JSON is still unfolded"
@@ -2282,7 +2281,7 @@
 
 (deftest have-select-privelege?-timeout-test
   (mt/test-driver :postgres
-    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table :id (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
           (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT pg_sleep(3)"])]
@@ -2709,3 +2708,13 @@
                     (lib.metadata/database (mt/metadata-provider)) [(format "SELECT generate_series(1, %d) AS i" n)])]
         (testing "only the first rows are pulled, not all ~2 billion"
           (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 5432 :user "u" :db "a?b"}
+                   {:host "localhost:5432/d?b" :port 5432 :user "u" :db "d"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :postgres details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))
