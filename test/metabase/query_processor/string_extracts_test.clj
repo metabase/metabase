@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.string-extracts-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.string-extracts-test]}
-                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.string-extracts-test]}}}}}}
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.string-extracts-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -11,75 +10,100 @@
 
 (defn- test-string-extract
   [expr & [filter]]
-  (->> {:expressions {"test" expr}
-        :fields      [[:expression "test"]]
-        ;; filter clause is optional
-        :filter      filter
-        ;; To ensure stable ordering
-        :order-by    [[:asc [:field (mt/id :venues :id) nil]]]
-        :limit       1}
-       (mt/run-mbql-query venues)
-       mt/rows
-       ffirst))
+  (let [mp        (mt/metadata-provider)
+        venues    (lib.metadata/table mp (mt/id :venues))
+        venues-id (lib.metadata/field mp (mt/id :venues :id))
+        query     (as-> (lib/query mp venues) q
+                    (lib/expression q "test" expr)
+                    (lib/with-fields q [(lib/expression-ref q "test")])
+                    ;; filter clause is optional
+                    (cond-> q filter (lib/filter filter))
+                    ;; To ensure stable ordering
+                    (lib/order-by q venues-id)
+                    (lib/limit q 1))]
+    (mt/with-native-query-testing-context query
+      (->> query
+           qp/process-query
+           mt/rows
+           ffirst))))
 
 (deftest ^:parallel test-length
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= 3 (int (test-string-extract [:length "foo"]))))))
+    (is (= 3 (int (test-string-extract (lib/length "foo")))))))
 
 (deftest ^:parallel test-trim
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "foo" (test-string-extract [:trim " foo "])))))
+    (is (= "foo" (test-string-extract (lib/trim " foo "))))))
 
 (deftest ^:parallel test-ltrim
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "foo " (test-string-extract [:ltrim " foo "])))))
+    (is (= "foo " (test-string-extract (lib/ltrim " foo "))))))
 
 (deftest ^:parallel test-rtrim
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= " foo" (test-string-extract [:rtrim " foo "])))))
+    (is (= " foo" (test-string-extract (lib/rtrim " foo "))))))
 
 (deftest ^:parallel test-upper
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "RED MEDICINE" (test-string-extract [:upper [:field (mt/id :venues :name) nil]])))))
+    (let [mp          (mt/metadata-provider)
+          venues-name (lib.metadata/field mp (mt/id :venues :name))]
+      (is (= "RED MEDICINE" (test-string-extract (lib/upper venues-name)))))))
 
 (deftest ^:parallel test-lower
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "red medicine" (test-string-extract [:lower [:field (mt/id :venues :name) nil]])))))
+    (let [mp          (mt/metadata-provider)
+          venues-name (lib.metadata/field mp (mt/id :venues :name))]
+      (is (= "red medicine" (test-string-extract (lib/lower venues-name)))))))
 
 (deftest ^:parallel test-substring
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "Red" (test-string-extract [:substring [:field (mt/id :venues :name) nil] 1 3])))
-    ;; 0 is normalized 1 to by the normalize/canonicalize processing
-    (is (= "Red" (test-string-extract [:substring [:field (mt/id :venues :name) nil] 0 3])))
-    (is (= "ed Medicine" (test-string-extract [:substring [:field (mt/id :venues :name) nil] 2])))
-    (is (= "Red Medicin" (test-string-extract [:substring [:field (mt/id :venues :name) nil]
-                                               1 [:- [:length [:field (mt/id :venues :name) nil]] 1]])))
-    (is (= "ne" (test-string-extract [:substring [:field (mt/id :venues :name) nil]
-                                      [:- [:length [:field (mt/id :venues :name) nil]] 1]])))))
+    (let [mp          (mt/metadata-provider)
+          venues-name (lib.metadata/field mp (mt/id :venues :name))]
+      (is (= "Red" (test-string-extract (lib/substring venues-name 1 3))))
+      ;; 0 is normalized 1 to by the normalize/canonicalize processing
+      ;; TODO(mbql5-migration): exercises legacy normalization of a non-positive :substring start (the 0 -> 1
+      ;; :decode/normalize coercion in the legacy schema); the MBQL-5 schema has no such coercion, so keep this
+      ;; site on the old macro.
+      (is (= "Red" (->> {:expressions {"test" [:substring [:field (mt/id :venues :name) nil] 0 3]}
+                         :fields      [[:expression "test"]]
+                         :order-by    [[:asc [:field (mt/id :venues :id) nil]]]
+                         :limit       1}
+                        (mt/run-mbql-query venues)
+                        mt/rows
+                        ffirst)))
+      (is (= "ed Medicine" (test-string-extract (lib/expression-clause :substring [venues-name 2] nil))))
+      (is (= "Red Medicin" (test-string-extract (lib/substring venues-name
+                                                               1
+                                                               (lib/- (lib/length venues-name) 1)))))
+      (is (= "ne" (test-string-extract (lib/expression-clause :substring
+                                                              [venues-name (lib/- (lib/length venues-name) 1)]
+                                                              nil)))))))
 
 (deftest ^:parallel test-replace
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "Red Baloon" (test-string-extract [:replace [:field (mt/id :venues :name) nil] "Medicine" "Baloon"])))
-    (is (= "Rod Modicino" (test-string-extract [:replace [:field (mt/id :venues :name) nil] "e" "o"])))
-    (is (= "Red" (test-string-extract [:replace [:field (mt/id :venues :name) nil] " Medicine" ""])))
-    (is (= "Larry's The Prime Rib" (test-string-extract
-                                    [:replace [:field (mt/id :venues :name) nil] "Lawry's" "Larry's"]
-                                    [:= [:field (mt/id :venues :name) nil] "Lawry's The Prime Rib"])))))
+    (let [mp          (mt/metadata-provider)
+          venues-name (lib.metadata/field mp (mt/id :venues :name))]
+      (is (= "Red Baloon" (test-string-extract (lib/replace venues-name "Medicine" "Baloon"))))
+      (is (= "Rod Modicino" (test-string-extract (lib/replace venues-name "e" "o"))))
+      (is (= "Red" (test-string-extract (lib/replace venues-name " Medicine" ""))))
+      (is (= "Larry's The Prime Rib" (test-string-extract
+                                      (lib/replace venues-name "Lawry's" "Larry's")
+                                      (lib/= venues-name "Lawry's The Prime Rib")))))))
 
 (deftest ^:parallel test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "Red Medicine" (test-string-extract [:coalesce
-                                                [:field (mt/id :venues :name) nil]
-                                                "b"])))))
+    (let [mp          (mt/metadata-provider)
+          venues-name (lib.metadata/field mp (mt/id :venues :name))]
+      (is (= "Red Medicine" (test-string-extract (lib/coalesce venues-name "b")))))))
 
 (deftest ^:parallel test-concat
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Does concat work with 2 strings"
-      (is (= "foobar" (test-string-extract [:concat "foo" "bar"]))))
+      (is (= "foobar" (test-string-extract (lib/concat "foo" "bar")))))
     (testing "Does concat work with >2 args"
-      (is (= "foobar" (test-string-extract [:concat "f" "o" "o" "b" "a" "r"]))))
+      (is (= "foobar" (test-string-extract (lib/concat "f" "o" "o" "b" "a" "r")))))
     (testing "Does concat work with nested concat expressions"
-      (is (= "foobar" (test-string-extract [:concat [:concat "f" "o" "o"] [:concat "b" "a" "r"]]))))))
+      (is (= "foobar" (test-string-extract (lib/concat (lib/concat "f" "o" "o") (lib/concat "b" "a" "r"))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::concat-non-string-args]
   [_driver _feature _database]
@@ -94,49 +118,76 @@
 (deftest ^:parallel test-concat-non-string-args
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions ::concat-non-string-args)
     (testing "Does concat work with non-string args"
-      (is (= "1234" (test-string-extract [:concat 123 [:+ 1 3]])))))
+      (is (= "1234" (test-string-extract (lib/concat 123 (lib/+ 1 3)))))))
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions ::concat-non-string-args :temporal-extract)
     (testing "Does concat work with nested temporal-extraction expressions"
-      (is (= "2024Q4" (test-string-extract [:concat [:get-year "2024-10-08"] "Q" [:get-quarter "2024-10-08"]]))))))
+      (is (= "2024Q4" (test-string-extract (lib/concat (lib/get-year "2024-10-08")
+                                                       "Q"
+                                                       (lib/get-quarter "2024-10-08"))))))))
 
 (deftest ^:parallel test-regex-match-first
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
-    (is (= "Red" (test-string-extract [:regex-match-first [:field (mt/id :venues :name) nil] "(.ed+)"])))))
+    (let [mp          (mt/metadata-provider)
+          venues-name (lib.metadata/field mp (mt/id :venues :name))]
+      (is (= "Red" (test-string-extract (lib/regex-match-first venues-name "(.ed+)")))))))
 
 (deftest ^:parallel test-nesting
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "MED" (test-string-extract [:upper [:substring [:trim [:substring [:field (mt/id :venues :name) nil] 4]] 1 3]])))))
+    (let [mp          (mt/metadata-provider)
+          venues-name (lib.metadata/field mp (mt/id :venues :name))]
+      (is (= "MED" (test-string-extract
+                    (lib/upper (lib/substring (lib/trim (lib/expression-clause :substring [venues-name 4] nil))
+                                              1
+                                              3))))))))
 
 (deftest ^:parallel test-breakout
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= ["20th Century Cafefoo" 1]
-           (->> {:expressions  {"test" [:concat [:field (mt/id :venues :name) nil] "foo"]}
-                 :breakout     [[:expression "test"]]
-                 :aggregation  [[:count]]
-                 :limit        1}
-                (mt/run-mbql-query venues)
-                (mt/formatted-rows [identity int])
-                first)))))
+    (let [mp          (mt/metadata-provider)
+          venues      (lib.metadata/table mp (mt/id :venues))
+          venues-name (lib.metadata/field mp (mt/id :venues :name))
+          query       (as-> (lib/query mp venues) q
+                        (lib/expression q "test" (lib/concat venues-name "foo"))
+                        (lib/breakout q (lib/expression-ref q "test"))
+                        (lib/aggregate q (lib/count))
+                        (lib/limit q 1))]
+      (mt/with-native-query-testing-context query
+        (is (= ["20th Century Cafefoo" 1]
+               (->> query
+                    qp/process-query
+                    (mt/formatted-rows [identity int])
+                    first)))))))
 
 (deftest ^:parallel regex-match-first-escaping-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :expressions :regex)
-    (is (= "Taylor's" (test-string-extract
-                       [:regex-match-first [:field (mt/id :venues :name) nil] "^Taylor's"]
-                       [:= [:field (mt/id :venues :name) nil] "Taylor's Prime Steak House"])))))
+    (let [mp          (mt/metadata-provider)
+          venues-name (lib.metadata/field mp (mt/id :venues :name))]
+      (is (= "Taylor's" (test-string-extract
+                         (lib/regex-match-first venues-name "^Taylor's")
+                         (lib/= venues-name "Taylor's Prime Steak House")))))))
 
 (deftest ^:parallel regex-extract-in-explict-join-test
   (testing "Should be able to use regex extra in an explict join (#17790)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex :left-join)
       (mt/dataset test-data
-        (let [query (mt/mbql-query orders
-                      {:joins       [{:source-table $$products
-                                      :alias        "Products"
-                                      :condition    [:= $product_id &Products.products.id]
-                                      :fields       :all}]
-                       :expressions {:regex [:regex-match-first &Products.products.category ".*"]}
-                       :order-by    [[:asc $id]]
-                       :limit       2})]
+        (let [mp                (mt/metadata-provider)
+              orders            (lib.metadata/table mp (mt/id :orders))
+              orders-id         (lib.metadata/field mp (mt/id :orders :id))
+              orders-product-id (lib.metadata/field mp (mt/id :orders :product_id))
+              products          (lib.metadata/table mp (mt/id :products))
+              products-category (-> (lib.metadata/field mp (mt/id :products :category))
+                                    (lib/with-join-alias "Products"))
+              query             (-> (lib/query mp orders)
+                                    (lib/join (-> (lib/join-clause products)
+                                                  (lib/with-join-alias "Products")
+                                                  (lib/with-join-conditions
+                                                   [(lib/= orders-product-id
+                                                           (-> (lib.metadata/field mp (mt/id :products :id))
+                                                               (lib/with-join-alias "Products")))])
+                                                  (lib/with-join-fields :all)))
+                                    (lib/expression "regex" (lib/regex-match-first products-category ".*"))
+                                    (lib/order-by orders-id)
+                                    (lib/limit 2))]
           (mt/with-native-query-testing-context query
             (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                      "Widget"
