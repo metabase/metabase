@@ -50,15 +50,9 @@
      [(make-slack-channel schedule channel)]
      (-> dashboard
          (select-keys [:name :parameters])
-         ;; Send no collection and no position. `create-pulse-with-perm-checks!` ignores both for a
-         ;; dashboard subscription: the subscription goes in the collection of its dashboard, and it has no
-         ;; pin position. View access to the dashboard is enough to subscribe to it:
-         ;; https://github.com/metabase/metabase/pull/17722
-         (assoc :dashboard_id        dashboard-id
-                :collection_id       nil
-                :collection_position nil
-                :creator_id          api/*current-user-id*
-                :skip_if_empty       false)))))
+         (assoc :dashboard_id  dashboard-id
+                :creator_id    api/*current-user-id*
+                :skip_if_empty false)))))
 
 (defn- dashboard-for-subscription [dashboard-id]
   (let [dashboard (tools/with-entity {:kind :dashboard :id dashboard-id}
