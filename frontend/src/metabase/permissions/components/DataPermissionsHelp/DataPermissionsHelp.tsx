@@ -2,7 +2,6 @@ import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import {
@@ -186,23 +185,6 @@ export const DataPermissionsHelp = () => {
                   <strong key="permission">{t`Download results (Pro):`}</strong>
                 )} The group can download results, up to a maximum number of rows that you set.`}
               </Text>
-              <Text>
-                {jt`${(
-                  <strong key="permission">{t`Manage Data Model (Pro):`}</strong>
-                )} The group can edit metadata via the “Table metadata” tab in the Admin settings.`}
-              </Text>
-              <Text>
-                {jt`${(
-                  <strong key="permission">{t`Manage Database (Pro):`}</strong>
-                )} The group can edit database settings for a given database in the "Database" tab of the Admin settings.`}
-              </Text>
-              {PLUGIN_TRANSFORMS.isEnabled && (
-                <Text>
-                  {jt`${(
-                    <strong key="permission">{t`Transforms (Pro):`}</strong>
-                  )} The group can create, edit, and run Transforms for a given database.`}
-                </Text>
-              )}
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>

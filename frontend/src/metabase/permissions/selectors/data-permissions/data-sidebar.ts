@@ -1,11 +1,7 @@
-import type { Selector } from "@reduxjs/toolkit";
-import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { PLUGIN_AUDIT } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
-import { isNotNull } from "metabase/utils/types";
 import type {
   Database,
   PermissionEntityId,
@@ -20,137 +16,98 @@ import {
 } from "../../utils/data-entity-id";
 import { getDatabaseSchemas } from "../../utils/metadata";
 
-import { getPermissionsDatabase, getPermissionsDatabases } from "./databases";
-import { getIsLoadingDatabaseTables } from "./permission-editor";
-
 export type DataTreeNodeItem = {
   entityId: PermissionEntityId;
   children?: DataTreeNodeItem[];
 } & ITreeNodeItem;
 
 export type DataSidebarProps = {
-  title?: string;
-  description?: string;
   entityGroups: DataTreeNodeItem[][];
-  entityViewFocus?: "database";
   selectedId?: string;
   filterPlaceholder: string;
 };
 
-const getRouteParams = (
-  _state: State,
-  props: { params: RawDataRouteParams },
-) => {
-  const { databaseId, schemaName, tableId } = props.params;
-  return {
-    databaseId,
-    schemaName,
-    tableId,
-  };
-};
+// Schema names repeat across databases (every Postgres has `public`), so a
+// schema's node id carries its database. Table ids are already unique.
+const getDatabaseNodeId = (databaseId: Database["id"] | string) =>
+  `database:${databaseId}`;
+const getSchemaNodeId = (databaseId: Database["id"] | string, name: string) =>
+  `schema:${databaseId}:${name}`;
+const getTableNodeId = (id: string | number) => `table:${id}`;
 
-const getSchemaId = (name: string) => `schema:${name}`;
-const getTableId = (id: string | number) => `table:${id}`;
+/** Databases the permissions editor can be focused on. */
+export const getSidebarDatabases = (databases: PermissionsDatabase[]) =>
+  databases.filter(
+    (db) =>
+      !db.is_saved_questions &&
+      !PLUGIN_AUDIT.isAuditDb(db) &&
+      !db.router_database_id,
+  );
 
-const getDatabasesSidebar = (databases: Database[]): DataSidebarProps => {
-  const entities = databases
-    .filter((db) => !db.is_saved_questions)
-    .filter((db) => !PLUGIN_AUDIT.isAuditDb(db))
-    .filter((db) => !db.router_database_id)
-    .map((database) => ({
-      id: database.id,
-      name: database.name,
-      entityId: getDatabaseEntityId(database),
-      icon: "database" as const,
+const getTableNodes = (
+  tables: NonNullable<Database["tables"]>,
+): DataTreeNodeItem[] =>
+  tables
+    .toSorted((a, b) => a.display_name.localeCompare(b.display_name))
+    .map((table) => ({
+      id: getTableNodeId(table.id),
+      entityId: getTableEntityId(table),
+      name: table.display_name,
+      icon: "table" as const,
     }));
 
-  return {
-    entityGroups: [entities],
-    entityViewFocus: "database",
-    filterPlaceholder: t`Search for a database`,
-  };
-};
-
-const getTablesSidebar = (
+/**
+ * A database's schemas and tables, or just its tables when it has a single
+ * schema. Empty until the database's tables have loaded.
+ */
+const getDatabaseChildren = (
   database: PermissionsDatabase,
-  schemaName?: string,
-  tableId?: string,
-): DataSidebarProps => {
-  let selectedId: string | undefined = undefined;
-
-  if (tableId != null) {
-    selectedId = getTableId(tableId);
-  } else if (schemaName != null) {
-    selectedId = getSchemaId(schemaName);
-  }
-
+): DataTreeNodeItem[] => {
   const schemas = getDatabaseSchemas(database);
 
-  let entities = schemas
-    .toSorted((a, b) => a.name.localeCompare(b.name))
-    .map<DataTreeNodeItem>((schema) => {
-      return {
-        id: getSchemaId(schema.name),
-        name: schema.name,
-        entityId: getSchemaEntityId(schema),
-        icon: "folder" as const,
-        children: schema.tables
-          .toSorted((a, b) => a.display_name.localeCompare(b.display_name))
-          .map((table) => ({
-            id: getTableId(table.id),
-            entityId: getTableEntityId(table),
-            name: table.display_name,
-            icon: "table" as const,
-          })),
-      };
-    });
+  if (schemas.length === 1) {
+    return getTableNodes(schemas[0].tables);
+  }
 
-  const shouldIncludeSchemas = schemas.length > 1;
-  if (!shouldIncludeSchemas && entities[0]?.children != null) {
-    entities = entities[0]?.children;
+  return schemas
+    .toSorted((a, b) => a.name.localeCompare(b.name))
+    .map((schema) => ({
+      id: getSchemaNodeId(database.id, schema.name),
+      name: schema.name,
+      entityId: getSchemaEntityId(schema),
+      icon: "folder" as const,
+      children: getTableNodes(schema.tables),
+    }));
+};
+
+/**
+ * Every database as an expandable tree, the way the collections sidebar works:
+ * selecting a database, schema, or table focuses the editor on that level.
+ */
+export const getDatabasesTreeSidebar = (
+  databases: PermissionsDatabase[],
+  { databaseId, schemaName, tableId }: RawDataRouteParams,
+): DataSidebarProps => {
+  let selectedId: string | undefined;
+  if (tableId != null) {
+    selectedId = getTableNodeId(tableId);
+  } else if (databaseId != null && schemaName != null) {
+    selectedId = getSchemaNodeId(databaseId, schemaName);
+  } else if (databaseId != null) {
+    selectedId = getDatabaseNodeId(databaseId);
   }
 
   return {
     selectedId,
-    title: database.name,
-    description: t`Select a table to set more specific permissions`,
-    entityGroups: [entities].filter(isNotNull),
-    filterPlaceholder: t`Search for a table`,
+    entityGroups: [
+      databases.map((database) => ({
+        id: getDatabaseNodeId(database.id),
+        name: database.name,
+        entityId: getDatabaseEntityId(database),
+        icon: "database" as const,
+        children: getDatabaseChildren(database),
+      })),
+    ],
+    filterPlaceholder: t`Search for a database, schema, or table`,
   };
 };
-
-const getSidebarDatabase = (
-  state: State,
-  props: { params: RawDataRouteParams },
-) =>
-  getPermissionsDatabase(
-    state,
-    props.params.databaseId != null
-      ? parseInt(props.params.databaseId)
-      : undefined,
-  );
-
-export const getDataFocusSidebar: Selector<State, DataSidebarProps | null> =
-  createSelector(
-    getPermissionsDatabases,
-    getSidebarDatabase,
-    getRouteParams,
-    getIsLoadingDatabaseTables,
-    (databases, database, params, isLoading) => {
-      if (isLoading) {
-        return null;
-      }
-
-      const { databaseId, schemaName, tableId } = params;
-
-      if (databaseId == null) {
-        return getDatabasesSidebar(databases);
-      }
-
-      if (database == null) {
-        return null;
-      }
-
-      return getTablesSidebar(database, schemaName, tableId);
-    },
-  );

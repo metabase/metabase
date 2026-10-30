@@ -59,15 +59,20 @@ export {
   getPermissionWarningModal,
 } from "./selectors/confirmations";
 export {
-  getDataFocusSidebar,
+  getDatabasesTreeSidebar,
   getDatabasesPermissionEditor,
   getGroupsDataPermissionEditor,
   getGroupsSidebar,
+  getSidebarDatabases,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
 } from "./selectors/data-permissions";
 export type { DataTreeNodeItem } from "./selectors/data-permissions";
-export { DATABASE_TABLES_QUERY } from "./selectors/data-permissions/databases";
+export {
+  DATABASE_TABLES_QUERY,
+  getDatabaseTablesQuery,
+  getPermissionsDatabases,
+} from "./selectors/data-permissions/databases";
 export {
   getDiff,
   getIsDataPermissionsDirty,

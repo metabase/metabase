@@ -22,16 +22,18 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
 import {
+  Box,
   Flex,
   Icon,
   Button as NewButton,
   Modal as NewModal,
   Text,
+  Title,
 } from "metabase/ui";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import S from "./PermissionsPageLayout.module.css";
-import { PermissionsTabs } from "./PermissionsTabs";
+import { PermissionsTabs, usePermissionsTabs } from "./PermissionsTabs";
 
 export type PermissionsPageTab =
   | "data"
@@ -82,6 +84,9 @@ export function PermissionsPageLayout({
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const tabName = usePermissionsTabs().find(
+    (option) => option.value === tab,
+  )?.name;
 
   const navigateToTab = (tab: PermissionsPageTab) =>
     navigate(`${getPermissionsBasePath()}/${tab}`);
@@ -98,6 +103,18 @@ export function PermissionsPageLayout({
     setIsSplitPermsModalDismissed(true);
     setShowModalSetting(false);
   };
+
+  const isHub = isEmbeddingHubPermissions();
+  // In admin, "By group" and "By database" are picked from the side nav, so the
+  // data access pages skip the header bar and float the help button instead.
+  const showHeaderBar = isHub || tab !== "data";
+  const helpButton = helpContent && !isHelpReferenceOpen && (
+    <ToolbarButton
+      text={t`Permissions help`}
+      icon="info"
+      onClick={handleToggleHelpReference}
+    />
+  );
 
   return (
     <Flex className={CS.overflowHidden} h="100%">
@@ -124,32 +141,42 @@ export function PermissionsPageLayout({
           closeButtonText={null}
         />
 
-        <Flex
-          className={CS.borderBottom}
-          justify="space-between"
-          align="center"
-        >
-          <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
+        {showHeaderBar && (
           <Flex
-            pl="lg"
-            pr={
-              isEmbeddingHubPermissions()
-                ? `calc(${CONTENT_PADDING_X} - 0.75rem)`
-                : "lg"
-            }
+            className={CS.borderBottom}
+            justify="space-between"
+            align="center"
+            mih={isHub ? undefined : "3.5rem"}
           >
-            {helpContent && !isHelpReferenceOpen && (
-              <ToolbarButton
-                text={t`Permissions help`}
-                icon="info"
-                onClick={handleToggleHelpReference}
-              />
+            {isHub ? (
+              <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
+            ) : (
+              // The admin side nav picks the section, so only name it here.
+              <Title order={3} pl="xxl">
+                {tabName}
+              </Title>
             )}
+            <Flex
+              pl="lg"
+              pr={isHub ? `calc(${CONTENT_PADDING_X} - 0.75rem)` : "lg"}
+            >
+              {helpButton}
+            </Flex>
           </Flex>
-        </Flex>
+        )}
 
-        <Flex className={CS.overflowHidden} h="100%">
+        <Flex className={CS.overflowHidden} h="100%" pos="relative">
           {children}
+          {!showHeaderBar && helpButton && (
+            // `top`/`right` don't resolve spacing tokens, so pass the variables.
+            <Box
+              pos="absolute"
+              top="var(--mantine-spacing-md)"
+              right="var(--mantine-spacing-lg)"
+            >
+              {helpButton}
+            </Box>
+          )}
         </Flex>
       </Flex>
 

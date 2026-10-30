@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
-import { Link } from "metabase/common/components/Link";
 import { getUser } from "metabase/current-user";
 import type { AdminPathKey, State } from "metabase/redux/store";
 import type {
@@ -33,52 +32,18 @@ export const databaseManagementPermissionAllowedPathGetter = (
   return canUserAccessDatabaseManagement(user) ? ["databases"] : [];
 };
 
-export const getDataColumns = ({
-  subject,
-  groupType,
-  isExternal,
-  showTransformPermissions = false,
-}: {
+// PROTOTYPE: "Manage table metadata", "Manage database", and "Transforms" no
+// longer appear in the data permissions grid. Table metadata and transforms
+// are described and configured on the Data Analysts role page instead. Keep in
+// step with `getFeatureLevelDataPermissions`, which builds the matching cells.
+export const getDataColumns = (_options: {
   subject: PermissionSubject;
   groupType?: SpecialGroupType;
   isExternal?: boolean;
   showTransformPermissions?: boolean;
-}) => {
-  const allSubjectsColumns: { name: string; hint?: ReactNode }[] = [
-    {
-      name: t`Download results`,
-      hint: t`Downloads of native queries are only allowed if a group has download permissions for the entire database.`,
-    },
-  ];
-
-  if (!isExternal) {
-    allSubjectsColumns.push({
-      name: t`Manage table metadata`,
-    });
-  }
-
-  if (subject === "schemas" && !isExternal) {
-    allSubjectsColumns.push({
-      name: t`Manage database`,
-    });
-
-    if (showTransformPermissions) {
-      const transformsDescription = t`This lets users see, edit, and run transforms based on this database.`;
-      allSubjectsColumns.push({
-        name: t`Transforms`,
-        hint:
-          groupType === "analyst" || groupType === "admin"
-            ? transformsDescription
-            : jt`${transformsDescription} Users must also be a member of the ${(
-                <Link
-                  key="link"
-                  to="/admin/people"
-                  style={{ textDecoration: "underline" }}
-                >{t`Data Analysts group`}</Link>
-              )} to use transforms.`,
-      });
-    }
-  }
-
-  return allSubjectsColumns;
-};
+}): { name: string; hint?: ReactNode }[] => [
+  {
+    name: t`Download results`,
+    hint: t`Downloads of native queries are only allowed if a group has download permissions for the entire database.`,
+  },
+];

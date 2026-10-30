@@ -9,11 +9,10 @@ import type {
   SpecialGroupType,
 } from "metabase-types/api";
 
-import { buildDataModelPermission } from "./data-model-permission";
-import { buildDetailsPermission } from "./details-permission";
 import { buildDownloadPermission } from "./download-permission";
-import { buildTransformsPermission } from "./transforms-permission";
 
+// PROTOTYPE: only the download cell remains in the grid; see `getDataColumns`.
+// Table metadata, database management, and transforms moved off the grid.
 export const getFeatureLevelDataPermissions = ({
   entityId,
   groupId,
@@ -22,8 +21,6 @@ export const getFeatureLevelDataPermissions = ({
   dataAccessPermissionValue,
   defaultGroup,
   permissionSubject,
-  permissionView,
-  showTransformPermissions = false,
 }: {
   entityId: PermissionEntityId;
   groupId: number;
@@ -34,59 +31,15 @@ export const getFeatureLevelDataPermissions = ({
   permissionSubject: PermissionSubject;
   permissionView?: "group" | "database";
   showTransformPermissions?: boolean;
-}): PermissionSectionConfig[] => {
-  const isAdmin = groupType === "admin";
-  const isExternal = groupType === "external";
-  const downloadPermission = buildDownloadPermission(
-    entityId,
-    groupId,
-    isAdmin,
-    permissions,
-    dataAccessPermissionValue,
-    defaultGroup,
-    permissionSubject,
-  );
-
-  const dataModelPermission =
-    !isExternal || permissionView === "database"
-      ? buildDataModelPermission(
-          entityId,
-          groupId,
-          groupType,
-          permissions,
-          defaultGroup,
-          permissionSubject,
-        )
-      : null;
-
-  const detailsPermission =
-    !isExternal || permissionView === "database"
-      ? buildDetailsPermission(
-          entityId,
-          groupId,
-          isAdmin,
-          isExternal,
-          permissions,
-          defaultGroup,
-          permissionSubject,
-        )
-      : null;
-
-  const transformsPermission = showTransformPermissions
-    ? buildTransformsPermission(
-        entityId,
-        groupId,
-        isAdmin,
-        permissions,
-        defaultGroup,
-        permissionSubject,
-      )
-    : null;
-
-  return [
-    downloadPermission,
-    dataModelPermission,
-    detailsPermission,
-    transformsPermission,
+}): PermissionSectionConfig[] =>
+  [
+    buildDownloadPermission(
+      entityId,
+      groupId,
+      groupType === "admin",
+      permissions,
+      dataAccessPermissionValue,
+      defaultGroup,
+      permissionSubject,
+    ),
   ].filter(isNotNull);
-};
