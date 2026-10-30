@@ -53,6 +53,15 @@
   [columns]
   (remove pivot-group-column? columns))
 
+(defn totals-only?
+  "Whether pivot query results hold only subtotal and grand-total rows, with no detail row (pivot-grouping 0). A pivot
+  query returns its grand total even when no row matches, so this is how an empty pivot looks. False for results
+  without a pivot-grouping column."
+  [cols rows]
+  (if-let [group-index (u/index-of pivot-group-column? cols)]
+    (not-any? #(zero? (nth % group-index)) rows)
+    false))
+
 (def ^:private get-active-breakout-indexes
   "For a given pivot group value (k), returns the indexes of active breakouts.
   The pivot group value is a bitmask where each bit represents a breakout. If a

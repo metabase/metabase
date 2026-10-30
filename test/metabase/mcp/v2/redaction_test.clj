@@ -257,6 +257,7 @@
                     :size_y                 4
                     :card                   {:id 12 :name "Executive Payroll"}
                     :visualization_settings {:card.title          "Executive Payroll by Employee"
+                                             :card.no_results_message "No payroll for executives this month"
                                              :column_settings     {"[\"name\",\"base_salary\"]"
                                                                    {:column_title "Salary"}}
                                              :click_behavior      {:targetId 999}
@@ -270,6 +271,8 @@
           (is (nil? (:card dc)))
           (is (nil? (get-in dc [:visualization_settings :card.title]))
               "the title is the card's name by another name")
+          (is (nil? (get-in dc [:visualization_settings :card.no_results_message]))
+              "the no-results message is author text describing the card's data")
           (is (nil? (get-in dc [:visualization_settings :column_settings]))
               "column settings name warehouse columns the caller may hold no permission on")
           (is (nil? (get-in dc [:visualization_settings :click_behavior]))

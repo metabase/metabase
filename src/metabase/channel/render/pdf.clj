@@ -376,6 +376,18 @@
     ;; heading / paragraph / list-item
     (draw-paragraph-block! cs block x top-y cell-w bottom scale align-override)))
 
+(defn- draw-markdown-blocks!
+  "Draw parsed Markdown `blocks` top-down from `top-y` at font `scale`, clipping at `bottom`. `align-h` as for
+  [[draw-block!]]. Returns the y below the last block drawn."
+  [^PDDocument doc ^PDPageContentStream cs blocks x top-y cell-w bottom scale align-h]
+  (reduce (fn [y block]
+            (if (<= y (+ bottom 2.0))
+              y
+              ;; 4pt (scaled) gap matches typeset/markdown-total-height
+              (- (draw-block! doc cs block x y cell-w bottom scale align-h)
+                 (* 4.0 scale))))
+          top-y blocks))
+
 (defn- draw-markdown-in-cell!
   "Render markdown `text` within a cell rectangle, honouring the text card's `text.align_horizontal` (`align-h`:
   `:left`/`:center`/`:right`) and `text.align_vertical` (`align-v`: `:top`/`:middle`/`:bottom`).
@@ -394,12 +406,7 @@
                            :bottom slack
                            :middle (* 0.5 slack)
                            0.0))]
-    (reduce (fn [y block]
-              (if (<= y (+ bottom 2.0))
-                y
-                (- (draw-block! doc cs block x y cell-w bottom scale align-h)
-                   (* 4.0 scale))))
-            start-y blocks)))
+    (draw-markdown-blocks! doc cs blocks x start-y cell-w bottom scale align-h)))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Cell building -- turn dashcards into renderable cells, preserving grid geometry
@@ -1063,15 +1070,24 @@
   "On-page size (points) of the no-results sail-boat icon, before shrinking to fit a small card body."
   84.0)
 
-(defn- draw-no-results!
-  "Draw the empty-state placeholder -- the sail-boat icon above a centered 'No results' label -- centered in a card's
-  body area. Shown when a card's query returns no rows (e.g. everything filtered out): rather than letting chart
-  rendering fail and overprint the title with an error box, we show the same friendly empty state the dashboard and
-  email do (see [[metabase.channel.render.body/render]] `:empty`).
+(def ^:private no-results-message-min-scale
+  "Smallest font scale (relative to the label size) a no-results message shrinks to; past it lines are clipped."
+  0.75)
 
-  Drawn natively (asset image + native text) rather than via the HTML pipeline so it centers crisply and reliably.
-  The icon + label form one block, centered both horizontally and vertically in the body rectangle; the icon shrinks
-  to fit when the body is short."
+(defn- body-colored-blocks
+  "`blocks` with plain runs (not links or inline code) recolored to [[common/body-color]]."
+  [blocks]
+  (mapv (fn [block]
+          (m/update-existing block :runs
+                             (fn [runs]
+                               (mapv #(cond-> %
+                                        (not (or (:href %) (:code? %))) (assoc :color common/body-color))
+                                     runs))))
+        blocks))
+
+(defn- draw-no-results-label!
+  "Draw the sail-boat icon above a centered 'No results' label. The icon + label form one block, centered both
+  horizontally and vertically in the body rectangle; the icon shrinks to fit when the body is short."
   [^PDDocument doc ^PDPageContentStream cs x body-top cell-w body-h]
   (let [label          (str (tru "No results"))
         label-pt       common/text-card-pt
@@ -1090,6 +1106,32 @@
     (.setNonStrokingColor cs ^Color common/body-color)
     (draw-line! cs (font/face :regular) label-pt label-x label-baseline label)
     (.setNonStrokingColor cs Color/BLACK)))
+
+(defn- draw-no-results-message!
+  "Draw a no-results `message` (Markdown) centered in the body at the label's size, shrinking to fit down to
+  [[no-results-message-min-scale]] and clipping past it."
+  [^PDDocument doc ^PDPageContentStream cs x body-top cell-w body-h message]
+  (let [blocks (body-colored-blocks (md/parse-message-blocks message))
+        scale  (max no-results-message-min-scale (typeset/fit-scale blocks cell-w body-h))
+        ;; the measured height ends with an inter-block gap that nothing is drawn after
+        text-h (min body-h (- (typeset/markdown-total-height blocks cell-w scale) (* 4.0 scale)))]
+    (.setNonStrokingColor cs ^Color common/body-color)
+    (draw-markdown-blocks! doc cs blocks x (common/v-center body-top body-h text-h) cell-w (- body-top body-h)
+                           scale :center)
+    (.setNonStrokingColor cs Color/BLACK)))
+
+(defn- draw-no-results!
+  "Draw the empty-state placeholder centered in a card's body area. Shown when a card's query returns no rows (e.g.
+  everything filtered out): rather than letting chart rendering fail and overprint the title with an error box, we
+  show the same friendly empty state the dashboard and email do (see [[metabase.channel.render.body/render]]
+  `:empty`). The card's no-results `message` (see [[render.util/no-results-message]]), when set, is drawn alone in
+  place of the icon and label.
+
+  Drawn natively (asset image + native text) rather than via the HTML pipeline so it centers crisply and reliably."
+  [^PDDocument doc ^PDPageContentStream cs x body-top cell-w body-h message]
+  (if message
+    (draw-no-results-message! doc cs x body-top cell-w body-h message)
+    (draw-no-results-label! doc cs x body-top cell-w body-h)))
 
 (defn- draw-too-large!
   "Draw a centered message when a card's result was too large to load into memory: the disk-spilled result exceeded
@@ -1170,7 +1212,7 @@
 
           ;; no rows: show the centered no-results placeholder instead of attempting (and failing) to draw a chart
           empty?
-          (draw-no-results! doc cs x body-top cell-w body-h)
+          (draw-no-results! doc cs x body-top cell-w body-h (render.util/no-results-message card dashcard))
 
           :let [png (when fill?
                       (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]

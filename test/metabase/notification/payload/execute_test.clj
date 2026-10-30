@@ -152,3 +152,36 @@
                                        :user_id      (mt/user->id :rasta)
                                        :dashboard_id dash-id
                                        :parameter_id "_PRICE_"))))))))))
+
+(deftest is-card-empty?-pivot-test
+  (testing "A pivot whose filter matches nothing still returns its grand-total row, and counts as empty"
+    (let [query (mt/mbql-query venues {:aggregation [[:count]]
+                                       :breakout    [$category_id]
+                                       :filter      [:> $price 100]})]
+      (mt/with-temp [:model/Card          {card-id :id} {:display :pivot :dataset_query query}
+                     :model/Dashboard     {dash-id :id} {}
+                     :model/DashboardCard dashcard      {:dashboard_id dash-id :card_id card-id}
+                     :model/DashboardCard _             {:dashboard_id           dash-id
+                                                         :card_id                card-id
+                                                         :visualization_settings {:card.hide_empty true}}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [part (notification.payload.execute/execute-dashboard-subscription-card dashcard [])]
+            (is (= 1 (-> part :result :row_count)) "the grand total")
+            (is (true? (notification.payload.execute/is-card-empty? part)))))
+        (testing "so a dashcard set to hide when empty is left out of the subscription"
+          (is (= 1 (count (card-parts (notification.payload.execute/execute-dashboard
+                                       dash-id (mt/user->id :rasta) [])))))))))
+  (testing "A result spilled to disk is not empty, and its rows are not read back to find out"
+    (mt/with-temp [:model/Card          {card-id :id} {:dataset_query (mt/mbql-query venues {:fields [$id $name $price]
+                                                                                             :limit  100})}
+                   :model/Dashboard     {dash-id :id} {}
+                   :model/DashboardCard dashcard      {:dashboard_id dash-id :card_id card-id}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [budget (temp-storage/make-resident-budget {:per-card 10 :resident-cap 10 :floor 10})
+              part   (notification.payload.execute/execute-dashboard-subscription-card
+                      dashcard [] {:spill-budget budget})]
+          (try
+            (is (spilled-part? part))
+            (is (false? (notification.payload.execute/is-card-empty? part)))
+            (finally
+              (temp-storage/cleanup! (-> part :result :data :rows)))))))))

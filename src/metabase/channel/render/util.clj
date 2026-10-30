@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [hiccup.util :as hiccup.util]
+   [metabase.channel.render.markdown :as markdown]
    [metabase.channel.render.style :as style]
    [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]
@@ -69,6 +70,22 @@
   keys — production stores viz-settings keys as keywords-with-dots, but they can also arrive as strings."
   [viz-settings k]
   (or (get viz-settings k) (get viz-settings (keyword k))))
+
+(defn no-results-message
+  "The trimmed `card.no_results_message` (Markdown) for `card` on `dashcard`, or nil when it has no text (blank, or
+  images alone). Settings merge as the frontend merges them: the dashcard's own over the card's, where a visualizer
+  dashcard's card settings are its nested ones."
+  [card dashcard]
+  (let [card-settings (if (is-visualizer-dashcard? dashcard)
+                        (get-in dashcard [:visualization_settings :visualization :settings])
+                        (:visualization_settings card))
+        message       (some-> (merge card-settings (:visualization_settings dashcard))
+                              (viz-setting "card.no_results_message")
+                              str
+                              str/trim
+                              not-empty)]
+    (when (some-> message markdown/message-has-text?)
+      message)))
 
 (defn col-of-type?
   "Whether result column `col`'s semantic type derives from `sem-type` (e.g. `:type/Latitude`)."

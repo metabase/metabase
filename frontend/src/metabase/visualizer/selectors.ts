@@ -2,8 +2,10 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import type { VisualizerState } from "metabase/redux/store/visualizer";
+import { getNoResultsMessage } from "metabase/visualizations/lib/no-results";
 import {
   type ComputedVisualizationSettings,
+  MinRowsError,
   extractRemappings,
   getComputedSettingsForSeries,
   getVisualization,
@@ -284,8 +286,39 @@ export const getIsRenderable = createSelector(
     try {
       visualization.checkRenderable(rawSeries, settings);
       return true;
-    } catch (e) {
+    } catch (error) {
+      const showsNoResultsMessage =
+        error instanceof MinRowsError &&
+        hasNoRows(rawSeries) &&
+        getNoResultsMessage(settings) != null;
+      if (!showsNoResultsMessage) {
+        return false;
+      }
+    }
+
+    // An empty result with a no-results message renders that message, so it
+    // shouldn't block saving. checkRenderable rejects empty data before
+    // validating settings, so re-check with a placeholder row to still catch
+    // invalid configs.
+    try {
+      visualization.checkRenderable(withPlaceholderRow(rawSeries), settings);
+      return true;
+    } catch {
       return false;
     }
   },
 );
+
+function hasNoRows(rawSeries: RawSeries) {
+  return (
+    rawSeries.length > 0 &&
+    rawSeries.every((series) => series.data.rows.length === 0)
+  );
+}
+
+function withPlaceholderRow(rawSeries: RawSeries): RawSeries {
+  return rawSeries.map((series) => ({
+    ...series,
+    data: { ...series.data, rows: [series.data.cols.map(() => null)] },
+  }));
+}

@@ -129,6 +129,7 @@ type CommonVisualizationSettings = {
   "card.title"?: string | undefined | null;
   "card.description"?: string | undefined | null;
   "card.hide_empty"?: boolean | undefined | null;
+  "card.no_results_message"?: string | undefined | null;
   click_behavior?: ClickBehavior | undefined;
 
   /**

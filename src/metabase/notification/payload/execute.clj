@@ -12,6 +12,7 @@
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.parameters.shared :as shared.params]
+   [metabase.pivot.core :as pivot]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -24,16 +25,24 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(defn no-results?
+  "Whether query result `data` has nothing to show: no rows, the `[[nil]]` many aggregations return when filters leave
+  nothing to aggregate, or a pivot with only its totals (see [[pivot/totals-only?]]). `rows` must be in memory.
+  Rendering uses the same rule to draw the no-results state."
+  [{:keys [cols rows]}]
+  (or (empty? rows)
+      (= [[nil]] rows)
+      (pivot/totals-only? cols rows)))
+
 (defn is-card-empty?
-  "Check if the card is empty"
+  "Whether the card has no results to show (see [[no-results?]]). A text card has no result and counts as empty."
   [card]
-  (let [result (:result card)]
-    (or
-     ;; Text cards have no result; treat as empty
-     (nil? result)
-     (zero? (-> result :row_count))
-     ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-     (= [[nil]] (-> result :data :rows)))))
+  (let [{:keys [row_count data] :as result} (:result card)]
+    (or (nil? result)
+        (zero? row_count)
+        ;; Rows spilled to disk are past the spill threshold, so never empty; reading them back would be wasted I/O.
+        (and (not (notification.temp-storage/streaming-temp-file? (:rows data)))
+             (no-results? data)))))
 
 (defn- tab->part
   [{:keys [name]}]

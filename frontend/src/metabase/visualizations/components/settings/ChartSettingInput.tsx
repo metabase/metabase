@@ -1,8 +1,6 @@
-import debounce from "lodash.debounce";
-import { useEffect, useMemo, useState } from "react";
-import { useLatest } from "react-use";
-
 import { TextInput } from "metabase/ui";
+
+import { useDebouncedSettingText } from "./use-debounced-setting-text";
 
 interface ChartSettingInputProps {
   value: string | undefined;
@@ -19,16 +17,9 @@ export const ChartSettingInput = ({
   id,
   disabled,
 }: ChartSettingInputProps) => {
-  const [inputValue, setInputValue] = useState(value ?? "");
-
-  useEffect(() => {
-    setInputValue(value ?? "");
-  }, [value]);
-
-  const onChangeRef = useLatest(onChange);
-  const onChangeDebounced = useMemo(
-    () => debounce((value: string) => onChangeRef.current(value), 400),
-    [onChangeRef],
+  const { text, handleChange, handleBlur } = useDebouncedSettingText(
+    value,
+    onChange,
   );
 
   return (
@@ -37,17 +28,9 @@ export const ChartSettingInput = ({
       data-testid={id}
       placeholder={placeholder}
       disabled={disabled}
-      value={inputValue}
-      onChange={(e) => {
-        setInputValue(e.target.value);
-        onChangeDebounced(e.target.value);
-      }}
-      onBlur={() => {
-        if (inputValue != null && inputValue !== (value || "")) {
-          onChangeDebounced.cancel();
-          onChangeRef.current(inputValue);
-        }
-      }}
+      value={text}
+      onChange={(e) => handleChange(e.target.value)}
+      onBlur={handleBlur}
     />
   );
 };

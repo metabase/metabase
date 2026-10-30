@@ -27,6 +27,49 @@
         (is (= "Card Name" (render-util/dashcard-title card {:visualization_settings {}})))
         (is (= "Card Name" (render-util/dashcard-title card {})))))))
 
+(deftest ^:parallel no-results-message-test
+  (let [card {:visualization_settings {:card.no_results_message "  Card message  "}}]
+    (testing "unset or blank yields nil"
+      (is (nil? (render-util/no-results-message nil nil)))
+      (is (nil? (render-util/no-results-message {} nil)))
+      (is (nil? (render-util/no-results-message {:visualization_settings {:card.no_results_message " \n "}} nil))))
+    (testing "a message made only of images has no text, so it yields nil too"
+      (doseq [images ["![chart](https://x.com/c.png)" "![a](https://x.com/a.png) ![b](https://x.com/b.png)"]]
+        (is (nil? (render-util/no-results-message {:visualization_settings {:card.no_results_message images}} nil)))))
+    (testing "the card's message is trimmed"
+      (is (= "Card message" (render-util/no-results-message card nil))))
+    (testing "string keys are tolerated"
+      (is (= "From string key"
+             (render-util/no-results-message {:visualization_settings {"card.no_results_message" "From string key"}}
+                                             nil))))
+    (testing "a dashcard's message wins over the card's"
+      (is (= "Dashcard message"
+             (render-util/no-results-message card {:visualization_settings
+                                                   {:card.no_results_message "Dashcard message"}}))))
+    (testing "a dashcard without the key inherits the card's message"
+      (is (= "Card message"
+             (render-util/no-results-message card {:visualization_settings {:card.title "Renamed"}}))))
+    (testing "a blank dashcard message still overrides the card's, as in the frontend's merge"
+      (doseq [blank ["" "  " nil]]
+        (is (nil? (render-util/no-results-message card {:visualization_settings {:card.no_results_message blank}})))))
+    (testing "a visualizer dashcard's own message wins over its nested visualizer settings, as on the frontend"
+      (is (= "Dashcard message"
+             (render-util/no-results-message
+              card
+              {:visualization_settings {:card.no_results_message "Dashcard message"
+                                        :visualization           {:settings {:card.no_results_message "Nested"}}}}))))
+    (testing "a visualizer dashcard without a message of its own uses the nested one"
+      (is (= "Nested"
+             (render-util/no-results-message
+              card
+              {:visualization_settings
+               {:visualization {:settings {:card.no_results_message " Nested "}}}}))))
+    (testing "a visualizer dashcard never reads the card's message, which the frontend does not render either"
+      (is (nil? (render-util/no-results-message
+                 card
+                 {:visualization_settings {:visualization {:display  "bar"
+                                                           :settings {:card.no_results_message ""}}}}))))))
+
 ;; Test data and expected results for scalar funnel visualization
 (def scalar-funnel-definition
   {:display "funnel"

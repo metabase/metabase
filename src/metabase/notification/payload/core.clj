@@ -21,6 +21,7 @@
   dashcard-link-card->part
   execute-dashboard
   execute-dashboard-subscription-card
+  no-results?
   process-virtual-dashcard
   virtual-card-of-type?]
  [notification.payload.temp-storage

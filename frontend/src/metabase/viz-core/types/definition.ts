@@ -66,6 +66,7 @@ export type VisualizationSettingDefinition<
 > = {
   id?: string;
   title?: string;
+  hint?: string;
   placeholder?: string;
   group?: string;
   index?: number;
@@ -144,6 +145,8 @@ export type VisualizationSettingDefinition<
   eraseDependencies?: string[];
   // is the setting visible in the dashboard card viz settings
   dashboard?: boolean;
+  // never gets a settings tab of its own: alone in its section, it goes last in the first tab
+  joinsExistingSection?: boolean;
   useRawSeries?: boolean;
 };
 
@@ -202,6 +205,7 @@ export type VisualizationSettingsDefinitions = {
   "boxplot.whisker_type"?: SeriesSettingDefinition<Value, Props>;
   "card.description"?: SeriesSettingDefinition<Value, Props>;
   "card.hide_empty"?: SeriesSettingDefinition<Value, Props>;
+  "card.no_results_message"?: SeriesSettingDefinition<Value, Props>;
   "card.title"?: SeriesSettingDefinition<Value, Props>;
   click_behavior?: SeriesSettingDefinition<Value, Props>;
   color?: SingleSeriesSettingDefinition<Value, Props>;
@@ -389,6 +393,7 @@ export type VisualizationSettingsDefinitions = {
 export type Widget = {
   id: string;
   section?: string;
+  joinsExistingSection?: boolean;
   hidden?: boolean;
   props?: Record<string, unknown>;
   title?: string;

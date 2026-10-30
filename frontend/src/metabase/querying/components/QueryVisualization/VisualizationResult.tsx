@@ -3,8 +3,10 @@ import _ from "underscore";
 
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Button, Flex } from "metabase/ui";
+import { Box, Button, Flex } from "metabase/ui";
+import { NoResultsMessage } from "metabase/visualizations/components/NoResultsMessage";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { getNoResultsMessage } from "metabase/visualizations/lib/no-results";
 import * as Lib from "metabase-lib";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 
@@ -58,29 +60,41 @@ export function VisualizationResult(props: QueryVisualizationProps) {
     const supportsBackToPreviousResult =
       !isEmbeddingSdk() || Boolean(onNavigateBack);
 
+    const noResultsMessage = getNoResultsMessage(question.settings());
+    const action = (
+      <div>
+        {noResultsAction}
+
+        {supportsBackToPreviousResult && (
+          <Button
+            onClick={() =>
+              onNavigateBack ? onNavigateBack() : window.history.back()
+            }
+          >
+            {t`Back to previous results`}
+          </Button>
+        )}
+      </div>
+    );
+
     // successful query but there were 0 rows returned with the result
     return (
       <Flex className={className}>
-        <ErrorMessage
-          type="noRows"
-          title={t`No results`}
-          message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
-          action={
-            <div>
-              {noResultsAction}
-
-              {supportsBackToPreviousResult && (
-                <Button
-                  onClick={() =>
-                    onNavigateBack ? onNavigateBack() : window.history.back()
-                  }
-                >
-                  {t`Back to previous results`}
-                </Button>
-              )}
-            </div>
-          }
-        />
+        {noResultsMessage ? (
+          // Without a `type` there is no illustration to contradict the author.
+          <ErrorMessage action={action}>
+            <Box mb="md">
+              <NoResultsMessage message={noResultsMessage} />
+            </Box>
+          </ErrorMessage>
+        ) : (
+          <ErrorMessage
+            type="noRows"
+            title={t`No results`}
+            message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
+            action={action}
+          />
+        )}
       </Flex>
     );
   }

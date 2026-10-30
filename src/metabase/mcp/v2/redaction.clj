@@ -25,9 +25,10 @@
 
 (def ^:private card-describing-viz-keys
   "`:visualization_settings` keys that describe the card rather than the grid slot: its author-written
-   title, the warehouse columns it displays and their labels, and click targets naming other entities.
-   Layout keys (sizing, container styling) describe the dashboard itself and survive redaction."
-  [:card.title :card.description :column_settings :series_settings :click_behavior])
+   title, description, and no-results message, the warehouse columns it displays and their labels, and
+   click targets naming other entities. Layout keys (sizing, container styling) describe the dashboard
+   itself and survive redaction."
+  [:card.title :card.description :card.no_results_message :column_settings :series_settings :click_behavior])
 
 (defn- redact-dashcard
   [dashcard]

@@ -1,0 +1,38 @@
+.message {
+  flex: 0 1 auto;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  color: var(--mb-color-text-secondary);
+  font-size: 1.12em;
+  text-wrap: balance;
+}
+
+/* The box spans the card so long words wrap at its edge; the Markdown root
+   carries the measure. */
+.message > div {
+  max-width: 32em;
+  margin-inline: auto;
+}
+
+.message[data-compact] {
+  font-size: 1em;
+  hyphens: auto;
+}
+
+.message a {
+  color: var(--mb-color-text-brand-strong);
+}
+
+.message a:hover {
+  color: var(--mb-color-text-brand-strong-hover);
+}
+
+.message[data-clipped] {
+  mask-image: linear-gradient(
+    to bottom,
+    rgb(from currentcolor r g b / 100%) calc(100% - 1.5em),
+    transparent
+  );
+}

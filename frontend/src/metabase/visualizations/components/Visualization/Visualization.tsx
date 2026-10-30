@@ -39,7 +39,10 @@ import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
 import { getScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
-import { hasNoResults } from "metabase/visualizations/lib/no-results";
+import {
+  getNoResultsMessage,
+  hasNoResults,
+} from "metabase/visualizations/lib/no-results";
 import {
   type CardSlownessStatus,
   type ClickActionsMode,
@@ -819,6 +822,14 @@ class Visualization extends PureComponent<
     const isVisualizerDashCard = isVisualizerDashboardCard(dashcard);
 
     const title = settings["card.title"];
+    const noResultsMessage = getNoResultsMessage(settings);
+    // Outside dashboards the host draws the empty state, unless the author
+    // wrote a message.
+    const showNoResultsView =
+      noResults &&
+      (isDashboard ||
+        isMetricsViewer ||
+        (noResultsMessage != null && !renderEmptyMessage));
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
     const isLoadingHeaderEnabled = !(
@@ -890,8 +901,8 @@ class Visualization extends PureComponent<
           )}
           {replacementContent ? (
             replacementContent
-          ) : (isDashboard || isMetricsViewer) && noResults ? (
-            <NoResultsView isSmall={small} />
+          ) : showNoResultsView ? (
+            <NoResultsView isSmall={small} message={noResultsMessage} />
           ) : error && !isRunning ? (
             <ErrorView
               error={errorMessageOverride ?? error}

@@ -133,6 +133,17 @@
            (->> (pivot/columns-without-pivot-group (:cols pivot-test-data))
                 (map :name))))))
 
+(deftest totals-only?-test
+  (let [cols [{:name "CATEGORY"} {:name "CREATED_AT"} {:name "pivot-grouping"} {:name "count"}]]
+    (testing "a pivot that matched nothing returns only its grand total"
+      (is (true? (pivot/totals-only? cols [[nil nil 3 0]]))))
+    (testing "subtotals without a detail row are still totals only"
+      (is (true? (pivot/totals-only? cols [[nil "2024" 1 0] [nil nil 3 0]]))))
+    (testing "one detail row means there are results"
+      (is (false? (pivot/totals-only? cols [["Gadget" "2024" 0 5] [nil nil 3 5]]))))
+    (testing "results without a pivot-grouping column are never totals only"
+      (is (false? (pivot/totals-only? [{:name "count"}] [[0]]))))))
+
 (deftest split-pivot-data
   (testing "split-pivot-table pulls apart the aggregations packed into a single
     result set, keyed by the columns indexes that are aggregated"

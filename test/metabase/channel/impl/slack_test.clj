@@ -79,6 +79,66 @@
              {:type "section", :text {:type "plain_text", :text "No results"}}]]
            processed))))
 
+(defn- card-body-section!
+  "The section Slack sends for the body of `card` given query `result` (no rows when omitted)."
+  ([card]
+   (card-body-section! card nil))
+  ([card result]
+   (let [[_title body] (mt/with-dynamic-fn-redefs [slack/upload-file! (fn [_ _] {:id "uploaded"})]
+                         (mt/with-temporary-setting-values [site-url "a.com"]
+                           (#'channel.slack/part->sections! (cond-> {:type :card
+                                                                     :card (merge {:id 1 :name "Card"} card)}
+                                                              result (assoc :result result)))))]
+     body)))
+
+(deftest no-results-message-mrkdwn-test
+  (testing "A card's no-results message replaces \"No results\" as mrkdwn, so its links are clickable"
+    (is (= {:type "section"
+            :text {:type "mrkdwn"
+                   :text "Suppressed. See the <https://x.com/p|data policy>"}}
+           (card-body-section! {:visualization_settings
+                                {:card.no_results_message "Suppressed. See the [data policy](https://x.com/p)"}}))))
+  (testing "Markdown emphasis is converted to Slack's syntax, and headings are plain lines rather than bold"
+    (is (= {:type "section"
+            :text {:type "mrkdwn"
+                   :text "No sales yet\n*Nothing* here"}}
+           (card-body-section! {:visualization_settings
+                                {:card.no_results_message "# No sales yet\n\n**Nothing** here"}}))))
+  (testing "A dashcard's message wins over the card's"
+    (let [[_title body] (mt/with-dynamic-fn-redefs [slack/upload-file! (fn [_ _] {:id "uploaded"})]
+                          (mt/with-temporary-setting-values [site-url "a.com"]
+                            (#'channel.slack/part->sections!
+                             {:type     :card
+                              :card     {:id 1 :name "Card"
+                                         :visualization_settings {:card.no_results_message "Card message"}}
+                              :dashcard {:id 2 :dashboard_id 3
+                                         :visualization_settings {:card.no_results_message "Dashcard message"}}})))]
+      (is (= {:type "section"
+              :text {:type "mrkdwn"
+                     :text "Dashcard message"}}
+             body))))
+  (testing "Without a message the default \"No results\" stays plain text"
+    (doseq [settings [nil {} {:card.no_results_message "   "}]]
+      (is (= {:type "section"
+              :text {:type "plain_text"
+                     :text "No results"}}
+             (card-body-section! {:visualization_settings settings})))))
+  (testing "Other text-only cards, such as a scalar, stay plain text even when they look like Markdown"
+    (is (= {:type "section"
+            :text {:type "plain_text"
+                   :text "[a](https://x.com)"}}
+           (card-body-section! {:display                :scalar
+                                :visualization_settings {:card.no_results_message "unused"}}
+                               {:data {:cols [{:name "A" :display_name "A" :base_type :type/Text}]
+                                       :rows [["[a](https://x.com)"]]}})))))
+
+(deftest no-results-message-truncation-test
+  (testing "A card's no-results message longer than Slack's section limit is truncated to fit"
+    (let [text (card-body-section! {:visualization_settings {:card.no_results_message (apply str (repeat 4000 "a"))}})]
+      (is (= "mrkdwn" (get-in text [:text :type])))
+      (is (= channel.slack/block-text-length-limit (count (get-in text [:text :text]))))
+      (is (str/ends-with? (get-in text [:text :text]) "…")))))
+
 (deftest link-truncation-test
   (let [render-image-link
         (fn [label card-id char-limit]

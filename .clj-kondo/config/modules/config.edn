@@ -1888,6 +1888,7 @@
            premium-features
            queries
            query-processor
+           query-processor.pivot
            request
            session
            settings

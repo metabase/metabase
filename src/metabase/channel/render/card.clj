@@ -10,6 +10,7 @@
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -134,10 +135,8 @@
                           tyype (:id card) (apply format reason args))
               tyype)]
       (cond
-        (or (empty? rows)
-            ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-            (= [[nil]] (-> data :rows)))
-        (chart-type :empty "there are no rows in results")
+        (notification.payload/no-results? data)
+        (chart-type :empty "there are no results")
 
         map-type
         (chart-type map-type "card is a map renderable as %s" (name map-type))
@@ -233,7 +232,8 @@
   - attachments
   - content (a hiccup form suitable for rendering on rich clients or rendering into an image)
   - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
-    scalar results where text is preferable to an image of a div of a single result."
+    scalar results where text is preferable to an image of a div of a single result.
+  - render/mrkdwn : Slack mrkdwn for a card's no-results message; Slack prefers it over render/text."
   ([render-type :- ::body/render-type
     timezone-id :- [:maybe :string]
     card        :- [:maybe ::body/card]
@@ -252,7 +252,8 @@
          {description :content}           (make-description-if-needed dashcard card options)
          {pulse-body       :content
           body-attachments :attachments
-          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
+          text             :render/text
+          mrkdwn           :render/mrkdwn} (render-pulse-card-body render-type timezone-id card dashcard results)
          inline-parameters                (when (:channel.render/include-inline-parameters? options)
                                             (-> dashcard :visualization_settings :inline_parameters))]
      (cond-> {:attachments (merge title-attachments body-attachments)
@@ -272,7 +273,8 @@
                           (if-let [more-results-message (body/attached-results-text render-type card)]
                             (conj more-results-message (list pulse-body))
                             pulse-body)]]]}
-       text (assoc :render/text text)))))
+       text   (assoc :render/text text)
+       mrkdwn (assoc :render/mrkdwn mrkdwn)))))
 
 (mu/defn render-pulse-card-for-display
   "Same as `render-pulse-card` but isn't intended for an email, rather for previewing so there is no need for

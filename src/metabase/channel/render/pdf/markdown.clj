@@ -3,6 +3,7 @@
   engine to consume."
   (:require
    [clojure.string :as str]
+   [metabase.channel.render.markdown :as markdown]
    [metabase.util.http :as u.http])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList Code Emphasis FencedCodeBlock
@@ -205,12 +206,20 @@
             (node-children node))
       [])))
 
+(defn- document-blocks
+  [^Node document]
+  (into [] (mapcat #(block->blocks % 0)) (node-children document)))
+
 (defn parse-markdown-blocks
   "Parses a string of Markdown syntax into a stream of blocks containing `:runs` of text."
   [text]
-  (->> (.parse ^Parser @md-parser (str text))
-       node-children
-       (into [] (mapcat #(block->blocks % 0)))))
+  (document-blocks (.parse ^Parser @md-parser (str text))))
+
+(defn parse-message-blocks
+  "Like [[parse-markdown-blocks]], for a card's no-results message: headings become paragraphs and images are left
+  out (see [[markdown/strip-headings-and-images!]])."
+  [text]
+  (document-blocks (markdown/strip-headings-and-images! (.parse ^Parser @md-parser (str text)))))
 
 ;; FIXME: Big picture, all the Markdown code is repeatedly pouring nested stuff into a top-level, flattened list.
 ;; It seems like it would be much more efficient, and probably easier to read too, if the whole thing were written

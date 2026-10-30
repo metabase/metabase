@@ -15,7 +15,7 @@
    (com.vladsch.flexmark.html HtmlRenderer LinkResolver LinkResolverFactory)
    (com.vladsch.flexmark.html.renderer LinkResolverBasicContext LinkStatus)
    (com.vladsch.flexmark.parser Parser)
-   (com.vladsch.flexmark.util.ast Document Node)
+   (com.vladsch.flexmark.util.ast Document Node TextCollectingVisitor)
    (com.vladsch.flexmark.util.data MutableDataSet)
    (java.net URI URISyntaxException)))
 
@@ -197,9 +197,9 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *site-url*
-  "The instance's site URL, bound by [[process-markdown]] from its `site-url` argument. A dynamic var rather
-  than a threaded parameter because [[resolve-uri]] is reached through the AST multimethods and flexmark's
-  link-resolver callback."
+  "The instance's site URL, bound by [[process-markdown]] and [[process-message]] from their `site-url` argument. A
+  dynamic var rather than a threaded parameter because [[resolve-uri]] is reached through the AST multimethods and
+  flexmark's link-resolver callback."
   nil)
 
 (def ^:private allowed-link-schemes
@@ -447,25 +447,63 @@
                                  (withUrl (or (resolve-uri (.getUrl link)) ""))))))))]
     (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory))))
 
-(defmulti process-markdown
-  "Converts a markdown string from a virtual card into a form that can be sent to a channel
-  (Slack's markup language, or HTML for email). `site-url` is the instance's site URL, used to absolutize
-  relative links; callers look it up so this namespace stays settings-free."
-  {:arglists '([markdown channel-type site-url])}
-  (fn [_markdown channel-type _site-url] channel-type))
+(defmulti ^:private document->channel
+  {:arglists '([document channel-type])}
+  (fn [_document channel-type] channel-type))
 
-(defmethod process-markdown :slack
-  [markdown _channel-type site-url]
-  (binding [*site-url* site-url]
-    (-> (.parse ^Parser parser ^String markdown)
-        to-clojure
-        ast->slack
-        flatten
-        str/join
-        str/trim)))
+(defmethod document->channel :slack
+  [document _channel-type]
+  (-> document
+      to-clojure
+      ast->slack
+      flatten
+      str/join
+      str/trim))
 
-(defmethod process-markdown :html
-  [markdown _channel-type site-url]
+(defmethod document->channel :html
+  [document _channel-type]
+  (.render ^HtmlRenderer renderer ^Document document))
+
+(defn strip-headings-and-images!
+  "Rewrite the parsed Markdown `document` in place the way the frontend renders a card's no-results message: each
+  heading becomes a paragraph with the same content, and every image is removed, along with a paragraph left empty
+  by it. Returns `document`."
+  [^Node document]
+  (doseq [^Node node (vec (.getDescendants document))]
+    (condp instance? node
+      Heading  (let [paragraph (Paragraph.)]
+                 (.takeChildren paragraph node)
+                 (.insertBefore node paragraph)
+                 (.unlink node))
+      Image    (.unlink node)
+      ImageRef (.unlink node)
+      nil))
+  (doseq [^Node node (vec (.getDescendants document))
+          :when (and (instance? Paragraph node) (nil? (.getFirstChild node)))]
+    (.unlink node))
+  document)
+
+(defn- render-markdown
+  [^String markdown channel-type site-url prepare-document]
   (binding [*site-url* site-url]
-    (let [ast (.parse ^Parser parser ^String markdown)]
-      (.render ^HtmlRenderer renderer ^Document ast))))
+    (document->channel (prepare-document (.parse ^Parser parser markdown)) channel-type)))
+
+(defn process-markdown
+  "Converts a markdown string from a virtual card into a form that can be sent to a channel: `channel-type` is
+  `:slack` for Slack's markup language or `:html` for email. `site-url` is the instance's site URL, used to
+  absolutize relative links; callers look it up so this namespace stays settings-free."
+  [markdown channel-type site-url]
+  (render-markdown markdown channel-type site-url identity))
+
+(defn process-message
+  "Like [[process-markdown]], for a card's no-results message: headings render as paragraphs and images are left out
+  (see [[strip-headings-and-images!]])."
+  [markdown channel-type site-url]
+  (render-markdown markdown channel-type site-url strip-headings-and-images!))
+
+(defn message-has-text?
+  "Whether a card's no-results message keeps any text once its images are left out, so one made only of images counts
+  as unset, as on the frontend."
+  [^String markdown]
+  (let [document (strip-headings-and-images! (.parse ^Parser parser markdown))]
+    (not (str/blank? (.collectAndGetText (TextCollectingVisitor.) ^Node document)))))

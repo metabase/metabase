@@ -14,6 +14,7 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.pdf :as pdf]
+   [metabase.channel.render.pdf.common :as pdf.common]
    [metabase.channel.render.pdf.font :as font]
    [metabase.channel.render.pdf.typeset :as typeset]
    [metabase.channel.shared :as channel.shared]
@@ -29,10 +30,12 @@
    (java.io ByteArrayOutputStream StringReader)
    (javax.imageio ImageIO)
    (org.apache.batik.parser AWTPathProducer)
+   (org.apache.pdfbox Loader)
    (org.apache.pdfbox.pdmodel PDDocument PDPage PDPageContentStream)
    (org.apache.pdfbox.pdmodel.common PDRectangle)
    (org.apache.pdfbox.pdmodel.interactive.action PDActionURI)
-   (org.apache.pdfbox.pdmodel.interactive.annotation PDAnnotationLink)))
+   (org.apache.pdfbox.pdmodel.interactive.annotation PDAnnotationLink)
+   (org.apache.pdfbox.text PDFTextStripper TextPosition)))
 
 (set! *warn-on-reflection* true)
 
@@ -353,6 +356,18 @@
         (is (<= 74.0 w2 76.0))))                                      ; == width to fit [30,40]: 30 + 5 + 40
     (testing "empty units -> zero width"
       (is (= 0.0 (#'typeset/min-column-width [] 100.0 identity))))))
+
+(deftest ^:synchronized overwide-word-breaks-across-lines-test
+  (testing "a word wider than the line is broken between its characters rather than throwing"
+    (with-open [doc (PDDocument.)]
+      (binding [font/*fonts* (#'font/load-fonts! doc)]
+        (let [max-w 20.0
+              lines (typeset/words->lines (typeset/runs->words [{:text "Nothing ok"}])
+                                          pdf.common/text-card-pt false max-w)
+              text  (fn [line] (str/join (map typeset/item-text line)))]
+          (is (< 2 (count lines)))
+          (is (= "Nothingok" (str/join (map text lines))))
+          (is (every? #(<= (reduce + (map :ww %)) max-w) lines)))))))
 
 (deftest ^:parallel resolve-inline-params-test
   (let [params [{:id "a" :name "Max Discount" :value [100]}
@@ -948,6 +963,134 @@
               (let [baos (ByteArrayOutputStream.)]
                 (.save doc baos)
                 (is (pos? (count (.toByteArray baos))))))))))))
+
+(defn- no-results-cell-pdf!
+  "Bytes of a one-page PDF with an empty-result card cell for `card`/`dashcard` drawn at x = 36pt."
+  ^bytes [card dashcard cell-w cell-h]
+  (let [part {:card     (merge {:display "line" :name "Empty card"} card)
+              :dashcard dashcard
+              :result   {:data {:cols [{:name "x" :display_name "X" :base_type :type/Integer}]
+                                :rows []}}}
+        baos (ByteArrayOutputStream.)]
+    (with-open [doc (PDDocument.)]
+      (binding [font/*fonts* (#'font/load-fonts! doc)]
+        (let [page (PDPage. PDRectangle/A4)]
+          (.addPage doc page)
+          (with-open [cs (PDPageContentStream. doc page)]
+            (#'pdf/render-card-cell! doc cs nil part 36.0 760.0 cell-w cell-h))
+          (.save doc baos))))
+    (.toByteArray baos)))
+
+(defn- no-results-cell-image-count!
+  "Number of images drawn in an empty-result card cell for `card` (see [[no-results-cell-pdf!]])."
+  [card]
+  (with-open [doc (Loader/loadPDF (no-results-cell-pdf! card nil 240.0 240.0))]
+    (let [resources (.getResources (.getPage doc 0))]
+      (count (filter #(.isImageXObject resources %) (.getXObjectNames resources))))))
+
+(defn- no-results-cell-lines!
+  "Render an empty-result card cell for `card`/`dashcard` (see [[no-results-cell-pdf!]]) and return its text lines
+  top to bottom, each `{:text :size :x0 :x1}` (font size and horizontal extent in points). Test copy avoids \"ti\",
+  which the regular face draws as a ligature glyph that text extraction drops."
+  ([card dashcard]
+   (no-results-cell-lines! card dashcard 240.0 240.0))
+  ([card dashcard cell-w cell-h]
+   (let [words (atom [])]
+     (with-open [doc (Loader/loadPDF (no-results-cell-pdf! card dashcard cell-w cell-h))]
+       (.getText (proxy [PDFTextStripper] []
+                   (writeString [^String text positions]
+                     (let [^TextPosition p0 (first positions)
+                           ^TextPosition pn (last positions)]
+                       (swap! words conj {:text text
+                                          :y    (Math/round (.getYDirAdj p0))
+                                          :size (.getFontSizeInPt p0)
+                                          :x0   (.getXDirAdj p0)
+                                          :x1   (+ (.getXDirAdj pn) (.getWidthDirAdj pn))}))))
+                 doc))
+     (->> @words
+          (group-by :y)
+          (sort-by key)
+          (mapv (fn [[_y ws]]
+                  (let [ws (sort-by :x0 ws)]
+                    {:text (str/join " " (map :text ws))
+                     :size (:size (first ws))
+                     :x0   (:x0 (first ws))
+                     :x1   (:x1 (last ws))})))))))
+
+(defn- no-results-cell-texts!
+  "The text lines of an empty-result cell below its \"Empty card\" title (see [[no-results-cell-lines!]])."
+  [card dashcard]
+  (mapv :text (rest (no-results-cell-lines! card dashcard))))
+
+;; not ^:parallel: exercises the real PDFBox rendering path (font loading + drawing)
+(deftest ^:synchronized no-results-message-pdf-test
+  (let [[_title-line default-label] (no-results-cell-lines! nil nil)]
+    (testing "an unset or blank message keeps the default \"No results\" label alone"
+      (doseq [settings [nil {:card.no_results_message "  "}]]
+        (let [[title-line & lines] (no-results-cell-lines! {:visualization_settings settings} nil)]
+          (is (= "Empty card" (:text title-line)))
+          (is (= ["No results"] (mapv :text lines))))))
+    (testing "the default draws the icon; a message is drawn alone, with no icon"
+      (is (= 1 (no-results-cell-image-count! nil)))
+      (is (= 0 (no-results-cell-image-count! {:visualization_settings {:card.no_results_message "Nothing today"}}))))
+    (testing "a message replaces the label, at the label's size"
+      (let [[message :as lines] (rest (no-results-cell-lines!
+                                       {:visualization_settings {:card.no_results_message "Nothing today"}}
+                                       nil))]
+        (is (= ["Nothing today"] (mapv :text lines)))
+        (is (= (:size default-label) (:size message)))))
+    (testing "a long message wraps, each line centered in the cell"
+      (let [message "Nothing matched these filters today, try widening the [date range](https://x.com/range)"
+            lines   (rest (no-results-cell-lines! {:visualization_settings {:card.no_results_message message}} nil))]
+        (is (< 1 (count lines)) "the long message wraps onto several lines within the 240pt cell")
+        (is (= "Nothing matched these filters today, try widening the date range"
+               (str/join " " (map :text lines))))
+        (doseq [{:keys [x0 x1 text]} lines]
+          (is (< (Math/abs (- (- x0 36.0) (- 276.0 x1))) 2.0)
+              (format "%s is centered in the cell" text)))))
+    (testing "headings are drawn as paragraphs at the label's size, and images are left out"
+      (let [lines (rest (no-results-cell-lines!
+                         {:visualization_settings
+                          {:card.no_results_message
+                           "# No sales yet\n\n![chart](https://x.com/chart.png)\n\nCheck back"}}
+                         nil))]
+        (is (= ["No sales yet" "Check back"] (mapv :text lines)))
+        (is (every? #(= (:size default-label) (:size %)) lines))))
+    (testing "a word wider than a narrow cell breaks across lines instead of failing the card"
+      (let [lines (rest (no-results-cell-lines! {:name                   "E"
+                                                 :visualization_settings {:card.no_results_message "Nothing refunds"}}
+                                                nil 30.0 240.0))]
+        (is (< 2 (count lines)))
+        (is (= "Nothingrefunds" (str/join (map :text lines))))))
+    (testing "a short body still shows the message"
+      (is (= ["Try again"]
+             (mapv :text (rest (no-results-cell-lines! {:visualization_settings {:card.no_results_message "Try again"}}
+                                                       nil 240.0 40.0))))))
+    (let [message       (str/join "\n\n" (repeat 4 "Nothing here"))
+          message-lines (fn [cell-h]
+                          (rest (no-results-cell-lines! {:visualization_settings {:card.no_results_message message}}
+                                                        nil 240.0 cell-h)))
+          ;; text extraction reports whole points
+          floor-pt      (Math/floor (* @#'pdf/no-results-message-min-scale pdf.common/text-card-pt))]
+      (testing "a message too tall for the body shrinks to fit"
+        (let [lines (message-lines 75.0)]
+          (is (= (repeat 4 "Nothing here") (mapv :text lines)))
+          (is (every? #(< (:size %) (:size default-label)) lines))))
+      (testing "a message too tall even at the readable floor keeps that size and clips the lines past it"
+        (let [lines (message-lines 60.0)]
+          (is (< 0 (count lines) 4))
+          (is (every? #(= "Nothing here" (:text %)) lines))
+          (is (every? #(<= floor-pt (:size %)) lines)))))
+    (testing "a dashcard's message wins over the card's"
+      (is (= ["Dashcard message"]
+             (no-results-cell-texts! {:visualization_settings {:card.no_results_message "Card message"}}
+                                     {:visualization_settings {:card.no_results_message "Dashcard message"}}))))
+    (testing "a visualizer dashcard's own message wins over its nested visualizer settings"
+      (is (= ["Dashcard message"]
+             (no-results-cell-texts! {:visualization_settings {:card.no_results_message "Card message"}}
+                                     {:visualization_settings
+                                      {:card.no_results_message "Dashcard message"
+                                       :visualization           {:settings {:card.no_results_message "Nested"}}}}))))))
 
 (defn- ->disk-spilled-rows
   "Reduce `rows` through the notification rff with a 1-cell budget so they immediately spill to disk, returning the

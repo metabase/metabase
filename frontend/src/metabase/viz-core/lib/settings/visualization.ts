@@ -13,6 +13,7 @@ import type {
 import type {
   ComputedVisualizationSettings,
   SettingsExtra,
+  VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "../../types";
 import { migrateStoredCustomVizSettings } from "../custom-viz/migrate-legacy-settings";
@@ -62,13 +63,32 @@ const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
   click_behavior: {},
 };
 
+// Spread after the visualization's own settings so it ends its tab. On
+// dashboards it stays unsectioned, which places it under the hide toggle.
+const NO_RESULTS_MESSAGE_SETTING: VisualizationSettingDefinition<Series> = {
+  get title() {
+    return t`Message when there are no results`;
+  },
+  get hint() {
+    return t`You can use Markdown for links and formatting`;
+  },
+  widget: "textarea",
+  getSection: (_series, _settings, extra) =>
+    extra?.isDashboard ? undefined : t`Display`,
+  joinsExistingSection: true,
+  getHidden: ([{ card }], settings) =>
+    isVirtualDashCard(card) || settings["card.hide_empty"] === true,
+  getProps: () => ({ placeholder: t`No results` }),
+};
+
 export function getSettingDefinitionsForDisplay(
   display: VisualizationDisplay | undefined,
 ): VisualizationSettingsDefinitions {
   const visualization = getVisualization(display ?? null);
-  const definitions = {
+  const definitions: VisualizationSettingsDefinitions = {
     ...COMMON_SETTINGS,
     ...visualization?.settings,
+    "card.no_results_message": NO_RESULTS_MESSAGE_SETTING,
   };
   for (const id in definitions) {
     definitions[id].id = id;

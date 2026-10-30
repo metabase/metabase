@@ -187,7 +187,7 @@
   word's `:space-before?`. Used to hard-break a token wider than the whole line."
   [{:keys [pieces sp space-before?] :as _item}]
   (->> (for [{:keys [font pt] :as piece} pieces
-             cp                          (seq (.codePoints ^String (:text piece)))
+             cp                          (.toArray (.codePoints ^String (:text piece)))
              :let [text (String. (Character/toChars (int cp)))]]
          (merge (select-keys piece [:font :pt :color :href])
                 {:text text

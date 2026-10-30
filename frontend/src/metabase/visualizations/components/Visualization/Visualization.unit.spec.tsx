@@ -19,6 +19,7 @@ import type {
   RawSeries,
   Settings,
   VisualizationDisplay,
+  VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -162,6 +163,71 @@ describe("Visualization", () => {
       expect(screen.getByTestId("legend-caption-title")).toHaveTextContent(
         "Products, Count, Grouped by Category and Vendor",
       );
+    });
+  });
+
+  describe("with no results", () => {
+    type EmptyCardOpts = {
+      visualizationSettings?: VisualizationSettings;
+      isDashboard?: boolean;
+    };
+
+    const renderEmptyCard = ({
+      visualizationSettings = {},
+      isDashboard = true,
+    }: EmptyCardOpts = {}) =>
+      renderViz(
+        [
+          {
+            data: createMockDatasetData({
+              cols: [createMockNumericColumn({ name: "count" })],
+              rows: [],
+            }),
+            card: createMockCard({
+              display: "scalar",
+              visualization_settings: createMockVisualizationSettings(
+                visualizationSettings,
+              ),
+            }),
+          },
+        ],
+        { isDashboard },
+      );
+
+    it("should render the default message on a dashboard", async () => {
+      await renderEmptyCard();
+
+      expect(screen.getByText("No results")).toBeInTheDocument();
+      expect(screen.getByTestId("no-results-image")).toBeInTheDocument();
+    });
+
+    it("should replace the default copy and illustration with the card's message on a dashboard", async () => {
+      await renderEmptyCard({
+        visualizationSettings: {
+          "card.no_results_message": "No activity this week",
+        },
+      });
+
+      expect(screen.getByText("No activity this week")).toBeInTheDocument();
+      expect(screen.queryByText("No results")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("no-results-image")).not.toBeInTheDocument();
+    });
+
+    it("should render the card's message outside a dashboard", async () => {
+      await renderEmptyCard({
+        visualizationSettings: {
+          "card.no_results_message": "No activity this week",
+        },
+        isDashboard: false,
+      });
+
+      expect(screen.getByText("No activity this week")).toBeInTheDocument();
+    });
+
+    it("should leave the empty state to the host outside a dashboard without a message", async () => {
+      await renderEmptyCard({ isDashboard: false });
+
+      expect(screen.queryByTestId("no-results-image")).not.toBeInTheDocument();
     });
   });
 

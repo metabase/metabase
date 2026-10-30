@@ -3,7 +3,7 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import { hasNoResults } from "./no-results";
+import { getNoResultsMessage, hasNoResults } from "./no-results";
 
 const pivotCols = [
   createMockColumn({ name: "CATEGORY", source: "breakout" }),
@@ -62,5 +62,66 @@ describe("hasNoResults", () => {
         }),
       ),
     ).toBe(false);
+  });
+});
+
+describe("getNoResultsMessage", () => {
+  it("returns the trimmed message", () => {
+    expect(
+      getNoResultsMessage({
+        "card.no_results_message": " Check back **Monday**\n",
+      }),
+    ).toBe("Check back **Monday**");
+  });
+
+  it.each([
+    ["missing", {}],
+    ["null", { "card.no_results_message": null }],
+    ["empty", { "card.no_results_message": "" }],
+    ["blank", { "card.no_results_message": " \n " }],
+    [
+      "image-only",
+      { "card.no_results_message": "![chart](https://example.com/chart.png)" },
+    ],
+    [
+      "linked-image",
+      {
+        "card.no_results_message":
+          "[![Logo](https://example.com/logo.png)](https://example.com)",
+      },
+    ],
+    [
+      "reference-image",
+      {
+        "card.no_results_message":
+          "![chart][c]\n\n[c]: https://example.com/chart.png",
+      },
+    ],
+    [
+      "image-with-a-parenthesized-title",
+      {
+        "card.no_results_message":
+          '![chart](https://example.com/chart.png "Sales (2026)")',
+      },
+    ],
+  ])("treats a %s message as unset", (_label, settings) => {
+    expect(getNoResultsMessage(settings)).toBeUndefined();
+  });
+
+  it("keeps a message that has text besides its images", () => {
+    expect(
+      getNoResultsMessage({
+        "card.no_results_message":
+          "![chart](https://example.com/chart.png) Soon",
+      }),
+    ).toBe("![chart](https://example.com/chart.png) Soon");
+  });
+
+  it("keeps a bracketed line that is not a link reference definition", () => {
+    expect(
+      getNoResultsMessage({
+        "card.no_results_message": "[note]: this is text",
+      }),
+    ).toBe("[note]: this is text");
   });
 });

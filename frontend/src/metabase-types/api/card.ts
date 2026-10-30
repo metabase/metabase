@@ -332,6 +332,9 @@ export type ColumnSettings = TimeOnlyOptions & {
  * result column names.
  */
 export type VisualizationSettings = {
+  /** Markdown shown instead of the default "No results" copy when the query returns no rows. */
+  "card.no_results_message"?: string | null;
+
   /** Show value labels directly on supported chart marks. */
   "graph.show_values"?: boolean;
 

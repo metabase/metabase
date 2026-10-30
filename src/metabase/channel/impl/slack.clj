@@ -123,10 +123,18 @@
                            :text     (mkdwn-link-text title-link title)
                            :verbatim true}}]
                   (-> dashcard  :visualization_settings :inline_parameters))
-                 (if (:render/text rendered-info)
+                 (cond
+                   (not (str/blank? (:render/mrkdwn rendered-info)))
+                   {:type "section"
+                    :text {:type "mrkdwn"
+                           :text (truncate (:render/mrkdwn rendered-info) block-text-length-limit)}}
+
+                   (:render/text rendered-info)
                    {:type "section"
                     :text {:type "plain_text"
                            :text (:render/text rendered-info)}}
+
+                   :else
                    {:type       "image"
                     :slack_file {:id (-> rendered-info
                                          (channel.render/png-from-render-info slack-width)

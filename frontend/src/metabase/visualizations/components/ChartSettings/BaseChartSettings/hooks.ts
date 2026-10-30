@@ -60,6 +60,28 @@ const extractUnsectionedWidgets = (
   return extras;
 };
 
+const isJoiningSection = (sectionWidgets: Widget[]) =>
+  sectionWidgets.every((widget) => widget.joinsExistingSection);
+
+// Move sections holding only `joinsExistingSection` widgets to the end of the
+// first section by priority, so they never get a tab of their own. Mutates
+// `sectionObj`.
+const foldJoiningSections = (sectionObj: Record<string, Widget[]>) => {
+  const sectionNames = orderSectionNames(Object.keys(sectionObj));
+  const targetName = sectionNames.find(
+    (name) => !isJoiningSection(sectionObj[name]),
+  );
+  if (targetName == null) {
+    return;
+  }
+  for (const name of sectionNames) {
+    if (isJoiningSection(sectionObj[name])) {
+      sectionObj[targetName].push(...sectionObj[name]);
+      delete sectionObj[name];
+    }
+  }
+};
+
 export const useChartSettingsSections = ({
   initial,
   widgets,
@@ -72,6 +94,7 @@ export const useChartSettingsSections = ({
     useMemo(() => {
       const sectionObj = groupWidgetsBySection(widgets);
       const extras = extractUnsectionedWidgets(sectionObj);
+      foldJoiningSections(sectionObj);
       const orderedSectionNames = orderSectionNames(Object.keys(sectionObj));
 
       // place extras at the top of the first section by priority

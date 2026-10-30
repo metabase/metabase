@@ -9,6 +9,7 @@
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.maps :as maps]
+   [metabase.channel.render.markdown :as markdown]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.channel.render.table-data :as table-data]
@@ -28,6 +29,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
+   [metabase.system.core :as system]
    [metabase.tiles.settings :as tiles.settings]
    [metabase.timeline.core :as timeline]
    [metabase.types.core :as types]
@@ -317,7 +319,9 @@
   [:map {:closed true}
    [:attachments {:optional true} [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
    [:content                      ::hiccup]
-   [:render/text {:optional true} [:maybe :string]]])
+   [:render/text {:optional true} [:maybe :string]]
+   ;; Set only for a card's no-results message; Slack prefers it over :render/text.
+   [:render/mrkdwn {:optional true} [:maybe :string]]])
 
 (defmulti render
   "Render a Part as `chart-type` (e.g. `:bar`, `:scalar`, etc.) and `render-type` (either `:inline` or `:attachment`)."
@@ -1257,22 +1261,44 @@
       (render :javascript_visualization render-type timezone-id card dashcard processed-data)
       (render :funnel_normal render-type timezone-id card dashcard processed-data))))
 
-(mu/defmethod render :empty :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id _card _dashcard _data]
-  (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
-    {:attachments
-     (image-bundle/image-bundle->attachment image-bundle)
+(defn- no-results-message-html
+  "Email HTML for a no-results `message` (Markdown): paragraph margins removed so the text sits where the
+  \"No results\" label would, links in the instance's primary color."
+  [message]
+  (let [spaced "<p style=\"margin: 8px 0 0;\">"]
+    (-> (markdown/process-message message :html (system/site-url))
+        (str/replace "<p>" spaced)
+        (str/replace-first spaced "<p style=\"margin: 0;\">")
+        (str/replace "<a href=" (format "<a style=\"%s\" href="
+                                        (style/style {:color           (style/primary-color)
+                                                      :text-decoration :none}))))))
 
-     :content
-     [:div {:style (style/style {:text-align :center})}
-      [:img {:style (style/style {:width :104px})
-             :src   (:image-src image-bundle)}]
-      [:div {:style (style/style
-                     (style/font-style)
-                     {:margin-top :8px
-                      :color      style/color-text-light})}
-       (trs "No results")]]
-     :render/text (trs "No results")}))
+(mu/defmethod render :empty :- ::RenderedPartCard
+  [_chart-type render-type _timezone-id card dashcard _data]
+  (if-let [message (render.util/no-results-message card dashcard)]
+    {:content       [:div {:style (style/style {:text-align :center})}
+                     [:div {:style (style/style
+                                    (style/font-style)
+                                    {:max-width   :400px
+                                     :margin      "0 auto"
+                                     :line-height 1.4
+                                     :color       style/color-text-dark})}
+                      (no-results-message-html message)]]
+     :render/mrkdwn (markdown/process-message message :slack (system/site-url))}
+    (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
+      {:attachments
+       (image-bundle/image-bundle->attachment image-bundle)
+
+       :content
+       [:div {:style (style/style {:text-align :center})}
+        [:img {:style (style/style {:width :104px})
+               :src   (:image-src image-bundle)}]
+        [:div {:style (style/style
+                       (style/font-style)
+                       {:margin-top :8px
+                        :color      style/color-text-light})}
+         (trs "No results")]]
+       :render/text (trs "No results")})))
 
 (mu/defmethod render :attached :- ::RenderedPartCard
   [_chart-type render-type _timezone-id _card _dashcard _data]

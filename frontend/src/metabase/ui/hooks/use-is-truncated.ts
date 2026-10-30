@@ -6,11 +6,14 @@ import resizeObserver from "metabase/utils/resize-observer";
 type UseIsTruncatedProps = {
   disabled?: boolean;
   ignoreHeightTruncation?: boolean;
+  /** Pixels the content may overflow before it counts as truncated. */
+  tolerancePx?: number;
 };
 
 export const useIsTruncated = <E extends Element>({
   disabled = false,
   ignoreHeightTruncation = false,
+  tolerancePx = 0,
 }: UseIsTruncatedProps = {}) => {
   const ref = useRef<E | null>(null);
   const [isTruncated, setIsTruncated] = useState(false);
@@ -23,7 +26,9 @@ export const useIsTruncated = <E extends Element>({
     }
 
     const handleResize = () => {
-      setIsTruncated(getIsTruncated(element, ignoreHeightTruncation));
+      setIsTruncated(
+        getIsTruncated(element, ignoreHeightTruncation, tolerancePx),
+      );
     };
 
     handleResize();
@@ -32,7 +37,7 @@ export const useIsTruncated = <E extends Element>({
     return () => {
       resizeObserver.unsubscribe(element, handleResize);
     };
-  }, [disabled, ignoreHeightTruncation]);
+  }, [disabled, ignoreHeightTruncation, tolerancePx]);
 
   return { isTruncated, ref };
 };
@@ -40,18 +45,20 @@ export const useIsTruncated = <E extends Element>({
 const getIsTruncated = (
   element: Element,
   ignoreHeightTruncation = false,
+  tolerancePx = 0,
 ): boolean => {
   const range = document.createRange();
   range.selectNodeContents(element);
   const elementRect = element.getBoundingClientRect();
   const rangeRect = range.getBoundingClientRect();
+  const isWidthTruncated = rangeRect.width > elementRect.width + tolerancePx;
 
   if (ignoreHeightTruncation) {
-    return rangeRect.width > elementRect.width;
+    return isWidthTruncated;
   }
 
   return (
-    rangeRect.height > elementRect.height || rangeRect.width > elementRect.width
+    rangeRect.height > elementRect.height + tolerancePx || isWidthTruncated
   );
 };
 

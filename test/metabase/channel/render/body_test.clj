@@ -318,6 +318,73 @@
     (is (= "There was a problem with this question."
            (-> (body/render :card-error nil nil nil nil nil) :content last)))))
 
+(deftest ^:parallel empty-no-results-message-test
+  (let [render-empty (fn [card dashcard]
+                       (body/render :empty :inline pacific-tz card dashcard {:cols [] :rows []}))
+        ;; with a message, [:div {...} [:div {...} message-html]]
+        text-div     (fn [part] (nth (:content part) 2))
+        message-html (fn [part] (last (text-div part)))
+        message-part (fn [message] (render-empty {:visualization_settings {:card.no_results_message message}} nil))
+        default-part (fn [part]
+                       {:attachments (:attachments part)
+                        :content     [:div {:style (style/style {:text-align :center})}
+                                      [:img {:style (style/style {:width :104px})
+                                             :src   (get-in part [:content 2 1 :src])}]
+                                      [:div {:style (style/style (style/font-style)
+                                                                 {:margin-top :8px
+                                                                  :color      style/color-text-light})}
+                                       "No results"]]
+                        :render/text "No results"})]
+    (testing "an unset or blank message keeps the default empty state exactly"
+      (doseq [card [nil
+                    {:visualization_settings {}}
+                    {:visualization_settings {:card.no_results_message "   "}}]]
+        (let [part (render-empty card nil)]
+          (is (= (default-part part) part)))))
+    (testing "a message without text of its own, such as an image alone, keeps the default too"
+      (let [part (message-part "![chart](https://example.com/chart.png)")]
+        (is (= (default-part part) part))))
+    (testing "a message replaces the whole default, rendered from Markdown with no image and no attachment"
+      (let [part (message-part "Nothing today")]
+        (is (not (contains? part :attachments)))
+        (is (not-any? #(= :img %) (flatten (:content part))))
+        (is (= "<p style=\"margin: 0;\">Nothing today</p>\n" (message-html part)))
+        (is (not (contains? part :render/text)))
+        (is (= "Nothing today" (:render/mrkdwn part)))))
+    (testing "the message is body text in the label's font: regular weight, the email's text color, capped width"
+      (let [[tag {div-style :style}] (text-div (message-part "M"))]
+        (is (= :div tag))
+        (is (str/includes? div-style (style/style (style/font-style))))
+        (is (str/includes? div-style (str "color: " style/color-text-dark ";")))
+        (is (str/includes? div-style "max-width: 400px;"))
+        (is (str/includes? div-style "margin: 0 auto;"))
+        (is (not (str/includes? div-style "font-size")))
+        (is (not (str/includes? div-style "font-weight")))))
+    (testing "links take the primary color, and paragraph margins are neutralised but for a small gap between them"
+      (let [html (message-html (message-part "See [the docs](https://example.com/docs) **now**\n\nOr ask the team"))]
+        (is (re-find #"<a style=\"color: [^\"]+; text-decoration: none;\" href=\"https://example.com/docs\"[^>]*>the docs</a>"
+                     html))
+        (is (str/starts-with? html "<p style=\"margin: 0;\">"))
+        (is (str/includes? html "<p style=\"margin: 8px 0 0;\">Or ask the team</p>"))
+        (is (not (str/includes? html "<p>")))))
+    (testing ":render/mrkdwn is the message as Slack mrkdwn"
+      (let [part (message-part "See [the docs](https://example.com/docs) **now**")]
+        (is (= "See <https://example.com/docs|the docs> *now*" (:render/mrkdwn part)))))
+    (testing "headings render as paragraphs and images are left out, as on the frontend"
+      (let [part (message-part "# Nothing yet\n\nSee ![chart](https://example.com/chart.png)below")]
+        (is (= "<p style=\"margin: 0;\">Nothing yet</p>\n<p style=\"margin: 8px 0 0;\">See below</p>\n"
+               (message-html part)))
+        (is (= "Nothing yet\nSee below" (:render/mrkdwn part)))))
+    (testing "a paragraph holding only an image is left out, so the first text paragraph takes the label's place"
+      (let [part (message-part "![logo](https://example.com/logo.png)\n\nNo orders today")]
+        (is (= "<p style=\"margin: 0;\">No orders today</p>\n" (message-html part)))
+        (is (= "No orders today" (:render/mrkdwn part)))))
+    (testing "a dashcard's message wins over the card's"
+      (let [part (render-empty {:visualization_settings {:card.no_results_message "Card message"}}
+                               {:visualization_settings {:card.no_results_message "Dashcard message"}})]
+        (is (str/includes? (message-html part) "Dashcard message"))
+        (is (= "Dashcard message" (:render/mrkdwn part)))))))
+
 (defn- render-scalar-value [results]
   (-> (body/render :scalar nil pacific-tz nil nil results)
       :content
@@ -904,6 +971,28 @@
               (testing "the saved event is nowhere in the rendered chart"
                 (is (empty? (hik.s/select (hik.s/find-in-text (re-pattern event-name)) doc)))
                 (is (not (str/includes? (pr-str doc) event-name)))))))))))
+
+(deftest empty-pivot-shows-no-results-state-test
+  (testing "A pivot whose filter matches nothing returns only its grand total, and renders the no-results state"
+    (mt/dataset test-data
+      (let [q   (mt/mbql-query products
+                  {:aggregation [[:count]]
+                   :breakout    [$category !year.created_at]
+                   :filter      [:> $price 1000000]})
+            viz {:pivot_table.column_split {:rows ["CATEGORY"] :columns ["CREATED_AT"] :values ["count"]}}
+            render-with (fn [settings]
+                          (mt/with-temp [:model/Card {card-id :id} {:display                :pivot
+                                                                    :dataset_query          q
+                                                                    :visualization_settings settings}]
+                            (render.tu/render-pivot-card-as-hickory! card-id)))]
+        (testing "with a message, the message replaces the empty table"
+          (let [doc (render-with (assoc viz :card.no_results_message "**Nothing priced that high.**"))]
+            (is (empty? (hik.s/select (hik.s/tag :table) doc)))
+            (is (seq (hik.s/select (hik.s/find-in-text #"Nothing priced that high\.") doc)))))
+        (testing "without one, the default \"No results\" shows"
+          (let [doc (render-with viz)]
+            (is (empty? (hik.s/select (hik.s/tag :table) doc)))
+            (is (seq (hik.s/select (hik.s/find-in-text #"No results") doc)))))))))
 
 (deftest unknown-column-settings-test
   (testing "Unknown `:column_settings` keys don't break static-viz rendering with a Null Pointer Exception (#27941)."

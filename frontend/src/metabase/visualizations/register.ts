@@ -45,6 +45,7 @@ import { ChartSettingSegmentsEditor } from "./components/settings/ChartSettingSe
 import { ChartSettingSelect } from "./components/settings/ChartSettingSelect";
 import { ChartSettingSeriesOrder } from "./components/settings/ChartSettingSeriesOrder";
 import { ChartSettingTableColumns } from "./components/settings/ChartSettingTableColumns";
+import { ChartSettingTextarea } from "./components/settings/ChartSettingTextarea";
 import { ChartSettingToggle } from "./components/settings/ChartSettingToggle";
 import { ChartSettingsTableFormatting } from "./components/settings/ChartSettingsTableFormatting";
 import { ColorRangeSelector } from "./components/settings/ColorRangeSelector";
@@ -192,6 +193,7 @@ function registerVisualizationComponents() {
 function registerVisualizationSettingWidgets() {
   registerSettingWidgets({
     input: ChartSettingInput,
+    textarea: ChartSettingTextarea,
     number: ChartSettingInputNumeric,
     numberInput: ChartSettingNumberInput,
     radio: ChartSettingRadio,

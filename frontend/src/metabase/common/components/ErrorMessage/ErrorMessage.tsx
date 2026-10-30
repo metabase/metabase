@@ -5,19 +5,25 @@ import { NoDataError } from "metabase/common/components/errors/NoDataError";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 
-interface ErrorMessageProps {
-  title: string;
-  type: "timeout" | "serverError" | "noRows";
-  message: string;
+type ErrorMessageProps = {
   action: ReactNode;
   className?: string;
-}
+} & (
+  | {
+      type: "timeout" | "serverError" | "noRows";
+      title: string;
+      message: string;
+      children?: never;
+    }
+  | { type?: never; title?: never; message?: never; children: ReactNode }
+);
 
 // NOTE: currently relies on .QueryError CSS selectors residing in query_builder.css
 export const ErrorMessage = ({
   title,
   type,
   message,
+  children,
   action,
   className,
 }: ErrorMessageProps) => {
@@ -30,19 +36,25 @@ export const ErrorMessage = ({
         CS.alignCenter,
       )}
     >
-      {type === "noRows" ? (
-        <NoDataError mb="1rem" />
-      ) : (
-        <div
-          className={cx(QueryBuilderS.QueryErrorImage, {
-            [QueryBuilderS.QueryErrorImageServerError]: type === "serverError",
-            [QueryBuilderS.QueryErrorImageTimeout]: type === "timeout",
-          })}
-        />
-      )}
+      {type != null &&
+        (type === "noRows" ? (
+          <NoDataError mb="1rem" />
+        ) : (
+          <div
+            className={cx(QueryBuilderS.QueryErrorImage, {
+              [QueryBuilderS.QueryErrorImageServerError]:
+                type === "serverError",
+              [QueryBuilderS.QueryErrorImageTimeout]: type === "timeout",
+            })}
+          />
+        ))}
       <div className={CS.textCentered}>
-        {title && <h1 className={CS.textBold}>{title}</h1>}
-        <p className={QueryBuilderS.QueryErrorMessageText}>{message}</p>
+        {children ?? (
+          <>
+            {title && <h1 className={CS.textBold}>{title}</h1>}
+            <p className={QueryBuilderS.QueryErrorMessageText}>{message}</p>
+          </>
+        )}
         {action}
       </div>
     </div>

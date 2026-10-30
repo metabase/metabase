@@ -12,6 +12,7 @@ import {
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockDataset,
   createMockDatasetData,
@@ -47,7 +48,10 @@ const state = createMockState({
 });
 const metadata = createMockMetadataFromState(state);
 
-const setup = (props: Partial<QueryVisualizationProps> = {}) => {
+const setup = (
+  props: Partial<QueryVisualizationProps> = {},
+  visualizationSettings: VisualizationSettings = {},
+) => {
   const question = new Question(
     {
       dataset_query: {
@@ -58,7 +62,7 @@ const setup = (props: Partial<QueryVisualizationProps> = {}) => {
         database: SAMPLE_DB_ID,
       },
       display: "table",
-      visualization_settings: {},
+      visualization_settings: visualizationSettings,
     },
     metadata,
   );
@@ -172,6 +176,61 @@ describe("VisualizationResult", () => {
       expect(
         screen.getByRole("button", { name: "Back to previous results" }),
       ).toBeInTheDocument();
+    });
+
+    it("should treat a blank no-results message as unset", () => {
+      setup(
+        { result: createMockDataset() },
+        { "card.no_results_message": " \n " },
+      );
+
+      expect(
+        screen.getByRole("heading", { name: "No results" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/This may be the answer/)).toBeInTheDocument();
+      expect(
+        screen.getByRole("img", { name: "No results" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should replace the whole default copy with the question's message", () => {
+      setup(
+        { result: createMockDataset() },
+        {
+          "card.no_results_message":
+            "Suppressed for privacy, see [the policy](https://example.com/policy)",
+        },
+      );
+
+      expect(screen.getByText(/Suppressed for privacy/)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "the policy" })).toHaveAttribute(
+        "href",
+        "https://example.com/policy",
+      );
+      expect(screen.queryByText("No results")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/This may be the answer/),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("img")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Back to previous results" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should render markdown headings as text and drop images in the message", () => {
+      setup(
+        { result: createMockDataset() },
+        {
+          "card.no_results_message":
+            "# Nothing this week\n\n![chart](https://example.com/chart.png)",
+        },
+      );
+
+      expect(screen.getByText("Nothing this week")).toBeInTheDocument();
+      expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("img", { name: "chart" }),
+      ).not.toBeInTheDocument();
     });
   });
 });

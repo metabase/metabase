@@ -2,8 +2,10 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { getNoResultsMessage } from "metabase/visualizations/lib/no-results";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Series } from "metabase-types/api";
+import { extendCardWithDashcardSettings } from "metabase/viz-core";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -146,4 +148,122 @@ describe("DashboardChartSettings trend line customization", () => {
     expect(Object.keys(settings.series_settings)).toEqual(["count"]);
     expect(settings).not.toHaveProperty("graph.trendline_style");
   });
+});
+
+describe("DashboardChartSettings no-results message", () => {
+  const MESSAGE_LABEL = "Message when there are no results";
+
+  const getCard = (display: "scalar" | "line" = "scalar") =>
+    createMockCard({
+      display,
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count"],
+        "card.no_results_message": "Card message",
+      },
+    });
+  const card = getCard();
+
+  type NoResultsMessageSetupOpts = {
+    display?: "scalar" | "line";
+    dashcardSettings?: VisualizationSettings;
+  };
+
+  const setupNoResultsMessage = ({
+    display,
+    dashcardSettings = {},
+  }: NoResultsMessageSetupOpts = {}) => {
+    const onChange = jest.fn<void, [VisualizationSettings]>();
+    const dashcardCard = getCard(display);
+    setup({
+      series: [
+        createMockSingleSeries(
+          extendCardWithDashcardSettings(dashcardCard, dashcardSettings),
+          {
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn({
+                  name: "CREATED_AT",
+                  base_type: "type/DateTime",
+                  effective_type: "type/DateTime",
+                  unit: "month",
+                }),
+                createMockColumn({
+                  name: "count",
+                  base_type: "type/BigInteger",
+                  effective_type: "type/BigInteger",
+                  source: "aggregation",
+                }),
+              ],
+              rows: [],
+            }),
+          },
+        ),
+      ],
+      dashcard: createMockDashboardCard({
+        card: dashcardCard,
+        visualization_settings: dashcardSettings,
+      }),
+      settings: undefined,
+      onChange,
+    });
+    return { onChange };
+  };
+
+  it.each(["scalar", "line"] as const)(
+    "should place the message directly under the hide toggle on a %s card",
+    (display) => {
+      setupNoResultsMessage({ display });
+
+      const widgetIds = screen
+        .getAllByTestId(/^chart-settings-widget-/)
+        .map((widget) => widget.dataset.testid);
+      const hideEmptyIndex = widgetIds.indexOf(
+        "chart-settings-widget-card.hide_empty",
+      );
+
+      expect(hideEmptyIndex).toBeGreaterThanOrEqual(0);
+      expect(widgetIds[hideEmptyIndex + 1]).toBe(
+        "chart-settings-widget-card.no_results_message",
+      );
+    },
+  );
+
+  it("should hide the message while the card is hidden when there are no results", async () => {
+    setupNoResultsMessage();
+
+    expect(screen.getByLabelText(MESSAGE_LABEL)).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByLabelText("Hide this card if there are no results"),
+    );
+
+    expect(screen.queryByLabelText(MESSAGE_LABEL)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["its own message", { "card.no_results_message": "Dashcard message" }],
+    ["the question's message", {}],
+  ] as const)(
+    "should show the default instead of the question's message when the dashcard's field is cleared, starting from %s",
+    async (_label, dashcardSettings: VisualizationSettings) => {
+      const { onChange } = setupNoResultsMessage({ dashcardSettings });
+
+      const textarea = screen.getByLabelText(MESSAGE_LABEL);
+      expect(textarea).not.toHaveValue("");
+
+      await userEvent.clear(textarea);
+      await userEvent.tab();
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      const [savedSettings] = onChange.mock.lastCall ?? [];
+      expect(savedSettings).toBeDefined();
+      expect(savedSettings).toHaveProperty(["card.no_results_message"], "");
+
+      const dashcardCard = extendCardWithDashcardSettings(card, savedSettings);
+      expect(
+        getNoResultsMessage(dashcardCard.visualization_settings),
+      ).toBeUndefined();
+    },
+  );
 });
