@@ -1715,13 +1715,14 @@
   metabot.toolkit
   {:team "Metabot"
    :api  #{metabase.metabot.toolkit.dashboard-op-schema metabase.metabot.toolkit.dashboard-ops metabase.metabot.toolkit.dashboard-write}
-   :uses #{dashboards
+   :uses #{api
+           dashboards
            lib
            models
            parameters
            parameters.schema
            util}
-   :model-imports #{:model/Card}}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   metrics
   {:team "UX West"

@@ -1,12 +1,14 @@
 (ns metabase.metabot.toolkit.dashboard-write
   "Compile dashboard ops and save them, for every tool that edits dashboards with ops.
    The ops are compiled by [[metabase.metabot.toolkit.dashboard-ops]].
-   The saves go through the same functions the REST endpoints use, [[metabase.dashboards.write/create-dashboard!]] and
-   [[metabase.dashboards.write/update-dashboard!]], so write permission checks, transactions and events come with them.
+   The saves go through [[dashboards.write/create-dashboard!]] and [[dashboards.write/update-dashboard!]],
+   so write permission checks, transactions and events come with them.
+   The REST endpoints have their own copies of those two functions, so the two paths can drift.
    Errors are codes from [[metabase.metabot.toolkit.dashboard-ops/errors]], and each tool words them its own way.
    Reading the dashboard, and projecting the result for the model, are left to the tool."
   (:require
    [malli.error :as me]
+   [metabase.api.common :as api]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.lib.core :as lib]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
@@ -30,20 +32,39 @@
                  [(:id card) card])))))
 
 (defn- normalize-parameters
-  "Coerce the compiled `:parameters` from their JSON shape (string `type`, string enums) to the internal keyword shape.
+  "Coerce the `:parameters` in `m`, attributes or a compiled payload, from their JSON shape to the keyword shape.
    That is the shape the REST endpoint's body decoding produces, so the same payload validates and saves.
-   A value too malformed to normalize passes through untouched, and [[validate-payload!]] reports it."
-  [payload]
-  (cond-> payload
-    (seq (:parameters payload))
+   A value too malformed to normalize passes through untouched, and [[validate-write!]] reports it."
+  [m]
+  (cond-> m
+    (seq (:parameters m))
     (update :parameters #(try (lib/normalize :metabase.parameters.schema/parameters %) (catch Exception _ %)))))
 
-(defn- validate-payload!
-  "Throws `:invalid-payload` when the real save would reject `payload`, so a dry run is worth trusting.
-   The payload is the dashboard attributes merged with the compiled ops."
-  [payload]
-  (when-let [explanation (mr/explain dashboards.write/DashUpdates payload)]
+(defn- check-schema!
+  "Throws `:invalid-payload` when `value` breaks `schema`."
+  [schema value]
+  (when-let [explanation (mr/explain schema value)]
     (dashboard-ops/fail! :invalid-payload {:explanation (me/humanize explanation)})))
+
+(defn- validate-write!
+  "Throws `:invalid-payload` when the real save would reject `attrs` or the compiled `payload`.
+   A create checks `attrs` against [[dashboards.write/NewDashboard]], and saves any `payload` as an update.
+   An update checks them together, as it saves them.
+   Dry runs and saves both call it, so a clean dry run is worth trusting."
+  [creating? attrs payload]
+  (if creating?
+    (do (check-schema! dashboards.write/NewDashboard attrs)
+        (when payload
+          (check-schema! dashboards.write/DashUpdates payload)))
+    (check-schema! dashboards.write/DashUpdates (merge attrs payload))))
+
+(defn- check-permission!
+  "Throws a 403 unless the user may update `dashboard`, or create a dashboard in the collection `attrs` names.
+   The save checks the same, so a dry run calls this to refuse what the save would."
+  [dashboard attrs]
+  (if dashboard
+    (api/write-check dashboard)
+    (api/create-check :model/Dashboard {:collection_id (:collection_id attrs)})))
 
 (defn- blank-dashboard
   "The empty dashboard with `attrs` that a create compiles its ops against, before anything is written."
@@ -51,15 +72,13 @@
   (merge {:id nil :dashcards [] :tabs [] :parameters []} attrs))
 
 (defn- compile-write
-  "Compiles `ops` against `dash` without writing, and returns `{:payload :cards}`.
-   The payload is what saving the ops would write alongside `attrs`.
+  "Compiles `ops`, prepared, against `dash` without writing, and returns `{:payload :cards}`.
+   The payload is what saving the ops would write alongside the attributes.
    The cards map holds the row of every card the payload references that the user can read, keyed by id."
-  [dash attrs ops]
-  (let [ops     (dashboard-ops/prepare-ops ops)
-        cards   (fetch-cards (dashboard-ops/referenced-card-ids dash ops))
-        payload (normalize-parameters (dashboard-ops/compile-ops dash ops cards))]
-    (validate-payload! (merge attrs payload))
-    {:payload payload, :cards cards}))
+  [dash ops]
+  (let [cards (fetch-cards (dashboard-ops/referenced-card-ids dash ops))]
+    {:payload (normalize-parameters (dashboard-ops/compile-ops dash ops cards))
+     :cards   cards}))
 
 (defn- attach-card-metadata
   "Give a compiled dashcard the `:card` and `:series` card rows a saved one would be hydrated with.
@@ -84,29 +103,18 @@
   [dash]
   (t2/hydrate dash [:dashcards :series :card] :tabs))
 
-(defn- update-dashboard!
-  "Saves `attrs` and `ops`, prepared, to `dash` as one update, and returns the saved row."
-  [dash attrs ops]
-  (if (seq ops)
-    (let [{:keys [payload]} (compile-write dash attrs ops)]
-      (dashboards.write/update-dashboard! (u/the-id dash) (merge attrs payload)))
-    (dashboards.write/update-dashboard! (u/the-id dash) attrs)))
-
 (defn- create-dashboard!
-  "Creates a dashboard from `attrs` with `ops`, prepared, applied, and returns it hydrated.
-   With ops, nothing is written if the ops are invalid, or if the save or the read back fails."
-  [attrs ops]
-  (if (seq ops)
-    ;; Compile before creating anything, so a bad op can't leave an orphaned empty dashboard behind for a retry to
-    ;; duplicate. A new dashboard is empty by definition, so the payload compiled against a blank is the one to save.
-    (let [{:keys [payload]} (compile-write (blank-dashboard attrs) attrs ops)]
-      ;; ...and the two writes share a transaction, because the compile above only proves the ops are good. Anything
-      ;; else that throws after the row exists (a schema check, a permission check, a failing save) would otherwise
-      ;; strand an empty dashboard, and every retry would add another (GHY-4501). The read back runs inside it too,
-      ;; so a failure there doesn't report an error for a dashboard that was in fact created.
-      (t2/with-transaction [_conn]
-        (hydrated (dashboards.write/update-dashboard! (:id (dashboards.write/create-dashboard! attrs)) payload))))
-    (hydrated (dashboards.write/create-dashboard! attrs))))
+  "Creates a dashboard from `attrs`, saves the compiled `payload` to it when there is one, and returns it hydrated.
+   Nothing is written if the save or the read back fails."
+  [attrs payload]
+  ;; One transaction, because anything that throws after the row exists (a permission check, a failing save) would
+  ;; otherwise strand an empty dashboard, and every retry would add another (GHY-4501). The read back runs inside it
+  ;; too, so a failure there doesn't report an error for a dashboard that was in fact created.
+  (t2/with-transaction [_conn]
+    (let [dash (dashboards.write/create-dashboard! attrs)]
+      (hydrated (if payload
+                  (dashboards.write/update-dashboard! (:id dash) payload)
+                  dash)))))
 
 (defn write!
   "Creates or updates a dashboard with the attributes `attrs` and the ops `ops`, and returns it.
@@ -114,24 +122,28 @@
    With a `dashboard`, hydrated the same way and already read-checked by the caller, it updates that one.
    Without one it creates a dashboard.
    With `validate-only?` it writes nothing, and returns the dashboard the save would produce.
-   A dry run does not check write permission on the dashboard, so the save can still be refused on that.
+   A dry run checks write permission on the dashboard, or create permission on the collection.
+   It does not run the save's other permission checks, such as moving to a collection or per-field mapping checks.
    A nil `ops` means none were sent; anything else must be a list of ops.
    Throws an error from [[dashboard-ops/errors]] when an op is invalid or the save would be rejected."
-  [{:keys [dashboard attrs validate-only?] :as opts}]
+  [{:keys [dashboard validate-only?] :as opts}]
   ;; Prepared before any branch reads them, so a malformed `ops` fails as :invalid-op rather than crashing a `seq`
   ;; or passing as no ops.
-  (let [ops (dashboard-ops/prepare-ops (:ops opts))]
+  (let [ops   (dashboard-ops/prepare-ops (:ops opts))
+        attrs (normalize-parameters (:attrs opts))
+        dash  (or dashboard (blank-dashboard attrs))
+        _     (when validate-only?
+                (check-permission! dashboard attrs))
+        ;; Without ops nothing is compiled, so an attribute-only save doesn't rewrite the layout.
+        {:keys [payload cards]} (when (seq ops)
+                                  (compile-write dash ops))]
+    (validate-write! (nil? dashboard) attrs payload)
     (cond
       validate-only?
-      (let [dash (or dashboard (blank-dashboard attrs))]
-        (if (or (nil? dashboard) (seq ops))
-          (let [{:keys [payload cards]} (compile-write dash attrs ops)]
-            (dry-run-dashboard dash attrs payload cards))
-          (do (validate-payload! attrs)
-              (dry-run-dashboard dash attrs nil nil))))
+      (dry-run-dashboard dash attrs payload cards)
 
       (nil? dashboard)
-      (create-dashboard! attrs ops)
+      (create-dashboard! attrs payload)
 
       :else
-      (hydrated (update-dashboard! dashboard attrs ops)))))
+      (hydrated (dashboards.write/update-dashboard! (u/the-id dashboard) (merge attrs payload))))))
