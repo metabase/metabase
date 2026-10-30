@@ -522,6 +522,14 @@
   [state dashcard]
   (get (::cards state) (:card_id dashcard)))
 
+(defn- check-card-resolved!
+  "Throws `:unknown-card` when `dashcard` has a card that is not in the caller's `cards` map.
+   That card is missing or unreadable, so an op that needs its metadata cannot run."
+  [state dashcard]
+  ;; Without this, a wire op would report a text-card or missing-column error for a card it simply cannot see.
+  (when (and (:card_id dashcard) (nil? (card-for-dashcard state dashcard)))
+    (fail! :unknown-card {:card-id (:card_id dashcard)})))
+
 (defn- assoc-slug
   "Derive `:slug` from a parameter's name, as the editor's `setParameterName` does. Without it a
    parameter this tool creates is not addressable by slug — embedding, public links, and URL param
@@ -599,6 +607,8 @@
   "Add or replace `parameter`'s mapping on `dashcard`. Returns the dashcard unchanged when its card
    exposes no target for `field-id`, unless `explicit?`, when that is an error."
   [state parameter dashcard field-id explicit?]
+  (when explicit?
+    (check-card-resolved! state dashcard))
   (let [card   (card-for-dashcard state dashcard)
         target (when card (mapping-targets/target-for-field card parameter field-id))]
     (cond
@@ -616,6 +626,7 @@
   "The card behind the dashcard a wire op targets, or an error — a virtual dashcard (text, heading,
    link, iframe) has no query, so only a `[:text-tag …]` target (handled before this) can wire it."
   [state dashcard]
+  (check-card-resolved! state dashcard)
   (or (card-for-dashcard state dashcard)
       (fail! :no-card-behind-dashcard {:dashcard-id (:id dashcard)})))
 

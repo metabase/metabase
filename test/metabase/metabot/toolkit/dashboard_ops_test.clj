@@ -927,6 +927,28 @@
                                                          :visualization_settings {:virtual_card {:display "text"}}}])
                       [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "cat"}])))))
 
+(deftest wire-parameter-unresolved-card-test
+  (testing "wiring a dashcard whose card is missing or unreadable names that card, for every kind of target"
+    (doseq [target [{:target_field 18}
+                    {:target_tag "cat"}
+                    {:target ["dimension" ["template-tag" "cat"]]}]]
+      (testing (pr-str target)
+        (is (=? {::dashboard-ops/error :unknown-card, :card-id 9, :op-name "wire_parameter"}
+                (op-error native-current
+                          [(merge {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7} target)]
+                          {}))))))
+  (testing "autowire still skips another dashcard whose card is unresolved"
+    (let [current (update native-current :dashcards conj
+                          {:id 8 :card_id 10 :row 4 :col 0 :size_x 4 :size_y 4 :parameter_mappings []})]
+      (is (=? {:dashcards [{:id 7 :parameter_mappings [{:parameter_id "p1"}]}
+                           {:id 8 :parameter_mappings []}]}
+              (dynamic-redefs/with-dynamic-fn-redefs [mapping-targets/target-for-field
+                                                      (fn [_card _param field-id] [:dimension [:field field-id nil]])]
+                (compile-with-stub-cards
+                 current
+                 [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 18 :autowire true}]
+                 {9 native-card})))))))
+
 (deftest wire-parameter-raw-target-coerced-and-validated-test
   (testing "a raw target arrives as JSON strings, is keywordized, and saves when it resolves"
     (is (= [{:parameter_id "p1" :card_id 9 :target [:dimension [:template-tag "cat"]]}]
