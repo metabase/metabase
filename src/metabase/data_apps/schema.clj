@@ -98,6 +98,17 @@
     [:id              ms/PositiveInt]
     [:bundle_hash     {:optional true} [:maybe :string]]]])
 
+(mr/def ::data-app-preview
+  "A data app's dev preview: the slug its manifest declares, whether or not the app exists on the instance."
+  [:map {:closed true}
+   [:slug :string]])
+
+(mr/def ::data-app-info
+  "What a data app's request is checked as: the app it names, or a dev preview of one, which has no ID."
+  [:multi {:dispatch #(if (contains? % :id) :app :preview)}
+   [:app     ::data-app]
+   [:preview ::data-app-preview]])
+
 (mr/def ::data-app.update
   "What an update (or insert) of a DataApp accepts: every column of `:data_app` except `id` and the `bundle_hash` the
   model computes, all optional."
