@@ -250,8 +250,7 @@
     :inline_parameters (not-empty (:inline_parameters dc))}))
 
 (defn- dashboard-parameters-summary
-  "One row per dashboard parameter, with its id, name, type, default, required flag and value source.
-   Each row also lists the dashcards wired to the parameter through their `:parameter_mappings`.
+  "One row per dashboard parameter, with a subset of its stored properties and the ids of the dashcards wired to it.
    A dry run's unsaved dashcards appear under their negative ids."
   [dash]
   (let [param-id->dashcard-ids (reduce (fn [acc {dashcard-id :id :keys [parameter_mappings]}]
@@ -266,16 +265,16 @@
              {:id                   param-id
               :name                 (:name param)
               :type                 (:type param)
-              ;; Echoed so an agent can see the default and value source it just wrote.
               :default              (:default param)
               :required             (:required param)
               :values_source_type   (:values_source_type param)
+              ;; A card source shows the card id and its value and label fields even to a user who cannot
+              ;; read that card. The REST endpoint `GET /api/dashboard/:id` returns stored parameters the
+              ;; same way, so redacting them only here would not keep them from that user.
+              ;;
               ;; TODO (Chris 2026-10-29) -- decide with evals whether to trim `values_source_config`.
               ;; A static list carries every value into each concise read and every `dashboard_write`
               ;; response, and a long one fills the agent's context.
-              ;; A card source shows the card id and its value and label fields even to a user who cannot
-              ;; read that card. That matches `GET /api/dashboard/:id`, which returns stored parameters as
-              ;; they are, so redacting it here alone would hide nothing.
               :values_source_config (:values_source_config param)
               :dashcard_ids         (->> (get param-id->dashcard-ids (u/qualified-name param-id))
                                          (remove nil?)
