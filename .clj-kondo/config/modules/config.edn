@@ -3848,6 +3848,7 @@
    :uses #{actions
            api
            api-scope
+           audit-app
            collections
            data-apps
            events
@@ -3855,16 +3856,21 @@
            lib.be
            lib.schema
            lib.types
+           metabot
+           metrics
            models
            permissions
            premium-features
+           queries
            remote-sync
            search
            settings
+           system
            util
            util.graph
            warehouse-schema-overlay
-           enterprise/dependencies}
+           enterprise/dependencies
+           enterprise/serialization}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection

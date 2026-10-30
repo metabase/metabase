@@ -1,11 +1,15 @@
 (ns metabase-enterprise.data-apps.api
   "Data-app endpoints, mounted at `/api/ee/apps`: manage data apps and the groups that can read their collections, serve
-  their bundles, and generate their typed schema."
+  their bundles, and generate their typed schema and the files of their repository."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.generate.actions :as generate.actions]
+   [metabase-enterprise.data-apps.generate.queries :as generate.queries]
+   [metabase-enterprise.data-apps.generate.schema :as generate.schema]
    [metabase-enterprise.data-apps.group-access :as data-app.group-access]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase-enterprise.data-apps.typed-schema :as data-apps.typed-schema]
@@ -15,7 +19,9 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.events.core :as events]
+   [metabase.lib.schema.test-spec]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
@@ -26,8 +32,8 @@
 
 ;;; ------------------------------------------------ Constants ------------------------------------------------
 
-;; Slug must not collide with the literal `repo-status`/`sandbox-host` sub-routes.
-(def ^:private slug-regex #"(?!repo-status$|sandbox-host$)[^/]+")
+;; Slug must not collide with the literal `repo-status`/`sandbox-host`/`generate` sub-routes.
+(def ^:private slug-regex #"(?!repo-status$|sandbox-host$|generate$)[^/]+")
 
 (def ^:private bundle-response-headers
   ;; `no-cache` so the browser may cache but must revalidate via
@@ -108,6 +114,32 @@
   [:map
    [:configured :boolean]
    [:url [:maybe :string]]])
+
+(def ^:private GeneratedFiles
+  [:sequential [:map {:closed true}
+                [:path     ms/NonBlankString]
+                [:contents :string]]])
+
+(defn- kebab-case-keys
+  "`x` with the keys of every map in it kebab-cased, as the SDK's camelCase keys are in Lib's test query spec."
+  [x]
+  (walk/postwalk #(cond-> % (map? %) (update-keys (comp keyword u/->kebab-case-en name))) x))
+
+(def ^:private QueryDefinitions
+  "The `defineQuery` exports of a data app's `metabase.queries.ts`, by export name: each one's entity ID, and its
+  definition as a one-stage test query."
+  [:map-of :string [:map {:closed true}
+                    [:entityId ms/NanoIdString]
+                    [:query    [:and {:decode/api kebab-case-keys} :metabase.lib.schema.test-spec/test-query-spec]]]])
+
+(def ^:private ActionDefinitions
+  "The `defineAction` exports of a data app's `metabase.actions.ts`, by export name: implicit actions of `kind` on a
+  table."
+  [:map-of :string [:map {:closed true}
+                    [:entityId ms/NanoIdString]
+                    [:kind     [:enum "row/create" "row/update" "row/delete"]]
+                    [:table    [:map {:closed true}
+                                [:id ms/PositiveInt]]]]])
 
 (def ^:private AddGroupsRequest
   [:map {:closed true}
@@ -272,6 +304,35 @@
   {:status  200
    :headers typescript-response-headers
    :body    (data-apps.typed-schema/generate (write-check-data-app slug))})
+
+(api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles
+  "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and
+  measures, and its metrics. Superusers only."
+  []
+  (api/check-superuser)
+  (generate.schema/generate))
+
+(api.macros/defendpoint :post "/generate/queries" :- GeneratedFiles
+  "The YAML files of the questions a data app defines, one per `defineQuery` export in `queries`, in its collection with
+  the entity ID `collection`. Nothing is saved. Superusers only."
+  [_route-params
+   _query-params
+   {:keys [collection queries]} :- [:map {:closed true}
+                                    [:collection ms/NanoIdString]
+                                    [:queries QueryDefinitions]]]
+  (api/check-superuser)
+  (generate.queries/generate collection queries))
+
+(api.macros/defendpoint :post "/generate/actions" :- GeneratedFiles
+  "The YAML files of the implicit actions a data app defines, one per `defineAction` export in `actions`, in its
+  collection with the entity ID `collection`. Nothing is saved. Superusers only."
+  [_route-params
+   _query-params
+   {:keys [collection actions]} :- [:map {:closed true}
+                                    [:collection ms/NanoIdString]
+                                    [:actions ActionDefinitions]]]
+  (api/check-superuser)
+  (generate.actions/generate collection actions))
 
 (def ^:private GroupPermissionWarning
   [:map
