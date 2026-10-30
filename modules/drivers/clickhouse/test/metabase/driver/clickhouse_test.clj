@@ -906,3 +906,16 @@
       (let [e (SQLException. ^String message "22000" (int code))]
         (is (false? (#'sql-jdbc.execute/error-in-query? :clickhouse e)))
         (is (true? (#'sql-jdbc.execute/error-in-query? :h2 e)))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "https://a/b;c" :port 8443 :dbname "d"}
+                   {:host "https://a/b?c" :port 8443 :dbname "d"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :clickhouse details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e)))))))
+  (testing "a host written as a URL with a scheme and path is still allowed"
+    (is (nil? (driver.u/validate-connection-parameters!
+               :clickhouse {:host "https://ch.example.com/x" :port 8443 :dbname "d"})))))

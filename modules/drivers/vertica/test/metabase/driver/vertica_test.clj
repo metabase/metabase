@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -98,3 +99,12 @@
            (->> (mt/native-query {:query (tx/native-array-query :vertica)})
                 mt/process-query
                 mt/rows)))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 5433 :user "u" :db "a?b"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :vertica details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

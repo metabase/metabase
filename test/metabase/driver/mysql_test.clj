@@ -1395,3 +1395,13 @@
         (is (= [["CREATE INDEX `by_cat` ON `t` (`category`)"]] stmts))
         (is (not (str/includes? (ffirst stmts) "PREPARE")))
         (is (not (str/includes? (ffirst stmts) "UNHEX")))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 3306 :user "u" :db "a?b"}
+                   {:host "localhost" :port 3306 :user "u" :db "a%3Fb"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :mysql details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))
