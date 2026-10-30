@@ -586,3 +586,19 @@
                      nil
                      (catch clojure.lang.ExceptionInfo e (ex-data e))))
             (str "should be refused: " opts))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host      "abc.cloud.databricks.com:443/;b"
+                    :http-path "/sql/1.0/warehouses/x"
+                    :catalog   "main"
+                    :token     "t"}
+                   {:host      "abc.cloud.databricks.com"
+                    :http-path "/sql/1.0/warehouses/x"
+                    :catalog   "main;b"
+                    :token     "t"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :databricks details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

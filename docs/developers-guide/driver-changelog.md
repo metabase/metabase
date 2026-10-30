@@ -6,10 +6,16 @@ title: Driver interface changelog
 
 ## Metabase 0.63.0
 
+- `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
+  values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
+  `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of
+  those keys holds something else, such as a whole connection string (H2) or a file path (SQLite).
+
 - `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
   connection parameters a user may never set, whether in `:additional-options` or as a detail key. Metabase refuses
   details that set one when a connection is tested, when a connection pool is created, and when a Database is saved.
-  Names match case-insensitively and as substrings. Extend the parent's list rather than replacing it:
+  Names match as substrings, ignoring case, percent-encoding, `_ . - +` and whitespace. Extend the parent's list
+  rather than replacing it:
 
   ```clj
   (defmethod driver/disallowed-connection-parameters :my-driver
