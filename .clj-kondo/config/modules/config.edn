@@ -2959,6 +2959,11 @@
            util}
    :model-imports #{:model/User}}
 
+  sql-to-mbql
+  {:team "Querying Platform"
+   :api  #{metabase.sql-to-mbql.core}
+   :uses #{lib lib.schema sql-tools.parsing util}}
+
   sql-tools
   {:team "Querying"
    :module-exports #{sql-tools.parsing}
@@ -4793,8 +4798,8 @@
            lib.schema
            metrics
            models
+           sql-to-mbql
            sql-tools
-           sql-tools.parsing
            util
            util.classloader
            warehouse-schema-overlay

@@ -245,7 +245,7 @@
 (mu/defn- driver-features :- [:set :keyword]
   "The features `driver` supports, as it answers for the Database `database-name`, which it has never connected to: what
   it never has (`median` on MySQL, a regex on SQL Server) is what the resolve stage reports a metric for (see
-  [[metabase-enterprise.semantic-layer-import.resolve.metrics/check-features!]]). A driver that answers a feature from
+  [[metabase-enterprise.semantic-layer-import.resolve.metrics/check-features]]). A driver that answers a feature from
   the warehouse's version, which the stub has none of, answers for the version it assumes without one; one that throws
   over the missing connection is taken not to support the feature, which [[driver.u/features]] logs."
   [driver        :- ::config/driver

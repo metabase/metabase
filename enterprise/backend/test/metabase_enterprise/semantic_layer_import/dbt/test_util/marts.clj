@@ -227,7 +227,7 @@
      :or   {project (str (System/getProperty "user.home") "/dbt-business-intelligence")
             out     dataset-filename}} :- ::options
     password                           :- [:maybe :string]]
-   (fixture/check-repo-root!)
+   (fixture/check-repo-root)
    (let [connection (with-defaults (or connection {}) password)]
      (build! (io/file project) connection {:deps? (boolean deps?)})
      (let [ds          (data-source connection)

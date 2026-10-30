@@ -58,7 +58,7 @@
 
 (def ^:private resources-dir "enterprise/backend/test_resources/semantic_layer_import/dbt")
 
-(mu/defn check-repo-root! :- :nil
+(mu/defn check-repo-root :- :nil
   "Throw unless the working directory is the repo root, which the relative paths in [[fixtures]] and in
   [[metabase-enterprise.semantic-layer-import.dbt.test-util.marts]] assume; a REPL started elsewhere would otherwise
   fail halfway, or write somewhere else."
@@ -230,7 +230,7 @@
 (mu/defn- dbt-command :- [:sequential :string]
   "The command that runs dbt, given which of `uvx` and `dbt` are `available`: `uvx` with `dbt-core` pinned to
   [[dbt-version]] and `dbt-postgres` to [[dbt-postgres-version]] when it is, otherwise `dbt` itself, whatever version
-  that is, which [[check-dbt-version!]] catches after the parse."
+  that is, which [[check-dbt-version]] catches after the parse."
   [available :- [:set :string]]
   (cond
     (available "uvx") ["uvx"
@@ -362,7 +362,7 @@
     (.put trimmed "columns" columns)
     trimmed))
 
-(mu/defn- check-dbt-version! :- :nil
+(mu/defn- check-dbt-version :- :nil
   "Throw unless `metadata`, a parsed manifest's, says [[dbt-version]] wrote it."
   [^Map metadata :- (ms/InstanceOfClass Map)]
   (let [found (.get metadata "dbt_version")]
@@ -406,7 +406,7 @@
 
   ([fixture-key :- (into [:enum] (keys fixtures))
     overrides   :- ::fixture-overrides]
-   (check-repo-root!)
+   (check-repo-root)
    (let [{:keys [project out database extra-metrics metrics-yaml deps?] :as fixture}
          (merge (fixtures fixture-key) overrides)]
      (when-let [error (mr/explain ::fixture fixture)]
@@ -423,7 +423,7 @@
          (dbt! scratch profiles-dir "parse" "--target-path" "target")
          (let [manifest ^Map (.readValue reader (io/file scratch "target" "manifest.json") Map)
                metrics  ^Map (.get manifest "metrics")]
-           (check-dbt-version! (.get manifest "metadata"))
+           (check-dbt-version (.get manifest "metadata"))
            (.writeValue writer (io/file out) (trim-manifest manifest))
            (format "wrote %s: %d metrics (%s)" out (.size metrics)
                    (str/join ", " (sort (into #{} (map #(.get ^Map % "type")) (.values metrics)))))))))))

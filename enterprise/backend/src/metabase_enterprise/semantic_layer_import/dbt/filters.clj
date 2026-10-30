@@ -100,10 +100,10 @@
 
 (mu/defn- render-filter :- ::rendered-filter
   "Replace each MetricFlow reference in the filter `template` with a placeholder identifier, so the rest parses as SQL
-  with [[sql/condition->mbql]], whose column callback then sees the placeholders as column names. `:references` says
-  what each placeholder stood for, arguments the import does not read included, for [[ir-reference]] to report. The
-  same reference written twice is one placeholder. Jinja the regex does not recognise is left alone and fails to
-  parse."
+  with [[sql/expression->mbql]] as a condition, whose column callback then sees the placeholders as column names.
+  `:references` says what each placeholder stood for, arguments the import does not read included, for
+  [[ir-reference]] to report. The same reference written twice is one placeholder. Jinja the regex does not recognise
+  is left alone and fails to parse."
   [template :- :string]
   (let [placeholders (into {}
                            (map-indexed (fn [i text] [text (format "__dbt_ref_%d__" i)]))
@@ -136,35 +136,37 @@
     (let [parts (str/split ref-name #"__" -1)]
       ;; `''`, `'order__'` or `'__status'`: a part of the path is missing
       (when (some str/blank? parts)
-        (unsupported/throw! "%s is not a dimension reference: expected <entity>__<dimension>, or a dimension name"
-                            (pr-str ref-name)))
+        (unsupported/throw-reason "%s is not a dimension reference: expected <entity>__<dimension>, or a dimension name"
+                                  (pr-str ref-name)))
       {:kind   :dimension
        :path   (vec (butlast parts))
        :name   (last parts)
        :bucket bucket})))
 
 (mu/defn- ir-reference :- ::ir/reference
-  "The IR reference for the MetricFlow `reference`. [[unsupported/throw!]] for what the IR has no place for."
+  "The IR reference for the MetricFlow `reference`. [[unsupported/throw-reason]] for what the IR has no place for."
   [{:keys [kind grain arguments], ref-name :name, method-calls :methods} :- ::metricflow-reference]
   ;; `entity_path=[...]` names the join path to a dimension; the import reaches one through the entity in the
   ;; reference itself and cannot follow another path, so the argument is reported rather than dropped. A `Metric`
   ;; reference is reported whatever its arguments.
   (when (and arguments (not= kind :metric))
-    (unsupported/throw! "%s has the argument %s, which is not supported: only the name and, for TimeDimension, a grain"
-                        (pr-str ref-name) arguments))
+    (unsupported/throw-reason (str "%s has the argument %s, which is not supported: only the name and, for"
+                                   " TimeDimension, a grain")
+                              (pr-str ref-name) arguments))
   ;; `.grain('month')` is read (see [[render-filter]]); `.date_part('month')` and anything else chained on is not
   (when (and method-calls (not= kind :metric))
-    (unsupported/throw! "%s has the method call %s, which is not supported: only .grain('<granularity>') is"
-                        (pr-str ref-name) method-calls))
+    (unsupported/throw-reason "%s has the method call %s, which is not supported: only .grain('<granularity>') is"
+                              (pr-str ref-name) method-calls))
   (case kind
     :metric
-    (unsupported/throw! "Metric(%s): a condition on another metric's value is a HAVING, which a metric has no place for"
-                        (pr-str ref-name))
+    (unsupported/throw-reason (str "Metric(%s): a condition on another metric's value is a HAVING, which a metric"
+                                   " has no place for")
+                              (pr-str ref-name))
 
     :entity
     (do (when grain
-          (unsupported/throw! "Entity(%s) has the grain %s, but an entity is a key, not a time dimension"
-                              (pr-str ref-name) (pr-str grain)))
+          (unsupported/throw-reason "Entity(%s) has the grain %s, but an entity is a key, not a time dimension"
+                                    (pr-str ref-name) (pr-str grain)))
         {:kind :key, :name ref-name})
 
     ;; `Dimension('x').grain('month')` means what `TimeDimension('x', 'month')` does
@@ -182,7 +184,7 @@
         ;; in a way it does not read, is better reported as that than as referring to nothing, which the resolve
         ;; stage's SQL parse does
         (when (and (empty? references) (not (sql/jinja? sql)))
-          (unsupported/throw! "the filter references no dimension or entity"))
+          (unsupported/throw-reason "the filter references no dimension or entity"))
         {:text       template
          :sql        sql
          :references (update-vals references ir-reference)}))))

@@ -2,7 +2,7 @@
   "How the import says what it cannot convert. A metric or a construct with no Metabase equivalent is not an error:
   it is reported, with a reason, and the run goes on.
 
-  Deep in a stage, where there is no report to add to, the reason is thrown with [[throw!]]; the stage catches it
+  Deep in a stage, where there is no report to add to, the reason is thrown with [[throw-reason]]; the stage catches it
   where it knows which entry it is about (see [[catching]] and [[with-reason-prefix]]) and turns it into a [[report]]
   entry, or, for a dimension, into an `unsupported-dimension` of the metric. Any other exception is a bug or an input
   the import did not anticipate, and is left alone here; the stages list it under `:errors`."
@@ -19,7 +19,7 @@
   vectors of them, dimension results and more, so this is deliberately open."
   [:any {::mr/deliberately-open true}])
 
-(mu/defn throw! :- :nil
+(mu/defn throw-reason :- :nil
   "Throw the exception that says the import cannot express something. `reason` is the message, run through `format`
   with `args` when there are any; without them it is taken as it is, so a reason already formatted can carry a `%`."
   [reason :- :string
@@ -27,13 +27,13 @@
   (throw (ex-info (if (seq args) (apply format reason args) reason) {::unsupported true})))
 
 (mu/defn exception? :- :boolean
-  "Was `e` thrown by [[throw!]]?"
+  "Was `e` thrown by [[throw-reason]]?"
   [e :- (ms/InstanceOfClass Throwable)]
   (boolean (and (instance? ExceptionInfo e) (::unsupported (ex-data e)))))
 
 (mu/defn catching :- ::result
-  "Run `thunk`. When it throws an unsupported reason (see [[throw!]]), return `(on-unsupported reason)` instead; any
-  other exception propagates."
+  "Run `thunk`. When it throws an unsupported reason (see [[throw-reason]]), return `(on-unsupported reason)` instead;
+  any other exception propagates."
   [thunk          :- ifn?
    on-unsupported :- ifn?]
   (try
@@ -48,7 +48,7 @@
   reason says which part of the metric it is about."
   [prefix :- :string
    thunk  :- ifn?]
-  (catching thunk (fn [reason] (throw! "%s: %s" prefix reason))))
+  (catching thunk (fn [reason] (throw-reason "%s: %s" prefix reason))))
 
 (mu/defn report :- ::ir/unsupported
   "The report entry for the entry of `kind` (a metric, say) that could not be converted: its name and unique id, and

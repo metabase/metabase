@@ -81,15 +81,15 @@
 
 (mu/defn- dimension-column :- :string
   "The column `dimension`'s expr names. A dimension mapping targets a column, so a dimension whose expr is anything
-  else is [[unsupported/throw!]]."
+  else is [[unsupported/throw-reason]]."
   [{dimension-name :name, :keys [expr]} :- ::ir/dimension]
   (let [{:keys [kind], column-name :name} (sql/parse-expr expr)]
     (case kind
       :column column-name
-      :sql    (unsupported/throw! (str "dimension %s is the SQL expression %s; a dimension mapping targets a column,"
-                                       " not SQL")
-                                  (pr-str dimension-name) (pr-str expr))
-      (unsupported/throw! "dimension %s is %s, not a column" (pr-str dimension-name) (pr-str expr)))))
+      :sql    (unsupported/throw-reason (str "dimension %s is the SQL expression %s; a dimension mapping targets a"
+                                             " column, not SQL")
+                                        (pr-str dimension-name) (pr-str expr))
+      (unsupported/throw-reason "dimension %s is %s, not a column" (pr-str dimension-name) (pr-str expr)))))
 
 (mu/defn- validity-bounds :- :string
   "The bounds of a validity window `validity` names, for a message: `start`, `end` or `start and end`."
@@ -101,7 +101,7 @@
   from the metric's table (see [[dimension-path]]), which seeds the id. The dimension is written `:status/active`, what
   the instance's refresh sets on a dimension whose column it finds, so the refresh after the import rewrites nothing
   (see [[metabase.lib-metric.dimension/dimensions-changed?]]). A time dimension that bounds a slowly changing
-  dimension's validity window is [[unsupported/throw!]]: a dimension set has no notion of a window, and breaking a
+  dimension's validity window is [[unsupported/throw-reason]]: a dimension set has no notion of a window, and breaking a
   metric out by the window's start or end would count every version of a row."
   [context   :- ::resolve.columns/context
    group     :- ::lib.schema.metadata/dimension-group
@@ -110,9 +110,9 @@
   (let [{:keys [env query provider metric-unique-id resolve-column]}         context
         {dimension-name :name, dimension-type :type, :keys [label validity]} dimension]
     (when validity
-      (unsupported/throw! (str "dimension %s bounds a validity window, the %s of a slowly changing dimension's"
-                               " versions; a dimension set has no notion of one")
-                          (pr-str dimension-name) (validity-bounds validity)))
+      (unsupported/throw-reason (str "dimension %s bounds a validity window, the %s of a slowly changing dimension's"
+                                     " versions; a dimension set has no notion of one")
+                                (pr-str dimension-name) (validity-bounds validity)))
     (let [column-ref (resolve-column (dimension-column dimension))
           field-id   (lib/field-ref-id column-ref)
           field      (lib.metadata/field provider field-id)
@@ -181,14 +181,14 @@
   "The default temporal unit of the default dimension `column` of a metric with `time-grain`, the coarsest grain the
   metric is meant to be queried at. Metabase cannot hold a breakout to a grain, so the grain becomes the default unit
   of the default dimension instead, which is what a user breaking the metric out by time gets first. A grain Lib
-  cannot bucket `column` by, such as a custom calendar's, is [[unsupported/throw!]]."
+  cannot bucket `column` by, such as a custom calendar's, is [[unsupported/throw-reason]]."
   [context        :- ::resolve.columns/context
    time-grain     :- ::ir/grain
    dimension-name :- :string
    column         :- ::lib.schema.ref/ref]
   (or (resolve.filters/available-unit context column time-grain)
-      (unsupported/throw! "the metric's time grain %s has no Metabase temporal unit for %s"
-                          (pr-str time-grain) (pr-str dimension-name))))
+      (unsupported/throw-reason "the metric's time grain %s has no Metabase temporal unit for %s"
+                                (pr-str time-grain) (pr-str dimension-name))))
 
 (def ^:private no-time-dimension
   "The name a metric's `time-grain` is reported under when the metric has no time dimension to apply it to."

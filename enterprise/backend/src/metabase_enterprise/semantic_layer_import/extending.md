@@ -21,7 +21,7 @@ shared stages changes:
      objects is a placeholder. A format that defines a metric as a whole SQL expression, such as `SUM(amount)`, has
      to take the aggregate function apart from its argument;
    - `:unsupported`: an entry with a reason for anything of the source's own the IR has no place for, thrown with
-     `unsupported/throw!` and caught per entry with `unsupported/catching`, as the dbt source does.
+     `unsupported/throw-reason` and caught per entry with `unsupported/catching`, as the dbt source does.
 3. Implement `interface/raw->ir` for the source's `:type` with `mu/defmethod` in `<source>.core`, giving the raw
    project (dbt's is a manifest path) and the source's own options (dbt's `:entity-models`) schemas of their own, and
    add the namespace to `core/source-namespaces` so that `convert!` loads it the first time the source is used.

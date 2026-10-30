@@ -103,11 +103,11 @@
                         [:p :outputs :dev :password]))))))
 
 (deftest check-dbt-version-test
-  (is (nil? (#'fixture/check-dbt-version! {"dbt_version" fixture/dbt-version})))
+  (is (nil? (#'fixture/check-dbt-version {"dbt_version" fixture/dbt-version})))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"written by dbt 1\.11\.0, not the"
-                        (#'fixture/check-dbt-version! {"dbt_version" "1.11.0"})))
+                        (#'fixture/check-dbt-version {"dbt_version" "1.11.0"})))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"written by dbt"
-                        (#'fixture/check-dbt-version! {}))))
+                        (#'fixture/check-dbt-version {}))))
 
 (deftest ^:parallel trim-manifest-test
   (let [node     (fn [resource-type package]
@@ -312,4 +312,4 @@
 
 (deftest check-repo-root-test
   (testing "the tests run at the repo root"
-    (is (nil? (fixture/check-repo-root!)))))
+    (is (nil? (fixture/check-repo-root)))))
