@@ -112,6 +112,7 @@
                     "Create a new SQL query and update the code editor buffer."
                     "Create a new SQL query. Provide a short, human-friendly `title` shown above the results.")
      :scope scope/agent-sql-create
+     :metabot/curation :sql
      :metabot/capabilities #{:permission-write-sql-queries}
      :args create-sql-schema})
   (handle [_ {database-id :database_id sql-query :sql_query :keys [title]} ctx]
@@ -174,6 +175,7 @@
      :description (str "Edit an existing SQL query using structured edits. Provide a short, "
                        "human-friendly `title` shown above the results.")
      :scope scope/agent-sql-edit
+     :metabot/curation :sql
      :metabot/capabilities #{:permission-write-sql-queries}
      :args edit-sql-schema})
   (handle [_ {query-id :query_id :keys [edits checklist title]} ctx]
@@ -207,6 +209,7 @@
      :description (str "Replace the SQL content of an existing query entirely. Provide a short, "
                        "human-friendly `title` shown above the results.")
      :scope scope/agent-sql-edit
+     :metabot/curation :sql
      :metabot/capabilities #{:permission-write-sql-queries}
      :args replace-sql-schema})
   (handle [_ {query-id :query_id new-query :new_query :keys [checklist title]} ctx]

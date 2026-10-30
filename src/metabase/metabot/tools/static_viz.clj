@@ -31,6 +31,7 @@
      :description (str "Generate a static visualization (PNG image) of a saved question or metric. The "
                        "visualization will be posted as a separate follow-up message in the thread.")
      :scope       scope/agent-viz-create
+     :metabot/curation :gated
      :args        [:map {:closed true} [:entity_id :int]]})
 
   (handle [_ {:keys [entity_id]} _ctx]

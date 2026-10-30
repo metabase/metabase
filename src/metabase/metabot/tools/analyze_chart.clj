@@ -161,6 +161,7 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
                        "The chart_config_id references a chart from the user's current viewing context.\n"
                        "Available chart IDs are provided in the system context.")
      :scope       scope/agent-viz-read
+     :metabot/curation :conversation-state
      :args        [:map {:closed true}
                    [:chart_config_id :string]
                    [:deep {:optional true :default true} [:maybe :boolean]]]})

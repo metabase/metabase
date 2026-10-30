@@ -51,6 +51,7 @@
   tools/Tool
   (declaration [_]
     {:name        "load_skill"
+     :metabot/curation :navigation
      :description (str "Load the full instructions for a skill listed under \"Available skills\". Call this "
                        "immediately before doing the related work. Load only what is relevant to the current task.")
      :args        [:map {:closed true} [:id skill-id-schema]]})

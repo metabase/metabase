@@ -133,7 +133,7 @@
 (defrecord LegacyTool [tool-var]
   tools/Tool
   (declaration [_]
-    (let [{:keys [tool-name doc schema scope capabilities title-fn prompt system-instructions decode]}
+    (let [{:keys [tool-name doc schema scope capabilities title-fn curation prompt system-instructions decode]}
           (meta tool-var)]
       (cond-> {:name        tool-name
                :description (description doc)
@@ -141,6 +141,7 @@
         scope               (assoc :scope scope)
         capabilities        (assoc :metabot/capabilities capabilities)
         title-fn            (assoc :metabot/title-fn title-fn)
+        curation            (assoc :metabot/curation curation)
         ;; Carried so nothing is lost in the adaptation. No consumer reads them, and a converted
         ;; tool declares none of them.
         prompt              (assoc :metabot/prompt prompt)

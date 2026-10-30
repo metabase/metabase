@@ -1340,6 +1340,7 @@
     {:name        "construct_notebook_query"
      :description tool-description
      :scope       scope/agent-notebook-create
+     :metabot/curation :gated
      :args        construct-notebook-query-args-schema})
 
   (handle [_ {:keys [query visualization show_chart title description]} _ctx]

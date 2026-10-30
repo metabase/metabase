@@ -39,6 +39,7 @@
   snippets are available. If any snippets may be relevant to the user's request,
   fetch their content using the get_snippet_details tool."
      :scope       scope/agent-snippets-read
+     :metabot/curation :sql
      :args        [:map {:closed true}]})
   (handle [_ _args _ctx]
     {:output (format-snippet-list-output (snippets/list-native-query-snippets))}))
@@ -56,6 +57,7 @@
   Use this tool to retrieve the actual SQL content of a snippet after identifying
   it with list_snippets."
      :scope       scope/agent-snippets-read
+     :metabot/curation :sql
      :args        [:map {:closed true} [:snippet_id :int]]})
   (handle [_ {snippet-id :snippet_id} _ctx]
     (let [snippet (tools/with-entity {:kind :snippet :id snippet-id}

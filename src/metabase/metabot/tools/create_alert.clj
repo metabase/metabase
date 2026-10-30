@@ -137,6 +137,7 @@
     {:name        "create_alert"
      :description tool-description
      :scope       scope/agent-alert-create
+     :metabot/curation :gated
      :args        alert-schema})
 
   (handle [_ {:keys [card_id send_condition schedule send_once]} ctx]

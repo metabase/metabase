@@ -194,6 +194,7 @@
                        "low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library clearly "
                        "matches – prefer asking the user to clarify or narrow the request.")
      :scope       scope/agent-search
+     :metabot/curation :filtered
      :args        entity-retrieval-schema})
 
   (handle [_ {:keys [user_search_prompt limit]} _ctx]

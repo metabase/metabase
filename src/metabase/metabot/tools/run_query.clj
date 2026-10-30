@@ -752,6 +752,8 @@
     {:name                 "run_query"
      :description          description
      :scope                required-scope
+     ;; the notebook variant judges what the query reads; the SQL-only one runs native SQL, outside the rule (BOT-2538)
+     :metabot/curation     (if allow-non-sql? :gated :sql)
      :args                 run-query-args
      :metabot/capabilities #{:feature-query-execution}})
 

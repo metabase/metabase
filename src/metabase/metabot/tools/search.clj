@@ -11,6 +11,7 @@
    [metabase.metabot.search-models :as metabot.search-models]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as metabot.tools.u]
@@ -770,6 +771,7 @@
      :description description
      :args args
      :scope scope/agent-search
+     :metabot/curation :filtered
      :metabot/title-fn search-display})
   (handle [_ {:keys [database_id semantic_queries keyword_queries] :as args} {:keys [metabot]}]
     (let [queries (concat semantic_queries keyword_queries)]
