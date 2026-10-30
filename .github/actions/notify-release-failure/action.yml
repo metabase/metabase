@@ -1,0 +1,52 @@
+name: Notify release failure
+description: Sends one failure message to the release thread and marks the thread as failed
+
+inputs:
+  title:
+    description: What failed (e.g. "Publishing v0.57.3")
+    required: true
+  version:
+    description: Release version to find the release thread. Empty posts to the channel.
+    required: false
+    default: ""
+  needs:
+    description: toJSON(needs) of the calling job
+    required: true
+  slack-channel:
+    description: Slack release channel name
+    required: true
+  slack-bot-token:
+    description: Slack bot token
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
+    - name: Send failure message
+      uses: actions/github-script@v9
+      env:
+        TITLE: ${{ inputs.title }}
+        VERSION: ${{ inputs.version }}
+        NEEDS: ${{ inputs.needs }}
+        SLACK_RELEASE_CHANNEL: ${{ inputs.slack-channel }}
+        SLACK_BOT_TOKEN: ${{ inputs.slack-bot-token }}
+      with:
+        script: | # js
+          const { sendReleaseSlackMessage, githubRunLink } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const { owner, repo } = context.repo;
+          const jobs = Object.entries(JSON.parse(process.env.NEEDS))
+            .filter(([, job]) => ['failure', 'cancelled'].includes(job.result))
+            .map(([name, job]) => `${name} (${job.result})`)
+            .join(', ');
+          const runLink = githubRunLink(`${process.env.TITLE} failed`, context.runId.toString(), owner, repo);
+
+          await sendReleaseSlackMessage({
+            channelName: process.env.SLACK_RELEASE_CHANNEL,
+            version: process.env.VERSION || undefined,
+            emoji: 'x',
+            message: `${runLink}\n${jobs}`,
+            status: 'failure',
+          });

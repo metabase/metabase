@@ -346,3 +346,29 @@ jobs:
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
+
+  notify-failure:
+    needs:
+      - green-check-stub
+      - check-version
+      - copy-to-s3
+      - tag-docker-image
+      - push-git-tags
+      - update-version-info-latest
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Send release failure message
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Setting ${{ inputs.version }} as ${{ inputs.tag_name }}
+          version: ${{ inputs.version }}
+          needs: ${{ toJSON(needs) }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

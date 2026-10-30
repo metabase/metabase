@@ -48,17 +48,32 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
-            const { sendPreReleaseMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const {
+              sendReleaseSlackMessage,
+              findMilestone,
+              slackLink,
+              githubRunLink,
+              mentionUserByGithubLogin,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            await sendPreReleaseMessage({
-              github,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              version: '${{ inputs.version }}',
-              runId: '${{ github.run_id }}',
-              releaseSha: '${{ inputs.commit }}',
-              userName: '${{ github.actor }}',
+            const { owner, repo } = context.repo;
+            const version = '${{ inputs.version }}';
+            const milestone = await findMilestone({ version, github, owner, repo }).catch(console.error);
+
+            const message = [
+              slackLink('_:merged: Release Commit_', `https://github.com/${owner}/${repo}/commit/${{ inputs.commit }}`),
+              milestone?.number
+                ? slackLink('_:direction-sign: Milestone_', `https://github.com/${owner}/${repo}/milestone/${milestone.number}?closed=1`)
+                : null,
+              githubRunLink('_🏗️ CI Build_', '${{ github.run_id }}', owner, repo),
+              `started from ${owner}/${repo} by ${mentionUserByGithubLogin('${{ github.actor }}')}`,
+            ].filter(Boolean).join(' - ');
+
+            await sendReleaseSlackMessage({
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              version,
+              message,
+              startThread: true,
             }).catch(console.error);
       - name: Write job summary
         if: always()
@@ -193,6 +208,7 @@ jobs:
       contents: read
       issues: write
     uses: ./.github/workflows/release-milestone-manage.yml
+    secrets: inherit
     with:
       version: ${{ inputs.version }}
 
@@ -301,3 +317,28 @@ jobs:
     with:
       commit: ${{ inputs.commit }}
       version: ${{ inputs.version }}
+
+  notify-failure:
+    needs:
+      - start-message
+      - check-version
+      - check-commit
+      - tag-uberjar-for-release
+      - upload-to-cloud
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Send release failure message
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Tagging ${{ inputs.version }}
+          version: ${{ inputs.version }}
+          needs: ${{ toJSON(needs) }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

@@ -48,8 +48,12 @@ jobs:
           script: | # js
             const {
               checkMilestoneForRelease,
-              sendMilestoneCheckMessage,
+              sendReleaseSlackMessage,
+              uploadFileToSlack,
+              getGenericVersion,
+              slackLink,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const fs = require('fs');
 
             const version = '${{ inputs.version }}';
             const commitHash = '${{ inputs.commit }}';
@@ -67,8 +71,42 @@ jobs:
               return;
             }
 
-            await sendMilestoneCheckMessage({
-              channelName: process.env.SLACK_RELEASE_CHANNEL,
-              issueCount,
+            const channelName = process.env.SLACK_RELEASE_CHANNEL;
+            const genericVersion = getGenericVersion(version);
+            const fileName = `milestone-audit-${version}.md`;
+
+            const { ts } = await sendReleaseSlackMessage({
+              channelName,
               version,
+              emoji: 'mag',
+              message: `${genericVersion} has ${slackLink(`${issueCount} issues that need to be checked`, 'https://github.com/orgs/metabase/projects/93')}`,
             });
+
+            await uploadFileToSlack({
+              channelName,
+              thread_ts: ts,
+              fileName,
+              file: fs.readFileSync(`./${fileName}`),
+              message: `:page_with_curl: ${genericVersion} milestone audit`,
+            });
+
+  notify-failure:
+    needs:
+      - check-milestone
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Send release failure message
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Milestone check for ${{ inputs.version }}
+          version: ${{ inputs.version }}
+          needs: ${{ toJSON(needs) }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

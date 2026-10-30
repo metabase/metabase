@@ -63,3 +63,24 @@ jobs:
             repo: context.repo.repo,
             version,
           }).catch(console.error);
+
+  notify-failure:
+    needs:
+      - manage-milestones
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Send release failure message
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Milestone management for ${{ inputs.version }}
+          version: ${{ inputs.version }}
+          needs: ${{ toJSON(needs) }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

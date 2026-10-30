@@ -59,7 +59,9 @@ jobs:
               getLatestGreenCommit,
               getNextVersion,
               hasCommitBeenReleased,
-              sendAutoReleaseFailureMessage,
+              sendReleaseSlackMessage,
+              githubRunLink,
+              mentionSlackTeam,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const majorVersion = Number('${{ inputs.version }}');
@@ -119,14 +121,21 @@ jobs:
 
             console.error(`Auto-${kind} skipped for v${majorVersion}: ${reason}`);
 
-            await sendAutoReleaseFailureMessage({
+            const runLink = githubRunLink('workflow run', '${{ github.run_id }}', context.repo.owner, context.repo.repo);
+            const label = kind === 'patch' ? 'Auto-patch' : 'Auto-minor';
+            const skipMessages = {
+              'no-green-commit': ['x', `${label} for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`],
+              'no-next-version': kind === 'patch'
+                ? ['x', `${label} for *v${majorVersion}* skipped: could not determine next patch version. ${runLink}`]
+                : ['information_source', `${label} for *v${majorVersion}* skipped: no gold release yet — cut it manually. ${runLink}`],
+              'already-released': ['information_source', `${label} for *v${majorVersion}* skipped: latest green commit has already been released — ${kind === 'patch' ? 'nothing new to patch' : 'nothing new to ship'}. ${mentionSlackTeam('release-managers')} monitor the v${majorVersion} branch and manually release the next green commit. ${runLink}`],
+            };
+            const [emoji, message] = skipMessages[reason];
+
+            await sendReleaseSlackMessage({
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              kind,
-              majorVersion,
-              reason,
-              runId: '${{ github.run_id }}',
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+              emoji,
+              message,
             }).catch(console.error);
 
             core.setOutput('should_release', 'false');
@@ -175,7 +184,7 @@ jobs:
 
   notify-failure:
     needs: [prepare, trigger-release, auto-publish-release]
-    if: ${{ always() && (failure() || cancelled() || contains(needs.*.result, 'cancelled')) }}
+    if: ${{ always() && (needs.prepare.result == 'failure' || cancelled()) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     permissions:
@@ -186,29 +195,11 @@ jobs:
           sparse-checkout: |
             release
             .github
-      - name: Prepare release scripts
-        uses: ./.github/actions/prepare-release-scripts
       - name: Send release failure message
-        uses: actions/github-script@v9
-        env:
-          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-          MAJOR_VERSION: ${{ inputs.version }}
-          RELEASE_KIND: ${{ inputs.kind }}
-          JOB_RESULTS: ${{ toJSON(needs) }}
-          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: ./.github/actions/notify-release-failure
         with:
-          script: |
-            const { sendSlackMessage, githubRunLink } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-            const version = process.env.RELEASE_VERSION || `v0.${process.env.MAJOR_VERSION}.x (${process.env.RELEASE_KIND}; exact version not available)`;
-            const details = Object.entries(JSON.parse(process.env.JOB_RESULTS))
-              .filter(([, job]) => ['failure', 'cancelled'].includes(job.result))
-              .map(([name, job]) => `${name}: ${job.result}`)
-              .join('\n') || 'The workflow was canceled.';
-            const runLink = githubRunLink('View workflow run', context.runId.toString(), context.repo.owner, context.repo.repo);
-
-            await sendSlackMessage({
-              channelName: process.env.SLACK_RELEASE_CHANNEL,
-              message: `:x: Release ${version} failed or was canceled.\n${runLink}\n${details}`,
-            });
+          title: Auto ${{ inputs.kind }} release for v${{ inputs.version }}
+          version: ${{ needs.prepare.outputs.version }}
+          needs: ${{ toJSON(needs) }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

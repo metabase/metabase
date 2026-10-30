@@ -94,22 +94,16 @@ jobs:
       env:
         VERSION: ${{ inputs.version }}
         COMMIT: ${{ inputs.commit }}
-        SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
-        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
       with:
         script: | # js
           const {
             checkReleaseArtifacts,
             buildReleaseArtifactMismatchMessage,
-            sendPublishFailureMessage,
-            slackLink,
           } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const { VERSION: version, COMMIT: commit } = process.env;
           const { owner, repo } = context.repo;
 
-          let error;
-          let slackError;
           try {
             const result = await checkReleaseArtifacts({ github, owner, repo, version, commit });
 
@@ -118,23 +112,10 @@ jobs:
               return;
             }
 
-            error = buildReleaseArtifactMismatchMessage(result);
-            slackError = buildReleaseArtifactMismatchMessage(result, slackLink);
+            core.setFailed(buildReleaseArtifactMismatchMessage(result));
           } catch (err) {
-            // e.g. a short SHA: still worth telling the release thread
-            error = slackError = err.message;
+            core.setFailed(err.message);
           }
-
-          await sendPublishFailureMessage({
-            owner,
-            repo,
-            version,
-            runId: context.runId,
-            channelName: process.env.SLACK_RELEASE_CHANNEL,
-            details: slackError,
-          }).catch(console.error);
-
-          core.setFailed(error);
 
   publish-start-message:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -155,16 +136,16 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
-            const { sendPublishStartMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { sendReleaseSlackMessage, githubRunLink, getGenericVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            await sendPublishStartMessage({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              version: '${{ inputs.version }}',
-              runId: '${{ github.run_id }}',
+            const version = '${{ inputs.version }}';
+
+            await sendReleaseSlackMessage({
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              version,
+              emoji: 'loading',
+              message: githubRunLink(`Publishing ${getGenericVersion(version)}`, '${{ github.run_id }}', context.repo.owner, context.repo.repo),
             }).catch(console.error);
-
 
   download-uberjar:
     needs: check-version
@@ -656,12 +637,60 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
-            const { sendPublishCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const {
+              sendReleaseSlackMessage,
+              githubRunLink,
+              getGenericVersion,
+              slackLink,
+              mentionSlackTeam,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            await sendPublishCompleteMessage({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              version: '${{ inputs.version }}',
-              runId: '${{ github.run_id }}',
+            const { owner, repo } = context.repo;
+            const version = '${{ inputs.version }}';
+            const runLink = githubRunLink(`${getGenericVersion(version)} Release is Complete`, '${{ github.run_id }}', owner, repo);
+            const isPatch = version.split('.').length > 3;
+            const links = `
+              • ${slackLink('Ops Issues', `https://github.com/${owner}/metabase-ops/issues`)} - ${mentionSlackTeam('successengineers')}
+              • ${slackLink('Release Notes', `https://github.com/${owner}/${repo}/releases`)} - ${mentionSlackTeam('tech-writers')}`;
+
+            await sendReleaseSlackMessage({
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              version,
+              emoji: 'partydeploy',
+              message: `*${runLink}* :partydeploy:${isPatch ? '' : `\n${links}`}`,
+              status: 'success',
             }).catch(console.error);
+
+  notify-failure:
+    needs:
+      - check-version
+      - publish-start-message
+      - download-uberjar
+      - upload-to-s3
+      - verify-s3-download
+      - containerize-oss
+      - containerize-ee
+      - push-tags
+      - get-extra-tags
+      - trigger-cloud-issues
+      - trigger-ee-extra-pr
+      - draft-release-notes
+      - publish-version-info
+      - publish-complete-message
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Send release failure message
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Publishing ${{ inputs.version }}
+          version: ${{ inputs.version }}
+          needs: ${{ toJSON(needs) }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
