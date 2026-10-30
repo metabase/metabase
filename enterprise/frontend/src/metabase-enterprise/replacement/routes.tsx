@@ -1,4 +1,3 @@
-import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
 import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
@@ -24,11 +23,7 @@ export function getTransformToolsRoutes() {
     <Route path="tools">
       <Route
         path="migrate-models"
-        lazy={featureGatedRoute(
-          "dependencies",
-          migrateModelsPage,
-          notFoundRoute,
-        )}
+        lazy={featureGatedRoute("dependencies", migrateModelsPage)}
       />
     </Route>
   );

@@ -1,4 +1,3 @@
-import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
 import { Route, registerPagePrefetch } from "metabase/router";
 import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
@@ -26,10 +25,6 @@ export function registerApplicationPermissionsPagePrefetch(): void {
 export const getApplicationPermissionsRoutes = () => (
   <Route
     path="application"
-    lazy={featureGatedRoute(
-      "advanced_permissions",
-      applicationPermissionsPage,
-      notFoundRoute,
-    )}
+    lazy={featureGatedRoute("advanced_permissions", applicationPermissionsPage)}
   />
 );

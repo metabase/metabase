@@ -1,4 +1,3 @@
-import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
 import { Route } from "metabase/router";
 import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
@@ -16,7 +15,6 @@ export function getWritableConnectionInfoRoutes() {
       lazy={featureGatedRoute(
         "writable_connection",
         writableConnectionInfoPage,
-        notFoundRoute,
       )}
     />
   );

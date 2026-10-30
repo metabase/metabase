@@ -1,4 +1,3 @@
-import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
 import { Outlet, Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
@@ -174,11 +173,7 @@ export function getAiControlsRoutes() {
       <Route
         key="ai-usage-limits"
         path={PATHS.usageLimits}
-        lazy={featureGatedRoute(
-          "ai_controls",
-          metabotUsageLimitsPage,
-          notFoundRoute,
-        )}
+        lazy={featureGatedRoute("ai_controls", metabotUsageLimitsPage)}
       />
       <Route
         key="customization"
@@ -201,20 +196,12 @@ export function getAiControlsRoutes() {
       <Route
         key="system-prompts-natural-language-queries"
         path={PATHS.naturalLanguagePrompt}
-        lazy={featureGatedRoute(
-          "ai_controls",
-          naturalLanguagePromptPage,
-          notFoundRoute,
-        )}
+        lazy={featureGatedRoute("ai_controls", naturalLanguagePromptPage)}
       />
       <Route
         key="system-prompts-sql-generation"
         path={PATHS.sqlGenerationPrompt}
-        lazy={featureGatedRoute(
-          "ai_controls",
-          sqlGenerationPromptPage,
-          notFoundRoute,
-        )}
+        lazy={featureGatedRoute("ai_controls", sqlGenerationPromptPage)}
       />
     </Route>
   );
@@ -226,11 +213,7 @@ export function getMcpToolsAccessRoutes() {
       <Route
         key="mcp-tools-access"
         path={PATHS.mcpToolsAccess}
-        lazy={featureGatedRoute(
-          "ai_controls",
-          mcpToolsAccessPage,
-          notFoundRoute,
-        )}
+        lazy={featureGatedRoute("ai_controls", mcpToolsAccessPage)}
       />
     </Route>
   );

@@ -1,6 +1,5 @@
 import { libraryUpsellPage } from "metabase/data-studio/routes";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
 import type { PluginRoute } from "metabase/plugins/types";
 import { Route } from "metabase/router";
 import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
@@ -80,11 +79,7 @@ export function getDataStudioDashboardRoutes() {
       </Route>
       <Route
         path=":dashboardId/usage"
-        lazy={featureGatedRoute(
-          "audit_app",
-          dashboardUsageStatsPage,
-          notFoundRoute,
-        )}
+        lazy={featureGatedRoute("audit_app", dashboardUsageStatsPage)}
       />
       <Route path=":dashboardId/history" lazy={dashboardHistoryPage} />
       <Route
