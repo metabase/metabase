@@ -50,11 +50,9 @@ export const EventTablePicker = ({
   const table = useGetTableQuery(
     tableId !== undefined ? { id: tableId } : skipToken,
   );
-  const tables = useListTablesQuery();
-  const eventTables = (tables.data ?? []).filter(
-    (item) =>
-      item.entity_type === EVENT_TABLE_ENTITY_TYPE &&
-      isConcreteTableId(item.id),
+  const tables = useListTablesQuery({ "entity-type": EVENT_TABLE_ENTITY_TYPE });
+  const eventTables = (tables.data ?? []).filter((item) =>
+    isConcreteTableId(item.id),
   );
   const isSearching = searchQuery.trim().length > 0;
 

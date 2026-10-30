@@ -85,11 +85,12 @@
   - `include-editable-data-model=true` - filter to only tables the user can edit the data model of, instead of the
     tables the user can read"
   [_
-   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
+   {:keys [term visibility-type entity-type data-layer data-source owner-user-id owner-email orphan-only unused-only
            published-only can-query include-editable-data-model include-transform-targets]}
    :- [:map {:closed true}
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
+       [:entity-type {:optional true} EntityType]
        [:data-layer {:optional true} ::data-layers]
        [:data-source {:optional true} ::data-sources]
        [:owner-user-id {:optional true} [:maybe :int]]
@@ -105,6 +106,7 @@
     (as-> (warehouse-schema-rest.db/matching-tables
            {:term                       term
             :visibility-type            visibility-type
+            :entity-type                entity-type
             :data-layer                 data-layer
             :data-source                data-source
             :owner-user-id              owner-user-id

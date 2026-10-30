@@ -123,6 +123,7 @@ export type TableListQuery = {
   "can-query"?: boolean;
 
   term?: string;
+  "entity-type"?: string;
   "data-layer"?: TableDataLayer;
   "data-source"?: string | null;
   "owner-user-id"?: UserId | null;
