@@ -156,7 +156,8 @@
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
 (defn- remove-internal-remaps
-  "Older cached results kept an internal remap with every value of the column on their cols; readers can be sandboxed."
+  "Remove `:lib/internal-remap` from cached `cols`. It lists every value of the column, and the reader of the cache
+  can be sandboxed."
   [cols]
   (mapv #(dissoc % :lib/internal-remap) cols))
 
