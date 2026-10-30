@@ -738,10 +738,11 @@
 (defn- wif-live-details-with-token
   "WIF details for the live tests, `token-source` merged in (`:wif-token` or `:wif-token-file-path`)."
   [token-source]
-  (merge {:host      (tx/db-test-env-var-or-throw :databricks :host)
-          :http-path (tx/db-test-env-var-or-throw :databricks :http-path)
-          :catalog   (tx/db-test-env-var-or-throw :databricks :catalog)
-          :auth-mode "wif"}
+  (merge {:host          (tx/db-test-env-var-or-throw :databricks :host)
+          :http-path     (tx/db-test-env-var-or-throw :databricks :http-path)
+          :catalog       (tx/db-test-env-var-or-throw :databricks :catalog)
+          :auth-mode     "wif"
+          :wif-client-id (tx/db-test-env-var-or-throw :databricks :wif-user)}
          token-source))
 
 (deftest ^:synchronized databricks-wif-live-test
