@@ -168,6 +168,91 @@ For SQL questions, pair `sqlParameters` with `onSqlParametersChange`:
 
 You must update your state from the callback. If you don't, the embed reverts to the values in your prop on the next render (which may wipe out edits people have made).
 
+## Control values on linked dashboards and questions
+
+{% include plans-blockquote.html feature="Controlled values on linked dashboards and questions" convert_pro_link_to_embedding=true is_plural=true %}
+
+[Controlled values](#control-values-from-your-app) only reach the dashboard you embed. When you [let people follow links](./dashboard.md#let-people-follow-links-to-other-dashboards-and-questions) to other dashboards and SQL questions, the dashboard or question that a [click behavior](../dashboards/interactive.md#custom-destinations) opens gets the values that the click [passes to it](../dashboards/interactive.md#passing-values-to-the-destination), and your `parameters` don't apply to it. To see and set the values of those linked dashboards and SQL questions, use `navigated-entity-parameters` and the `navigated-entity-parameters-change` event on the web component, or `navigatedEntityParameters` and `onNavigatedEntityParametersChange` in the SDK.
+
+These need entity navigation, so they work on `<metabase-dashboard>` with SSO and drills on, and on `InteractiveDashboard` and `EditableDashboard` in the SDK. View-only dashboards and guest embeds can't follow links, so they don't take these values.
+
+Each time someone opens a linked dashboard or question, the visit gets a new `navigationId`, even if they opened the same dashboard before. When they go back, they return to the earlier visit, with its `navigationId`. A click that links to the dashboard that's already on screen isn't a new visit: it changes the filters or the tab in place. You key your values by `navigationId`, so the values you store for a visit apply only to that visit, and come back with it. Inside each visit's values, the keys are filter slugs for a linked dashboard, and variable names for a linked SQL question.
+
+You get the `navigationId` from the callback, which fires with:
+
+- `initial-state` after each navigation to a linked item, including when people go back to it.
+- `manual-change` when someone changes a filter on the linked item.
+- `auto-change` when Metabase applies something different from what you pushed.
+
+The [payload](./parameters-reference.md#linked-dashboard-and-question-payload) has the same fields as the dashboard or SQL question payload, plus the `navigationId`, the item's `entityType` and `entityId`, and `clickParameters`: the values the click set.
+
+To stay in sync:
+
+1. On `initial-state`, check whether you already have values for the `navigationId`. If you do, the person went back: keep your values, so their edits come back with the visit. If you don't, it's a new visit: store values for it.
+2. On `manual-change` and `auto-change`, store the payload's `parameters` for the `navigationId`.
+
+For a new visit, you pick the values:
+
+- **Keep what Metabase applied** with the payload's `parameters`: the click's values and the other filters' defaults, or the person's last used values if the click sets no filter. Storing these doesn't re-run any queries.
+- **Use the click's values and the defaults, but never last used values,** with `{ ...defaultParameters, ...clickParameters }`.
+- **Add your own values.** Put them before `clickParameters` to fill in the other filters, or after it to override the click.
+- **Ignore the click** by leaving out `clickParameters`.
+
+The values for a visit work like `parameters` on the dashboard you embed: they replace all the values of that visit. Filters you leave out use their default, and `null` clears a filter. So if you want the click's values, start from `clickParameters`.
+
+Because you get the `navigationId` from the first callback, the linked item has already started its queries with the click's values, so storing other values can run them again.
+
+A visit that you don't store values for works as before: the linked item opens with the click's values, and your app doesn't control it.
+
+Questions built with the query builder can't be controlled: a click to one opens a pre-filtered question with no parameters, and sends no event. Neither does a SQL question without variables. A linked dashboard without filters sends events with empty `parameters`.
+
+- [Web component](#web-component-values-on-linked-content)
+- [React SDK](#react-sdk-values-on-linked-content)
+
+### Web component values on linked content
+
+Listen for `navigated-entity-parameters-change` on the element, and store the values with the `navigatedEntityParameters` property:
+
+```html
+<metabase-dashboard
+  id="my-dashboard"
+  dashboard-id="1"
+  enable-entity-navigation="true"
+></metabase-dashboard>
+
+<script>
+  const el = document.getElementById("my-dashboard");
+
+  el.addEventListener("navigated-entity-parameters-change", (event) => {
+    const { source, navigationId, parameters } = event.detail;
+    // Undefined until you set it
+    const values = el.navigatedEntityParameters ?? {};
+
+    // People went back to a visit: keep the values they had.
+    if (source === "initial-state" && values[navigationId]) {
+      return;
+    }
+
+    // A new visit, or someone changed a filter: store what's applied.
+    el.navigatedEntityParameters = { ...values, [navigationId]: parameters };
+  });
+</script>
+```
+
+To change the values of a linked item from your page, assign new values for its `navigationId` to the property. The dashboard you embed keeps reporting through `parameters-change`.
+
+### React SDK values on linked content
+
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
+
+Pair `navigatedEntityParameters` with `onNavigatedEntityParametersChange`, and keep the values in state, keyed by `navigationId`:
+
+```typescript
+{% include_file "{{ dirname }}/snippets/parameters/dashboards/navigated-entity-parameters.tsx" snippet="example" %}
+```
+
+`EditableDashboard` takes the same props. The dashboard you embed keeps reporting through `onParametersChange`, which doesn't fire for linked items.
+
 ## Hide parameter widgets
 
 On an [SSO embed](./introduction.md#components-with-sso-authentication), every dashboard filter shows a widget by default. To hide a filter's widget without disabling the filter, list its slug in `hidden-parameters` (web component) or `hiddenParameters` (SDK).
