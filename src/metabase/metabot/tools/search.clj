@@ -637,9 +637,10 @@
 (tools/defrecoverable search-failed!
   "The search backend failed, for example because the search index is missing.
 
-  The browse step browses only the content that the failed search was limited to. `read_resource`
-  has no verified-content filter, so a search limited to verified content gets no browse step. Every
-  failure gets [[no-retry-step]], because each retry uses an iteration and logs a stack trace."
+  The browse step browses only the content that the failed search was limited to. `verified-only` is
+  true when the search was limited to verified content but `read_resource` is not, as in the profiles
+  exempt from curation; then there is no browse step. Every failure gets [[no-retry-step]], because
+  each retry uses an iteration and logs a stack trace."
   {:payload [:map {:closed true}
              [:collection-id [:maybe :int]]
              [:database-id   [:maybe :int]]
@@ -680,7 +681,8 @@
                     (log/error e "Metabot search failed")
                     (search-failed! {:collection-id (confined-collection-id (:metabot opts) (:profile-id opts))
                                      :database-id   (:database-id opts)
-                                     :verified-only (boolean (:use_verified_content (:metabot opts)))})))]
+                                     :verified-only (and (boolean (:use_verified_content (:metabot opts)))
+                                                         (not (shared/curated-only?)))})))]
     {:output (format-search-output results)
      :structured-output {:result-type :search
                          :data results
