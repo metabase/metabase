@@ -186,8 +186,9 @@
           (recur stage' more-params))
 
         :else
-        (let [filter-clause (or (build-filter-clause query stage-path (assoc param :value param-value))
-                                (must-apply/throw-if-must-apply param (tru "no filter could be built for it"))
-                                (log/warnf "build-filter-clause did not return a valid clause for param %s" (pr-str (:id param))))
-              stage'        (lib.filter/add-filter-to-stage stage filter-clause)]
-          (recur stage' more-params))))))
+        (if-let [filter-clause (build-filter-clause query stage-path (assoc param :value param-value))]
+          (recur (lib.filter/add-filter-to-stage stage filter-clause) more-params)
+          (do
+            (must-apply/throw-if-must-apply param (tru "no filter could be built for it"))
+            (log/warnf "build-filter-clause did not return a valid clause for param %s" (pr-str (:id param)))
+            (recur stage more-params)))))))

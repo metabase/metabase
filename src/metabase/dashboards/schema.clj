@@ -4,7 +4,6 @@
    [metabase.collections.schema]
    [metabase.content-verification.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.timeline.schema]
@@ -12,12 +11,8 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::parameters
-  [:sequential
-   ;; the same as the normal parameters schema, but type is optional here.
-   [:merge
-    ::parameters.schema/parameter
-    [:map
-     [:type {:optional true} [:ref ::lib.schema.parameter/type]]]]])
+  ;; parameters of a request to run a dashcard's query: type is optional, and the server may add run-time keys
+  ::parameters.schema/run-time-parameters-with-optional-types)
 
 (mr/def ::dashboard.parameter
   "One entry of the `:parameters` column of a Dashboard, decoded."

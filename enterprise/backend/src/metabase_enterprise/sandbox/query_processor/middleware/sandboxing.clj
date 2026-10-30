@@ -27,6 +27,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.parameters.must-apply :as must-apply]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util :as qp.util]
@@ -137,7 +138,7 @@
   "Throw unless `attr-value` is a single value. A list or map value is not coerced and normalizes to `[nil]`, which
   would leave nothing to filter on."
   [attr-value error-data]
-  (when-not (or (string? attr-value) (number? attr-value) (boolean? attr-value))
+  (when-not (must-apply/single-value? attr-value)
     (throw (ex-info (tru "User attribute `{0}` must be a single value" (:attribute-name error-data))
                     (assoc error-data :type qp.error-type/invalid-parameter)))))
 

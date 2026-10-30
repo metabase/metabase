@@ -2307,6 +2307,7 @@
               metabase.query-processor.middleware.add-remaps
               metabase.query-processor.middleware.catch-exceptions
               metabase.query-processor.middleware.constraints
+              metabase.query-processor.middleware.parameters.must-apply
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates
               metabase.query-processor.parameters.operators

@@ -19,6 +19,12 @@
       (and (sequential? v)
            (every? nil? v))))
 
+(defn single-value?
+  "True if `v` is a single string, number, or boolean. Any other value, like a list or a map, can normalize to `[nil]`,
+  which reads as [[no-value?]] and would drop a must-apply filter."
+  [v]
+  (or (string? v) (number? v) (boolean? v)))
+
 (defn throw-if-must-apply
   "Throw if `param` is a must-apply parameter. Call this wherever a parameter would otherwise be skipped; `reason` says
   why."

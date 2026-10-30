@@ -20,6 +20,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.parameters.must-apply :as must-apply]
    [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
@@ -88,19 +89,16 @@
   (or (not (string? v))
       (not (str/blank? v))))
 
-(defn- single-value? [v]
-  (or (string? v) (number? v) (boolean? v)))
-
 (defn- check-locked-value!
   "Throw a 400 unless `value`, from the JWT, is a single value or a list of single values (`[]` turns the filter off).
   The list may also hold nils, as long as it holds a value too. The query processor reads a list of only nils, like
   `[nil]`, as no value at all, which would drop the locked filter."
   [param value]
-  (when-not (or (single-value? value)
+  (when-not (or (must-apply/single-value? value)
                 (and (sequential? value)
-                     (every? #(or (nil? %) (single-value? %)) value)
+                     (every? #(or (nil? %) (must-apply/single-value? %)) value)
                      (or (empty? value)
-                         (some single-value? value))))
+                         (some must-apply/single-value? value))))
     (throw (ex-info (tru "Invalid value for locked parameter {0}." (name param))
                     {:status-code 400}))))
 
@@ -213,15 +211,15 @@
                :let [slug (u/qualified-name slug)
                      param-type (get slug->type slug)
                      default-options (params/param-type->default-options param-type)]]
-           (cond-> {:slug slug
-                    :id    (or (get slug->id slug)
-                               (throw (ex-info (tru "No matching parameter with slug {0}. Found: {1}" (pr-str slug) (pr-str (keys slug->id)))
-                                               {:status-code          400
-                                                :slug                 slug
-                                                :dashboard-parameters parameters})))
-                    :value value}
-             default-options (assoc :options default-options)
-             true            (mark-must-apply locked slug value))))))
+           (-> {:slug  slug
+                :id    (or (get slug->id slug)
+                           (throw (ex-info (tru "No matching parameter with slug {0}. Found: {1}" (pr-str slug) (pr-str (keys slug->id)))
+                                           {:status-code          400
+                                            :slug                 slug
+                                            :dashboard-parameters parameters})))
+                :value value}
+               (cond-> default-options (assoc :options default-options))
+               (mark-must-apply locked slug value))))))
 
 (mu/defn parse-query-params :- :map
   "Parses parameter values from the query string in a backward compatible way.
