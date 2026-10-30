@@ -1,5 +1,6 @@
 (ns metabase-enterprise.search.semantic.db-test
   (:require
+   [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource])
@@ -195,39 +196,114 @@
                  #"The pgvector URL sets password both before the host and as a parameter"
                  (parse-db-url (str (userinfo-url "postgres:secret") "?password=other"))))]
       (is (not (re-find #"secret|other" (str (ex-message e) (ex-data e)))))))
-  (testing "an unencoded `@` in a query value passes through, as pgjdbc accepts it"
+  (testing "an unencoded `@` in a credential value passes through, as pgjdbc accepts it"
     (doseq [url [(str base-url "?user=mylogin@srv&password=p@ss")
                  "jdbc:postgresql://?service=pgvector&user=mylogin@srv&password=p@ss"]]
       (is (=? {:credentials {:user "mylogin@srv", :password "p@ss"}}
-              (parse-db-url url))))))
+              (parse-db-url url)))))
+  (testing "the host list may name several hosts, IPv6 addresses, or none"
+    (doseq [url ["jdbc:postgresql://db1:5432,db2,[::1]:5433,[fe80::1%25eth0]/mb_semantic_search"
+                 "jdbc:postgresql:///mb_semantic_search"
+                 "jdbc:postgresql://?service=pgvector"
+                 "jdbc:postgresql:mb_semantic_search"]]
+      (is (=? {:jdbc-url url} (parse-db-url url)))))
+  (testing "an encoded `@` in another param's value stays on the URL as written"
+    (is (=? {:jdbc-url (str base-url "?sslrootcert=/certs/a%40b/ca.pem")}
+            (parse-db-url (str base-url "?sslrootcert=/certs/a%40b/ca.pem"))))))
 
 (deftest parse-db-url-validation-test
-  (testing "an unrecognized param throws rather than being silently ignored by pgjdbc"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Unknown pgvector URL parameter maxPoolSizee"
-         (parse-db-url (str base-url "?maxPoolSizee=5")))))
-  (testing "a malformed pool-knob value throws"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Invalid value for pgvector pool parameter maxPoolSize"
-         (parse-db-url (str base-url "?maxPoolSize=lots")))))
-  (testing "an `@` outside the host part throws without quoting the URL"
-    (doseq [url ["jdbc:postgresql://alice:se/cret@db/mb"            ; `/` in the password
-                 "jdbc:postgresql://alice:se?cret@db/mb"            ; `?` in the password
-                 "jdbc:postgresql://alice:se?service=cret@db/mb"    ; `?`, putting the `@` in a param
-                 "jdbc:postgresql://alice:s@e?cret@db/mb"           ; `@` and then `?` in the password
-                 "jdbc:postgresql://alice:secret@db/mb@elsewhere"]] ; `@` in the database name
-      (let [e (is (thrown? clojure.lang.ExceptionInfo (parse-db-url url)))]
-        (is (=? {:message (str "MB_PGVECTOR_DB_URL has an unencoded @ outside its credentials. "
-                               "Percent-encode reserved characters, e.g. @ as %40, / as %2F and ? as %3F.")
-                 :data    {}}
-                {:message (ex-message e), :data (ex-data e)}))
-        (is (not (re-find #"cret|elsewhere" (str (ex-message e) (ex-data e))))))))
+  (testing "an unrecognized param throws rather than being silently ignored by pgjdbc, without quoting it"
+    (let [e (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Unknown pgvector URL parameter\. Expected a c3p0 pool knob"
+                 (parse-db-url (str base-url "?maxPoolSizee=5"))))]
+      (is (= {} (ex-data e)))
+      (is (not (str/includes? (ex-message e) "maxPoolSizee")))))
+  (testing "a malformed pool-knob value throws, naming the knob but not the value"
+    (let [e (is (thrown? clojure.lang.ExceptionInfo (parse-db-url (str base-url "?maxPoolSize=lots"))))]
+      (is (= {:message "Invalid value for pgvector pool parameter maxPoolSize"
+              :data    {:param "maxPoolSize"}}
+             {:message (ex-message e), :data (ex-data e)}))))
+  (testing "an `@` outside the host part and credential values throws without quoting the URL"
+    (doseq [url ["jdbc:postgresql://alice:se/cret@db/mb"             ; `/` in the password
+                 "jdbc:postgresql://alice:se?cret@db/mb"             ; `?` in the password
+                 "jdbc:postgresql://alice:se?service=cret@db/mb"     ; `?`, putting the `@` in a param
+                 "jdbc:postgresql://alice:s@e?cret@db/mb"            ; `@` and then `?` in the password
+                 "jdbc:postgresql://alice:secret@db/mb@elsewhere"    ; `@` in the database name
+                 "jdbc:postgresql://alice:se/c?cret@db/mb"           ; `/` and then `?` in the password
+                 "jdbc:postgresql://alice:se/c?sslmode=cret@db/mb"
+                 "jdbc:postgresql://alice:se/cret?service=word@db/mb"
+                 "jdbc:postgresql://alice:se/c?x=cret@db"
+                 "jdbc:postgresql://alice:se/c?x=cret@db:5432"
+                 (str base-url "?sslrootcert=/certs/a@b/ca.pem")]]  ; `@` in a non-credential value
+      (testing url
+        (let [e (is (thrown? clojure.lang.ExceptionInfo (parse-db-url url)))]
+          (is (= {:message (str "MB_PGVECTOR_DB_URL has an unencoded @ outside its credentials. "
+                                "Percent-encode reserved characters, e.g. @ as %40, / as %2F and ? as %3F.")
+                  :data    {}}
+                 {:message (ex-message e), :data (ex-data e)}))))))
+  (testing "a host list that isn't hosts and ports throws without quoting it"
+    (doseq [url ["jdbc:postgresql://alice:se/c?password=cret@db/mb"  ; `/` and then `?` in the password
+                 "jdbc:postgresql://alice:se?user=cret@db/mb"
+                 "jdbc:postgresql://db:port/mb"
+                 "jdbc:postgresql://db:5432,/mb"]]
+      (testing url
+        (let [e (is (thrown? clojure.lang.ExceptionInfo (parse-db-url url)))]
+          (is (= {:message (str "MB_PGVECTOR_DB_URL has a malformed host list. Percent-encode reserved "
+                                "characters in its credentials, e.g. @ as %40, / as %2F and ? as %3F.")
+                  :data    {}}
+                 {:message (ex-message e), :data (ex-data e)}))))))
   (testing "a malformed %-escape in a credential throws without quoting any of the value"
     (let [e (is (thrown? clojure.lang.ExceptionInfo (parse-db-url (str base-url "?password=hunter%zz"))))]
       (is (=? {:message "Malformed %-escape in MB_PGVECTOR_DB_URL", :data {}, :cause nil}
               {:message (ex-message e), :data (ex-data e), :cause (ex-cause e)})))))
+
+(def ^:private password-fragments
+  "Distinct words to join into generated passwords. None appears anywhere else in a generated URL, so finding
+  one outside the parsed credentials means part of the password went there."
+  ["kiwi" "plum" "pear" "lime" "date" "fig" "yuzu"])
+
+(defn- generated-passwords
+  "Passwords made of [[password-fragments]] joined by every ordering of every non-empty subset of the URL's
+  reserved characters, and the same with each fragment after a `?` or `&` named as a credential param."
+  []
+  (for [chars  (mapcat math.combo/permutations (rest (math.combo/subsets [\/ \? \@ \: \& \=])))
+        param? [false true]
+        :let   [words (map (fn [prev-char fragment]
+                             (if (and param? (#{\? \&} prev-char)) "password" fragment))
+                           (cons nil chars)
+                           password-fragments)]]
+    (apply str (interleave words (concat chars [""])))))
+
+(defn- percent-encode [^String s]
+  (str/replace s #"[%/?@:&=]" #(format "%%%02X" (int (first %)))))
+
+(deftest parse-db-url-generated-password-test
+  (let [hosts ["db.example:5432/mb" "db.example/mb?sslmode=require" "db.example" "db1:5432,db2:5433/mb"]]
+    (testing "a host-part password with unencoded reserved characters never reaches an error or the URL"
+      (let [leaks (for [password (generated-passwords)
+                        host     hosts
+                        :let     [url    (str "jdbc:postgresql://alice:" password "@" host)
+                                  result (try
+                                           (dissoc (parse-db-url url) :credentials)
+                                           (catch Throwable e
+                                             [(ex-message e) (ex-data e) (some-> (ex-cause e) ex-message)]))
+                                  leaked (filter #(str/includes? (str result) %) password-fragments)]
+                        :when    (seq leaked)]
+                    {:url url, :leaked leaked})]
+        (is (empty? (take 5 leaks)))))
+    (testing "the same passwords percent-encoded parse, with the password off the URL"
+      (let [failures (for [password (generated-passwords)
+                           host     hosts
+                           :let     [url      (str "jdbc:postgresql://alice:" (percent-encode password) "@" host)
+                                     expected {:jdbc-url    (str "jdbc:postgresql://" host)
+                                               :credentials {:user "alice", :password password}}
+                                     actual   (try
+                                                (select-keys (parse-db-url url) [:jdbc-url :credentials])
+                                                (catch Throwable e (ex-message e)))]
+                           :when    (not= expected actual)]
+                       {:url url, :actual actual})]
+        (is (empty? (take 5 failures)))))))
 
 (deftest pool-props-applied-by-c3p0-test
   (testing "c3p0 actually understands and applies every pool property name we set"
