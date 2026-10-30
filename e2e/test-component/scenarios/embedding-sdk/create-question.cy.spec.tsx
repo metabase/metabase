@@ -18,6 +18,8 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import { createLibraryWithTable } from "e2e/support/test-library-data";
+import type { SearchResponse } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -232,6 +234,121 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       cy.findByRole("link", { name: "Orders" }).should("be.visible");
       cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
       cy.findAllByRole("link").should("have.length", MODEL_COUNT + TABLE_COUNT);
+    });
+  });
+
+  it('should list only what is published in the semantic layer when `entityTypes` = ["semantic-layer"]', () => {
+    // Publishes only Orders
+    createLibraryWithTable();
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion
+          questionId="new"
+          entityTypes={["semantic-layer"]}
+        />
+      </div>,
+    );
+
+    getSdkRoot().findByText("Pick your starting data").should("be.visible");
+
+    cy.log(
+      "list the table published in the semantic layer, not the raw tables",
+    );
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("be.visible");
+      cy.findByRole("link", { name: "Reviews" }).should("not.exist");
+    });
+
+    cy.log("select the published table");
+    H.popover().findByRole("link", { name: "Orders" }).click();
+    getSdkRoot().within(() => {
+      H.getNotebookStep("data").findByText("Orders").should("be.visible");
+    });
+  });
+
+  it('should list only what is published in the semantic layer in the staged picker when `entityTypes` = ["semantic-layer"]', () => {
+    // Publishes only Orders
+    createLibraryWithTable();
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion
+          questionId="new"
+          dataPicker="staged"
+          entityTypes={["semantic-layer"]}
+        />
+      </div>,
+    );
+
+    getSdkRoot().findByText("Pick your starting data").should("be.visible");
+
+    cy.log(
+      "open on the semantic layer's tables, not the bucket step or the raw tables",
+    );
+    H.popover().within(() => {
+      cy.findByTestId("saved-entity-title").should("have.text", "Data");
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Reviews").should("not.exist");
+      cy.findByText("Raw Data").should("not.exist");
+    });
+
+    cy.log("select the published table");
+    H.popover().findByText("Orders").click();
+    getSdkRoot().within(() => {
+      H.getNotebookStep("data").findByText("Orders").should("be.visible");
+    });
+  });
+
+  it('should list a table published in a semantic layer subfolder when `entityTypes` = ["semantic-layer"]', () => {
+    // Publishes only Orders, into Semantic layer > Data > Customer A
+    H.createLibrary().then(({ body: library }) => {
+      const dataCollection = library.effective_children?.find(
+        (collection) => collection.type === "library-data",
+      );
+
+      H.createCollection({
+        name: "Customer A",
+        parent_id: dataCollection?.id,
+      }).then(({ body: subfolder }) => {
+        H.publishTables({
+          table_ids: [SAMPLE_DATABASE.ORDERS_ID],
+          collection_id: subfolder.id,
+        });
+
+        // The search index catches up with the publish asynchronously, and the
+        // picker searches the semantic layer only once, when it opens
+        H.retryRequest(
+          () =>
+            cy.request<SearchResponse>(
+              `/api/search?collection=${subfolder.id}&models=table`,
+            ),
+          ({ body }) => body.data.some((result) => result.name === "Orders"),
+        );
+      });
+    });
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion
+          questionId="new"
+          entityTypes={["semantic-layer"]}
+        />
+      </div>,
+    );
+
+    getSdkRoot().findByText("Pick your starting data").should("be.visible");
+
+    cy.log("list the table published in the subfolder, not the raw tables");
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("be.visible");
+      cy.findByRole("link", { name: "Reviews" }).should("not.exist");
     });
   });
 

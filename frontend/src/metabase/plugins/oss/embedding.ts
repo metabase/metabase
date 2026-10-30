@@ -9,6 +9,7 @@ import { definePluginSlot } from "../slot";
 
 export interface SimpleDataPickerProps {
   filterByDatabaseId: number | null;
+  isJoinStep: boolean;
   selectedEntity?: TableId;
   isInitiallyOpen: boolean;
   triggerElement: ReactNode;

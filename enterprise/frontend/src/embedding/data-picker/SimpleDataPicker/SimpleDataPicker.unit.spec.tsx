@@ -1,12 +1,21 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupSearchEndpoints } from "__support__/server-mocks";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupLibraryEndpoints,
+  setupLibrarySearchEndpoint,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
-import type { SearchResult } from "metabase-types/api";
+import type { DatabaseId, SearchResult } from "metabase-types/api";
 import {
   createMockModelResult,
   createMockSearchResult,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { SimpleDataPicker } from "./SimpleDataPicker";
@@ -26,11 +35,37 @@ const SEARCH_RESULTS = [
   }),
 ];
 
+const LIBRARY_SEARCH_RESULTS = [
+  createMockSearchResult({ id: 10, name: "Published Orders", model: "table" }),
+  createMockSearchResult({ id: 11, name: "Revenue", model: "metric" }),
+  createMockSearchResult({
+    id: 12,
+    name: "Published Elsewhere",
+    model: "table",
+    database_id: 2,
+  }),
+];
+
 interface SetupOpts {
   searchResults: SearchResult[];
   entityTypes?: EmbeddingEntityType[];
+  hasLibrary?: boolean;
+  isJoinStep?: boolean;
+  filterByDatabaseId?: DatabaseId;
 }
 function setup(opts?: SetupOpts) {
+  // `mockSettings` has to run first, as the Library plugin (semantic layer) reads the token
+  // features when it initializes.
+  const settings = opts?.hasLibrary
+    ? mockSettings({
+        "token-features": createMockTokenFeatures({ library: true }),
+      })
+    : undefined;
+  if (opts?.hasLibrary) {
+    setupEnterpriseOnlyPlugin("library");
+    setupLibraryEndpoints({ hasLibrary: true });
+    setupLibrarySearchEndpoint(LIBRARY_SEARCH_RESULTS);
+  }
   setupSearchEndpoints(opts?.searchResults ?? SEARCH_RESULTS);
 
   const onClick = jest.fn();
@@ -39,9 +74,11 @@ function setup(opts?: SetupOpts) {
       entityTypes={opts?.entityTypes ?? ["model", "table"]}
       isInitiallyOpen={true}
       setSourceTableFn={onClick}
-      filterByDatabaseId={null}
+      filterByDatabaseId={opts?.filterByDatabaseId ?? null}
+      isJoinStep={opts?.isJoinStep ?? false}
       triggerElement={<div>data picker trigger</div>}
     />,
+    settings ? { storeInitialState: createMockState({ settings }) } : undefined,
   );
 
   return { onClick };
@@ -155,5 +192,78 @@ describe("SimpleDataPicker", () => {
     expect(within(metric).getByLabelText("metric icon")).toBeInTheDocument();
     const model = screen.getByRole("link", { name: "Orders" });
     expect(within(model).getByLabelText("table icon")).toBeInTheDocument();
+  });
+
+  describe("the semantic layer", () => {
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it('should only list the tables and metrics published in the semantic layer when `entityTypes=["semantic-layer"]`', async () => {
+      setup({
+        searchResults: SEARCH_RESULTS,
+        entityTypes: ["semantic-layer"],
+        hasLibrary: true,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Published Orders" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Revenue" })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Products" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should select a semantic layer table by its table id", async () => {
+      const { onClick } = setup({
+        searchResults: SEARCH_RESULTS,
+        entityTypes: ["semantic-layer"],
+        hasLibrary: true,
+      });
+
+      await userEvent.click(
+        await screen.findByRole("link", { name: "Published Orders" }),
+      );
+      expect(onClick).toHaveBeenCalledWith(10);
+    });
+
+    it("should only list tables from the current database, and no metrics, when joining", async () => {
+      setup({
+        searchResults: SEARCH_RESULTS,
+        entityTypes: ["semantic-layer"],
+        hasLibrary: true,
+        isJoinStep: true,
+        filterByDatabaseId: 1,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Published Orders" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Published Elsewhere" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Revenue" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should list an item once when it matches several entity types", async () => {
+      setup({
+        searchResults: [...SEARCH_RESULTS, LIBRARY_SEARCH_RESULTS[0]],
+        entityTypes: ["model", "table", "semantic-layer"],
+        hasLibrary: true,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Products" }),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByRole("link", { name: "Revenue" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getAllByRole("link", { name: "Published Orders" }),
+      ).toHaveLength(1);
+    });
   });
 });

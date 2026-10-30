@@ -3,12 +3,17 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { screen } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 
 import { setup } from "./setup";
 
 describe("EmbeddingDataPicker", () => {
   beforeEach(() => {
     setupEnterprisePlugins();
+  });
+
+  afterEach(() => {
+    reinitialize();
   });
 
   it("should count tables, models, and metrics to choose between the simple and full data pickers", async () => {
@@ -166,6 +171,69 @@ describe("EmbeddingDataPicker", () => {
         expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
       });
 
+      it("should show the semantic layer without configuring `entity_types`", async () => {
+        setup({ embeddingType: "full-app", hasLibrary: true });
+
+        expect(await screen.findByText("Semantic layer")).toBeInTheDocument();
+        expect(screen.getByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      });
+
+      it('should not show the semantic layer when `entity_types=["table"]`', async () => {
+        setup({
+          embeddingType: "full-app",
+          hasLibrary: true,
+          entityTypes: ["table"],
+        });
+
+        expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+        expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
+      });
+
+      it('should not show the semantic layer when `entity_types=["model", "table"]`', async () => {
+        setup({
+          embeddingType: "full-app",
+          hasLibrary: true,
+          entityTypes: ["model", "table"],
+        });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+        expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
+      });
+
+      it('should ignore "semantic-layer" in full-app entity_types and show the default', async () => {
+        setup({
+          embeddingType: "full-app",
+          hasLibrary: true,
+          entityTypes: ["semantic-layer"],
+        });
+
+        expect(await screen.findByText("Semantic layer")).toBeInTheDocument();
+        expect(screen.getByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      });
+
+      it('should show the semantic layer only when modular embedding entityTypes include "semantic-layer"', async () => {
+        setup({
+          embeddingType: "modular",
+          hasLibrary: true,
+          entityTypes: ["semantic-layer"],
+        });
+
+        expect(await screen.findByText("Data")).toBeInTheDocument();
+        expect(screen.getByText("Metrics")).toBeInTheDocument();
+        expect(screen.queryByText("Models")).not.toBeInTheDocument();
+        expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+      });
+
+      it("should not show the semantic layer when the instance has none", async () => {
+        setup({ embeddingType: "full-app", hasLibrary: false });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
+      });
+
       /**
        * We don't test invalid `entityTypes` values here as the redux state is set via a slice which has proper validations and tests in place.
        *
@@ -219,6 +287,53 @@ describe("EmbeddingDataPicker", () => {
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("link", { name: "Revenue" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show the semantic layer's tables and metrics without configuring `entity_types`", async () => {
+      setup({
+        embeddingType: "full-app",
+        dataPicker: "flat",
+        hasLibrary: true,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Published Orders" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Published Revenue" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show the semantic layer's metrics when nested queries are disabled", async () => {
+      setup({
+        embeddingType: "full-app",
+        dataPicker: "flat",
+        hasLibrary: true,
+        hasNestedQueriesEnabled: false,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Published Orders" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Published Revenue" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show the semantic layer's metrics at the join step", async () => {
+      setup({
+        embeddingType: "full-app",
+        dataPicker: "flat",
+        hasLibrary: true,
+        isJoinStep: true,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Published Orders" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Published Revenue" }),
       ).not.toBeInTheDocument();
     });
   });

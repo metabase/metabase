@@ -81,7 +81,7 @@ function setup({
   });
 
   setupEnterpriseOnlyPlugin("library");
-  setupLibraryEndpoints(true);
+  setupLibraryEndpoints({ hasLibrary: true });
   setupCollectionItemsEndpoint({
     collection: { id: 6464 },
     collectionItems: [

@@ -3,7 +3,12 @@ export interface EmbeddingDataPickerState {
   dataPicker: EmbeddingDataPicker;
 }
 
-export type EmbeddingEntityType = "model" | "table" | "question" | "metric";
+export type EmbeddingEntityType =
+  | "model"
+  | "table"
+  | "question"
+  | "metric"
+  | "semantic-layer";
 
 /**
  * `question` only works on multi-stage data picker, not the simple data picker.

@@ -141,7 +141,7 @@ describe("SavedEntityPicker", () => {
 
     const tree = screen.getByTestId("saved-entity-collection-tree");
     expect(within(tree).queryByText("Metrics")).not.toBeInTheDocument();
-    await userEvent.click(within(tree).getByText("Library"));
+    await userEvent.click(within(tree).getByText("Semantic layer"));
 
     expect(await screen.findByText("Revenue")).toBeInTheDocument();
   });

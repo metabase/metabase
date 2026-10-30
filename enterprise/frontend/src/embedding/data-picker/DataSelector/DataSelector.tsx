@@ -19,6 +19,7 @@ import CS from "metabase/css/core/index.css";
 import { canUserCreateQueries } from "metabase/current-user";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getShallowQuestions } from "metabase/metadata-store";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   type DataSelectorDatabase,
   type DataSelectorSchema,
@@ -41,6 +42,7 @@ import type {
   CardType,
   CollectionId,
   DatabaseId,
+  LibraryCollection,
   ListDatabasesRequest,
   SchemaId,
   SearchModel,
@@ -60,6 +62,7 @@ import {
 } from "../TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "../constants";
 import { SavedEntityPicker } from "../saved-entity-picker/SavedEntityPicker";
+import { SemanticLayerPicker } from "../semantic-layer-picker/SemanticLayerPicker";
 import type { DataPickerDataType, SavedEntityType } from "../types";
 import { getDataTypes } from "../utils";
 
@@ -109,6 +112,7 @@ interface DataSelectorOwnProps {
   canSelectTable: boolean;
   canSelectQuestion: boolean;
   canSelectMetric: boolean;
+  canSelectSemanticLayer: boolean;
 
   selectedDataBucketId?: DataPickerDataType | null;
   selectedDatabaseId?: DatabaseId | null;
@@ -148,6 +152,10 @@ interface SchemaFetchersProps {
   fetchSchemaTables: (schemaId: SchemaId) => Promise<unknown>;
 }
 
+interface LibraryInjectedProps {
+  libraryCollection?: LibraryCollection;
+}
+
 interface AvailableModelsInjectedProps {
   loading: boolean;
   loaded: boolean;
@@ -158,7 +166,8 @@ type DataSelectorProps = DataSelectorOwnProps &
   DataSelectorStateProps &
   DataSelectorDispatchProps &
   SchemaFetchersProps &
-  AvailableModelsInjectedProps;
+  AvailableModelsInjectedProps &
+  LibraryInjectedProps;
 
 interface ComputedDataSelectorState {
   databases: DataSelectorDatabase[];
@@ -188,12 +197,24 @@ type SelectedIdsState = Pick<
 >;
 
 export function DataSourceSelector(props: DataSourceSelectorProps) {
+  // Reads the semantic layer through `PLUGIN_LIBRARY`, like the core app's pickers.
+  // `libraryCollection` stays `undefined` without the `library` token feature (no
+  // request is made), when no semantic layer exists (`GET /api/ee/library` returns
+  // `{ data: null }`), or when the user can't read it. `allLoading` makes the
+  // picker wait for it.
+  const { data: libraryCollection, isLoading: isLibraryLoading } =
+    PLUGIN_LIBRARY.useGetLibraryCollection({
+      skip: !props.canSelectSemanticLayer,
+    });
+
   return (
     <DataSelector
       steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
       combineDatabaseSchemaSteps
       triggerContentComponent={TableTrigger}
       {...props}
+      libraryCollection={libraryCollection}
+      allLoading={isLibraryLoading}
     />
   );
 }
@@ -496,7 +517,8 @@ export class UnconnectedDataSelector extends Component<
     return (
       this.hasUsableModels() ||
       this.hasSavedQuestions() ||
-      this.hasUsableMetrics()
+      this.hasUsableMetrics() ||
+      this.hasSemanticLayer()
     );
   };
 
@@ -507,6 +529,33 @@ export class UnconnectedDataSelector extends Component<
       canSelectQuestion
     );
   };
+
+  hasSemanticLayer = (): boolean => {
+    const { canSelectSemanticLayer, libraryCollection } = this.props;
+    const libraryContents = libraryCollection?.below ?? [];
+    return (
+      canSelectSemanticLayer &&
+      (libraryContents.includes("table") ||
+        (this.canSelectSemanticLayerMetrics() &&
+          libraryContents.includes("metric")))
+    );
+  };
+
+  // Semantic layer metrics follow the Metrics bucket's rules
+  canSelectSemanticLayerMetrics = (): boolean =>
+    !this.isJoinStep() && this.props.hasNestedQueriesEnabled;
+
+  // With a single bucket, `skipSteps` opens it straight away, so there's no
+  // bucket step to go back to
+  hasDataBucketChoice = (): boolean =>
+    getDataTypes({
+      hasModels: this.hasModels(),
+      hasTables: this.props.canSelectTable,
+      hasSavedQuestions: this.hasSavedQuestions(),
+      hasMetrics: this.hasMetrics(),
+      hasSemanticLayer: this.hasSemanticLayer(),
+      hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
+    }).length > 1;
 
   isJoinStep(): boolean {
     return !this.props.canChangeDatabase;
@@ -596,6 +645,7 @@ export class UnconnectedDataSelector extends Component<
         hasTables: this.props.canSelectTable,
         hasSavedQuestions: this.hasSavedQuestions(),
         hasMetrics: this.hasMetrics(),
+        hasSemanticLayer: this.hasSemanticLayer(),
         hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
       });
       if (dataTypes.length === 1) {
@@ -631,7 +681,7 @@ export class UnconnectedDataSelector extends Component<
       index -= 1;
     }
 
-    // data bucket step doesn't make a lot of sense when there're no models, saved questions, or metrics
+    // data bucket step doesn't make a lot of sense when there're no models, saved questions, metrics, or the semantic layer
     if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableSavedEntities()) {
       return null;
     }
@@ -793,6 +843,16 @@ export class UnconnectedDataSelector extends Component<
       await this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
       return;
     }
+
+    if (selectedDataBucketId === DATA_BUCKET.SEMANTIC_LAYER) {
+      // `renderContent` shows `SemanticLayerPicker` for this bucket; the database step
+      // only gives it a step to go back from
+      await this.switchToStep(DATABASE_STEP, { selectedDataBucketId }, false);
+      return;
+    }
+
+    // Models, saved questions and metrics are listed through the saved-questions
+    // database, which opens `SavedEntityPicker`
     await this.switchToStep(
       DATABASE_STEP,
       {
@@ -932,6 +992,7 @@ export class UnconnectedDataSelector extends Component<
                 hasTables: this.props.canSelectTable,
                 hasSavedQuestions: this.hasSavedQuestions(),
                 hasMetrics: this.hasMetrics(),
+                hasSemanticLayer: this.hasSemanticLayer(),
                 hasNestedQueriesEnabled,
               })}
               {...props}
@@ -960,7 +1021,7 @@ export class UnconnectedDataSelector extends Component<
   isSavedEntitySelected = (): boolean =>
     isVirtualCardId(this.props.selectedTableId);
 
-  handleSavedEntitySelect = async (tableOrCardId: string): Promise<void> => {
+  handleSavedEntitySelect = async (tableOrCardId: TableId): Promise<void> => {
     await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
       const table = this.props.entityLookups.table(tableOrCardId);
@@ -992,8 +1053,12 @@ export class UnconnectedDataSelector extends Component<
   renderContent = (): ReactNode => {
     const { isSavedEntityPickerShown, selectedDataBucketId, selectedTable } =
       this.state;
-    const { canChangeDatabase, selectedDatabaseId, selectedCollectionId } =
-      this.props;
+    const {
+      canChangeDatabase,
+      libraryCollection,
+      selectedDatabaseId,
+      selectedCollectionId,
+    } = this.props;
 
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
@@ -1011,6 +1076,22 @@ export class UnconnectedDataSelector extends Component<
     }
 
     if (this.hasDataAccess()) {
+      if (
+        selectedDataBucketId === DATA_BUCKET.SEMANTIC_LAYER &&
+        libraryCollection
+      ) {
+        return (
+          <SemanticLayerPicker
+            libraryCollection={libraryCollection}
+            canSelectMetric={this.canSelectSemanticLayerMetrics()}
+            databaseId={currentDatabaseId}
+            tableId={selectedTable?.id}
+            onSelect={this.handleSavedEntitySelect}
+            onBack={this.hasDataBucketChoice() ? this.previousStep : undefined}
+          />
+        );
+      }
+
       if (isPickerOpen) {
         return (
           <SavedEntityPicker
@@ -1075,13 +1156,15 @@ export class UnconnectedDataSelector extends Component<
 
 type ConnectOwnProps = DataSelectorOwnProps &
   SchemaFetchersProps &
-  AvailableModelsInjectedProps & {
+  AvailableModelsInjectedProps &
+  LibraryInjectedProps & {
     availableModelsResult?: AvailableModelsResult;
   };
 
 type WithoutSchemaFetchers = Omit<ConnectOwnProps, keyof SchemaFetchersProps>;
 
-type PublicDataSelectorProps = DataSelectorOwnProps & { allLoading?: boolean };
+type PublicDataSelectorProps = DataSelectorOwnProps &
+  LibraryInjectedProps & { allLoading?: boolean };
 
 // Exposes `fetchSchemas` / `fetchSchemaTables` as props backed by RTK's lazy
 // query triggers. The triggers' subscriptions are tied to this wrapper's

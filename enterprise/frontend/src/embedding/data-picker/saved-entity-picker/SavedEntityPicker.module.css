@@ -24,7 +24,7 @@
   }
 }
 
-.BackButton {
+.Title {
   font-weight: 700;
   font-size: 16px;
   display: flex;
@@ -32,6 +32,10 @@
   color: var(--mb-color-text-primary);
   border-bottom: 1px solid var(--mb-color-border-neutral);
   padding: 1rem;
+}
+
+.BackButton {
+  composes: Title;
 
   &:hover {
     color: var(--mb-color-core-brand);

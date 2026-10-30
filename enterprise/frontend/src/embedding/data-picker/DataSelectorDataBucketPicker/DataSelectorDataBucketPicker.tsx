@@ -59,13 +59,17 @@ const DataBucketListItem = ({
         {name}
       </Box>
     </Flex>
-    <Box mt="xxs">
-      <Box
-        component="span"
-        className={DataSelectorDataBucketPickerS.DataBucketListItemDescription}
-      >
-        {description}
+    {description && (
+      <Box mt="xxs">
+        <Box
+          component="span"
+          className={
+            DataSelectorDataBucketPickerS.DataBucketListItemDescription
+          }
+        >
+          {description}
+        </Box>
       </Box>
-    </Box>
+    )}
   </SelectList.BaseItem>
 );
