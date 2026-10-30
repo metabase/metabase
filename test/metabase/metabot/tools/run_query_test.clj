@@ -748,6 +748,9 @@
       "It holds a backslash before a quote. Write a quote inside a string by doubling it."
       :mysql "SELECT 'it\\'s' FROM t"
 
+      "It holds a carriage return with no newline after it. End lines with a newline."
+      :mysql "SELECT 1\rFROM t"
+
       "It holds a U&\"...\" name, whose escapes this check cannot read. Write the name plainly."
       :postgres "SELECT U&\"pg_\\0073leep\"(10)"
 

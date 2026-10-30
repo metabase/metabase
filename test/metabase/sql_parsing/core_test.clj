@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.test-util :as sql-tools.tu]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -38,7 +39,7 @@
   "The exception `sql` fails to parse with."
   [dialect sql]
   (try
-    (sql-parsing/referenced-tables dialect sql)
+    (sql-parsing/referenced-tables (sql-tools.tu/sqlglot-parser) dialect sql)
     (is false (str "expected " (pr-str sql) " not to parse"))
     (catch Exception e e)))
 
@@ -72,7 +73,7 @@
     (doseq [{:keys [name sql dialect tables]} (cases "referenced_tables")]
       (testing name
         (is (= (normalize-tables tables)
-               (normalize-tables (sql-parsing/referenced-tables dialect sql)))
+               (normalize-tables (sql-parsing/referenced-tables (sql-tools.tu/sqlglot-parser) dialect sql)))
             (pr-str sql))))))
 
 ;;; ------------------------------------------------- replace-names ------------------------------------------------
@@ -81,7 +82,7 @@
   (testing "the query rewritten to read other tables, which is how a transform test reads its fixtures"
     (doseq [{:keys [name sql dialect replacements expected]} (cases "replace_names")]
       (testing name
-        (is (= expected (sql-parsing/replace-names dialect sql replacements))
+        (is (= expected (sql-parsing/replace-names (sql-tools.tu/sqlglot-parser) dialect sql replacements))
             (pr-str sql))))))
 
 ;;; ------------------------------------------------ field-references ----------------------------------------------
@@ -90,7 +91,7 @@
   (testing "the fields a query reads and returns, and the qualifiers that resolve to nothing"
     (doseq [{:keys [name sql dialect errors returned]} (cases "field_references")]
       (testing name
-        (let [result (sql-parsing/field-references dialect sql)]
+        (let [result (sql-parsing/field-references (sql-tools.tu/sqlglot-parser) dialect sql)]
           (is (= (set errors) (set (:errors result))) (pr-str sql))
           (is (= (sort returned)
                  (sort (keep :column (:returned-fields result))))
@@ -102,10 +103,10 @@
   (testing "whether a query is one statement of the kind asked for, which is what tells a caller the rest is unread"
     (doseq [{:keys [name sql dialect stmt-type expected]} (cases "single_stmt")]
       (testing name
-        (is (=? expected (sql-parsing/validate-executable-stmt dialect sql stmt-type))
+        (is (=? expected (sql-parsing/validate-executable-stmt (sql-tools.tu/sqlglot-parser) dialect sql stmt-type))
             (pr-str sql))
-        (is (= (sql-parsing/validate-executable-stmt dialect sql stmt-type)
-               (sql-parsing/classify-stmt dialect sql stmt-type))
+        (is (= (sql-parsing/validate-executable-stmt (sql-tools.tu/sqlglot-parser) dialect sql stmt-type)
+               (sql-parsing/classify-stmt (sql-tools.tu/sqlglot-parser) dialect sql stmt-type))
             (pr-str sql))))))
 
 ;;; ------------------------------------------- returned-columns-lineage -------------------------------------------
@@ -116,7 +117,7 @@
       (testing name
         (is (= columns
                (sort (map (comp u/lower-case-en first)
-                          (sql-parsing/returned-columns-lineage dialect sql default-schema {}))))
+                          (sql-parsing/returned-columns-lineage (sql-tools.tu/sqlglot-parser) dialect sql default-schema {}))))
             (pr-str sql))))))
 
 ;;; ------------------------------------------------- validate-query -----------------------------------------------
@@ -126,7 +127,7 @@
     (let [schemas (:schemas (edn/read-string (slurp (io/resource "metabase/sql_parsing/test_cases/validate_query.edn"))))]
       (doseq [{:keys [name sql dialect default-schema schema expected]} (cases "validate_query")]
         (testing name
-          (is (=? expected (sql-parsing/validate-query dialect sql default-schema (get schemas schema)))
+          (is (=? expected (sql-parsing/validate-query (sql-tools.tu/sqlglot-parser) dialect sql default-schema (get schemas schema)))
               (pr-str sql)))))))
 
 ;;; ------------------------------------------------ referenced-fields ---------------------------------------------
@@ -137,7 +138,7 @@
       (testing name
         (let [arity (count (first expected))]
           (is (= (normalize-fields arity expected)
-                 (normalize-fields (or arity 4) (sql-parsing/referenced-fields dialect sql)))
+                 (normalize-fields (or arity 4) (sql-parsing/referenced-fields (sql-tools.tu/sqlglot-parser) dialect sql)))
               (pr-str sql)))))))
 
 ;;; ------------------------------------------- strip-large-literal-lists ------------------------------------------
@@ -175,9 +176,9 @@
 (deftest ^:parallel stripping-is-invisible-to-the-caller-test
   (testing "a query whose lists were stripped still reports the tables and fields it reads"
     (let [sql (str "SELECT a.name FROM accounts a WHERE a.id IN (" (str/join ", " (range 20000)) ")")]
-      (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
+      (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables (sql-tools.tu/sqlglot-parser) "postgres" sql)))
       (is (= [[nil nil "accounts" "id"] [nil nil "accounts" "name"]]
-             (sort (sql-parsing/referenced-fields "postgres" sql))))))
+             (sort (sql-parsing/referenced-fields (sql-tools.tu/sqlglot-parser) "postgres" sql))))))
   (testing "but a classification never answers about a stripped rewrite"
     ;; Analysis can read a stripped query because it only needs the shape. A classification's answer has to
     ;; hold for the string the caller holds, so it parses the original and reports SQL over its ceiling as
@@ -185,7 +186,7 @@
     (let [under (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 150)) ")")
           over  (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 20000)) ")")]
       (testing "a list the analysis threshold would strip still validates as one statement"
-        (is (=? {:verdict :allowed} (sql-parsing/validate-executable-stmt "postgres" under "read"))))
+        (is (=? {:verdict :allowed} (sql-parsing/validate-executable-stmt (sql-tools.tu/sqlglot-parser) "postgres" under "read"))))
       (testing "a list past the ceiling comes back unchecked, not stripped and vouched for"
         (is (= {:verdict :unknown, :reason "large-literal-list", :sql over}
-               (sql-parsing/validate-executable-stmt "postgres" over "read")))))))
+               (sql-parsing/validate-executable-stmt (sql-tools.tu/sqlglot-parser) "postgres" over "read")))))))

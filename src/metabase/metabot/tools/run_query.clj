@@ -399,6 +399,7 @@
         :writes-or-locks     "It writes, takes a lock, or advances a sequence."
         :session-function    (str "It calls " detail ", which takes a lock, waits, changes the session, or acts outside"
                                   " the database.")
+        :external-table      "It names a file or a URL as a table, which reads outside the database."
         :sql-executing-function (str "It calls " detail ", which runs SQL passed to it as text that this check cannot"
                                      " see into.")
         :dynamic-function-call (str "It calls a function through IDENTIFIER(...), whose name this check cannot read."
@@ -408,6 +409,7 @@
         :executable-comment  "It holds a /*! or /*M! comment, which MySQL and MariaDB run as SQL."
         :bare-dash-comment   "It holds -- with no space after it, which MySQL does not read as a comment."
         :backslash-quote     "It holds a backslash before a quote. Write a quote inside a string by doubling it."
+        :lone-carriage-return "It holds a carriage return with no newline after it. End lines with a newline."
         :unicode-identifier  "It holds a U&\"...\" name, whose escapes this check cannot read. Write the name plainly."
         :large-literal-list  (str "It holds a list of 100 or more literal values."
                                   " Filter with a range or a subquery instead.")

@@ -1318,6 +1318,9 @@ class FieldReferenceWalker:
                 alias = expr.alias
                 for result in results:
                     if "col" in result:
+                        # Copy before setting the alias, as _find_returned_fields does: the same dict can be
+                        # shared with another select item (e.g. `u.a AS b, u.a`), which would take this alias too.
+                        result["col"] = dict(result["col"])
                         result["col"]["alias"] = alias
             return results
 
@@ -1883,7 +1886,8 @@ _NOT_READ_ONLY_NODES = (
 # Writes a SELECT can make through a built-in function. Advancing a sequence is one: sqlglot parses only the
 # SQL-standard `NEXT VALUE FOR` as its own node; Postgres and Redshift spell it as a function, Oracle and Snowflake as
 # a `.NEXTVAL` pseudo-column, and Snowflake also as the table function `TABLE(GETNEXTVAL(seq))`. Postgres large objects
-# are another, and any role can create one by default.
+# are another, and any role can create one by default. So is asking Postgres for the current transaction's id, which
+# assigns one, and writing a message into the write-ahead log.
 _WRITE_FUNCTIONS = frozenset(
     {
         # sequences
@@ -1891,6 +1895,8 @@ _WRITE_FUNCTIONS = frozenset(
         # Postgres large objects
         "lo_creat", "lo_create", "lo_from_bytea", "lo_put", "lowrite", "lo_truncate", "lo_truncate64", "lo_unlink",
         "lo_import", "lo_export",
+        # Postgres transaction ids and the write-ahead log
+        "txid_current", "pg_current_xact_id", "pg_logical_emit_message",
     }
 )
 
@@ -1915,9 +1921,34 @@ _SESSION_EFFECT_FUNCTIONS = frozenset(
         "pg_sleep", "pg_sleep_for", "pg_sleep_until", "sleep", "benchmark", "sleepeachrow", "system$wait",
         "master_pos_wait", "source_pos_wait", "wait_for_executed_gtid_set", "wait_until_sql_thread_after_gtids",
         # running a program, Java code or a request outside the database
-        "executable", "reflect", "java_method", "http_request", "system$send_email",
+        "executable", "reflect", "java_method", "http_request", "system$send_email", "sys_exec", "sys_eval",
+        # Postgres server administration: the write-ahead log, backups, replication slots, recovery, the log file
+        "pg_switch_wal", "pg_switch_xlog", "pg_create_restore_point", "pg_backup_start", "pg_backup_stop",
+        "pg_start_backup", "pg_stop_backup", "pg_promote", "pg_rotate_logfile", "pg_create_physical_replication_slot",
+        "pg_create_logical_replication_slot", "pg_drop_replication_slot", "pg_wal_replay_pause",
+        "pg_wal_replay_resume",
     }
 )
+
+# Table functions that read from another server, a URL, object storage or the server's files. Their names are common
+# words elsewhere (`url`, `file`, `mysql`), so each set applies only in its own dialect. ClickHouse's `cluster` and
+# `clusterAllReplicas` are left out: they read the same tables from the cluster's own servers.
+_DIALECT_SESSION_EFFECT_FUNCTIONS = {
+    "clickhouse": frozenset(
+        {
+            "url", "urlcluster", "s3", "s3cluster", "gcs", "remote", "remotesecure", "mysql", "postgresql",
+            "mongodb", "redis", "sqlite", "file", "filecluster", "hdfs", "hdfscluster", "azureblobstorage",
+            "azureblobstoragecluster", "jdbc", "odbc", "deltalake", "iceberg", "hudi",
+        }
+    ),
+    "duckdb": frozenset(
+        {
+            "read_csv", "read_csv_auto", "read_parquet", "parquet_scan", "read_json", "read_json_auto",
+            "read_json_objects", "read_ndjson", "read_ndjson_auto", "read_ndjson_objects", "read_text", "read_blob",
+            "read_xlsx", "sniff_csv", "glob", "iceberg_scan", "delta_scan",
+        }
+    ),
+}
 
 
 def _function_name(node: exp.Expression):
@@ -1931,13 +1962,25 @@ def _function_name(node: exp.Expression):
     return None
 
 
-def _session_effect_function(stmt: exp.Expression):
-    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or None."""
+def _session_effect_function(stmt: exp.Expression, dialect: str):
+    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or of the
+    `_DIALECT_SESSION_EFFECT_FUNCTIONS` for `dialect`, or None."""
+    names = _SESSION_EFFECT_FUNCTIONS | _DIALECT_SESSION_EFFECT_FUNCTIONS.get(dialect, frozenset())
     for node in stmt.walk():
         name = _function_name(node)
-        if name in _SESSION_EFFECT_FUNCTIONS:
+        if name in names:
             return name
     return None
+
+
+def _external_table(stmt: exp.Expression, dialect: str) -> bool:
+    """Whether `stmt` names a file or a URL as a table. DuckDB reads `FROM 'data.csv'` and `FROM "s3://b/x.parquet"`
+    as the file at that path, and a name holding `.`, `/`, `\\` or `:` cannot be a plain table there unless quoted."""
+    if dialect != "duckdb":
+        return False
+    return any(
+        isinstance(node, exp.Table) and re.search(r"[./\\:]", node.name or "") is not None for node in stmt.walk()
+    )
 
 
 # Functions that take a SQL string and run it. The parser reads that string as an opaque literal, so a write, a lock,
@@ -1989,10 +2032,11 @@ def _dynamic_function_call(stmt: exp.Expression) -> bool:
     return any("expressions" in node.args for node in stmt.find_all(exp.DynamicIdentifier))
 
 
-# SQL Server table hints that take update or exclusive locks, or hold shared ones to the end of the transaction.
-# `NOLOCK`, `INDEX(...)` and the rest only steer how a plain read runs.
+# SQL Server table hints that take update or exclusive locks, hold shared ones to the end of the transaction, or set
+# the granularity of the locks taken (`ROWLOCK`, `PAGLOCK`). `NOLOCK`, `INDEX(...)` and the rest only steer how a plain
+# read runs.
 _LOCKING_TABLE_HINTS = frozenset(
-    {"UPDLOCK", "XLOCK", "TABLOCK", "TABLOCKX", "HOLDLOCK", "SERIALIZABLE", "REPEATABLEREAD"}
+    {"UPDLOCK", "XLOCK", "TABLOCK", "TABLOCKX", "HOLDLOCK", "SERIALIZABLE", "REPEATABLEREAD", "ROWLOCK", "PAGLOCK"}
 )
 
 
@@ -2016,6 +2060,12 @@ def _writes_or_locks(node: exp.Expression) -> bool:
         return any(
             isinstance(arg, exp.Column) and not arg.table and arg.name.upper() in _LOCKING_TABLE_HINTS
             for arg in node.this.expressions
+        )
+    # After an alias, `FROM t a (XLOCK)` parses as a column list on the alias, and SQL Server reads it as a hint.
+    # Only a plain table's alias counts: a derived table's column list, `(SELECT ...) d(a)`, names real columns.
+    if isinstance(node, exp.Table) and isinstance(node.args.get("alias"), exp.TableAlias):
+        return any(
+            column.name.upper() in _LOCKING_TABLE_HINTS for column in node.args["alias"].args.get("columns") or []
         )
     return False
 
@@ -2058,18 +2108,30 @@ def _hidden_sql(sql: str, dialect: str):
     A `U&"..."` identifier is refused in every dialect. Postgres reads its escapes, so `U&"pg_\\0073leep"` names
     `pg_sleep`, and sqlglot keeps them, so the function checks above never see the name. Like the MySQL marks, it is
     looked for in the raw text.
+
+    A carriage return with no newline after it is refused in every dialect. sqlglot ends a `--` or `#` comment at
+    one, and MySQL does not, so the text after it would be a comment to one and SQL to the other.
     """
+    if re.search(r"\r(?!\n)", sql) is not None:
+        return ("lone-carriage-return", None)
     if re.search(r"(?<![\w\$])[uU]&\"", sql) is not None:
         return ("unicode-identifier", None)
     if dialect == "tsql":
         quoted = (sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING, sqlglot.TokenType.IDENTIFIER)
         for tok in sqlglot.tokenize(sql, read=dialect):
-            if tok.token_type not in quoted and tok.text.upper() in _TSQL_STATEMENT_WORDS:
-                return ("statement-word", tok.text.upper())
+            if tok.token_type in quoted:
+                continue
+            # sqlglot keeps a character such as U+200B inside a word, `t<U+200B>EXEC`, where SQL Server may end the
+            # word. Each piece between characters that cannot be part of a name is checked on its own.
+            for word in re.split(r"[^\w@#$]+", tok.text):
+                if word.upper() in _TSQL_STATEMENT_WORDS:
+                    return ("statement-word", word.upper())
     if dialect in _MYSQL_FAMILY_DIALECTS:
         if "/*!" in sql or "/*M!" in sql:
             return ("executable-comment", None)
-        if re.search(r"--(?=\S)", sql) is not None:
+        # MySQL reads `--` as a comment only before ASCII whitespace or a control character. Python's `\s` also
+        # matches non-ASCII spaces such as U+00A0, so the characters are spelled out.
+        if re.search(r"--(?![ \t\n\r\f\v]|\Z)", sql) is not None:
             return ("bare-dash-comment", None)
         if re.search(r"\\['\"`]", sql) is not None:
             return ("backslash-quote", None)
@@ -2093,9 +2155,11 @@ def _not_read_only_reason(stmts, sql: str, dialect: str):
         return ("not-a-select", None)
     if not _read_only(stmts[0]):
         return ("writes-or-locks", None)
-    function = _session_effect_function(stmts[0])
+    function = _session_effect_function(stmts[0], dialect)
     if function is not None:
         return ("session-function", function)
+    if _external_table(stmts[0], dialect):
+        return ("external-table", None)
     executor = _sql_executing_function(stmts[0])
     if executor is not None:
         return ("sql-executing-function", executor)

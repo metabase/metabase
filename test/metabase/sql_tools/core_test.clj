@@ -117,7 +117,7 @@
             (sql-tools/referenced-tables-raw :postgres "SELECT * FROM public.orders"))))))
 
 (deftest ^:parallel referenced-tables-raw-strict-parse-error-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "ordinary callers retain the fail-soft behavior"
       (is (= [] (sql-tools/referenced-tables-raw :postgres "SELECT !!!"))))
     (testing "Guard A can distinguish a parse failure from a query with no table reads"
@@ -127,11 +127,11 @@
         (is (sql-parsing/parse-error? e))))))
 
 ;;; -------------------------------------------- transpile-sql ---------------------------------------------
-;; transpile-sql is only implemented for the :sqlglot backend, so these tests bind it directly
-;; rather than using test-parser-backends.
+;; transpile-sql is only implemented for the sqlglot backends, so these tests bind one (GraalPy, or the Java port
+;; under MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java) rather than using test-parser-backends.
 
 (deftest ^:parallel transpile-sql-no-added-quoting-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "unquoted identifiers stay unquoted, so folding dialects resolve them as written"
       (doseq [dialect ["snowflake" "postgres" "mysql"]]
         (testing dialect
@@ -142,7 +142,7 @@
             (is (not (re-find #"[\"`]" transpiled-sql)))))))))
 
 (deftest ^:parallel transpile-sql-multi-statement-rejected-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "Multiple SQL statements should be rejected"
       (let [{:keys [status reason error-message]} (sql-tools/transpile-sql "SELECT 1; SELECT 2"
                                                                            "postgres" "postgres")]
@@ -173,7 +173,7 @@
              (sql-tools/transpile-sql "select from where venues" "postgres" "postgres"))))))
 
 (deftest ^:parallel transpile-sql-preserves-query-structure-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "Transpilation preserves query structure"
       (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql
                                              "SELECT a, b FROM t WHERE x > 1 ORDER BY a"
@@ -185,7 +185,7 @@
         (is (str/includes? transpiled-sql "ORDER BY"))))))
 
 (deftest ^:parallel transpile-sql-pretty-formatting-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "Transpilation applies pretty formatting (newlines)"
       (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT a,b,c FROM users WHERE id=1"
                                                                      "postgres" "postgres")]
@@ -193,7 +193,7 @@
         (is (str/includes? transpiled-sql "\n"))))))
 
 (deftest ^:parallel transpile-sql-template-tags-skipped-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "SQL with Metabase template tags is skipped"
       (let [{:keys [status reason]} (sql-tools/transpile-sql "SELECT * FROM {{#42}} WHERE id = {{user_id}}"
                                                              "postgres" "postgres")]
@@ -206,7 +206,7 @@
         (is (= :contains-templates reason))))))
 
 (deftest ^:parallel transpile-sql-missing-dialect-skipped-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "Nil dialects are skipped"
       (let [{:keys [status reason]} (sql-tools/transpile-sql "SELECT 1" nil nil)]
         (is (= :skipped status))
@@ -467,6 +467,52 @@
       :databricks "SELECT http_request(conn => 'c', method => 'POST', path => '/')"
       :snowflake  "SELECT SYSTEM$SEND_EMAIL('i', 'a@b.c', 's', 'b')")))
 
+(deftest ^:parallel read-only-select?-transaction-id-and-admin-function-test
+  (testing "a SELECT that assigns a Postgres transaction id or writes to the write-ahead log is not read-only"
+    (are [sql] (= {:reason :writes-or-locks, :detail nil} (sql-tools/read-only-select-problem :postgres sql))
+      "SELECT txid_current()"
+      "SELECT pg_current_xact_id()"
+      "SELECT pg_logical_emit_message(true, 'p', 'x')"))
+  (testing "a SELECT that administers the Postgres server or runs a MySQL UDF program is not read-only"
+    (are [driver function sql] (= {:reason :session-function, :detail function}
+                                  (sql-tools/read-only-select-problem driver sql))
+      :postgres "pg_switch_wal"                     "SELECT pg_switch_wal()"
+      :postgres "pg_create_logical_replication_slot" "SELECT pg_create_logical_replication_slot('s', 'pgoutput')"
+      :postgres "pg_promote"                        "SELECT pg_promote()"
+      :mysql    "sys_exec"                          "SELECT sys_exec('id')"
+      :mysql    "sys_eval"                          "SELECT sys_eval('id')")))
+
+(deftest ^:parallel read-only-select?-outside-the-database-test
+  (testing "a SELECT that reads another server, a URL or a file through a table function is not read-only"
+    (are [driver function sql] (= {:reason :session-function, :detail function}
+                                  (sql-tools/read-only-select-problem driver sql))
+      :clickhouse "url"              "SELECT * FROM url('http://h/x', CSV, 'a String')"
+      :clickhouse "s3"               "SELECT * FROM s3('http://h/x', 'CSV')"
+      :clickhouse "remote"           "SELECT * FROM remote('h:9000', db.t)"
+      :clickhouse "remotesecure"     "SELECT * FROM remoteSecure('h:9440', db.t)"
+      :clickhouse "mysql"            "SELECT * FROM mysql('h:3306', 'db', 't', 'u', 'p')"
+      :clickhouse "postgresql"       "SELECT * FROM postgresql('h:5432', 'db', 't', 'u', 'p')"
+      :clickhouse "file"             "SELECT * FROM file('x.csv', CSV)"
+      :clickhouse "hdfs"             "SELECT * FROM hdfs('hdfs://h/x', 'CSV')"
+      :clickhouse "azureblobstorage" "SELECT * FROM azureBlobStorage('c', 'x')"
+      :clickhouse "jdbc"             "SELECT * FROM jdbc('ds', 't')"
+      :clickhouse "odbc"             "SELECT * FROM odbc('ds', 't')"
+      :duckdb     "read_csv"         "SELECT * FROM read_csv('x.csv')"
+      :duckdb     "read_parquet"     "SELECT * FROM read_parquet('s3://b/x.parquet')"
+      :duckdb     "read_json"        "SELECT * FROM read_json('x.json')"))
+  (testing "DuckDB reads a file or a URL named as a table"
+    (are [sql] (= {:reason :external-table, :detail nil} (sql-tools/read-only-select-problem :duckdb sql))
+      "SELECT * FROM 'x.csv'"
+      "SELECT * FROM 'https://h/x.parquet'"
+      "SELECT * FROM \"s3://b/x.parquet\""))
+  (testing "the same names are ordinary elsewhere, and a ClickHouse cluster read stays on its own servers"
+    (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
+      :clickhouse "SELECT url FROM t"
+      :clickhouse "SELECT * FROM cluster('c', db.t)"
+      :postgres   "SELECT url('x')"
+      :postgres   "SELECT * FROM \"x.csv\""
+      :duckdb     "SELECT * FROM main.t JOIN s.u ON true")))
+
 (deftest ^:parallel read-only-select?-sql-executing-function-test
   (testing "a SELECT that calls a function taking a SQL string to run is not read-only, whatever the string holds"
     ;; The parser reads the inner SQL as an opaque literal, so a write, a lock or a session change hidden in it
@@ -536,6 +582,70 @@
       :postgres  "SELECT a --no space\n FROM t"
       :postgres  "SELECT 1 AS exec")))
 
+(deftest ^:parallel read-only-select?-dash-comment-unicode-space-test
+  (testing "-- before a non-ASCII space is not a comment on MySQL, so the text after it is refused"
+    (doseq [space ["\u00a0" "\u2000" "\u2003" "\u200a" "\u3000" "\u0085" "\u2028"]]
+      (testing (format "U+%04X" (int (first space)))
+        (is (= {:reason :bare-dash-comment, :detail nil}
+               (sql-tools/read-only-select-problem
+                :mysql (str "select 1 --" space ", sleep(5)\nfrom (select 1 as `" space "`) t")))))))
+  (testing "-- before ASCII whitespace or at the end of the text is a comment, and allowed"
+    (are [sql] (true? (sql-tools/read-only-select? :mysql sql))
+      "select 1 -- note\nfrom t"
+      "select 1 --\nfrom t"
+      "select 1 --\tnote\nfrom t"
+      "select 1 -- note\r\nfrom t\r\n"
+      "select 1 --")))
+
+(deftest ^:parallel read-only-select?-lone-carriage-return-test
+  (testing "a carriage return with no newline after it is refused: the parser ends a comment there, MySQL does not"
+    (are [sql] (= {:reason :lone-carriage-return, :detail nil}
+                  (sql-tools/read-only-select-problem :mysql sql))
+      "select 1 -- x\r'\n, sleep(5) -- '"
+      "select 1 # x\r'\n, sleep(5) -- '"
+      "select 1\rfrom t")
+    (doseq [driver [:postgres :sqlserver :h2 :snowflake :oracle]]
+      (testing driver
+        (are [sql] (false? (sql-tools/read-only-select? driver sql))
+          "select 1 -- x\r'\n, sleep(5) -- '"
+          "select 1\rfrom t"))))
+  (testing "\\r\\n line endings are allowed"
+    (doseq [driver [:mysql :postgres :sqlserver :h2]]
+      (testing driver
+        (is (true? (sql-tools/read-only-select? driver "select 1 -- note\r\nfrom t\r\nwhere 1 = 1\r\n")))))))
+
+(deftest ^:parallel read-only-select?-tsql-alias-lock-hint-test
+  (testing "a locking hint after a table alias, without WITH, is not read-only"
+    (are [sql] (= {:reason :writes-or-locks, :detail nil}
+                  (sql-tools/read-only-select-problem :sqlserver sql))
+      "select * from dbo.t a (tablockx, holdlock)"
+      "select * from t as a (xlock)"
+      "select * from t join u b (updlock) on 1=1"
+      "select * from t a (paglock)"
+      "select * from t a (nolock, xlock)"
+      "select * from t (rowlock)"
+      "select * from t (paglock)"))
+  (testing "a non-locking hint, and a derived table's column list, are read-only"
+    (are [sql] (true? (sql-tools/read-only-select? :sqlserver sql))
+      "select * from t a (nolock)"
+      "select * from t as a (nolock)"
+      "select * from t with (nolock)"
+      "select * from t a with (nolock)"
+      "select * from (select 1 as a) d(a)"
+      "select * from (select 1 as xlock) d(xlock)"
+      "select top 10 a.id, b.name from dbo.t a join dbo.u b on a.id = b.id where a.x > 1 order by a.id")))
+
+(deftest ^:parallel read-only-select?-tsql-statement-word-in-token-test
+  (testing "a statement word glued to a name by a character that is not part of a word is refused"
+    (doseq [glue ["\u200b" "\u200c" "\u2060" "\ufeff"]]
+      (testing (format "U+%04X" (int (first glue)))
+        (is (= {:reason :statement-word, :detail "EXEC"}
+               (sql-tools/read-only-select-problem :sqlserver (str "select * from t" glue "EXEC('select 1')")))))))
+  (testing "a statement word inside a longer name is allowed"
+    (are [sql] (true? (sql-tools/read-only-select? :sqlserver sql))
+      "select executed_at, @exec_count, updated_by from t"
+      "select [exec] from #temp_exec")))
+
 (deftest ^:parallel read-only-select-problem-test
   (testing "SQL that is a read-only select has no problem"
     (is (nil? (sql-tools/read-only-select-problem :postgres "SELECT 1"))))
@@ -555,6 +665,7 @@
       :sqlserver :statement-word      "EXEC"             "SELECT 1 FROM t exec('DROP TABLE x')"
       :mysql     :executable-comment  nil                "SELECT * FROM t /*! FOR UPDATE */"
       :mysql     :bare-dash-comment   nil                "SELECT id --1 FROM t"
+      :mysql     :lone-carriage-return nil               "SELECT 1\rFROM t"
       :mysql     :backslash-quote     nil                "SELECT 'it\\'s' FROM t"
       :postgres  :unicode-identifier  nil                "SELECT U&\"pg_\\0073leep\"(10)"
       :postgres  :not-a-select        nil                "-- nothing here"

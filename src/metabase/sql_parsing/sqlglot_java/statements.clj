@@ -1,0 +1,338 @@
+(ns metabase.sql-parsing.sqlglot-java.statements
+  "What kind of statement a query is: `is_single_stmt_of_type`, with the read-only checks behind `read-only-select?`,
+  and `simple_query`."
+  (:require
+   [clojure.string :as str]
+   [metabase.sql-parsing.sqlglot-java.ast :as ast]
+   [metabase.util :as u])
+  (:import
+   (com.metabase.sqlglot.ast Expressions$Anonymous Expressions$Column Expressions$Delete Expressions$Dot
+                             Expressions$DynamicIdentifier Expressions$Func
+                             Expressions$Insert Expressions$Parameter Expressions$PropertyEQ Expressions$Query
+                             Expressions$Select Expressions$SetOperation Expressions$Subquery
+                             Expressions$Table Expressions$TableAlias Expressions$Update
+                             Expressions$WithTableHint)
+   (com.metabase.sqlglot.reference ParseError)))
+
+(set! *warn-on-reflection* true)
+
+(defn- split-placeholder-casts
+  "`sql` with `?::` written `? ::` outside Databricks. sqlglot's tokenizer reads `?::` as one token that only the
+  Databricks parser consumes, so `select ?::text` fails to parse anywhere else (#81373)."
+  [^String sql dialect]
+  (if (or (= dialect "databricks") (not (str/includes? sql "?::")))
+    sql
+    (try
+      ;; Insert right to left so the earlier offsets stay valid.
+      (reduce (fn [^String sql [token-type _text start]]
+                (if (= token-type "QDCOLON")
+                  (str (subs sql 0 (inc start)) " " (subs sql (inc start)))
+                  sql))
+              sql
+              (rseq (ast/tokenize sql dialect)))
+      (catch Exception _
+        sql))))
+
+;; Nodes that write, lock, or run something other than a query. A SELECT can hold some of these: `SELECT ... INTO`
+;; creates a table, `FOR UPDATE`/`FOR SHARE` take row locks, and Postgres lets a CTE body be a DELETE ... RETURNING.
+;; Spark and Hive's `SELECT TRANSFORM (...) USING '<command>'` pipes rows through a program on the cluster.
+(def ^:private not-read-only-classes
+  (mapv ast/ast-class
+        ["DML" "DDL" "Into" "Lock" "Command" "Set" "Grant" "Revoke" "Drop" "Alter" "TruncateTable" "Transaction"
+         "Commit" "Rollback" "Use" "Execute" "LoadData" "Kill" "Pragma" "Cache" "Uncache" "Refresh" "Analyze"
+         "NextValueFor" "QueryTransform"]))
+
+;; Writes a SELECT can make through a built-in function. Advancing a sequence is one: sqlglot parses only the
+;; SQL-standard `NEXT VALUE FOR` as its own node; Postgres and Redshift spell it as a function, Oracle and Snowflake as
+;; a `.NEXTVAL` pseudo-column, and Snowflake also as the table function `TABLE(GETNEXTVAL(seq))`. Postgres large
+;; objects are another, and any role can create one by default. So is asking Postgres for the current transaction's
+;; id, which assigns one, and writing a message into the write-ahead log.
+(def ^:private write-functions
+  #{;; sequences
+    "nextval" "setval" "getnextval"
+    ;; Postgres large objects
+    "lo_creat" "lo_create" "lo_from_bytea" "lo_put" "lowrite" "lo_truncate" "lo_truncate64" "lo_unlink"
+    "lo_import" "lo_export"
+    ;; Postgres transaction ids and the write-ahead log
+    "txid_current" "pg_current_xact_id" "pg_logical_emit_message"})
+
+;; Built-in functions that reach past the query that calls them: they take a lock that can outlive it, change the
+;; session's settings, signal or stop another session, hold the connection waiting, or act outside the database.
+(def ^:private session-effect-functions
+  #{;; Postgres advisory locks
+    "pg_advisory_lock" "pg_advisory_lock_shared" "pg_try_advisory_lock" "pg_try_advisory_lock_shared"
+    "pg_advisory_xact_lock" "pg_advisory_xact_lock_shared" "pg_try_advisory_xact_lock"
+    "pg_try_advisory_xact_lock_shared" "pg_advisory_unlock" "pg_advisory_unlock_shared" "pg_advisory_unlock_all"
+    ;; MySQL named locks
+    "get_lock" "release_lock" "release_all_locks"
+    ;; session settings and signals
+    "set_config" "pg_notify" "pg_terminate_backend" "pg_cancel_backend" "pg_reload_conf"
+    ;; Postgres dblink: a named connection stays open on the session
+    "dblink_connect" "dblink_connect_u"
+    ;; Snowflake: stop another session's work
+    "system$cancel_query" "system$cancel_all_queries" "system$abort_session" "system$abort_transaction"
+    ;; waiting
+    "pg_sleep" "pg_sleep_for" "pg_sleep_until" "sleep" "benchmark" "sleepeachrow" "system$wait"
+    "master_pos_wait" "source_pos_wait" "wait_for_executed_gtid_set" "wait_until_sql_thread_after_gtids"
+    ;; running a program, Java code or a request outside the database
+    "executable" "reflect" "java_method" "http_request" "system$send_email" "sys_exec" "sys_eval"
+    ;; Postgres server administration: the write-ahead log, backups, replication slots, recovery, the log file
+    "pg_switch_wal" "pg_switch_xlog" "pg_create_restore_point" "pg_backup_start" "pg_backup_stop" "pg_start_backup"
+    "pg_stop_backup" "pg_promote" "pg_rotate_logfile" "pg_create_physical_replication_slot"
+    "pg_create_logical_replication_slot" "pg_drop_replication_slot" "pg_wal_replay_pause" "pg_wal_replay_resume"})
+
+;; Table functions that read from another server, a URL, object storage or the server's files. Their names are common
+;; words elsewhere (`url`, `file`, `mysql`), so each set applies only in its own dialect. ClickHouse's `cluster` and
+;; `clusterAllReplicas` are left out: they read the same tables from the cluster's own servers.
+(def ^:private dialect-session-effect-functions
+  {"clickhouse" #{"url" "urlcluster" "s3" "s3cluster" "gcs" "remote" "remotesecure" "mysql" "postgresql" "mongodb"
+                  "redis" "sqlite" "file" "filecluster" "hdfs" "hdfscluster" "azureblobstorage"
+                  "azureblobstoragecluster" "jdbc" "odbc" "deltalake" "iceberg" "hudi"}
+   "duckdb"     #{"read_csv" "read_csv_auto" "read_parquet" "parquet_scan" "read_json" "read_json_auto"
+                  "read_json_objects" "read_ndjson" "read_ndjson_auto" "read_ndjson_objects" "read_text" "read_blob"
+                  "read_xlsx" "sniff_csv" "glob" "iceberg_scan" "delta_scan"}})
+
+;; Functions that take a SQL string and run it. The parser reads that string as an opaque literal, so a write, a
+;; lock, or a session change hidden inside it escapes the checks above. The wrapper is refused whatever the string
+;; holds. Oracle's package functions (`dbms_xmlgen.getxml`, `utl_http.request`) collapse to a bare name that could
+;; collide with an innocent column function, so they are left to the connection-level work instead.
+(def ^:private sql-executing-functions
+  #{;; Postgres query-to-xml family
+    "query_to_xml" "query_to_xmlschema" "query_to_xml_and_xmlschema" "cursor_to_xml" "cursor_to_xmlschema"
+    ;; Postgres full-text and tablefunc helpers that run a passed query
+    "ts_stat" "ts_rewrite" "crosstab" "crosstab2" "crosstab3" "crosstab4" "connectby"
+    ;; Postgres dblink
+    "dblink" "dblink_exec" "dblink_send_query" "dblink_fetch" "dblink_open"
+    ;; SQL Server linked-server and ad hoc access
+    "openquery" "openrowset" "opendatasource"
+    ;; BigQuery federated query
+    "external_query"
+    ;; Snowflake: run a SQL string as a table function
+    "to_query"})
+
+;; SQL Server table hints that take update or exclusive locks, hold shared ones to the end of the transaction, or set
+;; the granularity of the locks taken (`ROWLOCK`, `PAGLOCK`). `NOLOCK`, `INDEX(...)` and the rest only steer how a
+;; plain read runs.
+(def ^:private locking-table-hints
+  #{"UPDLOCK" "XLOCK" "TABLOCK" "TABLOCKX" "HOLDLOCK" "SERIALIZABLE" "REPEATABLEREAD" "ROWLOCK" "PAGLOCK"})
+
+;; Words that start a T-SQL statement. SQL Server ends a SELECT at one of them without a semicolon, while sqlglot
+;; reads a bare one as a table alias: `SELECT 1 FROM t EXEC('...')` parses as one SELECT and runs as two statements.
+;; `MERGE`, `FETCH` and `USE` are left out: they also appear in join hints, `OFFSET ... FETCH` and `USE HINT`.
+(def ^:private tsql-statement-words
+  #{"ALTER" "BACKUP" "BEGIN" "BULK" "CHECKPOINT" "CLOSE" "COMMIT" "CREATE" "DBCC" "DEALLOCATE" "DECLARE" "DELETE"
+    "DENY" "DROP" "EXEC" "EXECUTE" "GOTO" "GRANT" "INSERT" "KILL" "OPEN" "PRINT" "RAISERROR" "READTEXT"
+    "RECONFIGURE" "RESTORE" "REVERT" "REVOKE" "ROLLBACK" "SAVE" "SET" "SHUTDOWN" "THROW" "TRUNCATE" "UPDATE"
+    "UPDATETEXT" "WAITFOR" "WRITETEXT"})
+
+;; Dialects whose server runs the body of a `/*! ... */` comment as SQL, and reads `--` as a comment only when
+;; whitespace follows it.
+(def ^:private mysql-family-dialects #{"mysql" "mariadb" "singlestore" "starrocks" "doris" "tidb"})
+
+(defn- function-name
+  "The lower-case name of the function `node` calls, or nil when it is not a function call."
+  [node]
+  (cond
+    (instance? Expressions$Anonymous node) (u/lower-case-en (ast/node-name node))
+    (instance? Expressions$Func node)      (u/lower-case-en (ast/sql-name node))))
+
+(defn- first-function-in
+  "The name of the first function in `stmt` that is in `names`, or nil."
+  [names stmt]
+  (some #(names (function-name %)) (ast/walk stmt)))
+
+(defn- sql-executing-function
+  "The name of the first function in `stmt` that runs SQL passed to it as text, or nil."
+  [stmt]
+  (some (fn [node]
+          (or (sql-executing-functions (function-name node))
+              ;; Trino passes a query through to a connector's database with
+              ;; `TABLE(catalog.system.query(query => '...'))`. The name `query` alone is too common to refuse, so it
+              ;; counts only under a `system` schema.
+              (when (and (instance? Expressions$Dot node)
+                         (ast/ast-node? (ast/this node))
+                         (= "system" (u/lower-case-en (ast/node-name (ast/this node))))
+                         (= "query" (function-name (ast/arg node "expression"))))
+                "system.query")))
+        (ast/walk stmt)))
+
+(defn- dynamic-function-call?
+  "Whether `stmt` calls a function named by Snowflake's `IDENTIFIER(...)`, as in `IDENTIFIER('f')(1)`. Name checks
+  never see that name, a string or a variable, so the call is refused whatever it names. Only the call form has an
+  `expressions` arg, holding the call's arguments, possibly none; a table or column name such as `IDENTIFIER('t')`
+  has no such arg."
+  [stmt]
+  (boolean (some #(and (instance? Expressions$DynamicIdentifier %)
+                       (.containsKey (ast/args %) "expressions"))
+                 (ast/walk stmt))))
+
+(defn- external-table?
+  "Whether `stmt` names a file or a URL as a table. DuckDB reads `FROM 'data.csv'` and `FROM \"s3://b/x.parquet\"` as
+  the file at that path, and a name holding `.`, `/`, `\\` or `:` cannot be a plain table there unless quoted."
+  [stmt dialect]
+  (and (= dialect "duckdb")
+       (boolean (some #(and (instance? Expressions$Table %)
+                            (re-find #"[./\\:]" (or (ast/node-name %) "")))
+                      (ast/walk stmt)))))
+
+(defn- writes-or-locks? [node]
+  (cond
+    (ast/instance-of-any? not-read-only-classes node)
+    true
+
+    (instance? Expressions$Anonymous node)
+    (contains? write-functions (u/lower-case-en (ast/node-name node)))
+
+    ;; MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
+    ;; connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres. The variable is
+    ;; searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
+    (instance? Expressions$PropertyEQ node)
+    (let [target (ast/this node)]
+      (and (ast/ast-node? target)
+           (boolean (some #(instance? Expressions$Parameter %) (ast/walk target)))))
+
+    (instance? Expressions$Column node)
+    (and (seq (ast/text node "table"))
+         (= "nextval" (u/lower-case-en (ast/node-name node))))
+
+    (instance? Expressions$WithTableHint node)
+    (boolean (some #(contains? locking-table-hints (u/upper-case-en (ast/node-name %)))
+                   (ast/expressions node)))
+
+    ;; SQL Server still honours a hint written without WITH, `FROM t (TABLOCKX)`, which parses as a call to a
+    ;; table-valued function named `t`.
+    (and (instance? Expressions$Table node) (instance? Expressions$Anonymous (ast/this node)))
+    (boolean (some #(and (instance? Expressions$Column %)
+                         (empty? (ast/text % "table"))
+                         (contains? locking-table-hints (u/upper-case-en (ast/node-name %))))
+                   (ast/expressions (ast/this node))))
+
+    ;; After an alias, `FROM t a (XLOCK)` parses as a column list on the alias, and SQL Server reads it as a hint.
+    ;; Only a plain table's alias counts: a derived table's column list, `(SELECT ...) d(a)`, names real columns.
+    (and (instance? Expressions$Table node) (instance? Expressions$TableAlias (ast/arg node "alias")))
+    (boolean (some #(contains? locking-table-hints (u/upper-case-en (ast/node-name %)))
+                   (ast/arg (ast/arg node "alias") "columns")))
+
+    :else
+    false))
+
+;; Any other function with side effects, a user-defined one included, passes this check: no list of names can be
+;; complete. Grants on the database credential are what keep such a function from writing.
+(defn- read-only? [stmt]
+  (not-any? writes-or-locks? (ast/walk stmt)))
+
+(defn- hidden-sql
+  "`[reason detail]` when `sql` holds text its database would run and sqlglot would not parse as a statement of its
+  own, else nil.
+
+  The MySQL marks are looked for in the raw text, string literals included: MySQL's `NO_BACKSLASH_ESCAPES` mode ends
+  a literal where sqlglot does not, so a backslash before a quote is refused. A `U&\"...\"` identifier is refused in
+  every dialect, since Postgres reads its escapes and the function checks above never see the name.
+
+  A carriage return with no newline after it is refused in every dialect. sqlglot ends a `--` or `#` comment at one,
+  and MySQL does not, so the text after it would be a comment to one and SQL to the other."
+  [sql dialect]
+  (or (when (re-find #"\r(?!\n)" sql)
+        ["lone-carriage-return" nil])
+      (when (re-find #"(?<![\w\$])[uU]&\"" sql)
+        ["unicode-identifier" nil])
+      (when (= dialect "tsql")
+        (some (fn [[token-type text]]
+                (when-not (#{"STRING" "NATIONAL_STRING" "IDENTIFIER"} token-type)
+                  ;; sqlglot keeps a character such as U+200B inside a word, `t<U+200B>EXEC`, where SQL Server may end
+                  ;; the word. Each piece between characters that cannot be part of a name is checked on its own.
+                  ;; `(?U)` makes `\w` match letters in any script, as Python's does; Java's also matches the join
+                  ;; controls U+200C and U+200D, which Python's does not, so they are split on too.
+                  (some #(when (contains? tsql-statement-words (u/upper-case-en %))
+                           ["statement-word" (u/upper-case-en %)])
+                        (str/split text #"(?U)(?:[^\w@#$]|[\x{200C}\x{200D}])+"))))
+              (ast/tokenize sql dialect)))
+      (when (contains? mysql-family-dialects dialect)
+        (cond
+          (or (str/includes? sql "/*!") (str/includes? sql "/*M!")) ["executable-comment" nil]
+          ;; MySQL reads `--` as a comment only before ASCII whitespace or a control character, so the characters are
+          ;; spelled out rather than left to `\s`.
+          (re-find #"--(?![ \t\n\r\f\x0B]|\z)" sql)                   ["bare-dash-comment" nil]
+          (re-find #"\\['\"`]" sql)                                  ["backslash-quote" nil]))))
+
+(defn- unbracketed
+  "`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias."
+  [stmt]
+  (if (and (instance? Expressions$Subquery stmt) (empty? (ast/node-alias stmt)))
+    (recur (ast/this stmt))
+    stmt))
+
+(def ^:private read-classes [Expressions$Select Expressions$SetOperation])
+(def ^:private write-classes [Expressions$Update Expressions$Insert Expressions$Delete])
+
+(defn- not-read-only-reason
+  "`[reason detail]` for why `stmts`, parsed from `sql`, are not one read-only SELECT, else nil."
+  [stmts sql dialect]
+  (cond
+    (empty? stmts)                                                     ["not-a-select" nil]
+    (not= 1 (count stmts))                                             ["multiple-statements" nil]
+    (not (ast/instance-of-any? read-classes (unbracketed (first stmts)))) ["not-a-select" nil]
+    (not (read-only? (first stmts)))                                   ["writes-or-locks" nil]
+    :else
+    (if-let [function (first-function-in (into session-effect-functions (dialect-session-effect-functions dialect))
+                                         (first stmts))]
+      ["session-function" function]
+      (if (external-table? (first stmts) dialect)
+        ["external-table" nil]
+        (if-let [executor (sql-executing-function (first stmts))]
+          ["sql-executing-function" executor]
+          (if (dynamic-function-call? (first stmts))
+            ["dynamic-function-call" nil]
+            (hidden-sql sql dialect)))))))
+
+(defn single-stmt-of-type
+  "Whether `sql` is a single read statement (`\"read\"`, a SELECT), a single read-only SELECT (`\"read-only\"`), or a
+  single write statement (anything else: INSERT, UPDATE, DELETE), with the statement as regenerated SQL.
+
+  `\"read-only\"` also refuses a SELECT holding anything that writes or locks anywhere in its tree, and does not count
+  a statement holding only a comment after the last semicolon. `:reason` (and `:reason_detail`) say why a query is
+  not a read-only SELECT."
+  [sql stmt-type dialect]
+  (let [read-only-type? (= stmt-type "read-only")
+        ;; Filled in as it goes, so a failure part way keeps what was found before it.
+        result          (volatile! {:is_single_stmt? false, :allowed_stmt_type? false})]
+    (try
+      (let [stmts   (cond->> (vec (ast/parse (split-placeholder-casts sql dialect) dialect))
+                      read-only-type? ast/nonempty-statements)
+            allowed (if (#{"read" "read-only"} stmt-type) read-classes write-classes)
+            problem (when read-only-type? (not-read-only-reason stmts sql dialect))
+            [stmt]  stmts]
+        (when problem
+          (vswap! result assoc :reason (first problem) :reason_detail (second problem)))
+        (when (= 1 (count stmts))
+          (vswap! result assoc :is_single_stmt? true)
+          (when (and (ast/instance-of-any? allowed (unbracketed stmt)) (nil? problem))
+            (vswap! result assoc :allowed_stmt_type? true))
+          (when-not stmt
+            (throw (ex-info "'NoneType' object has no attribute 'sql'" {})))
+          (vswap! result assoc :sql (ast/sql stmt dialect))))
+      ;; Python's `except Exception` also catches the RecursionError of SQL nested too deeply.
+      (catch StackOverflowError _
+        (vswap! result assoc :error "maximum recursion depth exceeded"))
+      ;; An exception without a message (a port NullPointerException) is still an error, so it still gets a reason.
+      (catch Exception e
+        (vswap! result assoc :error (or (ex-message e) (.getName (class e))))))
+    (cond-> @result
+      (and read-only-type? (:error @result)) (assoc :reason "unparseable"))))
+
+(defn simple-query
+  "Whether `sql` is a simple SELECT, with no LIMIT, OFFSET or CTE, and the `:reason` when it is not."
+  [sql dialect]
+  (try
+    (let [stmt (ast/parse-one sql dialect)]
+      (cond
+        (not (instance? Expressions$Query stmt))  {:is_simple false :reason "Not a simple SELECT"}
+        (ast/arg stmt "with_")                    {:is_simple false :reason "Contains a CTE"}
+        (not (instance? Expressions$Select stmt)) {:is_simple false :reason "Not a simple SELECT"}
+        (ast/arg stmt "limit")                    {:is_simple false :reason "Contains a LIMIT"}
+        (ast/arg stmt "offset")                   {:is_simple false :reason "Contains an OFFSET"}
+        :else                                     {:is_simple true}))
+    (catch ParseError e
+      {:is_simple false :reason (ex-message e)})
+    (catch Exception e
+      {:is_simple false :reason (str "Unexpected error: " (ex-message e))})))
