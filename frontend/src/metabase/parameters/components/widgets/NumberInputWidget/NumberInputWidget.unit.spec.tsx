@@ -85,6 +85,15 @@ describe("NumberInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith([10]);
     });
 
+    it("should keep the full precision of a big integer", async () => {
+      const { setValue } = setup({ value: undefined });
+      await userEvent.type(
+        screen.getByRole("textbox"),
+        "9223372036854775807{enter}",
+      );
+      expect(setValue).toHaveBeenCalledWith(["9223372036854775807"]);
+    });
+
     it("should allow to submit an empty value on enter if the parameter is not required", async () => {
       const { setValue } = setup({ value: ["10"] });
       const input = screen.getByRole("textbox");
@@ -184,6 +193,17 @@ describe("NumberInputWidget", () => {
         "9007199254740993",
         "9007199254740994",
       ]);
+    });
+
+    it("should keep the full precision of negative big integers", async () => {
+      const { setValue } = setup({ value: undefined, arity: 2 });
+
+      const [textbox1, textbox2] = screen.getAllByRole("textbox");
+      await userEvent.type(textbox1, "-9223372036854775809");
+      await userEvent.type(textbox2, "0");
+      await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+
+      expect(setValue).toHaveBeenCalledWith(["-9223372036854775809", 0]);
     });
 
     it("should be clearable by emptying all inputs", async () => {

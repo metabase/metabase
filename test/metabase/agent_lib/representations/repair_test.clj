@@ -4156,12 +4156,12 @@
 
 (deftest join-alias-field-type-resolves-each-join-at-most-once-test
   (let [resolutions (fn [join-stages q]
-                      (let [calls   (atom 0)
-                            resolve (mt/original-fn #'repr.resolve/resolve-query)]
+                      (let [calls         (atom 0)
+                            resolve-query (mt/original-fn #'repr.resolve/resolve-query)]
                         (mt/with-dynamic-fn-redefs [repr.resolve/resolve-query (fn [mp query store]
                                                                                  (when (= join-stages (get query "stages"))
                                                                                    (swap! calls inc))
-                                                                                 (resolve mp query store))]
+                                                                                 (resolve-query mp query store))]
                           (repair* q))
                         @calls))]
     (testing "a join named only by already-typed by-name refs is resolved once, to check them"

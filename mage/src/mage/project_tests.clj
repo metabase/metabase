@@ -9,7 +9,10 @@
 
 (def ^:private module-check-namespaces
   '[dev.modules-config-test
+    metabase.core.module-cuts-test
     metabase.core.module-cycles-test
+    metabase.core.module-history-report-test
+    metabase.core.module-history-test
     metabase.core.modules-test])
 
 (def ^:private honey-sql-check-namespaces

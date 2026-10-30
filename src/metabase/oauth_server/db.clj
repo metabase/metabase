@@ -113,7 +113,7 @@
   "Apply `row` to the OAuthClient with primary key `id`, returning the number updated."
   [id  :- ms/PositiveInt
    row :- ::oauth-server.schema/oauth-client.update]
-  (t2/update! :model/OAuthClient id row))
+  (t2/update! :model/OAuthClient :id id row))
 
 (mu/defn insert-authorization-code!
   "Insert the OAuthAuthorizationCode `row`, returning the number inserted."

@@ -24,7 +24,7 @@
 
 (defn migrate-alert!
   [scheduler pulse-id]
-  (->> (#'pulse-to-notification/alert->notification! scheduler (t2/select-one :pulse pulse-id))
+  (->> (#'pulse-to-notification/alert->notification! scheduler (t2/select-one :pulse :id pulse-id))
        (map :id)
        (map (partial t2/select-one :model/Notification))
        (map models.notification/hydrate-notification)
@@ -76,7 +76,7 @@
         (testing "has one subscription, one email handler with one recipient"
           (let [alert-id (create-alert! {} card-id [{:channel_type "email"
                                                      :recipients  [{:user_id (mt/user->id :rasta)}]}])
-                alert    (t2/select-one :model/Pulse alert-id)
+                alert    (t2/select-one :model/Pulse :id alert-id)
                 alert-triggers (pulse-channel-test/send-pulse-triggers alert-id)
                 notification (first (migrate-alert! (task/scheduler) alert-id))]
             (testing "sanity check that there is a trigger for the alert to begin with"

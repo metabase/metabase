@@ -22,6 +22,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.settings :as dashboards.settings]
+   [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
@@ -692,9 +693,12 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
-                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
+                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]
+   _body
+   request]
   (with-dashboard-load-id dashboard-load-id
     (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
+          _           (some-> (data-apps/request-data-app request) (data-apps/check-dashboard resolved-id))
           dashboard (get-dashboard resolved-id)]
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
@@ -1193,10 +1197,13 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
-                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
+                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]
+   _body
+   request]
   (with-dashboard-load-id dashboard-load-id
     (perms/with-relevant-permissions-for-user api/*current-user-id*
       (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
+            _           (some-> (data-apps/request-data-app request) (data-apps/check-dashboard resolved-id))
             dashboard (get-dashboard resolved-id)]
         (queries/batch-fetch-dashboard-metadata [dashboard])))))
 
@@ -1348,7 +1355,10 @@
   [{:keys [id param-key]}      :- [:map {:closed true}
                                    [:id ms/PositiveInt]
                                    [:param-key ms/NonBlankString]]
-   constraint-param-key->value :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])]
+   constraint-param-key->value :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-dashboard id))
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
@@ -1372,7 +1382,10 @@
                                     [:id    ms/PositiveInt]
                                     [:param-key ms/NonBlankString]
                                     [:query ms/NonBlankString]]
-   constraint-param-key->value  :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])]
+   constraint-param-key->value  :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-dashboard id))
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true
@@ -1392,7 +1405,10 @@
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ms/PositiveInt]
                               [:param-key ms/NonBlankString]]
-   {:keys [value]}        :- [:map {:closed true} [:value :string]]]
+   {:keys [value]}        :- [:map {:closed true} [:value :string]]
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-dashboard id))
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]
       (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
@@ -1426,11 +1442,16 @@
   [_route-params
    {:keys [filtered filtering]} :- [:map {:closed true}
                                     [:filtered  (ms/QueryVectorOf ::lib.schema.id/field)]
-                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ::lib.schema.id/field)]]]]
+                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ::lib.schema.id/field)]]]
+   _body
+   request]
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
-        filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
+        filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})
+        data-app            (data-apps/request-data-app request)]
     (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
-      (api/read-check :model/Field field-id))
+      (if data-app
+        (data-apps/check-field data-app field-id)
+        (api/read-check :model/Field field-id)))
     (into {} (for [field-id filtered-field-ids]
                [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))]))))
 
@@ -1446,7 +1467,9 @@
                                           [:dashcard-id  ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map {:closed true}
-                            [:parameters {:optional true} ::actions.schema/prefetch-parameter-values]]]
+                            [:parameters {:optional true} ::actions.schema/prefetch-parameter-values]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-dashboard dashboard-id))
   (api/read-check :model/Dashboard dashboard-id)
   (let [dashcard (api/check-404 (dashboards-rest.db/dashcard-in-dashboard dashcard-id dashboard-id))]
     (actions/fetch-values
@@ -1469,7 +1492,9 @@
    _query-params
    {:keys [parameters]} :- [:map {:closed true}
                             [:parameters {:optional true}
-                             [:maybe ::actions.schema/execute-parameter-values.string-keys]]]]
+                             [:maybe ::actions.schema/execute-parameter-values.string-keys]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-dashboard dashboard-id))
   (api/read-check :model/Dashboard dashboard-id)
   (actions/execute-dashcard! dashboard-id dashcard-id parameters))
 
@@ -1489,7 +1514,9 @@
    _query-params
    {:keys [dashboard_load_id], :as body} :- [:map {:closed true}
                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
-                                             [:parameters        {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
+                                             [:parameters        {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-dashboard dashboard-id))
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
@@ -1521,7 +1548,9 @@
    :- [:map {:closed true}
        [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
-       [:pivot_results {:default false} ms/BooleanValue]]]
+       [:pivot_results {:default false} ms/BooleanValue]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-dashboard dashboard-id))
   (m/mapply qp.dashboard/process-query-for-dashcard
             {:dashboard     (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
              :card          (api/check-404 (dashboards-rest.db/card card-id))
@@ -1553,7 +1582,9 @@
                                                   [:card-id ms/PositiveInt]]
    _query-params
    body :- [:map {:closed true}
-            [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
+            [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-dashboard dashboard-id))
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body

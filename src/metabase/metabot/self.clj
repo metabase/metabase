@@ -283,30 +283,36 @@
 (defn- report-tool-usage-xf
   "Transducer that fires an agent_used_tool :snowplow/ai_service_event per tool call.
   Only fires when :source and :request-id are present in tracking-opts. A tool name outside `tools` is
-  model output that may carry user data, so it is reported as \"unknown\"."
+  model output that may carry user data, so it is reported as \"unknown\".
+
+  A failed call also reports its error's class and code from `tools.runtime/invoke`.
+  The codes are namespaced keywords, so moving or renaming one changes the reported value.
+  They describe the whole call, not the failed items inside a batched call.
+  The message and the recovery text never leave the instance."
   [{:keys [request-id session-id source profile-id iteration]} tools]
   (map (fn [part]
          (when (and (some? source)
                     (some? request-id)
                     (= (:type part) :tool-output))
-           (analytics.core/track-event! :snowplow/ai_service_event
-                                        {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
-                                         :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
-                                         :source                        source
-                                         :event                         "agent_used_tool"
-                                         :user-id                       api/*current-user-id*
-                                         :session-id                    session-id
-                                         :profile                       (some-> profile-id name)
-                                         :duration-ms                   (some-> (:duration-ms part) long)
-                                         ;; A failed call carries `:error` on its result — success
-                                         ;; is the absence of it, as it is everywhere else.
-                                         :result                        (if (get-in part [:result :error])
-                                                                          "error"
-                                                                          "success")
-                                         :event-details                 (cond-> {"tool_name" (if (contains? tools (:function part))
-                                                                                               (:function part)
-                                                                                               "unknown")}
-                                                                          (some? iteration) (assoc "step" iteration))}))
+           (let [{:keys [class code] :as error} (get-in part [:result :error])]
+             (analytics.core/track-event! :snowplow/ai_service_event
+                                          {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
+                                           :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
+                                           :source                        source
+                                           :event                         "agent_used_tool"
+                                           :user-id                       api/*current-user-id*
+                                           :session-id                    session-id
+                                           :profile                       (some-> profile-id name)
+                                           :duration-ms                   (some-> (:duration-ms part) long)
+                                           ;; A failed call carries `:error` on its result — success
+                                           ;; is the absence of it, as it is everywhere else.
+                                           :result                        (if error "error" "success")
+                                           :event-details                 (cond-> {"tool_name" (if (contains? tools (:function part))
+                                                                                                 (:function part)
+                                                                                                 "unknown")}
+                                                                            (some? iteration) (assoc "step" iteration)
+                                                                            error             (assoc "error_class" (name class)
+                                                                                                     "error_code"  (u/qualified-name code)))})))
          part)))
 
 (defn- with-retries
@@ -528,6 +534,15 @@
     (log/warnf "%s invoked without :required-permission (source=%s tag=%s) — every LLM call should declare which metabot permission gates it."
                fn-name (pr-str (:source opts)) (pr-str (:tag opts)))))
 
+(defn- warn-when-missing-request-id
+  "Every LLM call should carry the `:request-id` of its agent loop: a message limit leaves that loop out of its count,
+  so a call without one counts its own loop's earlier calls and can be blocked mid-turn. Logs a warn pointing at the
+  source/tag when the caller forgets. Shared by [[call-llm]] and [[call-llm-structured-with-trace]]."
+  [fn-name opts]
+  (when-not (:request-id opts)
+    (log/warnf "%s invoked without :request-id (source=%s tag=%s) — every LLM call should carry the id of its agent loop."
+               fn-name (pr-str (:source opts)) (pr-str (:tag opts)))))
+
 (defn llm-call-unavailable-reason
   "Single pre-flight gate for callers that want to *skip* an LLM call cleanly instead of
   attempting one and catching the failure it would throw. Bundles every check that decides
@@ -591,7 +606,8 @@
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
   ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
    (warn-when-missing-required-permission "call-llm" tracking-opts)
-   (or (when-let [limit-msg (usage/check-usage-limits!)]
+   (warn-when-missing-request-id "call-llm" tracking-opts)
+   (or (when-let [limit-msg (usage/check-usage-limits! (:request-id tracking-opts))]
          (error-reducible limit-msg "ai_usage_limit_reached"))
        (when-let [missing (missing-required-permission (:required-permission tracking-opts))]
          (error-reducible (format "Permission denied: %s required" missing) "permission_denied"))
@@ -714,7 +730,8 @@
   provider system prompt, keeping untrusted content in the user channel."
   [provider-and-model messages json-schema temperature max-tokens opts]
   (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
-  (when-let [limit-msg (usage/check-usage-limits!)]
+  (warn-when-missing-request-id "call-llm-structured-with-trace" opts)
+  (when-let [limit-msg (usage/check-usage-limits! (:request-id opts))]
     (throw (ex-info limit-msg
                     {:type       :metabot/usage-limit-reached
                      :error-code "ai_usage_limit_reached"

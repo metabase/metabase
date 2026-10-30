@@ -634,15 +634,46 @@
             (is (=? {:error {:class :validation :code :invalid-arguments}}
                     (invoke-search [#'search/search-tool] {:keyword_queries ["x"] :limit limit})))))))))
 
-(deftest unexpected-search-failure-test
-  (mt/with-test-user :crowberto
-    (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search index unavailable" {})))]
-      (doseq [[tool-var extra-args] [[#'search/search-tool {}]
-                                     [#'search/sql-search-tool {:database_id (mt/id)}]
-                                     [#'search/nlq-search-tool {}]]]
-        (is (= {:error {:class :unrecoverable :code :internal}
-                :output "This call failed and the user was shown the error (:internal). Don't retry it."}
-               (invoke-search [tool-var] (merge extra-args {:keyword_queries ["orders"]}))))))))
+(deftest ^:parallel search-failure-test
+  (testing "a failing search backend lets the agent browse what the search was limited to (BOT-2540)"
+    (mt/with-test-user :crowberto
+      (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search Index not found." {})))]
+        (let [instance-step (str "Find the data with `read_resource` instead: read `metabase://collections` for "
+                                 "metrics, models, questions and dashboards, or `metabase://databases`, then "
+                                 "`metabase://database/{id}/tables`, for tables.")
+              no-retry-step (str "Do not call `search` again in this turn. If you cannot find the data another "
+                                 "way, tell the user that search is unavailable right now.")
+              confined      {:entity_id metabot.config/embedded-metabot-id :collection_id 42}]
+          (doseq [[scope tool-var extra-args metabot profile-id step]
+                  [["the instance" #'search/search-tool {} nil "internal" instance-step]
+                   ["the instance" #'search/nlq-search-tool {} nil "nlq" instance-step]
+                   ["the instance" #'search/transform-search-tool {} nil "internal" instance-step]
+                   ["one database" #'search/sql-search-tool {:database_id (mt/id)} nil "sql"
+                    (str "Find the data with `read_resource` instead: read `metabase://database/" (mt/id)
+                         "/tables` and `metabase://database/" (mt/id) "/models`.")]
+                   ["a confined collection" #'search/search-tool {} confined "internal"
+                    "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
+                   ["a confined collection" #'search/nlq-search-tool {} {:collection_id 42} "nlq"
+                    "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
+                   ;; `read_resource` shows only verified content here too, so the browse step stays
+                   ["verified content" #'search/search-tool {} {:use_verified_content true} "internal" instance-step]
+                   ;; Profiles exempt from curation, where `read_resource` shows unverified content
+                   ["verified content" #'search/nlq-search-tool {} {:use_verified_content true} "nlq-fallback" nil]
+                   ["verified content" #'search/sql-search-tool {:database_id (mt/id)} {:use_verified_content true}
+                    "sql" nil]
+                   ["verified content" #'search/nlq-search-tool {} (assoc confined :use_verified_content true)
+                    "nlq" nil]]]
+            (testing (str tool-var " limited to " scope " under " profile-id)
+              (is (= {:error  {:class :recoverable :code ::search/search-failed}
+                      :output (str/join "\n" (remove nil? ["Search failed." step no-retry-step]))}
+                     (invoke-search [tool-var #'metabot.tools/read-resource-tool]
+                                    (merge extra-args {:keyword_queries ["orders"]})
+                                    metabot
+                                    profile-id)))))
+          (testing "a profile without `read_resource`, like slackbot, is still told to stop searching"
+            (is (= {:error  {:class :recoverable :code ::search/search-failed}
+                    :output (str "Search failed.\n" no-retry-step)}
+                   (invoke-search [#'search/search-tool] {:keyword_queries ["orders"]})))))))))
 
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
@@ -661,8 +692,7 @@
   (testing "every search tool variant rejects a scalar the same way"
     (doseq [[tool-var extra-args] [[#'metabot.tools/search-tool {}]
                                    [#'metabot.tools/sql-search-tool {:database_id 1}]
-                                   [#'metabot.tools/nlq-search-tool {}]
-                                   [#'metabot.tools/transform-search-tool {}]]]
+                                   [#'metabot.tools/nlq-search-tool {}]]]
       (testing (str tool-var)
         (is (= "Invalid tool arguments: `keyword_queries` must be an array of strings; received a string."
                (test-util/tool-boundary-error "search" tool-var
