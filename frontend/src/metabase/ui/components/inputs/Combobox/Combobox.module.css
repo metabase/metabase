@@ -29,9 +29,6 @@
   font-size: var(--mantine-font-size-sm);
   font-weight: normal;
   line-height: var(--mantine-line-height-sm);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 
   &::after {
     display: none;
