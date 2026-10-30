@@ -1363,8 +1363,8 @@
                        #"Unable to parse native query"
                        (run-native "with cte as (\n  select 1 as col\n), \nselect * from cte"))))
                 (testing "a query the validator cannot check"
-                  (with-redefs [sql-tools/validate-executable-stmt (constantly {:verdict :unknown
-                                                                                :reason  :large-literal-list})]
+                  (mt/with-dynamic-fn-redefs [sql-tools/validate-executable-stmt (constantly {:verdict :unknown
+                                                                                              :reason  :large-literal-list})]
                     (is (thrown-with-msg?
                          java.lang.Exception
                          #"Unable to validate this native query on an impersonated database"
