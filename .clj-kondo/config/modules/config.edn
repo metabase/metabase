@@ -1738,6 +1738,7 @@
    :uses #{dashboards
            lib
            parameters
+           parameters.schema
            util}}
 
   metrics

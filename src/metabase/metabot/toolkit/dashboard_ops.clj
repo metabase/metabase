@@ -24,6 +24,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.toolkit.dashboard-op-schema :as dashboard-op-schema]
    [metabase.parameters.mapping-targets :as mapping-targets]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
@@ -412,8 +413,13 @@
 
 (defmethod apply-op "set_series"
   [state {:keys [dashcard_id card_ids]}]
-  (resolve-dashcard! state dashcard_id)
-  (update-row state :dashcards dashcard_id #(assoc % :series (mapv (fn [cid] {:id cid}) card_ids))))
+  (let [dc      (resolve-dashcard! state dashcard_id)
+        removed (into #{} (comp (keep :id) (remove (set card_ids))) (:series dc))]
+    ;; A mapping left on a removed series card would filter a card the dashcard no longer shows, as replace_card avoids.
+    (update-row state :dashcards dashcard_id
+                #(cond-> (assoc % :series (mapv (fn [cid] {:id cid}) card_ids))
+                   (and (seq removed) (seq (:parameter_mappings %)))
+                   (update :parameter_mappings (partial filterv (fn [m] (not (contains? removed (:card_id m))))))))))
 
 (defn- coerce-target
   "Keywordize the clause heads of a raw JSON `target` — `[\"dimension\", [\"template-tag\", \"x\"]]`
@@ -425,34 +431,61 @@
     (into [(keyword (first x))] (map coerce-target) (rest x))
     x))
 
+(defn- resolve-parameter!
+  [state id]
+  (or (find-row state :parameters id)
+      (fail! :unknown-parameter {:parameter-id id})))
+
+(defn- patched-mapping
+  "`mapping` as `dc` would store it: the three keys a mapping has, its target's clause heads keywordized, and its
+   card filled in from the dashcard when it names none."
+  [dc mapping]
+  ;; A patched mapping arrives as raw JSON, so its target's clause heads are strings ("dimension", "field") where the
+  ;; mapping schema wants keywords, the same coercion `wire_parameter` does. The query processor applies a mapping
+  ;; only when its card_id is the card being run, and nothing fills one in later, so a mapping without one would
+  ;; never filter anything.
+  (cond-> (-> (select-keys mapping [:parameter_id :card_id :target])
+              (update :target (comp coerce-target vec)))
+    (nil? (:card_id mapping)) (assoc :card_id (:card_id dc))))
+
+(defn- check-patched-mapping!
+  "Throws unless `mapping`, from [[patched-mapping]], is a mapping the save accepts, for a parameter on the dashboard
+   and a card `dc` shows."
+  [state dc mapping]
+  (when-let [explanation (mr/explain ::parameters.schema/parameter-mapping mapping)]
+    (fail! :invalid-op {:explanation (me/humanize explanation)}))
+  (resolve-parameter! state (:parameter_id mapping))
+  ;; The save would otherwise filter the primary card for a mapping that names a card the dashcard doesn't show.
+  (when (and (:card_id mapping)
+             (not (contains? (into #{(:card_id dc)} (keep :id) (:series dc)) (:card_id mapping))))
+    (fail! :mapping-card-not-on-dashcard {:dashcard-id (:id dc), :card-id (:card_id mapping)})))
+
 (defmethod apply-op "patch_dashcard"
   [state {:keys [dashcard_id patch]}]
-  (let [dc        (resolve-dashcard! state dashcard_id)
-        own-cards (into #{(:card_id dc)} (keep :id) (:series dc))]
-    ;; The save would otherwise filter the primary card for a mapping that names a card the dashcard doesn't show.
-    (doseq [{:keys [card_id]} (:parameter_mappings patch)
-            :when             (and card_id (not (contains? own-cards card_id)))]
-      (fail! :mapping-card-not-on-dashcard {:dashcard-id dashcard_id, :card-id card_id})))
-  (doseq [k (keys patch)]
-    (cond
-      (contains? patch-rejected-keys k)
-      (fail! :unpatchable-key {:key (name k), :use-op (get patch-rejected-keys k)})
+  (let [dc (resolve-dashcard! state dashcard_id)]
+    (doseq [k (keys patch)]
+      (cond
+        (contains? patch-rejected-keys k)
+        (fail! :unpatchable-key {:key (name k), :use-op (get patch-rejected-keys k)})
 
-      (not (contains? patchable-keys k))
-      (fail! :unknown-patch-key {:key (if (or (keyword? k) (string? k)) (name k) (pr-str k))})))
-  (update-row state :dashcards dashcard_id
-              (fn [dc]
-                (cond-> (merge dc (dissoc patch :visualization_settings))
-                  (contains? patch :visualization_settings)
-                  (update :visualization_settings merge (:visualization_settings patch))
+        (not (contains? patchable-keys k))
+        (fail! :unknown-patch-key {:key (if (or (keyword? k) (string? k)) (name k) (pr-str k))})))
+    (let [mappings (when (contains? patch :parameter_mappings)
+                     (mapv (partial patched-mapping dc) (:parameter_mappings patch)))
+          stored   (into #{} (map (partial patched-mapping dc)) (:parameter_mappings dc))]
+      ;; Only new or changed mappings are checked. The patch replaces the whole list, so a stale stored mapping sent
+      ;; back unchanged would otherwise block an unrelated edit.
+      (doseq [m     mappings
+              :when (not (contains? stored m))]
+        (check-patched-mapping! state dc m))
+      (update-row state :dashcards dashcard_id
+                  (fn [dc]
+                    (cond-> (merge dc (dissoc patch :visualization_settings :parameter_mappings))
+                      (contains? patch :visualization_settings)
+                      (update :visualization_settings merge (:visualization_settings patch))
 
-                  ;; A patched mapping arrives as raw JSON, so its target's clause heads are strings
-                  ;; ("dimension", "field") where the mapping schema wants keywords — the same coercion
-                  ;; `wire_parameter` does. Without it every parameter_mappings patch, a key this op
-                  ;; advertises as patchable, fails validation with "should be :dimension".
-                  (contains? patch :parameter_mappings)
-                  (update :parameter_mappings
-                          (partial mapv #(cond-> % (:target %) (update :target (comp coerce-target vec)))))))))
+                      mappings
+                      (assoc :parameter_mappings mappings)))))))
 
 ;;; -------------------------------------------------- Tab ops ------------------------------------------------------
 
@@ -518,11 +551,6 @@
   state)
 
 ;;; --------------------------------------------- Parameter ops -----------------------------------------------------
-
-(defn- resolve-parameter!
-  [state id]
-  (or (find-row state :parameters id)
-      (fail! :unknown-parameter {:parameter-id id})))
 
 (defn- card-for-dashcard
   [state dashcard]
@@ -857,9 +885,17 @@
   (at-op idx op #(doto (apply-op state op)
                    (check-cards-resolved! op))))
 
+(defn- series-ids
+  "`dc` with its `:series` reduced to `{:id}` maps."
+  [dc]
+  ;; A hydrated dashcard carries full card rows in `:series`, and the save's dashcard schema allows only their ids.
+  (cond-> dc
+    (seq (:series dc)) (update :series (partial mapv #(select-keys % [:id])))))
+
 (defn compile-ops
   "Fold `ops` over `current`, a dashboard hydrated with `[:dashcards :series :card] :tabs`.
    Returns `{:dashcards :tabs :parameters}`, the full-replacement payload `update-dashboard!` saves.
+   Each dashcard's `:series` holds only card ids.
    New rows carry the caller's negative ids.
    It runs the ops through [[prepare-ops]] before applying any, so it also takes ops that have not been through it.
    The `cards` map holds the row of each card the ops may touch, keyed by id.
@@ -872,4 +908,5 @@
                  (assoc (init-state current cards) ::stored-card-ids (dashboard-card-ids current))
                  (prepare-ops ops))
       check-tab-coverage!
-      (select-keys [:dashcards :tabs :parameters])))
+      (select-keys [:dashcards :tabs :parameters])
+      (update :dashcards (partial mapv series-ids))))

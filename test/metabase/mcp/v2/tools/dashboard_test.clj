@@ -229,7 +229,8 @@
   (testing "`parameter_mappings` is advertised as patchable, and a mapping arrives as raw JSON with string
             clause heads. Without the same target coercion `wire_parameter` does, every such patch failed
             validation with \"should be :dimension\" — a documented key that could never be used."
-    (mt/with-temp [:model/Dashboard     dash {:name "Sales"}
+    (mt/with-temp [:model/Dashboard     dash {:name       "Sales"
+                                              :parameters [{:id "p1" :name "P1" :slug "p1" :type "category"}]}
                    :model/Card          card {:name "Revenue"}
                    :model/DashboardCard dc   {:dashboard_id (:id dash) :card_id (:id card)}]
       (let [result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
