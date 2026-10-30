@@ -21,7 +21,10 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:dynamic *multi-level?* false)
 
@@ -561,6 +564,147 @@
                       (assoc :use-m2m true
                              :client-id (tx/db-test-env-var-or-throw :databricks :client-id)
                              :oauth-secret (tx/db-test-env-var-or-throw :databricks :oauth-secret)))))))))
+
+(def ^:private wif-base-details
+  {:host "x.cloud.databricks.com"
+   :http-path "/sql/1.0/warehouses/abc"
+   :catalog "main"
+   :auth-mode "wif"})
+
+(deftest ^:parallel connection-details->spec-wif-inline-token-test
+  (testing "WIF with an inline pasted JWT sets Auth_AccessToken via pass-through (AuthMech=11, Auth_Flow=0)"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                (assoc wif-base-details :wif-token "eyJhbGciOi.the-jwt.sig"))]
+      (is (= 11 (:AuthMech spec)))
+      (is (= 0 (:Auth_Flow spec)))
+      (is (= "eyJhbGciOi.the-jwt.sig" (:Auth_AccessToken spec)))
+      (testing "no PAT or M2M credentials leak into the spec"
+        (is (not (contains? spec :uid)))
+        (is (not (contains? spec :pwd)))
+        (is (not (contains? spec :OAuth2ClientId)))
+        (is (not (contains? spec :OAuth2Secret)))))))
+
+(deftest connection-details->spec-wif-file-path-wins-test
+  (testing "file path wins over inline token; trailing newline is stripped"
+    (mt/with-temp-file [tok-path "wif-token"]
+      (spit tok-path "from-file\n")
+      (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :databricks
+                    (assoc wif-base-details
+                           :wif-token           "from-inline"
+                           :wif-token-file-path tok-path))]
+          (is (= "from-file" (:Auth_AccessToken spec))))))))
+
+(deftest connection-details->spec-wif-readable-paths-test
+  (testing "the token file is read only from a directory `readable-paths` allows"
+    (mt/with-temp-file [tok-path "wif-token"]
+      (spit tok-path "from-file")
+      (let [spec (fn [] (sql-jdbc.conn/connection-details->spec
+                         :databricks
+                         (assoc wif-base-details :wif-token-file-path tok-path)))]
+        (mt/with-temp-env-var-value! [mb-readable-paths "NONE"]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed" (spec))))
+        (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
+          (is (= "from-file" (:Auth_AccessToken (spec)))))))))
+
+(defn- fake-jwt
+  "A parseable (but not verifiable) JWT with `claims` as the payload."
+  [claims]
+  (let [encoder (java.util.Base64/getUrlEncoder)
+        encode  (fn [m] (String. (.encode encoder (.getBytes (json/encode m) "UTF-8")) "UTF-8"))]
+    (str (encode {:alg "none"}) "." (encode claims) ".sig")))
+
+(deftest ^:parallel connection-details->spec-wif-exp-sets-password-expiry-test
+  (testing "when the WIF token carries `exp`, the spec gets :password-expiry-timestamp for pool auto-invalidation"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                (assoc wif-base-details :wif-token (fake-jwt {:exp 1700000000 :sub "s"})))]
+      (is (= 1700000000000 (:password-expiry-timestamp spec)))))
+  (testing "no `exp` claim → no :password-expiry-timestamp on the spec"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                (assoc wif-base-details :wif-token (fake-jwt {:sub "s"})))]
+      (is (not (contains? spec :password-expiry-timestamp))))))
+
+(deftest ^:parallel normalize-db-details-test
+  (testing "legacy :use-m2m true (no :auth-mode) → :auth-mode \"m2m\" injected"
+    (is (= {:details {:use-m2m true :client-id "cid" :oauth-secret "osec" :auth-mode "m2m"}}
+           (driver/normalize-db-details
+            :databricks
+            {:details {:use-m2m true :client-id "cid" :oauth-secret "osec"}}))))
+  (testing "legacy :use-m2m false (no :auth-mode) → :auth-mode \"pat\" injected"
+    (is (= {:details {:use-m2m false :token "dapi" :auth-mode "pat"}}
+           (driver/normalize-db-details
+            :databricks
+            {:details {:use-m2m false :token "dapi"}}))))
+  (testing "explicit :auth-mode is preserved"
+    (is (= {:details {:use-m2m true :auth-mode "wif" :wif-token "jwt"}}
+           (driver/normalize-db-details
+            :databricks
+            {:details {:use-m2m true :auth-mode "wif" :wif-token "jwt"}}))))
+  (testing ":write_data_details is normalized the same way as :details"
+    (is (= {:details {:use-m2m true :auth-mode "m2m"}
+            :write_data_details {:use-m2m false :auth-mode "pat"}}
+           (driver/normalize-db-details
+            :databricks
+            {:details {:use-m2m true}
+             :write_data_details {:use-m2m false}}))))
+  (testing "database without :details is returned unchanged"
+    (is (= {:engine :databricks}
+           (driver/normalize-db-details :databricks {:engine :databricks})))))
+
+(deftest ^:parallel db-details-to-test-and-migrate-test
+  (testing "returns a single candidate with :auth-mode injected from :use-m2m"
+    (is (= [{:use-m2m true :client-id "cid" :oauth-secret "osec" :auth-mode "m2m"}]
+           (driver/db-details-to-test-and-migrate
+            :databricks
+            {:use-m2m true :client-id "cid" :oauth-secret "osec"})))
+    (is (= [{:use-m2m false :token "dapi" :auth-mode "pat"}]
+           (driver/db-details-to-test-and-migrate
+            :databricks
+            {:use-m2m false :token "dapi"}))))
+  (testing "returns nil when :auth-mode is already present (nothing to migrate)"
+    (is (nil? (driver/db-details-to-test-and-migrate
+               :databricks
+               {:auth-mode "wif" :wif-token "jwt"})))))
+
+(deftest ^:parallel connection-details->spec-backward-compat-use-m2m-test
+  (testing "legacy :use-m2m true produces an M2M OAuth spec"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                {:host "x.cloud.databricks.com"
+                 :http-path "/sql/1.0/warehouses/abc"
+                 :catalog "main"
+                 :use-m2m true
+                 :client-id "cid"
+                 :oauth-secret "osec"})]
+      (is (= 11 (:AuthMech spec)))
+      (is (= 1 (:Auth_Flow spec)))
+      (is (= "cid" (:OAuth2ClientId spec)))
+      (is (= "osec" (:OAuth2Secret spec)))))
+  (testing "legacy :use-m2m false produces a PAT spec"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                {:host "x.cloud.databricks.com"
+                 :http-path "/sql/1.0/warehouses/abc"
+                 :catalog "main"
+                 :use-m2m false
+                 :token "dapiXXXX"})]
+      (is (= 3 (:AuthMech spec)))
+      (is (= "token" (:uid spec)))
+      (is (= "dapiXXXX" (:pwd spec)))))
+  (testing "explicit :auth-mode wins over :use-m2m"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                (assoc wif-base-details
+                       :use-m2m    true
+                       :client-id  "cid"
+                       :wif-token  "eyJhbGciOi.jwt.sig"))]
+      (is (= 11 (:AuthMech spec)))
+      (is (= 0 (:Auth_Flow spec)) "WIF pass-through flow, not M2M")
+      (is (= "eyJhbGciOi.jwt.sig" (:Auth_AccessToken spec))))))
 
 (deftest ^:parallel mulit-line-comment-test
   (mt/test-driver :databricks
