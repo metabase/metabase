@@ -18,7 +18,7 @@ jobs:
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
-      filters: backend_all project_backend_checks project_migration_checks project_ratchet_checks
+      filters: backend_all mage_tests project_backend_checks project_migration_checks project_ratchet_checks
 
   # Generated static-viz output can shift without any backend source changing, so the suite follows
   # it too. Only worth probing when nothing else has already decided the suite.
@@ -82,9 +82,24 @@ jobs:
             || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
           run: ./bin/mage kondo-ratchets
 
+  mage-tests:
+    name: Mage
+    needs: gate
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'mage_tests') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Check mage runs
+        run: ./bin/mage -h
+      - name: Run mage tests
+        run: ./bin/mage -test
+
   project-tests:
     name: Project tests
-    needs: project-checks
+    needs: [project-checks, mage-tests]
     if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5

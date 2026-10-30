@@ -19,6 +19,7 @@ jobs:
       codeql: ${{ steps.changes.outputs.codeql }}
       i18n: ${{ steps.changes.outputs.i18n }}
       openapi: ${{ steps.changes.outputs.openapi }}
+      shell_scripts: ${{ steps.changes.outputs.shell_scripts }}
       snowplow: ${{ steps.changes.outputs.snowplow }}
       workflows: ${{ steps.changes.outputs.workflows }}
       workflows_files: ${{ steps.changes.outputs.workflows_files }}
@@ -86,6 +87,10 @@ jobs:
         - name: Run actionlint
           if: needs.files-changed.outputs.workflows == 'true'
           run: ${{ steps.download.outputs.executable }} --color --verbose ${{ needs.files-changed.outputs.workflows_files }}
+
+        - name: Lint create-backport scripts
+          if: needs.files-changed.outputs.shell_scripts == 'true'
+          run: shellcheck .github/actions/create-backport/{kondo-ratchets,create-backport-test}.sh
 
         - name: Check every workflow job sets a timeout
           if: needs.files-changed.outputs.workflows == 'true'

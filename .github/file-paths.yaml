@@ -196,7 +196,7 @@ project_tests_infra: &project_tests_infra
   - "mage/src/mage/shell.clj"
   - "mage/src/mage/util.clj"
 
-project_backend_checks:
+project_backend_checks: &project_backend_checks
   - *project_tests_infra
   - "{src,test,enterprise,dev,bin,mage}/**/*.{clj,cljc,cljs}"
   - "modules/**/*.clj"
@@ -212,17 +212,23 @@ project_backend_checks:
   - "dev/resources/dev/modules_config_test/**"
 
 # Only the ratchet check reads the budgets, so a diff that touches nothing else runs that suite alone.
-project_ratchet_checks:
+project_ratchet_checks: &project_ratchet_checks
   - ".clj-kondo/ratchets.edn"
   - ".clj-kondo/ratchets-test.edn"
   - ".clj-kondo/config/modules/ratchets.edn"
 
-project_migration_checks:
+project_migration_checks: &project_migration_checks
   - *project_tests_infra
   - "bin/lint-migrations-file/**"
   - "resources/migrations/**/*.{yaml,yml}"
   - "src/metabase/app_db/custom_migrations.clj"
   - "src/metabase/app_db/custom_migrations/**"
+
+mage_tests:
+  - *project_backend_checks
+  - *project_ratchet_checks
+  - *project_migration_checks
+  - "mage/**"
 
 sources: &sources
   - *shared_sources
@@ -342,6 +348,9 @@ build_uberjar:
   - *embedding_sdk_components
   - *embedding_sdk_host_sample_apps
   - *workflows
+
+shell_scripts:
+  - ".github/actions/create-backport/*.sh"
 
 yaml:
   - "**/*.yml"

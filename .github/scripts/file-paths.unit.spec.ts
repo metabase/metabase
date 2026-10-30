@@ -301,4 +301,35 @@ describe("file-paths.yaml", () => {
       ),
     ).toBe(true);
   });
+
+  it.each([
+    "bb.edn",
+    "bin/mage",
+    "deps.edn",
+    "mage/src/mage/modules.clj",
+    "mage/test/mage/module_explorer_state_test.js",
+    ".clj-kondo/config/modules/config.edn",
+    ".clj-kondo/ratchets.edn",
+    "src/metabase/queries/core.clj",
+    "resources/migrations/001_update_migrations.yaml",
+    ".github/workflows/backend.yml",
+  ])("runs the Mage tests when %s changes", (file) => {
+    expect(matches("mage_tests", file)).toBe(true);
+  });
+
+  it.each([
+    "frontend/src/metabase/App.tsx",
+    "docs/README.md",
+    "e2e/test/scenarios/a.cy.spec.ts",
+  ])("skips the Mage tests when only %s changes", (file) => {
+    expect(matches("mage_tests", file)).toBe(false);
+  });
+
+  it.each([
+    ".github/actions/create-backport/kondo-ratchets.sh",
+    ".github/actions/create-backport/create-backport-test.sh",
+  ])("lints and tests %s", (file) => {
+    expect(matches("shell_scripts", file)).toBe(true);
+    expect(matches("ci_scripts", file)).toBe(true);
+  });
 });
