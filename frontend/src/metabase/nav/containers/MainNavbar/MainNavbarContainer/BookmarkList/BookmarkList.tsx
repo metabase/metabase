@@ -113,14 +113,15 @@ const BookmarkItem = ({
         isDraggable={isDraggable}
         onClick={onSelect}
         right={
-          <button
-            className={cx(S.removeButton, CS.cursorPointer)}
-            onClick={onRemove}
-          >
-            <Tooltip label={t`Remove bookmark`} position="bottom">
+          <Tooltip label={t`Remove bookmark`} position="right">
+            <button
+              className={cx(S.removeButton, CS.cursorPointer)}
+              aria-label={t`Remove bookmark`}
+              onClick={onRemove}
+            >
               <Icon name={iconName} />
-            </Tooltip>
-          </button>
+            </button>
+          </Tooltip>
         }
       >
         {bookmark.name}
