@@ -69,6 +69,7 @@ export const InteractiveDashboardContent = (
   const dashboardProps: SdkDashboardInnerProps = useMemo(
     () => ({
       ...props,
+      sdkComponentName: "InteractiveDashboard" as const,
       clickActionMode,
       dashboardActions: [
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,

@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { LegacyRef } from "react";
 import { t } from "ttag";
 
+import { useReportComponentReady } from "embedding-sdk-bundle/analytics/component-signals";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import {
   Flex,
@@ -17,6 +18,13 @@ import S from "./MetabotQuestion.module.css";
 
 export function MetabotChatInput() {
   const metabot = useMetabotAgent();
+
+  // The chat input mounts only after MetabotQuestionInner resolves the layout.
+  // Reaching this point means the component is on screen and can send messages.
+  useReportComponentReady({
+    component: "MetabotQuestion",
+    isReady: true,
+  });
 
   const placeholder = metabot.isDoingScience
     ? t`Doing science...`

@@ -31,9 +31,17 @@ type EmbeddingSdkComponentRenderedEvent = ValidateEvent<{
   event_detail: string;
 }>;
 
+type EmbeddingSdkReadyEvent = ValidateEvent<{
+  event: "embedding_sdk_ready";
+  result: "ready" | "error" | "timeout";
+  duration_ms: number | null;
+  event_detail: string;
+}>;
+
 type EmbeddingSdkEvent =
   | EmbeddingSdkInitializedEvent
-  | EmbeddingSdkComponentRenderedEvent;
+  | EmbeddingSdkComponentRenderedEvent
+  | EmbeddingSdkReadyEvent;
 
 // The SDK runs inside the customer's app. A direct POST to the Snowplow
 // collector (`sp.metabase.com`) is cross-origin and blocked by a strict
