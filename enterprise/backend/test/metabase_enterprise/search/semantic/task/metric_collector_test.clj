@@ -19,7 +19,8 @@
 (use-fixtures :once #'semantic.tu/once-fixture)
 
 (def ^:private store-gauge-labels
-  "The label the store gauges are published under; see the var of the same name in the collector."
+  "The labels these gauges are expected to be exported under. Stated here rather than read from the
+  collector, so that renaming the label in production fails this test instead of following it."
   {:index "semantic-search"})
 
 (defn- create-test-tables!
@@ -103,12 +104,12 @@
            semantic.env/get-configured-embedding-model (constantly model)
            ;; supported? requires a configured embedder for engine selection
            semantic.embedding/get-configured-model     (constantly model)
-           ;; collect-metrics! only runs when semantic is the active engine; pin it so a sibling test
-           ;; leaking the search-engine setting can't make this read 0
+           ;; collect-store-gauges! only measures when semantic is the active engine; pin it so a sibling
+           ;; test leaking the search-engine setting can't make this read 0
            semantic.u/semantic-search-active?          (constantly true)]
           (testing "Missing tables are handled gracefully"
             (let [result (try
-                           (@#'semantic.task.collector/collect-metrics!)
+                           (@#'semantic.task.collector/collect-store-gauges!)
                            :success
                            (catch Throwable _
                              :failure))]

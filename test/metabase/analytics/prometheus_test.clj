@@ -266,13 +266,13 @@
       (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
       (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
 
-(deftest background-refresh-collector-test
-  (let [in-flight @#'prometheus/refreshes-in-flight
+(deftest ^:synchronized background-refresh-collector-test
+  (let [in-flight (atom #{})
         ran       (atom 0)
         submitted (atom [])
-        collector (prometheus/background-refresh-collector ::test-refresh 600 #(swap! ran inc))]
-    (try
-      (reset! in-flight #{})
+        collector (prometheus/background-refresh-collector ::test-refresh 17 #(swap! ran inc))]
+    (with-redefs [prometheus/refreshes-in-flight in-flight]
+      (is (= 17 (:min-interval-s collector)) "the scheduler throttles on this key")
       (mt/with-dynamic-fn-redefs [prometheus/submit-background-refresh! #(swap! submitted conj %)]
         ((:f collector))
         ((:f collector))
@@ -281,14 +281,11 @@
         ((first @submitted)))
       (is (= 1 @ran))
       (is (empty? @in-flight) "the claim is released, so a later scrape refreshes again")
-      (is (= 600 (:min-interval-s collector)))
       (testing "a refresh that cannot be scheduled releases its claim rather than wedging the collector"
         (mt/with-dynamic-fn-redefs [prometheus/submit-background-refresh!
                                     (fn [_] (throw (ex-info "no threads" {})))]
           ((:f collector)))
-        (is (empty? @in-flight)))
-      (finally
-        (reset! in-flight #{})))))
+        (is (empty? @in-flight))))))
 
 (deftest remove-series!-test
   (testing "one label combination stops being exported and its siblings carry on"

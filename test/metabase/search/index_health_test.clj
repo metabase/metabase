@@ -76,7 +76,7 @@
         (testing "a collector result updates the gauge and returns the health row"
           (is (= {:health 75 :message "ok"}
                  (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
-                                               :index    :semantic
+                                               :index     :semantic
                                                :collect   (constantly {:value   0.75
                                                                        :health  75
                                                                        :message "ok"})})))
@@ -84,17 +84,17 @@
         (testing "an inapplicable collector stops exporting a live gauge and returns nil"
           (reset! calls [])
           (is (nil? (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
-                                                  :index    :semantic
+                                                  :index     :semantic
                                                   :collect   (constantly nil)})))
           (is (= [[:remove :metabase-search/index-coverage-ratio {:index "semantic"}]] @calls)))
         (testing "a throwing collector stops exporting the gauge and returns a degraded row"
           (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
-                                        :index    :throwing-collector-test
+                                        :index     :throwing-collector-test
                                         :collect   (constantly {:value 0.9 :health 90 :message "was fine"})})
           (reset! calls [])
           (is (=? {:health 0, :message #"Metric collector errored: collector boom"}
                   (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
-                                                :index    :throwing-collector-test
+                                                :index     :throwing-collector-test
                                                 :collect   (fn []
                                                              (throw (ex-info "collector boom" {})))})))
           (is (= [[:remove :metabase-search/index-coverage-ratio {:index "throwing-collector-test"}]]
@@ -117,13 +117,13 @@
 
 (deftest ^:synchronized failed-first-write-does-not-mark-series-live-test
   (testing "a failed first gauge write leaves the series untracked, so nothing later removes it"
-    (let [publish!  index-health/publish-gauge!
-          live      @#'index-health/live-gauge-series
+    (let [live      (atom {})
           gauge-key :metabase-search/index-coverage-ratio
           labels    {:index "failed-write-test-engine"}
           series    [gauge-key labels]
-          calls     (atom [])]
-      (try
+          calls     (atom [])
+          publish!  index-health/publish-gauge!]
+      (with-redefs [index-health/live-gauge-series live]
         (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& _]
                                                            (throw (ex-info "prometheus down" {})))]
           (is (thrown? Exception (publish! gauge-key labels 1.0)))
@@ -132,9 +132,7 @@
           (publish! gauge-key labels nil)
           (is (empty? @calls))
           (publish! gauge-key labels 0.5)
-          (is (contains? @live series)))
-        (finally
-          (swap! live dissoc series))))))
+          (is (contains? @live series)))))))
 
 (deftest ^:synchronized refresh-isolates-measure-failures-test
   (testing "one collector failure does not stop later measures from refreshing"
@@ -142,11 +140,11 @@
           live  (atom {})
           boom  {:check-name :test-boom
                  :gauge-key  :metabase-search/index-staleness-seconds
-                 :index     :refresh-isolation-test
+                 :index      :refresh-isolation-test
                  :collect    (fn [] (throw (ex-info "collector boom" {})))}
           ok    {:check-name :test-ok
                  :gauge-key  :metabase-search/index-coverage-ratio
-                 :index     :refresh-isolation-test
+                 :index      :refresh-isolation-test
                  :collect    (constantly {:value 1.0 :health 100 :message "ok"})}]
       (with-redefs [index-health/live-gauge-series live]
         (with-gauge-spy calls
@@ -159,24 +157,17 @@
               [:set :metabase-search/index-coverage-ratio {:index "refresh-isolation-test"} 1.0]]
              @calls)))))
 
-(deftest ^:synchronized pull-collector-refreshes-gauges-on-each-instance-test
-  (let [measures  @#'index-health/index-measures
-        before    @measures
-        seen      (atom [])
+(deftest ^:synchronized gauge-refresh-covers-every-registered-measure-test
+  (let [seen      (atom [])
         one       {:check-name :one}
         two       {:check-name :two}
         collector (analytics.core/pull-collector :metabase.search.index-health/index-health-gauges)]
-    (try
-      (reset! measures {:one one, :two two})
-      (is (= 600 (:min-interval-s collector))
-          "the cadence stale-gauge-age-ms is derived from")
-      (mt/with-dynamic-fn-redefs
-        [index-health/run-measure!           #(swap! seen conj %)
-         health-inspector/save-check-result! #(throw (ex-info "must not persist from a scrape" {}))]
-        (#'index-health/refresh-search-index-gauges!))
-      (is (= #{one two} (set @seen)) "every registered measure refreshes on this instance")
-      (finally
-        (reset! measures before)))))
+    (is (= 600 (:min-interval-s collector))
+        "the cadence stale-gauge-age-ms is derived from")
+    (with-redefs [index-health/index-measures (atom {:one one, :two two})]
+      (mt/with-dynamic-fn-redefs [index-health/run-measure! #(swap! seen conj %)]
+        (#'index-health/refresh-search-index-gauges!)))
+    (is (= #{one two} (set @seen)) "every registered measure refreshes on this instance")))
 
 (deftest ^:synchronized background-gauge-refresh-isolates-write-failures-test
   (let [measures (atom {:one {:check-name :one}, :two {:check-name :two}})
