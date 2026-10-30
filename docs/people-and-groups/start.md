@@ -44,7 +44,7 @@ With [Pro and Enterprise plans](https://www.metabase.com/pricing), you have more
 
 - [JWT][jwt]
 - LDAP advanced features
-  - [Group membership filter](./ldap.md#ldap-group-membership-filter)
+  - [Group membership filter](./ldap.md#group-membership-filter)
   - [Syncing user attributes](./ldap.md#syncing-user-attributes-with-ldap)
 - [OIDC][oidc]
   - [Keycloak][oidc-keycloak]

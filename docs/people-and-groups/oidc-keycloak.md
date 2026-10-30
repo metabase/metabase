@@ -100,9 +100,9 @@ You can configure Keycloak to include a groups claim in the OIDC token, then set
    - **Add to ID token**: On.
 6. Click **Save**.
 
-### Configure group sync in Metabase
+### Configure group mapping in Metabase
 
-Once Keycloak includes the groups claim in the token, set up the mapping in Metabase. See [Configure group sync in Metabase](./authenticating-with-oidc.md#configure-group-sync-in-metabase) for the steps.
+Once Keycloak includes the groups claim in the token, set up the mapping in Metabase. See [Configure group mapping in Metabase](./authenticating-with-oidc.md#configure-group-mapping-in-metabase) for the steps.
 
 ## Verify the setup
 

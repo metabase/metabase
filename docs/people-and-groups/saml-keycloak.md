@@ -9,7 +9,7 @@ redirect_from:
 Keycloak is an open source platform that can be used as a user directory to save user data while acting as the IdP for single sign-on.
 
 1. [Set up SAML in Keycloak](#working-in-the-keycloak-console) (the identity provider).
-2. [Set up SAML in Metabase](./authenticating-with-saml.md#enabling-saml-authentication-in-metabase) (the service provider).
+2. [Set up SAML in Metabase](./authenticating-with-saml.md#setting-up-saml-with-your-idp-in-metabase) (the service provider).
 
 For more information, check out our guide for [authenticating with SAML](./authenticating-with-saml.md).
 
@@ -29,7 +29,7 @@ For more information, check out our guide for [authenticating with SAML](./authe
    - **Home URL**: In your Metabase, go to **Admin** > **Settings** > **Authentication** > **SAML**. You'll find your Home URL in the field **URL the IdP should redirect back to**.
    - Click **Save**.
 
-5. (Optional, but recommended on test environments) Disable key signing for SSO client. See [settings for signing SSO requests](./authenticating-with-saml.md#settings-for-signing-sso-requests-optional).
+5. (Optional, but recommended on test environments) Disable key signing for SSO client. See [settings for signing SSO requests](./authenticating-with-saml.md#sign-sso-requests).
 
    - Click **Keys** tab.
    - **Client signature required:** Off.
@@ -87,16 +87,17 @@ In your Keycloak client:
 ### Set up group mapping in Metabase
 
 1. Go to **Admin** > **Settings** > **Authentication** > **SAML**.
-2. In the **Group mapping** section, enable the **Synchronize Group Memberships** toggle.
-3. Click **New mapping**.
-4. Enter the name of a Keycloak group, then click **Add**.
+2. In the **Group mapping** section, turn on the toggle.
+3. Next to **Manual group mappings**, click **New**.
+4. Enter the name of a Keycloak group.
 
    Keycloak groups show up in Metabase with the slash character ("/") prepended to the group name. A group named `sales` in Keycloak shows up as `/sales`.
 
 5. Select the Metabase groups to map the group name to.
-6. Repeat steps 3 to 5 for each group.
-7. In **Group attribute name**, enter `member_of` (the name for the attribute with the group list in your Keycloak configuration).
-8. Click **Save and enable**.
+6. Click **Add mapping**.
+7. Repeat steps 3 to 6 for each group.
+8. In **Group attribute name**, enter `member_of` (the name for the attribute with the group list in your Keycloak configuration).
+9. Click **Save and enable**.
 
 ## Troubleshooting SAML issues
 
