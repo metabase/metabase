@@ -1,5 +1,5 @@
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { useListImbalancedFindingsQuery } from "metabase-enterprise/api";
-import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { ContentDiagnosticsImbalancedFindingType } from "metabase-types/api";
 
 import {

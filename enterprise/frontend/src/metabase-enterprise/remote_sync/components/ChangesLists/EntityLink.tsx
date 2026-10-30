@@ -19,6 +19,14 @@ function getEntityUrl(entity: RemoteSyncEntity): string | null {
   if (entity.model === "transformtest") {
     return null;
   }
+  if (entity.model === "tableusersettings") {
+    return Urls.dataStudioTable(entity.id);
+  }
+  if (entity.model === "fieldusersettings" || entity.model === "dimension") {
+    return entity.table_id != null
+      ? Urls.dataStudioTableFields(entity.table_id, entity.id)
+      : null;
+  }
   if (entity.model === "action") {
     if (entity.card_id === undefined) {
       return null;
@@ -33,7 +41,10 @@ function getEntityUrl(entity: RemoteSyncEntity): string | null {
 export const EntityLink = ({ entity }: EntityLinkProps) => {
   const getIcon = useGetIcon();
   const entityIcon = useMemo((): IconData => {
-    if (entity.model === "field") {
+    if (entity.model === "tableusersettings") {
+      return { name: "table" };
+    }
+    if (entity.model === "fieldusersettings" || entity.model === "dimension") {
       return { name: "field" };
     }
 

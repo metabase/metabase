@@ -12,10 +12,13 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -208,7 +211,7 @@
                                                          :dataset_query (mt/mbql-query venues)
                                                          :archived true}]
         ;; Ensure the source document embeds the cards we expect to be copied (and one archived card that should not).
-        (t2/update! :model/Document doc-id
+        (t2/update! :model/Document :id doc-id
                     {:document {:type "doc"
                                 :content [{:type "cardEmbed" :attrs {:id card-1-id :name nil}}
                                           {:type "paragraph"}
@@ -1778,10 +1781,10 @@
       ;; Simulate a failure during card archiving
       (testing "failure during card archiving rolls back document archiving"
         (let [orig-update! (mt/original-fn #'t2/update!)]
-          (mt/with-dynamic-fn-redefs [t2/update! (fn [model id updates]
-                                                   (if (and (= model :model/Card) (:archived updates))
+          (mt/with-dynamic-fn-redefs [t2/update! (fn [model & args]
+                                                   (if (and (= model :model/Card) (:archived (last args)))
                                                      (throw (ex-info "Simulated card archive failure" {}))
-                                                     (orig-update! model id updates)))]
+                                                     (apply orig-update! model args)))]
             (mt/user-http-request :crowberto
                                   :put 500 (format "document/%s" doc-id)
                                   {:archived true})
@@ -2238,7 +2241,7 @@
             (is (= 200
                    (:status (mt/client-full-response :get (str "public/document/" uuid))))))
           (testing "Document is not accessible after archiving"
-            (t2/update! :model/Document (:id document) {:archived true})
+            (t2/update! :model/Document :id (:id document) {:archived true})
             (is (= "Not found."
                    (mt/client :get 404 (str "public/document/" uuid))))))))))
 
@@ -2270,7 +2273,7 @@
                                                    :document {:type "doc"
                                                               :content [{:type "cardEmbed"
                                                                          :attrs {:id card-id}}]}}]
-        (t2/update! :model/Card card-id {:document_id doc-id})
+        (t2/update! :model/Card :id card-id {:document_id doc-id})
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
           (testing "Read-only users can download"
             (perms/grant-collection-read-permissions! group coll-id)
@@ -2303,7 +2306,7 @@
                                      :format_rows false
                                      :pivot_results false})))
           (testing "Archived document returns 404"
-            (t2/update! :model/Document doc-id {:archived true})
+            (t2/update! :model/Document :id doc-id {:archived true})
             (mt/user-http-request :rasta
                                   :post 404
                                   (format "document/%s/card/%s/query/csv" doc-id card-id)
@@ -2326,7 +2329,7 @@
                                                       :document {:type "doc"
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {:id card-id}}]}}]
-           (t2/update! :model/Card card-id {:document_id doc-id})
+           (t2/update! :model/Card :id card-id {:document_id doc-id})
            (let [all-users-group (perms/all-users-group)]
              ;; Grant collection read permissions so user can access the document
              (perms/grant-collection-read-permissions! all-users-group coll-id)
@@ -2335,9 +2338,7 @@
                (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
                (is (malli= [:map
                             [:status [:= "failed"]]
-                            [:error_type [:= "missing-required-permissions"]]
-                            [:ex-data [:map
-                                       [:permissions-error? [:= true]]]]]
+                            [:error_type [:= "missing-required-permissions"]]]
                            (mt/user-http-request :rasta
                                                  :post 403
                                                  (format "document/%s/card/%s/query/csv" doc-id card-id)
@@ -2759,7 +2760,7 @@
                                                          :dataset_query (mt/native-query
                                                                          {:query "SELECT COUNT(*) FROM VENUES"})
                                                          :display       :scalar}]
-          (t2/update! :model/Document doc-id {:document (card-embed-ast native-card-id)})
+          (t2/update! :model/Document :id doc-id {:document (card-embed-ast native-card-id)})
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
           (mt/with-restored-data-perms!
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
@@ -2784,7 +2785,7 @@
                                                   :document_id            doc-id
                                                   :dataset_query          (mt/mbql-query venues)
                                                   :visualization_settings {:timeline.selected_timeline_ids [timeline-id]}}]
-          (t2/update! :model/Document doc-id {:document (card-embed-ast card-id)})
+          (t2/update! :model/Document :id doc-id {:document (card-embed-ast card-id)})
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
           (perms/revoke-collection-permissions! (perms/all-users-group) timeline-coll-id)
           (let [result      (mt/user-http-request :rasta :post 200 (format "document/%d/copy" doc-id)

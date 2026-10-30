@@ -1,7 +1,7 @@
 (ns metabase.channel.render.table
   (:require
    [clojure.string :as str]
-   [hiccup.core :refer [h]]
+   [hiccup.util :as hiccup.util]
    [medley.core :as m]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.style :as style]
@@ -84,7 +84,7 @@
                     {:font-weight 400
                      :color       style/color-text-light})
             :title "Row Index"}
-       (h "#")])
+       (hiccup.util/escape-html "#")])
     (map-indexed
      (fn [idx header-cell]
        (let [title (get column-names idx)
@@ -95,7 +95,7 @@
                        {:min-width :42px}
                        (get col->styles (:name col)))
                :title title}
-          (truncate-text (h title))]))
+          (truncate-text (hiccup.util/escape-html title))]))
      row)]])
 
 (defn calculate-pct-widths
@@ -145,7 +145,7 @@
            bar-width]    (calculate-pct-widths cell-width)]
       [:table {:style (style/style {:width (str cell-width "px") :border "0" :border-collapse "collapse"})}
        [:tr
-        [:td {:style (style/style {:width label-width :vertical-align "middle" :padding-right "10px"})} (h val)]
+        [:td {:style (style/style {:width label-width :vertical-align "middle" :padding-right "10px"})} (hiccup.util/escape-html val)]
         [:td {:style (style/style {:width bar-width :vertical-align "middle" :padding "0"})}
          [:table {:style (style/style {:width "100%" :border-collapse "collapse"})}
           [:tr
@@ -183,7 +183,7 @@
                                             :background-color (style/mb-primary-color)
                                             :border-radius "3px"})}]
                  [:td {:style (style/style {:width (format "%s%%" pct-left) :padding "0"})}]]]]])]]]]])
-    (h val)))
+    (hiccup.util/escape-html val)))
 
 (defn- image-url?
   "Whether a `view_as: \"image\"` cell may become an `<img src>`: only http(s), never an attacker-supplied
@@ -242,11 +242,11 @@
                ;; View as image
                (and (= (get col-settings ::mb.viz/view-as) "image")
                     (image-url? cell))
-               [:img {:src (h cell)
+               [:img {:src (hiccup.util/escape-html cell)
                       :style (style/style style/view-as-img-style)}]
 
                :else
-               (h cell))]))]))])
+               (hiccup.util/escape-html cell))]))]))])
 
 (defn- get-min-width
   "Get the min width for a column with text wrapping enabled. In the happy path, column widths are supplied in viz settings

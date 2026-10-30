@@ -13,15 +13,16 @@
 // the step outputs / exit code.
 const fs = require("fs");
 
-const pick = (rows, bundle, kind) => rows.find(row => row.bundle === bundle && row.kind === kind);
-const keyOf = row => `${row.bundle}/${row.kind}`;
-const mb = bytes => (bytes / 1024 / 1024).toFixed(2);
+const pick = (rows, bundle, kind) =>
+  rows.find((row) => row.bundle === bundle && row.kind === kind);
+const keyOf = (row) => `${row.bundle}/${row.kind}`;
+const mb = (bytes) => (bytes / 1024 / 1024).toFixed(2);
 const percentOf = (currentBytes, baseBytes) =>
   baseBytes ? Math.trunc(((currentBytes - baseBytes) * 100) / baseBytes) : 0;
 
 // Output names are derived from the gate key, so the workflow reads
 // `app_initial_status`, `embedding_sdk_chunked_total_status`, and so on.
-const outputPrefix = gateKey => gateKey.replace(/[^a-zA-Z0-9]+/g, "_");
+const outputPrefix = (gateKey) => gateKey.replace(/[^a-zA-Z0-9]+/g, "_");
 
 /**
  * Evaluate one gate. Returns the key plus exactly one of:
@@ -34,7 +35,10 @@ function evaluateGate({ current, base, threshold, gateKey }) {
   const gateCurrent = pick(current, bundle, kind);
   const gateBase = pick(base, bundle, kind);
   if (!gateCurrent || !gateBase || !gateBase.gzipBytes) {
-    return { gateKey, error: `Could not find ${bundle} ${kind} (gzip) in both builds` };
+    return {
+      gateKey,
+      error: `Could not find ${bundle} ${kind} (gzip) in both builds`,
+    };
   }
 
   // Both sides must measure the bundle the same way. A base ref built before the
@@ -52,7 +56,12 @@ function evaluateGate({ current, base, threshold, gateKey }) {
   }
 
   const percent = percentOf(gateCurrent.gzipBytes, gateBase.gzipBytes);
-  const status = percent > threshold ? "increased" : percent < -threshold ? "decreased" : "stable";
+  const status =
+    percent > threshold
+      ? "increased"
+      : percent < -threshold
+        ? "decreased"
+        : "stable";
   return { gateKey, status, percent };
 }
 
@@ -68,15 +77,24 @@ function compareBundles({ current, base, threshold, gateKeys }) {
     const currentRow = pick(current, bundle, kind);
     const baseRow = pick(base, bundle, kind);
     if (!currentRow || !baseRow) {
-      report.push(`${key}: present only in ${currentRow ? "current" : "base"} build`);
+      report.push(
+        `${key}: present only in ${currentRow ? "current" : "base"} build`,
+      );
       continue;
     }
     const diff = currentRow.gzipBytes - baseRow.gzipBytes;
     const percent = percentOf(currentRow.gzipBytes, baseRow.gzipBytes);
-    report.push(`${key}: ${mb(currentRow.gzipBytes)}MB vs ${mb(baseRow.gzipBytes)}MB (${percent}%, ${diff} bytes)`);
+    report.push(
+      `${key}: ${mb(currentRow.gzipBytes)}MB vs ${mb(baseRow.gzipBytes)}MB (${percent}%, ${diff} bytes)`,
+    );
   }
 
-  return { report, gates: gateKeys.map(gateKey => evaluateGate({ current, base, threshold, gateKey })) };
+  return {
+    report,
+    gates: gateKeys.map((gateKey) =>
+      evaluateGate({ current, base, threshold, gateKey }),
+    ),
+  };
 }
 
 module.exports = { compareBundles, outputPrefix };
@@ -90,12 +108,19 @@ const setOutput = (name, value) => {
 function main() {
   const [, , currentPath, basePath] = process.argv;
   const threshold = Number(process.env.THRESHOLD ?? 2);
-  const gateKeys = (process.env.GATES ?? "embedding-sdk-chunked/total").split(",").map(key => key.trim());
+  const gateKeys = (process.env.GATES ?? "embedding-sdk-chunked/total")
+    .split(",")
+    .map((key) => key.trim());
 
   const current = JSON.parse(fs.readFileSync(currentPath, "utf8"));
   const base = JSON.parse(fs.readFileSync(basePath, "utf8"));
 
-  const { report, gates } = compareBundles({ current, base, threshold, gateKeys });
+  const { report, gates } = compareBundles({
+    current,
+    base,
+    threshold,
+    gateKeys,
+  });
   console.log(report.join("\n"));
   console.log("");
 
@@ -118,12 +143,14 @@ function main() {
       continue;
     }
 
-    console.log(`Gate: ${gate.gateKey} ${gate.percent}% (threshold ${threshold}%) → ${gate.status}`);
+    console.log(
+      `Gate: ${gate.gateKey} ${gate.percent}% (threshold ${threshold}%) → ${gate.status}`,
+    );
     setOutput(`${prefix}_status`, gate.status);
     setOutput(`${prefix}_size_change_percent`, gate.percent);
   }
 
-  if (gates.some(gate => gate.error)) {
+  if (gates.some((gate) => gate.error)) {
     process.exit(1);
   }
 }

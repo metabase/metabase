@@ -100,7 +100,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("shows auth errors when no auth methods are enabled and there is no session", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
 
     cy.log("no auth method is available");
     H.loadSdkIframeEmbedTestPage({
@@ -154,7 +154,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("uses the existing user session only when useExistingUserSession is true", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: false });
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
 
     cy.log(
       "when no auth methods are enabled and the existing user session is not used, it should fail to login",
@@ -164,6 +164,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       metabaseConfig: {
         useExistingUserSession: false,
       },
+      signOut: false,
     }).within(() => {
       cy.findByTestId("sdk-error-container")
         .should("be.visible")
@@ -176,13 +177,14 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       metabaseConfig: {
         useExistingUserSession: true,
       },
+      signOut: false,
     });
 
     assertDashboardLoaded(frame);
   });
 
   it("can login via JWT with a custom fetch request token function, and shows an error if it fails", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"], signOut: true });
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
 
     cy.log("fetchRequestToken returns an empty token");
     H.loadSdkIframeEmbedTestPage({
@@ -225,7 +227,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
   it("can login via SAML, and shows an error if the SAML login results in an invalid user", () => {
     mockAuthSsoEndpointForSamlAuthProvider();
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
 
     cy.log("SAML login results in an invalid user");
     H.loadSdkIframeEmbedTestPage({
@@ -252,7 +254,6 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   it("allows an API key in development but not in production", () => {
     H.prepareSdkIframeEmbedTest({
       enabledAuthMethods: ["api-key"],
-      signOut: true,
     });
 
     cy.get<string>("@apiKey").then((apiKey) => {
@@ -296,7 +297,6 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
     H.prepareSdkIframeEmbedTest({
       enabledAuthMethods: ["jwt", "saml"],
-      signOut: true,
     });
 
     cy.log("preferredAuthMethod is saml");

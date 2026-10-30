@@ -67,7 +67,6 @@
     (let [results   (try
                       (vec (tx/gc-orphans! driver options))
                       (catch Exception e
-                        (def ee e)
                         [{:name nil, :status :failed, :error (ex-message e)}]))
           remaining (census! driver)
           {:keys [deleted failed]} (group-by :status results)]

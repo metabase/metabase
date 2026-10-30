@@ -139,6 +139,10 @@ export function dataStudioDashboardUsage(dashboardId: DashboardId) {
   return `${dataStudioDashboard(dashboardId)}/usage`;
 }
 
+export function dataStudioDashboardHistory(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/history`;
+}
+
 export function dataStudioDashboardSubscriptions(
   dashboardId: DashboardId,
   subscriptionId?: DashboardSubscription["id"],
@@ -419,6 +423,10 @@ export function dataStudioActionSettings(actionId: WritebackActionId) {
 
 export function newDataStudioAction() {
   return `${dataStudioActions()}/new`;
+}
+
+export function newDataStudioImplicitAction(tableId: TableId) {
+  return `${newDataStudioAction()}?table=${tableId}`;
 }
 
 export function dataStudioArchivedActions() {

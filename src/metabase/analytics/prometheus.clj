@@ -927,6 +927,10 @@
    (prometheus/counter :metabase-metaplow/errors
                        {:description "Metaplow event pipeline errors by stage."
                         :labels [:stage]})
+   ;; Not labelled by source address: the relays are anonymous and public, so the caller would pick the label value.
+   (prometheus/counter :metabase-analytics-relay/rejected
+                       {:description "Public telemetry relay requests rejected without forwarding, by relay and reason."
+                        :labels [:relay :reason]})
    (prometheus/gauge :metabase-memoize/cache-size
                      {:description "Number of entries currently held in a monitored in-memory memoization cache."
                       :labels [:cache]})])

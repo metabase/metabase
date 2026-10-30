@@ -6,7 +6,8 @@ import {
   useListLlmProvidersQuery,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { Button, Flex, Stack, Text } from "metabase/ui";
+import { FormFooter } from "metabase/common/components/FormFooter";
+import { Button, Text } from "metabase/ui";
 import type {
   LlmProviderConnection,
   LlmProviderType,
@@ -78,14 +79,14 @@ function AIProviderSetupContent({
 
   if (isPickingModel) {
     return (
-      <Stack gap="xl">
+      <>
         <LlmModelPicker />
-        <Flex justify="end">
+        <FormFooter pageProps={{ mt: "xl" }}>
           <Button variant="filled" onClick={onDone}>
             {t`Done`}
           </Button>
-        </Flex>
-      </Stack>
+        </FormFooter>
+      </>
     );
   }
 

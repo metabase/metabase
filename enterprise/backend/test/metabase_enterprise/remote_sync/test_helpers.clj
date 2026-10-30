@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.test :as mt]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -21,7 +22,6 @@
 description: null
 entity_id: %s
 slug: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 archived: false
 type: %s
 parent_id: %s
@@ -51,7 +51,6 @@ is_sample: false
 description: null
 entity_id: %s
 slug: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 archived: false
 type: %s
 parent_id: %s
@@ -76,7 +75,6 @@ is_sample: false
   (format "name: %s
 description: null
 entity_id: %s
-created_at: '2024-08-28T09:46:24.692002Z'
 creator_id: rasta@metabase.com
 display: table
 archived: false
@@ -117,7 +115,6 @@ document_id: null
                          (str/join "\n" (map (fn [dc]
                                                (format "- entity_id: %s
   card_id: %s
-  created_at: '2024-08-28T09:46:24.733016Z'
   row: 0
   col: 0
   size_x: 4
@@ -140,7 +137,6 @@ document_id: null
     (format "name: %s
 description: null
 entity_id: %s
-created_at: '2024-08-28T09:46:24.726993Z'
 creator_id: rasta@metabase.com
 archived: false
 collection_id: %s
@@ -388,7 +384,7 @@ width: fixed
 
 (def ^:private builtin-python-library
   "The built-in PythonLibrary created by migration. Recreated by fixture after cleanup."
-  {:path "common.py" :source "" :entity_id transforms-python/builtin-entity-id})
+  {:path "common.py" :source "" :entity_id transforms-python/builtin-entity-id :is_default true})
 
 (defn- ensure-builtin-python-library!
   "Ensures the built-in common.py PythonLibrary exists, creating it if missing."
@@ -422,10 +418,17 @@ width: fixed
         (when (seq old-ns-colls) (t2/insert! :model/Collection old-ns-colls))
         (ensure-builtin-python-library!)))))
 
+(defn reset-transforms-setting
+  "Test fixture that runs with remote-sync-transforms off, since a pull turns it on and nothing turns it off."
+  [f]
+  (mt/with-temporary-setting-values [remote-sync-transforms false]
+    (f)))
+
 (def clean-remote-sync-state
-  "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
-  model tables (Transform, TransformTag, PythonLibrary) are clean."
-  (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models)))
+  "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, optional feature model tables (Transform,
+  TransformTag, PythonLibrary), and the remote-sync-transforms setting are clean."
+  (t/compose-fixtures (t/compose-fixtures reset-transforms-setting clean-object)
+                      (t/compose-fixtures clean-task-table clean-optional-feature-models)))
 
 (defn commit-with-temp
   "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a
@@ -468,7 +471,6 @@ data_source: null
 owner_email: null
 owner_user_id: null
 is_published: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 archived_at: null
 deactivated_at: null
 data_layer: null
@@ -500,7 +502,6 @@ serdes/meta:
   (format "name: %s
 display_name: %s
 description: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 active: true
 visibility_type: normal
 table_id:
@@ -563,7 +564,6 @@ database_partitioned: null
   (let [eid (or entity-id segment-name)]
     (format "archived: false
 caveats: null
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 definition:
   database: %s
@@ -622,7 +622,6 @@ serdes/meta:
   (format "name: %s
 description: null
 entity_id: %s
-created_at: '2024-08-28T09:46:24.692002Z'
 creator_id: rasta@metabase.com
 archived: false
 model_id: %s
@@ -659,7 +658,6 @@ serdes/meta:
 description: null
 entity_id: %s
 collection_id: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 source_database_id: %s
 source:
@@ -687,7 +685,6 @@ serdes/meta:
 description: null
 entity_id: %s
 collection_id: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 source_database_id: test-data (h2)
 source:
@@ -719,7 +716,6 @@ serdes/meta:
                                            agg-field-name "Some Field"}}]
   (let [eid (or entity-id measure-name)]
     (format "archived: false
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 definition:
   database: %s
@@ -775,7 +771,6 @@ entity_id: %s
 content: '%s'
 archived: false
 template_tags: null
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 collection_id: %s
 serdes/meta:
@@ -792,7 +787,6 @@ serdes/meta:
   (format "entity_id: %s
 term: %s
 definition: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 serdes/meta:
 - id: %s
@@ -806,7 +800,6 @@ serdes/meta:
   [term definition]
   (format "term: %s
 definition: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 serdes/meta:
 - id: %s
@@ -817,8 +810,7 @@ serdes/meta:
 (defn generate-transform-tag-yaml
   "Generates YAML content for a TransformTag with the given `entity-id` and `name`."
   [entity-id name]
-  (format "created_at: '2024-08-28T09:46:18.671622Z'
-entity_id: %s
+  (format "entity_id: %s
 name: %s
 serdes/meta:
 - id: %s

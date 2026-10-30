@@ -635,6 +635,25 @@
                             #"/ expects a number"
                             (repr.repair/assert-editor-accepts-expressions! q))))))
 
+(deftest editor-errors-use-query-stage-metadata-test
+  (let [parsed {"lib/type" "mbql/query"
+                "stages" [{"lib/type" "mbql.stage/mbql"
+                           "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                          {"lib/type" "mbql.stage/mbql"
+                           "aggregation" [["count" {}]]
+                           "filters" [[">" {} ["aggregation" {} 0] 10]]}
+                          {"lib/type" "mbql.stage/mbql"
+                           "filters" [[">" {} ["offset" {} ["field" {} "count"] -1] 1]]}]}
+        repaired (repr.repair/repair mp parsed)
+        query    (with-meta (repr.resolve/resolve-query mp repaired) (meta repaired))
+        error    (try
+                   (repr.repair/assert-editor-accepts-expressions! query)
+                   (catch clojure.lang.ExceptionInfo e e))]
+    (is (= 4 (lib/stage-count query)))
+    (is (= :expression-editor-rejection (:error (ex-data error))))
+    (is (= 2 (:stage (ex-data error))))
+    (is (re-find #"rejects a `filters:` clause in stage 2:" (ex-message error)))))
+
 (deftest annotate-metric-ref-types-leaves-hard-cases-untouched-test
   (let [agg-query (fn [agg]
                     {:lib/type     :mbql/query

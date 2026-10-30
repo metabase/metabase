@@ -1,5 +1,5 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { act } from "react-dom/test-utils";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";

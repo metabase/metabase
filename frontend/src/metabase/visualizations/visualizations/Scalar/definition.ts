@@ -51,7 +51,7 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
       ]) => cols.length < 2,
     }),
     "scalar.segments": {
-      getSection: () => t`Conditional colors`,
+      getSection: getScalarGoalSettingsSection,
       getDefault() {
         return [];
       },
@@ -64,6 +64,7 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
           canRemoveAll: true,
           data,
           datasetQuery: card.dataset_query,
+          display: card.display,
           formatOptions: column && settings.column?.(column),
         };
       },
@@ -122,6 +123,10 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
     click_behavior: {},
   },
 };
+
+export function getScalarGoalSettingsSection() {
+  return t`Conditional colors`;
+}
 
 function findScalarColumn(
   cols: DatasetColumn[],

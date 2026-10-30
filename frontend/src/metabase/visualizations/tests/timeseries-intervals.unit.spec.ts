@@ -3,7 +3,7 @@ import { dayjs } from "metabase/dayjs";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   type CartesianChartDateTimeAbsoluteUnit,
-  type ContinuousDomain,
+  type Extent,
   type TimeSeriesInterval,
   computeTimeseriesDataInterval,
   computeTimeseriesTicksInterval,
@@ -321,7 +321,7 @@ describe("timeseries intervals", () => {
     const mockFormatter = (value: RowValue) => String(value);
 
     type TickInput = {
-      xDomain: ContinuousDomain;
+      xDomain: Extent;
       xInterval: TimeSeriesInterval;
       outerWidth: number;
       paddingX?: number;
@@ -473,6 +473,35 @@ describe("timeseries intervals", () => {
         });
       },
     );
+
+    it("formats the representative labels of each unit once per formatter", () => {
+      const formatter = jest.fn(mockFormatter);
+      const xDomain: [number, number] = [
+        new Date("2026-01-01").getTime(),
+        new Date("2026-01-08").getTime(),
+      ];
+      const chartLayout = createMockChartLayout({
+        outerWidth: 400,
+        ticksDimensions: { getXTickWidth: () => 80 },
+      });
+
+      computeTimeseriesTicksInterval(
+        xDomain,
+        { unit: "hour", count: 1 },
+        chartLayout,
+        formatter,
+      );
+      const callsForOneSelection = formatter.mock.calls.length;
+      expect(callsForOneSelection).toBeGreaterThan(0);
+
+      computeTimeseriesTicksInterval(
+        xDomain,
+        { unit: "hour", count: 1 },
+        chartLayout,
+        formatter,
+      );
+      expect(formatter.mock.calls.length).toBe(callsForOneSelection);
+    });
   });
 
   describe("ensureResultsTimezone", () => {

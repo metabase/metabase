@@ -45,6 +45,7 @@ const TYPE_FILTER_LABELS: Record<EnabledSearchModel, string> = {
   document: "Document",
   exploration: "Research",
   transform: "Transform",
+  "data-app": "Data app",
 };
 
 const TEST_ITEMS: Partial<SearchResult>[] = [

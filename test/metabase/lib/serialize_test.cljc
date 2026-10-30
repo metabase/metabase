@@ -257,6 +257,7 @@
    :qp/compiled-inline                       {:query "SELECT 1"}
    :qp/source-card-id                        1
    :qp/skip-result-metadata-persistence      true
+   :qp/non-default-parameterized?            true
    :qp.pivot/unremapped-breakout-combination [0 1]
    :qp.pivot/remapped-breakout-combination   [0]
    :qp.pivot/num-remapped-cols               3
@@ -328,7 +329,8 @@
   {:metadata/own-model-query? true
    :metadata/model-metadata   [{:lib/type :metadata/column, :name "ID", :base-type :type/Integer}]
    :pivot/original-query      clean-query
-   :pivot/result-metadata     :none})
+   :pivot/result-metadata     :none
+   :pivot/query-hash          nil})
 
 (deftest ^:parallel internal-keys-fixture-covers-the-schemas-test
   (testing "the fixtures carry every internal key the schemas declare, so these tests cannot drift"

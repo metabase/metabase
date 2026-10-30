@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ChangeEvent, SyntheticEvent } from "react";
+import type { ChangeEvent, JSX, SyntheticEvent } from "react";
 import { memo, useCallback } from "react";
 import { t } from "ttag";
 

@@ -8,7 +8,7 @@ import {
 } from "./constants";
 
 export type GroupColumnVirtualizer = {
-  scrollRef: RefObject<HTMLDivElement>;
+  scrollRef: RefObject<HTMLDivElement | null>;
   virtualColumns: VirtualItem[];
   leadingSpacerWidth: number;
   trailingSpacerWidth: number;

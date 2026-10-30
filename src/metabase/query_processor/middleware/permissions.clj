@@ -9,6 +9,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.schema :as qp.schema]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -147,11 +148,20 @@
 ;;; |                                                Writeback fns                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- check-no-sandboxed-action-access
+  "Throws a 403 when the current user has a sandbox on any table of the Database with `database-id`, since actions
+  write around sandboxes."
+  [database-id]
+  (when (and *current-user-id* (perms/sandboxed-user-for-db? database-id))
+    (throw (ex-info (tru "You can''t run actions on this database because row and column security applies to your data access.")
+                    {:type        qp.error-type/missing-required-permissions
+                     :status-code 403}))))
+
 (mu/defn check-query-action-permissions*
-  "Check that User with `user-id` has permissions to run query action `query`, or throw an exception. Takes
-  as [[metabase.actions.args/action-arg-map-schema]]."
+  "Throws unless the current user can run an action with the already preprocessed `query`."
   [{database-id :database, :as query} :- ::lib.schema/query]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
+  (check-no-sandboxed-action-access database-id)
   (when *card-id*
     (query-perms/check-card-read-perms database-id *card-id*))
   (when-not (query-perms/check-data-perms

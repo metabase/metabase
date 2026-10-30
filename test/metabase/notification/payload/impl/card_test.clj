@@ -96,7 +96,7 @@
                   (is (=? {:body {:type               "alert"
                                   :alert_id           (-> notification :payload :id)
                                   :alert_creator_id   (-> notification :creator_id)
-                                  :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
+                                  :alert_creator_name (t2/select-one-fn :common_name :model/User :id (:creator_id notification))
                                   :data               {:type          "question"
                                                        :question_id   card-id
                                                        :question_name notification.tu/default-card-name
@@ -202,7 +202,7 @@
                     (is (=? {:body {:type               "alert"
                                     :alert_id           (-> notification :payload :id)
                                     :alert_creator_id   (-> notification :creator_id)
-                                    :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
+                                    :alert_creator_name (t2/select-one-fn :common_name :model/User :id (:creator_id notification))
                                     :data               (mt/malli=? :map)
                                     :sent_at            (mt/malli=? :any)}}
                             req)))})))))))))
@@ -481,14 +481,14 @@
 (deftest send-once-archive-on-first-successful-send
   (notification.tu/with-card-notification
     [notification {:notification-card {:send_once true}}]
-    (let [notification (t2/select-one :model/Notification (:id notification))]
+    (let [notification (t2/select-one :model/Notification :id (:id notification))]
       (testing "do not archive if the send fail for any reason"
         (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
           (u/ignore-exceptions (notification/send-notification! notification))
-          (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
+          (is (true? (t2/select-one-fn :active :model/Notification :id (:id notification))))))
       (testing "archive if the send is successful"
         (notification/send-notification! notification)
-        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))
+        (is (false? (t2/select-one-fn :active :model/Notification :id (:id notification))))
         (testing "once archived, notifications will be skipped if trying to send"
           (notification.tu/test-send-notification!
            notification
@@ -517,16 +517,16 @@
        {:channel/email
         (fn [emails]
           (is (zero? (count emails)))
-          (is (true? (t2/select-one-fn :active :model/Notification (:id notification)))))}))
+          (is (true? (t2/select-one-fn :active :model/Notification :id (:id notification)))))}))
     (testing "if the goal is met, notification is sent then archived"
       ;; flip the condition so the goal is met now
-      (t2/update! :model/NotificationCard (get-in notification [:payload :id]) {:send_condition :goal_above})
+      (t2/update! :model/NotificationCard :id (get-in notification [:payload :id]) {:send_condition :goal_above})
       (notification.tu/test-send-notification!
-       (t2/select-one :model/Notification (:id notification))
+       (t2/select-one :model/Notification :id (:id notification))
        {:channel/email
         (fn [emails]
           (is (= 1 (count emails)))
-          (is (false? (t2/select-one-fn :active :model/Notification (:id notification)))))}))))
+          (is (false? (t2/select-one-fn :active :model/Notification :id (:id notification)))))}))))
 
 (deftest non-user-email-test
   (notification.tu/with-card-notification
@@ -616,7 +616,7 @@
       (t2/delete! :model/TaskHistory)
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Failed to execute card with error: Division by zero: " 1 ""
+           #"Failed to execute card with error: Division by zero: "
            (#'notification.send/send-notification-sync! notification)))
       (is (=? [{:status :failed
                 :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
@@ -635,22 +635,22 @@
                             []
                             [@notification.tu/default-email-handler])]
           (testing "sanity: notification is active"
-            (is (true? (t2/select-one-fn :active :model/Notification (:id notification)))))
+            (is (true? (t2/select-one-fn :active :model/Notification :id (:id notification)))))
           ;; Simulate an orphaned notification: delete the NotificationCard directly.
           ;; This mirrors what happens in prod when there is no Malli validation and a card is deleted (FK cascade deletes NotificationCard)
           ;; but the Notification row itself survives.
-          (t2/delete! :model/NotificationCard (:payload_id notification))
+          (t2/delete! :model/NotificationCard :id (:payload_id notification))
           (testing "sanity: notification still exists but its payload record is gone"
-            (is (t2/exists? :model/Notification (:id notification)))
-            (is (not (t2/exists? :model/NotificationCard (:payload_id notification)))))
+            (is (t2/exists? :model/Notification :id (:id notification)))
+            (is (not (t2/exists? :model/NotificationCard :id (:payload_id notification)))))
           (testing "sending the orphaned notification should delete it rather than crash forever"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Card no longer exists"
                  (#'notification.send/send-notification-sync!
-                  (t2/select-one :model/Notification (:id notification))))))
+                  (t2/select-one :model/Notification :id (:id notification))))))
           (testing "the notification should be deleted"
-            (is (not (t2/exists? :model/Notification (:id notification))))))))))
+            (is (not (t2/exists? :model/Notification :id (:id notification))))))))))
 
 (defn- email->attachment-line-count
   [email]

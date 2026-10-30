@@ -52,7 +52,7 @@ function asRange(range: HighlightRange, view: EditorView): Range<Decoration> {
 }
 
 export function useHighlightRanges(
-  editorRef: RefObject<CodeMirrorRef>,
+  editorRef: RefObject<CodeMirrorRef | null>,
   highlightedRanges?: HighlightRange[],
 ) {
   useEffect(() => {

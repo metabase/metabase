@@ -142,20 +142,10 @@
 }
 
 .root[data-variant="on-dark-primary"] {
-  --button-color: var(--mb-color-button_label-on_dark-primary);
-  --button-hover-color: var(--mb-color-button_label-on_dark-primary);
-  --button-bg: var(--mb-color-button-on_dark-primary-default);
-  --button-hover: var(--mb-color-button-on_dark-primary-hover);
-  --button-pressed: var(--mb-color-button-on_dark-primary-pressed);
   --button-bd: 0.5px solid transparent;
 }
 
 .root[data-variant="on-dark-secondary"] {
-  --button-color: var(--mb-color-button_label-on_dark-secondary);
-  --button-hover-color: var(--mb-color-button_label-on_dark-secondary);
-  --button-bg: var(--mb-color-button-on_dark-secondary-default);
-  --button-hover: var(--mb-color-button-on_dark-secondary-hover);
-  --button-pressed: var(--mb-color-button-on_dark-secondary-pressed);
   --button-bd: 0.5px solid var(--mb-color-border-on_dark);
 }
 

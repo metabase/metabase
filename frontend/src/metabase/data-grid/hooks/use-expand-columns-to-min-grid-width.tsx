@@ -33,7 +33,7 @@ export const useExpandColumnsToMinGridWidth = ({
 }: useExpandColumnsToMinGridWidthProps) => {
   const prevMinGridWidth = usePrevious(minGridWidth);
   // Store original column widths before any expansion
-  const preExpandedColumnWidths = useRef<ColumnSizingState>();
+  const preExpandedColumnWidths = useRef<ColumnSizingState>(undefined);
 
   /**
    * Expands column widths while respecting fixed-width columns

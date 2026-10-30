@@ -1,10 +1,13 @@
 (ns metabase-enterprise.dependencies.models.dependency-status
   (:require
-   [java-time.api :as t]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,88 +18,67 @@
 (t2/deftransforms :model/DependencyStatus
   {:entity_type mi/transform-keyword})
 
-(defn mark-stale!
-  "Mark the entities in `type->ids`, `{entity-type ids}`, stale for dependency recalculation, creating their statuses
-  if they don't exist and resetting their retry state so previously-failed entities get a fresh chance."
-  [type->ids]
-  (doseq [[entity-type ids] type->ids
-          id                ids]
-    (dependencies.db/mark-dependency-status-stale! entity-type id)))
-
-(defn upsert-status!
-  "Upsert a dependency_status entry, setting stale=false, version to current,
-  and clearing any failure state."
-  [entity-type entity-id]
-  (dependencies.db/upsert-dependency-status!
-   entity-type entity-id models.dependency/current-dependency-analysis-version))
-
 (defmulti hydrate-for-deps
-  "Hydrate a batch of instances with data needed for dependency calculation.
+  "Hydrate a batch of entities with data needed for dependency calculation.
   Dispatches on entity-type keyword. Default is identity (no hydration needed)."
-  {:arglists '([entity-type instances])}
-  (fn [entity-type _instances] entity-type))
+  {:arglists '([entity-type entities])}
+  (fn [entity-type _entities] entity-type))
 
-(defmethod hydrate-for-deps :default [_ instances] instances)
+(defmethod hydrate-for-deps :default [_ entities] entities)
 
-(defmethod hydrate-for-deps :dashboard [_ instances]
-  (t2/hydrate instances [:dashcards :series]))
+(defmethod hydrate-for-deps :dashboard [_ entities]
+  (t2/hydrate entities [:dashcards :series]))
 
-(defmethod hydrate-for-deps :action [_ instances]
-  (let [queries (when (seq instances)
-                  (dependencies.db/query-action-queries (mapv :id instances)))]
+(defmethod hydrate-for-deps :action [_ entities]
+  (let [action-ids (mapv :id entities)
+        queries    (when (seq action-ids)
+                     (dependencies.db/query-action-queries action-ids))
+        table-ids  (when (seq action-ids)
+                     (dependencies.db/implicit-action-table-ids action-ids))]
     (mapv (fn [{:keys [id] :as action}]
             (cond-> action
-              (contains? queries id) (assoc :dataset_query (queries id))))
-          instances)))
+              (contains? queries id)   (assoc :dataset_query (queries id))
+              (contains? table-ids id) (assoc :table_id (table-ids id))))
+          entities)))
 
-(defn instances-for-dependency-calculation
-  "Find a batch of instances of type `entity-type` and maximum size `batch-size` that need
-  dependency calculation: no status row yet, stale=true, OR version < current.
-  Excludes terminal entities and entities whose retry delay hasn't elapsed.
-  Returns full entity objects. Prioritizes stale over outdated.
-  Uses Java time (not DB time) so tests with [[mt/with-clock]] work correctly."
-  [entity-type batch-size]
-  (dependencies.db/instances-for-dependency-calculation entity-type
-                                                        batch-size
-                                                        models.dependency/current-dependency-analysis-version
-                                                        (t/offset-date-time)))
+(defmethod hydrate-for-deps :data-app [_ entities]
+  (let [collection-ids    (into [] (keep :resource_collection_id) entities)
+        ids-by-collection (fn [rows]
+                            (u/group-by :collection_id :id conj #{} rows))
+        card-ids          (when (seq collection-ids)
+                            (ids-by-collection (dependencies.db/ids-in-collections :model/Card collection-ids)))
+        action-ids        (when (seq collection-ids)
+                            (ids-by-collection (dependencies.db/ids-in-collections :model/Action collection-ids)))]
+    (mapv (fn [{collection-id :resource_collection_id :as app}]
+            (assoc app
+                   :card_ids   (get card-ids collection-id #{})
+                   :action_ids (get action-ids collection-id #{})))
+          entities)))
 
-(defn has-pending-retries?
-  "Returns true if there are any entities waiting to be retried (not terminal, with a set retry time)."
-  []
-  (dependencies.db/pending-retry-exists?))
+(mu/defn take-pending-statuses! :- [:sequential ::dependencies.schema/pending-status]
+  "Up to `batch-size` entities of `entity-type` whose dependencies a write changed, are not computed yet, or were
+  computed by an older analysis, those last, with the `stale` count the job clears afterwards."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   batch-size  :- ms/PositiveInt]
+  (dependencies.db/take-pending-dependency-statuses!
+   entity-type batch-size models.dependency/current-dependency-analysis-version))
 
-(defn has-stale-or-outdated?
-  "Returns true if there are any entities needing dependency calculation: no status row yet,
-  stale=true, OR version < current (not terminal, retry delay elapsed), or deleted entities whose status the backfill
-  has yet to clean up. Defined in terms of [[instances-for-dependency-calculation]] so it stays consistent with what
-  the backfill processes."
+(mu/defn clear-status! :- :boolean
+  "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id`, clearing its
+  `stale` count unless a write raised it."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity-id   :- ms/PositiveInt
+   stale       :- ms/IntGreaterThanOrEqualToZero]
+  (dependencies.db/clear-dependency-status!
+   entity-type entity-id stale models.dependency/current-dependency-analysis-version))
+
+(mu/defn has-pending-entities? :- :boolean
+  "Returns true if there are any entities whose dependencies are stale, not computed yet or computed by an older
+  analysis, or deleted entities whose status the dependency job has yet to clean up."
   []
   (boolean
    (some (fn [entity-type]
-           (or (seq (instances-for-dependency-calculation entity-type 1))
-               (seq (dependencies.db/deleted-entity-ids entity-type 1))))
+           (or (dependencies.db/dependency-pending?
+                entity-type models.dependency/current-dependency-analysis-version)
+               (seq (dependencies.db/dependency-deleted-entity-ids entity-type 1))))
          deps.dependency-types/backfillable-dependency-types)))
-
-(defn record-failure!
-  "Record a failed dependency calculation attempt for an entity.
-  Increments fail_count and sets next_retry_at based on exponential backoff.
-  If max retries exceeded, marks the entity as terminal.
-  Creates the entry if it doesn't exist, since entities with no row yet are exactly the ones
-  [[instances-for-dependency-calculation]] picks up first."
-  [entity-type entity-id max-retries delay-minutes]
-  (dependencies.db/record-dependency-status-failure!
-   entity-type entity-id
-   (fn [existing]
-     ;; An inserted row takes the column defaults for `stale` (false) and `dependency_analysis_version` (0). 0 is
-     ;; below `current-dependency-analysis-version`, which is what keeps the entity eligible for the retry once
-     ;; `next_retry_at` has elapsed.
-     (let [new-fail-count (inc (:fail_count existing 0))]
-       (if (> new-fail-count max-retries)
-         {:fail_count new-fail-count
-          :terminal true
-          :next_retry_at nil}
-         (let [retry-minutes (* new-fail-count delay-minutes)]
-           {:fail_count new-fail-count
-            :next_retry_at (when (pos? retry-minutes)
-                             (t/plus (t/offset-date-time) (t/minutes retry-minutes)))}))))))

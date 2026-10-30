@@ -121,7 +121,7 @@ describe("DescriptionSection", () => {
   it("renders the About heading and last-updated subline", async () => {
     setup();
     expect(screen.getByText("About")).toBeInTheDocument();
-    expect(await screen.findByTestId("metric-last-updated")).toHaveTextContent(
+    expect(await screen.findByTestId("about-last-updated")).toHaveTextContent(
       /Last updated/,
     );
   });

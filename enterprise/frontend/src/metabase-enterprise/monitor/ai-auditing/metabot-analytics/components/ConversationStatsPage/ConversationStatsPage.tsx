@@ -358,17 +358,26 @@ function UsageStats({ metric }: UsageStatsProps) {
       <ConversationFilters
         date={date}
         onDateChange={(val) => patchUrlState({ date: val })}
-        user={user}
-        onUserChange={(val) => patchUrlState({ user: val })}
-        group={group}
-        onGroupChange={(val) => patchUrlState({ group: val })}
-        groupNoFilterValue={groupNoFilterValue}
-        tenant={tenant}
-        onTenantChange={(val) => patchUrlState({ tenant: val })}
-        userOptions={userOptions}
-        groupOptions={groupOptions}
-        tenantOptions={tenantOptions}
-        hasTenants={hasTenants}
+        userFilter={{
+          value: user,
+          options: userOptions,
+          onChange: (val) => patchUrlState({ user: val }),
+        }}
+        groupFilter={{
+          value: group,
+          options: groupOptions,
+          noFilterValue: groupNoFilterValue,
+          onChange: (val) => patchUrlState({ group: val }),
+        }}
+        tenantFilter={
+          hasTenants
+            ? {
+                value: tenant,
+                options: tenantOptions,
+                onChange: (val) => patchUrlState({ tenant: val }),
+              }
+            : undefined
+        }
       />
 
       <Stack gap="xl">

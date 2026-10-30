@@ -1,9 +1,9 @@
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import {
   createMockSession,
   createMockSessionUser,
 } from "metabase-types/api/mocks";
 
-import { PAGE_SIZE } from "./constants";
 import type { SessionsUrlState } from "./types";
 import {
   buildListParams,

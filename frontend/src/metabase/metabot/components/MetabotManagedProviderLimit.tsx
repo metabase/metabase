@@ -40,6 +40,7 @@ export const MetabotManagedProviderLimitActions = ({
   // alongside it, not to cancel the subscription behind it.
   const configureModal = (
     <Modal
+      density="relaxed"
       title={t`Add an AI provider`}
       onClose={close}
       opened={isOpen}

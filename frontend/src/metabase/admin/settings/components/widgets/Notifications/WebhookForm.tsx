@@ -199,7 +199,7 @@ export const WebhookForm = ({
   }, [error]);
 
   const docsUrl = useSelector((state) =>
-    getDocsUrl(state, { page: "questions/sharing/alerts" }),
+    getDocsUrl(state, { page: "questions/alerts" }),
   );
 
   const handleTest = async (

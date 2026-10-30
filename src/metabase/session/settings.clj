@@ -42,14 +42,14 @@
         Also see the Changing session expiration documentation page.")
 
 (defsetting reset-token-ttl-hours
-  (deferred-tru "Number of hours a password reset is considered valid.")
+  "Number of hours a password reset is considered valid."
   :visibility :internal
   :type       :integer
   :default    48
   :audit      :getter)
 
 (defsetting mfa-challenge-signing-key
-  (deferred-tru "Key used to sign MFA challenge tokens. Generated automatically on first use.")
+  "Key used to sign MFA challenge tokens. Generated automatically on first use."
   :visibility :internal
   :type       :string
   :export?    false

@@ -5,7 +5,7 @@ export interface StepperContextValue {
   completedSteps: Record<string, boolean>;
   lockedSteps: Record<string, boolean>;
   stepNumbers: Record<string, number>;
-  stepRefs: Record<string, React.RefObject<HTMLDivElement>>;
+  stepRefs: Record<string, React.RefObject<HTMLDivElement | null>>;
   setActiveStep: (stepId: string | null) => void;
 }
 

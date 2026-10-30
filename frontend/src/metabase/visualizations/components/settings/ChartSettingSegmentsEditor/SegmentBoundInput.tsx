@@ -5,6 +5,7 @@ import type {
   DatasetQuery,
   GoalValue,
   ReferencedEntity,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
 import { GoalValueInput, StaticGoalValueInput } from "../GoalValueInput";
@@ -13,6 +14,7 @@ type Props = {
   "aria-label"?: string;
   data: DatasetData | undefined;
   datasetQuery: DatasetQuery | undefined;
+  display: VisualizationDisplay;
   formatOptions: ColumnSettings | undefined;
   id: string;
   placeholder: string;
@@ -25,6 +27,7 @@ export function SegmentBoundInput({
   "aria-label": ariaLabel,
   data,
   datasetQuery,
+  display,
   formatOptions,
   id,
   placeholder,
@@ -47,6 +50,7 @@ export function SegmentBoundInput({
           aria-label={ariaLabel}
           data={data}
           datasetQuery={datasetQuery}
+          display={display}
           formatOptions={formatOptions}
           id={id}
           placeholder={placeholder}

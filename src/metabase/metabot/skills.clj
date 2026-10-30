@@ -305,7 +305,9 @@
   databases.
 
   Returns [] when `engine` is nil or has no matching dialect skill.
-  Dialect context only arises in SQL-editor sessions, so its presence is itself the gate.
+  Dialect context arises in SQL-editor sessions, but the editor can be open under a profile without
+  SQL tools (a full-app embed's Metabot sidebar), so the caller
+  ([[metabase.metabot.agent.messages/build-message-history]]) also gates on the active tools.
 
   Invariant: the emitted pair references the `load_skill` tool, which
   [[metabase.metabot.agent.profiles/get-tools-for-profile]] registers whenever the skill manifest is

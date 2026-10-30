@@ -70,7 +70,6 @@ const cliConfig = {
     library: { type: "commonjs2" },
   },
   resolve: sharedResolve,
-  externals: ["esbuild"],
   module: sharedModule,
   plugins: [
     new rspack.BannerPlugin({ banner: "#!/usr/bin/env node", raw: true }),
@@ -107,7 +106,6 @@ const dataAppDevConfig = {
     "@vitejs/plugin-react",
     "vite-plugin-svgr",
     "vite-plugin-css-injected-by-js",
-    "esbuild",
   ],
   externalsType: "module",
   output: {

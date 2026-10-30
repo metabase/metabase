@@ -89,6 +89,22 @@
       (testing "and script-src-elem specifically is never introduced"
         (is (not (contains? (csp-directive-names injection) "script-src-elem")))))))
 
+(deftest csp-header-analytics-collectors-test
+  (testing "the analytics collectors are in connect-src so the browser legs can post to them"
+    (mt/with-temporary-setting-values [anon-tracking-enabled true
+                                       metaplow-url          "https://product-analytics-ingestion.metabase.com/api/send"
+                                       snowplow-url          "https://sp.metabase.com"]
+      (let [connect-src (csp-directive "connect-src")]
+        (is (str/includes? connect-src "https://product-analytics-ingestion.metabase.com/api/send"))
+        (is (str/includes? connect-src "https://sp.metabase.com")))))
+  (testing "and neither is listed when anonymous tracking is off"
+    (mt/with-temporary-setting-values [anon-tracking-enabled false
+                                       metaplow-url          "https://product-analytics-ingestion.metabase.com/api/send"
+                                       snowplow-url          "https://sp.metabase.com"]
+      (let [connect-src (csp-directive "connect-src")]
+        (is (not (str/includes? connect-src "product-analytics-ingestion.metabase.com")))
+        (is (not (str/includes? connect-src "sp.metabase.com")))))))
+
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
     (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.typescriptlang.org/   https://clojure.org"]
@@ -196,7 +212,7 @@
 
 (deftest data-app-unsafe-eval-test
   ;; Near-Membrane needs `eval` to run the app bundle, but it runs it inside a realm
-  ;; iframe served from `/api/apps/sandbox-host`, which carries the grant in its own
+  ;; iframe served from `/api/ee/apps/sandbox-host`, which carries the grant in its own
   ;; CSP. Granting it on the data-app document too would hand `eval`/`Function` to
   ;; anything running there — including guest code that escaped the membrane.
   (testing "the data-app document does not get 'unsafe-eval'"

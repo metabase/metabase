@@ -81,6 +81,7 @@ export type Table = {
   collection_id: CollectionId | null;
   is_published: boolean;
   collection?: Collection;
+  can_write?: boolean;
 };
 
 export type TableOwner = Pick<

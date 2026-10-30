@@ -432,6 +432,7 @@ describe("InteractiveQuestion", () => {
         type: "dashboard" as const,
         id: 1,
         name: "Sales Dashboard",
+        navigationId: "visit-1",
       };
       const mockNavigation = makeMockNavigation({ stack: [existingEntry] });
       await setup({ mockNavigation });

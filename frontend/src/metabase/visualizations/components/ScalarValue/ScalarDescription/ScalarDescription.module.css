@@ -1,0 +1,25 @@
+.descriptionIcon {
+  display: flex;
+  flex: 0 0 auto;
+  color: var(--mb-color-text-disabled);
+  opacity: var(--scalar-description-opacity, 1);
+  transition: opacity 0.2s ease-in-out;
+
+  &:hover {
+    color: var(--mb-color-text-secondary);
+  }
+
+  &:focus-visible {
+    opacity: 1;
+    color: var(--mb-color-text-secondary);
+    outline: 2px solid var(--mb-color-core-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .descriptionIcon {
+    transition: none;
+  }
+}

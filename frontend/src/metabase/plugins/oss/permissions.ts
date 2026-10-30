@@ -22,10 +22,15 @@ import { DataPermissionValue } from "metabase-types/api";
 import { definePluginSlot } from "../slot";
 import type { PluginGroupManagersType } from "../types";
 
-// These describe the entries EE plugins contribute to the admin permissions
-// editor. They live here (not in metabase/admin) because shared plugin code
-// cannot import from feature modules; metabase/admin/permissions/types
-// re-exports them.
+type DataModelQueryProps = {
+  include_editable_data_model?: boolean;
+};
+
+const DEFAULT_DATA_MODEL_QUERY_PROPS: DataModelQueryProps = {};
+
+// These describe the entries EE plugins contribute to the permissions editor.
+// They live here (not in metabase/permissions) because the plugin registry sits
+// below the permissions module; metabase/permissions re-exports them.
 export interface PermissionOption {
   label: string;
   value: DataPermissionValue;
@@ -246,8 +251,7 @@ const getDefaultFeatureLevelPermissions = () => ({
   }) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
-  // Unjustified type cast. FIXME
-  dataModelQueryProps: {} as any,
+  dataModelQueryProps: DEFAULT_DATA_MODEL_QUERY_PROPS,
   // Unjustified type cast. FIXME
   databaseDetailsQueryProps: {} as any,
 });
