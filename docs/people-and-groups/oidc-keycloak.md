@@ -81,7 +81,7 @@ Check the [Keycloak event log](https://www.keycloak.org/docs/latest/server_admin
 
 ## Map attributes from Keycloak to Metabase
 
-Keycloak's default OIDC claims (`email`, `given_name`, `family_name`) match Metabase's defaults, so no extra configuration is needed. See [Attribute mapping](./authenticating-with-oidc.md#attribute-mapping).
+Keycloak's default OIDC claims (`email`, `given_name`, `family_name`) match Metabase's defaults, so no extra configuration is needed. See [Attributes](./authenticating-with-oidc.md#attributes).
 
 ## Sync groups from Keycloak to Metabase
 
