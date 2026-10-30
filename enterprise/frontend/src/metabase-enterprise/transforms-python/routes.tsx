@@ -1,5 +1,8 @@
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import { createModalRouteComponent } from "metabase/common/components/ModalRoute";
+import { outletRoute } from "metabase/plugins/components/PluginPlaceholder";
+import type { PluginRoute } from "metabase/plugins/types";
 import { Route } from "metabase/router";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 import { PythonTransformsUpsellModal } from "./upsells/PythonTransformsUpsellModal";
 
@@ -32,25 +35,36 @@ const transformListPage = () =>
     /* webpackChunkName: "transforms-python" */ "metabase/transforms/pages/TransformListPage"
   ).then(({ TransformListPage }) => ({ Component: TransformListPage }));
 
+/**
+ * The upsell modal as a lazy route, so a Python page and its upsell are the two
+ * branches of one gated route rather than two tree shapes.
+ */
+const pythonUpsellModal: PluginRoute = async () => ({
+  Component: createModalRouteComponent(PythonTransformsUpsellModal, {
+    noWrap: true,
+  }),
+});
+
+const gated = (enabled: PluginRoute) =>
+  featureGatedRoute("transforms-python", enabled, pythonUpsellModal);
+
+/**
+ * Without the feature the wrapper renders the transform list and each page
+ * below it renders the upsell modal over it. With the feature the wrapper is a
+ * plain `Outlet` and each page renders itself.
+ */
 export function getPythonTransformsRoutes() {
   return (
-    <>
-      <Route path="library/:path" lazy={pythonLibraryEditorPage} />
-      <Route path="new/python" lazy={newPythonTransformPage} />
-    </>
-  );
-}
-
-export function getPythonUpsellRoutes() {
-  return (
-    // Render upsell modal on python transforms routes if feature is not enabled
-    <Route path="" lazy={transformListPage}>
-      {modalRoute("library/:path", PythonTransformsUpsellModal, {
-        noWrap: true,
-      })}
-      {modalRoute("new/python", PythonTransformsUpsellModal, {
-        noWrap: true,
-      })}
+    <Route
+      path=""
+      lazy={featureGatedRoute(
+        "transforms-python",
+        outletRoute,
+        transformListPage,
+      )}
+    >
+      <Route path="library/:path" lazy={gated(pythonLibraryEditorPage)} />
+      <Route path="new/python" lazy={gated(newPythonTransformPage)} />
     </Route>
   );
 }
