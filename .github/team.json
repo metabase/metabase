@@ -137,12 +137,6 @@
         "enthym-aa",
         "johnswanson"
       ]
-    },
-    {
-      "name": "Data Apps",
-      "label": ".Team/DataApps",
-      "codeowner": "@metabase/data-apps",
-      "members": []
     }
   ]
 }

@@ -591,6 +591,10 @@
             "enterprise/backend/test/metabase_enterprise/sso"
             "enterprise/backend/test/metabase_enterprise/sso_test.*"]
            (mapcat :patterns (entries '{enterprise/sso {:team "Querying Platform", :codeowners true}})))))
+  (testing "an unknown value, even nil, owns src and test, so the shadowed-line check sees its paths"
+    (is (= [['lib "src" "@metabase/querying-platform"]
+            ['lib "test" "@metabase/querying-platform"]]
+           (owners '{lib {:team "Querying Platform", :codeowners nil}}))))
   (testing "a nested module without its own :team takes its ancestor's"
     (is (= [['lib.schema "src" "@metabase/querying-platform"]]
            (owners '{lib        {:team "Querying Platform"}

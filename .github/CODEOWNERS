@@ -82,12 +82,19 @@ modules/embedder @metabase/metabot
 # .github/workflows/release-custom-viz.yml @metabase/devex @metabase/gadget
 
 # @metabase/data-apps
-# Backend modules are in the generated block below.
+# TODO (Chris 2026-10-30): This reviewer group spans teams. The module config gives these backend modules to
+# Embedding, Graphy and UX West, so their lines stay hand-written until the two agree.
+enterprise/backend/src/metabase_enterprise/data_apps @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/dependencies @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/remote_sync @metabase/data-apps
 enterprise/frontend/src/metabase-enterprise/data-apps @metabase/data-apps
 enterprise/frontend/src/metabase-enterprise/dependencies @metabase/data-apps
 enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics @metabase/data-apps
 enterprise/frontend/src/metabase-enterprise/remote_sync @metabase/data-apps
 frontend/src/metabase/monitor/dependency-diagnostics @metabase/data-apps
+src/metabase/data_apps @metabase/data-apps
+src/metabase/dependencies @metabase/data-apps
+src/metabase/remote_sync @metabase/data-apps
 
 # ===== BEGIN generated module ownership (./bin/mage update-codeowners) =====
 #
@@ -99,35 +106,11 @@ frontend/src/metabase/monitor/dependency-diagnostics @metabase/data-apps
 # Exceptions inside these paths go below the END marker: lines above this block lose to it.
 #
 
-# enterprise/data-apps (Data Apps)
-enterprise/backend/src/metabase_enterprise/data_apps @metabase/data-apps
-enterprise/backend/src/metabase_enterprise/data_apps.* @metabase/data-apps
-
-# enterprise/dependencies (Data Apps)
-enterprise/backend/src/metabase_enterprise/dependencies @metabase/data-apps
-enterprise/backend/src/metabase_enterprise/dependencies.* @metabase/data-apps
-
-# enterprise/remote-sync (Data Apps)
-enterprise/backend/src/metabase_enterprise/remote_sync @metabase/data-apps
-enterprise/backend/src/metabase_enterprise/remote_sync.* @metabase/data-apps
-
 # enterprise/search (Metabot)
 enterprise/backend/src/metabase_enterprise/search @metabase/metabot
 enterprise/backend/src/metabase_enterprise/search.* @metabase/metabot
 enterprise/backend/test/metabase_enterprise/search @metabase/metabot
 enterprise/backend/test/metabase_enterprise/search_test.* @metabase/metabot
-
-# data-apps (Data Apps)
-src/metabase/data_apps @metabase/data-apps
-src/metabase/data_apps.* @metabase/data-apps
-
-# dependencies (Data Apps)
-src/metabase/dependencies @metabase/data-apps
-src/metabase/dependencies.* @metabase/data-apps
-
-# remote-sync (Data Apps)
-src/metabase/remote_sync @metabase/data-apps
-src/metabase/remote_sync.* @metabase/data-apps
 
 # search (Metabot)
 src/metabase/search @metabase/metabot

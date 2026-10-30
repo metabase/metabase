@@ -883,9 +883,10 @@
                     :model/Query
                     :model/User}}
 
+  ;; TODO (Chris 2026-10-30): CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand. Align
+  ;; :team with that group, or the group with :team, then set :codeowners.
   data-apps
-  {:team "Data Apps"
-   :codeowners :src-only
+  {:team "Embedding"
    :api #{metabase.data-apps.core}
    :uses #{actions
            analytics
@@ -921,9 +922,10 @@
    :api  #{metabase.database-routing.core}
    :uses #{lib.schema premium-features}}
 
+  ;; TODO (Chris 2026-10-30): CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand. Align
+  ;; :team with that group, or the group with :team, then set :codeowners.
   dependencies
-  {:team "Data Apps"
-   :codeowners :src-only
+  {:team "Graphy"
    :api  #{metabase.dependencies.hooks}
    :uses #{premium-features}}
 
@@ -2438,9 +2440,10 @@
    :api #{metabase.pivot.core metabase.pivot.postprocess}
    :uses #{models util}}
 
+  ;; TODO (Chris 2026-10-30): CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand. Align
+  ;; :team with that group, or the group with :team, then set :codeowners.
   remote-sync
-  {:team "Data Apps"
-   :codeowners :src-only
+  {:team "UX West"
    :api  #{metabase.remote-sync.core
            metabase.remote-sync.init}
    :uses #{api
@@ -3868,9 +3871,10 @@
            util.config}
    :model-exports #{:model/CustomVizPlugin}}
 
+  ;; TODO (Chris 2026-10-30): CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand. Align
+  ;; :team with that group, or the group with :team, then set :codeowners.
   enterprise/data-apps
-  {:team "Data Apps"
-   :codeowners :src-only
+  {:team "Embedding"
    :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{actions
            api
@@ -3944,9 +3948,10 @@
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
 
+  ;; TODO (Chris 2026-10-30): CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand. Align
+  ;; :team with that group, or the group with :team, then set :codeowners.
   enterprise/dependencies
-  {:team "Data Apps"
-   :codeowners :src-only
+  {:team "Graphy"
    :module-exports #{enterprise/dependencies.replacement}
    :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
    :uses #{actions
@@ -4334,9 +4339,10 @@
    :ns-prefix "metabase-enterprise.dashboard-subscription-filters"
    :uses #{premium-features}}
 
+  ;; TODO (Chris 2026-10-30): CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand. Align
+  ;; :team with that group, or the group with :team, then set :codeowners.
   enterprise/remote-sync
-  {:team "Data Apps"
-   :codeowners :src-only
+  {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
            metabase-enterprise.remote-sync.init}

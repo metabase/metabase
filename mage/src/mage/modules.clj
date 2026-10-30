@@ -295,11 +295,11 @@
 
 (defn- read-team->codeowner
   "Team name => GitHub CODEOWNERS handle, from the `codeowner` field in team.json.
-  Teams without a `codeowner` are omitted."
+  Teams without a `codeowner`, or with a blank or non-string one, are omitted."
   []
   (into {}
         (keep (fn [{:keys [name codeowner]}]
-                (when codeowner
+                (when (and (string? codeowner) (not (str/blank? codeowner)))
                   [name codeowner])))
         (:teams (json/parse-string (slurp team-config-path) true))))
 
@@ -328,9 +328,11 @@
   (reduce
    (fn [entries module]
      (let [team  (modules/module-team modules-config module)
-           value (get-in modules-config [module :codeowners])
-           trees (set (when (some? value)
-                        (get modules/codeowners-value->trees value (modules/codeowners-value->trees true))))]
+           cfg   (get modules-config module)
+           trees (set (when (contains? cfg :codeowners)
+                        (get modules/codeowners-value->trees
+                             (:codeowners cfg)
+                             (modules/codeowners-value->trees true))))]
        (into entries
              (for [tree   ["src" "test"]
                    :let   [dir       (modules/module-dir modules-config module tree)
