@@ -125,16 +125,22 @@ const modelPersistence = () =>
   }));
 
 // `route.lazy` supplies a component and no props, so the four routes that
-// share this layout bind theirs here.
+// share this layout bind theirs here. A getter rather than the props
+// themselves, so props that follow a feature are read when the route resolves
+// and not while the tree is built.
 const metabotLayout =
-  (props: ComponentProps<typeof MetabotAdminLayout> = {}) =>
+  (getProps: () => ComponentProps<typeof MetabotAdminLayout> = () => ({})) =>
   () =>
     import(/* webpackChunkName: "admin" */ "./ai/MetabotAdminLayout").then(
-      ({ MetabotAdminLayout }) => ({
-        Component: function MetabotAdminLayoutRoute() {
-          return <MetabotAdminLayout {...props} />;
-        },
-      }),
+      ({ MetabotAdminLayout }) => {
+        const props = getProps();
+
+        return {
+          Component: function MetabotAdminLayoutRoute() {
+            return <MetabotAdminLayout {...props} />;
+          },
+        };
+      },
     );
 
 const aiSettings = () =>
@@ -377,31 +383,31 @@ export const getRoutes = (
           </Route>
           <Route
             key="mcp-authorizations-layout"
-            lazy={metabotLayout({
+            lazy={metabotLayout(() => ({
               fullWidth: true,
               innerContentProps: { fullWidth: true, fullHeight: true },
-            })}
+            }))}
           >
             <Route path="mcp/authorizations" lazy={oauthAuthorizations} />
           </Route>
           <Route
             key="mcp-tools-access-layout"
-            lazy={metabotLayout({
+            lazy={metabotLayout(() => ({
               fullWidth: true,
               innerContentProps: { fullWidth: true, fullHeight: true },
-            })}
+            }))}
           >
             {PLUGIN_AI_CONTROLS.getMcpToolsAccessRoutes()}
           </Route>
           <Route
             key="layout"
-            lazy={metabotLayout({
+            lazy={metabotLayout(() => ({
               fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
               innerContentProps: {
                 fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
                 fullHeight: !PLUGIN_AI_CONTROLS.isEnabled,
               },
-            })}
+            }))}
           >
             {PLUGIN_AI_CONTROLS.getAiControlsRoutes()}
           </Route>
@@ -416,8 +422,7 @@ export const getRoutes = (
 
         <Route element={createElement(createAdminRouteGuard("help"))}>
           <Route path="help" lazy={help}>
-            {PLUGIN_SUPPORT.isEnabled &&
-              modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
+            {modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
           </Route>
         </Route>
       </Route>

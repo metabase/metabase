@@ -1,6 +1,7 @@
 import type { JSX } from "react";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import type { PluginRoute } from "metabase/plugins/types";
 import { Outlet, redirect } from "metabase/router";
 
@@ -51,6 +52,16 @@ export function NotFoundPlaceholder() {
 export const notFoundRoute: PluginRoute = async () => ({
   Component: NotFoundPlaceholder,
 });
+
+/**
+ * A modal route slot's off state: close at once, so the URL falls back to the
+ * page the modal would have opened over.
+ */
+export function PluginPlaceholderModal({ onClose }: ModalComponentProps) {
+  useEffect(() => onClose(), [onClose]);
+
+  return null;
+}
 
 /**
  * An index route's on state when it only forwards to a sibling.
