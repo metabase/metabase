@@ -5078,6 +5078,7 @@
                                     {:parameters []
                                      :tabs       [{:id -1 :name "A"} {:id -2 :name "B"}]
                                      :dashcards  [{:id dashcard-id :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]})
+              (is (=? [{:id (:id param)}] (t2/select-one-fn :parameters :model/Dashboard :id dash-id)))
               (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
               (is (zero? (sent-to @mt/inbox "trashbird@metabase.com")))
               (testing "a save that succeeds then sends the email once, which shows the failed one sent none"

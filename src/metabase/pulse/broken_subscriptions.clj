@@ -6,6 +6,7 @@
    [metabase.channel.email.messages :as messages]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as pulse]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -98,4 +99,11 @@
     ;; the transaction's connection.
     (app-db/do-after-commit
      #(future
-        (run! messages/send-broken-subscription-notification! broken-subscriptions)))))
+        (doseq [{:keys [pulse-id] :as broken-subscription} broken-subscriptions]
+          ;; `send-message!` logs SMTP failures, but the email is built before it is called, and nothing would see a
+          ;; throw from this thread. Logging it here also lets the remaining notifications go out.
+          (try
+            (messages/send-broken-subscription-notification! broken-subscription)
+            (catch Throwable e
+              (log/errorf e "Failed to notify the owners of broken subscription %d on dashboard %d"
+                          pulse-id dashboard-id))))))))

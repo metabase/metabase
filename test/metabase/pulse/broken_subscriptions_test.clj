@@ -159,3 +159,33 @@
                 (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
                 (is (true? (deref done 10000 false)))
                 (is (= [pulse-id] @sent))))))))))
+
+(deftest notification-failure-does-not-stop-the-rest-test
+  (testing "a notification that throws is logged, and the remaining ones still go out"
+    (let [param {:id "_SOURCE_PARAM_ID_" :name "Source" :slug "source" :type :string/=}]
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp
+          [:model/Card          {card-id :id}     {}
+           :model/Dashboard     {dash-id :id}     {:parameters [param]}
+           :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id :card_id card-id}
+           :model/Pulse         {first-id :id}    {:dashboard_id dash-id
+                                                   :creator_id   (mt/user->id :trashbird)
+                                                   :parameters   [(assoc param :value ["Twitter"])]}
+           :model/PulseCard     _                 {:pulse_id first-id :card_id card-id :dashboard_card_id dashcard-id}
+           :model/Pulse         {second-id :id}   {:dashboard_id dash-id
+                                                   :creator_id   (mt/user->id :trashbird)
+                                                   :parameters   [(assoc param :value ["Facebook"])]}
+           :model/PulseCard     _                 {:pulse_id second-id :card_id card-id :dashboard_card_id dashcard-id}]
+          (let [sent (atom [])
+                done (promise)]
+            (mt/with-dynamic-fn-redefs [messages/send-broken-subscription-notification!
+                                        (fn [{:keys [pulse-id]}]
+                                          (if (= pulse-id first-id)
+                                            (throw (ex-info "template failed" {}))
+                                            (do (swap! sent conj pulse-id)
+                                                (deliver done true))))]
+              (t2/with-transaction [_conn]
+                (t2/update! :model/Dashboard :id dash-id {:parameters []})
+                (pulse.broken-subscriptions/handle-broken-subscriptions! dash-id {(:id param) param}))
+              (is (true? (deref done 10000 false)))
+              (is (= [second-id] @sent)))))))))
