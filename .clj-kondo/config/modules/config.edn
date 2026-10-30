@@ -3252,14 +3252,19 @@
 
   enterprise/impersonation
   {:team "Graphy"
-   :api  #{metabase-enterprise.impersonation.api}
+   :api  #{metabase-enterprise.impersonation.api
+           metabase-enterprise.impersonation.init}
    :uses #{api
+           app-db
            audit-app
+           config
            driver
            lib
            models
            premium-features
            query-processor
+           settings
+           task
            util
            warehouse-schema
            enterprise/sandbox}
