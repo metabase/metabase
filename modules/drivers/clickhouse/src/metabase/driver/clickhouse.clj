@@ -1,6 +1,7 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -12,6 +13,7 @@
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.common :as driver.common]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -26,8 +28,10 @@
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
+   (com.clickhouse.client.api ClientConfigProperties)
    (com.clickhouse.client.api.query QuerySettings)
-   (java.sql Connection SQLException PreparedStatement)
+   (com.clickhouse.jdbc ConnectionImpl)
+   (java.sql Connection SQLException PreparedStatement Statement)
    (java.time LocalDate)))
 
 (set! *warn-on-reflection* true)
@@ -69,6 +73,8 @@
                               :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          true
+                              ;; The statement timeout is set when the statement is made, see [[set-query-timeout!]].
+                              :jdbc/set-query-timeout           false
                               :left-join                        true
                               :metadata/key-constraints         false
                               :native-pivot-tables              true
@@ -101,6 +107,71 @@
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
 
+(def ^:private metabase-query-settings
+  "Server settings that Metabase sends with each query."
+  {"select_sequential_consistency" "1"
+   "join_use_nulls"                "1"})
+
+(def ^:private locked-settings-query
+  (str "SELECT name, value FROM system.settings WHERE readonly != 0 AND name IN ("
+       (str/join ", " (map #(str "'" % "'") (conj (keys metabase-query-settings) "max_execution_time")))
+       ")"))
+
+(def ^:private ^{:arglists '([clickhouse-conn])} locked-settings*
+  (memoize/ttl
+   ^{:clojure.core.memoize/args-fn (fn [[^ConnectionImpl clickhouse-conn]]
+                                     (let [md (.getMetaData clickhouse-conn)]
+                                       [(.getURL md) (.getUserName md)]))}
+   (fn [^ConnectionImpl clickhouse-conn]
+     (with-open [stmt (.createStatement clickhouse-conn)
+                 rset (.executeQuery stmt locked-settings-query)]
+       (loop [acc {}]
+         (if (.next rset)
+           (recur (assoc acc (.getString rset 1) (.getString rset 2)))
+           acc))))
+   :ttl/threshold (* 60 60 1000)))
+
+(defn- locked-settings
+  "Return a map of the settings that the connection's user cannot change, to their values. A user with `readonly = 1`
+  can change only the settings that are `CHANGEABLE_IN_READONLY`. The server accepts a locked setting only when the
+  value does not change. A failed check is not cached, and gives an empty map."
+  [clickhouse-conn]
+  (try
+    (locked-settings* clickhouse-conn)
+    (catch SQLException e
+      (log/warn e "Could not read which ClickHouse settings the user can change")
+      {})))
+
+(defn- query-settings-to-send
+  "Return the [[metabase-query-settings]] to send on the connection. Leave out a setting that the user sets in the
+  connection details, or that the user cannot change to the Metabase value."
+  [^ConnectionImpl clickhouse-conn]
+  (let [config (.getConfiguration (.getClient clickhouse-conn))
+        locked (locked-settings clickhouse-conn)]
+    (into {}
+          (remove (fn [[setting value]]
+                    (or (contains? config (ClientConfigProperties/serverSetting setting))
+                        (some-> (get locked setting) (not= value)))))
+          metabase-query-settings)))
+
+(defn- set-query-timeout!
+  "Set the statement timeout to `*query-timeout-ms*`. The JDBC driver sends it as the `max_execution_time` setting, so
+  do not set it when the user cannot change that setting. The query processor still cancels the query at the timeout."
+  [^Statement stmt]
+  (let [seconds (long (/ driver.settings/*query-timeout-ms* 1000))
+        locked  (get (locked-settings (.unwrap (.getConnection stmt) ConnectionImpl)) "max_execution_time")]
+    (when (or (nil? locked) (= locked (str seconds)))
+      (.setQueryTimeout stmt (int seconds)))
+    stmt))
+
+(defmethod sql-jdbc.execute/statement :clickhouse
+  [driver conn]
+  (set-query-timeout! ((get-method sql-jdbc.execute/statement :sql-jdbc) driver conn)))
+
+(defmethod sql-jdbc.execute/prepared-statement :clickhouse
+  [driver conn sql params]
+  (set-query-timeout! ((get-method sql-jdbc.execute/prepared-statement :sql-jdbc) driver conn sql params)))
+
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
   [driver db-or-id-or-spec {:keys [^String session-timezone _write?] :as options} f]
   (sql-jdbc.execute/do-with-resolved-connection
@@ -109,10 +180,14 @@
    options
    (fn [^java.sql.Connection conn]
      (when-not (sql-jdbc.execute/recursive-connection?)
-       (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+       (let [^ConnectionImpl clickhouse-conn (.unwrap conn ConnectionImpl)
              query-settings (new QuerySettings)]
          (when session-timezone
            (.serverSetting query-settings "session_timezone" session-timezone))
+         ;; set the defaults before the settings check, so that it does not send settings from an earlier checkout
+         (.setDefaultQuerySettings clickhouse-conn query-settings)
+         (doseq [[setting value] (query-settings-to-send clickhouse-conn)]
+           (.serverSetting query-settings ^String setting ^String value))
          (.setDefaultQuerySettings clickhouse-conn query-settings))
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
@@ -173,12 +248,9 @@
          :jdbc_schema_term               "schema"
          :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
-         :custom_http_params             (cond-> "select_sequential_consistency=1"
-                                           (not (some->> clickhouse-settings (re-find #"(?:^|,)\s*join_use_nulls\s*=")))
-                                           (str ",join_use_nulls=1")
-                                           (not (str/blank? clickhouse-settings))
-                                           (str "," clickhouse-settings))
          :jdbc_metadata_use_show_statements false}
+        ;; Metabase's own settings are sent with each query, see [[query-settings-to-send]]
+        (cond-> (not (str/blank? clickhouse-settings)) (assoc :custom_http_params clickhouse-settings))
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse

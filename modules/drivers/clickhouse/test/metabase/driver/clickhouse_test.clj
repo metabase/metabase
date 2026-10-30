@@ -9,6 +9,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -27,6 +28,7 @@
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
    [metabase.upload.impl-test :as upload-test]
+   [metabase.util :as u]
    [taoensso.nippy :as nippy]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -398,7 +400,7 @@
              :user "bob"
              :password "qaz"
              :ssl true
-             :custom_http_params "select_sequential_consistency=1,join_use_nulls=1,max_threads=42,allow_experimental_analyzer=0"})
+             :custom_http_params "max_threads=42,allow_experimental_analyzer=0"})
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {:host "myclickhouse"
@@ -515,7 +517,7 @@
         (is (true? (driver/can-connect? :clickhouse details)))
         (is (= "//localhost:8123/default?clickhouse_setting_max_threads=5&max_block_size=50"
                (:subname spec)))
-        (is (= "select_sequential_consistency=1,join_use_nulls=1,max_result_rows=10,max_columns_to_read=20"
+        (is (= "max_result_rows=10,max_columns_to_read=20"
                (:custom_http_params spec)))
         (is (= {:max_threads 5
                 :max_block_size 65409 ;; unknown key is ignored
@@ -924,3 +926,54 @@
   (testing "a host written as a URL with a scheme and path is still allowed"
     (is (nil? (driver.u/validate-connection-parameters!
                :clickhouse {:host "https://ch.example.com/x" :port 8443 :dbname "d"})))))
+
+(deftest query-settings-test
+  (mt/test-driver :clickhouse
+    (testing "Metabase settings are sent with each query"
+      (is (= [[1 1 120]]
+             (binding [driver.settings/*query-timeout-ms* 120000]
+               (->> (str "SELECT toUInt8(getSetting('join_use_nulls')), "
+                         "toUInt8(getSetting('select_sequential_consistency')), "
+                         "toUInt64(getSetting('max_execution_time'))")
+                    (lib/native-query (mt/metadata-provider))
+                    qp/process-query
+                    mt/rows)))))))
+
+(deftest readonly-user-test
+  (mt/test-driver :clickhouse
+    (testing "A user with `readonly = 1` can run queries, with the settings that the user cannot change left out"
+      (ctd/exec-statements ["CREATE SETTINGS PROFILE OR REPLACE metabase_readonly_profile SETTINGS
+                               readonly = 1 READONLY,
+                               select_sequential_consistency CHANGEABLE_IN_READONLY,
+                               max_execution_time = 30 READONLY;"
+                            "CREATE USER OR REPLACE metabase_readonly_user NOT IDENTIFIED
+                               SETTINGS PROFILE metabase_readonly_profile;"]
+                           {})
+      (mt/with-temp [:model/Database db {:engine  :clickhouse
+                                         :details (assoc (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+                                                         :user "metabase_readonly_user")}]
+        (mt/with-db db
+          (is (= [[0 1 30]]
+                 (binding [driver.settings/*query-timeout-ms* 120000]
+                   (->> (str "SELECT toUInt8(getSetting('join_use_nulls')), "
+                             "toUInt8(getSetting('select_sequential_consistency')), "
+                             "toUInt64(getSetting('max_execution_time'))")
+                        (lib/native-query (mt/metadata-provider))
+                        qp/process-query
+                        mt/rows)))))))))
+
+(deftest ^:synchronized cancel-slow-query-via-query-timeout-test
+  (mt/test-driver :clickhouse
+    (testing "Slow query is cancelled when *query-timeout-ms* elapses"
+      ;; The query would take 120 s. `sleepEachRow` sleeps at most 3 s for each block, so use blocks of one row.
+      (binding [driver.settings/*query-timeout-ms* 2000]
+        (let [timer   (u/start-timer)
+              query   (mt/native-query {:query "SELECT sleepEachRow(1) FROM numbers(120) SETTINGS max_block_size = 1"})
+              result  (try
+                        (qp/process-query query)
+                        (catch Throwable e e))
+              elapsed (u/since-ms timer)]
+          (is (instance? Throwable result)
+              "query should throw rather than completing normally")
+          (is (<= 2000 elapsed 30000)
+              (format "query should be cancelled after the timeout and well before it completes — took %.0f ms" elapsed)))))))
