@@ -31,18 +31,11 @@ export function PermissionsSelectOption({
       onMouseLeave={() => setShouldShowTooltip(false)}
     >
       <Tooltip label={hint} disabled={!hint} opened={shouldShowTooltip}>
-        <Center
-          flex="0 0 auto"
-          w="1.25rem"
-          h="1.25rem"
-          bdrs="0.1875rem"
-          c="text-primary-inverse"
-          bg={iconColor}
-        >
+        <Center flex="0 0 auto" w="1.25rem" h="1.25rem" c={iconColor}>
           <Icon name={icon} />
         </Center>
       </Tooltip>
-      <Box fz="md" fw={700} px="sm">
+      <Box fz="md" px="sm">
         {label}
       </Box>
     </Flex>

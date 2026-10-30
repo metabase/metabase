@@ -84,6 +84,7 @@ const getPermission = (
   return {
     permission: permissionKey,
     isDisabled,
+    isHighlighted: isAdmin,
     warning,
     disabledTooltip: isAdmin
       ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS

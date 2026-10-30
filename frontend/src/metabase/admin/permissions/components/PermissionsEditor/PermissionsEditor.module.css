@@ -4,3 +4,9 @@
   overflow: auto;
   padding: 1rem 0 0 0;
 }
+
+/* The grid's scroll box bleeds through the editor's left padding; pad the
+   name column back so it lines up with the header and search above. */
+.tableScroll :is(th, td):first-of-type {
+  padding-left: var(--mantine-spacing-xxl);
+}

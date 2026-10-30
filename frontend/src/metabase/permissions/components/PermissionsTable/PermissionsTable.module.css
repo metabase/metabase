@@ -28,6 +28,15 @@
   }
 }
 
+/* A light tint of the current value's icon color, mixed into the page color so the label stays readable */
+.permissionCell {
+  background: color-mix(
+    in srgb,
+    var(--permission-color, transparent) 14%,
+    var(--mb-color-background_page-primary)
+  );
+}
+
 /* The header paints its own 1px bottom line over the page color, since collapsed table borders do not stick with it */
 .headerCell {
   position: sticky;
@@ -48,12 +57,23 @@
   }
 }
 
+/*
+ * Vertical dividers between permission columns. Drawn as inset shadows rather
+ * than collapsed borders so they stay with the sticky header cells. The line
+ * after the name column comes from its own `::after` in the body; in the header
+ * that `::after` is hidden, so every header cell after the first draws one.
+ */
+.headerCell + .headerCell,
+.permissionCell + .permissionCell {
+  box-shadow: inset 1px 0 0 var(--mb-color-border-neutral-subtle);
+}
+
 .row {
   border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
 }
 
 .entityNameLink {
-  font-weight: 700;
+  font-weight: 400;
   text-decoration: underline;
   color: var(--mb-color-navbar-admin-inverse);
 }

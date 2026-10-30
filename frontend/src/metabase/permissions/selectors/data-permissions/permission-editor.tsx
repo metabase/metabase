@@ -21,7 +21,6 @@ import type {
   GroupsPermissions,
   PermissionEntityId,
   PermissionSubject,
-  SpecialGroupType,
 } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
@@ -52,17 +51,6 @@ import { buildFieldsPermissions } from "./fields";
 import { getOrderedGroups, selectGroupById, selectGroupList } from "./groups";
 import { buildSchemasPermissions } from "./schemas";
 import { buildTablesPermissions } from "./tables";
-
-const getGroupHint = (groupType: SpecialGroupType): string | null => {
-  switch (groupType) {
-    case "admin":
-      return t`The Administrators group is special, and always has Unrestricted access.`;
-    case "analyst":
-      return t`The Data Analysts group always has full access to edit table metadata.`;
-    default:
-      return null;
-  }
-};
 
 // The database's tables are loaded via getDatabaseMetadata (see DataPermissionsPage
 // and updateDataPermission below); read that request's state to drive the
@@ -529,7 +517,6 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
           icon: isTenantGroup ? (
             <PLUGIN_TENANTS.TenantGroupHintIcon />
           ) : undefined,
-          hint: getGroupHint(groupType),
           entityId: {
             databaseId,
             schemaName,

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -14,6 +15,7 @@ import {
 import { Box, Flex, Icon, Input, Text, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
+import S from "./PermissionsEditor.module.css";
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
 
 export type PermissionsEditorContentProps = PermissionEditorType &
@@ -80,7 +82,9 @@ export function PermissionsEditorContent({
       <TextInput
         mt="lg"
         mb="sm"
-        w="17.5rem"
+        // Full width, with right padding matching the editor's left padding.
+        w="100%"
+        pr="xxl"
         placeholder={filterPlaceholder}
         onChange={handleFilterChange}
         value={filter}
@@ -96,7 +100,15 @@ export function PermissionsEditorContent({
         }
       />
 
-      <Box ref={setScrollElement} className={CS.overflowAuto} flex={1} pb="xxl">
+      {/* Bleeds through the editor's left padding so the grid and its row
+          dividers run edge to edge; `tableScroll` pads the first column back. */}
+      <Box
+        ref={setScrollElement}
+        className={cx(CS.overflowAuto, S.tableScroll)}
+        flex={1}
+        pb="xxl"
+        ml="calc(var(--mantine-spacing-xxl) * -1)"
+      >
         <PermissionsTable
           entities={filteredEntities || entities}
           columns={columns}

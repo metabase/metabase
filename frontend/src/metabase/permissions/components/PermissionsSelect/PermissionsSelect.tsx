@@ -2,7 +2,7 @@ import cx from "classnames";
 import { memo, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon, Popover, Switch, Tooltip } from "metabase/ui";
+import { Box, Flex, Icon, Popover, Switch, Text, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { DataPermissionValue, IconName } from "metabase-types/api";
 
@@ -60,27 +60,32 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   const actionsForCurrentValue = actions?.[selectedOption.value] || [];
   const hasActions = actionsForCurrentValue.length > 0;
 
+  // Admin cells can't change, but they open a read-only popover that says why
+  // and shows the options they can't take, instead of a hover tooltip.
+  const isAdminLocked = Boolean(isDisabled && isHighlighted);
+  const isClickable = !isDisabled || isAdminLocked;
+
   const triggerContent = (
     <Flex
-      className={isDisabled ? CS.cursorDefault : CS.cursorPointer}
+      className={isClickable ? CS.cursorPointer : CS.cursorDefault}
       align="center"
       miw="11.25rem"
       aria-haspopup="listbox"
       data-testid="permissions-select"
-      aria-disabled={isDisabled}
-      onClick={isDisabled ? undefined : () => setOpened((o) => !o)}
+      aria-disabled={!isClickable}
+      onClick={isClickable ? () => setOpened((o) => !o) : undefined}
     >
-      {isDisabled ? (
+      {isClickable ? (
         <PermissionsSelectOption
           {...selectedOption}
-          c={isHighlighted ? "text-secondary" : "text-disabled"}
-          hint={disabledTooltip}
-          iconColor="text-disabled"
+          className={S.selectedOption}
         />
       ) : (
         <PermissionsSelectOption
           {...selectedOption}
-          className={S.selectedOption}
+          c="text-disabled"
+          hint={disabledTooltip}
+          iconColor="text-disabled"
         />
       )}
 
@@ -89,18 +94,49 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           <Icon name="warning" size={18} mr="xxs" c="text-disabled" />
         </Tooltip>
       )}
-
-      <Icon
-        style={{ visibility: isDisabled ? "hidden" : "visible" }}
-        name="chevrondown"
-        size={16}
-        c="text-disabled"
-      />
     </Flex>
   );
 
   if (!opened) {
     return triggerContent;
+  }
+
+  if (isAdminLocked) {
+    return (
+      <Popover opened onChange={setOpened}>
+        <Popover.Target>{triggerContent}</Popover.Target>
+        <Popover.Dropdown>
+          <Box maw="18rem" miw="13.125rem" py="sm">
+            {disabledTooltip && (
+              <Text px="lg" py="sm" c="text-secondary" lh={1.4}>
+                {disabledTooltip}
+              </Text>
+            )}
+            <Box component="ul" px={0} role="listbox">
+              {options
+                .filter((option) => option !== selectedOption)
+                .map((option) => (
+                  <Box
+                    component="li"
+                    className={CS.cursorDefault}
+                    py="sm"
+                    px="lg"
+                    role="option"
+                    aria-disabled
+                    key={option.value}
+                  >
+                    <PermissionsSelectOption
+                      {...option}
+                      c="text-disabled"
+                      iconColor="text-disabled"
+                    />
+                  </Box>
+                ))}
+            </Box>
+          </Box>
+        </Popover.Dropdown>
+      </Popover>
+    );
   }
 
   return (

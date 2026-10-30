@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { memo, useCallback, useRef, useState } from "react";
+import { type CSSProperties, memo, useCallback, useRef, useState } from "react";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
@@ -38,6 +38,11 @@ export type PermissionsTableProps = Pick<
 };
 
 const ROW_HEIGHT = 40;
+
+type PermissionCellStyle = CSSProperties & {
+  "--permission-color": string;
+};
+
 const VIRTUALIZATION_THRESHOLD = 100;
 
 export function PermissionsTable({
@@ -162,6 +167,7 @@ export function PermissionsTable({
         component="table"
         className={cx(S.table, CS.overflowAuto)}
         mah="100%"
+        w="100%"
         miw="max-content"
         data-testid="permission-table"
       >
@@ -255,7 +261,7 @@ const EntityRow = memo(function EntityRow({
             {entityName}
           </Link>
         ) : (
-          <Flex gap="xxs" fw="bold">
+          <Flex gap="xxs">
             {entityName}
             {entity.icon}
           </Flex>
@@ -264,8 +270,24 @@ const EntityRow = memo(function EntityRow({
       </td>
 
       {entity.permissions?.map((permission, index) => {
+        // Tint the cell with the color of the icon the select shows for the
+        // current value; a disabled select greys its icon, so the cell too.
+        // Admin cells (disabled but highlighted) open a popover and keep color.
+        const isGreyedOut = permission.isDisabled && !permission.isHighlighted;
+        const iconColor = isGreyedOut
+          ? "text-disabled"
+          : permission.options.find(
+              (option) => option.value === permission.value,
+            )?.iconColor;
+        const style: PermissionCellStyle | undefined = iconColor
+          ? { "--permission-color": `var(--mb-color-${iconColor})` }
+          : undefined;
         return (
-          <td key={permission.type ?? String(index)} className={S.cell}>
+          <td
+            key={permission.type ?? String(index)}
+            className={cx(S.cell, S.permissionCell)}
+            style={style}
+          >
             <PermissionsSelect
               {...permission}
               onChange={(value, toggleState) =>

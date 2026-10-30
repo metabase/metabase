@@ -393,6 +393,7 @@ export const getCollectionsPermissionEditor = createSelector(
               toggleLabel,
               hasChildren,
               isDisabled,
+              isHighlighted: groupType === "admin",
               disabledTooltip,
               value,
               warning: getCollectionWarning(
