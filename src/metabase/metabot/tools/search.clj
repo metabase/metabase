@@ -21,8 +21,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -816,20 +815,3 @@
   (->SearchTool
    "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
    nlq-search-schema ["metric" "measure" "segment" "model" "question" "table"] {:profile-id "nlq"}))
-
-(def ^:private transform-search-schema
-  [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
-   [:keyword_queries {:optional true} keyword-queries-schema]
-   [:search_native_query {:optional true} [:maybe [:boolean {:description "Also match against the native SQL text of transforms, not just names and descriptions."}]]]
-   [:entity_types {:optional true} (entity-types-schema "table" "model" "transform")]
-   [:limit {:optional true} limit-schema]])
-
-(mu/defn ^{:tool-name  "search"
-           :scope      scope/agent-search
-           :title-fn   search-display}
-  transform-search-tool
-  "Find transforms, plus the tables and models around them, by topic."
-  [{:keys [search_native_query] :as args} :- transform-search-schema]
-  (do-search (sorted-set "model" "table" "transform")
-             {:search-native-query search_native_query :metabot shared/*metabot*} args))
