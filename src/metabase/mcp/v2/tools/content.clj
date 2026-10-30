@@ -19,6 +19,7 @@
      subscription reads cover live Pulse rows and rows migrated to the notification API."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -396,6 +397,14 @@
                             u/remove-nils))
                       dashcards)}))
 
+(defn- dashboard-parameters
+  "The `parameters` include: each stored parameter as `dashboard_write` takes it back, with the ids of the dashcards
+   wired to it. The concise row shows only some of its properties."
+  [row]
+  (let [param-id->dashcard-ids (into {} (map (juxt :id :dashcard_ids)) (:parameters row))]
+    {:parameters (mapv #(m/assoc-some % :dashcard_ids (param-id->dashcard-ids (:id %)))
+                       (:parameters (::dashboard row)))}))
+
 ;;; ----------------------------------------------------- alert ----------------------------------------------------
 
 (defn- notification-of-type
@@ -518,7 +527,7 @@
    "segment"      {:fetch #(fetch-measure-or-segment :model/Segment %)
                    :includes {"definition" (definition-include #(measure-or-segment-definition :segment %))}}
    "dashboard"    {:fetch fetch-dashboard
-                   :includes {"parameters" (fn [row] {:parameters (vec (:parameters row))})
+                   :includes {"parameters" dashboard-parameters
                               "layout"     (fn [row] {:layout (dashboard-layout row)})}}
    "document"     {:fetch fetch-document
                    :includes {"layout"   (fn [row] {:layout (document-layout row)})

@@ -233,15 +233,36 @@
           (is (= [{:id tab-id :name "Tab 1"}] (:tabs row)))
           (testing "each parameter names the dashcards it is wired to"
             (let [expected [{:id "_CAT_" :name "Category" :type "category" :dashcard_ids [dc-id]}]]
-              (is (= expected (:parameters row)))
-              (is (= expected
-                     (:parameters (content-one {:items   [{:type "dashboard" :id dash-id}]
-                                                :include ["parameters"]}))))))
+              (is (= expected (:parameters row)))))
+          (testing "the parameters include returns each stored parameter with its wired dashcard ids"
+            (is (= [{:id "_CAT_" :name "Category" :slug "category" :type "category" :dashcard_ids [dc-id]}]
+                   (:parameters (content-one {:items   [{:type "dashboard" :id dash-id}]
+                                              :include ["parameters"]})))))
           (testing "one summary row per dashcard, with the card reference resolved"
             (is (= [{:id dc-id :kind "card" :card {:id card-id :name "Embedded"}
                      :dashboard_tab_id tab-id :row 0 :col 0}]
                    (mapv #(select-keys % [:id :kind :card :dashboard_tab_id :row :col])
                          (:dashcards row))))))))))
+
+(deftest get-content-dashboard-parameters-include-test
+  (testing "BOT-2524: the parameters include shows the properties the concise row leaves out"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:parameters [{:id "state" :name "State" :slug "state" :type "string/="}
+                                                                {:id                  "city"
+                                                                 :name                "City"
+                                                                 :slug                "city"
+                                                                 :type                "string/="
+                                                                 :values_query_type   "list"
+                                                                 :isMultiSelect       false
+                                                                 :filteringParameters ["state"]}]}]
+      (mt/with-test-user :crowberto
+        (let [city   (fn [opts]
+                       (-> (content-one (merge {:items [{:type "dashboard" :id dash-id}]} opts))
+                           :parameters
+                           second
+                           (select-keys [:values_query_type :isMultiSelect :filteringParameters])))]
+          (is (= {} (city {})))
+          (is (= {:values_query_type "list" :isMultiSelect false :filteringParameters ["state"]}
+                 (city {:include ["parameters"]}))))))))
 
 (defn- dashcard-refs
   "dashcard id -> its projected `:card` and `:series` references, for the redaction assertions."
