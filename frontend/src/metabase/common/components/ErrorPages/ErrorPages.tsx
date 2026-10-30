@@ -10,7 +10,7 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useSelector } from "metabase/redux";
-import { useNavigate } from "metabase/router";
+import { getCanGoBack, useNavigate } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Flex, Icon, Modal, Text, Tooltip } from "metabase/ui";
 import { reload } from "metabase/utils/dom";
@@ -108,7 +108,9 @@ export const ChunkLoadFailed = ({
 }) => {
   const applicationName = useSelector(getApplicationName);
   const navigate = useNavigate();
-  const goBack = () => navigate(-1);
+  // Going back from the first page a tab ever saw leaves Metabase, and this
+  // modal is a route of its own: dismissing it has to land somewhere.
+  const goBack = () => (getCanGoBack() ? navigate(-1) : navigate("/"));
 
   return (
     <Modal title={t`${applicationName} was updated`} opened onClose={goBack}>

@@ -135,6 +135,21 @@ export function getPendingNavigationHref(): string | null {
     : null;
 }
 
+/**
+ * Whether there is an entry in this tab's history to go back to.
+ *
+ * react-router numbers the entries it owns and keeps that index in
+ * `history.state`. Index zero means this page is the first the tab saw, so
+ * going back from it leaves Metabase.
+ */
+export function getCanGoBack(): boolean {
+  const state: unknown = window.history.state;
+  if (state == null || typeof state !== "object" || !("idx" in state)) {
+    return false;
+  }
+  return typeof state.idx === "number" && state.idx > 0;
+}
+
 export function setRouterNavigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;
   if (!navigate) {

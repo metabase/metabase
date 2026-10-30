@@ -56,6 +56,11 @@ describe("ChunkLoadFailed", () => {
       { initialRoute: "/doc" },
     );
 
+    // The index the browser router keeps for the entry it is on. A memory
+    // router writes none, and this modal reads it to tell a page that has
+    // somewhere to go back to from one that would leave Metabase.
+    window.history.replaceState({ idx: 1 }, "");
+
     expect(await screen.findByTestId("doc")).toBeInTheDocument();
     act(() => {
       router?.navigate("/doc/comments");
@@ -67,5 +72,31 @@ describe("ChunkLoadFailed", () => {
     expect(await screen.findByTestId("doc")).toBeInTheDocument();
     expect(router?.location.pathname).toBe("/doc");
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A deep link that fails on the first load of the tab has nothing behind it.
+   * Going back would leave Metabase, or do nothing at all and leave the modal
+   * up with no way out of it.
+   */
+  it("goes to the app root when there is nothing behind it", async () => {
+    const { router } = renderRoutes(
+      [
+        { path: "/", element: <span data-testid="home">home</span> },
+        {
+          path: "/doc/comments",
+          element: <ChunkLoadFailed />,
+        },
+      ],
+      { initialRoute: "/doc/comments" },
+    );
+
+    window.history.replaceState({ idx: 0 }, "");
+    expect(await screen.findByText("Metabase was updated")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Go back" }));
+
+    expect(await screen.findByTestId("home")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/");
   });
 });
