@@ -44,10 +44,24 @@ export function getDashboardDrillType(
     return null;
   }
 
-  const { type, linkType, targetId, extraData } = getClickBehaviorData(
+  const { type, linkType, targetId, tabId, extraData } = getClickBehaviorData(
     clicked,
     clickBehavior,
   );
+
+  if (type === "link" && linkType === "dashboard" && targetId != null) {
+    const dashboard = extraData?.dashboard;
+    // Public dashboards use a UUID in state; their tabs retain the numeric dashboard ID.
+    const isCurrentDashboard =
+      dashboard?.id === targetId ||
+      dashboard?.tabs?.some(
+        (tab) => tab.id === tabId && tab.dashboard_id === targetId,
+      );
+
+    if (isCurrentDashboard) {
+      return "dashboard-reset";
+    }
+  }
 
   if (!hasLinkTargetData(clickBehavior, extraData)) {
     return null;
@@ -59,11 +73,7 @@ export function getDashboardDrillType(
     if (linkType === "url") {
       return "link-url";
     } else if (linkType === "dashboard") {
-      if (extraData?.dashboard?.id === targetId) {
-        return "dashboard-reset";
-      } else {
-        return "dashboard-url";
-      }
+      return "dashboard-url";
     } else if (linkType === "question" && extraData && extraData.questions) {
       return "question-url";
     }
