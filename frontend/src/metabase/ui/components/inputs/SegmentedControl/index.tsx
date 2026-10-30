@@ -50,6 +50,7 @@ export type SegmentedControlProps<Value extends string> = Omit<
   | "bg"
   | "variant"
   | "autoContrast"
+  | "orientation"
   | "__vars"
 > & {
   data: readonly SegmentedControlItem<Value>[];
