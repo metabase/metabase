@@ -474,6 +474,43 @@
                            (mt/derecordize (t2/select-one [:model/Pulse :collection_id :collection_position]
                                                           :name pulse-name))))))))))))))
 
+(deftest update-dashboard-subscription-ignores-collection-keys-test
+  (testing "PUT /api/pulse/:id"
+    (testing "A dashboard subscription ignores `collection_id` and `collection_position` from the request"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/Pulse]
+          (mt/with-temp [:model/Collection {coll-a :id} {}
+                         :model/Collection {coll-s :id} {}
+                         :model/Dashboard  {dashboard-id :id} {:collection_id coll-a}
+                         :model/Card       {card-id :id} {:collection_id coll-a}
+                         :model/Card       {pin-1 :id} {:collection_id coll-a :collection_position 1}
+                         :model/Card       {pin-2 :id} {:collection_id coll-a :collection_position 2}]
+            ;; View-only access to the dashboard's collection A. Two cards are pinned there, at 1 and 2.
+            (perms/grant-collection-read-permissions! (perms-group/all-users) coll-a)
+            (doseq [user [:rasta :crowberto]]
+              (testing (str "as " user)
+                (let [pulse-name (mt/random-name)
+                      {id :id}   (mt/user-http-request user :post 200 "pulse"
+                                                       {:name          pulse-name
+                                                        :dashboard_id  dashboard-id
+                                                        :cards         [{:id                card-id
+                                                                         :include_csv       false
+                                                                         :include_xls       false
+                                                                         :dashboard_card_id nil}]
+                                                        :channels      [daily-email-channel]
+                                                        :skip_if_empty false})]
+                  (doseq [updates [{:collection_position 1}
+                                   {:collection_id coll-s, :collection_position 1}]]
+                    (testing (pr-str updates)
+                      (mt/user-http-request user :put 200 (str "pulse/" id) updates)
+                      (testing "pinned cards in the collection do not move"
+                        (is (= {pin-1 1, pin-2 2}
+                               (t2/select-pk->fn :collection_position :model/Card :id [:in [pin-1 pin-2]]))))
+                      (testing "the subscription stays in the dashboard's collection, unpinned"
+                        (is (= {:collection_id coll-a, :collection_position nil}
+                               (mt/derecordize (t2/select-one [:model/Pulse :collection_id :collection_position]
+                                                              :id id))))))))))))))))
+
 (deftest validate-email-domains-test
   (mt/when-ee-evailable
    (mt/with-model-cleanup [:model/Pulse]
