@@ -90,21 +90,21 @@
      (testing "adding a goal the user can't read is refused and nothing is saved"
        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (count-query)}]
          (mt/with-test-user :rasta
-           (is (= 403 (status-of #(t2/update! :model/Card card-id
+           (is (= 403 (status-of #(t2/update! :model/Card :id card-id
                                               {:visualization_settings (gauge-viz (card-goal goal-id))})))))
          (is (= {} (t2/select-one-fn :visualization_settings :model/Card :id card-id)))))
      (testing "a goal already saved doesn't block unrelated edits by a user who can't read it"
        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (count-query)
                                                  :visualization_settings (gauge-viz (card-goal goal-id))}]
          (mt/with-test-user :rasta
-           (is (= :no-error (status-of #(t2/update! :model/Card card-id
+           (is (= :no-error (status-of #(t2/update! :model/Card :id card-id
                                                     {:visualization_settings (assoc (gauge-viz (card-goal goal-id))
                                                                                     :card.title "renamed")})))))))
      (testing "switching a saved goal to another column of the same card is refused"
        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (count-query)
                                                  :visualization_settings (gauge-viz (card-goal goal-id))}]
          (mt/with-test-user :rasta
-           (is (= 403 (status-of #(t2/update! :model/Card card-id
+           (is (= 403 (status-of #(t2/update! :model/Card :id card-id
                                               {:visualization_settings (gauge-viz (card-goal goal-id "sum"))}))))))))))
 
 (deftest measure-goal-reference-permissions-test
@@ -167,10 +167,10 @@
          (testing "a dashcard goal already saved doesn't block unrelated edits"
            (mt/with-temp [:model/DashboardCard {dashcard-id :id} (dashcard goal-viz)]
              (mt/with-test-user :rasta
-               (is (= :no-error (status-of #(t2/update! :model/DashboardCard dashcard-id
+               (is (= :no-error (status-of #(t2/update! :model/DashboardCard :id dashcard-id
                                                         {:visualization_settings renamed-viz}))))
                (testing "but switching it to another column of the same card is refused"
-                 (is (= 403 (status-of #(t2/update! :model/DashboardCard dashcard-id
+                 (is (= 403 (status-of #(t2/update! :model/DashboardCard :id dashcard-id
                                                     {:visualization_settings sum-viz})))))))))))))
 
 (deftest copied-dashboard-goal-reference-test
