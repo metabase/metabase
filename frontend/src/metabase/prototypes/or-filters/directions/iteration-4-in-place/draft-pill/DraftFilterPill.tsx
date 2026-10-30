@@ -1,5 +1,6 @@
 import { useClickOutside, useViewportSize } from "@mantine/hooks";
 import { skipToken } from "@reduxjs/toolkit/query/react";
+import cx from "classnames";
 import type { KeyboardEvent, ReactNode } from "react";
 import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
@@ -506,7 +507,10 @@ export function DraftFilterPill({
     >
       <div
         ref={pillRef}
-        className={S.draftPill}
+        className={cx(S.draftPill, {
+          // Prototype: plain text until a column is picked; the pill forms around it.
+          [S.draftPillBare]: step === "column" && !isAiFiltersMode,
+        })}
         data-testid="draft-filter-pill"
       >
         {isAiFiltersMode && (
@@ -517,7 +521,7 @@ export function DraftFilterPill({
             query={query}
             stageIndex={stageIndex}
             text={text}
-            placeholder={column?.label ?? t`Search filters`}
+            placeholder={column?.label ?? t`Type to filter…`}
             onTextChange={handleTextChange}
             onSelect={(newColumn) =>
               updateDraft(changeDraftColumn(draft, newColumn))
@@ -611,7 +615,7 @@ export function DraftFilterPill({
         )}
         {(aiValues.state.status === "loading" ||
           aiFilters.state.status === "loading") && <Loader size="xs" />}
-        <RemoveIcon onClick={onRemove} />
+        {step !== "column" && <RemoveIcon onClick={onRemove} />}
       </div>
     </Tooltip>
   );

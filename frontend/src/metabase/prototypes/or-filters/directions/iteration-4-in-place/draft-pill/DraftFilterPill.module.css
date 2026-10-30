@@ -428,3 +428,12 @@
     opacity: 0;
   }
 }
+
+/* Prototype: before a column is picked the draft is only text at the caret, no pill around it. */
+.draftPillBare {
+  min-height: 1.5rem;
+  padding-inline: 0;
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+}
