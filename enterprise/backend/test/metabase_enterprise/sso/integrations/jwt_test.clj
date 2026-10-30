@@ -349,6 +349,7 @@
       (doseq [redirect-uri ["https://badsite.com"
                             "//badsite.com"
                             "https:///badsite.com"]]
+        ;; The rejection is returned as a plain-text body, so the whole body is the message.
         (is
          (= "Invalid redirect URL"
             (client/client
@@ -1455,7 +1456,7 @@
                                                               :last_name "User"}
                                                              default-jwt-secret))]
                   (is (sso.test-setup/successful-login? response))
-                  (let [tenant (t2/select-one :model/Tenant tenant-id)]
+                  (let [tenant (t2/select-one :model/Tenant :id tenant-id)]
                     (testing "existing 'plan' attribute is preserved, not overwritten"
                       (is (= "enterprise" (get (:attributes tenant) "plan"))))
                     (testing "new 'region' attribute is added"

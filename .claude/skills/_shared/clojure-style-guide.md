@@ -25,7 +25,10 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 
 - Every public var in `src` or `enterprise/backend/src` must have docstring
 - Format using Markdown conventions
-- Reference other vars with `[[other-var]]` not backticks
+- Refer to a namespace or var as a link, `[[metabase.util.json/decode]]` or `[[metabase.sql-parsing.core]]`, never in
+  backticks: the brackets tell tooling it is a real namespace or var, so it can be resolved and linked. An
+  alias-qualified `[[sql/unsupported]]` or an unqualified `[[decode-manifest]]` works too. Backticks are for everything
+  else: keys, literals, SQL, file names, shell commands.
 
 A docstring states the *contract*: what it returns (including when it returns nil), what its
 params mean, what it throws versus swallows, and any precondition or invariant the caller must
@@ -79,6 +82,20 @@ These seven things are, and each is a reason to cut or relocate:
 
 Use `ex-cause`/`ex-message`/`ex-data`/`ex-info` rather than `.getCause`/`.getMessage`/`(.getData ^ExceptionInfo …)` where possible.
 
+**`(set! *warn-on-reflection* true)` goes in a file only when that file does Java interop:**
+
+Add it after the `ns` form when the file has `.method` calls, `Class/staticMethod` calls, constructors or used
+`:import`s, so the compiler reports any call it has to resolve by reflection. A file with no interop does not get the
+line, whatever its neighbours do: nine sibling files that use interop say nothing about a tenth that does not. Add it
+when interop is added later.
+
+In a `.cljc` file the same rule applies to the JVM-only code: when a `#?(:clj …)` or `#?@(:clj …)` branch does Java
+interop, the file gets the line, itself inside a reader conditional:
+
+```clojure
+#?(:clj (set! *warn-on-reflection* true))
+```
+
 ## Style Conventions
 
 **Keywords and Metadata:**
@@ -102,6 +119,73 @@ Use `ex-cause`/`ex-message`/`ex-data`/`ex-info` rather than `.getCause`/`.getMes
 ```
 
 Only `(:import java.time.X)` when interop with a Java method genuinely needs the class.
+
+**A branch that yields `nil` is a `when` or `when-not`, not an `if` with a `nil` arm:**
+
+```clojure
+;; good
+(when-not (= agg :count)
+  (unsupported "%s over * has no Metabase equivalent" (name agg)))
+
+;; bad
+(if (= agg :count)
+  nil
+  (unsupported "%s over * has no Metabase equivalent" (name agg)))
+```
+
+The same goes for `(if c x nil)`: write `(when c x)`.
+
+**A local binding never shadows a `clojure.core` var or a var in the current namespace:**
+
+```clojure
+;; good
+(defn field-metadata [field-name field-base-type] ...)
+(let [{entity-type :type} entity] ...)
+
+;; bad
+(defn field-metadata [name base-type] ...)      ; `name` is clojure.core/name; `base-type` is a fn in this ns
+(let [{:keys [type]} entity] ...)               ; `type` is clojure.core/type
+```
+
+Qualify the name instead: `field-name`, `entity-type`, `table-alias`, `unsupported-metrics`. Watch `:keys`
+destructuring in particular, since it names the local after the key. kondo's `:shadowed-var` linter finds these.
+
+**An ID takes its entity's ID schema, never a general one like `pos-int?`:**
+
+```clojure
+;; good
+(mu/defn table-ref [table-id :- ::lib.schema.id/table] ...)
+
+;; bad
+(mu/defn table-ref [table-id :- pos-int?] ...)
+```
+
+`metabase.lib.schema.id` has a schema for every entity with an ID (`::lib.schema.id/database`, `::table`, `::field`,
+`::card`, ...). Some modules define their own equivalents for their entities; those are fine to use instead.
+
+**A no-argument function passed around is a `thunk`, not an `f`:**
+
+```clojure
+;; good
+(defn with-context [context thunk]
+  (thunk))
+
+;; bad
+(defn with-context [context f]
+  (f))
+```
+
+**Find one element with `m/find-first`, not `(first (filter ...))`:**
+
+```clojure
+;; good
+(m/find-first #(= metric-name (:name %)) metrics)
+
+;; bad
+(first (filter #(= metric-name (:name %)) metrics))
+```
+
+`medley.core` is aliased as `m`. It says what is meant.
 
 **Check non-emptiness with `seq`, not `count`:**
 
@@ -447,6 +531,30 @@ When a schema is used in 2+ places or has a name worth documenting, extract it i
 
 `mr/def` keys are always `::namespaced` keywords; downstream callers reference via the fully-qualified keyword. Single-use schemas stay inline in the `mu/defn`'s `:-` annotation — no need to extract.
 
+**Never bind a schema to a var with plain `def`** (`(def Foo [:map …])`). A named schema always goes through
+`mr/def` with a `::qualified` keyword, and other schemas reference it by that keyword, not by var. This holds in
+`dev/` and research code too: registered schemas resolve through the default registry, get cached validators and
+explainers, and `mr/def` takes a docstring.
+
+### Decoders — `mr/cached` + `mr/explain`, not a `def`'d `mc/coercer`
+
+Building an `mc/decoder` is expensive. Don't bind one with `def` (it is built at load time and goes stale when a
+schema it references is re-`mr/def`'d), don't rebuild it on every call, and don't reach for `mc/coercer`, which
+builds its own uncached validator. Wrap the decoder in `mr/cached` under a `::namespaced` key inside the function
+that uses it, then validate with the cached `mr/explain` / `mr/validate`. The cache is flushed whenever the registry
+changes:
+
+```clojure
+(defn decode-manifest [m]
+  (let [decoder (mr/cached ::decoder ::manifest (fn [] (mc/decoder ::manifest transformer)))
+        decoded (decoder m)]
+    (if-let [error (mr/explain ::manifest decoded)]
+      (throw (ex-info "Invalid manifest" {:errors (me/humanize error)}))
+      decoded)))
+```
+
+See `metabase.lib.normalize` for the same `mr/cached` pattern with several transformers.
+
 ## Malli — `metabase.util.malli`
 
 - `(mu/defn my-fn :- :string [x :- :int, y :- [:maybe :string]] …)` — inline schemas; runtime validation in dev, no-op in prod by default.
@@ -506,9 +614,11 @@ Other useful map ops:
 - **`(:import (java.time …))` + `(LocalDate/now)`** in new code — use `[java-time.api :as t]` + `[metabase.util.date-2 :as u.date]`. Direct `java.time` interop only when a Java API genuinely needs the class.
 - **Vanilla `defmethod`** — use `methodical/defmethod` (it takes a docstring; the codebase uses it uniformly).
 - **`(when (premium/has-feature? :flag) …)` in code** — gate via `defenterprise` so OSS/EE bodies live in their respective namespaces; never sprinkle runtime feature checks.
-- **No `(set! *warn-on-reflection* true)` after the `ns` form** in a new `.clj` file — every `.clj` source file in this repo has it (not `.cljc`).
+- **`(set! *warn-on-reflection* true)` missing from a file that does Java interop, or present in one that does not** — the line is there to surface reflective calls, so it follows the interop, not the convention of neighbouring files. In `.cljc`, it is `#?(:clj (set! *warn-on-reflection* true))` when a `:clj` branch does interop. See the `*warn-on-reflection*` paragraph under "Code Organization".
 - **`(ns … (:require [a :as a] [b :as b]))` on one line; `(:import java.io.File java.net.URI)` bare** — both wrong shapes. Requires one per line under `:require`, imports as `(Package Class)` lists.
 - **Inventing a fresh `:as` alias for `metabase.util`, `metabase.util.malli`, `metabase.util.log`, `java-time.api`, etc.** — use the canonical alias (see the table in Style Conventions). Mixing aliases makes `grep`-based discovery worse.
+- **`(def Foo [:map …])` for a Malli schema** — `(mr/def ::foo "doc" [:map …])` and reference it as `::foo`, even in `dev/`. See "Schemas".
+- **`(def decode (mc/decoder ::foo xf))` or `mc/coercer`** — build the decoder inside the fn with `(mr/cached ::key ::foo #(mc/decoder ::foo xf))` and validate with `mr/explain`. See "Decoders".
 
 ## When in doubt
 

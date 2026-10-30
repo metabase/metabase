@@ -5,6 +5,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transform-testing.errors :as errors]))
 
+(set! *warn-on-reflection* true)
+
 ;;; -------------------------------------------- checked --------------------------------------------
 
 (deftest checked-accepts-every-declared-type-test

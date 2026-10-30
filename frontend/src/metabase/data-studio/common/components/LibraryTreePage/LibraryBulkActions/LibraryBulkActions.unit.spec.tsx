@@ -1,6 +1,72 @@
+import { renderWithProviders, screen } from "__support__/ui";
+import type { SelectedItem } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 import { createMockCollectionItem } from "metabase-types/api/mocks";
 
-import { isMoveDestinationDisabled } from "./LibraryBulkActions";
+import {
+  LibraryBulkActions,
+  isMoveDestinationDisabled,
+} from "./LibraryBulkActions";
+
+type SetupOpts = {
+  selectedItems: SelectedItem[];
+};
+
+function setup({ selectedItems }: SetupOpts) {
+  renderWithProviders(
+    <LibraryBulkActions
+      selectedItems={selectedItems}
+      selectionSection="actions"
+      isAllTables={false}
+      defaultCollectionId={undefined}
+      onClear={jest.fn()}
+    />,
+  );
+}
+
+function createSelectedAction(
+  opts: Pick<SelectedItem, "entityId" | "canWrite">,
+): SelectedItem {
+  return {
+    key: `action-${opts.entityId}`,
+    model: "action",
+    section: "actions",
+    sourceCollectionId: null,
+    ...opts,
+  };
+}
+
+describe("LibraryBulkActions", () => {
+  it("offers moving and trashing when every selected item is writable", () => {
+    setup({
+      selectedItems: [
+        createSelectedAction({ entityId: 1, canWrite: true }),
+        createSelectedAction({ entityId: 2, canWrite: true }),
+      ],
+    });
+
+    expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Move to trash" }),
+    ).toBeInTheDocument();
+  });
+
+  it("doesn't offer moving or trashing when a selected item isn't writable", () => {
+    setup({
+      selectedItems: [
+        createSelectedAction({ entityId: 1, canWrite: true }),
+        createSelectedAction({ entityId: 2, canWrite: false }),
+      ],
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Move" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Move to trash" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear" })).toBeInTheDocument();
+  });
+});
 
 describe("isMoveDestinationDisabled", () => {
   const moving = ["5"]; // collection 5 is being moved

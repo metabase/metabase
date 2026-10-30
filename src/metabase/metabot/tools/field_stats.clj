@@ -7,6 +7,8 @@
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.permissions.core :as perms]
@@ -133,6 +135,18 @@
                          :available-ids (vec (take max-suggested-field-ids available-ids))
                          :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))}))))
 
+(defn- check-curated-field-owner!
+  "Under [[shared/curated-only?]], require that the Field behind `col`, a result column of the card `card-id`, belongs
+  to a Table the card's definition reads or one FK hop from it. A card's result metadata can map a column to any
+  Field, so without this a curated model could serve, and fingerprint, a column of a table it never reads."
+  [card-id col]
+  (when (shared/curated-only?)
+    (let [field-id (:id col)
+          owner    (when (pos-int? field-id)
+                     (get (metabot.perms/field-id->table-id #{field-id}) field-id))]
+      (when (and owner (not (contains? (metabot.tools.u/card-definition-table-ids card-id) owner)))
+        (recoverable.common/not-curated! {:label (str "field " field-id)})))))
+
 (defn- table-field-stats
   [table-id field-id limit]
   (let [query (metabot.tools.u/table-query table-id)
@@ -142,17 +156,25 @@
 
 (defn- card-field-stats
   [entity-type card-id field-id limit]
-  (let [query (metabot.tools.u/card-query card-id (keyword entity-type))
+  (let [;; A curated-only read may see what a curated card exposes, its result columns and their FK neighbours,
+        ;; which is what `construct_notebook_query` lets a curated card cover (see
+        ;; `metabase.metabot.curation`). The definition of a question reads more: a verified `count` over a raw
+        ;; table would otherwise serve every column of that table.
+        query   (if (shared/curated-only?)
+                  (metabot.tools.u/card-results-query card-id (keyword entity-type))
+                  (metabot.tools.u/card-query card-id (keyword entity-type)))
         columns (if (= entity-type "question")
                   (lib/returned-columns query)
                   (distinct (concat (lib/returned-columns query) (lib/visible-columns query))))
-        col (field-column entity-type card-id field-id (entity-details/permission-filter-columns columns))]
+        col     (field-column entity-type card-id field-id (entity-details/permission-filter-columns columns))]
+    (check-curated-field-owner! card-id col)
     (field-metadata-output query col field-id limit)))
 
 (defn- metric-field-stats
   [metric-id field-id limit]
   (let [query (metabot.tools.u/metric-query metric-id)
         col (field-column "metric" metric-id field-id (entity-details/metric-dimension-columns query metric-id))]
+    (check-curated-field-owner! metric-id col)
     (field-metadata-output query col field-id limit)))
 
 (defn field-values

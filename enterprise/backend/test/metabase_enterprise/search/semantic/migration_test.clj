@@ -215,7 +215,7 @@
                            ;; (maybe-migrate! is called inside with-migrate-tx, after the lock)
                            #'semantic.db.migration/maybe-migrate!
                            (fn [& args]
-                             (let [tid (.getId (Thread/currentThread))]
+                             (let [tid (.threadId (Thread/currentThread))]
                                (swap! results update :log conj [tid :started (t/local-date-time)])
                                (try
                                  (Thread/sleep 200)

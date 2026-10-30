@@ -1062,7 +1062,8 @@
                (zero? (.getNumIdleConnectionsDefaultUser ^PooledDataSource db)))
       (future
         (u/ignore-exceptions
-          (with-open [_conn (.getConnection ^PooledDataSource db)]))))))
+          ;; Closing a pooled connection returns it to the pool, where it waits idle for the query.
+          (.close (.getConnection ^PooledDataSource db)))))))
 
 ;; ----------------------------------------------------------------------------------------------------------
 ;; Gated vector-search instrumentation

@@ -19,6 +19,7 @@ export function getSearchModelItems(data: SearchResponse): SearchModelItem[] {
     dashboard: t`Dashboards`,
     document: t`Documents`,
     segment: t`Segments`,
+    "data-app": t`Data apps`,
   };
 
   const allItems = ENABLED_SEARCH_MODELS.map((model) => ({

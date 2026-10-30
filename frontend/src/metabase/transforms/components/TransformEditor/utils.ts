@@ -61,6 +61,7 @@ export function getEditorOptions(
     },
     shouldShowLibrary: false,
     canUseSampleDatabase: false,
+    canRunViaHotkey: true,
     readOnly,
   };
 }

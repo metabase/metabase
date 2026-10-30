@@ -138,6 +138,7 @@ describe("DevToolbar open", () => {
       ],
       {
         manifest: {
+          exists: true,
           name: null,
           bundlePath: "dist/index.js",
           bundlePathExists: true,
@@ -256,6 +257,7 @@ describe("DevToolbar open", () => {
   it("renders the manifest status the feed carries", async () => {
     serve([], {
       manifest: {
+        exists: true,
         name: "Demo",
         bundlePath: "dist/index.js",
         bundlePathExists: false,
@@ -272,6 +274,27 @@ describe("DevToolbar open", () => {
     expect(screen.getByText("path is required")).toBeInTheDocument();
     expect(screen.getByText(/allowed_hosts changed/)).toBeInTheDocument();
     expect(screen.getByText(/file not found/)).toBeInTheDocument();
+  });
+
+  it("says when the app has no manifest", async () => {
+    serve([], {
+      manifest: {
+        exists: false,
+        name: null,
+        bundlePath: null,
+        bundlePathExists: false,
+        allowedHosts: [],
+        errors: [],
+        warnings: [],
+        restartRequired: false,
+      },
+    });
+    await setup();
+    await open();
+    await userEvent.click(screen.getByRole("tab", { name: /^Manifest/ }));
+
+    expect(screen.getByText(/No data_app\.yaml/)).toBeInTheDocument();
+    expect(screen.queryByText(/is valid/)).not.toBeInTheDocument();
   });
 
   it("renders the connection status the feed carries", async () => {

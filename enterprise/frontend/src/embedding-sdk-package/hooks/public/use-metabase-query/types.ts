@@ -16,6 +16,7 @@ import type {
   InferSchema,
   MetricSchema,
   QueryData,
+  QuestionSchema,
   SchemaColumn,
   SchemaJavaScriptType,
   SchemaValue,
@@ -103,8 +104,7 @@ export type MetricReference<TTable = unknown> = Omit<
 
 /**
  * A dimension on the query's own source table — what `filter`, `breakout`, and
- * `orderBy` take. Apps with a generated `metabase.data.ts` schema get these from
- * it; an app building one by hand (from a field id and table id) names this type.
+ * `orderBy` take. A table query builds one from a field id and table id.
  * `FieldReference` is deliberately not the type to reach for: it also admits
  * FK-joined dimensions, which a local source table can't accept.
  */
@@ -447,14 +447,6 @@ type StageClauses<TDimension, TAggregation, TFilter> = {
 type TableQueryBase<TTable> = {
   source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
   fields?: readonly FieldReference<TTable>[];
-  /**
-   * The entity ID of this query's saved question in the app's collection,
-   * under the repository's `collections/data_apps/`. A production build runs
-   * that card instead of the table: it sits in the app's collection, which the
-   * app's viewers can read, and a table source isn't. The dev preview ignores
-   * it and runs the table source.
-   */
-  savedQuestionEntityId?: string;
 } & StageClauses<
   FieldReference<TTable>,
   AnyAggregation<TTable>,
@@ -539,10 +531,25 @@ type RequireDynamicOrderByNames<TEntity, TQuery, TDynamic> =
         ColumnName<QueryResultColumns<TEntity, TQuery>>
       >;
 
-export type MetabaseQueryOptions<
-  TEntity = unknown,
-  _TSchema = unknown,
-> = TableQuery<TEntity>;
+/**
+ * A saved question run as is, typed by its result columns. A data app's typed
+ * schema defines each of its questions this way. Its static clauses are the
+ * question's own.
+ */
+type QuestionQuery = {
+  source: QuestionSchema;
+  enabled?: boolean;
+  fields?: never;
+  filters?: never;
+  aggregations?: never;
+  breakouts?: never;
+  orderBys?: never;
+  limit?: never;
+};
+
+export type MetabaseQueryOptions<TEntity = unknown, _TSchema = unknown> =
+  | TableQuery<TEntity>
+  | QuestionQuery;
 
 type EmptyRow = Record<never, never>;
 

@@ -230,4 +230,5 @@
     :tools-hash-fn      registry/tools-hash
     :endpoint-paths     mcp.paths/endpoint-paths
     :default-path       mcp.paths/canonical-path
-    :default-ask-scopes default-ask-scopes}))
+    :default-ask-scopes default-ask-scopes
+    :accepted-scopes    (set mcp.scope/v2-surface-scopes)}))

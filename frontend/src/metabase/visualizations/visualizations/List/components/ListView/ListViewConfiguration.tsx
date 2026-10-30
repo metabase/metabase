@@ -275,7 +275,7 @@ export const ListViewConfiguration = ({
                           iconConfig.entityIconEnabled
                             ? // Unjustified type cast. FIXME
                               (iconConfig.selectedIconColor as ColorName)
-                            : "text-disabled"
+                            : "text-secondary"
                         }
                       />
                     )}

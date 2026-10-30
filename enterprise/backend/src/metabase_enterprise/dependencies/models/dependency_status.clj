@@ -5,6 +5,7 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -29,11 +30,29 @@
   (t2/hydrate entities [:dashcards :series]))
 
 (defmethod hydrate-for-deps :action [_ entities]
-  (let [queries (when (seq entities)
-                  (dependencies.db/query-action-queries (mapv :id entities)))]
+  (let [action-ids (mapv :id entities)
+        queries    (when (seq action-ids)
+                     (dependencies.db/query-action-queries action-ids))
+        table-ids  (when (seq action-ids)
+                     (dependencies.db/implicit-action-table-ids action-ids))]
     (mapv (fn [{:keys [id] :as action}]
             (cond-> action
-              (contains? queries id) (assoc :dataset_query (queries id))))
+              (contains? queries id)   (assoc :dataset_query (queries id))
+              (contains? table-ids id) (assoc :table_id (table-ids id))))
+          entities)))
+
+(defmethod hydrate-for-deps :data-app [_ entities]
+  (let [collection-ids    (into [] (keep :resource_collection_id) entities)
+        ids-by-collection (fn [rows]
+                            (u/group-by :collection_id :id conj #{} rows))
+        card-ids          (when (seq collection-ids)
+                            (ids-by-collection (dependencies.db/ids-in-collections :model/Card collection-ids)))
+        action-ids        (when (seq collection-ids)
+                            (ids-by-collection (dependencies.db/ids-in-collections :model/Action collection-ids)))]
+    (mapv (fn [{collection-id :resource_collection_id :as app}]
+            (assoc app
+                   :card_ids   (get card-ids collection-id #{})
+                   :action_ids (get action-ids collection-id #{})))
           entities)))
 
 (mu/defn take-pending-statuses! :- [:sequential ::dependencies.schema/pending-status]

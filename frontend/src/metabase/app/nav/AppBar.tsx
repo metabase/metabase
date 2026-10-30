@@ -139,6 +139,7 @@ export function AppBarContainer() {
         <CollectionBreadcrumbs
           dashboard={dashboardId != null ? dashboard : undefined}
           collectionId={breadcrumbCollectionId ?? undefined}
+          truncateLongestFirst
         />
       }
       questionLineage={

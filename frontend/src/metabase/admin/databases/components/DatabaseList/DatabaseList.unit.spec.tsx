@@ -59,6 +59,15 @@ describe("DatabaseListApp", () => {
     expect(screen.queryByText("Active")).not.toBeInTheDocument();
   });
 
+  it("links each database to its admin page", async () => {
+    await setup({ isAdmin: true });
+
+    expect(screen.getByRole("link", { name: "Database" })).toHaveAttribute(
+      "href",
+      "/admin/databases/1",
+    );
+  });
+
   it("shows regular databases as active", async () => {
     await setup({ isAdmin: true });
 

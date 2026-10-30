@@ -1117,28 +1117,28 @@
                   (testing "the options is merged into settings correctly"
                     (is (= {:persist-models-enabled true
                             :database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database success-id)))
+                           (t2/select-one-fn :settings :model/Database :id success-id)))
                     (testing "even when settings is nil"
                       (is (= {:persist-models-enabled true}
-                             (t2/select-one-fn :settings :model/Database options-nil-settings-id))))
+                             (t2/select-one-fn :settings :model/Database :id options-nil-settings-id))))
                     (testing "even when settings is empty"
                       (is (= {:persist-models-enabled true}
-                             (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
+                             (t2/select-one-fn :settings :model/Database :id options-empty-settings-id)))))
                   (testing "nil or empty options doesn't break migration"
                     (is (= {:database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database nil-options-id)))
+                           (t2/select-one-fn :settings :model/Database :id nil-options-id)))
                     (is (= {:database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database empty-options-id)))))
+                           (t2/select-one-fn :settings :model/Database :id empty-options-id)))))
                 (testing "rollback migration"
                   (migrate! :down 46)
                   (testing "the persist-models-enabled is assoced back to options"
                     (is (= {:options  "{\"persist-models-enabled\":true}"
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] success-id))))
+                           (t2/select-one [:model/Database :settings :options] :id success-id))))
                   (testing "if settings doesn't have :persist-models-enabled, then options is empty map"
                     (is (= {:options  nil
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] empty-options-id)))))))))]
+                           (t2/select-one [:model/Database :settings :options] :id empty-options-id)))))))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
@@ -1637,7 +1637,7 @@
               session (t2/insert-returning-instance! :core_session {:user_id    user-id
                                                                     :id         (str (random-uuid))
                                                                     :created_at :%now})]
-          (t2/update! :core_session (:id session) {:anti_csrf_token "normal"})
+          (t2/update! :core_session :id (:id session) {:anti_csrf_token "normal"})
           (testing "created_at shouldn't change if there is an update"
             (is (= (:created_at session)
                    (t2/select-one-fn :created_at :core_session :id (:id session))))))))))
@@ -1673,21 +1673,21 @@
                                                             :model_id  (:id card-2)
                                                             :user_id   user-id}))]
       (testing "sanity check revision object"
-        (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+        (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision :id card-revision-id)]
           (testing "doesn't have type"
             (is (not (contains? card-revision-object "type"))))
           (testing "has dataset"
             (is (contains? card-revision-object "dataset")))))
       (testing "after migration card revisions should have type"
         (migrate!)
-        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
-              model-revision-object (t2/select-one-fn (comp json/decode :object) :revision model-revision-id)]
+        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision :id card-revision-id)
+              model-revision-object (t2/select-one-fn (comp json/decode :object) :revision :id model-revision-id)]
           (is (= "question" (get card-revision-object "type")))
           (is (= "model" (get model-revision-object "type")))))
       (testing "rollback should remove type and keep dataset"
         (migrate! :down 48)
-        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
-              model-revision-object (t2/select-one-fn (comp json/decode :object) :revision model-revision-id)]
+        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision :id card-revision-id)
+              model-revision-object (t2/select-one-fn (comp json/decode :object) :revision :id model-revision-id)]
           (is (contains? card-revision-object "dataset"))
           (is (contains? model-revision-object "dataset"))
           (is (not (contains? card-revision-object "type")))
@@ -1708,12 +1708,12 @@
                                                               :model_id (:id card)
                                                               :user_id  user-id}))]
         (testing "sanity check revision object"
-          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision :id card-revision-id)]
             (testing "doesn't have type"
               (is (not (contains? card-revision-object "type"))))))
         (testing "after migration card revisions should have type"
           (migrate!)
-          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision :id card-revision-id)]
             (is (= "question" (get card-revision-object "type")))
             (testing "original visualization_settings should be preserved"
               (is (= viz-settings
@@ -2716,8 +2716,8 @@
         (migrate!)
         (is (= {"_@foo" "bar"}
                (json/decode (:attribute_remappings (t2/select-one :sandboxes :id sandbox-id)))))
-        (is (= "_@foo" (:attribute (t2/select-one :connection_impersonations impersonation-id))))
-        (is (= "_@foo" (:user_attribute (t2/select-one :db_router db-router-id))))
+        (is (= "_@foo" (:attribute (t2/select-one :connection_impersonations :id impersonation-id))))
+        (is (= "_@foo" (:user_attribute (t2/select-one :db_router :id db-router-id))))
         (is (= {"_@foo" "bar"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
         (is (= {"_@foo" "bang"}
@@ -3123,7 +3123,7 @@
 
 (deftest delete-data-app-drafts-test
   (testing "v65.2026-10-07T00:00:00: draft rows go with their assignments and empty collections"
-    (impl/test-migrations ["v65.2026-10-07T00:00:00"] [migrate!]
+    (impl/test-migrations ["v65.2026-10-07T00:00:00" "v65.2026-10-07T00:00:01"] [migrate!]
       (let [insert-collection! (fn [name]
                                  (t2/insert-returning-pk! :collection {:name       name
                                                                        :slug       name

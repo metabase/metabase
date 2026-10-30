@@ -28,9 +28,16 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
+
+;; Declared in `tools.error` so that the declarations this namespace loads can budget against the same limit
+(p/import-vars
+ [tools.error
+  max-output-length
+  output-budget])
 
 (def runtime-codes
   "Every error code the runtime itself produces, with the class each one takes.
@@ -175,11 +182,6 @@
                            ". Tool errors may only carry authored text; log the exception instead.")
                       {:where where})))))
 
-(def ^:private max-output-length
-  "A cap on agent-bound failure text. A declared error should be nowhere near this; the cap is here
-  so that a pathological payload cannot spend the turn's context on one failure."
-  4000)
-
 (defn render
   "The failure [[::outcome]] for a ToolError, given the tool names available this turn.
 
@@ -188,6 +190,8 @@
   | `:validation`    | the message                                               |
   | `:recoverable`   | the message, then each kept recovery step on its own line  |
   | `:unrecoverable` | a fixed sentence carrying only the code                    |
+
+  Failure text is capped at [[max-output-length]] characters.
 
   `:user-message` is copied onto the outcome for unrecoverable errors so the agent loop can show it
   to the user. It never becomes part of `:output`."

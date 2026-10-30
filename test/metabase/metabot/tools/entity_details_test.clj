@@ -652,7 +652,7 @@
                     :type          :metric
                     :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
       ;; Straight to the table: the model's `:in` transform would not store a blank query.
-      (t2/update! (t2/table-name :model/Card) metric-id {:dataset_query "{}"})
+      (t2/update! (t2/table-name :model/Card) :id metric-id {:dataset_query "{}"})
       (is (= (mt/id :orders) (t2/select-one-fn :table_id :model/Card :id metric-id))
           "the base table is still recorded, so it is there to be wrongly offered")
       (mt/with-current-user (mt/user->id :crowberto)

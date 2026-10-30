@@ -5,6 +5,7 @@ import {
   setupCardsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -24,6 +25,7 @@ import {
   createMockImplicitCUDActions,
   createMockParameter,
   createMockQueryAction,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { ActionDashcardSettings } from "./ActionDashcardSettings";
@@ -80,9 +82,18 @@ const dashboard = createMockDashboard({
 
 const DEFAULT_VALUE = "default value";
 
-const setup = (
-  options?: Partial<React.ComponentProps<typeof ActionDashcardSettings>>,
-) => {
+type SetupOpts = Partial<
+  React.ComponentProps<typeof ActionDashcardSettings>
+> & {
+  isAdmin?: boolean;
+  canWriteActions?: boolean;
+};
+
+const setup = ({
+  isAdmin = true,
+  canWriteActions = true,
+  ...options
+}: SetupOpts = {}) => {
   const searchItems = models.map((model) =>
     createMockCollectionItem({ ...model, model: "dataset" }),
   );
@@ -90,7 +101,12 @@ const setup = (
 
   setupSearchEndpoints(searchItems);
   setupCardsEndpoints(models);
-  setupActionsEndpoints([...actions1, ...actions2, ...implicitActions]);
+  setupActionsEndpoints(
+    [...actions1, ...actions2, ...implicitActions].map((action) => ({
+      ...action,
+      can_write: canWriteActions,
+    })),
+  );
 
   renderWithProviders(
     <ActionDashcardSettings
@@ -99,6 +115,11 @@ const setup = (
       dashcard={actionDashcard}
       {...options}
     />,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+      }),
+    },
   );
 
   return { closeSpy };
@@ -508,6 +529,24 @@ describe("ActionViz > ActionDashcardSettings", () => {
     expect(
       within(implicitAction).getByRole("button", { name: "pencil icon" }),
     ).toBeInTheDocument();
+  });
+
+  it("doesn't offer creating or editing actions to non-admins", async () => {
+    setup({
+      dashcard: actionDashcardWithAction,
+      isAdmin: false,
+      canWriteActions: false,
+    });
+
+    await waitForLoaderToBeRemoved();
+    const queryAction = await screen.findByTestId(
+      `action-item-${actions2[0].name}`,
+    );
+
+    expect(
+      within(queryAction).queryByRole("button", { name: "pencil icon" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Create new action")).not.toBeInTheDocument();
   });
 
   it("can close the modal with the done button", async () => {
