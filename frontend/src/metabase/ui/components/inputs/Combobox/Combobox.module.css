@@ -112,9 +112,12 @@
 
   /* The search badge above the message, so every existing empty message gets
      it without changes at the call sites. Badge and icon share the first grid
-     cell, so the icon stays centered whatever padding a call site sets. */
+     cell, so the icon stays centered whatever padding a call site sets. A call
+     site whose message isn't a search result hides it with
+     `--empty-icon-display: none`. */
   &::before,
   &::after {
+    display: var(--empty-icon-display, block);
     content: "";
     grid-area: 1 / 1;
   }

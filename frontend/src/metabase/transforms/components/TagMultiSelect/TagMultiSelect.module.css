@@ -3,6 +3,11 @@
   pointer-events: all;
 }
 
+/* Without search text the message isn't a search result */
+.emptyWithoutIcon {
+  --empty-icon-display: none;
+}
+
 .actionIcon {
   visibility: hidden;
 }

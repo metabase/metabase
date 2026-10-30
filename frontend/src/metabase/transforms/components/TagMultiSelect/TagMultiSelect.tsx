@@ -104,6 +104,10 @@ export function TagMultiSelect({
         value={tagIds.map(getValue)}
         data={getOptions(tags, trimmedSearchValue, requireTransformWriteAccess)}
         placeholder={readOnly ? t`Tags are read-only` : t`Add tags`}
+        classNames={{
+          empty:
+            trimmedSearchValue.length === 0 ? S.emptyWithoutIcon : undefined,
+        }}
         searchValue={searchValue}
         searchable
         rightSection={
