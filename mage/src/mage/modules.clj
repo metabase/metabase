@@ -317,9 +317,10 @@
 (defn- codeowners-entries
   "One entry per module and tree the block must name, in block order:
   `{:module, :tree, :dir, :team, :handle, :opted-in?, :patterns}`.
-  An opted-in module gets its team's handle.
-  Any other module inside an opted-in module's directory gets an entry only where the block would otherwise give its
-  code to the wrong team: the owning module's handle when the teams match, else `nil`, which leaves it unowned.
+  A module's code goes to its team's handle when it, or an opted-in module enclosing it, belongs to that team.
+  Inside an opted-in module's directory it is otherwise unowned, with a `nil` handle.
+  An opted-in module always gets an entry; another module gets one only where its owner would otherwise differ from
+  this rule.
   Expects a config without [[codeowners-config-problems]]."
   [modules-config team->codeowner]
   (reduce
@@ -334,14 +335,14 @@
                                        (last (filter #(and (= tree (:tree %)) (pred %) (path-within? (:dir %) dir))
                                                      entries)))
                            current   (enclosing any?)
-                           owner     (enclosing :opted-in?)
+                           same-team (enclosing #(and (:opted-in? %) (= team (:team %))))
                            opted-in? (contains? trees tree)
                            handle    (cond
-                                       opted-in?              (get team->codeowner team)
-                                       (= team (:team owner)) (:handle owner)
-                                       :else                  nil)]
+                                       opted-in? (get team->codeowner team)
+                                       same-team (:handle same-team)
+                                       :else     nil)]
                    :when  (or opted-in?
-                              (and owner (not= handle (:handle current))))]
+                              (and (enclosing :opted-in?) (not= handle (:handle current))))]
                {:module    module
                 :tree      tree
                 :dir       dir
@@ -413,17 +414,13 @@
 
 (defn- codeowners-problems
   "Every problem that stops the block from being generated, as maps keyed by `:type`: those of
-  [[codeowners-config-problems]] and [[markers-problem]], and `:shadowed-lines` (`:lines`).
-  Lines are checked only once the config has no problems."
-  [existing modules-config team->codeowner source?]
-  (let [config-problems (vec (codeowners-config-problems modules-config team->codeowner source?))
-        shadowed        (when (empty? config-problems)
-                          (->> (codeowners-entries modules-config team->codeowner)
-                               (mapcat :patterns)
-                               (shadowed-lines existing)
-                               seq))
-        markers         (markers-problem existing)]
-    (cond-> config-problems
+  [[codeowners-config-problems]] and [[markers-problem]], and `:shadowed-lines` (`:lines`) for `entries`.
+  Lines are not checked while the markers are broken, since the block's position is then unknown."
+  [existing modules-config team->codeowner source? entries]
+  (let [markers  (markers-problem existing)
+        shadowed (when-not markers
+                   (seq (shadowed-lines existing (mapcat :patterns entries))))]
+    (cond-> (vec (codeowners-config-problems modules-config team->codeowner source?))
       shadowed (conj {:type :shadowed-lines, :lines (vec shadowed)})
       markers  (conj markers))))
 
@@ -475,8 +472,10 @@
 (defn- splice-codeowners
   "Replace the marked region (inclusive) in `existing` with `block`, or append `block` when no marker is there.
   Returns text ending in one newline.
-  Expects markers without a [[markers-problem]]."
+  Throws on a [[markers-problem]]."
   [existing block]
+  (when-let [problem (markers-problem existing)]
+    (throw (ex-info (codeowners-problem-message problem) problem)))
   (if-let [begin (str/index-of existing codeowners-begin-marker)]
     (let [end (str/index-of existing codeowners-end-marker)]
       (str (str/trimr (subs existing 0 begin))
@@ -485,36 +484,46 @@
            "\n"))
     (str (str/trimr existing) "\n\n" block "\n")))
 
+(defn- codeowners-outcome
+  "What `update-codeowners` should do with the `existing` CODEOWNERS text, as a map keyed by `:status`:
+  `:problems` (`:problems`), `:up-to-date`, `:stale` (with `check?`) or `:write` (`:desired`)."
+  [existing modules-config team->codeowner source? check?]
+  (let [entries  (codeowners-entries modules-config team->codeowner)
+        problems (codeowners-problems existing modules-config team->codeowner source? entries)
+        desired  (when (empty? problems)
+                   (splice-codeowners existing (codeowners-block entries)))]
+    (cond
+      (seq problems)       {:status :problems, :problems problems}
+      (= existing desired) {:status :up-to-date}
+      check?               {:status :stale}
+      :else                {:status :write, :desired desired})))
+
 (defn cli-update-codeowners
   "Regenerate the module-ownership block in `.github/CODEOWNERS`.
   With `--check`, exit non-zero when the file is stale instead of writing it.
   Exits non-zero, printing each problem, when [[codeowners-problems]] finds any."
   [cli-args]
-  (let [check?          (get-in cli-args [:options :check])
-        existing        (slurp codeowners-path)
-        modules-config  (read-modules-config)
-        team->codeowner (read-team->codeowner)
-        problems        (codeowners-problems existing modules-config team->codeowner has-source?)
-        desired         (when (empty? problems)
-                          (->> (codeowners-entries modules-config team->codeowner)
-                               codeowners-block
-                               (splice-codeowners existing)))]
-    (cond
-      (seq problems)
-      (do (doseq [problem problems]
+  (let [outcome (codeowners-outcome (slurp codeowners-path)
+                                    (read-modules-config)
+                                    (read-team->codeowner)
+                                    has-source?
+                                    (get-in cli-args [:options :check]))]
+    (case (:status outcome)
+      :problems
+      (do (doseq [problem (:problems outcome)]
             (println (c/red (codeowners-problem-message problem))))
           (u/exit 1))
 
-      (= existing desired)
+      :up-to-date
       (do (println (c/green "CODEOWNERS module ownership is up to date."))
           (u/exit 0))
 
-      check?
+      :stale
       (do (println (c/red "CODEOWNERS module ownership is out of date. Run ./bin/mage update-codeowners."))
           (u/exit 1))
 
-      :else
-      (do (spit codeowners-path desired)
+      :write
+      (do (spit codeowners-path (:desired outcome))
           (println (c/green (str "Updated " codeowners-path ".")))
           (u/exit 0)))))
 

@@ -2,6 +2,7 @@
   "Tests for driver decision logic.
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
+   [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
@@ -626,6 +627,13 @@
            (owners '{lib             {:team "Querying Platform", :codeowners :src-only}
                      lib.schema      {:team "UX West", :codeowners :src-only}
                      lib.schema.util {}}))))
+  (testing "a grandchild inside another team's opted-in module keeps an outer opted-in module of its team"
+    (is (= [['lib "src" "@metabase/querying-platform"]
+            ['lib.schema "src" "@metabase/ux-west"]
+            ['lib.schema.util "src" "@metabase/querying-platform"]]
+           (owners '{lib             {:team "Querying Platform", :codeowners :src-only}
+                     lib.schema      {:team "UX West", :codeowners :src-only}
+                     lib.schema.util {:team "Querying Platform"}}))))
   (testing "a grandchild of the owning team inside an unowned module gets that team back"
     (is (= [['lib "src" "@metabase/querying-platform"]
             ['lib.schema "src" nil]
@@ -651,13 +659,19 @@
              (problems '{lib {:team "Gadget"}} (constantly false)))))))
 
 (deftest codeowners-has-source-test
-  (let [has-source? #'mage.modules/has-source?]
-    (testing "a module directory counts"
-      (is (has-source? "src/metabase/actions")))
-    (testing "a root namespace file without a directory counts"
-      (is (has-source? "src/metabase/actions/args")))
-    (testing "neither does not"
-      (is (not (has-source? "src/metabase/no_such_module"))))))
+  (let [has-source? #'mage.modules/has-source?
+        root        (str (fs/create-temp-dir))]
+    (try
+      (fs/create-dirs (str root "/src/metabase/actions"))
+      (spit (str root "/src/metabase/args.clj") "(ns metabase.args)")
+      (testing "a module directory counts"
+        (is (has-source? (str root "/src/metabase/actions"))))
+      (testing "a root namespace file without a directory counts"
+        (is (has-source? (str root "/src/metabase/args"))))
+      (testing "neither does not"
+        (is (not (has-source? (str root "/src/metabase/no_such_module")))))
+      (finally
+        (fs/delete-tree root)))))
 
 (deftest codeowners-shadowed-lines-test
   (let [begin    @#'mage.modules/codeowners-begin-marker
@@ -693,14 +707,42 @@
 
 (deftest codeowners-problems-test
   (let [begin    @#'mage.modules/codeowners-begin-marker
-        problems #(#'mage.modules/codeowners-problems %1 %2 test-team->codeowner (constantly true))
+        end      @#'mage.modules/codeowners-end-marker
+        problems (fn [existing config]
+                   (#'mage.modules/codeowners-problems
+                    existing config test-team->codeowner (constantly true) (entries config)))
         config   '{lib {:team "Querying Platform", :codeowners :src-only}}]
     (testing "a line above the block inside an owned path is a problem"
       (is (= [{:type :shadowed-lines, :lines ["src/metabase/lib/x.clj @metabase/other"]}]
              (problems "src/metabase/lib/x.clj @metabase/other\n" config))))
+    (testing "shadowed lines are reported alongside config problems"
+      (is (= [:no-codeowner :shadowed-lines]
+             (map :type (problems "src/metabase/lib/x.clj @metabase/other\n"
+                                  '{lib {:team "Gadget", :codeowners :src-only}})))))
+    (testing "lines are not checked while the markers are broken"
+      (is (= [:broken-markers]
+             (map :type (problems (str "src/metabase/lib @metabase/querying-platform\n" end "\n") config)))))
     (testing "config and marker problems are reported together"
       (is (= [:no-codeowner :broken-markers]
              (map :type (problems (str begin "\n") '{lib {:team "Gadget", :codeowners true}})))))))
+
+(deftest codeowners-outcome-test
+  (let [outcome  (fn [existing config check?]
+                   (#'mage.modules/codeowners-outcome existing config test-team->codeowner (constantly true) check?))
+        config   '{lib {:team "Querying Platform", :codeowners :src-only}}
+        current  (:desired (outcome "docs @writers\n" config false))]
+    (testing "a stale file is written, with the block appended"
+      (is (str/includes? current "\nsrc/metabase/lib @metabase/querying-platform\n")))
+    (testing "an up-to-date file is left alone, with or without --check"
+      (is (= {:status :up-to-date} (outcome current config false)))
+      (is (= {:status :up-to-date} (outcome current config true))))
+    (testing "--check reports a stale file instead of writing it"
+      (is (= {:status :stale} (outcome "docs @writers\n" config true))))
+    (testing "problems stop the write, with or without --check"
+      (doseq [check? [false true]]
+        (is (= {:status   :problems
+                :problems [{:type :no-codeowner, :module 'lib, :team "Gadget"}]}
+               (outcome "docs @writers\n" '{lib {:team "Gadget", :codeowners :src-only}} check?)))))))
 
 (deftest codeowners-problem-message-test
   (testing "each problem names what is wrong and what to do"
@@ -747,4 +789,7 @@
         (is (= (str "# header\n\n" block "\n\n# exceptions\nsrc/a.clj @owner\n")
                out))
         (is (= out (splice out block))
-            "splicing again changes nothing")))))
+            "splicing again changes nothing")))
+    (testing "broken markers throw instead of splicing at the wrong place"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has a broken generated block"
+                            (splice (str "src/a.clj @owner\n" end "\n") block))))))
