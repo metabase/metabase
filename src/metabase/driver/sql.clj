@@ -343,20 +343,56 @@
 
 (mu/defn impersonated-query-refusal :- [:fn #(instance? clojure.lang.ExceptionInfo %)]
   "The [[metabase.query-processor.error-type/invalid-query]] `ex-info` refusing the impersonated native `sql`
-  with `result`: `:unparseable` or `:invalid`, with the validator's `reason` if any. `write?` says whether the
-  query had to be a write statement rather than a select."
-  [result :- [:enum :unparseable :invalid]
+  with `result`: `:unparseable`, `:unvalidatable` (with the validator's `reason`) or `:invalid`. `write?` says
+  whether the query had to be a write statement rather than a select."
+  [result :- [:enum :unparseable :unvalidatable :invalid]
    sql    :- :string
    write? :- [:maybe :boolean]
    reason :- [:maybe :string]]
   (ex-info (case result
-             :unparseable (tru "Unable to parse native query. There might be something wrong with your query.")
-             :invalid     (tru "Invalid impersonated native query. Must be a single {0} statement."
-                               (if write? (tru "insert, update, or delete") (tru "select"))))
+             :unparseable   (tru "Unable to parse native query. There might be something wrong with your query.")
+             :unvalidatable (tru "Unable to validate this native query on an impersonated database. Reduce the size of any large VALUES, IN, or ARRAY lists.")
+             :invalid       (tru "Invalid impersonated native query. Must be a single {0} statement."
+                                 (if write? (tru "insert, update, or delete") (tru "select"))))
            (cond-> {:type                 qp.error-type/invalid-query
                     :impersonation/result result
                     :sql                  sql}
              reason (assoc :reason reason))))
+
+(defn- validate-impersonated-native-stage
+  "Validate one native `stage` for `driver`, returning it with `:native` replaced by the reconstructed,
+  validated SQL — or throwing an [[impersonated-query-refusal]] when it must be refused.
+
+  `admin?` users run as the full connection user and are never actually impersonated."
+  [driver stage admin?]
+  (let [write?    driver.settings/*impersonation-allow-write?*
+        stmt-type (if write? "write" "read")
+        {:keys [verdict single-stmt? sql reason error]}
+        (sql-tools/validate-executable-stmt driver (:native stage) stmt-type)]
+    (cond
+      error
+      (do
+        (log/warnf "Failed to parse native query: %s" error)
+        (throw (impersonated-query-refusal :unparseable (:native stage) write? nil)))
+
+      ;; The SQL was not checked at all, as opposed to checked and found to be two statements. Admins run as
+      ;; the full connection user and are never actually impersonated, so validating their native SQL
+      ;; changes nothing: leave such a query untouched for them rather than refuse it. Everyone else is
+      ;; refused, with the `:reason` logged so an operator has a thread to pull.
+      (= verdict :unknown)
+      (if admin?
+        stage
+        (do
+          (log/warnf "Refusing impersonated native query on %s: cannot validate (%s)" driver reason)
+          (throw (impersonated-query-refusal :unvalidatable (:native stage) write? reason))))
+
+      ;; Admins may also run a single statement that is not of the required type (e.g. `SHOW TIMEZONE`),
+      ;; but never more than one statement.
+      (or (= verdict :allowed) (and single-stmt? admin?))
+      (assoc stage :native sql)
+
+      :else
+      (throw (impersonated-query-refusal :invalid (:native stage) write? nil)))))
 
 (defn validate-impersonated-query*
   "Validates a native query by parsing it and ensuring that it is a single statement.
@@ -366,29 +402,30 @@
 
    Queries that cannot be parsed are always rejected. Admins are allowed to run parseable queries that
    aren't a single select/write statement (e.g. `SHOW TIMEZONE`); non-admins are restricted to a single
-   statement of the required type."
+   statement of the required type.
+
+   Throws a [[metabase.query-processor.error-type/invalid-query]] `ex-info` when the query is rejected —
+   including when the validator refused without checking the SQL at all (a large VALUES/IN/ARRAY list it
+   would have to collapse before parsing, or an unknown dialect), which it refuses for non-admins rather
+   than running a string it did not validate. Admins are exempt from that refusal: they run as the full
+   connection user, so refusing a query we merely cannot collapse-then-parse changes nothing.
+   Registered as the `:sql` method of [[driver/validate-impersonated-query]], so every SQL driver inherits
+   it."
   [driver query]
-  (update query :stages
-          (fn [stages]
-            (mapv (fn [stage]
-                    (if (lib.util/native-stage? stage)
-                      (let [write?    driver.settings/*impersonation-allow-write?*
-                            stmt-type (if write? "write" "read")
-                            {:keys [is-single-stmt? allowed-stmt-type? sql error]}
-                            (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)]
-                        (cond error
-                              (do
-                                (log/warnf "Failed to parse native query: %s" error)
-                                (throw (impersonated-query-refusal :unparseable (:native stage) write? nil)))
+  (let [admin? (boolean (:impersonation/admin? query))]
+    ;; Walk *every* stage, including those nested inside joins — a native query used as a join source is
+    ;; inlined verbatim as a sub-select, so it needs the same single-statement guard as a top-level native
+    ;; stage. `walk-stages` returns nil for a stage to leave it unchanged, so non-native stages
+    ;; pass straight through.
+    (lib/walk-stages
+     query
+     (fn [_query _path stage]
+       (when (lib.util/native-stage? stage)
+         (validate-impersonated-native-stage driver stage admin?))))))
 
-                              (and is-single-stmt?
-                                   (or allowed-stmt-type? (:impersonation/admin? query)))
-                              (assoc stage :native sql)
-
-                              :else
-                              (throw (impersonated-query-refusal :invalid (:native stage) write? nil))))
-                      stage))
-                  stages))))
+(defmethod driver/validate-impersonated-query :sql
+  [driver query]
+  (validate-impersonated-query* driver query))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |
