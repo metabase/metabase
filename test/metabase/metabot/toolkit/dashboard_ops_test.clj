@@ -468,18 +468,36 @@
                :parameter_mappings     [mapping]
                :inline_parameters      ["p1"]}
               dc))))
-  (testing "a patched mapping keeps the card it names, such as a series card"
-    (is (=? [{:parameter_id "p1", :card_id 3, :target [:dimension [:field 1 nil]]}]
+  (testing "a patched mapping keeps the series card it names"
+    (is (=? [{:parameter_id "p1", :card_id 11, :target [:dimension [:field 1 nil]]}]
             (-> (compile-with-stub-cards
                  (dash-with [a-dashcard])
                  [{:op          "patch_dashcard"
                    :dashcard_id 7
                    :patch       {:parameter_mappings [{:parameter_id "p1"
-                                                       :card_id      3
+                                                       :card_id      11
                                                        :target       ["dimension" ["field" 1 nil]]}]}}])
                 :dashcards
                 first
-                :parameter_mappings)))))
+                :parameter_mappings))))
+  (testing "a patched mapping naming a card that is not on the dashcard is refused"
+    (is (=? {::dashboard-ops/error :mapping-card-not-on-dashcard, :dashcard-id 7, :card-id 3, :op-index 0}
+            (op-error (dash-with [a-dashcard])
+                      [{:op          "patch_dashcard"
+                        :dashcard_id 7
+                        :patch       {:parameter_mappings [{:parameter_id "p1"
+                                                            :card_id      3
+                                                            :target       ["dimension" ["field" 1 nil]]}]}}]))))
+  (testing "a patched mapping without a parameter or a target is refused by the op schema"
+    (doseq [k [:parameter_id :target]]
+      (testing k
+        (is (=? {::dashboard-ops/error :invalid-op, :explanation {:patch {:parameter_mappings [{k some?}]}}}
+                (op-error (dash-with [a-dashcard])
+                          [{:op          "patch_dashcard"
+                            :dashcard_id 7
+                            :patch       {:parameter_mappings [(dissoc {:parameter_id "p1"
+                                                                        :target       ["dimension" ["field" 1 nil]]}
+                                                                       k)]}}])))))))
 
 (deftest patch-dashcard-rejects-layout-keys-test
   (testing "GHY-4147: layout and identity keys in a patch are rejected, naming the op that owns them"
@@ -921,11 +939,14 @@
              :tag-type             "snippet"
              :wireable-tags        #(some #{"cat"} %)}
             (wire-native-error {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "snippet: base"}))))
-  (testing "a dashcard with no card behind it has nothing to wire"
-    (is (=? {::dashboard-ops/error :no-card-behind-dashcard, :dashcard-id 7}
-            (op-error (assoc native-current :dashcards [{:id 7 :row 0 :col 0 :size_x 4 :size_y 4
-                                                         :visualization_settings {:virtual_card {:display "text"}}}])
-                      [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "cat"}])))))
+  (testing "a dashcard with no card behind it has nothing to wire, by tag or by field"
+    (let [text-card {:id 7 :row 0 :col 0 :size_x 4 :size_y 4
+                     :visualization_settings {:virtual_card {:display "text"}}}]
+      (doseq [target [{:target_tag "cat"} {:target_field 18}]]
+        (testing (pr-str target)
+          (is (=? {::dashboard-ops/error :no-card-behind-dashcard, :dashcard-id 7}
+                  (op-error (assoc native-current :dashcards [text-card])
+                            [(merge {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7} target)]))))))))
 
 (deftest wire-parameter-unresolved-card-test
   (testing "wiring a dashcard whose card is missing or unreadable names that card, for every kind of target"

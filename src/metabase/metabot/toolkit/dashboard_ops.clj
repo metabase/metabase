@@ -57,6 +57,7 @@
    :field-not-exposed                  [:map {:closed true}
                                         [:dashcard-id :int] [:field-id :int] [:parameter-id :string]]
    :no-card-behind-dashcard            [:map {:closed true} [:dashcard-id :int]]
+   :mapping-card-not-on-dashcard       [:map {:closed true} [:dashcard-id :int] [:card-id :int]]
    :unknown-template-tag               [:map {:closed true}
                                         [:card-id :int] [:tag :string] [:tags [:sequential :string]]]
    :unwireable-tag                     [:map {:closed true}
@@ -426,7 +427,12 @@
 
 (defmethod apply-op "patch_dashcard"
   [state {:keys [dashcard_id patch]}]
-  (resolve-dashcard! state dashcard_id)
+  (let [dc        (resolve-dashcard! state dashcard_id)
+        own-cards (into #{(:card_id dc)} (keep :id) (:series dc))]
+    ;; The save would otherwise filter the primary card for a mapping that names a card the dashcard doesn't show.
+    (doseq [{:keys [card_id]} (:parameter_mappings patch)
+            :when             (and card_id (not (contains? own-cards card_id)))]
+      (fail! :mapping-card-not-on-dashcard {:dashcard-id dashcard_id, :card-id card_id})))
   (doseq [k (keys patch)]
     (cond
       (contains? patch-rejected-keys k)
@@ -603,13 +609,19 @@
     :else
     (fail! :missing-parameter-destination)))
 
+(defn- wire-card!
+  "The card behind the dashcard a wire op targets, or an error — a virtual dashcard (text, heading,
+   link, iframe) has no query, so only a `[:text-tag …]` target (handled before this) can wire it."
+  [state dashcard]
+  (check-card-resolved! state dashcard)
+  (or (card-for-dashcard state dashcard)
+      (fail! :no-card-behind-dashcard {:dashcard-id (:id dashcard)})))
+
 (defn- wire-one
   "Add or replace `parameter`'s mapping on `dashcard`. Returns the dashcard unchanged when its card
    exposes no target for `field-id`, unless `explicit?`, when that is an error."
   [state parameter dashcard field-id explicit?]
-  (when explicit?
-    (check-card-resolved! state dashcard))
-  (let [card   (card-for-dashcard state dashcard)
+  (let [card   (if explicit? (wire-card! state dashcard) (card-for-dashcard state dashcard))
         target (when card (mapping-targets/target-for-field card parameter field-id))]
     (cond
       target
@@ -621,14 +633,6 @@
                                  :parameter-id (:id parameter)})
 
       :else dashcard)))
-
-(defn- wire-card!
-  "The card behind the dashcard a wire op targets, or an error — a virtual dashcard (text, heading,
-   link, iframe) has no query, so only a `[:text-tag …]` target (handled before this) can wire it."
-  [state dashcard]
-  (check-card-resolved! state dashcard)
-  (or (card-for-dashcard state dashcard)
-      (fail! :no-card-behind-dashcard {:dashcard-id (:id dashcard)})))
 
 (defn- tag-target!
   "The mapping target for `target_tag` on `dashcard`'s card — `[:dimension [:template-tag …]]` for a
