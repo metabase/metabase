@@ -349,6 +349,7 @@
       (doseq [redirect-uri ["https://badsite.com"
                             "//badsite.com"
                             "https:///badsite.com"]]
+        ;; The rejection is returned as a plain-text body, so the whole body is the message.
         (is
          (= "Invalid redirect URL"
             (client/client

@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [environ.core :as env]))
 
+(set! *warn-on-reflection* true)
+
 (defn env-or-throw
   "Fetch an env var value or throw an Exception if it is unset."
   [k]
