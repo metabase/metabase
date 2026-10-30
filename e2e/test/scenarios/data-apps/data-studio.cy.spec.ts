@@ -4,7 +4,7 @@ import {
 } from "e2e/support/helpers";
 import type { DataApp } from "metabase-types/api";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { createKitchenSinkDataApp } from "./helpers";
 
 const { H } = cy;
 
@@ -14,16 +14,18 @@ const SYNCED_APP_DISPLAY_NAME = "Good App";
 describe("scenarios > data apps > data studio", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     // `bleeding-edge` grants the `data-apps` premium feature; requires the EE build.
     H.activateToken("bleeding-edge");
   });
 
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
   it("lists a data app and previews it on the app's overview", () => {
-    H.mockDataApp(APP_NAME, {
-      displayName: APP_DISPLAY_NAME,
-      testEnv: TEST_ENV,
-    });
+    createKitchenSinkDataApp();
 
     cy.intercept("POST", "/api/dataset").as("dataAppQuery");
 
@@ -68,6 +70,7 @@ describe("scenarios > data apps > data studio", () => {
       .should("be.visible");
     H.modal().findByRole("button", { name: "Make draft" }).click();
     cy.wait("@updateGoodApp");
+    H.expectUnstructuredSnowplowEvent({ event: "data_app_made_draft" });
 
     cy.findByTestId("data-app-about-sidebar")
       .findByText("Draft")
@@ -79,6 +82,7 @@ describe("scenarios > data apps > data studio", () => {
       .click();
     H.modal().findByRole("button", { name: "Make live" }).click();
     cy.wait("@updateGoodApp");
+    H.expectUnstructuredSnowplowEvent({ event: "data_app_made_live" });
 
     cy.findByTestId("data-app-about-sidebar")
       .findByText("Live")

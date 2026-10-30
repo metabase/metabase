@@ -8,6 +8,7 @@
    [metabase-enterprise.search.semantic.embedding :as semantic.embedding]
    [metabase-enterprise.search.semantic.embedding-health :as embedding-health]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.test :as mt]
@@ -434,7 +435,9 @@
               ;; bind a user: the tool's hydration permission-filters via mi/can-read?, which needs
               ;; *current-user-id* (a superuser can read the test tables).
               search! #(mt/with-test-user :crowberto
-                         (get-in (tools.entity-retrieval/retrieve-library-entities-tool {:user_search_prompt q})
+                         (get-in (tools.core/handle tools.entity-retrieval/retrieve-library-entities-tool
+                                                    {:user_search_prompt q}
+                                                    {})
                                  [:structured-output :data]))]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]

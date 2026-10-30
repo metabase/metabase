@@ -43,7 +43,7 @@ export function convertSelectionToRange(
 
 export const getCardAutocompleteResultMeta = (
   type: CardType,
-  collectionName: string = t`Our analytics`,
+  collectionName: string | null,
 ) => {
   const collection = collectionName ?? t`Our analytics`;
   if (type === "question") {

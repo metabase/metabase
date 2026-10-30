@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -927,6 +928,20 @@
         (is (str/includes? msg "aggregation"))
         (is (not (str/includes? msg "portable_entity_id")))))))
 
+(deftest ^:parallel ambiguous-database-name-recovery-test
+  (let [db-name "query-test duplicate name"
+        query   {:lib/type "mbql/query"
+                 :stages   [{:lib/type "mbql.stage/mbql" :source-table [db-name "PUBLIC" "ORDERS"]}]}]
+    (mt/with-temp [:model/Database {db-1 :id} {:name db-name}
+                   :model/Database {db-2 :id} {:name db-name}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "the pipeline only states the clash, so v2's numeric-id hint is the one way out"
+          (is (= (str "\"Multiple databases share the name `" db-name "` (ids: " [db-1 db-2] ").\"\n"
+                      "Use a numeric table id in `source-table:` (from \"browse_data\" action \"list_tables\"), "
+                      "which needs no database name at all.")
+                 (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                 {:query query})))))))))
+
 ;;; --------------------------------------- Schema failures and dialect round-trips --------------------------------
 
 ;;; GHY-4313. `:query` stays an open `[:map]` at the registry boundary on purpose: the dialect
@@ -1000,6 +1015,10 @@
                                     [(assoc post-agg :order-by 42)]]
                                    ["a post-aggregation filter with a number as `fields`" "[0] \"fields\":"
                                     [(assoc post-agg :fields 42)]]
+                                   ["a post-aggregation filter with a string as `limit`" "[0] \"limit\":"
+                                    [(assoc post-agg :limit "x")]]
+                                   ["a later post-aggregation filter with a number as `fields`" "[1] \"fields\":"
+                                    [orders (assoc (dissoc post-agg :source-table) :fields 42)]]
                                    ["a number as a later stage" "[1]" [orders 42]]
                                    ["an aggregation list as a later stage" "[1]" [orders [["count" {}]]]]]]
         (testing label
@@ -1007,6 +1026,17 @@
                                                                 {:query {:lib/type "mbql/query" :stages stages}}))
                                 (str "\"Representations query has an invalid structure.\" "
                                      "Invalid at \"stages\": " path " "))))))))
+
+(deftest ^:parallel post-aggregation-errors-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (doseq [clauses [{:aggregation [["count"]]
+                      :filters [[">" ["aggregation" 0] 1]]
+                      :limit 5}
+                     {:aggregation [["count" {}] ["count" {}]]
+                      :filters [[">" {} ["aggregation" {} 0] 1]]}]]
+      (is (re-find #"MBQL 5 requires"
+                   (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                   {:query (numeric-orders-query clauses)})))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest repair-forgiven-shortcuts-still-execute-test
@@ -1141,7 +1171,7 @@
       (mt/with-current-user (mt/user->id :rasta)
         (is (str/includes? (error-text (call! (str (random-uuid))
                                               {:query (assoc (numeric-orders-query {:limit 1}) :evil "x")}))
-                           ":evil"))))))
+                           "Failing paths: evil: disallowed key"))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest query-shape-still-reaches-the-qp-test
@@ -1161,3 +1191,16 @@
             params [{:type "number/=" :target ["variable" ["template-tag" "n"]] :value 1}]
             handle (stored-handle! sid (pk-ordered-orders-query {:parameters params}))]
         (is (= params (:parameters (capture-qp-query! {:query_handle handle}))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest app-db-failure-in-query-run-is-internal-test
+  (testing "A handle run that fails in an app DB lookup is an internal error, without the app DB's SQL"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            handle (stored-handle! sid (pk-ordered-orders-query nil))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (mt/with-dynamic-fn-redefs [lib-be.db/columns (fn [& _]
+                                                          (t2/with-transaction [_conn]
+                                                            (t2/query ["SELECT no_such_column FROM metabase_field"])))]
+            (is (= {:result {:isError true :content [{:type "text" :text "Internal error"}]}}
+                   (call! sid {:query_handle handle})))))))))

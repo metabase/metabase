@@ -61,6 +61,30 @@
 (defn- recorded-template [row]
   (t2/select-one-fn :query :model/Query :query_hash (:hash row)))
 
+(deftest table-action-runs-with-the-fields-it-was-made-with-test
+  (testing "an implicit action without a model ignores sensitive fields when it runs, as when it was made"
+    (mt/with-temp [:model/Database {db-id :id}       {:engine :h2}
+                   :model/Table    {clash-id :id}     {:db_id db-id :name "CLASH"}
+                   :model/Field    _                  {:table_id clash-id :name "id" :base_type :type/Integer
+                                                       :semantic_type :type/PK}
+                   :model/Field    _                  {:table_id clash-id :name "NAME" :base_type :type/Text}
+                   :model/Field    _                  {:table_id clash-id :name "name" :base_type :type/Text
+                                                       :visibility_type :sensitive}
+                   :model/Table    {two-pk-id :id}    {:db_id db-id :name "TWO_PK"}
+                   :model/Field    _                  {:table_id two-pk-id :name "id" :base_type :type/Integer
+                                                       :semantic_type :type/PK}
+                   :model/Field    _                  {:table_id two-pk-id :name "secret" :base_type :type/Integer
+                                                       :semantic_type :type/PK :visibility_type :sensitive}]
+      (mt/with-model-cleanup [:model/Action]
+        (doseq [[description table-id] {"a name that clashes only with a sensitive column" clash-id
+                                        "a second, sensitive primary key"                  two-pk-id}]
+          (testing description
+            (let [action-id            (action/insert! {:type :implicit :name description :kind :row/update
+                                                        :table_id table-id})
+                  build-implicit-query #'actions.execution/build-implicit-query]
+              (is (=? {:row-parameters {}}
+                      (build-implicit-query (action/select-action :id action-id) :model.row/update {"id" 1}))))))))))
+
 (deftest native-action-audit-trail-test
   (testing "a native query action records one QueryExecution row for the write"
     (mt/test-helpers-set-global-values!

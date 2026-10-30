@@ -76,18 +76,18 @@
                                                                     :columns [{:name "d"}]}}]
     (let [ids (table-index/mark-runnable-indexes-running! [create-id update-id failed-id running-id])]
       (is (= #{create-id update-id failed-id running-id} ids))
-      (is (= :running (t2/select-one-fn :status :model/TableIndex create-id)))
-      (is (= :running (t2/select-one-fn :status :model/TableIndex update-id)))
-      (is (= :running (t2/select-one-fn :status :model/TableIndex failed-id)))
-      (is (= :running (t2/select-one-fn :status :model/TableIndex running-id)))
-      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id)))
-      (t2/update! :model/TableIndex create-id {:status :succeeded})
+      (is (= :running (t2/select-one-fn :status :model/TableIndex :id create-id)))
+      (is (= :running (t2/select-one-fn :status :model/TableIndex :id update-id)))
+      (is (= :running (t2/select-one-fn :status :model/TableIndex :id failed-id)))
+      (is (= :running (t2/select-one-fn :status :model/TableIndex :id running-id)))
+      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex :id deleted-id)))
+      (t2/update! :model/TableIndex :id create-id {:status :succeeded})
       (table-index/mark-unverified-running-indexes-failed! ids "not verified")
-      (is (= :succeeded (t2/select-one-fn :status :model/TableIndex create-id)))
-      (is (= :failed (t2/select-one-fn :status :model/TableIndex update-id)))
-      (is (= :failed (t2/select-one-fn :status :model/TableIndex failed-id)))
-      (is (= :failed (t2/select-one-fn :status :model/TableIndex running-id)))
-      (is (= "not verified" (t2/select-one-fn :error_message :model/TableIndex update-id))))))
+      (is (= :succeeded (t2/select-one-fn :status :model/TableIndex :id create-id)))
+      (is (= :failed (t2/select-one-fn :status :model/TableIndex :id update-id)))
+      (is (= :failed (t2/select-one-fn :status :model/TableIndex :id failed-id)))
+      (is (= :failed (t2/select-one-fn :status :model/TableIndex :id running-id)))
+      (is (= "not verified" (t2/select-one-fn :error_message :model/TableIndex :id update-id))))))
 
 (deftest mark-for-revalidation-test
   (testing "every applicable request is flipped to :update-pending, clearing stale errors; delete-pending rows untouched"
@@ -113,11 +113,11 @@
                                                        :structured   {:kind :btree :name "deleted_idx"
                                                                       :columns [{:name "d"}]}}]
       (table-index/mark-for-revalidation! transform-id)
-      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex create-id)))
-      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex succeeded-id)))
-      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex failed-id)))
-      (is (nil? (t2/select-one-fn :error_message :model/TableIndex failed-id)) "stale error cleared")
-      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id)) "pending deletion not revived")))
+      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id create-id)))
+      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id succeeded-id)))
+      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id failed-id)))
+      (is (nil? (t2/select-one-fn :error_message :model/TableIndex :id failed-id)) "stale error cleared")
+      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex :id deleted-id)) "pending deletion not revived")))
   (testing "a nil transform-id is a no-op"
     (is (nil? (table-index/mark-for-revalidation! nil)))))
 
@@ -134,7 +134,7 @@
       ;; :failed is included: its index DDL already ran against a materialized table, so only a full rebuild
       ;; safely re-attempts it instead of appending duplicate rows from the stale checkpoint.
       (doseq [status [:create-pending :update-pending :delete-pending :running :failed]]
-        (t2/update! :model/TableIndex index-id {:status status})
+        (t2/update! :model/TableIndex :id index-id {:status status})
         (is (true? (table-index/pending-changes-for-transform? transform-id))
             (str status " forces a full rebuild")))))
   (testing "a nil transform-id is not pending"
@@ -193,10 +193,10 @@
                                                        :status       :delete-pending
                                                        :structured   {:kind :btree :name "deleted_idx"
                                                                       :columns [{:name "c"}]}}]
-      (t2/update! :model/Transform transform-id {:target (assoc (:target transform) :name (mt/random-name))})
-      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex create-id)))
-      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex succeeded-id)))
-      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id))))))
+      (t2/update! :model/Transform :id transform-id {:target (assoc (:target transform) :name (mt/random-name))})
+      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id create-id)))
+      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id succeeded-id)))
+      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex :id deleted-id))))))
 
 (deftest deleting-transform-removes-its-indexes-test
   (testing "the transform_id FK cascades, so deleting a transform drops its index requests"
@@ -205,5 +205,5 @@
                                      :index_name   "idx"
                                      :structured   {:kind :btree :name "idx" :columns [{:name "a"}]}})
       (is (t2/exists? :model/TableIndex :transform_id transform-id))
-      (t2/delete! :model/Transform transform-id)
+      (t2/delete! :model/Transform :id transform-id)
       (is (not (t2/exists? :model/TableIndex :transform_id transform-id))))))

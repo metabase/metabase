@@ -383,6 +383,11 @@
       (throw (ex-info (format "Unable to parse defendpoint args: %s" (s/explain-str ::defendpoint args))
                       {:args  args
                        :error (s/explain-data ::defendpoint args)})))
+    ;; Otherwise the schema becomes two discarded body forms and the response is never validated.
+    (when (= :- (first (:body conformed)))
+      (throw (ex-info (str "defendpoint response schema must come right after the route, as in "
+                           "(defendpoint :get \"/route\" :- schema docstring params & body)")
+                      {:args args})))
     (as-> conformed conformed
       (update conformed :params parse-params)
       (update conformed :route parse-route conformed)

@@ -12,6 +12,7 @@ import {
   getVersionType,
   isEnterpriseVersion,
   isPatchVersion,
+  isPreReleaseVersion,
 } from "./version-helpers";
 
 const generateVersionInfo = ({ version }: { version: string }): VersionInfo => {
@@ -169,6 +170,48 @@ export async function getSupportedMajors(
   )) as VersionInfoFile;
 
   return getSupportedMajorVersions(versionInfo, today);
+}
+
+const subtractDays = (day: string, days: number) => {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString().slice(0, 10);
+};
+
+export const hasRecentMinorReleaseIn = (
+  versionInfo: VersionInfoFile,
+  majorVersion: number,
+  windowDays: number,
+  today: string = new Date().toISOString().slice(0, 10),
+): boolean => {
+  if (!Number.isInteger(windowDays) || windowDays < 0) {
+    throw new Error(`Invalid window in days: ${windowDays}`);
+  }
+
+  const windowStart = subtractDays(today, windowDays - 1);
+
+  return [versionInfo.latest, ...(versionInfo.older ?? [])].some(
+    (info) =>
+      !!info &&
+      ["major", "minor"].includes(getVersionType(info.version)) &&
+      !isPreReleaseVersion(info.version) &&
+      getMajorVersion(info.version) === String(majorVersion) &&
+      info.released >= windowStart &&
+      info.released <= today,
+  );
+};
+
+export async function getOssVersionInfo(): Promise<VersionInfoFile> {
+  const url = getVersionInfoUrl("v0");
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(
+      `Could not fetch ${url}: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return (await response.json()) as VersionInfoFile;
 }
 
 // for promoting a released version to `latest` in version-info.json

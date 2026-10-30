@@ -16,6 +16,7 @@ import {
 } from "metabase/current-user";
 import { getHasDatabaseWithActionsEnabled } from "metabase/databases/utils/predicates";
 import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, openDiagnostics } from "metabase/redux/app";
@@ -97,6 +98,7 @@ export const useCommandPaletteBasicActions = ({
 
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
+  const { hasNlqAccess } = useUserMetabotPermissions();
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
 
@@ -151,7 +153,7 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
-    if (hasDataAccess) {
+    if (hasDataAccess && hasNlqAccess) {
       actions.push({
         id: "create-new-research",
         name: t`New research`,
@@ -337,6 +339,7 @@ export const useCommandPaletteBasicActions = ({
     hasDataAccess,
     hasDataStudioAccess,
     hasNativeWrite,
+    hasNlqAccess,
     collectionId,
     openNewModal,
     isAdmin,
@@ -348,7 +351,7 @@ export const useCommandPaletteBasicActions = ({
 
   const openActionModal = [];
 
-  if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
+  if (isAdmin && hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
     openActionModal.push({
       id: "create-action",
       name: t`New action`,
@@ -361,6 +364,7 @@ export const useCommandPaletteBasicActions = ({
     });
   }
   useRegisterActions(openActionModal, [
+    isAdmin,
     hasDatabaseWithActionsEnabled,
     hasNativeWrite,
     hasModels,

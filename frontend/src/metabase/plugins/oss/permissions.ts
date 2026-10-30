@@ -28,10 +28,9 @@ type DataModelQueryProps = {
 
 const DEFAULT_DATA_MODEL_QUERY_PROPS: DataModelQueryProps = {};
 
-// These describe the entries EE plugins contribute to the admin permissions
-// editor. They live here (not in metabase/admin) because shared plugin code
-// cannot import from feature modules; metabase/admin/permissions/types
-// re-exports them.
+// These describe the entries EE plugins contribute to the permissions editor.
+// They live here (not in metabase/permissions) because the plugin registry sits
+// below the permissions module; metabase/permissions re-exports them.
 export interface PermissionOption {
   label: string;
   value: DataPermissionValue;

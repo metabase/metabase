@@ -24,6 +24,7 @@ import * as Urls from "metabase/urls";
 import { useRunTransformTestMutation } from "metabase-enterprise/api";
 import type { TransformTest, TransformTestRun } from "metabase-types/api";
 
+import { trackTransformTestTriggerManualRun } from "../../../analytics";
 import { MB_CLI_NAME } from "../../../constants";
 import { isFailedTestRunStatus } from "../../../utils";
 
@@ -142,6 +143,10 @@ function TransformTestMenu({ test }: { test: TransformTest }) {
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleRun = async () => {
+    trackTransformTestTriggerManualRun({
+      testId: test.id,
+      triggeredFrom: "test_list",
+    });
     const { data, error } = await runTest(test.id);
     if (error || data == null) {
       sendErrorToast(t`Failed to run the test`);

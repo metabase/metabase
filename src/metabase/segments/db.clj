@@ -42,7 +42,7 @@
   "Apply `changes` to the Segment with `id`."
   [id :- ::lib.schema.id/segment
    changes :- (mut/select-keys ::segments.schema/segment.update [:description :caveats :points_of_interest :archived :definition :name :show_in_getting_started])]
-  (t2/update! :model/Segment id changes))
+  (t2/update! :model/Segment :id id changes))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

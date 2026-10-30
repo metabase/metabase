@@ -1,33 +1,23 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useGetCollectionQuery,
   useGetTimelineEventQuery,
   useListTimelinesQuery,
 } from "metabase/api";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
+import { MoveEventForm } from "metabase/timelines/common/components/MoveEventForm";
 import {
-  MoveEventModal,
-  type MoveEventModalProps,
-} from "metabase/timelines/common/components/MoveEventModal";
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import { useSetTimeline } from "metabase/timelines/common/hooks";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import type { ModalParams } from "../../types";
-
-interface OwnProps {
-  params: ModalParams;
-  onClose?: () => void;
-}
-
-type ContainerProps = Omit<
-  MoveEventModalProps,
-  "event" | "timelines" | "collection" | "onSubmit"
-> &
-  OwnProps;
-
-function MoveEventModalContainer({ params, ...props }: ContainerProps) {
+function MoveEventModalContainer({ params, onClose }: ModalComponentProps) {
   const setTimeline = useSetTimeline();
   const navigate = useNavigate();
   const eventId = Urls.extractEntityId(params.timelineEventId);
@@ -66,18 +56,25 @@ function MoveEventModalContainer({ params, ...props }: ContainerProps) {
   const isLoading = isEventLoading || isTimelinesLoading || isCollectionLoading;
   const error = eventError ?? timelinesError ?? collectionError;
 
-  if (isLoading || error || !event) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <MoveEventModal
-      {...props}
-      event={event}
-      timelines={timelines}
-      collection={collection}
-      onSubmit={handleSubmit}
-    />
+    <TimelineModal
+      title={event ? t`Move ${event.name}` : undefined}
+      onClose={onClose}
+      animated={false}
+      tall
+    >
+      {isLoading || error || !event ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <MoveEventForm
+          event={event}
+          timelines={timelines}
+          collection={collection}
+          onSubmit={handleSubmit}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

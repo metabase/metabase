@@ -33,6 +33,49 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
+  it("logs an unexpected error from the agent request", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const thrownError = new TypeError("Failed to fetch");
+    setup();
+    fetchMock.post(`path:/api/metabot/agent-streaming`, {
+      throws: thrownError,
+    });
+
+    try {
+      await enterChatMessage("Who is your favorite?");
+
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", METABOT_ERR_MSG.default],
+      ]);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(thrownError);
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
+  });
+
+  it("does not log the 409 conversation-out-of-sync error", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    setup();
+    fetchMock.post(`path:/api/metabot/agent-streaming`, 409);
+
+    try {
+      await enterChatMessage("Who is your favorite?");
+
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", METABOT_ERR_MSG.outOfSync],
+      ]);
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
+  });
+
   it("should show a validation error message for bad requests", async () => {
     setup();
     fetchMock.post(`path:/api/metabot/agent-streaming`, 400);

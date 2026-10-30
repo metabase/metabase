@@ -124,6 +124,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
+   [metabase.lib.walk]
    [metabase.lib.walk.util]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]))
@@ -1709,7 +1710,8 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.underlying
-  aggregation-sourced?]
+  aggregation-sourced?
+  breakout-sourced?]
  [lib.util
   clause?
   clause-of-type?
@@ -1737,6 +1739,8 @@
   missing-table-error
   syntax-error
   validation-exception-error]
+ [metabase.lib.walk
+  walk-stages]
  [metabase.lib.walk.util
   all-field-ids
   all-referenced-entity-ids

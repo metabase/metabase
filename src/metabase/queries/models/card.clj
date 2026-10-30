@@ -586,14 +586,10 @@
                  (= (:type old-card-info) :model)
                  (not (query/supports-implicit-actions? (:dataset_query changes))))
         (disable-implicit-action-for-model! id))
-      ;; Changing from a Model to a Question: archive associated actions
-      (when (and (= (:type changes) :question)
-                 (= (:type old-card-info) :model))
-        (queries.db/delete-dashcards-for-model-actions! id)
-        (queries.db/archive-explicit-actions-for-model! id)
-        (queries.db/delete-implicit-actions-for-model! id))
-      (when (contains? changes :archived)
-        (queries.db/set-actions-of-model-archived! id (boolean (:archived changes))))
+      (when (or (:archived changes)
+                (and (= (:type changes) :question)
+                     (= (:type old-card-info) :model)))
+        (queries.db/delete-actions-of-model! id))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection
@@ -1123,13 +1119,6 @@
       (sync.field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
-(defn- move-model-actions
-  "Moves the Actions of `card` into its Collection when the update changes it, returning `card`."
-  [card original]
-  (u/prog1 card
-    (when (not= (:collection_id card) (:collection_id original))
-      (queries.db/move-actions-of-models! #{(:id card)} (:collection_id card)))))
-
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
     (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
@@ -1198,9 +1187,13 @@
         (cond-> (some data-app-card-columns (keys changes)) (doto check-data-app-card))
         (clear-metabot-origin changes)
         (pre-update changes)
-        (move-model-actions original)
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
+
+(t2/define-after-update :model/Card
+  [card]
+  (u/prog1 card
+    (queries.db/move-actions-of-model! (:id card) (:collection_id card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card

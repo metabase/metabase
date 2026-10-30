@@ -352,7 +352,7 @@ jobs:
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         if: failure()
         with:
-          path: "target/junit/**/*_test.xml"
+          path: "target/junit/**/*.xml"
           name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.job.edition }}
           reporter: java-junit
           list-suites: failed

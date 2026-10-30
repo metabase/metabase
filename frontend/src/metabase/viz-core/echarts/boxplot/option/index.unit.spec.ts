@@ -208,7 +208,7 @@ describe("responsive BoxPlot presentation", () => {
     expect(layout.labelOverflow.top).toBeGreaterThan(0);
     const adjustedPadding = {
       ...layout.adjustedPadding,
-      top: layout.outerHeight - layout.adjustedPadding.bottom - 199,
+      top: layout.outerHeight - layout.adjustedPadding.bottom - 95,
     };
     const option = getBoxPlotOption(
       model,

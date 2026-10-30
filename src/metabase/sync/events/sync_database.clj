@@ -30,8 +30,8 @@
          (try
            ;; only do the 'full' sync if this is a "full sync" database. Otherwise just do metadata sync only
            (if (:is_full_sync database)
-             (sync/sync-database! database)
-             (sync-metadata/sync-db-metadata! database))
+             (sync/sync-database! (u/the-id database))
+             (sync-metadata/sync-db-metadata! (u/the-id database)))
            (catch Throwable e
              (log/errorf "Error syncing Database %s: %s" (u/the-id database) (ex-message e)))))))
     (catch Throwable e

@@ -1,8 +1,10 @@
 (ns metabase-enterprise.data-apps.db
-  "Application database queries for the data-apps module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
+  "Application database queries for the data-apps module, so the rest of the module only touches `toucan2.core` for
+  model definitions and hydration methods."
   (:require
-   [metabase-enterprise.data-apps.schema :as data-apps.schema]
+   [clojure.set :as set]
+   [metabase.collections.models.collection :as collection]
+   [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -26,13 +28,6 @@
   "The DataApp named `slug` without its bundle, or nil."
   [slug :- :string]
   (t2/select-one non-blob-model :name slug))
-
-(mu/defn data-apps
-  "Every DataApp without its bundle, ordered by display name; only the enabled ones when `available?`."
-  [available? :- [:maybe :boolean]]
-  (t2/select non-blob-model
-             (cond-> {:order-by [[:display_name :asc]]}
-               available? (assoc :where [:= :enabled true]))))
 
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
@@ -112,42 +107,34 @@
   [collection-id]
   (t2/select-one :model/Collection :id collection-id))
 
-(defn update-resource-collection!
-  "Apply `changes` to the resource collection with `collection-id`."
-  [collection-id changes]
-  (t2/update! :model/Collection :id collection-id changes))
-
 (defn delete-resource-collection!
   "Delete the resource collection with `collection-id`."
   [collection-id]
   (t2/delete! :model/Collection :id collection-id))
 
-(defn permissions-for-paths-excluding-group
-  "Permission grants for `paths`, excluding `group-id`."
-  [paths group-id]
-  (t2/select [:model/Permissions :group_id :object]
-             :object [:in paths]
-             :group_id [:not= group-id]))
+(mu/defn readable-data-app-ids-select
+  "A HoneySQL query of the ids of the DataApps that the User with `user-id` can read: every app for a superuser, else
+  the enabled apps whose resource collection they can read."
+  [user-id    :- ms/PositiveInt
+   superuser? :- :boolean]
+  (if superuser?
+    ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)]}
+    ^:allow-subquery {:select [:id]
+                      :from   [(t2/table-name :model/DataApp)]
+                      :where  [:and
+                               [:= :enabled true]
+                               [:in :resource_collection_id
+                                (collection/visible-collection-query
+                                 {:permission-level :read :include-archived-items :all}
+                                 {:current-user-id user-id :is-superuser? false})]]}))
 
-(defn app-assignments
-  "Assignments for the requested apps."
-  [app-ids]
-  (if (seq app-ids)
-    (t2/select :model/DataAppGroupAssignment :data_app_id [:in app-ids])
-    []))
-
-(defn insert-assignments!
-  "Assign groups to an app. The unique constraint rejects concurrent duplicates."
-  [app-id group-ids]
-  (t2/insert! :model/DataAppGroupAssignment
-              (mapv (fn [group-id] {:data_app_id app-id :permission_group_id group-id}) group-ids)))
-
-(defn delete-assignments!
-  "Remove the requested group assignments from an app."
-  [app-id group-ids]
-  (if (seq group-ids)
-    (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id [:in group-ids])
-    0))
+(mu/defn readable-data-apps
+  "The DataApps that the User with `user-id` can read, without their bundles, ordered by display name."
+  [user-id    :- ms/PositiveInt
+   superuser? :- :boolean]
+  (t2/select non-blob-model
+             {:where    [:in :id (readable-data-app-ids-select user-id superuser?)]
+              :order-by [[:display_name :asc]]}))
 
 (defn permissions-for-warnings
   "View-data permission rows for the warning tables and their databases."
@@ -181,3 +168,49 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-pks-vec :model/Action {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
                                     :order-by [[:name :asc] [:id :asc]]}))
+
+(mu/defn external-card-ids :- [:set ::lib.schema.id/card]
+  "Among `card-ids`, those of no Card in the collection with `collection-id`."
+  [collection-id :- [:maybe ::lib.schema.id/collection]
+   card-ids      :- [:set {:min 1} ::lib.schema.id/card]]
+  (set/difference card-ids (when collection-id
+                             (t2/select-pks-set :model/Card :id [:in card-ids] :collection_id collection-id))))
+
+(mu/defn external-metric-ids :- [:set ::lib.schema.id/card]
+  "Among `card-ids`, those of no metric in the Library's Metrics collection or one of its subcollections."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (set/difference card-ids (t2/select-fn-set :id [:model/Card :report_card.id]
+                                             {:join  [:collection [:= :collection.id :report_card.collection_id]]
+                                              :where [:and
+                                                      [:in :report_card.id card-ids]
+                                                      [:= :report_card.type "metric"]
+                                                      [:= :collection.type collection/library-metrics-collection-type]]})))
+
+(mu/defn external-table-ids :- [:set ::lib.schema.id/table]
+  "Among `table-ids`, those of no Table published to the Library."
+  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
+  (set/difference table-ids (t2/select-pks-set :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                                                             :where [:and [:in :id table-ids] [:= :is_published true]]})))
+
+(mu/defn published-tables :- [:sequential :metabase.warehouse-schema.schema/table]
+  "The Tables published to the Library, with their databases and schemas."
+  []
+  (t2/select [:model/Table :id :db_id :schema]
+             {:from  [(warehouse-schema-overlay/table-query)]
+              :where [:= :is_published true]}))
+
+(mu/defn external-segment-ids :- [:set ::lib.schema.id/segment]
+  "Among `segment-ids`, those of no Segment of a Table published to the Library."
+  [segment-ids :- [:set {:min 1} ::lib.schema.id/segment]]
+  (set/difference segment-ids (t2/select-fn-set :id [:model/Segment :segment.id]
+                                                {:join  [(warehouse-schema-overlay/table-query {:alias :table})
+                                                         [:= :table.id :segment.table_id]]
+                                                 :where [:and [:in :segment.id segment-ids] [:= :table.is_published true]]})))
+
+(mu/defn external-measure-ids :- [:set ::lib.schema.id/measure]
+  "Among `measure-ids`, those of no Measure of a Table published to the Library."
+  [measure-ids :- [:set {:min 1} ::lib.schema.id/measure]]
+  (set/difference measure-ids (t2/select-fn-set :id [:model/Measure :measure.id]
+                                                {:join  [(warehouse-schema-overlay/table-query {:alias :table})
+                                                         [:= :table.id :measure.table_id]]
+                                                 :where [:and [:in :measure.id measure-ids] [:= :table.is_published true]]})))

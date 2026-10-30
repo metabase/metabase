@@ -122,6 +122,19 @@
    :requires [[mage.start-maildev :as start-maildev]]
    :task (task! (start-maildev/start-maildev!))}
 
+  docs-preview
+  {:doc "Preview the docs of a Metabase repo in your metabase-dot-com checkout, at http://localhost:4000/docs/latest/"
+   :examples [["./bin/mage docs-preview" "Preview the docs of this repo"]
+              ["./bin/mage docs-preview .claude/worktrees/my-feature" "Preview the docs of a worktree (a relative path starts at this repo)"]
+              ["./bin/mage docs-preview ~/code/other-metabase" "Preview the docs of another checkout"]
+              ["./bin/mage docs-preview --site ~/code/www" "Use the metabase-dot-com checkout at ~/code/www"]
+              ["METABASE_DOT_COM_DIR=~/code/www ./bin/mage docs-preview" "The same, from the env. Set it in your shell profile to use it always"]]
+   :requires [[mage.docs-preview :as docs-preview]]
+   :options [[nil "--site DIR" "The metabase-dot-com checkout. A relative path starts at this repo. Default: $METABASE_DOT_COM_DIR, then ~/metabase-dot-com"]
+             [nil "--no-open" "Do not open the browser"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "repo-path" :description "The Metabase repo or worktree with the docs. Default: this repo"}]]]
+   :task (task! (docs-preview/docs-preview! parsed))}
+
   tail-d
   {:doc     "Tail the #d debug log in real time (see dev.debug). Asks the running REPL for the exact path; falls back to DEV_DEBUG_LOG or /tmp/<dir>_debug.log."
    :examples [["./bin/mage tail-d" "tail the #d log, with bat syntax highlighting if available"]]
@@ -323,6 +336,22 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
+  module-history
+  {:doc "Update the CSV files that track how the backend module graph changed on master, and optionally publish them. Measures only commits it has not measured before."
+   :examples [["./bin/mage module-history --dir ~/module-history" "Fetch master, measure its new commits, and write the CSV files and history.json"]
+              ["./bin/mage module-history --dir ~/module-history --publish ~/module-history/publish.edn" "Then fill pages, replace Metabase uploads, refresh cards and update shares, as the EDN file says"]
+              ["./bin/mage module-history --dir ~/module-history-ahead --ref origin/my-stack-tip" "Write the history as it would be with a branch merged: master up to where the branch left it, then the branch's commits"]
+              ["./bin/mage module-history --dir ~/module-history --no-measure --publish ~/module-history/publish.edn --dry-run" "Print what publishing the files already there would run"]]
+   :options [["-d" "--dir DIR" "Directory to keep the files in (required)"]
+             ["-P" "--publish FILE" "Publish the files as this EDN file says; see the mage.module-history docstring for its shape"]
+             ["-D" "--dry-run" "With --publish, print the commands that would change Metabase or a share instead of running them"]
+             ["-r" "--ref REF" "Measure the first-parent history of this ref instead of origin/master"]
+             ["-F" "--no-fetch" "Measure the ref as last fetched"]
+             ["-M" "--no-measure" "Skip fetching and measuring; use the files already in DIR"]]
+   :arg-schema [:tuple]
+   :requires [[mage.module-history]]
+   :task (task! (mage.module-history/cli-update parsed))}
+
   fix-modules-config
   {:doc "Regenerate .clj-kondo/config/modules/config.edn so it passes metabase.core.modules-test."
    :examples [["./bin/mage fix-modules-config" "Fix the modules config (uses the running dev REPL if available, else a JVM)"]
@@ -367,6 +396,27 @@
    :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (assoc (:options parsed) :attribute mage.kondo-ratchet/attribute-occurrences!)))}
 
+  kondo-ratchets-history
+  {:doc "Report which commits and pull requests shrank, grew and introduced ratchet budgets."
+   :examples [["./bin/mage kondo-ratchets-history" "Summarize the last 7 days"]
+              ["./bin/mage kondo-ratchets-history --days 30" "Summarize the last 30 days"]
+              ["./bin/mage kondo-ratchets-history --all" "Summarize every change since the first ratchet"]
+              ["./bin/mage kondo-ratchets-history --html ratchets.html" "Write a page with every week, every month and all time"]
+              ["./bin/mage kondo-ratchets-history 57e0ad66ea5" "Summarize every change after that commit"]
+              ["./bin/mage kondo-ratchets-history --pardon 78082 --why \"the stricter hook flagged requires that already existed\"" "Count the budget raises in PR 78082 against nobody"]
+              ["./bin/mage kondo-ratchets-history --confirm 8d5db3195d" "Keep counting that commit's raises as growth"]
+              ["./bin/mage kondo-ratchets-history --recount 79531 --why \"the same ignores, named per linter\"" "Count none of a commit's changes: it only changed how suppressions are counted"]]
+   :options [["-d" "--days DAYS" "Days to look back (default 7)" :parse-fn parse-long]
+             ["-a" "--all" "Look back to the first ratchet"]
+             ["-o" "--html FILE" "Write a single-file HTML page covering every week, every month and all time"]
+             [nil "--pardon COMMIT" "Count a commit's budget raises against nobody; takes a commit or PR number"]
+             [nil "--confirm COMMIT" "Keep a questioned commit's raises as growth"]
+             [nil "--recount COMMIT" "Count none of a commit's changes: it only changed how suppressions are counted"]
+             ["-w" "--why REASON" "The reason for a verdict; a pardon or a recount needs one"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "commit" :description "Summarize the changes after this commit; not with --days or --all"}]]]
+   :requires [[mage.kondo-ratchets-history]]
+   :task (task! (mage.kondo-ratchets-history/history parsed))}
+
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
    :examples [["./bin/mage kondo-redundant-ignores" "Scan the backend tree for removable ignores"]
@@ -399,13 +449,13 @@
    :requires [[mage.cursive-resolve-as :as cursive-resolve-as]]
    :task (task! (cursive-resolve-as/do-it))}
 
-  generate-docs
+  docs-generate
   {:doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM."
-   :examples [["./bin/mage generate-docs" "Regenerate every generated doc"]
-              ["./bin/mage generate-docs backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
-              ["./bin/mage generate-docs usage-analytics" "Usage analytics reference"]
-              ["./bin/mage generate-docs embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
-              ["./bin/mage generate-docs embedding-eajs" "Modular embedding (EAJS) reference"]]
+   :examples [["./bin/mage docs-generate" "Regenerate every generated doc"]
+              ["./bin/mage docs-generate backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
+              ["./bin/mage docs-generate usage-analytics" "Usage analytics reference"]
+              ["./bin/mage docs-generate embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
+              ["./bin/mage docs-generate embedding-eajs" "Modular embedding (EAJS) reference"]]
    :options [["-d" "--dir DIR" "Absolute path of the Metabase checkout to generate the docs in. Defaults to this checkout."]]
    :arg-schema [:or
                 [:tuple]
@@ -414,8 +464,8 @@
                          "usage-analytics"
                          "embedding-sdk"
                          "embedding-eajs"]]]
-   :requires [[mage.generate-docs :as generate-docs]]
-   :task (task! (generate-docs/run! (first (:arguments parsed)) (:options parsed)))}
+   :requires [[mage.docs-generate :as docs-generate]]
+   :task (task! (docs-generate/run! (first (:arguments parsed)) (:options parsed)))}
 
   analytics:setup
   {:doc "Set up usage analytics development mode"

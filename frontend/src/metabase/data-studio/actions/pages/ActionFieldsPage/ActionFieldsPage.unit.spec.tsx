@@ -1,33 +1,45 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import {
   setupActionEndpoints,
   setupCollectionByIdEndpoint,
   setupDatabaseListEndpoint,
+  setupTableEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
-import type { Database, WritebackQueryAction } from "metabase-types/api";
+import type { Database, Table, WritebackAction } from "metabase-types/api";
 import {
+  createMockActionParameter,
   createMockCollection,
   createMockDatabase,
+  createMockFieldSettings,
+  createMockImplicitQueryAction,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
   createMockQueryAction,
+  createMockTable,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 
 import { ActionFieldsPage } from "./ActionFieldsPage";
 
 type SetupOpts = {
-  action: WritebackQueryAction;
+  action: WritebackAction;
   database: Database;
+  table?: Table;
   fieldId?: string;
 };
 
-function setup({ action, database, fieldId = "status" }: SetupOpts) {
+function setup({ action, database, table, fieldId = "status" }: SetupOpts) {
   setupActionEndpoints(action);
+  if (table) {
+    setupTableEndpoints(table);
+  }
   setupDatabaseListEndpoint([database]);
   setupCollectionByIdEndpoint({
     collections: [createMockCollection(ROOT_COLLECTION)],
@@ -91,6 +103,54 @@ const TWO_VARIABLE_DATASET_QUERY = createMockNativeDatasetQuery({
 });
 
 describe("ActionFieldsPage", () => {
+  it("should only let a user change whether a table action's field is shown", async () => {
+    setup({
+      action: createMockImplicitQueryAction({
+        id: 2,
+        model_id: null,
+        table_id: 10,
+        database_id: 1,
+        can_write: true,
+        parameters: [createMockActionParameter({ id: "email", name: "Email" })],
+        visualization_settings: {
+          type: "form",
+          fields: {
+            email: createMockFieldSettings({ id: "email", title: "Email" }),
+          },
+        },
+      }),
+      database: createMockDatabase({
+        id: 1,
+        native_permissions: "write",
+        settings: { "database-enable-actions": true },
+      }),
+      table: createMockTable({ id: 10, display_name: "Customers" }),
+      fieldId: "email",
+    });
+
+    expect(
+      await screen.findByText("One field per column of Customers."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Column")).toBeInTheDocument();
+    expect(screen.getByLabelText("Display name")).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Text" })).toBeDisabled();
+    expect(screen.getByRole("switch", { name: /Required/ })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("switch", { name: /Show field/ }));
+
+    const request = await fetchMock.callHistory
+      .lastCall("action-2-put")
+      ?.request?.json();
+    expect(request).toEqual({
+      id: 2,
+      visualization_settings: expect.objectContaining({
+        fields: {
+          email: expect.objectContaining({ id: "email", hidden: true }),
+        },
+      }),
+    });
+  });
+
   it("should let a user who can edit the action change every field setting", async () => {
     setup({
       action: createMockQueryAction({

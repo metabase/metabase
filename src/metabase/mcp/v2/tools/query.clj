@@ -117,7 +117,7 @@
     (message/msg ["Query failed: unknown error"])))
 
 (defn- execute-page!
-  "Run [[query-execution/execute-page!]] as an `:agent` query, turning a failed run into a teaching error."
+  "Run [[query-execution/execute-page!]] as an `:agent` query, turning a caller-facing failure into a teaching error."
   [serialized-query row-limit]
   ;; Only the key whitelist in [[query-execution/execute-page!]] keeps unknown keys away from the QP.
   ;; A fresh `:query` is also rejected upstream by the closed `:metabase.lib.schema/query`, but that covers only the
@@ -126,8 +126,8 @@
   (try
     (query-execution/execute-page! serialized-query row-limit :agent)
     (catch clojure.lang.ExceptionInfo e
-      (let [{:keys [error query-error]} (ex-data e)]
-        (if (= :query-failed error)
+      (let [{:keys [error query-error caller-facing?]} (ex-data e)]
+        (if (and (= :query-failed error) caller-facing?)
           (common/throw-teaching-error (query-failure-message query-error))
           (throw e))))))
 
@@ -554,7 +554,8 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
   "Run the saved card through [[qp.card/process-query-for-card]] — the same domain entry the
    REST card-query endpoint uses, so the read check, sandboxing, and impersonation all apply —
    with `row-limit` injected as the userland constraints. Returns the QP result; surfaces a
-   failed run as a teaching error.
+   failed run as a teaching error when [[query-execution/caller-facing-failure?]] accepts it, and
+   as an internal error otherwise.
 
    Binds [[qp.card/*allow-arbitrary-mbql-parameters*]] true so a saved question's declared
    MBQL filter-widget parameters run, not just native template tags — the same relaxation the
@@ -575,7 +576,9 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
                                  (fn [query info]
                                    (qp (update query :info merge info) nil)))))]
     (when-not (= (:status result) :completed)
-      (common/throw-teaching-error (query-failure-message (:error result))))
+      (if (query-execution/caller-facing-failure? result)
+        (common/throw-teaching-error (query-failure-message (:error result)))
+        (throw (ex-info (str "Query failed: " (:error result)) {}))))
     result))
 
 (defn- saved-question-steering-line
