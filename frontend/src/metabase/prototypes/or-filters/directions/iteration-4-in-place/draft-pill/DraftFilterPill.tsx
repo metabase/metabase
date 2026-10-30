@@ -478,7 +478,7 @@ export function DraftFilterPill({
             <RemoveIcon onClick={onRemove} />
           </div>
         </Popover.Target>
-        <Popover.Dropdown>
+        <KeyboardDropdown>
           <FilterPickerBody
             query={columnQuery}
             stageIndex={columnStageIndex}
@@ -488,7 +488,7 @@ export function DraftFilterPill({
             onChange={(newFilter) => onSubmit(newFilter, column)}
             onBack={() => updateDraft({ values: [] })}
           />
-        </Popover.Dropdown>
+        </KeyboardDropdown>
       </Popover>
     );
   }
@@ -649,6 +649,58 @@ function getAiFiltersTooltip(state: AiFiltersState, isAiMode: boolean) {
     );
   }
   return isAiMode ? t`Describe the filters, then press Enter` : null;
+}
+
+/**
+ * Prototype: the app's own picker in a dropdown, reachable from the keyboard.
+ * Its first option takes the focus when it opens (the pill's input is gone by
+ * then), and Up/Down move between its buttons, so Enter picks one.
+ */
+function KeyboardDropdown({ children }: { children: ReactNode }) {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const getButtons = () =>
+    Array.from(
+      dropdownRef.current?.querySelectorAll<HTMLElement>(
+        "button:not([disabled]), input:not([disabled])",
+      ) ?? [],
+    );
+
+  useLayoutEffect(() => {
+    // The dropdown renders in a portal; wait a tick for it to mount.
+    const timeout = setTimeout(() => {
+      const [first, second] = getButtons();
+      // The first button is the "back" one when there is a header; skip it.
+      (first?.getAttribute("aria-label") === "Back" ? second : first)?.focus();
+    });
+    return () => clearTimeout(timeout);
+  }, []);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+      return;
+    }
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.type !== "checkbox") {
+      return;
+    }
+    const buttons = getButtons();
+    const index = buttons.findIndex((button) => button === target);
+    const next =
+      event.key === "ArrowDown"
+        ? buttons[Math.min(index + 1, buttons.length - 1)]
+        : buttons[Math.max(index - 1, 0)];
+    if (next) {
+      event.preventDefault();
+      next.focus();
+    }
+  };
+
+  return (
+    <Popover.Dropdown ref={dropdownRef} onKeyDown={handleKeyDown}>
+      {children}
+    </Popover.Dropdown>
+  );
 }
 
 function RemoveIcon({ onClick }: { onClick: () => void }) {
