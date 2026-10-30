@@ -121,11 +121,11 @@
       (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
         (doseq [validate-only? [true false]]
           (testing (if validate-only? "dry run" "save")
-            (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:parameters some?}}
+            (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:cache_ttl some?}}
                     (error-data #(dashboard-write/write! {:dashboard      (hydrated (:id dash))
-                                                          :attrs          {:parameters [{:id "p" :type "not-a-type"}]}
+                                                          :attrs          {:cache_ttl 0}
                                                           :validate-only? validate-only?}))))))
-        (is (empty? (:parameters (hydrated (:id dash))))))))
+        (is (nil? (:cache_ttl (hydrated (:id dash))))))))
   (testing "a create is held to what creating a dashboard requires, with or without ops"
     (mt/with-current-user (mt/user->id :crowberto)
       (doseq [ops            [nil [{:op "add_text" :id -1 :markdown "hi"}]]
@@ -146,19 +146,38 @@
         (is (=? {:name "Revenue", :dashcards [{:id (:id dc)}]}
                 (dashboard-write/write! {:dashboard (hydrated (:id dash)), :attrs {:name "Revenue"}})))))))
 
-(deftest dry-run-checks-write-permission-test
-  (testing "a dry run is refused where the save would be, for lack of write or create permission"
+(deftest permission-is-checked-first-test
+  (testing "a user who may not write is refused before anything else is checked, on a dry run and a save alike"
     (mt/with-temp [:model/Collection collection {}
                    :model/Dashboard  dash       {:name "Sales", :collection_id (:id collection)}]
       (mt/with-non-admin-groups-no-collection-perms collection
         (mt/with-current-user (mt/user->id :rasta)
-          (testing "update"
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                  (dashboard-write/write! {:dashboard      (hydrated (:id dash))
-                                                           :attrs          {:name "Revenue"}
-                                                           :validate-only? true}))))
-          (testing "create"
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                  (dashboard-write/write! {:attrs          {:name          "New"
-                                                                            :collection_id (:id collection)}
-                                                           :validate-only? true})))))))))
+          (doseq [validate-only? [true false]]
+            (testing (if validate-only? "dry run" "save")
+              (testing "update"
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                      (dashboard-write/write! {:dashboard      (hydrated (:id dash))
+                                                               :attrs          {:cache_ttl 0}
+                                                               :validate-only? validate-only?}))))
+              (testing "create"
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                      (dashboard-write/write! {:attrs          {:name          "New"
+                                                                                :collection_id (:id collection)
+                                                                                :cache_ttl     0}
+                                                               :validate-only? validate-only?}))))))
+          (is (=? {:name "Sales"} (hydrated (:id dash))))
+          (is (not (t2/exists? :model/Dashboard :name "New"))))))))
+
+(deftest parameters-in-attrs-are-refused-test
+  (testing "parameters are edited with ops, so attributes carrying them are refused on every path"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+        (doseq [dashboard      [nil (hydrated (:id dash))]
+                validate-only? [true false]]
+          (testing (pr-str (some? dashboard) validate-only?)
+            (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:parameters some?}}
+                    (error-data #(dashboard-write/write! {:dashboard      dashboard
+                                                          :attrs          {:name       "With parameters"
+                                                                           :parameters []}
+                                                          :validate-only? validate-only?}))))))
+        (is (not (t2/exists? :model/Dashboard :name "With parameters")))))))
