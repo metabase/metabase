@@ -593,8 +593,8 @@
   "Audit-log details for the sandboxes (row-level restrictions) applied to a query, keyed by the Table ID each one sandboxes. Stashed on the query by the enterprise sandboxing middleware and copied into the results metadata so the restrictions can be recorded in the QueryExecution log."
   [:map-of [:ref ::id/table] [:ref ::sandboxing.details.entry]])
 
-(mr/def ::sandboxing.hidden-field-ids
-  "For each Table whose sandbox has been applied to a query, the IDs of its Fields that the sandbox does not return. Stashed on the query by the enterprise sandboxing middleware, which drops or refuses refs to these Fields."
+(mr/def ::sandboxing.exposed-field-ids
+  "For each Table whose sandbox has been applied to a query, the IDs of its Fields that the sandbox returns. Stashed on the query by the enterprise sandboxing middleware, which drops or refuses refs to the Table's other Fields."
   [:map-of [:ref ::id/table] [:sequential [:ref ::id/field]]])
 
 (mr/def ::query.snapshot
@@ -759,9 +759,9 @@
    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details
     {:optional true}
     [:ref ::sandboxing.details]]
-   [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/hidden-field-ids
+   [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/exposed-field-ids
     {:optional true}
-    [:ref ::sandboxing.hidden-field-ids]]
+    [:ref ::sandboxing.exposed-field-ids]]
    ;;
    ;; INFO
    ;;

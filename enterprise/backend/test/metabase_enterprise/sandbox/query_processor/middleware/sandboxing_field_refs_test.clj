@@ -212,6 +212,43 @@
                       expected-cols)
                     (col-names result))))))))))
 
+(deftest inactive-or-sensitive-column-test
+  (testing (str "A column that is inactive, or \"Do not include\" and not returned by the sandbox, is dropped from a"
+                " projection and refused elsewhere, including inside a saved question")
+    (doseq [[state field-props] {:inactive  {:active false}
+                                 :sensitive {:visibility-type :sensitive}}]
+      (testing state
+        (do-with-each-policy!
+         (fn [_]
+           (let [base         (mt/metadata-provider)
+                 venues       (lib.metadata/table base (mt/id :venues))
+                 id-col       (lib.metadata/field base (mt/id :venues :id))
+                 price        (lib.metadata/field base (mt/id :venues :price))
+                 fields-query (-> (lib/query base venues)
+                                  (lib/with-fields [id-col price])
+                                  (lib/order-by id-col)
+                                  (lib/limit 2))
+                 filter-query (-> (lib/query base venues)
+                                  (lib/aggregate (lib/count))
+                                  (lib/filter (lib/> price 2)))
+                 mp           (as-> base mp
+                                (lib.tu/metadata-provider-with-card-from-query mp 1 fields-query)
+                                (lib.tu/metadata-provider-with-card-from-query mp 2 filter-query)
+                                (lib.tu/merged-mock-metadata-provider
+                                 mp {:fields [(merge {:id (mt/id :venues :price)} field-props)]}))
+                 card-query   #(lib/query mp (lib.metadata/card mp %))]
+             (doseq [[shape query] (cond-> {:saved-question (card-query 1)}
+                                     ;; an ad-hoc ref to a sensitive column is refused before sandboxing runs
+                                     (= state :inactive) (assoc :ad-hoc (assoc fields-query :lib/metadata mp)))]
+               (testing shape
+                 (let [result (run query)]
+                   (is (=? {:status :completed} result))
+                   (is (= ["ID"] (col-names result))))))
+             (testing "in a filter of a saved question"
+               (is (=? refused-hidden-column (run (card-query 2)))))
+             (testing "in an ad-hoc filter"
+               (is (=? {:status :failed} (run (assoc filter-query :lib/metadata mp))))))))))))
+
 (deftest name-ref-does-not-fall-back-to-joined-column-test
   (testing "A name ref to a hidden column does not resolve to a same-named column of a joined table"
     (do-with-each-policy!

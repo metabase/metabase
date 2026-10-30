@@ -360,21 +360,13 @@
                                   (lib.metadata/fields sandbox-query original-table-id)))]
     (into direct-ids name-resolved-ids)))
 
-(defn- sandbox-hidden-field-ids
-  "Sorted IDs of the Fields of `original-table-id` that the sandbox does not return."
-  [sandbox-query original-table-id]
-  (let [exposed (sandbox-exposed-field-ids sandbox-query original-table-id)]
-    (into []
-          (comp (map :id) (remove exposed))
-          (sort-by :id (lib.metadata/fields sandbox-query original-table-id)))))
-
 (mu/defn- apply-sandbox-to-stage :- [:map
-                                     [:stages           [:and
-                                                         [:sequential {:min 1} ::lib.schema/stage]
-                                                         ::lib.schema.util/unique-uuids]]
-                                     [:hidden-field-ids [:sequential ::lib.schema.id/field]]]
-  "Apply a Sandbox to a `stage`. Returns the replacement `:stages`, and the `:hidden-field-ids` of the sandboxed Table
-  that the Sandbox does not return."
+                                     [:stages            [:and
+                                                          [:sequential {:min 1} ::lib.schema/stage]
+                                                          ::lib.schema.util/unique-uuids]]
+                                     [:exposed-field-ids [:sequential ::lib.schema.id/field]]]
+  "Apply a Sandbox to a `stage`. Returns the replacement `:stages`, and the sorted `:exposed-field-ids` of the sandboxed
+  Table that the Sandbox returns."
   [query                            :- ::lib.schema/query
    path                             :- ::lib.walk/path
    {:keys [source-table] :as stage} :- ::lib.schema/stage
@@ -414,8 +406,8 @@
         replacement-stages (cond-> new-source-stages
                              wrapper-stage (conj wrapper-stage))]
     (log/trace "Applied Sandbox: replaced stage with sandboxed stages")
-    {:stages           replacement-stages
-     :hidden-field-ids (sandbox-hidden-field-ids sandbox-query source-table)}))
+    {:stages            replacement-stages
+     :exposed-field-ids (sort (sandbox-exposed-field-ids sandbox-query source-table))}))
 
 (mr/def ::query-with-details
   "A query that has been through [[apply-sandboxing]]. Carries [[metabase.lib.schema/sandboxing.details]] under the
@@ -477,7 +469,7 @@
    table-id->sandbox :- [:map-of ::lib.schema.id/table ::sandbox]]
   ;; replace stages that have `:source-table` key and a matching entry in `table-id->sandbox`, but do not have
   ;; `::sandbox?` key
-  (let [hidden-field-ids (volatile! {})]
+  (let [exposed-field-ids (volatile! {})]
     (-> (lib.walk/walk-stages
          query
          (fn [query path stage]
@@ -485,8 +477,8 @@
                       (:source-table stage)
                       (not (::sandbox? stage)))
              (when-let [sandbox (get table-id->sandbox (:source-table stage))]
-               (let [{:keys [stages], hidden :hidden-field-ids} (apply-sandbox-to-stage query path stage sandbox)]
-                 (vswap! hidden-field-ids assoc (:source-table stage) hidden)
+               (let [{:keys [stages], exposed :exposed-field-ids} (apply-sandbox-to-stage query path stage sandbox)]
+                 (vswap! exposed-field-ids assoc (:source-table stage) exposed)
                  ;; add a `::sandbox?` key to each replacement stage that has `:source-table?` so when we do a second
                  ;; pass after adding JOINs they don't get processed again
                  (mapv (fn [stage]
@@ -494,7 +486,7 @@
                            (:source-table stage) (assoc ::sandbox? true)))
                        stages))))))
         ;; kept on the query for [[check-field-refs]] in this pass and in later ones
-        (cond-> (seq @hidden-field-ids) (update ::hidden-field-ids merge @hidden-field-ids))
+        (cond-> (seq @exposed-field-ids) (update ::exposed-field-ids merge @exposed-field-ids))
         (attach-sandbox-details table-id->sandbox))))
 
 (mu/defn- expected-cols :- [:sequential ::mbql.s/legacy-column-metadata]
@@ -549,11 +541,11 @@
                           nil))
   nil)
 
-(defn- query->hidden-field-ids
-  "Map of sandboxed Table ID => set of the IDs of its Fields that its Sandbox does not return, for every Sandbox
-  applied to `query` so far."
+(defn- query->exposed-field-ids
+  "Map of sandboxed Table ID => set of the IDs of its Fields that its Sandbox returns, for every Sandbox applied to
+  `query` so far. Every other Field of that Table, including inactive and sensitive ones, is hidden."
   [query]
-  (update-vals (::hidden-field-ids query) set))
+  (update-vals (::exposed-field-ids query) set))
 
 (defn- resolve-field-ref
   "Resolve `field-ref` at the stage at `path` of `query`, or return `nil` if it cannot be resolved."
@@ -590,7 +582,8 @@
 
 (defn- hidden-column-error []
   (ex-info (tru "Your query references a column you do not have permission to use.")
-           {:type qp.error-type/missing-required-permissions}))
+           {:type               qp.error-type/missing-required-permissions
+            :permissions-error? true}))
 
 (defn- unsandboxed-ref-error []
   (ex-info (tru "Your query references a column of a sandboxed table that is not reached through its sandbox.")
@@ -621,10 +614,10 @@
   [query             :- ::lib.schema/query
    original-query    :- ::lib.schema/query
    table-id->sandbox :- [:map-of ::lib.schema.id/table ::sandbox]]
-  (let [hidden           (query->hidden-field-ids query)
-        sandboxed-tables (into (set (keys table-id->sandbox)) (keys hidden))
-        ;; resolving every name ref twice is only worth it when some column is hidden
-        name-ref->id     (if (seq hidden) (name-ref-field-ids original-query) {})
+  (let [exposed          (query->exposed-field-ids query)
+        sandboxed-tables (into (set (keys table-id->sandbox)) (keys exposed))
+        ;; resolving every name ref twice is only worth it once a Sandbox has been applied
+        name-ref->id     (if (seq exposed) (name-ref-field-ids original-query) {})
         to-drop          (volatile! #{})]
     (walk-unsandboxed-stage-refs
      query
@@ -634,7 +627,8 @@
                              (get name-ref->id (:lib/uuid opts)))]
          (when-let [table-id (:table-id (lib.metadata/field query field-id))]
            (when (contains? sandboxed-tables table-id)
-             (if (contains? (get hidden table-id) field-id)
+             (if (when-let [table-exposed (get exposed table-id)]
+                   (not (contains? table-exposed field-id)))
                (if (= kind :fields)
                  (vswap! to-drop conj (:lib/uuid opts))
                  (throw (hidden-column-error)))

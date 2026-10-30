@@ -273,7 +273,7 @@
    :metabase.query-processor.middleware.add-remaps/external-remaps  [external-remap]
    :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
    [{:name "ID", :display_name "ID", :base_type :type/Integer}]
-   :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/hidden-field-ids
+   :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/exposed-field-ids
    {1 [2 3]}
    :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details
    {1 {:table_id   1

@@ -2425,9 +2425,9 @@
     [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details
      {:optional true}
      :metabase.lib.schema/sandboxing.details]
-    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/hidden-field-ids
+    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/exposed-field-ids
      {:optional true}
-     :metabase.lib.schema/sandboxing.hidden-field-ids]
+     :metabase.lib.schema/sandboxing.exposed-field-ids]
     ;;
     ;; ACTIONS
     ;;
