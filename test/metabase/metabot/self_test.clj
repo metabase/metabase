@@ -2927,7 +2927,11 @@
              ["unrecoverable without one"
               #(tools.error/unrecoverable! ::nope {})
               "Metabot could not complete this step."
-              "unrecoverable" "metabase.metabot.self-test/nope"]]]
+              "unrecoverable" "metabase.metabot.self-test/nope"]
+             ["an exception nothing classified"
+              #(throw (ex-info "connection reset by peer" {}))
+              "Metabot could not complete this step."
+              "unrecoverable" "internal"]]]
       (testing label
         (let [outcome (failed-outcome "failer" thrower)
               part    (tool-output-part outcome)]

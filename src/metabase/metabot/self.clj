@@ -294,7 +294,7 @@
          (when (and (some? source)
                     (some? request-id)
                     (= (:type part) :tool-output))
-           (let [{:keys [class code]} (get-in part [:result :error])]
+           (let [{:keys [class code] :as error} (get-in part [:result :error])]
              (analytics.core/track-event! :snowplow/ai_service_event
                                           {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
                                            :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
@@ -306,15 +306,13 @@
                                            :duration-ms                   (some-> (:duration-ms part) long)
                                            ;; A failed call carries `:error` on its result — success
                                            ;; is the absence of it, as it is everywhere else.
-                                           :result                        (if (get-in part [:result :error])
-                                                                            "error"
-                                                                            "success")
+                                           :result                        (if error "error" "success")
                                            :event-details                 (cond-> {"tool_name" (if (contains? tools (:function part))
                                                                                                  (:function part)
                                                                                                  "unknown")}
                                                                             (some? iteration) (assoc "step" iteration)
-                                                                            (some? class)     (assoc "error_class" (name class))
-                                                                            (some? code)      (assoc "error_code" (u/qualified-name code)))})))
+                                                                            error             (assoc "error_class" (name class)
+                                                                                                     "error_code"  (u/qualified-name code)))})))
          part)))
 
 (defn- with-retries
