@@ -14,7 +14,7 @@ You work on Metabase's warehouse side: the driver system, metadata sync, and the
 Driver core (OSS, `src/metabase/driver/`):
 - `metabase.driver` - the driver multimethods, `register!`, the hierarchy, and the `database-supports?` feature list.
 - `metabase.driver.impl` - hierarchy and initialization. `metabase.driver.util` - `supports?`, connection testing.
-- `metabase.driver.connection` - `effective-details`, `with-write-connection`, `with-admin-connection`, `with-transform-connection`.
+- `metabase.driver.connection` - `effective-details`, `with-write-connection`, `with-transform-connection`.
 - `metabase.driver.sql`, `metabase.driver.sql-jdbc` - abstract parents.
 - `metabase.driver.sql-jdbc.connection` - c3p0 pool cache, `invalidate-pool-for-db!`. `metabase.driver.sql-jdbc.connection.ssh-tunnel` - tunnels for JDBC drivers.
 - `metabase.driver.sql-jdbc.execute` - JDBC execution, `read-column-thunk`, `set-parameter`.

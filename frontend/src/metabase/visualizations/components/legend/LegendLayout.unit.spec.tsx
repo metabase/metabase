@@ -7,8 +7,8 @@ import type { LegendPosition } from "metabase-types/api";
 
 import type { LegendItemData } from "./LegendItem";
 import { LegendLayout } from "./LegendLayout";
-import { LEGEND_COLUMN_MARGIN_TOP } from "./constants";
 import { MIN_LEGEND_CARD_WIDTH } from "./layout";
+import { LEGEND_SIZES } from "./sizes";
 
 const CHAR_WIDTH = 6;
 
@@ -78,8 +78,8 @@ describe("LegendLayout", () => {
   });
 
   it("should render a vertical legend on a wide short card", () => {
-    // row plot 900 x 70.2, column plot 822 x 100: 70.2 < 100 * 75%
-    setup({ names: ["first", "second"], width: 900, height: 116 });
+    // row plot 900 x 74.2, column plot 822 x 100: 74.2 < 100 * 75%
+    setup({ names: ["first", "second"], width: 900, height: 100 });
 
     const legend = screen.getByTestId("legend-vertical");
     expect(within(legend).getAllByTestId("legend-item")).toHaveLength(2);
@@ -107,7 +107,7 @@ describe("LegendLayout", () => {
 
   it("should show the hidden items behind a '+ N more' popover when rows overflow", async () => {
     const names = Array.from({ length: 20 }, (_, i) => `series ${i}`);
-    setup({ names, width: 420, height: 200 });
+    setup({ names, width: 420, height: 194 });
 
     const legend = screen.getByTestId("legend-vertical");
     expect(within(legend).getAllByTestId("legend-item")).toHaveLength(7);
@@ -223,7 +223,7 @@ describe("LegendLayout with an explicit position", () => {
       setup({ names: ["first", "second"], legendPosition });
 
       expect(screen.getByTestId("legend-vertical")).toHaveStyle({
-        marginTop: rem(LEGEND_COLUMN_MARGIN_TOP),
+        marginTop: rem(LEGEND_SIZES.smallCard.contentMargin.rightLegend.top),
       });
     },
   );

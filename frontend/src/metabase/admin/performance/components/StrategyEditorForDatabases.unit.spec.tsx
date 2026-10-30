@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 
 import {
   changeInput,
@@ -60,10 +60,12 @@ describe("StrategyEditorForDatabases (OSS)", () => {
     await changeInput(/multiplier/i, 10, 10);
     await userEvent.click(await getSaveButton());
     // Re-entering the value it was saved with does not make the form dirty,
-    // so the save button is not present
+    // so the save button goes away once the post-save "Saved" window elapses.
     await changeInput(/multiplier/i, 10, 10);
-    expect(
-      screen.queryByTestId("strategy-form-submit-button"),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("strategy-form-submit-button"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

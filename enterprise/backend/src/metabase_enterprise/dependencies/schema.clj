@@ -66,7 +66,8 @@
    [:dashboard {:optional true} [:set ::lib.schema.id/dashboard]]
    [:document  {:optional true} [:set ::documents.schema/document.id]]
    [:sandbox   {:optional true} [:set ::lib.schema.id/sandbox]]
-   [:segment   {:optional true} [:set ::lib.schema.id/segment]]])
+   [:segment   {:optional true} [:set ::lib.schema.id/segment]]
+   [:action    {:optional true} [:set ::lib.schema.id/action]]])
 
 (mr/def ::analysis-finding-error
   "A AnalysisFindingError as selected from the app DB: every column of `:analysis_finding_error`."

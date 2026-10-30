@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
@@ -54,7 +55,9 @@
                      {:models #{"dashboard" "dataset" "table"}
                       :created-by #{1}})))))
     (testing "created at"
-      (is (= #{"dashboard" "table" "dataset" "document" "exploration" "collection" "database" "action" "card" "metric" "transform" "measure"}
+      (is (= (cond-> #{"dashboard" "table" "dataset" "document" "exploration" "collection" "database" "action" "card"
+                       "metric" "transform" "measure"}
+               config/ee-available? (conj "data-app"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))

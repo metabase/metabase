@@ -35,7 +35,7 @@ export const MigrationStart = ({
         <Text c="text-secondary">
           {t`Just a heads up: your Metabase will be read-only for up to 30
               minutes while we prep it for migration.`}{" "}
-          <ExternalLink href="https://www.metabase.com/cloud/">{t`Learn More.`}</ExternalLink>
+          <ExternalLink href="https://www.metabase.com/cloud">{t`Learn More.`}</ExternalLink>
         </Text>
         <Modal.Footer>
           <Button

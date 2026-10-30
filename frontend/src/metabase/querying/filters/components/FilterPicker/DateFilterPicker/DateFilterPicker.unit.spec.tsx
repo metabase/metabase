@@ -205,6 +205,25 @@ describe("DateFilterPicker", () => {
     });
   });
 
+  it("should keep the 'Include current' option when updating a relative date filter", async () => {
+    const { query, filter } = createQueryWithRelativeDateFilter({
+      query: initialQuery,
+      value: -30,
+      unit: "day",
+      options: { includeCurrent: true },
+    });
+    const { getNextRelativeFilterParts } = setup({ query, column, filter });
+
+    expect(screen.getByLabelText("Include today")).toBeChecked();
+    await userEvent.click(screen.getByText("Update filter"));
+
+    expect(getNextRelativeFilterParts()).toMatchObject({
+      value: -30,
+      unit: "day",
+      options: { includeCurrent: true },
+    });
+  });
+
   it("should add an exclude date filter", async () => {
     const { getNextFilterColumnName, getNextExcludeFilterParts } = setup({
       query: initialQuery,

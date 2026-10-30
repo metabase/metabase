@@ -7,7 +7,7 @@ import { Box, Stack, Text } from "metabase/ui";
 
 type ListEmptyStateProps = {
   label: string;
-  description?: string;
+  description?: ReactNode;
   action?: ReactNode;
 };
 

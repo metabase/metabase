@@ -27,4 +27,5 @@ export * from "./support-access-grants";
 export * from "./table";
 export * from "./tags";
 export * from "./tenants";
+export * from "./transform-test";
 export * from "./upload-management";

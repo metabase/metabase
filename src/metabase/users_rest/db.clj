@@ -9,6 +9,7 @@
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -23,19 +24,19 @@
   "Set the name of the Collection with `collection-id`."
   [collection-id   :- ::lib.schema.id/collection
    collection-name :- :string]
-  (t2/update! :model/Collection collection-id {:name collection-name}))
+  (t2/update! :model/Collection :id collection-id {:name collection-name}))
 
 (mu/defn users-with-columns
   "The `columns` of the Users matching `filters` (see [[metabase.users.schema/user-filters]])."
   [columns :- [:sequential :keyword]
    filters :- ::users.schema/user-filters]
-  (t2/select (into [:model/User] columns) (user/filter-clauses filters)))
+  (t2/select (into [:model/User] columns) (h2x/assert-map-or-nil! (user/filter-clauses filters))))
 
 (mu/defn user-count
   "The number of Users matching `filters` (see [[metabase.users.schema/user-filters]]), ignoring any `:sort`,
   `:limit`, or `:offset` in `filters`."
   [filters :- ::users.schema/user-filters]
-  (t2/count :model/User (users/filter-clauses-without-paging (user/filter-clauses filters))))
+  (t2/count :model/User (h2x/assert-map-or-nil! (users/filter-clauses-without-paging (user/filter-clauses filters)))))
 
 (mu/defn distinct-user-count
   "The `:count` of distinct Users matching `filters` (see [[metabase.users.schema/user-filters]]), ignoring any
@@ -102,7 +103,7 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id user-id changes))
 
 (mu/defn user
   "The User with `user-id`, or nil."
@@ -117,14 +118,14 @@
                  :id user-id))
 
 (mu/defn active-personal-user-login-columns
-  "The id, email, and last login of the active personal User with `user-id`, or nil."
+  "The id, email, last login, and `sso_source` of the active personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :email :last_login], :id user-id, :type :personal, :is_active true))
+  (t2/select-one [:model/User :id :email :last_login :sso_source], :id user-id, :type :personal, :is_active true))
 
-(mu/defn user-active-and-type
-  "The id, active flag, and type of the User with `user-id`, or nil."
+(mu/defn user-active-type-and-sso-source
+  "The id, active flag, type, and sso_source of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :type] :id user-id))
+  (t2/select-one [:model/User :id :is_active :type :sso_source] :id user-id))
 
 (mu/defn user-exists?
   "Whether a User with `user-id` exists."

@@ -18,8 +18,12 @@ import { Legend } from "./Legend";
 import { LegendActions } from "./LegendActions";
 import type { LegendItemData } from "./LegendItem";
 import S from "./LegendLayout.module.css";
-import { LEGEND_COLUMN_GAP, LEGEND_COLUMN_MARGIN_TOP } from "./constants";
-import { HIDDEN_LEGEND_LAYOUT, getLegendLayout } from "./layout";
+import {
+  HIDDEN_LEGEND_LAYOUT,
+  getLayoutPlacement,
+  getLegendLayout,
+  getLegendMargins,
+} from "./layout";
 import { measureLegend } from "./measure";
 import {
   type ChartSize,
@@ -27,7 +31,7 @@ import {
   getLegendPlots,
   getPlotsWithoutAxes,
 } from "./plots";
-import { LEGEND_SIZES, getLegendSize } from "./sizes";
+import { getLegendSizeTier } from "./sizes";
 
 interface LegendLayoutProps {
   className?: string;
@@ -62,6 +66,9 @@ interface LegendLayoutProps {
   isReversed?: boolean;
 }
 
+// a zero margin stays unset so the four sides are not folded into a shorthand
+const nonZero = (value?: number) => value || undefined;
+
 export const LegendLayout = ({
   className,
   items,
@@ -86,7 +93,12 @@ export const LegendLayout = ({
 }: LegendLayoutProps) => {
   const hasDimensions = width > 0 && height > 0;
   const canShowLegend = hasDimensions && hasLegend && legendPosition !== "off";
-  const size = getLegendSize({ width, height, isQueryBuilder, isFullscreen });
+  const size = getLegendSizeTier({
+    width,
+    height,
+    isQueryBuilder,
+    isFullscreen,
+  });
   const { rootRef, chartAreaRef, chartRoom } = useChartRoom(width, height);
 
   const metrics = useMemo(
@@ -138,7 +150,14 @@ export const LegendLayout = ({
   );
 
   const isLegendBeforeChart = layout.type !== "hidden" && layout.isBeforeChart;
-  const { rowChartGap } = LEGEND_SIZES[size];
+  const margins =
+    layout.type === "hidden"
+      ? null
+      : getLegendMargins(
+          size,
+          getLayoutPlacement(layout),
+          plots?.column.internalInset ?? { left: 0, right: 0 },
+        );
 
   const legendProps = {
     items,
@@ -156,10 +175,10 @@ export const LegendLayout = ({
       justify="center"
       flex="0 0 auto"
       miw={0}
-      mt={isLegendBeforeChart ? 0 : rowChartGap}
-      mb={isLegendBeforeChart ? rowChartGap : 0}
-      ml={Math.max(layout.indent, 0)}
-      mr={Math.max(-layout.indent, 0)}
+      mt={nonZero(margins?.top)}
+      mb={nonZero(margins?.bottom)}
+      ml={Math.max(layout.indent, 0) + (margins?.left ?? 0)}
+      mr={Math.max(-layout.indent, 0) + (margins?.right ?? 0)}
       data-testid="legend-horizontal"
     >
       <Legend {...legendProps} visibleLength={layout.visibleCount} />
@@ -171,9 +190,10 @@ export const LegendLayout = ({
       className={cx(S.verticalLegend, CS.overflowHidden)}
       flex="0 0 auto"
       miw={0}
-      mt={LEGEND_COLUMN_MARGIN_TOP}
-      ml={isLegendBeforeChart ? 0 : LEGEND_COLUMN_GAP}
-      mr={isLegendBeforeChart ? LEGEND_COLUMN_GAP : 0}
+      mt={nonZero(margins?.top)}
+      mb={nonZero(margins?.bottom)}
+      ml={nonZero(margins?.left)}
+      mr={nonZero(margins?.right)}
       style={{ width: layout.width }}
       data-testid="legend-vertical"
     >

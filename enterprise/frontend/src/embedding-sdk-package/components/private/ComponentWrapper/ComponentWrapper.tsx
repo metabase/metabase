@@ -76,7 +76,7 @@ const Box = ({
 // the SDK bundle loading is not triggered.
 // We wait for 1 second and if the loading state is still not set or Initial - we set the NotStartedLoading error
 const NotStartedLoadingTrigger = () => {
-  const timeoutRef = useRef<number>();
+  const timeoutRef = useRef<number>(undefined);
 
   useEffect(function handleSdkBundleNotStartedLoadingState() {
     timeoutRef.current = window.setTimeout(() => {

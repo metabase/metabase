@@ -181,7 +181,7 @@ export type SdkDashboardProps = PropsWithChildren<
      * - omitted (or set to `undefined`): falls back to the parameter's default (or `null` if it has no default).
      * <br/>
      * <br/>
-     * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+     * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/authentication#security-warning-each-end-user-must-have-their-own-metabase-account).
      * <br/>
      * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
      */
@@ -199,7 +199,7 @@ export type SdkDashboardProps = PropsWithChildren<
      * <br/>
      * Pair with {@link SdkDashboardProps.onParametersChange | onParametersChange} to stay in sync with user edits.
      * <br/>
-     * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+     * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/authentication#security-warning-each-end-user-must-have-their-own-metabase-account).
      * <br/>
      * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
      */
@@ -410,7 +410,8 @@ const SdkDashboardInner = ({
     : renderModeState;
 
   // Now only used when rerendering the dashboard after creating a new question from the dashboard.
-  const dashboardContextProviderRef = useRef<DashboardContextProviderHandle>();
+  const dashboardContextProviderRef =
+    useRef<DashboardContextProviderHandle>(undefined);
 
   const [newDashboardQuestionId, setNewDashboardQuestionId] =
     useState<number>();

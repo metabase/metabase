@@ -485,7 +485,7 @@
     (round-to-decimals 2 35.5058998M) -> 35.51"
   ^Double [^Integer decimal-place, ^Number number]
   {:pre [(integer? decimal-place) (number? number)]}
-  #?(:clj  (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP))
+  #?(:clj  (double (.setScale (bigdec number) decimal-place java.math.RoundingMode/HALF_UP))
      :cljs (parse-double (.toFixed number decimal-place))))
 
 (defn real-number?
@@ -810,8 +810,6 @@
   `profile` form or 1 for a form inside that."
   0)
 
-;; only called from `profile` macroexpansions, so clojure-lsp sees no usage
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn -profile-print-time
   "Impl for [[profile]] macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
   [[profile]]d form."
@@ -1304,7 +1302,7 @@
    Returns the number of items processed."
   [proc reducible]
   (let [cnt (volatile! 0)]
-    (reduce (fn [_ item] (vswap! cnt inc) (proc item)) nil reducible)
+    (run! (fn [item] (vswap! cnt inc) (proc item)) reducible)
     @cnt))
 
 (defn generate-nano-id

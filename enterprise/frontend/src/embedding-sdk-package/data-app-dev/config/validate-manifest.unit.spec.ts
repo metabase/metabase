@@ -31,14 +31,14 @@ const setup = (files: Record<string, string | true>) => {
 afterEach(() => jest.resetAllMocks());
 
 describe("validateDataAppManifest", () => {
-  it("errors when the manifest is missing (the app would silently not sync)", () => {
+  it("reports nothing when the app has no manifest", () => {
     setup({});
 
     const status = validateDataAppManifest(APP_ROOT, []);
 
-    expect(status.errors).toEqual([
-      "No data_app.yaml found — this app will not sync.",
-    ]);
+    expect(status.exists).toBe(false);
+    expect(status.errors).toEqual([]);
+    expect(status.warnings).toEqual([]);
   });
 
   it("accepts a valid manifest whose bundle exists", () => {
@@ -50,6 +50,7 @@ describe("validateDataAppManifest", () => {
     const status = validateDataAppManifest(APP_ROOT, []);
 
     expect(status).toMatchObject({
+      exists: true,
       name: "Sales dashboard",
       bundlePath: "dist/index.js",
       bundlePathExists: true,

@@ -12,12 +12,14 @@ import { getDefaultTimelineName } from "metabase/common/utils/timelines";
 import { useDispatch } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import MoveTimelineModal from "metabase/timelines/common/components/MoveTimelineModal";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Timeline } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-
-function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
+function MoveTimelineModalContainer({ params, onClose }: ModalComponentProps) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const setCollection = useSetCollection();
@@ -65,12 +67,18 @@ function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <TimelineModal tall onClose={onClose} animated={false}>
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      </TimelineModal>
     );
   }
 
   return (
-    <MoveTimelineModal {...props} timeline={timeline} onSubmit={handleSubmit} />
+    <MoveTimelineModal
+      timeline={timeline}
+      onSubmit={handleSubmit}
+      onClose={onClose}
+    />
   );
 }
 

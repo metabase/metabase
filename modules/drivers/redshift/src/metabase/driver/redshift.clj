@@ -20,6 +20,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -447,7 +448,7 @@
   ;; Same as the inherited `:sql-jdbc` impl, but inlines a sortkey when one is present. Non-transform callers
   ;; (e.g. uploads) pass no `:indexes`, so the rendered SQL is unchanged for them.
   (let [sql (create-table-sql driver table-name column-definitions opts)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
       (jdbc/execute! conn sql))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -561,10 +562,6 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
-     (let [db (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
-                                                  (driver-api/database (driver-api/metadata-provider)))
-                    (u/id db-or-id-or-spec)     db-or-id-or-spec)]
-       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
@@ -797,15 +794,16 @@
         user-parameters))
 
 (defmethod driver-api/query->remark :redshift
-  [_ {{:keys [executed-by card-id dashboard-id]} :info, :as query}]
-  (str "/* partner: \"metabase\", "
-       (json/encode {:dashboard_id        dashboard-id
-                     :chart_id            card-id
-                     :optional_user_id    executed-by
-                     :optional_account_id (driver-api/site-uuid)
-                     :filter_values       (field->parameter-value query)})
-       " */ "
-       (driver-api/default-query->remark query)))
+  [_ query]
+  (let [{:keys [user-id card-id dashboard-id account-id]} (driver-api/query->remark-data query)]
+    (str "/* partner: \"metabase\", "
+         (json/encode {:dashboard_id        dashboard-id
+                       :chart_id            card-id
+                       :optional_user_id    user-id
+                       :optional_account_id account-id
+                       :filter_values       (field->parameter-value query)})
+         " */ "
+         (driver-api/default-query->remark query))))
 
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]

@@ -425,19 +425,20 @@
         fqn))))
 
 (defn format-metric-dimensions-table
-  "Render a metric's queryable dimensions as a markdown table that names the **source table**
-  each dimension comes from and the exact **portable FK** to copy into a `field` clause.
+  "Render a metric's dimensions with their source tables and field references.
 
-  A metric's dimensions span its base table and every FK-reachable table, so a bare field list
-  is ambiguous: the LLM can't tell which table a name like `name` lives on, and duplicate names
-  across joined tables (e.g. several `campaign_id`/`id` columns) are indistinguishable. The
-  `Source table` and `Reference` columns remove that ambiguity."
+  A portable FK works on table and card stages and distinguishes columns with the same name on different tables.
+  Computed card columns have no portable FK and use their output machine name. Real database fields without a
+  portable FK get no reference; their bare names could resolve to the wrong column."
   [dims]
   (te/markdown-table
    (map (fn [d]
           (assoc d
                  :source    (dimension-source-table d)
-                 :reference (when (vector? (:portable_fk d)) (json/encode (:portable_fk d)))))
+                 :reference (cond
+                              (vector? (:portable_fk d)) (json/encode (:portable_fk d))
+                              ;; A string `:field_id` from `->result-column` is the computed column's output name.
+                              (string? (:field_id d)) (json/encode (:field_id d)))))
         dims)
    {:name "Field Name" :field_id "Field ID" :type "Type"
     :source "Source table" :reference "Reference (copy into a field clause)"}
@@ -485,15 +486,14 @@
           (format-join-required-dimensions-table dimensions)))))
 
 (defn metric->xml
-  "Format metric for LLM consumption.
-   Matches Python Metric.get_llm_representation exactly, except we additionally surface
-   `database_name`, `base_table_fully_qualified_name`, and `portable_entity_id` as tag
-   attributes — the three pieces of information the LLM needs to correctly use the metric
-   in `construct_notebook_query` (as `aggregation: [[metric, {}, <eid>]]` on top of the
-   metric's base table)."
+  "Format a metric as XML for the LLM.
+
+  Include its database name, portable entity ID, and the source required to use it in `construct_notebook_query`.
+  The source is identified by `base_table_fully_qualified_name` or `source_card_portable_entity_id`.
+  When no source is usable, include `source_unavailable` instead."
   [{:keys [id name description verified queryable-dimensions join-required-dimensions collection
-           default_time_dimension_field database_name base_table_portable_fk
-           portable_entity_id]}]
+           default_time_dimension_field_name database_name base_table_portable_fk
+           portable_entity_id source_card_name source_card_portable_entity_id source_unavailable]}]
   (render-llm-template
    :metric
    {:metric_id                     (str id)
@@ -505,9 +505,12 @@
                                               (= 3 (count base_table_portable_fk)))
                                      (let [[_db schema table] base_table_portable_fk]
                                        (fully-qualified-name schema table)))
+    :metric_source_unavailable     (boolean source_unavailable)
+    :metric_source_card_entity_id  source_card_portable_entity_id
+    :metric_source_card_name       source_card_name
     :metric_portable_entity_id     portable_entity_id
     :metric_collection_xml         (when collection (collection->xml collection))
-    :metric_default_time_dimension (:name default_time_dimension_field)
+    :metric_default_time_dimension default_time_dimension_field_name
     :metric_dimensions_table       (when (seq queryable-dimensions)
                                      (format-metric-dimensions-table queryable-dimensions))
     :metric_join_required_xml      (when (seq join-required-dimensions)
@@ -859,14 +862,12 @@
    human-readable name the LLM needs as the first slot of every portable FK in
    `construct_notebook_query`.
 
-   For metric results we additionally surface `base_table_fully_qualified_name` (the
-   `schema.table` of the table the metric aggregates). Combined with `database_name` this
-   gives the LLM the full portable FK `[database_name, schema, table]` it must put in
-   `source-table:` when using `[metric, {}, <portable_entity_id>]` as an aggregation —
-   without a separate `read_resource` round-trip."
+   Metric results also identify the source to use with `[metric, {}, <portable_entity_id>]` in an aggregation.
+   `base_table_fully_qualified_name` and `database_name` identify a table source; `source_card_portable_entity_id`
+   identifies a card source. `source_unavailable` means that no usable source can be offered."
   [{:keys [id type name description verified official curated can_write data_authority data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
-           base_table_portable_fk]}]
+           base_table_portable_fk source_card_name source_card_portable_entity_id source_unavailable]}]
   (let [fqn (cond
               (#{"table" :table} type)
               (when name (fully-qualified-name database_schema name))
@@ -909,7 +910,10 @@
       :search_base_table_fqn (when (and (vector? base_table_portable_fk)
                                         (= 3 (count base_table_portable_fk)))
                                (let [[_db schema table] base_table_portable_fk]
-                                 (fully-qualified-name schema table)))})))
+                                 (fully-qualified-name schema table)))
+      :search_source_unavailable (boolean source_unavailable)
+      :search_source_card_entity_id source_card_portable_entity_id
+      :search_source_card_name source_card_name})))
 
 (defn search-results->xml
   "Format search results as XML wrapped in search-results element."
@@ -1084,7 +1088,7 @@
         truncated (< page pages)
         note      (when truncated
                     (str "<truncation-note>Page " page " of " pages " (" showing " of " total " items). "
-                         "Fetch " next-page-uri " for the next page — copy it exactly, do not "
+                         "Fetch " (escape-xml next-page-uri) " for the next page. Copy it exactly; do not "
                          "modify its query string.</truncation-note>"))]
     (str "<list type=\"" type-attr "\" total=\"" total
          "\" page=\"" (or page 1)

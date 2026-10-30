@@ -79,6 +79,7 @@ describe("useUserMetabotPermissions", () => {
     setup({ isMetabotEnabled: false });
     const perms = await getPerms();
     expect(perms.hasMetabotAccess).toBe(false);
+    expect(perms.hasNlqAccess).toBe(false);
     expect(perms.canUseMetabot).toBe(false);
     expect(perms.canUseSqlGeneration).toBe(false);
     expect(perms.canUseNlq).toBe(false);
@@ -142,6 +143,7 @@ describe("useUserMetabotPermissions", () => {
     });
     const perms = await getPerms();
     expect(perms.hasMetabotAccess).toBe(false);
+    expect(perms.hasNlqAccess).toBe(false);
     expect(perms.canUseMetabot).toBe(false);
     expect(perms.canUseSqlGeneration).toBe(false);
     expect(perms.canUseNlq).toBe(false);

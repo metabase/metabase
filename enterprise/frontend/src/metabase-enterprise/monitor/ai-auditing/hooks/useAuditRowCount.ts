@@ -6,8 +6,8 @@ import {
   getTabCount,
 } from "metabase/common/components/PillTabNavigation";
 import { DEFAULT_DATE_FILTER } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters/useFilterOptions";
-import { applyDateFilter } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils";
 import type { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
+import { applyDateFilter } from "metabase-enterprise/monitor/query-utils";
 import * as Lib from "metabase-lib";
 
 export function useAuditRowCount(

@@ -46,8 +46,7 @@
    (liquibase Scope)
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
-   (liquibase.exception ValidationErrors)
-   (liquibase.util BooleanUtil)))
+   (liquibase.exception ValidationErrors)))
 
 (set! *warn-on-reflection* true)
 
@@ -58,7 +57,7 @@
   The same problem has been fixed for forward changes in Liquibase
   but for rollback it has not."
   []
-  (BooleanUtil/isTrue (.get (Scope/getCurrentScope) Change/SHOULD_EXECUTE true)))
+  (.equals Boolean/TRUE (.get (Scope/getCurrentScope) Change/SHOULD_EXECUTE true)))
 
 (defmacro define-reversible-migration
   "Define a reversible custom migration. Both the forward and reverse migrations are defined using the same structure,
@@ -859,7 +858,7 @@
                    (filter :visualization_settings))
              (completing
               (fn [_ {:keys [id visualization_settings]}]
-                (t2/update! :report_dashboardcard id
+                (t2/update! :report_dashboardcard :id id
                             {:visualization_settings (json/encode visualization_settings)})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
@@ -950,7 +949,8 @@
     (->> (t2/query query)
          (map #(update-vals % (comp keyword lower-case-en)))
          (remove (fn [{:keys [table_name]}]
-                   (or (#{:databasechangelog :databasechangeloglock} table_name)
+                   ;; databasechangelog_first_run copies the changelog's dateexecuted, so it keeps the same type
+                   (or (#{:databasechangelog :databasechangeloglock :databasechangelog_first_run} table_name)
                        ;; excludes views
                        (str/starts-with? (name table_name) "v_"))))
          (map #(update % :is_nullable (fn [x] (= :yes x))))
@@ -2264,9 +2264,9 @@
 
 ;;; MCP v1 retirement: `/api/metabase-mcp` serves the v2 tool surface, which gates every tool on one of six
 ;;; coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the per-entity agent scopes
-;;; instead, and no legacy scope satisfies any v2 scope. A call short of scope gets a 403 `insufficient_scope`
-;;; challenge that names the v2 scopes, so the client re-authorizes; that re-authorization only validates if
-;;; the client's registered scope snapshot includes the v2 scopes.
+;;; instead, and no legacy scope satisfies any v2 scope. The MCP endpoint refuses a token with no v2 scope
+;;; with a 401 `invalid_token`, so the client re-authorizes; that re-authorization only validates if the
+;;; client's registered scope snapshot includes the v2 scopes.
 ;;;
 ;;; The scope strings are literals rather than a read of `metabase.mcp.scope/v2-surface-scopes`: a
 ;;; migration's behaviour must be frozen against later edits to that vector.
@@ -2308,9 +2308,9 @@
                              :where  [:= :registration_type "dynamic"]})))
 
 (define-migration RevokeLegacyMcpOAuthTokens
-  ;; Kept as a no-op. Legacy-scoped clients re-authorize on their own through the 403 step-up, and
-  ;; revoking their tokens would instead force them through the refresh-failure path. The changeset
-  ;; stays so that instances which already ran it can still roll back past it.
+  ;; Kept as a no-op. The MCP endpoint refuses legacy-scoped tokens with a 401 `invalid_token`, so the
+  ;; client re-authorizes and revoking the tokens adds nothing. The changeset stays so that instances
+  ;; which already ran it can still roll back past it.
   nil)
 
 (define-migration MoveDataAppResourceCollectionsToTheirNamespace

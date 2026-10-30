@@ -15,7 +15,8 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.quoting :as quoting])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -217,7 +218,7 @@
      (te/field "Database ID" database-id)
      (te/field "Database SQL engine" (:sql_engine item))
      (when-some [error (:error item)]
-       (te/field "Query error" (te/code error)))
+       (te/field "Query error" (quoting/quoted error)))
      (when-let [config-ids (format-chart-config-ids item)]
        (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
      (te/field "Tables used" (some->> (:used_tables item)

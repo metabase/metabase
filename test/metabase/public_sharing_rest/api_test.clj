@@ -160,7 +160,7 @@
     (is (nil? (raw-public-uuid-prefix model id))))
   (let [uuid (str (random-uuid))]
     (testing "sharing encrypts the uuid at rest and derives the prefix"
-      (t2/update! model id {:public_uuid uuid})
+      (t2/update! model :id id {:public_uuid uuid})
       (let [raw (raw-public-uuid model id)]
         (is (encryption/decryptable-string? raw) "public_uuid is stored as ciphertext")
         (is (not= uuid raw) "public_uuid is not stored in plaintext")
@@ -170,13 +170,13 @@
       (is (= id (public-sharing/public-uuid->id model uuid)) "resolves by uuid via the prefix lookup"))
     (testing "an unrelated update while public sharing is disabled leaves uuid + prefix intact"
       (mt/with-temporary-setting-values [enable-public-sharing false]
-        (t2/update! model id {:name "renamed while unshared"}))
+        (t2/update! model :id id {:name "renamed while unshared"}))
       (is (= uuid (encryption/maybe-decrypt (raw-public-uuid model id))) "public_uuid untouched")
       (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
           "prefix untouched")
       (is (= id (public-sharing/public-uuid->id model uuid)) "still resolves"))
     (testing "unsharing clears uuid + prefix"
-      (t2/update! model id {:public_uuid nil})
+      (t2/update! model :id id {:public_uuid nil})
       (is (nil? (raw-public-uuid model id)))
       (is (nil? (raw-public-uuid-prefix model id)))
       (is (nil? (public-sharing/public-uuid->id model uuid)) "no longer resolves"))))
@@ -205,7 +205,7 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-actions [{action-id :action-id} {}]
           ;; with-actions creates the action already shared; unshare it so the lifecycle starts from a clean slate
-          (t2/update! :model/Action action-id {:public_uuid nil})
+          (t2/update! :model/Action :id action-id {:public_uuid nil})
           (assert-public-uuid-lifecycle! :model/Action action-id))))))
 
 (deftest ^:synchronized public-uuid-resolves-via-endpoint-test
@@ -239,7 +239,7 @@
 (defn- assert-forged-plaintext-does-not-resolve!
   [model id]
   (let [uuid (str (random-uuid))]
-    (t2/update! model id {:public_uuid uuid})
+    (t2/update! model :id id {:public_uuid uuid})
     (is (= id (public-sharing/public-uuid->id model uuid)) "a genuine encrypted public_uuid resolves")
     (let [forged (str (random-uuid))]
       (set-raw-public-uuid! model id forged)
@@ -945,7 +945,7 @@
         (is (= {:name true, :dashcards 1, :tabs 0}
                (fetch-public-dashboard dash)))
         (testing "We shouldn't see Cards that have been archived"
-          (t2/update! :model/Card (u/the-id card) {:archived true})
+          (t2/update! :model/Card :id (u/the-id card) {:archived true})
           (is (= {:name true, :dashcards 0, :tabs 0}
                  (fetch-public-dashboard dash)))))
       (testing "dashboard with tabs should return tabs"
@@ -958,7 +958,7 @@
   (testing "GET /api/public/dashboard/:uuid round-trips the dashboard's auto_apply_filters value"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash]
-        (t2/update! :model/Dashboard (:id dash) {:auto_apply_filters false})
+        (t2/update! :model/Dashboard :id (:id dash) {:auto_apply_filters false})
         (is (false? (:auto_apply_filters (client/client :get 200 (str "public/dashboard/" (:public_uuid dash))))))))))
 
 (deftest public-dashboard-with-nested-card-and-parameter-test
@@ -1014,6 +1014,27 @@
                     (is (= "An error occurred."
                            (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))))
 
+(deftest public-dashboard-action-prefill-ignores-signed-in-user-test
+  (testing "prefill on a public dashboard works for a signed-in user who can't read the action, as for anyone"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-temp [:model/Collection {collection-id :id} {}]
+          (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
+          (let [mp (mt/metadata-provider)]
+            (mt/with-actions [{card-id :id}       {:type          :model
+                                                   :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                                                   :collection_id collection-id}
+                              {:keys [action-id]} {:type :implicit :kind "row/update"}]
+              (let [public-uuid (str (random-uuid))]
+                (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:public_uuid public-uuid}
+                               :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
+                                                                        :action_id    action-id
+                                                                        :card_id      card-id}]
+                  (is (= {:id 1 :name "African"}
+                         (mt/user-http-request :rasta :post 200
+                                               (format "public/dashboard/%s/dashcard/%s/execute/values" public-uuid dashcard-id)
+                                               {:parameters {"id" 1}}))))))))))))
+
 (deftest public-dashboard-action-prefill-validates-dashcard-belongs-to-dashboard-test
   (testing "prefill should validate that the dashcard belongs to the dashboard"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -1055,12 +1076,12 @@
                   (is (partial= [:name] ; id is hidden
                                 (-> public-action :visualization_settings :fields keys))))
                 (testing "the action should only include the columns shown for public actions"
-                  (= #{:name
-                       :id
-                       :database_id
-                       :visualization_settings
-                       :parameters}
-                     (set (keys public-action))))))))))))
+                  (is (= #{:name
+                           :id
+                           :database_id
+                           :visualization_settings
+                           :parameters}
+                         (set (keys public-action)))))))))))))
 
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
@@ -1093,7 +1114,7 @@
               (is (= "Not found."
                      (client/client :get 404 (dashcard-url dash card dashcard))))))
           (testing "if the Card has been archived."
-            (t2/update! :model/Card (u/the-id card) {:archived true})
+            (t2/update! :model/Card :id (u/the-id card) {:archived true})
             (is (= "Not found."
                    (client/client :get 404 (dashcard-url dash card dashcard))))))))))
 
@@ -1179,7 +1200,7 @@
         (mt/with-temp [:model/Collection {collection-id :id}]
           (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
           (with-temp-public-dashboard-and-card [dash {card-id :id, :as card} dashcard]
-            (t2/update! :model/Card card-id {:collection_id collection-id})
+            (t2/update! :model/Card :id card-id {:collection_id collection-id})
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 (format "card/%d/query" card-id)))
                 "Sanity check: shouldn't be allowed to run the query normally")
@@ -1195,8 +1216,8 @@
           (mt/with-temp [:model/Collection {collection-id :id}]
             (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
             (with-temp-public-dashboard-and-card [dash {card-id :id, :as card} dashcard]
-              (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard (:id dash))]
-                (t2/update! :model/Card card-id {:collection_id collection-id})
+              (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id (:id dash))]
+                (t2/update! :model/Card :id card-id {:collection_id collection-id})
                 (mt/with-temporary-setting-values [synchronous-batch-updates true]
                   (mt/user-http-request :rasta :get 202 (dashcard-url dash card dashcard)))
                 (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id (:id dash))))))))))))
@@ -1458,7 +1479,7 @@
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (let [uuid (str (random-uuid))]
             (is (= 1
-                   (t2/update! :model/Dashboard (u/the-id dashboard) {:public_uuid uuid})))
+                   (t2/update! :model/Dashboard :id (u/the-id dashboard) {:public_uuid uuid})))
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
               (testing "parameter with source is a static list"
                 (is (= {:values          [["African"] ["American"] ["Asian"]]
@@ -1497,10 +1518,10 @@
           (let [card-uuid (str (random-uuid))
                 field-filter-uuid (str (random-uuid))]
             (is (= 1
-                   (t2/update! :model/Card (u/the-id card) {:public_uuid card-uuid}))
+                   (t2/update! :model/Card :id (u/the-id card) {:public_uuid card-uuid}))
                 "Enabled public setting on card")
             (is (= 1
-                   (t2/update! :model/Card (u/the-id field-filter-card) {:public_uuid field-filter-uuid}))
+                   (t2/update! :model/Card :id (u/the-id field-filter-card) {:public_uuid field-filter-uuid}))
                 "Enabled public setting on field-filter-card")
             (testing "GET /api/public/card/:uuid/params/:param-key/values"
               (testing "parameter with source is a static list"
@@ -1801,7 +1822,7 @@
               (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
                 (let [uuid (str (random-uuid))]
                   (is (= 1
-                         (t2/update! :model/Dashboard (u/the-id dashboard) {:public_uuid uuid})))
+                         (t2/update! :model/Dashboard :id (u/the-id dashboard) {:public_uuid uuid})))
                   (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
                     (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
                             :has_more_values false}
@@ -1816,7 +1837,7 @@
               (api.card-test/with-card-param-values-fixtures [{:keys [card param-keys]}]
                 (let [uuid (str (random-uuid))]
                   (is (= 1
-                         (t2/update! :model/Card (u/the-id card) {:public_uuid uuid})))
+                         (t2/update! :model/Card :id (u/the-id card) {:public_uuid uuid})))
                   (testing "GET /api/public/card/:uuid/params/:param-key/values"
                     (is (= {:values          [["African"] ["American"] ["Asian"]]
                             :has_more_values false}
@@ -2057,7 +2078,7 @@
                    (is (= "Not found."
                           (client/client :get 404 (dashcard-url dash card dashcard))))))
                (testing "if the Card has been archived."
-                 (t2/update! :model/Card (u/the-id card) {:archived true})
+                 (t2/update! :model/Card :id (u/the-id card) {:archived true})
                  (is (= "Not found."
                         (client/client :get 404 (dashcard-url dash card dashcard)))))))))))))
 
@@ -2435,7 +2456,7 @@
   [user-kw dashboard-id]
   (binding [api/*current-user-id* (mt/user->id user-kw)]
     (:last_used_param_values
-     (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :last_used_param_values))))
+     (t2/hydrate (t2/select-one :model/Dashboard :id dashboard-id) :last_used_param_values))))
 
 (deftest dashcard-tile-query-does-not-save-last-used-parameters-test
   (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
@@ -2478,7 +2499,7 @@
                                          :lonField (tiles.api-test/encoded-lon-field-ref)))]
               (testing "sanity: the tile renders while the Card is live"
                 (is (= 200 (tile-status))))
-              (t2/update! :model/Card card-id {:archived true})
+              (t2/update! :model/Card :id card-id {:archived true})
               (testing "and 404s once it is archived"
                 (is (= 404 (tile-status)))))))))))
 
@@ -2566,7 +2587,7 @@
                      :model/DashboardCard unselected-dashcard {:dashboard_id (:id dashboard)
                                                                :card_id (:id unselected-card)}
                      :model/DashboardCard empty-dashcard {:dashboard_id (:id dashboard) :card_id (:id empty-card)}]
-        (t2/delete! :model/Timeline (:id missing))
+        (t2/delete! :model/Timeline :id (:id missing))
         (perms/revoke-collection-permissions! (perms-group/all-users) collection)
         (let [token (jwt/sign {:resource {:dashboard (:id dashboard)} :params {}} secret)
               expected {(:id first-dashcard) [(:id first-event)]
@@ -2632,9 +2653,9 @@
             (mt/user-http-request :rasta :put 200 card-path {:display "table"}))
           (testing "changing display cannot reveal an inaccessible timeline"
             (mt/user-http-request :rasta :put 403 card-path {:display "line"})
-            (is (= :table (t2/select-one-fn :display :model/Card (:id card))))
+            (is (= :table (t2/select-one-fn :display :model/Card :id (:id card))))
             (is (= (:visualization_settings card)
-                   (t2/select-one-fn :visualization_settings :model/Card (:id card))))
+                   (t2/select-one-fn :visualization_settings :model/Card :id (:id card))))
             (doseq [path paths]
               (is (= {(:id dashcard) []} (dashboard-event-ids (mt/client :get 200 path))))))
           (testing "timeline readers can restore a supported display"
@@ -2673,7 +2694,7 @@
                        :model/DashboardCard dashcard {:dashboard_id (:id dashboard)
                                                       :action_id    action-id
                                                       :card_id      model-id}]
-          (t2/update! :model/Card model-id
+          (t2/update! :model/Card :id model-id
                       {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}})
           (is (= {(:id dashcard) []} (dashboard-event-ids (public-dashboard dashboard)))))))))
 
@@ -2723,4 +2744,4 @@
           (is (= 401 (:status (if body
                                 (mt/client-full-response method 401 path body)
                                 (mt/client-full-response method 401 path)))))))
-      (is (= (:name event) (t2/select-one-fn :name :model/TimelineEvent (:id event)))))))
+      (is (= (:name event) (t2/select-one-fn :name :model/TimelineEvent :id (:id event)))))))

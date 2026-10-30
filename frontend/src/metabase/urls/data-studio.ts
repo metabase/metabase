@@ -425,6 +425,10 @@ export function newDataStudioAction() {
   return `${dataStudioActions()}/new`;
 }
 
+export function newDataStudioImplicitAction(tableId: TableId) {
+  return `${newDataStudioAction()}?table=${tableId}`;
+}
+
 export function dataStudioArchivedActions() {
   return `${dataStudioActions()}/archived`;
 }

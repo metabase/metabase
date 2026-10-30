@@ -5,6 +5,7 @@ import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery, OpaqueDatasetQuery } from "./query";
+import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 
 export type ListActionsRequest = {
@@ -13,34 +14,60 @@ export type ListActionsRequest = {
   archived?: boolean;
 };
 
-export interface CreateActionRequest {
+export type ImplicitActionKind = "row/create" | "row/update" | "row/delete";
+
+interface BaseCreateActionRequest {
   collection_id?: CollectionId | null;
-  database_id?: DatabaseId;
-  dataset_query?: NativeDatasetQuery | OpaqueDatasetQuery;
   description?: string | null;
-  kind?: "row/create" | "row/update" | "row/delete";
   model_id?: CardId | null;
   name: string;
   parameter_mappings?: Record<ParameterId, ParameterTarget>;
   parameters?: WritebackParameter[];
-  type?: "query" | "implicit";
   visualization_settings?: ActionFormSettings;
 }
 
-export interface UpdateActionRequest {
+export interface CreateQueryActionRequest extends BaseCreateActionRequest {
+  type: "query";
+  dataset_query: NativeDatasetQuery | OpaqueDatasetQuery;
+}
+
+export interface CreateImplicitActionRequest extends BaseCreateActionRequest {
+  type: "implicit";
+  kind: ImplicitActionKind;
+  table_id?: TableId;
+}
+
+export type CreateActionRequest =
+  | CreateQueryActionRequest
+  | CreateImplicitActionRequest;
+
+interface BaseUpdateActionRequest {
   id: WritebackActionId;
   archived?: boolean;
   collection_id?: CollectionId | null;
-  database_id?: DatabaseId;
-  dataset_query?: NativeDatasetQuery | OpaqueDatasetQuery;
   description?: string | null;
-  kind?: "row/create" | "row/update" | "row/delete";
   model_id?: CardId;
   name?: string;
   parameter_mappings?: Record<ParameterId, ParameterTarget>;
   parameters?: WritebackParameter[];
   visualization_settings?: ActionFormSettings;
 }
+
+export interface UpdateQueryActionRequest extends BaseUpdateActionRequest {
+  dataset_query?: NativeDatasetQuery | OpaqueDatasetQuery;
+  kind?: never;
+  table_id?: never;
+}
+
+export interface UpdateImplicitActionRequest extends BaseUpdateActionRequest {
+  kind?: ImplicitActionKind;
+  table_id?: TableId | null;
+  dataset_query?: never;
+}
+
+export type UpdateActionRequest =
+  | UpdateQueryActionRequest
+  | UpdateImplicitActionRequest;
 
 export interface WritebackParameter extends Parameter {
   target: ParameterTarget;
@@ -82,7 +109,8 @@ export interface QueryAction {
 
 export interface ImplicitQueryAction {
   type: "implicit";
-  kind: "row/create" | "row/update" | "row/delete";
+  kind: ImplicitActionKind;
+  table_id: TableId | null;
 }
 
 export type WritebackQueryAction = WritebackActionBase & QueryAction;

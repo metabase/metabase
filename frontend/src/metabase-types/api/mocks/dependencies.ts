@@ -6,6 +6,8 @@ import type {
   CardDependencyNodeData,
   DashboardDependencyNode,
   DashboardDependencyNodeData,
+  DataAppDependencyNode,
+  DataAppDependencyNodeData,
   DependencyEdge,
   DependencyEntry,
   DependencyGraph,
@@ -322,6 +324,30 @@ export function createMockActionDependencyNode(
     id: 1,
     type: "action",
     data: createMockActionDependencyNodeData(),
+    dependents_count: {},
+    ...opts,
+  };
+}
+
+export function createMockDataAppDependencyNodeData(
+  opts?: Partial<DataAppDependencyNodeData>,
+): DataAppDependencyNodeData {
+  return {
+    name: "data-app",
+    display_name: "Data app",
+    description: null,
+    created_at: "2020-01-01T00:00:00Z",
+    ...opts,
+  };
+}
+
+export function createMockDataAppDependencyNode(
+  opts?: Partial<DataAppDependencyNode>,
+): DataAppDependencyNode {
+  return {
+    id: 1,
+    type: "data-app",
+    data: createMockDataAppDependencyNodeData(),
     dependents_count: {},
     ...opts,
   };

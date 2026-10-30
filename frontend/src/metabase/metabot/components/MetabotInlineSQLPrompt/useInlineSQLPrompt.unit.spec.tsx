@@ -1,6 +1,7 @@
 jest.unmock("@uiw/react-codemirror");
 
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadataFromState } from "__support__/metadata";
@@ -15,6 +16,7 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
+import { MetabotChainOfThought } from "metabase/metabot/components/MetabotChat/MetabotChainOfThought";
 import { MetabotProvider } from "metabase/metabot/context";
 import {
   erroredResponse,
@@ -57,9 +59,43 @@ const CODE_EDIT_RESPONSE: SSEEvent[] = [
   },
 ];
 
+// At 10 ms per paced word, this reasoning takes at least 15 s to replay.
+const LONG_REASONING_WORD_COUNT = 1500;
+// Keep it at most a third of the replay time above, and below the 30 s jest timeout.
+const SQL_ARRIVAL_TIMEOUT_MS = 5000;
+
+const LONG_REASONING_THEN_CODE_EDIT_RESPONSE: SSEEvent[] = [
+  { type: "reasoning-start", id: "r1" },
+  {
+    type: "reasoning-delta",
+    id: "r1",
+    delta: "word ".repeat(LONG_REASONING_WORD_COUNT),
+  },
+  { type: "reasoning-end", id: "r1" },
+  ...CODE_EDIT_RESPONSE,
+];
+
+const OTHER_CONVERSATION_REASONING = (
+  <MetabotChainOfThought
+    conversationId="other-conversation"
+    part={{
+      id: "chain-1",
+      role: "agent",
+      type: "chain_of_thought",
+      steps: [{ kind: "reasoning", text: "Weighing the join order" }],
+      finished: false,
+    }}
+  />
+);
+
 function TestEditor({ question }: { question: Question }) {
-  const { extensions, portalElement, togglePrompt, isPromptOpen } =
-    useInlineSQLPrompt(question, "qb");
+  const {
+    extensions,
+    portalElement,
+    togglePrompt,
+    isPromptOpen,
+    proposedQuestion,
+  } = useInlineSQLPrompt(question, "qb");
   const query = checkNotNull(question.legacyNativeQuery());
 
   return (
@@ -84,11 +120,19 @@ function TestEditor({ question }: { question: Question }) {
         </NativeQueryEditor.TopBar>
       </NativeQueryEditor>
       {portalElement}
+      <output data-testid="proposed-sql">
+        {proposedQuestion?.legacyNativeQuery()?.queryText()}
+      </output>
     </>
   );
 }
 
-function setup({ isMetabotEnabled = true } = {}) {
+interface SetupOpts {
+  isMetabotEnabled?: boolean;
+  otherContent?: ReactElement;
+}
+
+function setup({ isMetabotEnabled = true, otherContent }: SetupOpts = {}) {
   setupEnterprisePlugins();
   setupDatabasesEndpoints([TEST_DB]);
   setupUserMetabotPermissionsEndpoint();
@@ -113,9 +157,24 @@ function setup({ isMetabotEnabled = true } = {}) {
   renderWithProviders(
     <MetabotProvider>
       <TestEditor question={question} />
+      {otherContent}
     </MetabotProvider>,
     { storeInitialState: state },
   );
+}
+
+async function openOtherConversationReasoning() {
+  const header = await screen.findByTestId("metabot-chain-of-thought-header");
+  await userEvent.click(header);
+  const stepToggle = await waitFor(() =>
+    checkNotNull(
+      screen
+        .getAllByRole("button", { name: /Thinking/ })
+        .find((button) => button !== header),
+    ),
+  );
+  await userEvent.click(stepToggle);
+  expect(stepToggle).toHaveAttribute("aria-expanded", "true");
 }
 
 async function startGenerating() {
@@ -130,6 +189,19 @@ async function startGenerating() {
     "Working on it...",
   );
   return prompt;
+}
+
+async function expectProposedSqlSoon() {
+  await waitFor(
+    () => {
+      expect(
+        screen.queryByTestId("metabot-inline-sql-prompt"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Working on it...")).not.toBeInTheDocument();
+      expect(screen.getByTestId("proposed-sql")).toHaveTextContent("SELECT 2");
+    },
+    { timeout: SQL_ARRIVAL_TIMEOUT_MS },
+  );
 }
 
 describe("useInlineSQLPrompt", () => {
@@ -182,6 +254,34 @@ describe("useInlineSQLPrompt", () => {
     await waitFor(() => {
       expect(screen.queryByText("Working on it...")).not.toBeInTheDocument();
     });
+  });
+
+  // https://github.com/metabase/metabase/issues/84969
+  it("shows the SQL soon after a stream with long reasoning", async () => {
+    const agent = mockAgentEndpoint({
+      events: LONG_REASONING_THEN_CODE_EDIT_RESPONSE,
+      waitForResponse: true,
+    });
+    setup();
+
+    await startGenerating();
+
+    agent.sendResponse();
+    await expectProposedSqlSoon();
+  });
+
+  it("keeps the SQL fast while another conversation shows open reasoning", async () => {
+    const agent = mockAgentEndpoint({
+      events: LONG_REASONING_THEN_CODE_EDIT_RESPONSE,
+      waitForResponse: true,
+    });
+    setup({ otherContent: OTHER_CONVERSATION_REASONING });
+
+    await openOtherConversationReasoning();
+    await startGenerating();
+
+    agent.sendResponse();
+    await expectProposedSqlSoon();
   });
 
   it("replaces the working status with the error when generation fails", async () => {

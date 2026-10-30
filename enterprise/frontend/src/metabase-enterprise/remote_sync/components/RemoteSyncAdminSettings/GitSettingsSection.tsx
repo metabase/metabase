@@ -29,7 +29,7 @@ export const GitSettingsSection = () => {
         name={TOKEN_KEY}
         label={t`Access Token`}
         description={
-          <Text c="text-disabled" size="sm" lh="md" component="span">
+          <Text c="text-secondary" size="sm" lh="md" component="span">
             {t`Personal access token with write permissions`}
           </Text>
         }

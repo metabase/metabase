@@ -206,7 +206,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
             .should(
               "have.attr",
               "href",
-              "https://metabase.com/license/embedding",
+              "https://www.metabase.com/license/embedding",
             )
             .should("have.attr", "target", "_blank");
 
@@ -244,7 +244,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
             .should(
               "have.attr",
               "href",
-              "https://metabase.com/license/embedding",
+              "https://www.metabase.com/license/embedding",
             )
             .should("have.attr", "target", "_blank");
         });

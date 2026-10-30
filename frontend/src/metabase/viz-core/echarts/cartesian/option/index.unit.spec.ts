@@ -171,6 +171,55 @@ describe("ensureRoomForLabels", () => {
   });
 });
 
+describe("empty series", () => {
+  it("renders without a lone x-axis and does not crash echarts", () => {
+    seriesFn.mockReturnValue({ display: "bar" });
+    const renderingContext: RenderingContext = {
+      ...mockRenderingContext,
+      getColor: () => "#509EE3",
+    };
+    const chartModel = getCartesianChartModel(
+      [mockSeries],
+      mockSettings,
+      ["1:count"],
+      renderingContext,
+    );
+    const chartLayout = getChartLayout(
+      chartModel,
+      mockSettings,
+      hasTimelineEvents,
+      chartWidth,
+      chartHeight,
+      renderingContext,
+    );
+
+    const option = getCartesianChartOption(
+      chartModel,
+      chartLayout,
+      hasTimelineEvents,
+      null,
+      [],
+      mockSettings,
+      chartWidth,
+      false,
+      renderingContext,
+    );
+
+    expect(option.xAxis).toEqual([]);
+    expect(option.yAxis).toEqual([]);
+
+    const dom = document.createElement("div");
+    document.body.appendChild(dom);
+    const chart = echarts.init(dom, undefined, {
+      renderer: "svg",
+      width: 600,
+      height: 400,
+    });
+    expect(() => chart.setOption(option)).not.toThrow();
+    chart.dispose();
+  });
+});
+
 describe("brushSelected / brushEnd ordering", () => {
   it("does not throttle brushSelected in getSharedEChartsOptions", () => {
     const renderingContext: RenderingContext = {
@@ -319,11 +368,11 @@ describe("row chart bands", () => {
     }
   });
 
-  it("keeps 20% of a band clear above the first bar, like the legacy renderer", () => {
+  it("keeps half of the category gap clear above the first bar", () => {
     const { bars, pitch } = renderRowChartBars();
 
     // With no goal label, the plot starts at the base top padding.
-    expect((bars[0].top - CHART_STYLE.padding.y) / pitch).toBeCloseTo(0.2, 2);
+    expect((bars[0].top - CHART_STYLE.padding.y) / pitch).toBeCloseTo(0.1, 2);
   });
 
   it("draws near-zero bars at least 1px long", () => {

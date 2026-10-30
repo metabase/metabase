@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isLibraryCollection } from "metabase/common/collections/utils";
-import { dataAppsSettings, transformList } from "metabase/urls";
+import { dataStudioDataApps, transformList } from "metabase/urls";
 import type {
   Collection,
   CollectionId,
@@ -109,7 +109,7 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
     virtualRoot: {
       id: DATA_APPS_ROOT_ID,
       name: () => t`Data apps`,
-      url: dataAppsSettings,
+      url: dataStudioDataApps,
     },
     icon: "app",
     priority: 70,

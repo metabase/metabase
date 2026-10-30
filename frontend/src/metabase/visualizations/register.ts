@@ -13,6 +13,7 @@ import {
   type ChartSettingColorRangeProps,
   type ComputedVisualizationSettings,
   type SettingsExtra,
+  loadVisualizationComponents,
   registerSettingWidgets,
   registerVisualization,
   setComputedSettingsTransform,
@@ -250,9 +251,26 @@ function registerSdkAwareBehaviors() {
   );
 }
 
+declare global {
+  interface Window {
+    METABASE_LOAD_ALL_VISUALIZATIONS?: boolean;
+  }
+}
+
 export function registerVisualizations() {
   registerVisualizationComponents();
   registerVisualizationSettingWidgets();
   registerJsxFormatting();
   registerSdkAwareBehaviors();
+
+  // Charts render through a `lazy` boundary that suspends on first render. A
+  // test that freezes the clock strands that boundary on its fallback, because
+  // React 19 schedules the lazy retry on a timer the fake clock never advances.
+  // When a spec opts in, load every chart up front so no boundary suspends.
+  if (
+    typeof window !== "undefined" &&
+    window.METABASE_LOAD_ALL_VISUALIZATIONS
+  ) {
+    loadVisualizationComponents();
+  }
 }
