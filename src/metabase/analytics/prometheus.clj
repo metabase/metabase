@@ -224,6 +224,45 @@
            ([] (run-all!))
            ([_sampleNameFilter] (run-all!))))))))
 
+(defonce ^:private refreshes-in-flight
+  ;; ids of the background refreshes currently running here, so a burst of scrapes shares one of each
+  (atom #{}))
+
+(defn- submit-background-refresh! [f]
+  (future-call f))
+
+(defn- claim-refresh!
+  "Mark `id` in flight, returning false when it already was."
+  [id]
+  (let [[before _] (swap-vals! refreshes-in-flight conj id)]
+    (not (contains? before id))))
+
+(defn background-refresh-collector
+  "A [[pull-collector]] map running `refresh!` on a local single-flight background thread, at most once per
+  `min-interval-s`.
+  Prometheus scrapes every process while a scheduled job runs on one member of a Quartz cluster, so a
+  collector built this way has each process measure its own series rather than republishing another node's.
+  The scrape itself never waits on the measurement.
+  A `refresh!` that never returns holds its claim for the life of the process, which stops its gauges being
+  refreshed. That beats admitting a replacement on every scrape and stranding a thread each time, but it
+  does mean whatever this publishes wants a staleness check of its own."
+  [id min-interval-s refresh!]
+  {:min-interval-s min-interval-s
+   :f              (fn []
+                     (when (claim-refresh! id)
+                       (try
+                         (submit-background-refresh!
+                          (fn []
+                            (try
+                              (refresh!)
+                              (finally
+                                (swap! refreshes-in-flight disj id)))))
+                         (catch Exception e
+                           (swap! refreshes-in-flight disj id)
+                           (log/error "Could not schedule a background metric refresh"
+                                      {:id id :error (ex-message e)}))))
+                     nil)})
+
 (defn- jvm-collectors
   "JVM collectors. Essentially duplicating [[iapetos.collector.jvm]] namespace so we can set our own namespaces rather
   than \"iapetos_internal\""
@@ -392,10 +431,15 @@
                      {:description "Estimated number of rows in this instance's active appdb search index table."})
    (prometheus/gauge :metabase-search/semantic-index-size
                      {:description "Number of rows in the active semantic index table."})
+   ;; Labelled like the index-health gauges below, and for a mechanical reason as well as a tidy one: a
+   ;; collector declared without labels can never stop exporting, because Collector.remove drops its
+   ;; no-labels child and then recreates it at 0. A node that has not measured these exports nothing.
    (prometheus/gauge :metabase-search/semantic-dlq-size
-                     {:description "Number of rows in the active semantic index dead-letter-queue table."})
+                     {:description "Number of rows in the active semantic index dead-letter-queue table."
+                      :labels      [:index]})
    (prometheus/gauge :metabase-search/semantic-gate-size
-                     {:description "Number of rows in the semantic gate table"})
+                     {:description "Number of rows in the semantic gate table"
+                      :labels      [:index]})
    (prometheus/gauge :metabase-search/queue-size
                      {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
@@ -1129,17 +1173,23 @@
   "Call Collector.remove() for one label combination of `metric`, so it stops being exported entirely.
   Unlike [[clear!]], which drops every label combination, and unlike setting the value to NaN, which keeps
   exporting the series with a value that poisons `avg`/`sum`. Prometheus marks a series that stops being
-  exported stale, which is what makes queries ignore it."
+  exported stale, which is what makes queries ignore it.
+  Throws for a metric declared without labels, which has no removable series."
   [metric labels]
   (when-not system
     (setup!))
   (when system
-    (let [{:keys [raw] declared :labels} (lookup-collector metric)
-          ;; iapetos.collector/set-labels builds the same array to find a child, so removal has to order
-          ;; the values exactly as the collector declared its label names
-          label->value (update-keys (qualified-vals labels) metric/dasherize)
-          ordered      (into-array String (map (comp str label->value) declared))]
-      (.remove ^SimpleCollector raw ordered))))
+    (let [{:keys [raw collector]} (lookup-collector metric)
+          ;; the declared label names live on the iapetos collector record, already dasherized -- the very
+          ;; list iapetos.collector/set-labels orders values by when it looks a child up
+          declared                (:labels collector)]
+      (when (empty? declared)
+        ;; Collector.remove drops the no-labels child and then recreates it at 0, so the series carries on
+        ;; being exported -- as a plausible-looking zero. Give the metric a label instead.
+        (throw (ex-info "Cannot remove a series of a metric declared without labels" {:metric metric})))
+      (let [label->value (update-keys (qualified-vals labels) metric/dasherize)
+            ordered      (into-array String (map (comp str label->value) declared))]
+        (.remove ^SimpleCollector raw ordered)))))
 
 (def ^:private real-reporter
   "A real analytics.interface/Reporter that reports here"

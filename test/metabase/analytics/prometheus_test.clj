@@ -266,6 +266,53 @@
       (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
       (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
 
+(deftest background-refresh-collector-test
+  (let [in-flight @#'prometheus/refreshes-in-flight
+        ran       (atom 0)
+        submitted (atom [])
+        collector (prometheus/background-refresh-collector ::test-refresh 600 #(swap! ran inc))]
+    (try
+      (reset! in-flight #{})
+      (mt/with-dynamic-fn-redefs [prometheus/submit-background-refresh! #(swap! submitted conj %)]
+        ((:f collector))
+        ((:f collector))
+        (is (zero? @ran) "the scrape path never runs the measurement itself")
+        (is (= 1 (count @submitted)) "overlapping scrapes share one refresh")
+        ((first @submitted)))
+      (is (= 1 @ran))
+      (is (empty? @in-flight) "the claim is released, so a later scrape refreshes again")
+      (is (= 600 (:min-interval-s collector)))
+      (testing "a refresh that cannot be scheduled releases its claim rather than wedging the collector"
+        (mt/with-dynamic-fn-redefs [prometheus/submit-background-refresh!
+                                    (fn [_] (throw (ex-info "no threads" {})))]
+          ((:f collector)))
+        (is (empty? @in-flight)))
+      (finally
+        (reset! in-flight #{})))))
+
+(deftest remove-series!-test
+  (testing "one label combination stops being exported and its siblings carry on"
+    (mt/with-prometheus-system! [port system]
+      (let [exported #(filter (fn [line]
+                                (str/starts-with? line "metabase_search_index_coverage_ratio"))
+                              (metric-lines port))]
+        (prometheus/set! :metabase-search/index-coverage-ratio {:index "appdb"} 0.9)
+        (prometheus/set! :metabase-search/index-coverage-ratio {:index "semantic-search"} 0.5)
+        (is (= 2 (count (exported))))
+        (prometheus/remove-series! :metabase-search/index-coverage-ratio {:index "semantic-search"})
+        (testing "the removed series is gone from the exposition, not merely zeroed"
+          (is (= 1 (count (exported))))
+          (is (str/includes? (first (exported)) "index=\"appdb\"")))
+        (testing "and the surviving series keeps its value"
+          (is (approx= 0.9 (mt/metric-value system :metabase-search/index-coverage-ratio
+                                            {:index "appdb"})))))))
+  (testing "a metric declared without labels is refused"
+    ;; Collector.remove recreates the no-labels child at 0, so such a series cannot stop being exported.
+    (mt/with-prometheus-system! [_ _system]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"declared without labels"
+                            (prometheus/remove-series! :metabase-search/queue-size nil))))))
+
 (deftest pull-collector-test
   (testing "a pull collector implementation runs at scrape time and can update one or more declared metrics"
     (mt/with-prometheus-system! [_ system]

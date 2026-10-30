@@ -23,6 +23,11 @@
 (def ^:private collector-job-key (jobs/key "metabase.task.semantic-metric-collector.job"))
 (def ^:private collector-trigger-key (triggers/key "metabase.task.semantic-metric-collector.trigger"))
 
+(def ^:private store-gauge-labels
+  "The logical index these store gauges belong to, matching the semantic index-health checks.
+  They carry a label because an unlabelled collector cannot stop exporting a series."
+  {:index "semantic-search"})
+
 (defn- row-count
   [pgvector table-name-str]
   (:size
@@ -39,7 +44,7 @@
     (if (semantic.u/table-exists? pgvector gate-table-name)
       (let [table-size (row-count pgvector gate-table-name)]
         (log/debugf "Setting `semantic-gate-size` metric to %d" table-size)
-        (search.index-health/publish-gauge! :metabase-search/semantic-gate-size nil table-size)
+        (search.index-health/publish-gauge! :metabase-search/semantic-gate-size store-gauge-labels table-size)
         nil)
       (log/warn "Gate table does not exist. Index may not have been initialized."))))
 
@@ -61,7 +66,7 @@
       (when (semantic.u/table-exists? pgvector dlq-table-name)
         (let [table-size (row-count pgvector dlq-table-name)]
           (log/debugf "Setting `semantic-dlq-size` metric to %d" table-size)
-          (search.index-health/publish-gauge! :metabase-search/semantic-dlq-size nil table-size)
+          (search.index-health/publish-gauge! :metabase-search/semantic-dlq-size store-gauge-labels table-size)
           nil)))
     (log/warn "DLQ table does not exist. Index may not have been initialized.")))
 
@@ -88,8 +93,10 @@
   store-gauge-collector)
 
 (defn- collect-metrics! []
-  ;; Registered collectors self-gate, so refreshing them is a cheap no-op when their feature is off. The
-  ;; job persists the health rows; the gauges are refreshed per process by the pull collectors.
+  ;; Registered collectors self-gate, so refreshing them is a cheap no-op when their feature is off.
+  ;; This persists the health rows, and republishes this node's gauges on the way. That overlaps the
+  ;; per-process pull collectors harmlessly: the value is still this node's own measurement, not a reading
+  ;; it is holding on another node's behalf.
   (search.index-health/refresh-search-index-metrics!))
 
 (task/defjob SemanticMetricCollector

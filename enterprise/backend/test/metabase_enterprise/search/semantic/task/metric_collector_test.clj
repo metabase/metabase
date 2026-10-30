@@ -18,6 +18,10 @@
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
+(def ^:private store-gauge-labels
+  "The label the store gauges are published under; see the var of the same name in the collector."
+  {:index "semantic-search"})
+
 (defn- create-test-tables!
   [pgvector index-metadata model]
   (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
@@ -122,13 +126,13 @@
               ["c" 3 (t/zoned-date-time) (t/zoned-date-time) (t/zoned-date-time)]])
             (testing "Metrics after insertion into gate and dlq"
               (@#'semantic.task.collector/collect-store-gauges!)
-              (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-size)))
-              (is (== 3 (mt/metric-value system :metabase-search/semantic-dlq-size))))
+              (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-size store-gauge-labels)))
+              (is (== 3 (mt/metric-value system :metabase-search/semantic-dlq-size store-gauge-labels))))
             (drop-gate-table-entries! pgvector index-metadata)
             (drop-dlq-table-entries! pgvector index-metadata)
             (testing "Metrics after deletion from gate and dlq"
               (@#'semantic.task.collector/collect-store-gauges!)
-              (is (== 0 (mt/metric-value system :metabase-search/semantic-gate-size)))
-              (is (== 0 (mt/metric-value system :metabase-search/semantic-dlq-size))))
+              (is (== 0 (mt/metric-value system :metabase-search/semantic-gate-size store-gauge-labels)))
+              (is (== 0 (mt/metric-value system :metabase-search/semantic-dlq-size store-gauge-labels))))
             (finally
               (drop-test-tables! pgvector index-metadata))))))))
