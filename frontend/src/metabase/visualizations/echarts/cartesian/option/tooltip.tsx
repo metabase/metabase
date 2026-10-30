@@ -7,6 +7,8 @@ import {
   type ComputedVisualizationSettings,
   type DataKey,
   EChartsTooltip,
+  FUNNEL_STEPS_GHOST_SERIES_ID,
+  getFunnelStepsTooltipModel,
   getTooltipBaseOption,
   isGoalLineSeriesId,
 } from "metabase/viz-core";
@@ -31,13 +33,15 @@ const ChartItemTooltip = ({
     return null;
   }
 
-  const tooltipModel = getTooltipModel(
-    chartModel,
-    settings,
-    dataIndex,
-    display,
-    seriesId,
-  );
+  const tooltipModel = settings["product_analytics.funnel_steps"]
+    ? getFunnelStepsTooltipModel(
+        chartModel,
+        settings,
+        dataIndex,
+        seriesId,
+        seriesId === FUNNEL_STEPS_GHOST_SERIES_ID,
+      )
+    : getTooltipModel(chartModel, settings, dataIndex, display, seriesId);
 
   if (!tooltipModel) {
     return null;

@@ -73,14 +73,15 @@
 (mu/defn matching-tables
   "The Tables (active, or with `transform_target` when `include-transform-targets?`) matching `term` (a glob pattern
   using `*` as a wildcard, matched against `:name` and `:display_name`), optionally narrowed to `visibility-type`,
-  `data-layer`, `data-source`, `owner-user-id`, and/or `owner-email`; restricted to ownerless Tables when
+  `entity-type`, `data-layer`, `data-source`, `owner-user-id`, and/or `owner-email`; restricted to ownerless Tables when
   `orphan-only?`, published Tables when `published-only?`, and (when `check-unused?`) Tables with no dependents,
   ordered by name."
-  [{:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only? published-only?
-           check-unused? include-transform-targets?]}
+  [{:keys [term visibility-type entity-type data-layer data-source owner-user-id owner-email orphan-only?
+           published-only? check-unused? include-transform-targets?]}
    :- [:map {:closed true}
        [:term                       {:optional true} [:maybe :string]]
        [:visibility-type            {:optional true} [:maybe :string]]
+       [:entity-type                {:optional true} [:maybe :string]]
        [:data-layer                 {:optional true} [:maybe [:or :keyword :string]]]
        [:data-source                {:optional true} [:maybe [:or :keyword :string]]]
        [:owner-user-id              {:optional true} [:maybe :int]]
@@ -111,6 +112,7 @@
                                                     ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
                                                     (like :display_name #(str "% " %))])
                      visibility-type         (conj [:= :visibility_type visibility-type])
+                     entity-type             (conj [:= :entity_type     entity-type])
                      data-layer              (conj [:= :data_layer      (name data-layer)])
                      data-source             (conj [:= :data_source     (name data-source)])
                      owner-user-id           (conj [:= :owner_user_id   owner-user-id])

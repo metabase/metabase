@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -11,10 +11,27 @@ import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/settings";
 import { Box, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { CollectionId } from "metabase-types/api";
+import type {
+  CollectionId,
+  IconName,
+  ProductAnalyticsKind,
+} from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
 
+type AnalysisKindItem = {
+  kind: ProductAnalyticsKind;
+  icon: IconName;
+  getName: () => string;
+};
+
+const ANALYSIS_KIND_ITEMS: AnalysisKindItem[] = [
+  { kind: "funnel", icon: "funnel", getName: () => t`Funnel` },
+  { kind: "paths", icon: "sankey", getName: () => t`Paths` },
+  { kind: "habit", icon: "history", getName: () => t`Habit` },
+  { kind: "lifecycle", icon: "refresh", getName: () => t`Lifecycle` },
+  { kind: "cohorts", icon: "grid", getName: () => t`Cohort retention` },
+];
 export interface NewItemMenuProps {
   className?: string;
   collectionId?: CollectionId;
@@ -36,6 +53,17 @@ export const NewItemMenuView = ({
   onCloseNavbar,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
+  // Picking "Product analysis" swaps the menu for the kinds of analysis.
+  const [isPickingAnalysisKind, setIsPickingAnalysisKind] = useState(false);
+  // The swap unmounts the focused "Product analysis" item, which leaves focus on
+  // the page, where a modifier key like Cmd (to open an item in a new tab)
+  // closes the menu. Focusing the menu keeps it open.
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isPickingAnalysisKind) {
+      dropdownRef.current?.focus();
+    }
+  }, [isPickingAnalysisKind]);
 
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
@@ -93,6 +121,19 @@ export const NewItemMenuView = ({
       );
     }
 
+    if (hasDataAccess) {
+      items.push(
+        <Menu.Item
+          key="product-analysis"
+          closeMenuOnClick={false}
+          onClick={() => setIsPickingAnalysisKind(true)}
+          leftSection={<Icon name="funnel" />}
+        >
+          {t`Product analysis`}
+        </Menu.Item>,
+      );
+    }
+
     if (canWriteToCollections) {
       items.push(
         <Menu.Item
@@ -138,11 +179,25 @@ export const NewItemMenuView = ({
   }
 
   return (
-    <Menu position="bottom-end">
+    <Menu position="bottom-end" onOpen={() => setIsPickingAnalysisKind(false)}>
       <Menu.Target>
         <Box>{trigger}</Box>
       </Menu.Target>
-      <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+      <Menu.Dropdown ref={dropdownRef}>
+        {isPickingAnalysisKind
+          ? ANALYSIS_KIND_ITEMS.map(({ kind, icon, getName }) => (
+              <Menu.Item
+                key={kind}
+                component={ForwardRefLink}
+                to={Urls.newEventAnalysis(kind)}
+                onClick={onCloseNavbar}
+                leftSection={<Icon name={icon} />}
+              >
+                {getName()}
+              </Menu.Item>
+            ))
+          : menuItems}
+      </Menu.Dropdown>
     </Menu>
   );
 };

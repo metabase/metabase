@@ -60,6 +60,12 @@ const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
     },
   },
   click_behavior: {},
+  // A chart per value of this column, one above another. Set by product
+  // analytics; has no widget.
+  "small_multiples.column": {
+    hidden: true,
+    getDefault: () => null,
+  },
 };
 
 export function getSettingDefinitionsForDisplay(

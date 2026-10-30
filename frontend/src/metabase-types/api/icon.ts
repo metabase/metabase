@@ -251,6 +251,7 @@ export type IconName =
   | "slack"
   | "slack_colorized"
   | "sliders"
+  | "split_branch"
   | "smartscalar"
   | "snail"
   | "snippet"

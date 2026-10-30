@@ -23,6 +23,7 @@ import {
 import { FilterPickerBody } from "./FilterPickerBody";
 import type {
   ColumnListItem,
+  CustomListItem,
   ExpressionClauseItem,
   SegmentListItem,
 } from "./types";
@@ -114,7 +115,13 @@ export function FilterPicker({
   };
 
   const checkItemIsSelected = useCallback(
-    (item: ColumnListItem | SegmentListItem | ExpressionClauseItem) => {
+    (
+      item:
+        | ColumnListItem
+        | SegmentListItem
+        | ExpressionClauseItem
+        | CustomListItem,
+    ) => {
       return Boolean(
         filterIndex != null &&
         "filterPositions" in item &&

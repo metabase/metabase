@@ -260,8 +260,8 @@ const INTERACTIVE_CARDS = [
     value: "svelte",
     label: "Svelte",
     description: "Cybernetically enhanced web apps",
-    attrs: "",
-    props: {},
+    attrs: ' indicatorColor="accent2"',
+    props: { indicatorColor: "accent2" as const },
   },
   {
     value: "ng",

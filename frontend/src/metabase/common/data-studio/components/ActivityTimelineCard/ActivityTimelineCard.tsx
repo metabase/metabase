@@ -20,6 +20,8 @@ type ActivityTimelineCardProps = ActivityTimelineTarget & {
   moderationReviews?: ModerationReview[];
   canWrite: boolean;
   "data-testid": string;
+  /** After a revision is restored. */
+  onReverted?: () => void;
 };
 
 export function ActivityTimelineCard(props: ActivityTimelineCardProps) {
@@ -32,12 +34,14 @@ export function ActivityTimelineCard(props: ActivityTimelineCardProps) {
   );
 }
 
-function ActivityTimeline({
+/** The timeline without the card around it, e.g. for a sidesheet's tab. */
+export function ActivityTimeline({
   entity,
   id,
   moderationReviews,
   canWrite,
   "data-testid": dataTestId,
+  onReverted,
 }: ActivityTimelineCardProps) {
   const currentUser = useSelector(getUser);
   const {
@@ -65,9 +69,10 @@ function ActivityTimeline({
     <RevisionHistoryTimeline
       entity={entity}
       events={events}
-      revert={(revision) =>
-        revertRevision({ entity, id, revision_id: revision.id }).unwrap()
-      }
+      revert={async (revision) => {
+        await revertRevision({ entity, id, revision_id: revision.id }).unwrap();
+        onReverted?.();
+      }}
       canWrite={canWrite}
       data-testid={dataTestId}
     />

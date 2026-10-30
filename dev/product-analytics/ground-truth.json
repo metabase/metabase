@@ -1,0 +1,105 @@
+{
+  "seed": "pa-prototype-v1",
+  "people": 25000,
+  "days": 120,
+  "start": "2026-06-29T00:00:00.000Z",
+  "end": "2026-10-27T00:00:00.000Z",
+  "incident": {
+    "start": "2026-09-21T00:00:00.000Z",
+    "end": "2026-09-28T00:00:00.000Z"
+  },
+  "counts": {
+    "events": 1679483,
+    "pageviews": 1537240,
+    "signup": 22123,
+    "trial_started": 5077,
+    "checkout_completed": 1598,
+    "invite_sent": 3726,
+    "integration_connected": 1685,
+    "report_created": 99342,
+    "subscription_cancelled": 85,
+    "error": 8607,
+    "error_incident": 3381,
+    "identities": 28883
+  },
+  "funnel": {
+    "pricing": 19364,
+    "trial_started": 5077,
+    "checkout_completed": 1598
+  },
+  "inviteWeek1": 2667,
+  "twoDevicePeople": 3722,
+  "identifiedPeople": 22123,
+  "insights": {
+    "expected": [
+      {
+        "transition": "Started trial → Purchased",
+        "conditions": [
+          {
+            "os": "iOS"
+          }
+        ],
+        "direction": "lower",
+        "why": "iOS checkout conversion × 0.5. iOS always means Safari, so this should not also show as Safari, or Safari and iOS."
+      },
+      {
+        "transition": "Viewed pricing → Started trial",
+        "conditions": [
+          {
+            "browser": "Firefox",
+            "os": "Android"
+          },
+          {
+            "browser": "Firefox",
+            "device": "mobile"
+          }
+        ],
+        "direction": "lower",
+        "why": "Android + Firefox trial starts × 0.25. Android or Firefox alone should be explained by the pair."
+      },
+      {
+        "transition": "Started trial → Purchased",
+        "conditions": [
+          {
+            "trial_source": "sales_email"
+          }
+        ],
+        "direction": "higher",
+        "why": "Checkout × 1.8. trial_source is only set on trial_started events, so this tests sparse columns."
+      },
+      {
+        "transition": "Started trial → Purchased",
+        "conditions": [
+          {
+            "person_role": "admin"
+          }
+        ],
+        "direction": "higher",
+        "why": "Admin checkout × 1.6. person_role comes from identify(), copied onto events as of each event."
+      }
+    ],
+    "unexpected": [
+      {
+        "transition": "Started trial → Purchased",
+        "column": "plan",
+        "why": "plan is only set on checkout_completed, so it isn't known when someone starts a trial."
+      },
+      {
+        "transition": "Viewed pricing → Started trial",
+        "column": "country",
+        "value": "NZ",
+        "why": "NZ trial starts × 2.4, but NZ is too small to report."
+      },
+      {
+        "transition": "Started trial → Purchased",
+        "column": "person_billing_cycle",
+        "why": "Only the identify() at checkout sets billing_cycle, so it isn't known when someone starts a trial."
+      },
+      {
+        "transition": "Started trial → Purchased",
+        "column": "person_plan",
+        "why": "The plan trait follows the funnel (free, trial, then the plan bought), so its value as of an event can't predict a later step."
+      }
+    ]
+  }
+}

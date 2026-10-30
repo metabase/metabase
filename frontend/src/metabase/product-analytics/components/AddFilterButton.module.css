@@ -1,0 +1,26 @@
+/* Round, and tinted like the filter pills it follows. */
+.add {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  color: var(--mb-color-core-filter);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-core-filter) 20%,
+    transparent
+  );
+  transition: background-color 120ms ease;
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-core-filter) 30%,
+      transparent
+    );
+  }
+}

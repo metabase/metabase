@@ -1,0 +1,215 @@
+import { t } from "ttag";
+
+import { SegmentedControl } from "metabase/ui";
+
+import type { ColumnRole, ColumnRoles } from "../columns";
+import { AddFilterButton } from "../components/AddFilterButton";
+import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
+import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import { BreakoutMenu } from "../components/toolbar/BreakoutMenu";
+import { CountingMenu } from "../components/toolbar/CountingMenu";
+import { DateRangeButton } from "../components/toolbar/DateRangeButton";
+import { GranularityButton } from "../components/toolbar/GranularityButton";
+import { DEFAULT_DATE_RANGE, parseDateRange } from "../date-range";
+import { NO_FILTERS, isAnalysisFilters } from "../filters";
+import type { SettingDefinition } from "../settings/types";
+import { withWidgetProps } from "../settings/with-widget-props";
+import type { Grain, Granularity } from "../spec/types";
+
+import { BREAKOUT_VIEWS, isBreakout } from "./breakout";
+import {
+  getColumnOptions,
+  getDefaultColumn,
+  getUserPropertyOptions,
+  isColumnInTable,
+  isUserPropertyColumn,
+} from "./column-roles";
+import { isOneOf, isOptionalEventDefinition } from "./setting-helpers";
+import type {
+  AnalysisContext,
+  AnalysisSettingDefinitions,
+  ColumnRoleSettings,
+  CommonSettings,
+} from "./types";
+
+type ColumnRoleKey = `columns.${ColumnRole}`;
+
+export const getColumnRoles = (settings: ColumnRoleSettings): ColumnRoles => ({
+  timestamp: settings["columns.timestamp"],
+  person: settings["columns.person"],
+  session: settings["columns.session"],
+  event_id: settings["columns.event_id"],
+  event_name: settings["columns.event_name"],
+  url_path: settings["columns.url_path"],
+});
+
+const columnRoleSetting = (
+  role: ColumnRole,
+  getTitle: () => string,
+  isRequired: boolean,
+): SettingDefinition<AnalysisContext, CommonSettings, ColumnRoleKey> => ({
+  getTitle,
+  group: "columns",
+  getSection: () => "advanced",
+  widget: ColumnPickerWidget,
+  getDefault: (context) => getDefaultColumn(context.table, role),
+  isValid: (value, context) => isColumnInTable(context.table, value),
+  getProps: (context) => ({
+    columns: getColumnOptions(context.table),
+    isRequired,
+  }),
+});
+
+const COLUMN_FOR_GRAIN: Record<Grain, ColumnRoleKey> = {
+  person: "columns.person",
+  session: "columns.session",
+  event: "columns.event_id",
+};
+
+const isCountable = (
+  grain: Grain,
+  settings: Partial<ColumnRoleSettings>,
+): boolean => typeof settings[COLUMN_FOR_GRAIN[grain]] === "string";
+
+export const hasSessionColumn = (
+  settings: Partial<ColumnRoleSettings>,
+): boolean => isCountable("session", settings);
+
+type GranularityOptions = {
+  units: Granularity[];
+  defaultUnit: Granularity;
+};
+
+const granularitySetting = (
+  options: GranularityOptions | null,
+): SettingDefinition<AnalysisContext, CommonSettings, "granularity"> => ({
+  getSection: () => "toolbar",
+  widget: GranularityButton,
+  getDefault: () => options?.defaultUnit ?? "week",
+  isValid: (value) => options !== null && isOneOf(options.units, value),
+  getHidden: () => options === null,
+  getProps: () => ({ units: options?.units ?? [] }),
+});
+
+const breakoutSetting = (
+  isEnabled: boolean,
+): SettingDefinition<AnalysisContext, CommonSettings, "breakout"> =>
+  withWidgetProps({
+    getSection: () => "toolbar",
+    widget: BreakoutMenu,
+    getDefault: () => null,
+    isValid: (value, context) =>
+      value === null || (isEnabled && isBreakoutValid(context, value)),
+    getHidden: () => !isEnabled,
+    getProps: (context, settings) => ({
+      columns: getUserPropertyOptions(context, getColumnRoles(settings)),
+      usersTable: context.usersTable?.table,
+    }),
+  });
+
+/**
+ * Any of the users table's fields, as its picker offers them all, or else
+ * an event table property. People segments live on the users table, so
+ * cohorts need one linked.
+ */
+const isBreakoutValid = (context: AnalysisContext, value: unknown) =>
+  isBreakout(value) &&
+  (value.type === "property"
+    ? context.usersTable !== undefined
+      ? isColumnInTable(context.usersTable.table, value.column)
+      : isUserPropertyColumn(context, value.column)
+    : context.usersTable !== undefined);
+
+/**
+ * Settings every analysis has: the toolbar controls and the column roles.
+ * Pass `granularity: null` for analyses without a time grain, and
+ * `breakout: true` for analyses that can split their result by a property.
+ */
+export const commonSettings = ({
+  granularity,
+  breakout = false,
+  canPivot = false,
+  grains,
+}: {
+  granularity: GranularityOptions | null;
+  breakout?: boolean;
+  /** Whether a breakout can show as a pivot table, as well as a chart. */
+  canPivot?: boolean;
+  /** What the analysis can count, the default first when it has a column. */
+  grains: readonly Grain[];
+}): AnalysisSettingDefinitions<CommonSettings> => ({
+  date_range: {
+    getSection: () => "toolbar",
+    widget: DateRangeButton,
+    getDefault: () => DEFAULT_DATE_RANGE,
+    isValid: (value) =>
+      typeof value === "string" && parseDateRange(value) !== undefined,
+  },
+  counting: {
+    getSection: () => "toolbar",
+    widget: CountingMenu,
+    // The person column is required, so people are always countable.
+    getDefault: (_context, settings) =>
+      grains.find((grain) => isCountable(grain, settings)) ?? "person",
+    isValid: (value, _context, settings) =>
+      isOneOf(grains, value) && isCountable(value, settings),
+    getProps: (context, settings) => ({
+      options: grains.filter((grain) => isCountable(grain, settings)),
+      isDisabled: context.table === undefined,
+    }),
+    readDependencies: ["columns.person", "columns.session", "columns.event_id"],
+  },
+  granularity: granularitySetting(granularity),
+  breakout: breakoutSetting(breakout),
+  breakout_view: withWidgetProps({
+    getTitle: () => t`Show as`,
+    getSection: () => "setup",
+    widget: SegmentedControl,
+    getDefault: () => "chart",
+    isValid: (value) => isOneOf(BREAKOUT_VIEWS, value),
+    getHidden: (_context, settings) => !canPivot || settings.breakout === null,
+    getProps: () => ({
+      data: [
+        { label: t`Chart`, value: "chart" as const },
+        { label: t`Pivot table`, value: "pivot" as const },
+      ],
+      w: "100%",
+    }),
+    readDependencies: ["breakout"],
+  }),
+  filters: withWidgetProps({
+    getSection: () => "toolbar",
+    widget: AddFilterButton,
+    getDefault: () => NO_FILTERS,
+    isValid: (value) => isAnalysisFilters(value),
+    getProps: (context) => ({
+      table: context.table,
+      usersTable: context.usersTable,
+    }),
+  }),
+  "columns.timestamp": columnRoleSetting(
+    "timestamp",
+    () => t`Event time`,
+    true,
+  ),
+  "columns.person": columnRoleSetting("person", () => t`Person`, true),
+  "columns.session": columnRoleSetting("session", () => t`Session`, false),
+  "columns.event_id": columnRoleSetting("event_id", () => t`Event ID`, false),
+  "columns.event_name": columnRoleSetting(
+    "event_name",
+    () => t`Event name`,
+    false,
+  ),
+  "columns.url_path": columnRoleSetting("url_path", () => t`URL path`, false),
+  pageviews: withWidgetProps({
+    getTitle: () => t`Pageviews`,
+    getHint: () =>
+      t`Paths show each pageview as its URL path, rather than as one event.`,
+    group: "columns",
+    getSection: () => "advanced",
+    widget: EventDefinitionWidget,
+    getDefault: (context) => context.detectedPageviews ?? null,
+    isValid: (value) => isOptionalEventDefinition(value),
+    getProps: (context) => ({ table: context.table, emptyLabel: t`None` }),
+  }),
+});
