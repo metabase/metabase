@@ -24,7 +24,9 @@
     (throw (ex-info (tru \"Invalid {0}\" label) {:status-code 400, :field key, :card-id id, :response/keys #{:field}}))
 
   responds with `{:field ...}`, keeping `:card-id` server-side. When the data comes from elsewhere, like ex-data being
-  rethrown, use [[extend-response-keys]], which adds to the keys already listed instead of replacing them.")
+  rethrown, use [[extend-response-keys]], which adds to the keys already listed instead of replacing them.
+
+  Which keys go to the error log is a separate list, `:log/keys` (see [[metabase.util.log-error]]).")
 
 (defn extend-response-keys
   "Add `ks` to the `:response/keys` of `data`, the keys that are sent to the client, keeping any already listed. For
