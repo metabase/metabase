@@ -992,8 +992,7 @@
                 elapsed (u/since-ms timer)]
             (is (instance? Throwable result)
                 "query should throw rather than completing normally")
-            (is (some #(some-> (ex-message %) (str/includes? "QUERY_WAS_CANCELLED"))
-                      (take-while some? (iterate ex-cause result)))
+            (is (str/includes? (ex-message result) "QUERY_WAS_CANCELLED")
                 "the server should report that the query was cancelled")
             (is (<= 2000 elapsed 30000)
                 (format "query should be cancelled after the timeout and well before it completes — took %.0f ms" elapsed))))))))
