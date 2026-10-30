@@ -914,6 +914,23 @@
         (is (false? (#'sql-jdbc.execute/error-in-query? :clickhouse e)))
         (is (true? (#'sql-jdbc.execute/error-in-query? :h2 e)))))))
 
+(deftest ^:synchronized cancel-slow-query-via-query-timeout-test
+  (mt/test-driver :clickhouse
+    (testing "Slow query is cancelled when *query-timeout-ms* elapses"
+      (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
+      (binding [driver.settings/*query-timeout-ms* 5000]
+        (let [timer   (u/start-timer)
+              query   (mt/native-query {:query "SELECT sleepEachRow(1) FROM numbers(120) SETTINGS max_block_size = 1"})
+              result  (try
+                        (qp/process-query query)
+                        (catch Throwable e e))
+              elapsed (u/since-ms timer)]
+          (is (instance? Throwable result))
+          (is (str/includes? (ex-message result) "QUERY_WAS_CANCELLED"))
+          (is (<= driver.settings/*query-timeout-ms*
+                  elapsed
+                  (* 3 driver.settings/*query-timeout-ms*))))))))
+
 (deftest ^:parallel url-building-details-reject-separators-test
   (doseq [details [{:host "https://a/b;c" :port 8443 :dbname "d"}
                    {:host "https://a/b?c" :port 8443 :dbname "d"}]]
