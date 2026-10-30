@@ -647,7 +647,6 @@
           (doseq [[scope tool-var extra-args metabot profile-id step]
                   [["the instance" #'search/search-tool {} nil "internal" instance-step]
                    ["the instance" #'search/nlq-search-tool {} nil "nlq" instance-step]
-                   ["the instance" #'search/transform-search-tool {} nil "internal" instance-step]
                    ["one database" #'search/sql-search-tool {:database_id (mt/id)} nil "sql"
                     (str "Find the data with `read_resource` instead: read `metabase://database/" (mt/id)
                          "/tables` and `metabase://database/" (mt/id) "/models`.")]
