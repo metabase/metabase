@@ -1,5 +1,4 @@
 import type {
-  BlockerFunction,
   DataRouter,
   Location,
   NavigateFunction,
@@ -133,37 +132,6 @@ export function getPendingNavigationHref(): string | null {
   }
   return navigation.location
     ? currentRouter.createHref(navigation.location)
-    : null;
-}
-
-/**
- * The navigation a chunk belongs to, described the way a `BlockerFunction`
- * receives it, for asking the leave guards about a navigation that react-router
- * has already let through.
- *
- * While the navigation is pending, that is its destination. A slow chunk's
- * location commits without waiting for the chunk (see `withChunkFallback`), and
- * from then on the destination is the current location. The page being left is
- * no longer known then, so it is reported as the destination as well: a guard
- * reads where it is being sent, not where it came from.
- */
-export function getChunkNavigationArgs():
-  | Parameters<BlockerFunction>[0]
-  | null {
-  const state = currentRouter?.state;
-  if (!state) {
-    return null;
-  }
-  const destination =
-    state.navigation.state === "idle"
-      ? state.location
-      : state.navigation.location;
-  return destination
-    ? {
-        currentLocation: state.location,
-        nextLocation: destination,
-        historyAction: state.historyAction,
-      }
     : null;
 }
 

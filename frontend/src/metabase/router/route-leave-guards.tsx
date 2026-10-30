@@ -8,8 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Blocker, BlockerFunction } from "react-router";
-import { useBlocker } from "react-router";
+import type { Blocker, BlockerFunction, Location } from "react-router";
+import { NavigationType, useBlocker } from "react-router";
 
 type BlockerArgs = Parameters<BlockerFunction>[0];
 
@@ -52,22 +52,47 @@ function findBlockingGuard(
 }
 
 /**
- * Asks every mounted guard whether it is holding unsaved work, ignoring the
- * subtree exemption `findBlockingGuard` applies.
+ * A destination nothing on screen can claim as its own.
  *
- * That exemption is what lets a page navigate within itself without prompting,
- * so a guard is never consulted for a destination inside its own route. A caller
- * that is about to replace the whole document, rather than move within it, has
- * to ask the question the exemption skips.
+ * A guard answers about where the navigation is going, and a page that holds
+ * unsaved work exempts the destinations that stay inside itself: the query
+ * builder lets a question move between its own tabs, a document opens its own
+ * sidesheet. Those exemptions hold because the page stays mounted. Asked with
+ * the real destination, such a page reports that it is not blocking while its
+ * work is still unsaved.
+ *
+ * `hasUnsavedChanges` is asked on behalf of a full page load, which unmounts
+ * every page and takes the work with it, so no exemption applies to it. This
+ * is the destination it asks about: one that matches no route, so every guard
+ * answers on what it holds rather than on where it is being sent.
+ */
+const LEAVING_THE_APP: BlockerArgs = {
+  currentLocation: awayLocation(),
+  nextLocation: awayLocation(),
+  historyAction: NavigationType.Push,
+};
+
+function awayLocation(): Location {
+  return {
+    pathname: "/__leaving-metabase__",
+    search: "",
+    hash: "",
+    state: null,
+    key: "leaving-metabase",
+  };
+}
+
+/**
+ * Whether anything mounted holds work that a full page load would discard.
  *
  * Published from the mounted provider rather than read from a module-level
  * registry, for the reason `RouteLeaveGuards` keeps the registry local: a guard
  * rendered outside a router must not answer for a router mounted elsewhere.
  */
-let currentUnsavedWorkProbe: ((args: BlockerArgs) => boolean) | null = null;
+let currentUnsavedWorkProbe: (() => boolean) | null = null;
 
-export function hasUnsavedChanges(args: BlockerArgs | null): boolean {
-  return args != null && (currentUnsavedWorkProbe?.(args) ?? false);
+export function hasUnsavedChanges(): boolean {
+  return currentUnsavedWorkProbe?.() ?? false;
 }
 
 interface RouteLeaveGuardsValue {
@@ -128,16 +153,27 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
   }, []);
 
   useLayoutEffect(() => {
-    currentUnsavedWorkProbe = (args) => {
-      for (const { shouldBlock: guarded } of guardsRef.current.values()) {
-        if (guarded.current?.(args)) {
+    const probe = () => {
+      for (const [id, { shouldBlock: guarded }] of guardsRef.current) {
+        // A guard that was asked about the navigation in flight and let it
+        // through has already agreed to lose what it holds.
+        if (answeredRef.current.has(id)) {
+          continue;
+        }
+        if (guarded.current?.(LEAVING_THE_APP)) {
           return true;
         }
       }
       return false;
     };
+
+    currentUnsavedWorkProbe = probe;
     return () => {
-      currentUnsavedWorkProbe = null;
+      // Only this provider's own probe. A provider that mounted later owns the
+      // slot, and unmounting an older one must not leave it empty.
+      if (currentUnsavedWorkProbe === probe) {
+        currentUnsavedWorkProbe = null;
+      }
     };
   }, []);
 

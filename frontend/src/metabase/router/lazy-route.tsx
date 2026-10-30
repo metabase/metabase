@@ -4,7 +4,7 @@ import type { RouteObject } from "react-router";
 import { redirect, reload } from "metabase/utils/dom";
 import { retry } from "metabase/utils/retry";
 
-import { getChunkNavigationArgs, getPendingNavigationHref } from "./navigator";
+import { getPendingNavigationHref } from "./navigator";
 import { hasUnsavedChanges } from "./route-leave-guards";
 
 /**
@@ -85,6 +85,18 @@ function isWorthRetrying(error: unknown): boolean {
   return isChunkLoadError(error) && !isChunkLoadTimeout(error);
 }
 
+/**
+ * Whether the browser says it has no network at all.
+ *
+ * A chunk that cannot be fetched because the connection is gone looks exactly
+ * like one a deploy removed. Loading the page again fixes the second and
+ * replaces a working app with the browser's offline page for the first, so the
+ * error is shown over the page instead and the app stays up.
+ */
+function isOffline(): boolean {
+  return navigator.onLine === false;
+}
+
 function canReloadNow(): boolean {
   try {
     const last = Number(window.sessionStorage.getItem(RELOAD_STAMP_KEY));
@@ -121,9 +133,11 @@ const Blank = () => null;
  * within it, and those navigate to their own chunks too.
  */
 function recoverFromChunkError(Fallback: ChunkErrorFallback) {
-  const isDirty = hasUnsavedChanges(getChunkNavigationArgs());
+  const isDirty = hasUnsavedChanges();
 
-  if (!isDirty && canReloadNow()) {
+  // `canReloadNow` records the attempt, so it is asked last: a page load that
+  // is not going to happen must not spend the one that is allowed.
+  if (!isDirty && !isOffline() && canReloadNow()) {
     const href = getPendingNavigationHref();
     // No pending navigation means the destination is already the current URL,
     // either because this is the first load of the page or because the router

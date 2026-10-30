@@ -5,13 +5,13 @@ import { act, render, screen, waitFor } from "__support__/ui";
 import {
   Outlet,
   RouterProviderMemory,
-  isChunkLoadError,
   navigate,
   useRouteLeaveBlocker,
 } from "metabase/router";
 import { redirect, reload } from "metabase/utils/dom";
 
 import { CHUNK_WAIT_MS } from "./lazy-page";
+import { isChunkLoadError } from "./lazy-route";
 
 jest.mock("metabase/utils/dom", () => ({
   ...jest.requireActual("metabase/utils/dom"),
@@ -184,6 +184,31 @@ describe("a route whose chunk fails to load", () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
+  // A chunk that cannot be fetched because the connection is gone looks exactly
+  // like one a deploy removed, and loading the page again would replace a
+  // working app with the browser's offline page.
+  it("shows the error page rather than loading again while offline", async () => {
+    const onLine = jest
+      .spyOn(window.navigator, "onLine", "get")
+      .mockReturnValue(false);
+    const load = jest.fn().mockRejectedValue(chunkLoadError());
+
+    renderRoutesWithFallback(homeAndSplit(load), "/");
+    expect(await screen.findByTestId("home")).toBeInTheDocument();
+
+    act(() => {
+      navigate("/split");
+    });
+
+    expect(
+      await screen.findByTestId("chunk-error", undefined, { timeout: 5000 }),
+    ).toBeInTheDocument();
+    expect(redirect).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+
+    onLine.mockRestore();
+  });
+
   it("shows the error page instead of loading again within the interval", async () => {
     const load = jest.fn().mockRejectedValue(chunkLoadError());
 
@@ -295,10 +320,13 @@ describe("a chunk that fails while the page holds unsaved work", () => {
   // A guard decides on where it is being sent, so the question has to carry the
   // destination even once the router has committed it. A guard asked about the
   // page it is already on answers for the wrong navigation.
-  it("asks the guards about the destination, not the page left behind", async () => {
+  // A page that holds unsaved work still lets a navigation inside itself
+  // through, which is how a sidesheet or a tab opens without a prompt. A full
+  // page load is not one of those, so that exemption must not answer for it.
+  it("asks the guards about leaving, not about the destination they exempt", async () => {
     function WatchfulEditor() {
       useRouteLeaveBlocker(
-        ({ nextLocation }) => nextLocation.pathname === "/doc/comments",
+        ({ nextLocation }) => nextLocation.pathname !== "/doc/comments",
       );
       return (
         <div>
