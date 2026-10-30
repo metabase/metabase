@@ -557,7 +557,7 @@
     (mt/with-temporary-setting-values [jwt-group-mappings nil]
       (let [captured (atom nil)]
         (with-redefs [t2/select-pks-set (fn [_model _col in-clause]
-                                          (reset! captured (second in-clause))
+                                          (reset! captured (let [v (second in-clause)] (cond-> v (vector? v) second)))
                                           #{})]
           (testing "a string group name is bound as a parameter"
             (#'providers.jwt/group-names->ids ["developers"])
