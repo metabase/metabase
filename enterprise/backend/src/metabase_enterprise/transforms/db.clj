@@ -20,6 +20,6 @@
   (t2/query {:select   [:r.metered_as [[:count :r.id] :cnt]]
              :from     [[:transform_run :r]]
              :where    [:and
-                        [:= :r.status "succeeded"]
+                        [:= :r.status [:auto/param "succeeded"]]
                         [:= [:cast :r.end_time :date] [:cast [:auto/param date] :date]]]
              :group-by [:r.metered_as]}))

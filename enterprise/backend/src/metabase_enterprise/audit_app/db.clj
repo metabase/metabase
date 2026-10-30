@@ -68,7 +68,7 @@
 (mu/defn active-public-table-exists?
   "Whether the Database with `database-id` has an active Table in the `public` schema."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id [:auto/param database-id] :schema "public" :active true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/exists? :model/Table :db_id [:auto/param database-id] :schema [:auto/param "public"] :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-ids-to-downcase
   "The IDs of the Metabase-managed Tables of the Database with `database-id` that have no lower-cased counterpart
@@ -79,11 +79,11 @@
                    :from      [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})]
                    :where  [:and [:= :table.db_id [:auto/param database-id]]
                             ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
-                            [:not= :table.name "DATABASECHANGELOG"]
-                            [:not= :table.name "DATABASECHANGELOGLOCK"] ;; new instances do not get this file, but existing instances may have it
-                            [:not= :table.name "DATABASECHANGELOG_VERSION"]
-                            [:not= :table.name "DATABASECHANGELOG_FIRST_RUN"]
-                            [:not [:like :table.name "QRTZ_%"]]
+                            [:not= :table.name [:auto/param "DATABASECHANGELOG"]]
+                            [:not= :table.name [:auto/param "DATABASECHANGELOGLOCK"]] ;; new instances do not get this file, but existing instances may have it
+                            [:not= :table.name [:auto/param "DATABASECHANGELOG_VERSION"]]
+                            [:not= :table.name [:auto/param "DATABASECHANGELOG_FIRST_RUN"]]
+                            [:not [:like :table.name [:auto/param "QRTZ_%"]]]
                             [:not [:exists ^:allow-subquery {:select [1]
                                                              :from   [(warehouse-schema-overlay/table-query {:alias :self_table, :user-settings? false})]
                                                              :where  [:and
@@ -91,7 +91,7 @@
                                                                       [:or
                                                                        [:= :self_table.schema [:lower :table.schema]]
                                                                        [:and
-                                                                        [:= :self_table.schema "public"]
+                                                                        [:= :self_table.schema [:auto/param "public"]]
                                                                         [:= :table.schema nil]]]
                                                                       [:= :self_table.name [:lower :table.name]]]}]]]})))
 
@@ -110,10 +110,10 @@
                    :inner-join [(warehouse-schema-overlay/table-query {:alias :table})
                                 [:= :table.id :field.table_id]]
                    :where      [:and [:= :table.db_id [:auto/param database-id]]
-                                [:not= :table.name "DATABASECHANGELOG"]
-                                [:not= :table.name "DATABASECHANGELOG_VERSION"]
-                                [:not= :table.name "DATABASECHANGELOG_FIRST_RUN"]
-                                [:not [:like :table.name "QRTZ_%"]]
+                                [:not= :table.name [:auto/param "DATABASECHANGELOG"]]
+                                [:not= :table.name [:auto/param "DATABASECHANGELOG_VERSION"]]
+                                [:not= :table.name [:auto/param "DATABASECHANGELOG_FIRST_RUN"]]
+                                [:not [:like :table.name [:auto/param "QRTZ_%"]]]
                                 [:not [:exists ^:allow-subquery {:select     [1]
                                                                  :from       [(warehouse-schema-overlay/field-query {:alias :self_field})]
                                                                  :inner-join [(warehouse-schema-overlay/table-query {:alias :self_table})
@@ -123,7 +123,7 @@
                                                                               [:or
                                                                                [:= :self_table.schema [:lower :table.schema]]
                                                                                [:and
-                                                                                [:= :self_table.schema "public"]
+                                                                                [:= :self_table.schema [:auto/param "public"]]
                                                                                 [:= :table.schema nil]]]
                                                                               [:= :self_field.name [:lower :field.name]]]}]]]})))
 
@@ -205,7 +205,7 @@
 (mu/defn delete-analytics-collections!
   "Delete the Collections of the analytics namespace."
   []
-  (t2/delete! :model/Collection :namespace "analytics"))
+  (t2/delete! :model/Collection :namespace [:auto/param "analytics"]))
 
 (mu/defn delete-pulse-channel-recipients-of-user!
   "Delete the PulseChannelRecipients of the User with `user-id`."

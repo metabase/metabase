@@ -49,6 +49,6 @@
    entity-local-id  :- ms/PositiveInt
    ai-context       :- ::osi.schema/osi-ai-context.ai-context]
   (app-db/update-or-insert! :model/OsiAiContext
-                            {:entity_type     [:auto/param entity-type]
-                             :entity_local_id [:auto/param entity-local-id]}
+                            {:entity_type     entity-type
+                             :entity_local_id entity-local-id}
                             (constantly {:ai_context ai-context})))

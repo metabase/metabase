@@ -445,7 +445,7 @@
              {:select   [:transform_id [[:max :end_time] :last_success]]
               :where    [:and
                          [:in :transform_id [:auto/param transform-ids]]
-                         [:= :status "succeeded"]]
+                         [:= :status [:auto/param "succeeded"]]]
               :group-by [:transform_id]}))
 
 (mu/defn latest-run-start-times-query
@@ -646,7 +646,7 @@
    end   :- ms/TemporalInstant]
   (t2/select [:model/TransformJobRun :job_id :start_time :message]
              {:where    [:and
-                         [:= :run_method "cron"]
+                         [:= :run_method [:auto/param "cron"]]
                          [:in :status ["failed" "timeout"]]
                          [:>= :start_time [:auto/param start]]
                          [:< :start_time [:auto/param end]]]

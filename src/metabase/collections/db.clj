@@ -48,7 +48,7 @@
 (mu/defn root-remote-synced-collection
   "The top-level remote-synced ::collections.schema/collection, or nil."
   []
-  (t2/select-one :model/Collection :is_remote_synced true :location "/"))
+  (t2/select-one :model/Collection :is_remote_synced true :location [:auto/param "/"]))
 
 (mu/defn personal-collection-of-user
   "The personal ::collections.schema/collection of the User with `user-id`, or nil."
@@ -100,7 +100,7 @@
 (mu/defn root-collection-type-by-id
   "The type of the top-level Collection with `collection-id`, or nil if it is not top-level."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :type :model/Collection :id [:auto/param collection-id] :location "/"))
+  (t2/select-one-fn :type :model/Collection :id [:auto/param collection-id] :location [:auto/param "/"]))
 
 ;;; ---------------------------------------------- ::collections.schema/collection sets ----------------------------------------------
 
@@ -270,7 +270,7 @@
   []
   (t2/select-pks-set :model/Collection {:where [:and
                                                 [:= :is_remote_synced true]
-                                                [:= :location "/"]]}))
+                                                [:= :location [:auto/param "/"]]]}))
 
 (mu/defn personal-collection-ids
   "The IDs of every personal ::collections.schema/collection."
@@ -696,6 +696,6 @@
 (mu/defn non-api-key-user-ids
   "The IDs of the Users among `user-ids` that are not API key users."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pks-set :model/User :id [:in [:auto/param user-ids]] :type [:not= :api-key]))
+  (t2/select-pks-set :model/User :id [:in [:auto/param user-ids]] :type [:not= [:auto/param :api-key]]))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------

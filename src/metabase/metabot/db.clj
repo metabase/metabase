@@ -263,7 +263,7 @@
   insert) and must return the fields to write."
   [conversation-id :- :string
    update-fn :- fn?]
-  (mdb/update-or-insert! :model/MetabotConversation {:id [:auto/param conversation-id]} update-fn))
+  (mdb/update-or-insert! :model/MetabotConversation {:id conversation-id} update-fn))
 
 (mu/defn set-conversation-title-if-missing!
   "Set the title of the MetabotConversation with `conversation-id` if it has none."
@@ -341,7 +341,7 @@
                  {:where    [:and
                              [:= :conversation_id [:auto/param conversation-id]]
                              [:= :deleted_at nil]
-                             [:= :role "assistant"]]
+                             [:= :role [:auto/param "assistant"]]]
                   :order-by [[:created_at :desc] [:id :desc]]}))
 
 (mu/defn insert-message-returning-pk!
@@ -397,7 +397,7 @@
    submitter-user-id :- ::lib.schema.id/user
    update-fn :- fn?]
   (mdb/update-or-insert! :model/MetabotFeedback
-                         {:message_id [:auto/param message-id] :user_id [:auto/param submitter-user-id]}
+                         {:message_id message-id :user_id submitter-user-id}
                          update-fn))
 
 (mu/defn upsert-source-feedback!
@@ -410,10 +410,10 @@
    source-type :- [:enum "table" "card" "model" "dashboard"]
    update-fn :- fn?]
   (mdb/update-or-insert! :model/MetabotSourceFeedback
-                         {:message_id  [:auto/param message-id]
-                          :user_id     [:auto/param submitter-user-id]
-                          :source_id   [:auto/param source-id]
-                          :source_type [:auto/param source-type]}
+                         {:message_id  message-id
+                          :user_id     submitter-user-id
+                          :source_id   source-id
+                          :source_type source-type}
                          update-fn))
 
 ;;; ------------------------------------------------ Databases ------------------------------------------------
@@ -871,7 +871,7 @@
   "The presentable columns of the unarchived model Cards on the Database with `database-id`, ordered by name."
   [database-id :- ::lib.schema.id/database]
   (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
-             :type :model
+             :type [:auto/param :model]
              :database_id [:auto/param database-id]
              :archived false
              {:order-by [[:%lower.name :asc]]}))
@@ -927,8 +927,8 @@
              {:where    (cond-> [:and
                                  [:= :archived false]
                                  [:= :namespace nil]
-                                 [:or [:= :type nil] [:!= :type "trash"]]]
-                          (not include-nested?) (conj [:= :location "/"]))
+                                 [:or [:= :type nil] [:!= :type [:auto/param "trash"]]]]
+                          (not include-nested?) (conj [:= :location [:auto/param "/"]]))
               :order-by [[:location :asc] [:%lower.name :asc]]}))
 
 (mu/defn unarchived-collections-at-location
@@ -942,7 +942,7 @@
 (mu/defn root-collections-of-types
   "The top-level Collections whose type is one of `types`."
   [types :- [:sequential :string]]
-  (t2/select :model/Collection :type [:in [:auto/param types]] :location "/"))
+  (t2/select :model/Collection :type [:in [:auto/param types]] :location [:auto/param "/"]))
 
 ;;; ---------------------------------------------- Other models ----------------------------------------------
 
@@ -1025,7 +1025,7 @@
                     :moderated_item_id   [:in [:auto/param item-ids]]
                     :moderated_item_type [:auto/param item-type]
                     :most_recent         true
-                    :status              "verified"))
+                    :status              [:auto/param "verified"]))
 
 (mu/defn latest-review-status-row
   "The `:status` row of the most recent moderation review of the item with `item-id` of `item-type`, or nil."

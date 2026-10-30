@@ -43,7 +43,7 @@
                                 (warehouse-schema-overlay/field-query {:alias :target_field, :user-settings? false})
                                 [:= :dim.human_readable_field_id :target_field.id]]
                        :where  [:and
-                                [:= :dim.type "external"]
+                                [:= :dim.type [:auto/param "external"]]
                                 [:in input-table-id [:auto/param table-ids]]
                                 [:not [:in output-table-id [:auto/param exclude-table-ids]]]]}))
 
@@ -55,6 +55,8 @@
    output-table-id :- :keyword
    selectors       :- TableSelectors]
   (let [where (table-selectors-where selectors)]
+    ;; `output-table-id` names the outer query's column that the NOT EXISTS correlates on
+    #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
     (t2/reducible-query {:select [[output-table-id :table_id]]
                          :from   [[(t2/table-name :model/Dimension) :dim]]
                          :join   [(warehouse-schema-overlay/field-query {:alias :source_field})
@@ -62,13 +64,13 @@
                                   (warehouse-schema-overlay/field-query {:alias :target_field})
                                   [:= :dim.human_readable_field_id :target_field.id]]
                          :where  [:and
-                                  [:= :dim.type "external"]
+                                  [:= :dim.type [:auto/param "external"]]
                                   [:in input-table-id ^:allow-subquery
                                    {:select [:id] :from [(warehouse-schema-overlay/table-query)] :where where}]
                                   [:not [:exists ^:allow-subquery
                                          {:select [1]
                                           :from   [(warehouse-schema-overlay/table-query)]
-                                          :where  [:and where [:= :id [:auto/param output-table-id]]]}]]]})))
+                                          :where  [:and where [:= :id output-table-id]]}]]]})))
 
 (mu/defn database
   "The Database with `database-id`, or nil."

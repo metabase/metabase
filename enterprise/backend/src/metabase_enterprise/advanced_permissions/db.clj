@@ -25,8 +25,8 @@
   [group-id     :- ms/PositiveInt
    database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn-set :db_id :model/DataPermissions
-                    :perm_type :perms/view-data
-                    :perm_value :blocked
+                    :perm_type [:auto/param :perms/view-data]
+                    :perm_value [:auto/param :blocked]
                     :group_id [:auto/param group-id]
                     :db_id [:in [:auto/param database-ids]]
                     {:select-distinct [:db_id]}))
@@ -53,8 +53,8 @@
   "The subset of `group-ids` blocked from viewing some Database."
   [group-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :group_id :model/DataPermissions
-                    :perm_type :perms/view-data
-                    :perm_value :blocked
+                    :perm_type [:auto/param :perms/view-data]
+                    :perm_value [:auto/param :blocked]
                     :group_id [:in [:auto/param group-ids]]
                     {:select-distinct [:group_id]}))
 
@@ -74,8 +74,8 @@
    group-ids   :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :group_id :model/DataPermissions
                     :db_id [:auto/param database-id]
-                    :perm_type :perms/view-data
-                    :perm_value :blocked
+                    :perm_type [:auto/param :perms/view-data]
+                    :perm_value [:auto/param :blocked]
                     :group_id [:in [:auto/param group-ids]]
                     {:select-distinct [:group_id]}))
 
@@ -96,7 +96,7 @@
   []
   (t2/select :model/Permissions
              {:where [:or
-                      [:= :object "/"]
+                      [:= :object [:auto/param "/"]]
                       [:like :object (h2x/literal "/application/%")]]}))
 
 (mu/defn user-group-memberships

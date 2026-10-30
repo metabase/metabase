@@ -102,7 +102,7 @@
   (t2/select :model/Field
              :active true
              :table_id [:in [:auto/param table-ids]]
-             :visibility_type [:not= "retired"]
+             :visibility_type [:not= [:auto/param "retired"]]
              {:from [(warehouse-schema-overlay/field-query)]
               :order-by field-order-rule}))
 
@@ -330,12 +330,12 @@
 (mu/defn full-field-values-for-fields
   "The full FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/FieldValues :field_id [:in [:auto/param field-ids]] :type :full :hash_key nil))
+  (t2/select :model/FieldValues :field_id [:in [:auto/param field-ids]] :type [:auto/param :full] :hash_key nil))
 
 (mu/defn full-field-values-rows
   "The ::warehouse-schema.schema/field ID and values of the full FieldValues of the ::warehouse-schema.schema/field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select [:model/FieldValues :field_id :values] :field_id [:auto/param field-id] :type :full))
+  (t2/select [:model/FieldValues :field_id :values] :field_id [:auto/param field-id] :type [:auto/param :full]))
 
 (mu/defn full-field-values-for-tables
   "The ::warehouse-schema.schema/field ID, values, and ::warehouse-schema.schema/table ID of the full FieldValues of the normal Fields of the Tables with `table-ids`."
@@ -345,8 +345,8 @@
                       [:= :metabase_fieldvalues.field_id :field.id]]
               :where [:and
                       [:in :field.table_id [:auto/param table-ids]]
-                      [:= :field.visibility_type "normal"]
-                      [:= :metabase_fieldvalues.type "full"]]}))
+                      [:= :field.visibility_type [:auto/param "normal"]]
+                      [:= :metabase_fieldvalues.type [:auto/param "full"]]]}))
 
 (mu/defn full-field-values-with-human-readable-values
   "The values and human-readable values of the full FieldValues of the ::warehouse-schema.schema/field with `field-id` if it has
@@ -354,10 +354,10 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one [:model/FieldValues :values :human_readable_values]
                  {:where [:and
-                          [:= :type "full"]
+                          [:= :type [:auto/param "full"]]
                           [:= :field_id [:auto/param field-id]]
                           [:not= :human_readable_values nil]
-                          [:not= :human_readable_values "{}"]]}))
+                          [:not= :human_readable_values [:auto/param "{}"]]]}))
 
 (mu/defn field-values-last-used-at
   "The latest `last_used_at` of any FieldValues of the ::warehouse-schema.schema/field with `field-id`."
@@ -512,7 +512,7 @@
 (mu/defn unarchived-metric-cards-for-tables
   "The unarchived metric Cards of the Tables with `table-ids`, ordered by name."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Card :table_id [:in [:auto/param table-ids]] :archived false :type :metric {:order-by [[:name :asc]]}))
+  (t2/select :model/Card :table_id [:in [:auto/param table-ids]] :archived false :type [:auto/param :metric] {:order-by [[:name :asc]]}))
 
 (mu/defn transforms-by-id
   "A map of ID to Transform for `transform-ids`."
@@ -588,7 +588,7 @@
               :left-join [[^:allow-subquery {:select   [:moderated_item_id :status]
                                              :from     [:moderation_review]
                                              :where    [:and
-                                                        [:= :moderated_item_type "card"]
+                                                        [:= :moderated_item_type [:auto/param "card"]]
                                                         [:= :most_recent true]]
                                              :order-by [[:id :desc]]
                                              :limit    1} :r]

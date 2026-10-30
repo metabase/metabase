@@ -169,7 +169,7 @@
                                 [:not= :is_sample true]
                                 [:not= :is_stub true]
                                 (when-not include-h2?
-                                  [:not= :engine "h2"])]}))
+                                  [:not= :engine [:auto/param "h2"]])]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."

@@ -30,7 +30,7 @@
 (mu/defn personal-user-stats-columns
   "The active, superuser, last login, and SSO source of every personal User."
   []
-  (t2/select [:model/User :is_active :is_superuser :last_login :sso_source] :type :personal))
+  (t2/select [:model/User :is_active :is_superuser :last_login :sso_source] :type [:auto/param :personal]))
 
 (mu/defn document-archived-flags
   "The archived flag of every Document."
@@ -59,7 +59,7 @@
   "The number of unarchived metric Cards in the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/count :model/Card {:where [:and
-                                 [:= :type "metric"]
+                                 [:= :type [:auto/param "metric"]]
                                  [:= :archived false]
                                  [:in :collection_id [:auto/param collection-ids]]]}))
 
@@ -184,7 +184,7 @@
 (mu/defn unarchived-metric-card-count
   "The number of unarchived metric Cards."
   []
-  (t2/count :model/Card :type :metric :archived false))
+  (t2/count :model/Card :type [:auto/param :metric] :archived false))
 
 (defn- execution-metrics-sql []
   ;; Postgres automatically adjusts for daylight saving time when performing time calculations on TIMESTAMP WITH TIME
@@ -280,7 +280,7 @@
 (mu/defn unarchived-model-count
   "The number of unarchived model Cards."
   []
-  (t2/count :model/Card :type :model :archived false))
+  (t2/count :model/Card :type [:auto/param :model] :archived false))
 
 (mu/defn new-embedded-dashboard-count-since
   "The number of unarchived Dashboards with embedding enabled created at or after `since`."
@@ -295,7 +295,7 @@
 (mu/defn unarchived-pivot-table-count
   "The number of unarchived pivot table Cards."
   []
-  (t2/count :model/Card :display :pivot :archived false))
+  (t2/count :model/Card :display [:auto/param :pivot] :archived false))
 
 (mu/defn query-execution-count-since
   "The number of QueryExecutions started at or after `since`."
@@ -340,7 +340,7 @@
 (mu/defn official-collection-exists?
   "Whether an official Collection exists."
   []
-  (t2/exists? :model/Collection :authority_level "official"))
+  (t2/exists? :model/Collection :authority_level [:auto/param "official"]))
 
 (mu/defn cache-config-exists?
   "Whether any CacheConfig exists."
@@ -365,7 +365,7 @@
 (mu/defn filtered-pulse-exists?
   "Whether a Pulse with parameters exists."
   []
-  (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]}))
+  (t2/exists? :model/Pulse {:where [:not= :parameters [:auto/param "[]"]]}))
 
 (mu/defn upload-table-exists?
   "Whether an uploaded Table exists."
@@ -375,9 +375,9 @@
 (mu/defn snippet-collection-exists?
   "Whether a snippet Collection exists."
   []
-  (t2/exists? :model/Collection :namespace "snippets"))
+  (t2/exists? :model/Collection :namespace [:auto/param "snippets"]))
 
 (mu/defn starburst-database-details
   "The connection details of the Starburst Databases."
   []
-  (t2/select-fn-set :details :model/Database :engine "starburst"))
+  (t2/select-fn-set :details :model/Database :engine [:auto/param "starburst"]))

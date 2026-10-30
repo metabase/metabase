@@ -33,16 +33,16 @@
 (mu/defn root-collections-for-user
   "The top-level non-analytics Collections that are not personal or belong to the User with `user-id`."
   [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/select :model/Collection {:where [:and [:= :location "/"]
+  (t2/select :model/Collection {:where [:and [:= :location [:auto/param "/"]]
                                         [:or [:= :personal_owner_id nil]
                                          [:= :personal_owner_id [:auto/param user-id]]]
                                         [:or [:= :namespace nil]
-                                         [:!= :namespace "analytics"]]]}))
+                                         [:!= :namespace [:auto/param "analytics"]]]]}))
 
 (mu/defn analytics-root-collections
   "The Collections in the analytics namespace."
   []
-  (t2/select :model/Collection {:where [:= :namespace "analytics"]}))
+  (t2/select :model/Collection {:where [:= :namespace [:auto/param "analytics"]]}))
 
 (mu/defn card-ids-in-collections
   "The subset of `card-ids` living in the Collections with `collection-ids`."

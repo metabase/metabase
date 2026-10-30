@@ -59,7 +59,7 @@
               [:%max.timestamp :max_ts]]
              {:group-by  [:model :model_id]
               :where     [:and
-                          [:= :context "view"]
+                          [:= :context [:auto/param "view"]]
                           [:in :model #{"dashboard" "table"}]
                           [:or [:= :active true] [:= :active nil]]
                           [:or [:= :archived false] [:= :archived nil]]]
@@ -67,11 +67,11 @@
               :limit     limit
               :left-join [[:report_dashboard :d]
                           [:and
-                           [:= :model "dashboard"]
+                           [:= :model [:auto/param "dashboard"]]
                            [:= :d.id :model_id]]
                           (warehouse-schema-overlay/table-query {:alias :t})
                           [:and
-                           [:= :model "table"]
+                           [:= :model [:auto/param "table"]]
                            [:= :t.id :model_id]]]}))
 
 (mu/defn recent-card-runs
@@ -233,7 +233,7 @@
               :left-join [[:moderation_review :mr]
                           [:and
                            [:= :mr.moderated_item_id :card.id]
-                           [:= :mr.moderated_item_type "card"]
+                           [:= :mr.moderated_item_type [:auto/param "card"]]
                            [:= :mr.most_recent true]]
                           [:collection]
                           [:and
@@ -260,7 +260,7 @@
               :left-join [[:moderation_review :mr]
                           [:and
                            [:= :mr.moderated_item_id :dash.id]
-                           [:= :mr.moderated_item_type "dashboard"]
+                           [:= :mr.moderated_item_type [:auto/param "dashboard"]]
                            [:= :mr.most_recent true]]
                           [:collection :c]
                           [:and
@@ -290,7 +290,7 @@
               :where [:and
                       [:or
                        [:= :visibility_type nil]
-                       [:!= :visibility_type "hidden"]]
+                       [:!= :visibility_type [:auto/param "hidden"]]]
                       [:in :t.id [:auto/param table-ids]]]
               :left-join [[:metabase_database :db]
                           [:= :db.id :t.db_id]]}))
@@ -315,7 +315,7 @@
                           ;; Additionally filter by card type to distinguish questions/models/metrics
                           (when (seq card-types)
                             [:or
-                             [:!= :rv.model "card"]
+                             [:!= :rv.model [:auto/param "card"]]
                              [:in :rc.type (map h2x/literal card-types)]])
                           ;; include non-collections, or collections without a namespace/type.
                           [:or
@@ -331,19 +331,19 @@
                               [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]
                           ;; exploration documents are accessible only through their owning Exploration;
                           ;; hide them from recents to match search and collection-listing behavior.
-                          [:or [:!= :rv.model "document"] [:= :doc.exploration_id nil]]]
+                          [:or [:!= :rv.model [:auto/param "document"]] [:= :doc.exploration_id nil]]]
               :left-join [[:report_card :rc]
                           [:and
                            ;; only want to join on card_type if it's a card
-                           [:= :rv.model "card"]
+                           [:= :rv.model [:auto/param "card"]]
                            [:= :rc.id :rv.model_id]]
                           [:collection :coll]
                           [:and
-                           [:= :rv.model "collection"]
+                           [:= :rv.model [:auto/param "collection"]]
                            [:= :coll.id :rv.model_id]]
                           [:document :doc]
                           [:and
-                           [:= :rv.model "document"]
+                           [:= :rv.model [:auto/param "document"]]
                            [:= :doc.id :rv.model_id]]]
               :order-by  [[:rv.timestamp :desc]]}))
 

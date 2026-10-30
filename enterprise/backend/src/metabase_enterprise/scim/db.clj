@@ -23,12 +23,12 @@
 (mu/defn scim-api-key
   "The SCIM ApiKey, or nil."
   []
-  (t2/select-one :model/ApiKey :scope :scim))
+  (t2/select-one :model/ApiKey :scope [:auto/param :scim]))
 
 (mu/defn delete-scim-api-keys!
   "Delete every SCIM ApiKey, returning the number deleted."
   []
-  (t2/delete! :model/ApiKey :scope :scim))
+  (t2/delete! :model/ApiKey :scope [:auto/param :scim]))
 
 (mu/defn insert-api-key!
   "Insert `api-key` and return the new instance."
@@ -43,7 +43,7 @@
 (mu/defn scim-user-by-entity-id
   "The SCIM columns of the personal User with `entity-id`, or nil."
   [entity-id :- :string]
-  (t2/select-one user-columns :entity_id entity-id {:where [:= :type "personal"]}))
+  (t2/select-one user-columns :entity_id entity-id {:where [:= :type [:auto/param "personal"]]}))
 
 (mu/defn scim-user-by-email
   "The SCIM columns of the User with `email`, or nil."

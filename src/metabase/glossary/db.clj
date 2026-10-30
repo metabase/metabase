@@ -15,10 +15,9 @@
   [search :- [:maybe :string]]
   (t2/select :model/Glossary
              (cond-> {:order-by [[:term :asc]]}
-               search (assoc :where (let [pattern (h2x/like-substring search)]
-                                      [:or
-                                       [:like [:lower :term] [:auto/param pattern]]
-                                       [:like [:lower :definition] [:auto/param pattern]]])))))
+               search (assoc :where [:or
+                                     [:like [:lower :term] (h2x/like-substring search)]
+                                     [:like [:lower :definition] (h2x/like-substring search)]]))))
 
 (mu/defn insert-glossary-entry!
   "Insert the Glossary `row` and return the inserted instance."

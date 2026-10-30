@@ -22,7 +22,7 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/select :model/TableIndex
              :transform_id [:auto/param transform-id]
-             :status [:not= :delete-pending]
+             :status [:not= [:auto/param :delete-pending]]
              {:order-by [[:index_name :asc]]}))
 
 (mu/defn running-table-indexes
@@ -32,7 +32,7 @@
   (t2/select :model/TableIndex
              :transform_id [:auto/param transform-id]
              :id [:in [:auto/param ids]]
-             :status :running
+             :status [:auto/param :running]
              {:order-by [[:id :asc]]}))
 
 (mu/defn delete-pending-table-indexes
@@ -40,13 +40,13 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/select :model/TableIndex
              :transform_id [:auto/param transform-id]
-             :status :delete-pending
+             :status [:auto/param :delete-pending]
              {:order-by [[:id :asc]]}))
 
 (mu/defn applicable-table-index
   "The TableIndex with `id` if it is not pending deletion, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TableIndex :id [:auto/param id] :status [:not= :delete-pending]))
+  (t2/select-one :model/TableIndex :id [:auto/param id] :status [:not= [:auto/param :delete-pending]]))
 
 (mu/defn table-index-with-status-exists?
   "Whether the Transform with `transform-id` has a TableIndex in one of `statuses`."
@@ -65,7 +65,7 @@
   [ids           :- [:set ms/PositiveInt]
    error-message :- :string]
   (t2/update! :model/TableIndex
-              {:id [:in [:auto/param ids]] :status :running}
+              {:id [:in [:auto/param ids]] :status [:auto/param :running]}
               {:status           :failed
                :error_message    error-message
                :last_executed_at :%now}))

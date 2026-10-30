@@ -69,7 +69,7 @@
   "Set the first name (and clear the last name) of the api-key User with `user-id`."
   [user-id    :- ::lib.schema.id/user
    first-name :- :string]
-  (t2/update! :model/User :id [:auto/param user-id], :type :api-key, {:first_name first-name, :last_name ""}))
+  (t2/update! :model/User :id [:auto/param user-id], :type [:auto/param :api-key], {:first_name first-name, :last_name ""}))
 
 (mu/defn user-type
   "The `:type` of the User with `user-id`, or nil."

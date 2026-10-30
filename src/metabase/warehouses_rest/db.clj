@@ -56,7 +56,7 @@
                                   [^:allow-subquery {:select   [:status]
                                                      :from     [:moderation_review]
                                                      :where    [:and
-                                                                [:= :moderated_item_type "card"]
+                                                                [:= :moderated_item_type [:auto/param "card"]]
                                                                 [:= :moderated_item_id :report_card.id]
                                                                 [:= :most_recent true]]
                                                      :order-by [[:id :desc]]
@@ -66,7 +66,7 @@
                        :where    [:and
                                   [:not= :result_metadata nil]
                                   [:= :archived false]
-                                  [:in :type [(u/qualified-name card-type) "metric"]]
+                                  [:in :type [(u/qualified-name card-type) [:auto/param "metric"]]]
                                   [:in :database_id [:auto/param database-ids]]
                                   (cond
                                     (nil? collection-scope)          nil
@@ -131,11 +131,13 @@
    like-pattern    :- [:or :string vector?]
    limit           :- ms/PositiveInt
    published-only? :- :boolean]
+  ;; `like-pattern` is a `h2x/like-substring` or `like-prefix` pattern expression rather than a value
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/select [:model/Table :id :db_id :schema :name]
              {:from [(warehouse-schema-overlay/table-query)]
               :where    [:and [:= :db_id [:auto/param database-id]]
                          [:= :active true]
-                         [:like :%lower.name [:auto/param like-pattern]]
+                         [:like :%lower.name like-pattern]
                          [:= :visibility_type nil]
                          (when published-only?
                            [:= :is_published true])]
@@ -211,9 +213,11 @@
   ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
   ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
   ;; expressions.
+  ;; `like-pattern` is a `h2x/like-substring` or `like-prefix` pattern expression rather than a value
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/select [:model/Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
              :metabase_field.active          true
-             :%lower.metabase_field/name     [:like [:auto/param like-pattern]]
+             :%lower.metabase_field/name     [:like like-pattern]
              :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
              :table.db_id                    [:auto/param database-id]
              {:from       [(warehouse-schema-overlay/field-query)]

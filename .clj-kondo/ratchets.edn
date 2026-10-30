@@ -28,6 +28,7 @@
                                 :metabase/discourage-millis-duration                       1
                                 :metabase/modules                                          23
                                 :metabase/namespace-name                                   3
+                                :metabase/unsafe-app-db-query                              4
                                 :metabase/validate-defendpoint-has-response-schema         424
                                 :metabase/validate-defendpoint-query-params-use-kebab-case 48
                                 :metabase/validate-defendpoint-route-uses-kebab-case       44
@@ -95,7 +96,6 @@
                                 :metabase/prefer-with-dynamic-fn-redefs  4
                                 :metabase/t2-query-namespace             2
                                 :metabase/table-or-field-query           1
-                                :metabase/unsafe-app-db-query            1
                                 :missing-docstring                       1
                                 :private-call                            1
                                 :redundant-ignore                        1

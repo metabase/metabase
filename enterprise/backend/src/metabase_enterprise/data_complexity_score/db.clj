@@ -37,14 +37,14 @@
   "The IDs of the Cards whose most recent moderation review is verified."
   []
   (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                    :moderated_item_type "card"
+                    :moderated_item_type [:auto/param "card"]
                     :most_recent         true
-                    :status              "verified"))
+                    :status              [:auto/param "verified"]))
 
 (mu/defn official-collection-ids
   "The IDs of the official Collections."
   []
-  (t2/select-fn-set :id :model/Collection :authority_level "official"))
+  (t2/select-fn-set :id :model/Collection :authority_level [:auto/param "official"]))
 
 (mu/defn routed-child-database-ids
   "The IDs of the Databases that are routing destinations."

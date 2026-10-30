@@ -97,7 +97,7 @@
                      [^:allow-subquery {:select   [:status]
                                         :from     [:moderation_review]
                                         :where    [:and
-                                                   [:= :moderated_item_type "card"]
+                                                   [:= :moderated_item_type [:auto/param "card"]]
                                                    [:= :moderated_item_id :c.id]
                                                    [:= :most_recent true]]
                                         ;; limit 1 to ensure that there is only one result but this invariant should

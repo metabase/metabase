@@ -247,4 +247,4 @@
   []
   (t2/select [:model/Card :id :database_id :dataset_query :card_schema :type :entity_id :result_metadata :dimensions
               :dimension_mappings]
-             :type "metric" :archived false))
+             :type [:auto/param "metric"] :archived false))

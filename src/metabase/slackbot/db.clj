@@ -10,7 +10,7 @@
   "The user id and metadata of the newest Slack Connect AuthIdentity of an active User for `slack-user-id`, or nil."
   [slack-user-id :- :string]
   (t2/select-one [:model/AuthIdentity :user_id :metadata]
-                 :provider "slack-connect"
+                 :provider [:auto/param "slack-connect"]
                  :provider_id [:auto/param slack-user-id]
                  {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
                   :where    [:= :user.is_active true]
@@ -28,7 +28,7 @@
    slack-msg-ids   :- [:set :string]]
   (t2/select :model/MetabotMessage
              :conversation_id [:auto/param conversation-id]
-             :role "assistant"
+             :role [:auto/param "assistant"]
              :deleted_at nil
              :slack_msg_id [:in [:auto/param slack-msg-ids]]))
 
@@ -39,7 +39,7 @@
   (t2/select-fn-set :slack_msg_id
                     :model/MetabotMessage
                     :conversation_id [:auto/param conversation-id]
-                    :role "assistant"
+                    :role [:auto/param "assistant"]
                     :deleted_at [:not= nil]
                     :slack_msg_id [:in [:auto/param slack-msg-ids]]))
 
@@ -49,7 +49,7 @@
   [conversation-id :- :string]
   (t2/select [:model/MetabotMessage :id :role :state :error :finished]
              :conversation_id [:auto/param conversation-id]
-             :role "assistant"
+             :role [:auto/param "assistant"]
              :deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
@@ -61,7 +61,7 @@
                     :model/MetabotMessage
                     :channel_id   [:auto/param channel-id]
                     :slack_msg_id [:auto/param slack-msg-id]
-                    :role         "assistant"))
+                    :role         [:auto/param "assistant"]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."

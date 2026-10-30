@@ -62,7 +62,7 @@
 (mu/defn personal-user?
   "Whether the User with `user-id` is a `:personal` user."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id [:auto/param user-id] :type :personal))
+  (t2/exists? :model/User :id [:auto/param user-id] :type [:auto/param :personal]))
 
 (mu/defn oauth-client-exists?
   "Whether an OAuthClient with `client-id` exists."

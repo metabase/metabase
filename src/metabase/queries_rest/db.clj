@@ -115,6 +115,8 @@
    exclude-ids :- [:maybe [:sequential ms/PositiveInt]]
    name-pattern :- [:maybe [:or :string vector?]]
    limit :- [:maybe ms/PositiveInt]]
+  ;; `name-pattern` is a `h2x/like-substring` pattern expression rather than a value
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/select :model/Card
              :archived false
              :display [:in [:auto/param display-types]]
@@ -127,7 +129,7 @@
                (sql.helpers/where [:not [:in :id [:auto/param exclude-ids]]])
 
                name-pattern
-               (sql.helpers/where [:like :%lower.name [:auto/param name-pattern]])
+               (sql.helpers/where [:like :%lower.name name-pattern])
 
                limit
                (assoc :limit limit))))

@@ -316,7 +316,7 @@
 (mu/defn- personal-root-collection-ids :- [:sequential ::lib.schema.id/collection]
   "The IDs of the personal Collections."
   []
-  (or (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/") []))
+  (or (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location [:auto/param "/"]) []))
 
 (mu/defn action-root-namespace :- [:maybe [:= :data-actions]]
   "The namespace of the root collection an action without a collection sits in: the data actions root for a
@@ -611,11 +611,11 @@
                                                     :include-archived-items :exclude})]
                      dependent-types      (conj [:in :afe.analyzed_entity_type [:auto/param dependent-types]])
                      dependent-card-types (conj [:or
-                                                 [:!= :afe.analyzed_entity_type "card"]
+                                                 [:!= :afe.analyzed_entity_type [:auto/param "card"]]
                                                  [:in :rc.type [:auto/param dependent-card-types]]]))}
      dependent-card-types (assoc :left-join [[:report_card :rc]
                                              [:and
-                                              [:= :afe.analyzed_entity_type "card"]
+                                              [:= :afe.analyzed_entity_type [:auto/param "card"]]
                                               [:= :rc.id :afe.analyzed_entity_id]]]))))
 
 ;;; ---------------------------------------------------- Entities ----------------------------------------------------
@@ -779,8 +779,8 @@
   "The IDs of the Tables that depend on the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-fn-set :from_entity_id :model/Dependency
-                    :from_entity_type :table
-                    :to_entity_type   :transform
+                    :from_entity_type [:auto/param :table]
+                    :to_entity_type   [:auto/param :transform]
                     :to_entity_id     [:auto/param transform-id]))
 
 (mu/defn delete-table-dependencies-on-transform!
@@ -789,9 +789,9 @@
   [table-ids    :- [:sequential ::lib.schema.id/table]
    transform-id :- ::lib.schema.id/transform]
   (t2/delete! :model/Dependency
-              :from_entity_type :table
+              :from_entity_type [:auto/param :table]
               :from_entity_id   [:in [:auto/param table-ids]]
-              :to_entity_type   :transform
+              :to_entity_type   [:auto/param :transform]
               :to_entity_id     [:auto/param transform-id]))
 
 ;;; -------------------------------------------- Statuses, shared by the jobs --------------------------------------------
@@ -940,7 +940,7 @@
             :where     (cond-> [:and [:or [:= :status.id nil]
                                       [:and [:= :status.terminal false] [:or [:> :status.stale 0] outdated]]]]
                          user-mbql-only?    (conj [:or [:= :report_card.query_type nil]
-                                                   [:not= :report_card.query_type "native"]]
+                                                   [:not= :report_card.query_type [:auto/param "native"]]]
                                                   (mi/exclude-internal-content-hsql :model/Card
                                                                                     :table-alias :report_card))
                          dependency-version (conj (current-dependencies-clause
@@ -1073,7 +1073,7 @@
 (mu/defn delete-result-metadata-statuses!
   "Delete the ResultMetadataStatuses of the Cards with `card-ids`, returning the number deleted."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/delete! :model/ResultMetadataStatus :entity_type :card :entity_id [:in [:auto/param card-ids]]))
+  (t2/delete! :model/ResultMetadataStatus :entity_type [:auto/param :card] :entity_id [:in [:auto/param card-ids]]))
 
 (mu/defn remapped-table-ids :- [:set ::lib.schema.id/table]
   "The IDs of the Tables of the Fields remapped to one of the Fields with `field-ids` as their human-readable field."
@@ -1087,7 +1087,7 @@
 (mu/defn internal-remap? :- :boolean
   "Whether the Field with `field-id` has an internal remap, which shows its FieldValues' human-readable values."
   [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Dimension :field_id [:auto/param field-id] :type "internal"))
+  (t2/exists? :model/Dimension :field_id [:auto/param field-id] :type [:auto/param "internal"]))
 
 (mu/defn card-state :- [:maybe ::dependencies.schema/card-state]
   "The `updated_at` and `result_metadata` of the Card with `card-id`, locking its row until the transaction ends when
@@ -1114,7 +1114,7 @@
   [entity-type :- ::dependencies.schema/entity-type
    entity-id   :- ms/PositiveInt
    result      :- :boolean]
-  (mdb/update-or-insert! :model/AnalysisFinding {:entity_type [:auto/param entity-type] :entity_id [:auto/param entity-id]}
+  (mdb/update-or-insert! :model/AnalysisFinding {:entity_type entity-type :entity_id entity-id}
                          (constantly {:result result})))
 
 (mu/defn take-pending-analysis-finding-statuses! :- [:sequential ::dependencies.schema/pending-status]

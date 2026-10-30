@@ -79,7 +79,7 @@
                     {:where [:and
                              [:= :db_id [:auto/param database-id]]
                              [:= :table_id nil]
-                             [:= :perm_type "perms/view-data"]
+                             [:= :perm_type [:auto/param "perms/view-data"]]
                              [:in :group_id [:auto/param group-ids]]]}))
 
 (mu/defn group-ids-for-user

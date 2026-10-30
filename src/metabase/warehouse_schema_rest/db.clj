@@ -153,7 +153,7 @@
 (mu/defn active-unretired-field-ids-for-table
   "The ids of the active, unretired Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id [:auto/param table-id] :visibility_type [:not= "retired"] :active true
+  (t2/select-pks-set :model/Field :table_id [:auto/param table-id] :visibility_type [:not= [:auto/param "retired"]] :active true
                      {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-ids-for-table
@@ -177,6 +177,6 @@
   [field-id               :- ::lib.schema.id/field
    values                 :- [:maybe ms/FieldValues]
    human-readable-values  :- [:maybe ms/FieldValues]]
-  (app-db/update-or-insert! :model/FieldValues {:field_id [:auto/param field-id], :type :full}
+  (app-db/update-or-insert! :model/FieldValues {:field_id field-id, :type :full}
                             (constantly {:values                values
                                          :human_readable_values human-readable-values})))

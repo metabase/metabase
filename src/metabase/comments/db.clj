@@ -31,7 +31,7 @@
   Distinct from [[comments-for-target]], which leaves ties undetermined."
   [document-id]
   (t2/select :model/Comment
-             :target_type "document"
+             :target_type [:auto/param "document"]
              :target_id [:auto/param document-id]
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
@@ -40,7 +40,7 @@
   live comments and skipping threads with no child target."
   [document-id]
   (t2/select [:model/Comment :child_target_id [:%count.id :comment_count]]
-             :target_type "document"
+             :target_type [:auto/param "document"]
              :target_id [:auto/param document-id]
              :child_target_id [:not= nil]
              :deleted_at nil

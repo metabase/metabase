@@ -223,16 +223,16 @@
              :where  [:and
                       [:= :ist.table_schema :%current_schema]
                       [:or
-                       [:like [:lower :ist.table_name] "search\\_index\\_\\_%"]
+                       [:like [:lower :ist.table_name] [:auto/param "search\\_index\\_\\_%"]]
                        ;; legacy table names
                        [:in [:lower :ist.table_name]
                         ["search_index" "search_index_next" "search_index_retired"]]]
                       ;; Exclude temp tables — they are managed by with-temp-index-table
-                      [:not-like [:lower :ist.table_name] "%\\_temp"]
+                      [:not-like [:lower :ist.table_name] [:auto/param "%\\_temp"]]
                       [:not [:exists ^:allow-subquery {:select [1]
                                                        :from   [[(t2/table-name :model/SearchIndexMetadata) :sim]]
                                                        :where  [:and
-                                                                [:= :sim.engine "appdb"]
+                                                                [:= :sim.engine [:auto/param "appdb"]]
                                                                 [:= [:lower :sim.index_name] [:lower :ist.table_name]]]}]]]}))
 
 (mu/defn pg-class-estimate
@@ -254,10 +254,10 @@
    lang-code :- :string]
   (t2/select-one-fn :created_at
                     :model/SearchIndexMetadata
-                    :engine :appdb
+                    :engine [:auto/param :appdb]
                     :version [:auto/param version]
                     :lang_code [:auto/param lang-code]
-                    :status :active
+                    :status [:auto/param :active]
                     {:order-by [[:created_at :desc]]}))
 
 (mu/defn insert-index-metadata!
@@ -287,7 +287,7 @@
               :version [:auto/param version]
               :lang_code [:auto/param lang-code]
               :index_name [:auto/param index-name]
-              :status [:not= :active]))
+              :status [:not= [:auto/param :active]]))
 
 (mu/defn index-metadata
   "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`, `version`, and
@@ -299,7 +299,7 @@
              :engine [:auto/param engine]
              :version [:auto/param version]
              :lang_code [:auto/param lang-code]
-             :status [:in [:active :pending]]))
+             :status [:in [[:auto/param :active] [:auto/param :pending]]]))
 
 (mu/defn delete-expired-pending-index-metadata!
   "Delete the pending SearchIndexMetadata rows of `lang-code` created before `created-before`."
@@ -308,7 +308,7 @@
   (t2/delete! :model/SearchIndexMetadata
               {:where [:and
                        [:= :lang_code [:auto/param lang-code]]
-                       [:= :status "pending"]
+                       [:= :status [:auto/param "pending"]]
                        [:< :created_at [:auto/param created-before]]]}))
 
 (mu/defn pending-index-metadata-exists?
@@ -316,7 +316,7 @@
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/exists? :model/SearchIndexMetadata :engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status :pending))
+  (t2/exists? :model/SearchIndexMetadata :engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status [:auto/param :pending]))
 
 (mu/defn lock-pending-index-metadata!
   "Lock and return the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, if one exists.
@@ -328,7 +328,7 @@
                  :engine [:auto/param engine]
                  :version [:auto/param version]
                  :lang_code [:auto/param lang-code]
-                 :status :pending
+                 :status [:auto/param :pending]
                  {:for :update}))
 
 (mu/defn delete-retired-index-metadata!
@@ -336,28 +336,28 @@
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/delete! :model/SearchIndexMetadata :engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status :retired))
+  (t2/delete! :model/SearchIndexMetadata :engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status [:auto/param :retired]))
 
 (mu/defn retire-active-index-metadata!
   "Retire the active SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/update! :model/SearchIndexMetadata {:engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status :active} {:status :retired}))
+  (t2/update! :model/SearchIndexMetadata {:engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status [:auto/param :active]} {:status :retired}))
 
 (mu/defn activate-pending-index-metadata!
   "Activate the pending SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/update! :model/SearchIndexMetadata {:engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status :pending} {:status :active}))
+  (t2/update! :model/SearchIndexMetadata {:engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status [:auto/param :pending]} {:status :active}))
 
 (mu/defn active-index-name
   "The name of the active SearchIndexMetadata row of `engine`, `version`, and `lang-code`, or nil."
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status :active))
+  (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status [:auto/param :active]))
 
 (mu/defn recent-index-versions
   "The `:version`s of the `limit` most recently updated SearchIndexMetadata versions."

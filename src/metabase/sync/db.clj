@@ -68,7 +68,7 @@
 (mu/defn synced-user-database-exists?
   "Whether any non-sample, non-audit Database has completed its initial sync."
   []
-  (t2/exists? :model/Database :is_sample false :is_audit false :initial_sync_status "complete"))
+  (t2/exists? :model/Database :is_sample false :is_audit false :initial_sync_status [:auto/param "complete"]))
 
 (mu/defn databases-with-schedules-reducible
   "Reducible raw Database rows whose sync schedules are the sample or default ones."
@@ -365,7 +365,7 @@
   (t2/select :model/Field
              :table_id [:auto/param table-id]
              :active true
-             :visibility_type "normal"
+             :visibility_type [:auto/param "normal"]
              {:from [(warehouse-schema-overlay/field-query)]
               :order-by [[:id :asc]], :limit limit}))
 
@@ -399,7 +399,7 @@
             :table_id [:auto/param table-id]
             :active true
             :visibility_type [:not-in ["sensitive" "retired"]]
-            :semantic_type :type/Name
+            :semantic_type [:auto/param :type/Name]
             {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mr/def ::cursor
@@ -615,7 +615,7 @@
               :where    [:and
                          [:= :table_id [:auto/param table-id]]
                          [:= :active true]
-                         [:not= :visibility_type "retired"]
+                         [:not= :visibility_type [:auto/param "retired"]]
                          (data-sensitivity-to-scan-clause rescan-public?)]
               :order-by [[:id :asc]]}))
 
@@ -632,7 +632,7 @@
                                 [:= :metabase_table.db_id [:auto/param database-id]]
                                 [:= :metabase_table.active true]
                                 [:= :metabase_field.active true]
-                                [:not= :metabase_field.visibility_type "retired"]
+                                [:not= :metabase_field.visibility_type [:auto/param "retired"]]
                                 (data-sensitivity-to-scan-clause rescan-public?)]
                      :group-by [:metabase_field.table_id]}))
 

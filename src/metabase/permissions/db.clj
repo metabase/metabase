@@ -562,7 +562,7 @@
                                  :where  [:and
                                           [:not= :pc.personal_owner_id nil]
                                           [:like :collection.location
-                                           [:concat "/" :pc.id "/%"]]]}]]]}))
+                                           [:concat [:auto/param "/"] :pc.id [:auto/param "/%"]]]]}]]]}))
 
 (mu/defn collection-ids-in-other-namespace
   "The IDs among `collection-ids` that do not belong to `namespace` (nil meaning the default namespace)."
@@ -571,7 +571,7 @@
   (t2/select-pks-set :model/Collection
                      {:where [:and [:in :id [:auto/param collection-ids]]
                               (cond->> [[:not= :namespace (some-> namespace name)]]
-                                (nil? namespace)  (into [:and [:not= :namespace "analytics"]])
+                                (nil? namespace)  (into [:and [:not= :namespace [:auto/param "analytics"]]])
                                 (some? namespace) (into [:or [:= :namespace nil]]))]}))
 
 (mu/defn library-collection-ids
@@ -612,7 +612,7 @@
             {:select [:id]
              :from   [:collection]
              :where  [:and
-                      [:or [:= :type nil] [:not= :type "trash"]]
+                      [:or [:= :type nil] [:not= :type [:auto/param "trash"]]]
                       (namespace-clause :namespace (u/qualified-name collection-namespace))
                       [:not :archived]
                       [:= :personal_owner_id nil]
@@ -624,13 +624,13 @@
                               :where  [:and
                                        [:not= :pc.personal_owner_id nil]
                                        [:like :collection.location
-                                        [:concat "/" :pc.id "/%"]]]}]]]}]
+                                        [:concat [:auto/param "/"] :pc.id [:auto/param "/%"]]]]}]]]}]
            [:relevant_permissions
             ^:allow-subquery
             {:select [:group_id :collection_id :perm_value]
              :from   [:permissions]
              :where  (into [:and
-                            [:= :perm_type "perms/collection-access"]
+                            [:= :perm_type [:auto/param "perms/collection-access"]]
                             [:not= :collection_id nil]]
                            (when (seq group-ids)
                              [[:in :group_id [:auto/param group-ids]]]))}]]
@@ -659,11 +659,11 @@
      ^:allow-subquery
      {:select   [[:pg.id :group_id]
                  [:c.id :collection_id]
-                 [[:max [:case [:= :p.perm_value "read-and-write"]
+                 [[:max [:case [:= :p.perm_value [:auto/param "read-and-write"]]
                          [:inline 1]
                          :else [:inline 0]]] :writable]
-                 [[:max [:case [:or [:= :p.perm_value "read-and-write"]
-                                [:= :p.perm_value "read"]]
+                 [[:max [:case [:or [:= :p.perm_value [:auto/param "read-and-write"]]
+                                [:= :p.perm_value [:auto/param "read"]]]
                          [:inline 1]
                          :else [:inline 0]]] :readable]]
       :from     [[:permissions_group :pg]]

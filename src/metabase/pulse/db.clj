@@ -74,7 +74,7 @@
 (mu/defn active-http-channel-exists?
   "Whether an active HTTP Channel exists."
   []
-  (t2/exists? :model/Channel :type :channel/http :active true))
+  (t2/exists? :model/Channel :type [:auto/param :channel/http] :active true))
 
 (mu/defn superusers
   "The superusers."
@@ -273,12 +273,12 @@
 (mu/defn email-pulse-channel
   "The email PulseChannel of the Pulse with `pulse-id`, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
-  (t2/select-one :model/PulseChannel :pulse_id [:auto/param pulse-id] :channel_type "email"))
+  (t2/select-one :model/PulseChannel :pulse_id [:auto/param pulse-id] :channel_type [:auto/param "email"]))
 
 (mu/defn email-pulse-channel-id
   "The id of the email PulseChannel of the Pulse with `pulse-id`, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
-  (t2/select-one-pk :model/PulseChannel :pulse_id [:auto/param pulse-id] :channel_type "email"))
+  (t2/select-one-pk :model/PulseChannel :pulse_id [:auto/param pulse-id] :channel_type [:auto/param "email"]))
 
 (mu/defn pulse-channel-details
   "The details of the PulseChannel with `channel-id`, or nil."

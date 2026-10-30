@@ -28,6 +28,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-set :name [:model/Field :name]
                     :table_id [:auto/param table-id]
-                    :base_type :type/JSON
+                    :base_type [:auto/param :type/JSON]
                     :json_unfolding false
                     {:from [(warehouse-schema-overlay/field-query)]}))

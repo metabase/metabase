@@ -142,7 +142,7 @@
           :notification_card
           [:and
            [:= :notification_card.id :notification.payload_id]
-           [:= :notification.payload_type "notification/card"]])
+           [:= :notification.payload_type [:auto/param "notification/card"]]])
          (sql.helpers/where [:= :notification_card.card_id [:auto/param card-id]]))
 
      (and (nil? legacy-active) (not (true? include-inactive?)))
@@ -171,14 +171,14 @@
 (mu/defn card-notifications
   "The card Notifications among `notification-ids`."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Notification :id [:in [:auto/param notification-ids]] :payload_type :notification/card))
+  (t2/select :model/Notification :id [:in [:auto/param notification-ids]] :payload_type [:auto/param :notification/card]))
 
 (mu/defn active-card-notifications-for-card
   "The active card Notifications attached to the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/Notification
              :active true
-             :payload_type :notification/card
+             :payload_type [:auto/param :notification/card]
              :payload_id [:in ^:allow-subquery {:select [:id]
                                                 :from   [:notification_card]
                                                 :where  [:= :card_id [:auto/param card-id]]}]))
@@ -193,7 +193,7 @@
               :where     [:and
                           [:= :n.active true]
                           [:= :ns.event_name [:auto/param event-name]]
-                          [:= :ns.type "notification-subscription/system-event"]]}))
+                          [:= :ns.type [:auto/param "notification-subscription/system-event"]]]}))
 
 (mu/defn insert-notification!
   "Insert `notification` and return the new instance."
@@ -204,7 +204,7 @@
   "Apply `changes` to the card Notifications among `notification-ids`, returning the number updated."
   [notification-ids :- [:sequential ms/PositiveInt]
    changes          :- (mut/select-keys ::notification.schema/notification.update [:active :creator_id])]
-  (t2/update! :model/Notification :id [:in [:auto/param notification-ids]] :payload_type :notification/card changes))
+  (t2/update! :model/Notification :id [:in [:auto/param notification-ids]] :payload_type [:auto/param :notification/card] changes))
 
 (mu/defn deactivate-notification!
   "Mark the Notification with `notification-id` inactive, returning the number updated."
@@ -270,25 +270,25 @@
   [notification-id :- ms/PositiveInt]
   (t2/select :model/NotificationSubscription
              :notification_id [:auto/param notification-id]
-             :type :notification-subscription/cron))
+             :type [:auto/param :notification-subscription/cron]))
 
 (mu/defn cron-subscription-ids-for-notification
   "The IDs of the cron NotificationSubscriptions of the Notification with `notification-id`."
   [notification-id :- ms/PositiveInt]
   (t2/select-pks-set :model/NotificationSubscription
                      :notification_id [:auto/param notification-id]
-                     :type :notification-subscription/cron))
+                     :type [:auto/param :notification-subscription/cron]))
 
 (mu/defn active-cron-subscriptions-by-id
   "A map of ID to cron NotificationSubscription for every active Notification."
   []
   (t2/select-pk->fn identity :model/NotificationSubscription
-                    :type :notification-subscription/cron
+                    :type [:auto/param :notification-subscription/cron]
                     {:select [:ns.*]
                      :from   [[:notification_subscription :ns]]
                      :join   [[:notification :n] [:= :ns.notification_id :n.id]]
                      :where  [:and
-                              [:= :ns.type "notification-subscription/cron"]
+                              [:= :ns.type [:auto/param "notification-subscription/cron"]]
                               [:= :n.active true]]}))
 
 (mu/defn insert-subscriptions!
@@ -335,13 +335,13 @@
   [handler-id :- ms/PositiveInt]
   (t2/select :model/NotificationRecipient
              :notification_handler_id [:auto/param handler-id]
-             :type :notification-recipient/raw-value))
+             :type [:auto/param :notification-recipient/raw-value]))
 
 (mu/defn raw-value-recipients-reducible
   "Reducible handler IDs and details of every raw-value NotificationRecipient."
   []
   (t2/reducible-select [:model/NotificationRecipient :notification_handler_id :details]
-                       :type :notification-recipient/raw-value))
+                       :type [:auto/param :notification-recipient/raw-value]))
 
 (mu/defn insert-recipients!
   "Insert one NotificationRecipient map or a sequence of them, returning the number inserted."

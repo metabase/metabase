@@ -374,7 +374,7 @@
              {:where [:not [:exists ^:allow-subquery {:select [1]
                                                       :from   [:remote_sync_object]
                                                       :where  [:and
-                                                               [:= :remote_sync_object.model_type "Glossary"]
+                                                               [:= :remote_sync_object.model_type [:auto/param "Glossary"]]
                                                                [:= :remote_sync_object.model_id :glossary.id]]}]]}))
 
 (defn- subtree-expr
@@ -434,12 +434,12 @@
 (mu/defn snippet-collections
   "The `:id` and `:name` of the Collections of the snippets namespace."
   []
-  (t2/select [:model/Collection :id :name] :namespace "snippets"))
+  (t2/select [:model/Collection :id :name] :namespace [:auto/param "snippets"]))
 
 (mu/defn snippet-collection-ids
   "The IDs of the Collections of the snippets namespace."
   []
-  (t2/select-pks-set :model/Collection :namespace "snippets"))
+  (t2/select-pks-set :model/Collection :namespace [:auto/param "snippets"]))
 
 (mu/defn collections-in-namespace
   "The `:id` and `:entity_id` of the Collections of `namespace-name`."
@@ -465,7 +465,7 @@
 (mu/defn remote-synced-root-collections
   "The `:namespace` and `:type` of the remote-synced top-level Collections."
   []
-  (t2/select [:model/Collection :id :namespace :type] :is_remote_synced true :location "/"))
+  (t2/select [:model/Collection :id :namespace :type] :is_remote_synced true :location [:auto/param "/"]))
 
 (mu/defn unarchived-remote-synced-root-collection-ids
   "The IDs of the unarchived remote-synced root Collections."
@@ -473,7 +473,7 @@
   (t2/select-fn-set :id :model/Collection
                     {:where [:and
                              [:= :is_remote_synced true]
-                             [:= :location "/"]
+                             [:= :location [:auto/param "/"]]
                              [:not :archived]]}))
 
 (mu/defn unarchived-root-collection-ids-in-namespace
@@ -482,7 +482,7 @@
   (t2/select-fn-set :id :model/Collection
                     {:where [:and
                              [:= :namespace [:auto/param namespace-name]]
-                             [:= :location "/"]
+                             [:= :location [:auto/param "/"]]
                              [:not :archived]]}))
 
 (mu/defn subtree-collection-ids
@@ -594,14 +594,14 @@
 (mu/defn unsynced-rsos
   "The RemoteSyncObjects whose status is not synced."
   []
-  (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
+  (t2/select :model/RemoteSyncObject {:where [:not= :status [:auto/param "synced"]]}))
 
 (mu/defn dirty-rso-exists?
   "Whether a RemoteSyncObject is not synced, counting those of `excluded-model-types` only for a pending removal."
   [excluded-model-types :- [:set :string]]
   (t2/exists? :model/RemoteSyncObject
               {:where [:and
-                       [:not= :status "synced"]
+                       [:not= :status [:auto/param "synced"]]
                        (when (seq excluded-model-types)
                          [:or
                           [:not-in :model_type [:auto/param excluded-model-types]]
@@ -612,7 +612,7 @@
   [excluded-model-types :- [:set :string]]
   (t2/select :model/RemoteSyncObject
              {:where [:and
-                      [:not= :status "synced"]
+                      [:not= :status [:auto/param "synced"]]
                       (when (seq excluded-model-types)
                         [:or
                          [:not-in :model_type [:auto/param excluded-model-types]]
@@ -661,7 +661,7 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select-pks-set :model/RemoteSyncObject
                      {:where [:and
-                              [:= :status "removed"]
+                              [:= :status [:auto/param "removed"]]
                               (contents-rso-expr collection-ids)]}))
 
 (mu/defn insert-rso!

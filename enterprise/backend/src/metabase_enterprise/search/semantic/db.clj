@@ -18,7 +18,7 @@
 (mu/defn library-root-collections
   "The ID and type of the top-level Collections whose type is one of `types`."
   [types :- [:sequential :string]]
-  (t2/select [:model/Collection :id :type] :type [:in [:auto/param types]] :location "/"))
+  (t2/select [:model/Collection :id :type] :type [:in [:auto/param types]] :location [:auto/param "/"]))
 
 (mu/defn descendant-collection-ids
   "The IDs of the Collections under the top-level Collection with `root-id`."
@@ -34,12 +34,12 @@
                         :where [:and
                                 [:= :active true]
                                 [:or [:= :is_published true]
-                                 [:= :data_authority "authoritative"]]]}))
+                                 [:= :data_authority [:auto/param "authoritative"]]]]}))
 
 (mu/defn official-collection-ids
   "The IDs of the official Collections."
   []
-  (t2/select-pks-set :model/Collection :authority_level :official))
+  (t2/select-pks-set :model/Collection :authority_level [:auto/param :official]))
 
 (mu/defn unarchived-dashboard-ids-in-collections-reducible
   "Reducible `:id` rows of the unarchived Dashboards in the Collections with `collection-ids`."

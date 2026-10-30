@@ -136,7 +136,7 @@
   (t2/select :model/Card
              :source_card_id [:in [:auto/param source-card-ids]]
              :archived false
-             :type :metric
+             :type [:auto/param :metric]
              {:order-by [[:name :asc]]}))
 
 (mu/defn document-card-ids
@@ -385,18 +385,18 @@
 (mu/defn delete-card-moderation-reviews!
   "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/ModerationReview :moderated_item_type "card" :moderated_item_id [:auto/param card-id]))
+  (t2/delete! :model/ModerationReview :moderated_item_type [:auto/param "card"] :moderated_item_id [:auto/param card-id]))
 
 (mu/defn delete-card-revisions!
   "Delete the Revisions of the Card with `card-id`, returning the number deleted."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/Revision :model "Card" :model_id [:auto/param card-id]))
+  (t2/delete! :model/Revision :model [:auto/param "Card"] :model_id [:auto/param card-id]))
 
 (mu/defn card-notification-ids
   "The IDs of the card Notifications attached to the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select-pks-set :model/Notification
-                     :payload_type :notification/card
+                     :payload_type [:auto/param :notification/card]
                      :payload_id [:in ^:allow-subquery {:select [:id]
                                                         :from   [:notification_card]
                                                         :where  [:= :card_id [:auto/param card-id]]}]))
@@ -581,7 +581,7 @@
   (or (t2/select-fn-set :id [:model/Card :report_card.id] {:join  [:collection [:= :collection.id :report_card.collection_id]]
                                                            :where [:and
                                                                    [:in :report_card.id [:auto/param card-ids]]
-                                                                   [:= :report_card.type "metric"]
+                                                                   [:= :report_card.type [:auto/param "metric"]]
                                                                    [:= :collection.type collections/library-metrics-collection-type]]})
       #{}))
 

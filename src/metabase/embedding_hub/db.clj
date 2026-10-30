@@ -41,7 +41,7 @@
   collections."
   [audit-collection-id]
   (t2/exists? :model/Card {:where [:and
-                                   [:= :type "model"]
+                                   [:= :type [:auto/param "model"]]
                                    [:= :archived false]
                                    [:or
                                     [:and
@@ -68,14 +68,14 @@
   "Whether an unarchived shared tenant collection exists."
   []
   (t2/exists? :model/Collection {:where [:and
-                                         [:= :namespace "shared-tenant-collection"]
+                                         [:= :namespace [:auto/param "shared-tenant-collection"]]
                                          [:= :archived false]]}))
 
 (defn shared-tenant-collection-id
   "The id of an unarchived shared tenant collection, or nil."
   []
   (t2/select-one-pk :model/Collection {:where [:and
-                                               [:= :namespace "shared-tenant-collection"]
+                                               [:= :namespace [:auto/param "shared-tenant-collection"]]
                                                [:= :archived false]]}))
 
 (defn dashboard-in-collection?

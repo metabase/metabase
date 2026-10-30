@@ -232,7 +232,7 @@
                                                          :from   [:exploration_query]
                                                          :where  [:and
                                                                   [:= :exploration_thread_id [:auto/param thread-id]]
-                                                                  [:= :status "running"]]}]]}))
+                                                                  [:= :status [:auto/param "running"]]]}]]}))
 
 (mu/defn claim-thread-analysis!
   "Stamp the analysis start and completion of the ExplorationThread with `thread-id` at `now` if it has not been
@@ -250,7 +250,7 @@
                                                          :from   [:exploration_query]
                                                          :where  [:and
                                                                   [:= :exploration_thread_id [:auto/param thread-id]]
-                                                                  [:= :status "pending"]]}]]}))
+                                                                  [:= :status [:auto/param "pending"]]]}]]}))
 
 ;;; ------------------------------------------------- Blocks -------------------------------------------------
 
@@ -421,7 +421,7 @@
                   :join   [[:exploration_thread :et] [:= :et.id :eq.exploration_thread_id]]
                   :where  [:and
                            [:= :eq.id [:auto/param query-id]]
-                           [:= :eq.status "pending"]
+                           [:= :eq.status [:auto/param "pending"]]
                            [:= :et.canceled_at nil]]}))
 
 (mu/defn queries-for-threads
@@ -460,20 +460,20 @@
 (mu/defn pending-query-count
   "The number of pending ExplorationQueries."
   []
-  (t2/count :model/ExplorationQuery :status "pending"))
+  (t2/count :model/ExplorationQuery :status [:auto/param "pending"]))
 
 (mu/defn oldest-pending-query-created-at
   "The creation time of the oldest pending ExplorationQuery, or nil."
   []
   (t2/select-one-fn :created_at :model/ExplorationQuery
-                    {:where    [:= :status "pending"]
+                    {:where    [:= :status [:auto/param "pending"]]
                      :order-by [[:created_at :asc]]
                      :limit    1}))
 
 (mu/defn pending-query-ids-for-thread
   "The IDs of the pending ExplorationQueries of the ExplorationThread with `thread-id`."
   [thread-id :- ms/PositiveInt]
-  (t2/select-pks-vec :model/ExplorationQuery :exploration_thread_id [:auto/param thread-id] :status "pending"))
+  (t2/select-pks-vec :model/ExplorationQuery :exploration_thread_id [:auto/param thread-id] :status [:auto/param "pending"]))
 
 (mu/defn lock-pending-query-ids-for-thread
   "The ids of the pending ExplorationQueries of the ExplorationThread with `thread-id`, locked for
@@ -483,7 +483,7 @@
                               :from   [:exploration_query]
                               :where  [:and
                                        [:= :exploration_thread_id [:auto/param thread-id]]
-                                       [:= :status "pending"]]}
+                                       [:= :status [:auto/param "pending"]]]}
                        (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked])))))
 
 (mu/defn page-ids-with-queries
@@ -510,7 +510,7 @@
    message     :- :string
    finished-at :- ms/TemporalInstant]
   (t2/update! :model/ExplorationQuery
-              {:id [:auto/param query-id], :status "pending"}
+              {:id [:auto/param query-id], :status [:auto/param "pending"]}
               {:status        "error"
                :error_message message
                :finished_at   finished-at}))
@@ -519,7 +519,7 @@
   "Mark the pending ExplorationQueries of the ExplorationThread with `thread-id` canceled."
   [thread-id :- ms/PositiveInt]
   (t2/update! :model/ExplorationQuery
-              {:exploration_thread_id [:auto/param thread-id], :status "pending"}
+              {:exploration_thread_id [:auto/param thread-id], :status [:auto/param "pending"]}
               {:status "canceled"}))
 
 (mu/defn cancel-queries!
@@ -835,6 +835,6 @@
   "The child target IDs of the live exploration Comments anchored to one of `child-target-ids`."
   [child-target-ids :- [:sequential :string]]
   (t2/select-fn-set :child_target_id :model/Comment
-                    :target_type     "exploration"
+                    :target_type     [:auto/param "exploration"]
                     :child_target_id [:in [:auto/param child-target-ids]]
                     :deleted_at      nil))

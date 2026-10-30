@@ -9,7 +9,7 @@
 (mu/defn active-personal-user-count
   "The number of active personal Users."
   []
-  (t2/count :model/User :is_active true :type :personal))
+  (t2/count :model/User :is_active true :type [:auto/param :personal]))
 
 (mu/defn user-email
   "The email of the User with `user-id`."

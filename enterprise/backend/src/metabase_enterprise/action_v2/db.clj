@@ -33,7 +33,7 @@
 (mu/defn pk-fields-for-table
   "The active primary key Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id [:auto/param table-id] :semantic_type :type/PK :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :table_id [:auto/param table-id] :semantic_type [:auto/param :type/PK] :active true {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn fields-by-name
   "The Fields of the Table with `table-id` named one of `field-names`."
@@ -63,7 +63,7 @@
                       [:= :table_id [:auto/param table-id]]
                       [:in [:lower :name] (map u/lower-case-en names)]
                       [:in :has_field_values ["list" "auto-list"]]
-                      [:= :semantic_type "type/Category"]]}))
+                      [:= :semantic_type [:auto/param "type/Category"]]]}))
 
 (mu/defn field-values-of-fields
   "The value lists of the FieldValues of the Fields with `field-ids`."

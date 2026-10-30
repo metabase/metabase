@@ -86,7 +86,7 @@
 (mu/defn password-credentials
   "The password credentials of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :credentials :model/AuthIdentity :user_id [:auto/param user-id] :provider "password"))
+  (t2/select-one-fn :credentials :model/AuthIdentity :user_id [:auto/param user-id] :provider [:auto/param "password"]))
 
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."

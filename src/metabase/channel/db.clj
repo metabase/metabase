@@ -51,7 +51,7 @@
                     :is_superuser true
                     :is_active    true
                     :last_login   [:not= nil]
-                    :type         "personal"
+                    :type         [:auto/param "personal"]
                     {:order-by [[:id :asc]]}))
 
 (mu/defn user-contact-info

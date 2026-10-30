@@ -40,7 +40,7 @@
                                   [:report_card :c]        [:= :c.id :p.card_id]
                                   [:collection :col]       [:= :c.collection_id :col.id]]
                       :where     [:and
-                                  [:= :c.type "model"]
+                                  [:= :c.type [:auto/param "model"]]
                                   [:= :c.archived false]]
                       :order-by  [[:p.refresh_begin :desc]]}
                persisted-info-id (sql.helpers/where [:= :p.id [:auto/param persisted-info-id]])
@@ -130,7 +130,7 @@
                                   :join [[:report_card :c] [:= :c.id :p.card_id]]
                                   :where [:and
                                           [:in :p.database_id [:auto/param database-ids]]
-                                          [:= :c.type "model"]
+                                          [:= :c.type [:auto/param "model"]]
                                           [:not :c.archived]]}))
 
 (mu/defn insert-persisted-info!
@@ -211,7 +211,7 @@
    {:update [:persisted_info]
     :where [:and
             [:= :database_id [:auto/param database-id]]
-            [:= :state "deletable"]]
+            [:= :state [:auto/param "deletable"]]]
     :set {:active false,
           :state state,
           :state_change_at :%now}}))
@@ -227,7 +227,7 @@
   (t2/select :model/Card
              {:where [:and
                       [:= :database_id [:auto/param database-id]]
-                      [:= :type "model"]
+                      [:= :type [:auto/param "model"]]
                       [:not [:exists ^:allow-subquery
                              {:select [1]
                               :from [:persisted_info]

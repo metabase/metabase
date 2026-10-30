@@ -57,7 +57,7 @@
 (mu/defn duration-cache-configs
   "The duration CacheConfigs that refresh automatically."
   []
-  (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true))
+  (t2/select :model/CacheConfig :strategy [:auto/param :duration] :refresh_automatically true))
 
 (mu/defn duration-queries-to-rerun
   "The query definitions to rerun for the duration cache `scopes`, each `{:model :model-id :rerun-cutoff}`, counting
@@ -97,7 +97,7 @@
                                         [:= :qe.cache_hit true]
                                         ;; Don't factor the last cache refresh into whether we should rerun
                                         ;; a parameterized query
-                                        [:not= :qe.context "cache-refresh"]]
+                                        [:not= :qe.context [:auto/param "cache-refresh"]]]
                                        [:= :qe.parameterized false])]
                           :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}})}
               :u]]}))
@@ -133,7 +133,7 @@
                          [:= :qe.card_id [:auto/param card-id]]
                          [:>= :qe.started_at [:auto/param rerun-cutoff]]
                          ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
-                         [:not= :qe.context "cache-refresh"]
+                         [:not= :qe.context [:auto/param "cache-refresh"]]
                          [:= :parameterized true]
                          [:= :qe.error nil]
                          [:= :qe.is_sandboxed false]]

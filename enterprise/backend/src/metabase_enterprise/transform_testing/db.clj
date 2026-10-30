@@ -93,7 +93,7 @@
    status :- ::transform-testing.schema/run-status]
   (t2/update! :model/TransformTestRun
               :id [:auto/param run-id]
-              :status "started"
+              :status [:auto/param "started"]
               {:status status :end_time :%now}))
 
 (mu/defn update-transform-test!

@@ -215,17 +215,17 @@
   [run-id   :- ms/PositiveInt
    status   :- :keyword
    ended-at :- ms/TemporalInstant]
-  (t2/update! :model/TaskRun {:id [:auto/param run-id] :status :started} {:status status, :ended_at ended-at}))
+  (t2/update! :model/TaskRun {:id [:auto/param run-id] :status [:auto/param :started]} {:status status, :ended_at ended-at}))
 
 (mu/defn heartbeat-started-task-runs!
   "Touch `updated_at` of the started TaskRuns of `process-uuid` with the app DB's now, returning the number updated."
   [process-uuid :- :string]
-  (t2/update! :model/TaskRun {:status :started, :process_uuid [:auto/param process-uuid]} {:updated_at :%now}))
+  (t2/update! :model/TaskRun {:status [:auto/param :started], :process_uuid [:auto/param process-uuid]} {:updated_at :%now}))
 
 (mu/defn mark-started-tasks-unknown!
   "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, ended at the app DB's now, returning
   the number updated."
   [run-ids :- [:set ms/PositiveInt]]
   (t2/update! :model/TaskHistory
-              {:status :started, :run_id [:in [:auto/param run-ids]]}
+              {:status [:auto/param :started], :run_id [:in [:auto/param run-ids]]}
               {:status :unknown, :ended_at :%now}))

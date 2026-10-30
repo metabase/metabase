@@ -39,7 +39,7 @@
 (mu/defn delete-dashboard-revisions!
   "Delete the Revisions of the Dashboard with `dashboard-id`, returning the number deleted."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/Revision :model "Dashboard" :model_id [:auto/param dashboard-id]))
+  (t2/delete! :model/Revision :model [:auto/param "Dashboard"] :model_id [:auto/param dashboard-id]))
 
 (mu/defn delete-pulses-for-dashboard!
   "Delete the Pulses of the Dashboard with `dashboard-id`, returning the number deleted."
@@ -245,7 +245,7 @@
   "The Card ids referenced by the ParameterCards of the Dashboard with `dashboard-id`."
   [dashboard-id]
   (t2/select-fn-vec :card_id :model/ParameterCard
-                    :parameterized_object_type "dashboard"
+                    :parameterized_object_type [:auto/param "dashboard"]
                     :parameterized_object_id   [:auto/param dashboard-id]))
 
 (defn dashcard-card-ids

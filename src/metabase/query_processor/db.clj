@@ -92,7 +92,7 @@
   [query-hash :- bytes?
    timestamp  :- Temporal
    results    :- bytes?]
-  (app-db/update-or-insert! :model/QueryCache {:query_hash [:auto/param query-hash]}
+  (app-db/update-or-insert! :model/QueryCache {:query_hash query-hash}
                             (constantly {:updated_at         timestamp
                                          :results            results
                                          :refresh_started_at nil})))

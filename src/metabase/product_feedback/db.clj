@@ -17,8 +17,8 @@
                         [:u.date_joined :created_at]
                         [:u.first_name :first_name]
                         [[:count [:distinct [:case [:= :d.archived false] :d.id]]] :num_dashboards]
-                        [[:count [:distinct [:case [:and [:= :rc.type "question"] [:= :rc.archived false]] :rc.id]]] :num_questions]
-                        [[:count [:distinct [:case [:and [:= :rc.type "model"] [:= :rc.archived false]] :rc.id]]] :num_models]]
+                        [[:count [:distinct [:case [:and [:= :rc.type [:auto/param "question"]] [:= :rc.archived false]] :rc.id]]] :num_questions]
+                        [[:count [:distinct [:case [:and [:= :rc.type [:auto/param "model"]] [:= :rc.archived false]] :rc.id]]] :num_models]]
                :from [[:core_user :u]]
                :join [[:report_card :rc] [:= :rc.creator_id :u.id]
                       [:report_dashboard :d] [:= :d.creator_id :u.id]]
@@ -26,7 +26,7 @@
                        [:>= :rc.created_at (h2x/add-interval-honeysql-form db-type :%now -2 :month)]
                        [:>= :d.created_at (h2x/add-interval-honeysql-form db-type :%now -2 :month)]
                        [:= :u.is_active true]
-                       [:= :u.type "personal"]
+                       [:= :u.type [:auto/param "personal"]]
                        (when only-superusers? [:= :u.is_superuser true])]
                :group-by [:u.id]
                :having [:and
@@ -37,7 +37,7 @@
 (mu/defn active-personal-user-count
   "The number of active personal Users."
   []
-  (t2/count :model/User :is_active true, :type "personal"))
+  (t2/count :model/User :is_active true, :type [:auto/param "personal"]))
 
 (mu/defn unarchived-dashboard-count
   "The number of unarchived Dashboards."

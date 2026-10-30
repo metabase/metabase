@@ -119,7 +119,7 @@
 (mu/defn support-access-auth-identity-id
   "The ID of the support-access-grant AuthIdentity of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-pk :model/AuthIdentity :user_id [:auto/param user-id] :provider "support-access-grant"))
+  (t2/select-one-pk :model/AuthIdentity :user_id [:auto/param user-id] :provider [:auto/param "support-access-grant"]))
 
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."

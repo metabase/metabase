@@ -114,13 +114,13 @@
   "The id, email, name, active flag, SSO source, and tenant id of the personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]
-                 :type :personal
+                 :type [:auto/param :personal]
                  :id [:auto/param user-id]))
 
 (mu/defn active-personal-user-login-columns
   "The id, email, last login, and `sso_source` of the active personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :email :last_login :sso_source], :id [:auto/param user-id], :type :personal, :is_active true))
+  (t2/select-one [:model/User :id :email :last_login :sso_source], :id [:auto/param user-id], :type [:auto/param :personal], :is_active true))
 
 (mu/defn user-active-type-and-sso-source
   "The id, active flag, type, and sso_source of the User with `user-id`, or nil."

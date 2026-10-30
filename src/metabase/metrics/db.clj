@@ -40,7 +40,7 @@
 (mu/defn metric-card
   "The metric Card with `id`, or nil."
   [id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id [:auto/param id] :type "metric"))
+  (t2/select-one :model/Card :id [:auto/param id] :type [:auto/param "metric"]))
 
 (mu/defn measure
   "The Measure with `id`, or nil."

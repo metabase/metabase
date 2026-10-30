@@ -110,7 +110,7 @@
   [field-id :- ::lib.schema.id/field]
   (t2/exists? :model/FieldValues
               :field_id [:auto/param field-id], :values [:not= nil], :human_readable_values nil, :has_more_values false
-              :type "full"))
+              :type [:auto/param "full"]))
 
 (mu/defn advanced-field-values-exist?
   "Whether complete, non-remapped FieldValues of type `advanced` with `hash-key` exist for the Field with `field-id`."
@@ -118,7 +118,7 @@
    hash-key :- :string]
   (t2/exists? :model/FieldValues
               :field_id [:auto/param field-id], :values [:not= nil], :human_readable_values nil, :has_more_values false
-              :type "advanced", :hash_key [:auto/param hash-key]))
+              :type [:auto/param "advanced"], :hash_key [:auto/param hash-key]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -134,7 +134,7 @@
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, or nil."
   [field-id :- ::lib.schema.id/field
    hash-key :- :string]
-  (t2/select-one :model/FieldValues :field_id [:auto/param field-id], :type :advanced, :hash_key [:auto/param hash-key]))
+  (t2/select-one :model/FieldValues :field_id [:auto/param field-id], :type [:auto/param :advanced], :hash_key [:auto/param hash-key]))
 
 (mu/defn find-or-insert-advanced-field-values!
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling

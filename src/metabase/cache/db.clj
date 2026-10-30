@@ -44,7 +44,7 @@
 (mu/defn root-ttl-cache-config
   "The root TTL CacheConfig, or nil."
   []
-  (t2/select-one :model/CacheConfig :model "root" :model_id 0 :strategy :ttl))
+  (t2/select-one :model/CacheConfig :model [:auto/param "root"] :model_id 0 :strategy [:auto/param :ttl]))
 
 (defn- sort-column->order-by
   "Convert a sort column to the appropriate SQL order-by expression."
@@ -125,7 +125,7 @@
   [model    :- :string
    model-id :- ms/IntGreaterThanOrEqualToZero
    data     :- (mut/select-keys ::cache.schema/cache-config.update [:model :model_id :strategy :config :refresh_automatically])]
-  (app-db/update-or-insert! :model/CacheConfig {:model [:auto/param model] :model_id [:auto/param model-id]}
+  (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model-id}
                             (constantly data)))
 
 (mu/defn cache-configs-for

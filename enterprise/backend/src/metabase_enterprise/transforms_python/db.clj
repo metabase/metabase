@@ -49,7 +49,7 @@
                      [:entity_id  {:optional true} :string]
                      [:is_default {:optional true} :boolean]]]
   (mdb/update-or-insert! :model/PythonLibrary
-                         {:path [:auto/param path]}
+                         {:path path}
                          (fn [existing]
                            (cond-> {:path path :source source}
                              (nil? existing) (merge insert-values)))))

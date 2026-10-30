@@ -49,7 +49,7 @@
   (t2/select-fn-reducible :attributes [:model/Tenant :attributes]
                           {:where [:and
                                    [:not= :attributes nil]
-                                   [:not= :attributes "{}"]]}))
+                                   [:not= :attributes [:auto/param "{}"]]]}))
 
 (mu/defn tenant-names-and-ids-by-collection
   "A map of root Collection ID to `[name id]` for the Tenants owning `collection-ids`."
@@ -93,7 +93,7 @@
              :from     [(t2/table-name :model/User)]
              :where    [:and
                         [:in :tenant_id [:auto/param tenant-ids]]
-                        [:= :type "personal"]
+                        [:= :type [:auto/param "personal"]]
                         :is_active]
              :group-by [:tenant_id]}))
 

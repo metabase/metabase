@@ -28,7 +28,7 @@
                 :where  (cond-> [:and [:= :db_id [:auto/param database-id]] [:= :active true]]
                           (contains? opts :table-ids) (conj [:in :id [:auto/param table-ids]])
                           (contains? opts :schema)     (conj (if (= schema "")
-                                                               [:or [:= :schema nil] [:= :schema ""]]
+                                                               [:or [:= :schema nil] [:= :schema [:auto/param ""]]]
                                                                [:= :schema [:auto/param schema]])))})))
 
 (mu/defn active-fields-for-tables

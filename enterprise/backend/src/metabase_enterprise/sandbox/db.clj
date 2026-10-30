@@ -128,7 +128,7 @@
 (mu/defn personal-user
   "The personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id [:auto/param user-id] :type :personal))
+  (t2/select-one :model/User :id [:auto/param user-id] :type [:auto/param :personal]))
 
 (mu/defn set-user-login-attributes!
   "Set the login attributes of the User with `user-id`, returning the number of rows updated."
@@ -145,10 +145,10 @@
                           {:where [:or
                                    [:and
                                     [:not= :jwt_attributes nil]
-                                    [:not= :jwt_attributes "{}"]]
+                                    [:not= :jwt_attributes [:auto/param "{}"]]]
                                    [:and
                                     [:not= :login_attributes nil]
-                                    [:not= :login_attributes "{}"]]]}))
+                                    [:not= :login_attributes [:auto/param "{}"]]]]}))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

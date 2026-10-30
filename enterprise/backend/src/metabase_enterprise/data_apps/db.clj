@@ -64,7 +64,7 @@
 (mu/defn data-apps-namespace-collection?
   "Whether the Collection with `collection-id` is in the data-apps namespace."
   [collection-id :- pos-int?]
-  (t2/exists? :model/Collection :id [:auto/param collection-id] :namespace "data-apps"))
+  (t2/exists? :model/Collection :id [:auto/param collection-id] :namespace [:auto/param "data-apps"]))
 
 (mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
   "Insert the DataApp `row`, returning its ID."
@@ -143,7 +143,7 @@
     (t2/select [:model/DataPermissions :group_id :db_id :perm_type :table_id :perm_value]
                :group_id [:in [:auto/param group-ids]]
                :db_id [:in [:auto/param database-ids]]
-               :perm_type :perms/view-data
+               :perm_type [:auto/param :perms/view-data]
                {:where [:or [:in :table_id [:auto/param table-ids]] [:= :table_id nil]]})
     []))
 
@@ -183,7 +183,7 @@
                                              {:join  [:collection [:= :collection.id :report_card.collection_id]]
                                               :where [:and
                                                       [:in :report_card.id [:auto/param card-ids]]
-                                                      [:= :report_card.type "metric"]
+                                                      [:= :report_card.type [:auto/param "metric"]]
                                                       [:= :collection.type collection/library-metrics-collection-type]]})))
 
 (mu/defn external-table-ids :- [:set ::lib.schema.id/table]

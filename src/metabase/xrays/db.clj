@@ -59,7 +59,7 @@
              {:from       [(warehouse-schema-overlay/table-query)]
               :inner-join [[^:allow-subquery {:select   [:f.table_id
                                                          [:%count.* :count]
-                                                         [[:count [:case [:or [:not= :semantic_type "type/PK"]
+                                                         [[:count [:case [:or [:not= :semantic_type [:auto/param "type/PK"]]
                                                                           [:= :f.semantic_type nil]]
                                                                    [:inline 1] :else [:inline nil]]]
                                                           :count_non_pks]
@@ -132,7 +132,7 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Field
              :table_id [:in [:auto/param table-ids]]
-             :visibility_type "normal"
+             :visibility_type [:auto/param "normal"]
              :preview_display true
              :active true
              {:from [(warehouse-schema-overlay/field-query)]}))
@@ -144,7 +144,7 @@
   (t2/select :model/Field
              :table_id        [:auto/param table-id]
              :id              [:not= [:auto/param field-id]]
-             :visibility_type "normal"
+             :visibility_type [:auto/param "normal"]
              :active          true
              {:from [(warehouse-schema-overlay/field-query)]}))
 
@@ -156,7 +156,7 @@
 (mu/defn model-card
   "The model Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id [:auto/param card-id] :type :model))
+  (t2/select-one :model/Card :id [:auto/param card-id] :type [:auto/param :model]))
 
 (mu/defn cards-in-collection
   "The Cards in the Collection with `collection-id`."
@@ -174,7 +174,7 @@
   "The unarchived metric Cards of the Table with `table-id`. `table-id` may be nil (the caller's Table is
   itself sometimes absent)."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select :model/Card :table_id [:auto/param table-id] :type :metric :archived false))
+  (t2/select :model/Card :table_id [:auto/param table-id] :type [:auto/param :metric] :archived false))
 
 (mu/defn insert-card!
   "Insert the Card `card` and return the inserted instance."
@@ -217,7 +217,7 @@
   "The unarchived automatically generated dashboards Collection at `location`, or nil."
   [location :- :string]
   (t2/select-one :model/Collection
-                 :name "Automatically Generated Dashboards"
+                 :name [:auto/param "Automatically Generated Dashboards"]
                  :archived false
                  :location [:auto/param location]))
 
@@ -240,7 +240,7 @@
   "The ids of the Dashboards the User with `user-id` has revised, most recent first."
   [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/select-fn-set :model_id :model/Revision
-                    :model     "Dashboard"
+                    :model     [:auto/param "Dashboard"]
                     :user_id   [:auto/param user-id]
                     {:order-by [[:timestamp :desc]]}))
 

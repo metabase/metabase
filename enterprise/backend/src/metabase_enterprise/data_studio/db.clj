@@ -57,7 +57,7 @@
                                   (warehouse-schema-overlay/field-query {:alias :target_field, :user-settings? false})
                                   [:= :dim.human_readable_field_id :target_field.id]]
                          :where  [:and
-                                  [:= :dim.type "external"]
+                                  [:= :dim.type [:auto/param "external"]]
                                   [:in input-table-id [:auto/param table-ids]]
                                   not-in-tables]})))
 
@@ -95,8 +95,8 @@
   "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
-                 :topic [:in [:table-publish :table-unpublish]]
-                 :model "Table"
+                 :topic [:in [[:auto/param :table-publish] [:auto/param :table-unpublish]]]
+                 :model [:auto/param "Table"]
                  :model_id [:auto/param table-id]
                  {:order-by [[:timestamp :desc] [:id :desc]]}))
 

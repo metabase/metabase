@@ -23,7 +23,7 @@
 (mu/defn embedded-question-count
   "The number of unarchived question Cards with embedding enabled."
   []
-  (t2/count :model/Card :enable_embedding true :archived false :type :question))
+  (t2/count :model/Card :enable_embedding true :archived false :type [:auto/param :question]))
 
 (mu/defn proxied-ai-usage-tokens-by-model
   "The model and total tokens of the proxied AiUsageLog rows on `date`, grouped by model."
@@ -48,7 +48,7 @@
   [date :- ms/TemporalInstant]
   (t2/select-one-fn :cnt
                     [:model/MetabotMessage [:%count.id :cnt]]
-                    :role "user"
+                    :role [:auto/param "user"]
                     :forked_from_message_id nil
                     {:where [:and
                              :ai_proxied
@@ -214,7 +214,7 @@
                             :from [:core_user]
                             :where [:and
                                     [:= :is_active true]
-                                    [:= :type "personal"]]} :distinct_emails]]})))
+                                    [:= :type [:auto/param "personal"]]]} :distinct_emails]]})))
 
 (mu/defn active-jwt-user-count
   "The number of active personal Users whose SSO source is JWT."
@@ -237,5 +237,5 @@
                  :from   [(t2/table-name :model/User)]
                  :where  [:and
                           [:= :is_active true]
-                          [:= :type "personal"]
+                          [:= :type [:auto/param "personal"]]
                           [:not= :tenant_id nil]]}))
