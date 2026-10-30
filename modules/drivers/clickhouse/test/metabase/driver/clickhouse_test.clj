@@ -927,55 +927,70 @@
     (is (nil? (driver.u/validate-connection-parameters!
                :clickhouse {:host "https://ch.example.com/x" :port 8443 :dbname "d"})))))
 
+(defn- query-settings-rows
+  "Run a query that returns the `join_use_nulls`, `select_sequential_consistency` and `max_execution_time` settings
+  that reach the server."
+  []
+  (binding [driver.settings/*query-timeout-ms* 120000]
+    (->> (str "SELECT toInt64(getSetting('join_use_nulls')), "
+              "toInt64(getSetting('select_sequential_consistency')), "
+              "toInt64(getSetting('max_execution_time'))")
+         (lib/native-query (mt/metadata-provider))
+         qp/process-query
+         mt/rows)))
+
 (deftest query-settings-test
   (mt/test-driver :clickhouse
     (testing "Metabase settings are sent with each query"
       (is (= [[1 1 120]]
-             (binding [driver.settings/*query-timeout-ms* 120000]
-               (->> (str "SELECT toUInt8(getSetting('join_use_nulls')), "
-                         "toUInt8(getSetting('select_sequential_consistency')), "
-                         "toUInt64(getSetting('max_execution_time'))")
-                    (lib/native-query (mt/metadata-provider))
-                    qp/process-query
-                    mt/rows)))))))
+             (query-settings-rows))))
+    (testing "A setting in the connection details is not overridden"
+      (mt/with-temp [:model/Database db {:engine  :clickhouse
+                                         :details (assoc (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+                                                         :clickhouse-settings "join_use_nulls=0")}]
+        (mt/with-db db
+          (is (= [[0 1 120]]
+                 (query-settings-rows))))))))
 
 (deftest readonly-user-test
   (mt/test-driver :clickhouse
     (testing "A user with `readonly = 1` can run queries, with the settings that the user cannot change left out"
-      (ctd/exec-statements ["CREATE SETTINGS PROFILE OR REPLACE metabase_readonly_profile SETTINGS
-                               readonly = 1 READONLY,
-                               select_sequential_consistency CHANGEABLE_IN_READONLY,
-                               max_execution_time = 30 READONLY;"
-                            "CREATE USER OR REPLACE metabase_readonly_user NOT IDENTIFIED
-                               SETTINGS PROFILE metabase_readonly_profile;"]
-                           {})
-      (mt/with-temp [:model/Database db {:engine  :clickhouse
-                                         :details (assoc (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
-                                                         :user "metabase_readonly_user")}]
-        (mt/with-db db
-          (is (= [[0 1 30]]
-                 (binding [driver.settings/*query-timeout-ms* 120000]
-                   (->> (str "SELECT toUInt8(getSetting('join_use_nulls')), "
-                             "toUInt8(getSetting('select_sequential_consistency')), "
-                             "toUInt64(getSetting('max_execution_time'))")
-                        (lib/native-query (mt/metadata-provider))
-                        qp/process-query
-                        mt/rows)))))))))
+      (try
+        (ctd/exec-statements ["CREATE SETTINGS PROFILE OR REPLACE metabase_readonly_profile SETTINGS
+                                 readonly = 1 READONLY,
+                                 select_sequential_consistency CHANGEABLE_IN_READONLY,
+                                 max_execution_time = 30 READONLY;"
+                              "CREATE USER OR REPLACE metabase_readonly_user NOT IDENTIFIED
+                                 SETTINGS PROFILE metabase_readonly_profile;"]
+                             {})
+        (mt/with-temp [:model/Database db {:engine  :clickhouse
+                                           :details (assoc (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+                                                           :user "metabase_readonly_user")}]
+          (mt/with-db db
+            (is (= [[0 1 30]]
+                   (query-settings-rows)))))
+        (finally
+          (ctd/exec-statements ["DROP USER IF EXISTS metabase_readonly_user;"
+                                "DROP SETTINGS PROFILE IF EXISTS metabase_readonly_profile;"]
+                               {}))))))
 
 (deftest ^:synchronized cancel-slow-query-via-query-timeout-test
   (mt/test-driver :clickhouse
     (testing "Slow query is cancelled when *query-timeout-ms* elapses"
+      ;; c3p0 sets the pool's `unreturnedConnectionTimeout` from `*query-timeout-ms*` when it makes the pool. Make the
+      ;; pool outside the binding, so that c3p0 does not close the connection before the query processor cancels it.
+      (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
+      (is (= [[1]] (mt/rows (qp/process-query (lib/native-query (mt/metadata-provider) "SELECT 1")))))
       ;; The query would take 120 s. `sleepEachRow` sleeps at most 3 s for each block, so use blocks of one row.
-      (binding [driver.settings/*query-timeout-ms* 2000]
-        ;; make the query before the timer starts, so that a failed test DB setup does not look like a cancel
-        (let [query   (lib/native-query (mt/metadata-provider)
-                                        "SELECT sleepEachRow(1) FROM numbers(120) SETTINGS max_block_size = 1")
-              timer   (u/start-timer)
-              result  (try
-                        (qp/process-query query)
-                        (catch Throwable e e))
-              elapsed (u/since-ms timer)]
-          (is (instance? Throwable result)
-              "query should throw rather than completing normally")
-          (is (<= 2000 elapsed 30000)
-              (format "query should be cancelled after the timeout and well before it completes — took %.0f ms" elapsed)))))))
+      (let [query (lib/native-query (mt/metadata-provider)
+                                    "SELECT sleepEachRow(1) FROM numbers(120) SETTINGS max_block_size = 1")]
+        (binding [driver.settings/*query-timeout-ms* 2000]
+          (let [timer   (u/start-timer)
+                result  (try
+                          (qp/process-query query)
+                          (catch Throwable e e))
+                elapsed (u/since-ms timer)]
+            (is (instance? Throwable result)
+                "query should throw rather than completing normally")
+            (is (<= 2000 elapsed 30000)
+                (format "query should be cancelled after the timeout and well before it completes — took %.0f ms" elapsed))))))))
