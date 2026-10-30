@@ -31,8 +31,6 @@ import {
 } from "../../hooks/use-current-search-scope";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
-import S from "./SearchResults.module.css";
-
 export const SearchResults = ({
   searchResults,
   isLoading,
@@ -263,7 +261,7 @@ export function SearchScopeSelector() {
     >
       <Text>{t`Where to search:`}</Text>
       <SegmentedControl
-        className={S.SearchScopeControl}
+        labelMaxWidth="20ch"
         value={searchScope ? String(searchScope) : "all"}
         // Unjustified type cast. FIXME
         onChange={(newValue) => setSearchScope(newValue as SearchScope)}

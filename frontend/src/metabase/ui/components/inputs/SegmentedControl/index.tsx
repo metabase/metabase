@@ -50,10 +50,13 @@ export type SegmentedControlProps<Value extends string> = Omit<
   | "bg"
   | "variant"
   | "autoContrast"
+  | "__vars"
 > & {
   data: readonly SegmentedControlItem<Value>[];
   value?: Value;
   onChange?: (value: Value) => void;
+  /** CSS length, e.g. `20ch`. Longer labels truncate at this width and show a tooltip. */
+  labelMaxWidth?: string;
 };
 
 export function SegmentedControl<Value extends string = string>({
@@ -62,6 +65,7 @@ export function SegmentedControl<Value extends string = string>({
   onFocus,
   onBlur,
   onKeyDown,
+  labelMaxWidth,
   ...props
 }: SegmentedControlProps<Value>) {
   const tooltip = useItemTooltip(data);
@@ -109,6 +113,7 @@ export function SegmentedControl<Value extends string = string>({
   return (
     <MantineSegmentedControl
       {...props}
+      __vars={{ "--segmented-control-label-max-width": labelMaxWidth }}
       data={items}
       onChange={handleChange}
       onFocus={handleFocus}
