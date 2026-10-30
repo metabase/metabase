@@ -1,0 +1,352 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  /* the header already pads below its title, so only a sliver more evens the gap with the sides */
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-lg)
+    var(--mantine-spacing-md);
+  box-sizing: border-box;
+}
+
+.card {
+  flex-shrink: 0;
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-md);
+}
+
+/*
+ * The search animates between its icon and the free width of the row. Only it ever grows,
+ * so animating its flex-grow from 0 to 1 slides it smoothly across the free space.
+ */
+.searchField {
+  flex: 1 1 0%;
+  min-width: 12rem;
+  overflow: hidden;
+  transition:
+    flex-grow 250ms ease,
+    min-width 250ms ease;
+
+  &[data-open="false"] {
+    flex-grow: 0;
+    min-width: 2.25rem;
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.filterPills {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.tableActions {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.searchInput {
+  border: none;
+  background-color: transparent;
+}
+
+/* Takes whatever height the chart leaves, down to just its header. */
+.tableCard {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tableArea {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.tableHeader {
+  flex-shrink: 0;
+  padding: var(--mantine-spacing-sm);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.gallery {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: var(--mantine-spacing-sm);
+}
+
+/* Paged by the stepper below it, so the native scrollbar is hidden; trackpads still scroll. */
+.galleryStrip {
+  display: flex;
+  gap: var(--mantine-spacing-md);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--mantine-spacing-xxs);
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  /* room for the hover shadow and selection ring, which overflow would clip */
+  padding: var(--mantine-spacing-xxs);
+  margin: calc(-1 * var(--mantine-spacing-xxs));
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    scroll-behavior: auto;
+  }
+}
+
+.galleryItem {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 15rem;
+  gap: var(--mantine-spacing-xs);
+  min-width: 0;
+  cursor: pointer;
+  scroll-snap-align: start;
+
+  &:hover .galleryCard {
+    box-shadow: var(--mantine-shadow-sm);
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  &:focus-visible .galleryCard {
+    outline: 2px solid var(--mb-color-core-brand);
+    outline-offset: 2px;
+  }
+}
+
+.galleryCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 9.5rem;
+  padding: var(--mantine-spacing-sm);
+  overflow: hidden;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.galleryCardSelected {
+  border-color: var(--mb-color-core-brand);
+  box-shadow: 0 0 0 1px var(--mb-color-core-brand);
+}
+
+.galleryTitle {
+  padding-inline: var(--mantine-spacing-xxs);
+  text-align: center;
+}
+
+/* Pill-and-dots pager after Pasito (joshpuckett.me/pasito). */
+.stepper {
+  --step-dot-size: 8px;
+  --step-active-width: 24px;
+  --step-transition: 500ms cubic-bezier(0.215, 0.61, 0.355, 1);
+
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-text-primary) 4%,
+    transparent
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--mb-color-text-primary) 6%, transparent);
+}
+
+.step {
+  width: var(--step-dot-size);
+  height: var(--step-dot-size);
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-text-primary) 12%,
+    transparent
+  );
+  cursor: pointer;
+  transition:
+    width var(--step-transition),
+    background-color var(--step-transition);
+
+  &:focus-visible {
+    outline: 2px solid var(--mb-color-core-brand);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.stepActive {
+  width: var(--step-active-width);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-text-primary) 80%,
+    transparent
+  );
+}
+
+.chartArea {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.valuesRow {
+  position: absolute;
+  inset: 0;
+  gap: var(--mantine-spacing-md);
+}
+
+.valuesRowItem {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.vizToggle {
+  flex-shrink: 0;
+}
+
+/* Slides out of the visualization button; hidden from focus while closed. */
+.vizBar {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    max-width 300ms ease,
+    opacity 200ms ease,
+    visibility 300ms;
+
+  &[data-open="true"] {
+    max-width: 40rem;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* Thumbnails are selection targets, so the chart beneath must not receive pointer events. */
+.thumbnailChart {
+  pointer-events: none;
+
+  & :global(.CardVisualization) {
+    padding: 0;
+  }
+}
+
+.detailChartCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-sm);
+}
+
+.chartPanelCollapsed {
+  justify-content: center;
+  padding-block: 0;
+}
+
+.detailLayout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: var(--mantine-spacing-md);
+}
+
+.detailMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Floats beside the chart and its data. Not clipped, so its resize handle can sit in the gap. */
+.sidePanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  box-shadow: var(--mantine-shadow-md);
+}
+
+/* Fills the gap beside a panel; the grip shows on hover and while dragging. */
+.resizeHandle {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &[data-axis="s"] {
+    left: 0;
+    right: 0;
+    bottom: calc(-1 * var(--mantine-spacing-md));
+    height: var(--mantine-spacing-md);
+    cursor: row-resize;
+  }
+
+  &[data-axis="e"],
+  &[data-axis="w"] {
+    top: 0;
+    bottom: 0;
+    width: var(--mantine-spacing-md);
+    cursor: col-resize;
+  }
+
+  &[data-axis="e"] {
+    right: calc(-1 * var(--mantine-spacing-md));
+  }
+
+  &[data-axis="w"] {
+    left: calc(-1 * var(--mantine-spacing-md));
+  }
+
+  &:hover .resizeGrip,
+  &:active .resizeGrip {
+    opacity: 1;
+  }
+}
+
+.resizeGrip {
+  border-radius: 999px;
+  background-color: var(--mb-color-border-strong);
+  opacity: 0;
+  transition: opacity 150ms ease;
+
+  [data-axis="s"] > & {
+    width: 3rem;
+    height: 4px;
+  }
+
+  [data-axis="e"] > &,
+  [data-axis="w"] > & {
+    width: 4px;
+    height: 3rem;
+  }
+}

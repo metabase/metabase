@@ -1,4 +1,5 @@
 export const SIDEBAR_SIZES = {
   NORMAL: 355,
   TIMELINE: 300,
+  SUMMARIZE: "33.333vw",
 };
