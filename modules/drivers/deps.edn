@@ -12,6 +12,7 @@
   metabase/clickhouse         {:local/root "clickhouse"}
   metabase/databricks         {:local/root "databricks"}
   metabase/druid-jdbc         {:local/root "druid-jdbc"}
+  metabase/documentdb         {:local/root "documentdb"}
   metabase/hive-like          {:local/root "hive-like"}
   metabase/mongo              {:local/root "mongo"}
   metabase/oracle             {:local/root "oracle"}
