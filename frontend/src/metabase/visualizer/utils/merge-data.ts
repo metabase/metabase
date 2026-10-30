@@ -4,6 +4,7 @@ import type {
   Dataset,
   DatasetColumn,
   Field,
+  ReferencedEntitiesResults,
   RowValues,
   VisualizerColumnValueSource,
   VisualizerDataSource,
@@ -105,7 +106,32 @@ export function mergeVisualizerData({
     insights,
     results_timezone: sourceData?.results_timezone,
     requested_timezone: sourceData?.requested_timezone,
+    referenced_entities: mergeReferencedEntities(
+      dataSources.map((dataSource) => datasets[dataSource.id]),
+    ),
     // this is incorrect - `data.cols` are not the same as `data.results_metadata.columns`
     results_metadata: { columns: columns as unknown as Field[] },
   };
+}
+
+function mergeReferencedEntities(
+  datasets: (Dataset | null | undefined)[],
+): ReferencedEntitiesResults | undefined {
+  const results = datasets.flatMap((dataset) => {
+    const entities =
+      dataset?.error == null ? dataset?.data?.referenced_entities : null;
+    return entities != null ? [entities] : [];
+  });
+
+  if (results.length === 0) {
+    return undefined;
+  }
+
+  return results.reduce<ReferencedEntitiesResults>(
+    (merged, result) => ({
+      card: { ...merged.card, ...result.card },
+      measure: { ...merged.measure, ...result.measure },
+    }),
+    {},
+  );
 }

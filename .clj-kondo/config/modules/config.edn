@@ -563,7 +563,8 @@
            tiles
            timeline
            util
-           util.config}
+           util.config
+           visualization-settings}
    :model-exports #{:model/Channel :model/ChannelTemplate}
    :model-imports #{:model/Dashboard
                     :model/DashboardCard
@@ -1141,9 +1142,9 @@
    :api  #{metabase.formatter.core}
    :uses #{appearance
            lib.types
-           models
            query-processor
-           util}}
+           util
+           visualization-settings}}
 
   frontend-errors
   {:team "UX West"
@@ -1775,8 +1776,7 @@
            metabase.models.serialization
            metabase.models.serialization.resolve
            metabase.models.serialization.resolve.mp
-           metabase.models.util.spec-update
-           metabase.models.visualization-settings}
+           metabase.models.util.spec-update}
    :uses #{api
            app-db
            dependencies
@@ -1787,6 +1787,7 @@
            parameters.schema
            util
            util.classloader
+           visualization-settings
            warehouse-schema-overlay}
    :model-imports #{:model/Action
                     :model/Card
@@ -1899,7 +1900,8 @@
            tracing
            users
            util
-           util.config}
+           util.config
+           visualization-settings}
    :model-exports #{:model/Notification
                     :model/NotificationCard
                     :model/NotificationHandler
@@ -2210,6 +2212,7 @@
            util
            util.config
            util.graph
+           visualization-settings
            warehouse-schema-overlay
            warehouses.schema}
    :model-exports #{:model/Card
@@ -2228,6 +2231,7 @@
                     :model/Database
                     :model/Document
                     :model/Field
+                    :model/Measure
                     :model/ModerationReview
                     :model/NativeQuerySnippet
                     :model/Notification
@@ -2368,10 +2372,12 @@
            users
            util
            util.config
+           visualization-settings
            warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
+                    :model/Measure
                     :model/QueryCache
                     :model/QueryExecution
                     :model/Table}}
@@ -2417,7 +2423,7 @@
   {:team "UX West"
    :ns-prefix "metabase.pivot"
    :api #{metabase.pivot.core metabase.pivot.postprocess}
-   :uses #{models util}}
+   :uses #{util visualization-settings}}
 
   remote-sync
   {:team "UX West"
@@ -3319,6 +3325,13 @@
    :api #{metabase.graph.core}
    :uses #{util}}
 
+  visualization-settings
+  {:team "UX West"
+   :api  #{metabase.visualization-settings.core
+           metabase.visualization-settings.dynamic-goals
+           metabase.visualization-settings.ui-logic}
+   :uses #{lib.schema util}}
+
   warehouse-schema-overlay
   {:team "UX West"
    :api  #{metabase.warehouse-schema-overlay.core}
@@ -4007,6 +4020,7 @@
            task
            transforms
            util
+           visualization-settings
            warehouse-schema-overlay
            warehouses.schema
            enterprise/dependencies}

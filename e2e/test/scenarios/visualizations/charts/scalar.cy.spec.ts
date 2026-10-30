@@ -54,7 +54,9 @@ describe("scenarios > visualizations > scalar", () => {
       });
 
     cy.findByTestId("scalar-value").realHover();
-    H.tooltip().should("contain.text", "≤ 1000").and("contain.text", "≥ 1000");
+    H.tooltip()
+      .should("contain.text", "≤ 1,000")
+      .and("contain.text", "≥ 1,000");
   });
 
   it("should render human readable numbers on every screen size (metabase#12629)", () => {

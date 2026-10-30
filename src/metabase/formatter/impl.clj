@@ -8,14 +8,14 @@
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.formatter.datetime :as datetime]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.types.core :as types]
    [metabase.util.currency :as currency]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.ui-logic :as ui-logic]
+   [metabase.visualization-settings.core :as mb.viz]
+   [metabase.visualization-settings.ui-logic :as ui-logic]
    [potemkin :as p]
    [potemkin.types :as p.types])
   (:import
@@ -104,7 +104,7 @@
 (defn- qualify-keys
   [m]
   (update-keys m (fn [k] (keyword
-                          "metabase.models.visualization-settings"
+                          "metabase.visualization-settings.core"
                           (name k)))))
 
 ;; TODO: use `metabase.query-processor.streaming.common/viz-settings-for-col` here, it's

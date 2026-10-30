@@ -110,6 +110,63 @@ describe("ChartSettings", () => {
     );
   });
 
+  it("should switch to the section of a new initial setting", () => {
+    const widgets = [widget({ section: "Foo" }), widget({ section: "Bar" })];
+    const { rerender } = setup({ widgets, initial: { section: "Foo" } });
+
+    rerender(
+      <BaseChartSettings
+        {...DEFAULT_PROPS}
+        widgets={widgets}
+        initial={{ section: "Bar" }}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Bar" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("should switch back to the section of a new initial setting after switching sections", () => {
+    const widgets = [widget({ section: "Foo" }), widget({ section: "Bar" })];
+    const { rerender } = setup({ widgets, initial: { section: "Foo" } });
+
+    fireEvent.click(screen.getByText("Bar"));
+    rerender(
+      <BaseChartSettings
+        {...DEFAULT_PROPS}
+        widgets={widgets}
+        initial={{ section: "Foo" }}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Foo" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("should keep the current section when the initial setting stays the same", () => {
+    const widgets = [widget({ section: "Foo" }), widget({ section: "Bar" })];
+    const initial = { section: "Foo" };
+    const { rerender } = setup({ widgets, initial });
+
+    fireEvent.click(screen.getByText("Bar"));
+    rerender(
+      <BaseChartSettings
+        {...DEFAULT_PROPS}
+        widgets={widgets}
+        initial={initial}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Bar" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
   it("should show widget names", () => {
     setup({
       widgets: [

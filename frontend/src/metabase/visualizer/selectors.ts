@@ -15,6 +15,7 @@ import type { DatasetData, RawSeries } from "metabase-types/api";
 
 import {
   createDataSource,
+  createDataSourceQuery,
   extractReferencedColumns,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
@@ -159,7 +160,7 @@ const getVisualizerFlatRawSeries = createSelector(
       {
         card: {
           display,
-          dataset_query: STRUCTURED_QUERY_TEMPLATE,
+          dataset_query: createDataSourceQuery(cards[0]),
           name: cards[0].name,
           description: cards[0].description,
           visualization_settings: settings,

@@ -38,6 +38,9 @@
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
+  check-new-goal-references!
+  check-shared-dashboard-goal-permissions!
+  check-newly-exposed-dashcards-goal-permissions!
   create-card!
   card-exposed-timeline-ids
   dashcard-hides-card-events?

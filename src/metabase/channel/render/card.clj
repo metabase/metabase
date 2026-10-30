@@ -16,7 +16,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (defn- card-href
   [card]
@@ -198,10 +199,11 @@
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
-    (let [chart-type (or (detect-pulse-chart-type card dashcard data)
-                         (when (is-attached? card)
-                           :attached)
-                         :unknown)]
+    (let [[card dashcard data] (dynamic-goals/resolve-drawn-goals card dashcard data)
+          chart-type           (or (detect-pulse-chart-type card dashcard data)
+                                   (when (is-attached? card)
+                                     :attached)
+                                   :unknown)]
       (log/debugf "Rendering pulse card with chart-type %s and render-type %s" chart-type render-type)
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e

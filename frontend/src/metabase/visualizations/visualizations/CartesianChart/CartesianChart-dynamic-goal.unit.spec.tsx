@@ -1,0 +1,188 @@
+import fetchMock from "fetch-mock";
+
+import {
+  DYNAMIC_GOAL_CARTESIAN_DISPLAYS,
+  queryEChartsGoalLine,
+} from "__support__/dynamic-goals";
+import { setupCardDataset } from "__support__/server-mocks";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { OnUpdateGoalWarning } from "metabase/visualizations/types";
+import { loadVisualizationComponents } from "metabase/viz-core";
+import type {
+  DatasetData,
+  RawSeries,
+  VisualizationDisplay,
+} from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
+} from "metabase-types/api/mocks";
+
+registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() =>
+  loadVisualizationComponents([...DYNAMIC_GOAL_CARTESIAN_DISPLAYS]),
+);
+
+const COLS = [
+  createMockColumn({ name: "month", base_type: "type/Text" }),
+  createMockColumn({ name: "count", base_type: "type/Integer" }),
+];
+
+const ROWS = [
+  ["Jan", 1],
+  ["Feb", 2],
+  ["Mar", 3],
+];
+
+const GOAL_LABEL = "Target";
+
+const ANSWERED = createMockReferencedEntitiesResults({
+  column: "goal",
+  value: 250,
+});
+
+const FAILED = createMockFailedReferencedEntitiesResults();
+
+type SetupOpts = {
+  display: VisualizationDisplay;
+  referencedEntities?: DatasetData["referenced_entities"];
+  onUpdateGoalWarning?: OnUpdateGoalWarning;
+};
+
+async function setup({
+  display,
+  referencedEntities,
+  onUpdateGoalWarning,
+}: SetupOpts) {
+  const rawSeries = createSeries(display, referencedEntities);
+
+  jest.useFakeTimers();
+  renderWithProviders(
+    <Visualization
+      rawSeries={rawSeries}
+      onUpdateGoalWarning={onUpdateGoalWarning}
+    />,
+  );
+  // ExplicitSize sets the chart dimensions after mounting
+  await act(async () => {
+    jest.advanceTimersByTime(0);
+  });
+}
+
+describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
+  "%s chart dynamic goal",
+  (display) => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("draws the goal line at the value answered by the dataset", async () => {
+      await setup({ display, referencedEntities: ANSWERED });
+
+      expect(queryEChartsGoalLine()).toBeInTheDocument();
+      // the goal is far above every data point, so it stretches the y-axis up to it
+      expect(screen.getByText("250")).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    });
+
+    it("shows a loader until an unanswered reference is fetched, then draws the goal", async () => {
+      fetchMock.post(
+        "path:/api/dataset",
+        createMockDataset({
+          data: createMockDatasetData({ referenced_entities: ANSWERED }),
+        }),
+        {
+          delay: 100, // long enough to see the loader
+        },
+      );
+
+      await setup({ display });
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(queryEChartsGoalLine()).not.toBeInTheDocument();
+
+      await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
+      expect(screen.getByText("250")).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
+      const [call] = fetchMock.callHistory.calls("path:/api/dataset");
+      expect(await call.request?.json()).toMatchObject({
+        referenced_entities: [{ type: "card", id: 9 }],
+      });
+    });
+
+    it("draws no goal line when fetching the reference fails", async () => {
+      setupCardDataset({ status: 500 });
+
+      await setup({ display });
+
+      expect(await screen.findByText("Jan")).toBeInTheDocument();
+      expect(queryEChartsGoalLine()).not.toBeInTheDocument();
+      expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
+    });
+
+    it("draws no goal line when the dataset reports the reference as failed", async () => {
+      await setup({ display, referencedEntities: FAILED });
+
+      expect(screen.getByText("Jan")).toBeInTheDocument();
+      expect(queryEChartsGoalLine()).not.toBeInTheDocument();
+      expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    });
+
+    it("reports a goal warning when the reference cannot be resolved", async () => {
+      const onUpdateGoalWarning = jest.fn<void, [boolean]>();
+
+      await setup({ display, referencedEntities: FAILED, onUpdateGoalWarning });
+
+      expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true);
+    });
+
+    it("reports no goal warning when the reference resolves", async () => {
+      const onUpdateGoalWarning = jest.fn<void, [boolean]>();
+
+      await setup({
+        display,
+        referencedEntities: ANSWERED,
+        onUpdateGoalWarning,
+      });
+
+      expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(false);
+    });
+  },
+);
+
+function createSeries(
+  display: VisualizationDisplay,
+  referenced_entities?: DatasetData["referenced_entities"],
+): RawSeries {
+  return [
+    {
+      card: createMockCard({
+        display,
+        visualization_settings: {
+          "graph.dimensions": ["month"],
+          "graph.metrics": ["count"],
+          "graph.show_goal": true,
+          "graph.goal_label": GOAL_LABEL,
+          "graph.goal_value": { type: "card", id: 9, column: "goal" },
+        },
+      }),
+      data: createMockDatasetData({
+        cols: COLS,
+        rows: ROWS,
+        referenced_entities,
+      }),
+    },
+  ];
+}

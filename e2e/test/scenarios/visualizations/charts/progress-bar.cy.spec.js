@@ -80,7 +80,7 @@ describe("scenarios > visualizations > progress chart", () => {
     });
   });
 
-  it("should exclude value column from goal column options and include Custom value option", () => {
+  it("should exclude value column from goal column options", () => {
     const questionDetails = {
       name: "Exclusion Test Progress",
       query: {
@@ -108,25 +108,22 @@ describe("scenarios > visualizations > progress chart", () => {
       cy.findByText("Sum of Total").click();
     });
 
-    H.vizSettingsSidebar().within(() => {
-      cy.findByText("Goal").parent().parent().icon("chevrondown").click();
-    });
+    openGoalSourceMenu();
+    H.popover().findByText("Value from this question").click();
 
-    // Should show Custom value, Count and Average of Quantity, but not Sum of Total
+    // Should show Count and Average of Quantity, but not Sum of Total
     H.popover().within(() => {
-      cy.findByText("Custom value").should("be.visible");
       cy.findByText("Count").should("exist");
       cy.findByText("Average of Quantity").should("be.visible");
       cy.findByText("Sum of Total").should("not.exist");
 
-      // Select Count
       cy.findByText("Count").click();
     });
 
-    // Goal should show Count selected in the input
-    H.vizSettingsSidebar().within(() => {
-      cy.findByDisplayValue("Count").should("be.visible");
-    });
+    H.vizSettingsSidebar()
+      .findByRole("button", { name: "Change value source" })
+      .should("be.visible");
+    H.queryBuilderMain().findByText("Goal 18,760").should("be.visible");
   });
 
   it("should be backwards compatible and not show value field selector with single numeric column", () => {
@@ -154,23 +151,21 @@ describe("scenarios > visualizations > progress chart", () => {
     H.vizSettingsSidebar().within(() => {
       cy.findByText("Display").click();
 
-      // Goal setting should still be visible with no dropdown since no other columns
       cy.findByText("Goal").should("be.visible");
 
       // Should NOT show Value field selector since we only have one numeric column
       cy.findByText("Value").should("not.exist");
+    });
 
-      // No dropdown icon should be visible since there are no other columns for goal
-      cy.findByPlaceholderText("Enter goal value")
-        .parent()
-        .parent()
-        .within(() => {
-          cy.icon("chevrondown").should("not.exist");
-        });
+    openGoalSourceMenu();
+
+    H.popover().within(() => {
+      cy.findByText("Value from this question").should("not.exist");
+      cy.findByText("Value from another question").should("be.visible");
     });
   });
 
-  it("should allow value field selection with multiple numeric columns and switching the goal between custom value and column reference via dropdown", () => {
+  it("should allow value field selection with multiple numeric columns and switching the goal between custom value and column reference", () => {
     const questionDetails = {
       name: "Custom Value Toggle Test",
       query: {
@@ -191,47 +186,30 @@ describe("scenarios > visualizations > progress chart", () => {
 
       // Default should be first column (Count)
       cy.findByDisplayValue("Count").should("be.visible");
+    });
 
-      // Initially should show number input with placeholder
+    openGoalSourceMenu();
+
+    H.popover().findByText("Value from this question").click();
+
+    H.vizSettingsSidebar()
+      .findByRole("button", { name: "Change value source" })
+      .should("be.visible");
+    H.queryBuilderMain().contains("Goal 1,510,621").should("be.visible");
+
+    // Removing the column reference goes back to a custom value
+    H.vizSettingsSidebar().within(() => {
+      cy.findByLabelText("Remove value source").click();
       cy.findByPlaceholderText("Enter goal value").should("be.visible");
-
-      // Click dropdown to select a column
-      cy.findByText("Goal").parent().parent().icon("chevrondown").click();
     });
+    H.queryBuilderMain().findByText("Goal 0").should("be.visible");
 
-    // Select Sum of Total column
+    // Change value to Sum of Total
+    H.vizSettingsSidebar().findByDisplayValue("Count").click();
     H.popover().findByText("Sum of Total").click();
-
-    // Should now show the column name in a read-only text input
-    H.vizSettingsSidebar().within(() => {
-      cy.findByDisplayValue("Sum of Total").should("be.visible");
-
-      // Click dropdown again to switch back to custom value
-      cy.findByText("Goal").parent().parent().icon("chevrondown").click();
-    });
-
-    H.popover().within(() => {
-      cy.findByText("Custom value").click();
-    });
-
-    // Should be back to number input and it should be focused
-    H.vizSettingsSidebar().within(() => {
-      cy.findByPlaceholderText("Enter goal value")
-        .should("exist")
-        .should("have.focus");
-
-      // Change value to Sum of Total
-      cy.findByDisplayValue("Count").click();
-    });
-
-    H.popover().within(() => {
-      cy.findByText("Sum of Total").click();
-    });
-
-    // Verify the field changed
-    H.vizSettingsSidebar().within(() => {
-      cy.findByDisplayValue("Sum of Total").should("be.visible");
-    });
+    H.vizSettingsSidebar()
+      .findByDisplayValue("Sum of Total")
+      .should("be.visible");
   });
 
   it("should handle native query with both value and goal columns", () => {
@@ -252,12 +230,11 @@ describe("scenarios > visualizations > progress chart", () => {
     H.openVizSettingsSidebar();
     H.vizSettingsSidebar().within(() => {
       cy.findByText("Display").click();
-
-      // Configure goal to use the "goal" column
-      cy.findByText("Goal").parent().parent().icon("chevrondown").click();
     });
 
-    H.popover().findByText("goal").click();
+    openGoalSourceMenu();
+
+    H.popover().findByText("Value from this question").click();
 
     // Verify the progress bar displays correctly with native query data
     H.queryBuilderMain().within(() => {
@@ -268,3 +245,10 @@ describe("scenarios > visualizations > progress chart", () => {
     });
   });
 });
+
+function openGoalSourceMenu() {
+  H.vizSettingsSidebar().within(() => {
+    cy.findByPlaceholderText("Enter goal value").realHover();
+    cy.findByLabelText("Pick a dynamic value").click();
+  });
+}

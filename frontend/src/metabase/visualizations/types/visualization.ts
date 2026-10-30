@@ -43,6 +43,13 @@ export type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
+export type OnOpenChartSettings = (data: {
+  initialChartSettings?: { section: string };
+  showSidebarTitle?: boolean;
+}) => void;
+
+export type OnUpdateGoalWarning = (hasGoalWarning: boolean) => void;
+
 export type OnBrush = (options: {
   clickObject: BrushClickObject;
   openClickActions: (clicked: ClickObject | null) => void;
@@ -111,6 +118,7 @@ export interface VisualizationProps {
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
   onBrush?: OnBrush | null;
+  onOpenChartSettings?: OnOpenChartSettings;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
@@ -126,6 +134,7 @@ export interface VisualizationProps {
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;
+  onUpdateGoalWarning?: OnUpdateGoalWarning;
 
   dispatch: Dispatch;
 

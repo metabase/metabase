@@ -191,7 +191,10 @@
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id)))
-  (api/check-500 (dashboard/add-dashcards! dashboard dashcards)))
+  ;; goals the dashboard stores were read-checked when saved, whatever their display, or predate that check and so
+  ;; already ran wherever the dashboard was shown, so new dashcards may reuse them
+  (dashboard-card/with-copy-source-dashcards (:dashcards dashboard)
+    (api/check-500 (dashboard/add-dashcards! dashboard dashcards))))
 
 (defn- update-dashcards! [dashboard dashcards]
   (check-updated-parameter-mapping-permissions (:id dashboard) dashcards)
@@ -223,6 +226,8 @@
     ;; Grandfather against the dashboard as it was before this update, as REST does: a card that already showed
     ;; its events keeps them even if its tab is deleted and it is re-added elsewhere in the same request.
     (queries/check-newly-exposed-dashcards-timeline-permissions!
+     dashboard (:dashcards dashboard) (concat to-create to-update))
+    (queries/check-newly-exposed-dashcards-goal-permissions!
      dashboard (:dashcards dashboard) (concat to-create to-update))
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
@@ -623,7 +628,8 @@
                                                                             id->new-card
                                                                             id->referenced-card
                                                                             id->new-tab-id))]
-                             (api/check-500 (dashboard/add-dashcards! dash dashcards)))
+                             (dashboard-card/with-copy-source-dashcards (:dashcards existing-dashboard)
+                               (api/check-500 (dashboard/add-dashcards! dash dashcards))))
                            (u/prog1 (cond-> dash
                                       (seq uncopied)
                                       (assoc :uncopied uncopied))

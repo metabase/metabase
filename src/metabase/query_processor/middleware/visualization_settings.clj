@@ -4,10 +4,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf]
+   [metabase.visualization-settings.core :as mb.viz]))
 
 (defn- normalize-field-settings
   [id settings]

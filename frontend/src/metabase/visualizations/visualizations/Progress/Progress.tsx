@@ -7,9 +7,16 @@ import { Flex, Icon } from "metabase/ui";
 import { assignLazily } from "metabase/utils/merge-lazily";
 import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
+import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
+import { GoalWarningIcon } from "metabase/visualizations/components/GoalWarning";
+import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { getGoalErrors } from "metabase/viz-core";
 
-import { PROGRESS_CHART_DEFINITION } from "./definition";
+import {
+  PROGRESS_CHART_DEFINITION,
+  getProgressGoalSettingsSection,
+} from "./definition";
 import {
   calculateProgressMetrics,
   extractProgressValue,
@@ -28,15 +35,19 @@ function ProgressComponent(props: VisualizationProps) {
   const {
     className,
     isMobile,
-    series: [
-      {
-        data: { rows, cols },
-      },
-    ],
+    isQueryBuilder,
+    series: [{ card, data }],
     settings,
+    onOpenChartSettings,
     onVisualizationClick,
     visualizationIsClickable,
   } = props;
+  const { rows, cols } = data;
+
+  const goalSetting = settings["progress.goal"];
+  const goalData = useResolvedGoalData(card.dataset_query, data, [
+    goalSetting ?? null,
+  ]);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -51,7 +62,13 @@ function ProgressComponent(props: VisualizationProps) {
     : -1;
 
   const value = extractProgressValue(rows, columnIndex);
-  const goal = getGoalValue(settings["progress.goal"], cols, rows);
+  const hasGoalErrors =
+    goalData.status === "resolved" &&
+    getGoalErrors(goalData.results).length > 0;
+  const goal =
+    goalData.status === "resolved"
+      ? getGoalValue(goalSetting, goalData.data)
+      : 0;
 
   const metrics = calculateProgressMetrics(value, goal);
   const { hasValidValue, hasValidGoal, barPercent, arrowPercent } = metrics;
@@ -73,6 +90,13 @@ function ProgressComponent(props: VisualizationProps) {
     if (onVisualizationClick && visualizationIsClickable(clickData)) {
       onVisualizationClick(clickData);
     }
+  };
+
+  const hasGoalWarning = isQueryBuilder && hasGoalErrors && onOpenChartSettings;
+  const handleGoalWarningClick = () => {
+    return onOpenChartSettings?.({
+      initialChartSettings: { section: getProgressGoalSettingsSection() },
+    });
   };
 
   const cardHeight = props?.gridSize?.height;
@@ -128,6 +152,10 @@ function ProgressComponent(props: VisualizationProps) {
   useEffect(() => {
     update();
   });
+
+  if (goalData.status === "resolving") {
+    return <GoalResolvingState className={className} />;
+  }
 
   return (
     <div
@@ -206,11 +234,14 @@ function ProgressComponent(props: VisualizationProps) {
         </div>
         <div className={CS.mt1}>
           <span className={CS.floatLeft}>0</span>
-          <span className={CS.floatRight}>
+          <Flex className={CS.floatRight} align="center" gap="xs">
+            {hasGoalWarning && (
+              <GoalWarningIcon source="goal" onClick={handleGoalWarningClick} />
+            )}
             {hasValidGoal
               ? t`Goal ${formatValue(goal, columnSettings)}`
               : t`Goal: Not set`}
-          </span>
+          </Flex>
         </div>
       </div>
     </div>

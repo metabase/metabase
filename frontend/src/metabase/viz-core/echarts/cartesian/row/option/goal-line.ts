@@ -1,5 +1,6 @@
 import type { CustomSeriesOption } from "echarts/charts";
 
+import { getGoalLineValue } from "../../../../lib/dynamic-goals";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -13,7 +14,6 @@ import {
   type GoalLineParams,
   buildGoalLineMarker,
   getFirstNonNullXValue,
-  getGoalLineValue,
 } from "../../option/goal-line";
 
 // Row charts: the goal is an x-coordinate and the line runs vertically.
@@ -26,14 +26,13 @@ export function getRowGoalLineSeriesOption(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CustomSeriesOption | null {
-  if (!settings["graph.show_goal"] || settings["graph.goal_value"] == null) {
+  const goalValue = getGoalLineValue(settings, isNormalized);
+
+  if (goalValue === null) {
     return null;
   }
 
-  const scaleTransformedGoalValue = getGoalLineValue(
-    settings["graph.goal_value"],
-    { isNormalized, toEChartsAxisValue },
-  );
+  const scaleTransformedGoalValue = toEChartsAxisValue(goalValue);
   const { fontSize } = renderingContext.theme.cartesian.goalLine.label;
   const labelText = settings["graph.goal_label"] ?? "";
   const labelWidth = renderingContext.measureText(labelText, {

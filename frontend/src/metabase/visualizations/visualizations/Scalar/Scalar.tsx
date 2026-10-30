@@ -4,6 +4,11 @@ import _ from "underscore";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
 import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
+import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
+import {
+  GOAL_WARNING_ICON_SIZE,
+  GoalWarningIcon,
+} from "metabase/visualizations/components/GoalWarning";
 import {
   ScalarCardShell,
   useScalarCardShell,
@@ -12,6 +17,7 @@ import { ScalarDescription } from "metabase/visualizations/components/ScalarValu
 import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/ScalarLabel";
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
+import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import {
   compactifyValue,
   getColor,
@@ -24,12 +30,19 @@ import type {
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import {
   type ComputedVisualizationSettings,
-  segmentIsValid,
+  getGoalErrors,
+  getGoalSegmentBounds,
+  resolveOpenEndedGoalSegments,
 } from "metabase/viz-core";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
-import { SCALAR_CHART_DEFINITION } from "./definition";
+import {
+  SCALAR_CHART_DEFINITION,
+  getScalarGoalSettingsSection,
+} from "./definition";
 import { scalarToBarTransform } from "./scalars-bar-transform";
+
+const GOAL_WARNING_GAP_PX = 6;
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(
@@ -52,17 +65,26 @@ function ScalarComponent(
     useIsTruncated<HTMLHeadingElement>({ ignoreHeightTruncation: true });
 
   const {
-    series: [
-      {
-        data: { cols, rows },
-      },
-    ],
+    series: [{ card, data }],
     settings,
     visualizationIsClickable,
     onVisualizationClick,
     rawSeries,
     actionButtons,
+    isQueryBuilder,
+    onOpenChartSettings,
   } = props;
+  const { cols, rows } = data;
+
+  const isMultiSeries = rawSeries.length > 1;
+  const scalarSegments = isMultiSeries
+    ? undefined
+    : settings["scalar.segments"];
+  const goalData = useResolvedGoalData(
+    card.dataset_query,
+    data,
+    getGoalSegmentBounds(scalarSegments),
+  );
 
   const label = settings["scalar.label"];
   const sublabel = settings["scalar.sublabel"];
@@ -76,14 +98,32 @@ function ScalarComponent(
     tier.size === 100 && description ? (
       <ScalarDescription description={description} />
     ) : null;
+  const titleLabel = titleElement && (
+    <ScalarLabel description={descriptionFooter ? null : description}>
+      {titleElement}
+    </ScalarLabel>
+  );
 
-  if (rawSeries.length > 1) {
+  if (isMultiSeries) {
     return (
       <TransformedVisualization
         transformSeries={scalarToBarTransform}
         originalProps={props}
         VisualizationComponent={BarChart}
       />
+    );
+  }
+
+  if (goalData.status === "resolving") {
+    return (
+      <ScalarCardShell
+        actionButtons={actionButtons}
+        footer={descriptionFooter}
+        tier={tier}
+      >
+        <GoalResolvingState />
+        {titleLabel}
+      </ScalarCardShell>
     );
   }
 
@@ -101,16 +141,26 @@ function ScalarComponent(
     jsx: true,
   };
 
-  const segments = settings["scalar.segments"]?.filter((segment) =>
-    segmentIsValid(segment, { allowOpenEnded: true }),
-  );
-
+  const segments = resolveOpenEndedGoalSegments(goalData.data, scalarSegments);
+  const hasGoalErrors = getGoalErrors(goalData.results).length > 0;
   const color = getColor(value, segments);
-  const tooltipContent = getTooltipContent(segments);
+  const tooltipContent = getTooltipContent(segments, formatOptions);
+
+  const hasGoalWarning = isQueryBuilder && hasGoalErrors && onOpenChartSettings;
+  const handleGoalWarningClick = () => {
+    return onOpenChartSettings?.({
+      initialChartSettings: { section: getScalarGoalSettingsSection() },
+    });
+  };
+
+  // reserved on both sides so the value stays centered
+  const goalWarningWidthPx = hasGoalWarning
+    ? GOAL_WARNING_ICON_SIZE + GOAL_WARNING_GAP_PX
+    : 0;
 
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
-    availableWidth,
+    Math.max(availableWidth - 2 * goalWarningWidthPx, 0),
     tier.valueFontSize,
     formatOptions,
   );
@@ -145,7 +195,7 @@ function ScalarComponent(
       actionButtons={actionButtons}
       footer={descriptionFooter}
     >
-      <Box maw="100%">
+      <Box maw="100%" pos="relative" px={`${goalWarningWidthPx}px`}>
         <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
           tooltip={fullScalarValue}
@@ -181,12 +231,16 @@ function ScalarComponent(
             </Stack>
           </Tooltip>
         </ScalarValueContainer>
+        {hasGoalWarning && (
+          <Box pos="absolute" top={0} right={0}>
+            <GoalWarningIcon
+              source="color-ranges"
+              onClick={handleGoalWarningClick}
+            />
+          </Box>
+        )}
       </Box>
-      {titleElement && (
-        <ScalarLabel description={descriptionFooter ? null : description}>
-          {titleElement}
-        </ScalarLabel>
-      )}
+      {titleLabel}
     </ScalarCardShell>
   );
 }

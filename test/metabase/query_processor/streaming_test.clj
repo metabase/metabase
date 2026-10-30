@@ -8,7 +8,6 @@
    [medley.core :as m]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -21,6 +20,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.visualization-settings.core :as mb.viz]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)

@@ -2,6 +2,7 @@ import type { CustomSeriesOption } from "echarts/charts";
 
 import type { RowValue } from "metabase-types/api";
 
+import { getGoalLineValue } from "../../../lib/dynamic-goals";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -54,16 +55,6 @@ export function getGoalLineParams(model: GoalLineParamsSource): GoalLineParams {
     toEChartsAxisValue: model.yAxisScaleTransforms.toEChartsAxisValue,
     labelOnLeft: model.rightAxisModel != null,
   };
-}
-
-export function getGoalLineValue(
-  value: number,
-  {
-    isNormalized,
-    toEChartsAxisValue,
-  }: Pick<GoalLineParams, "isNormalized" | "toEChartsAxisValue">,
-) {
-  return toEChartsAxisValue(isNormalized ? value / 100 : value);
 }
 
 function buildGoalLineLabel({
@@ -182,17 +173,13 @@ export function getGoalLineSeriesOption(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CustomSeriesOption | null {
-  if (!settings["graph.show_goal"] || settings["graph.goal_value"] == null) {
+  const goalValue = getGoalLineValue(settings, isNormalized);
+
+  if (goalValue === null) {
     return null;
   }
 
-  const scaleTransformedGoalValue = getGoalLineValue(
-    settings["graph.goal_value"],
-    {
-      isNormalized,
-      toEChartsAxisValue,
-    },
-  );
+  const scaleTransformedGoalValue = toEChartsAxisValue(goalValue);
   const { fontSize } = renderingContext.theme.cartesian.goalLine.label;
 
   return {

@@ -25,6 +25,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.referenced-entities :as qp.referenced-entities]
    [metabase.query-processor.schema :as qp.schema]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -422,14 +423,15 @@
         dashcard-id (:id dashcard)
         parameters  (some->> parameters (lib/normalize ::parameters.schema/parameters-with-optional-types))
         parameters  (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
-        dash-viz    (when (and (not= context :question) dashcard)
-                      (:visualization_settings dashcard))
-        card-viz    (:visualization_settings card)
-        merged-viz  (m/deep-merge card-viz dash-viz)
+        ;; the dashcard whose viz settings apply; a question opened from a dashboard is drawn with the card's alone
+        viz-dashcard (when (not= context :question) dashcard)
+        merged-viz  (m/deep-merge (:visualization_settings card) (:visualization_settings viz-dashcard))
         ;; We need to check this here because dashcards don't get selected until this point
         qp          (if (= :pivot (:display card))
                       qp.pivot/run-pivot-query
                       (or qp process-query-for-card-default-qp))
+        ;; wrapping the qp (rather than the `:make-run`) covers every card/dashcard/embed/public endpoint
+        qp          (qp.referenced-entities/maybe-wrap-qp-for-goals qp card viz-dashcard)
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                         (assoc :viz-settings merged-viz)

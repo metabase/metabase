@@ -29,7 +29,7 @@ import { ChartSettingEnumToggle } from "./components/settings/ChartSettingEnumTo
 import { ChartSettingFieldPicker } from "./components/settings/ChartSettingFieldPicker";
 import { ChartSettingFieldsPartition } from "./components/settings/ChartSettingFieldsPartition";
 import { ChartSettingFieldsPicker } from "./components/settings/ChartSettingFieldsPicker";
-import { ChartSettingGoalInput } from "./components/settings/ChartSettingGoalInput";
+import { ChartSettingGoalValue } from "./components/settings/ChartSettingGoalValue";
 import { ChartSettingIconRadio } from "./components/settings/ChartSettingIconRadio";
 import { ChartSettingInput } from "./components/settings/ChartSettingInput";
 import { ChartSettingInputNumeric } from "./components/settings/ChartSettingInputNumeric";
@@ -210,7 +210,7 @@ function registerVisualizationSettingWidgets() {
     tableFormatting: ChartSettingsTableFormatting,
     multiselect: ChartSettingMultiSelect,
     enumToggle: ChartSettingEnumToggle,
-    goalInput: ChartSettingGoalInput,
+    goalValue: ChartSettingGoalValue,
     maxCategories: ChartSettingMaxCategories,
     orderedSimple: ChartSettingOrderedSimple,
     segmentsEditor: ChartSettingSegmentsEditor,
