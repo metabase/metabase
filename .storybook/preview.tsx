@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
-import "metabase/css/core/fonts.css";
+import "fonts.css";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { PortalContainer, ThemeProvider } from "metabase/ui";
 
