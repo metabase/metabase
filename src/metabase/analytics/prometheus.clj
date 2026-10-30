@@ -1162,46 +1162,46 @@
   ([metric labels amount]
    (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
 
-(defn- lookup-collector
+(defn- registered-collector
+  "The registry entry for `metric`. Throws when nothing is registered under that name."
   [metric]
-  (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil))
+  (or (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil)
+      (throw (ex-info "No such metric in the registry" {:metric metric}))))
 
 (defn clear!
-  "Call Collector.clear() on given metric."
+  "Reset every label combination of `metric`. Throws when `metric` is not registered."
   [metric]
   (when-not system
     (setup!))
   (when system
-    (.clear ^SimpleCollector (:raw (lookup-collector metric)))))
+    (.clear ^SimpleCollector (:raw (registered-collector metric)))))
 
 (defn remove-series!
   "Stop exporting the one series of `metric` that carries `labels`, so Prometheus marks it stale.
   Where [[clear!]] drops every label combination of a metric, this drops one.
-  Throws when `metric` is not registered, or was declared without labels and so has no removable series."
+  Throws when `metric` is not registered, when it was declared without labels and so has no removable
+  series, and when `labels` does not name exactly the labels it declared."
   [metric labels]
   (when-not system
     (setup!))
   (when system
-    (let [{:keys [raw collector]} (lookup-collector metric)
+    (let [{:keys [raw collector]} (registered-collector metric)
           ;; the declared label names live on the iapetos collector record, already dasherized -- the very
           ;; list iapetos.collector/set-labels orders values by when it looks a child up
-          declared                (:labels collector)]
-      (when-not collector
-        (throw (ex-info "No such metric in the registry" {:metric metric})))
+          declared                (:labels collector)
+          label->value            (update-keys (qualified-vals labels) metric/dasherize)]
       (when (empty? declared)
         ;; Collector.remove drops the no-labels child and then recreates it at 0, so the series carries on
         ;; being exported -- as a plausible-looking zero. Give the metric a label instead.
         (throw (ex-info "Cannot remove a series of a metric declared without labels" {:metric metric})))
-      (let [label->value (update-keys (qualified-vals labels) metric/dasherize)]
-        ;; A name the collector did not declare resolves to nil, and `str` would turn it into the empty
-        ;; string: removal would find no child, report nothing, and leave the series exported for good.
-        (when-not (= (set (keys label->value)) (set declared))
-          (throw (ex-info "Labels do not match the metric's declared label names"
-                          {:metric metric, :declared declared, :given (sort (keys label->value))})))
-        ;; `str` because the write path takes any label value through `qualified-vals`, which leaves
-        ;; numbers and the like alone, and removal has to match what was written.
-        (let [ordered (into-array String (map (comp str label->value) declared))]
-          (.remove ^SimpleCollector raw ordered))))))
+      ;; A name the collector did not declare resolves to nil, and `str` would turn it into the empty
+      ;; string: removal would find no child, report nothing, and leave the series exported for good.
+      (when-not (= (set (keys label->value)) (set declared))
+        (throw (ex-info "Labels do not match the metric's declared label names"
+                        {:metric metric, :declared declared, :given (sort (keys label->value))})))
+      ;; `str` because the write path takes any label value through `qualified-vals`, which leaves numbers
+      ;; and the like alone, and removal has to match what was written.
+      (.remove ^SimpleCollector raw (into-array String (map (comp str label->value) declared))))))
 
 (def ^:private real-reporter
   "A real analytics.interface/Reporter that reports here"

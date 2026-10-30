@@ -205,7 +205,9 @@
         (testing "and only once"
           (reset! calls [])
           (#'index-health/expire-stale-gauges!)
-          (is (empty? @calls))))))
+          (is (empty? @calls)))))))
+
+(deftest ^:synchronized sweep-isolates-a-failed-removal-test
   (testing "a removal that fails leaves its series tracked, and the rest of the sweep still runs"
     (let [seen (atom [])
           live (atom {[:metabase-search/index-coverage-ratio {:index "boom"}] (timer-aged-ms 3600000)

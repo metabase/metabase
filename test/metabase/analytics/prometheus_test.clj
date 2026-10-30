@@ -304,9 +304,10 @@
         (prometheus/set! :metabase-search/index-coverage-ratio {:index dropped} 0.5)
         (is (= 2 (count (exported))))
         (prometheus/remove-series! :metabase-search/index-coverage-ratio {:index dropped})
-        (testing "the removed series is gone from the exposition, not merely zeroed"
-          (is (= 1 (count (exported))))
-          (is (str/includes? (first (exported)) kept)))
+        (let [after (exported)]
+          (testing "the removed series is gone from the exposition, not merely zeroed"
+            (is (= 1 (count after)))
+            (is (str/includes? (first after) kept))))
         (testing "and the surviving series keeps its value"
           (is (approx= 0.9 (mt/metric-value system :metabase-search/index-coverage-ratio
                                             {:index kept})))))))
@@ -327,7 +328,15 @@
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"do not match the metric's declared"
-                            (prometheus/remove-series! :metabase-search/index-coverage-ratio nil))))))
+                            (prometheus/remove-series! :metabase-search/index-coverage-ratio nil)))))
+  (testing "an unregistered metric is named, by both entry points"
+    (mt/with-prometheus-system! [_ _system]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"No such metric"
+                            (prometheus/remove-series! :metabase-search/not-a-metric {:index "x"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"No such metric"
+                            (prometheus/clear! :metabase-search/not-a-metric))))))
 
 (deftest pull-collector-test
   (testing "a pull collector implementation runs at scrape time and can update one or more declared metrics"

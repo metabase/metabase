@@ -109,12 +109,14 @@
 (defonce ^:private live-gauge-series
   ;; [gauge-key labels] -> a u/start-timer from when this process last published a real value. Only series
   ;; that held one are ever removed; an inactive index should never create one.
+  ;;
+  ;; Publishing and expiring both lock this atom, because they otherwise race: a sweep can read a timer,
+  ;; watch a refresh replace it, and then remove the series the refresh just exported. Neither side is hot
+  ;; -- the sweep runs once a minute, and a publish comes from a background refresh, the clustered job's
+  ;; health rows or a repair push -- so a lock is cheaper than getting a compare-and-set across the tracker
+  ;; and the registry right.
   (atom {}))
 
-;; Publishing and expiring race otherwise: a sweep can read a timer, watch a refresh replace it, and then
-;; remove the series the refresh just exported. Neither side is hot -- the sweep runs once a minute, and a
-;; publish comes from a background refresh, the clustered job's health rows or a repair push -- so a lock is
-;; cheaper than getting a compare-and-set across the tracker and the registry right.
 (defn publish-gauge!
   "Publish `value` for a search gauge, or stop exporting that series when `value` is nil.
   `labels` must name at least one label: an unlabelled collector has no series it can stop exporting."
@@ -137,7 +139,8 @@
   ;; happening -- and a reading nothing is renewing is worse than none.
   (locking live-gauge-series
     (doseq [[[gauge-key labels :as series] published] @live-gauge-series
-            :when (>= (u/since-ms published) stale-gauge-age-ms)]
+            :let  [age (u/since-ms published)]
+            :when (>= age stale-gauge-age-ms)]
       ;; Per series, so that one failure cannot end the sweep for every series behind it in the map.
       (try
         (analytics/remove-series! gauge-key labels)
@@ -147,7 +150,7 @@
         (log/warn "Stopped exporting a search gauge series this process had not refreshed"
                   {:gauge    gauge-key
                    :labels   labels
-                   :age-ms   (u/since-ms published)
+                   :age-ms   age
                    :limit-ms stale-gauge-age-ms})
         (catch InterruptedException e
           (throw e))
