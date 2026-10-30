@@ -635,9 +635,10 @@
                     (invoke-search [#'search/search-tool] {:keyword_queries ["x"] :limit limit})))))))))
 
 (deftest ^:parallel search-failure-test
-  (testing "a failing search backend lets the agent browse what the search was limited to (BOT-2540)"
+  (testing "a missing search index lets the agent browse what the search was limited to (BOT-2540)"
     (mt/with-test-user :crowberto
-      (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search Index not found." {})))]
+      (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search Index not found."
+                                                                        {:search/index-not-found? true})))]
         (let [instance-step (str "Find the data with `read_resource` instead: read `metabase://collections` for "
                                  "metrics, models, questions and dashboards, or `metabase://databases`, then "
                                  "`metabase://database/{id}/tables`, for tables.")
@@ -674,6 +675,20 @@
             (is (= {:error  {:class :recoverable :code ::search/search-failed}
                     :output (str "Search failed.\n" no-retry-step)}
                    (invoke-search [#'search/search-tool] {:keyword_queries ["orders"]})))))))))
+
+(deftest ^:parallel search-failure-is-recoverable-only-for-a-missing-index-test
+  (mt/with-test-user :crowberto
+    (doseq [[description ex expected-error]
+            [["a missing index" (ex-info "Search Index not found." {:search/index-not-found? true})
+              {:class :recoverable :code ::search/search-failed}]
+             ["a failure nobody planned for" (ex-info "Boom" {})
+              {:class :unrecoverable :code :internal}]]
+            queries [["orders"] ["orders" "invoices"]]]
+      ;; Several queries run in futures, so this also checks that the futures do not change the outcome.
+      (testing (str description ", with " (count queries) " queries")
+        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] (throw ex))]
+          (is (= expected-error
+                 (:error (invoke-search [#'search/search-tool] {:keyword_queries queries})))))))))
 
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"

@@ -18,12 +18,10 @@
    [metabase.search.hierarchy :as search.hierarchy]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [methodical.core :as methodical])
@@ -84,47 +82,21 @@
                  :ttl/threshold (u/hours->ms 1))
     view-count-percentiles*))
 
-(defn- results
-  [{:keys [search-engine search-string] :as search-ctx}]
-  ;; Check whether there is a query-able index.
-  (when-not (search.index/active-table)
-    (let [index-state  @@#'search.index/*indexes*
-          ;; Sync, in case we're just out of sync with the database.
-          found-active (:active (#'search.index/sync-tracking-atoms!))
-          ;; If there's really no index, and we're running in prod - gulp, try to initialize now.
-          init-now?    (and (not found-active) config/is-prod?)]
-      (when init-now?
-        (log/warnf "Triggering a late initialization of the %s search index." search-engine)
-        (try
-          (future
-            (search.engine/init! search-engine {:force-reset? false}))
-          (catch Exception e
-            (log/error (ex-message e)))))
-      ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
-      (throw (ex-info "Search Index not found."
-                      {:search-engine      search-engine
-                       :db-type            (mdb/db-type)
-                       :version            (search.spec/index-version-hash)
-                       :lang_code          (i18n/site-locale-string)
-                       :forced-init?       init-now?
-                       :index-state-before index-state
-                       :index-state-after  @@#'search.index/*indexes*
-                       :index-metadata     (search.db/index-metadata-for-engine :appdb)}))))
+(defn- query-index
+  [table {:keys [search-string] :as search-ctx}]
+  (let [weights     (search.config/weights search-ctx)
+        percentiles (view-count-percentiles search.config/view-count-scaling-percentile)
+        scorer-keys (keys (search.scoring/scorers search-ctx percentiles))]
+    (->> (search.db/scored-search-rows table search-ctx search-string percentiles)
+         (map (partial rehydrate weights scorer-keys)))))
 
+(defn- results
+  [{:keys [search-string] :as search-ctx}]
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
-    (try
-      (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
-        (when-not (search.ingestion/await-pending-updates! 2000)
-          (log/warn "Returning search results before pending index updates finished.")))
-      (let [weights     (search.config/weights search-ctx)
-            percentiles (view-count-percentiles search.config/view-count-scaling-percentile)
-            scorer-keys (keys (search.scoring/scorers search-ctx percentiles))]
-        (->> (search.db/scored-search-rows (search.index/active-table) search-ctx search-string percentiles)
-             (map (partial rehydrate weights scorer-keys))))
-      (catch Exception e
-        ;; Rule out the error coming from stale index metadata.
-        (#'search.index/sync-tracking-atoms!)
-        (throw e)))))
+    (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
+      (when-not (search.ingestion/await-pending-updates! 2000)
+        (log/warn "Returning search results before pending index updates finished.")))
+    (search.index/do-with-active-table #(query-index % search-ctx))))
 
 (defmethod search.engine/results :search.engine/appdb
   [search-ctx]
