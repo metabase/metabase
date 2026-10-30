@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
 /** Rounds of prototyping; the rail groups entries by iteration. */
-export type PrototypeIteration = 1 | 2 | 3 | 4;
+export type PrototypeIteration = 1 | 2 | 3 | 4 | 5;
 
 export type PrototypeDefinition = {
   id: string;

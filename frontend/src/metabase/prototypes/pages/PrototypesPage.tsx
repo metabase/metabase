@@ -47,6 +47,9 @@ export function PrototypesPage() {
   const iteration4 = directions.filter(
     (candidate) => candidate.iteration === 4,
   );
+  const iteration5 = directions.filter(
+    (candidate) => candidate.iteration === 5,
+  );
 
   return (
     <Flex h="100%" mih="100vh">
@@ -118,8 +121,22 @@ export function PrototypesPage() {
 
         <Divider my="sm" />
 
-        <Text fw="bold" px="sm">{t`Iteration 4`}</Text>
-        <PrototypeLinks prototypes={iteration4} activeId={prototype?.id} />
+        <NavLink
+          label={t`Iteration 4`}
+          childrenOffset="sm"
+          defaultOpened={false}
+        >
+          <PrototypeLinks
+            prototypes={iteration4}
+            activeId={prototype?.id}
+            mt="xs"
+          />
+        </NavLink>
+
+        <Divider my="sm" />
+
+        <Text fw="bold" px="sm">{t`Iteration 5`}</Text>
+        <PrototypeLinks prototypes={iteration5} activeId={prototype?.id} />
       </Stack>
 
       <Box flex={1} p="lg" style={{ overflow: "auto" }}>
