@@ -525,6 +525,48 @@
                                                :result_metadata (:result_metadata served)}))))
           (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names))))))))
 
+(deftest non-admin-may-resend-unchanged-values-in-another-representation-test
+  (testing "a non-admin may send a policy Card's admin-only columns back unchanged, in the form an API client uses"
+    (mt/with-premium-features #{:sandboxes}
+      (with-card-policy
+        (fn [{:keys [card]}]
+          (let [{:keys [type query_type display card_schema]} (t2/select-one :model/Card :id (:id card))]
+            (is (keyword? type))
+            (is (keyword? query_type))
+            (is (keyword? display))
+            (is (instance? Integer card_schema))
+            (mt/with-test-user :rasta
+              (is (= 1 (t2/update! :model/Card :id (:id card) {:name        (mt/random-name)
+                                                               :type        (name type)
+                                                               :query_type  (name query_type)
+                                                               :display     (name display)
+                                                               :card_schema (long card_schema)}))))
+            (is (=? {:type type, :query_type query_type, :display display, :card_schema card_schema}
+                    (t2/select-one :model/Card :id (:id card))))
+            (testing "a new value in string form is still refused"
+              (mt/with-test-user :rasta
+                (doseq [changes [{:type "model"} {:type "metric"} {:query_type "native"}]]
+                  (testing changes
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo card-msg
+                                          (t2/update! :model/Card :id (:id card) changes))))))
+              (is (=? {:type type, :query_type query_type} (t2/select-one :model/Card :id (:id card)))))))))))
+
+(deftest non-admin-may-save-a-policy-card-as-the-frontend-sends-it-test
+  (testing "a non-admin may rename a policy Card by sending back the whole Card, as the frontend does"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {:query (sbx.tu/restricted-column-query (mt/id))}}}
+        (perms/grant-collection-readwrite-permissions! (:id &group) collection/root-collection)
+        (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))
+              served  (mt/user-http-request :crowberto :get 200 (str "card/" card-id))]
+          (is (= "Renamed"
+                 (:name (mt/user-http-request :rasta :put 200 (str "card/" card-id) (assoc served :name "Renamed")))))
+          (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names)))
+          (testing "the whole Card with a changed query is still refused"
+            (is (= "You do not have permissions to modify a question that is used for row and column level security."
+                   (mt/user-http-request :rasta :put 403 (str "card/" card-id)
+                                         (assoc served :dataset_query (mt/mbql-query venues {:limit 1}))))))
+          (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names))))))))
+
 (deftest non-admin-cannot-change-the-type-of-a-policy-card-through-the-api-test
   (testing "a non-admin who curates the policy Card cannot turn it into a model or metric, or move it into a Dashboard"
     (mt/with-premium-features #{:sandboxes}

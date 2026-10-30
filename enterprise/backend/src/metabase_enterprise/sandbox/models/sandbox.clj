@@ -29,7 +29,8 @@
    [metabase.util.malli :as mu]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.transformed :as t2.transformed]))
 
 (set! *warn-on-reflection* true)
 
@@ -270,12 +271,28 @@
   "The Measure columns only an admin may change; see [[card-columns-only-an-admin-may-change]]."
   #{:definition :table_id :archived :id :entity_id :creator_id :created_at})
 
+(defn- value-changes?
+  "Whether `v` is a new value for column `k` of `instance`. `v` is first sent through the model's `:in` and `:out` type
+  transforms, so an unchanged value in another form, such as `\"question\"` for a stored `:question`, does not count.
+  Without an original to compare with, or if a transform throws, every value counts as a change."
+  [instance k v]
+  (let [original (t2/original instance)]
+    (or (nil? original)
+        (try
+          (let [{:keys [in out]} (get (t2.transformed/transforms (t2/model instance)) k)]
+            (not= (get original k ::not-found)
+                  (cond-> v
+                    (and in (some? v))  in
+                    (and out (some? v)) out)))
+          (catch Exception _
+            true)))))
+
 (defn- check-non-admin-changes-allowed!
-  "Throws a 403 if `changes` to the `entity-kind` entity with `id` touch a column outside `allowed-columns`, the entity
-  is in the sandbox dependency set, and the current user is not an admin."
-  [entity-kind id allowed-columns changes]
-  (when (some (complement allowed-columns) (keys changes))
-    (check-non-admin-cannot-affect-sandboxing! entity-kind id)))
+  "Throws a 403 if `changes` to `instance`, an `entity-kind` entity, give a column outside `allowed-columns` a new
+  value, the entity is in the sandbox dependency set, and the current user is not an admin."
+  [entity-kind instance allowed-columns changes]
+  (when (some (fn [[k v]] (and (not (allowed-columns k)) (value-changes? instance k v))) changes)
+    (check-non-admin-cannot-affect-sandboxing! entity-kind (:id instance))))
 
 (defenterprise pre-update-check-sandbox-constraints
   "Refuses a non-admin's update to a Card in the sandbox dependency set when `changes` touches a column outside
@@ -283,8 +300,8 @@
   the column allow-list), `:archived`, or `:type`. If the result metadata changes, also checks that it does not
   violate the constraints placed on sandboxes (the Card cannot add fields or change types vs. the original Table)."
   :feature :sandboxes
-  [{new-result-metadata :result_metadata, card-id :id} changes]
-  (check-non-admin-changes-allowed! :card card-id card-columns-a-non-admin-may-change changes)
+  [{new-result-metadata :result_metadata, card-id :id, :as card} changes]
+  (check-non-admin-changes-allowed! :card card card-columns-a-non-admin-may-change changes)
   (when (contains? changes :result_metadata)
     (check-result-metadata-still-matches-sandboxed-tables! card-id new-result-metadata)))
 
@@ -298,8 +315,8 @@
   "Refuses a non-admin's update to a snippet in the sandbox dependency set when `changes` touches a column outside
   [[snippet-columns-a-non-admin-may-change]], such as `:content`, `:name`, or `:archived`."
   :feature :sandboxes
-  [{snippet-id :id} changes]
-  (check-non-admin-changes-allowed! :snippet snippet-id snippet-columns-a-non-admin-may-change changes))
+  [snippet changes]
+  (check-non-admin-changes-allowed! :snippet snippet snippet-columns-a-non-admin-may-change changes))
 
 (defenterprise pre-delete-check-sandbox-constraints-for-snippet
   "Refuses a non-admin's deletion of a snippet in the sandbox dependency set."
@@ -311,8 +328,8 @@
   "Refuses a non-admin's update to a Segment in the sandbox dependency set when `changes` touches a column outside
   [[segment-columns-a-non-admin-may-change]], such as `:definition` or `:archived`."
   :feature :sandboxes
-  [{segment-id :id} changes]
-  (check-non-admin-changes-allowed! :segment segment-id segment-columns-a-non-admin-may-change changes))
+  [segment changes]
+  (check-non-admin-changes-allowed! :segment segment segment-columns-a-non-admin-may-change changes))
 
 (defenterprise pre-delete-check-sandbox-constraints-for-segment
   "Refuses a non-admin's deletion of a Segment in the sandbox dependency set."
@@ -324,8 +341,8 @@
   "Refuses a non-admin's update to a Measure in the sandbox dependency set when `changes` touches a column outside
   [[measure-columns-a-non-admin-may-change]], such as `:definition` or `:archived`."
   :feature :sandboxes
-  [{measure-id :id} changes]
-  (check-non-admin-changes-allowed! :measure measure-id measure-columns-a-non-admin-may-change changes))
+  [measure changes]
+  (check-non-admin-changes-allowed! :measure measure measure-columns-a-non-admin-may-change changes))
 
 (defenterprise pre-delete-check-sandbox-constraints-for-measure
   "Refuses a non-admin's deletion of a Measure in the sandbox dependency set."
