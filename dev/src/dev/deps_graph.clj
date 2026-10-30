@@ -698,12 +698,6 @@
 (def ^:private test-source-file-extensions
   [".clj" ".cljc" ".cljs" ".bb"])
 
-(defn- module->test-path-prefix [modules-config module]
-  (let [ns-prefix (modules/module-ns-prefix modules-config module)]
-    (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
-         "test/"
-         (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
-
 (defn- existing-test-file-paths [path-prefix]
   (into (sorted-set)
         (keep (fn [extension]
@@ -720,7 +714,7 @@
   ([modules-config :- ModulesConfig
     prefix->module :- PrefixToModule
     module-sym :- :symbol]
-   (let [path-prefix  (module->test-path-prefix modules-config module-sym)
+   (let [path-prefix  (modules/module-dir modules-config module-sym "test")
          test-dir     (io/file path-prefix)
          nested-tests (when (.isDirectory test-dir)
                         (into

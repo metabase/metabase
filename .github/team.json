@@ -55,7 +55,7 @@
     {
       "name": "Metabot",
       "label": ".Team/Metabot",
-      "assignee": "@metabase/metabot",
+      "codeowner": "@metabase/metabot",
       "members": [
         "retro",
         "sloansparger",
@@ -141,7 +141,7 @@
     {
       "name": "Data Apps",
       "label": ".Team/DataApps",
-      "assignee": "@metabase/data-apps",
+      "codeowner": "@metabase/data-apps",
       "members": []
     }
   ]

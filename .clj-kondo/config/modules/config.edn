@@ -15,9 +15,14 @@
 ;; ## `codeowners`:
 ;;
 ;; Makes the module's team a required reviewer for the module's code in `.github/CODEOWNERS`. Set it to `true` for
-;; its src and test code, or to `:src-only` for its src code only. Ownership goes to the team's
-;; `assignee` handle in `.github/team.json`, which the team must have. Run `./bin/mage update-codeowners` after
-;; changing it. Leave it out for modules whose team has not agreed to review them.
+;; its src and test code, or to `:src-only` for its src code only. Ownership goes to the team's `codeowner` handle
+;; in `.github/team.json`, which the team must have. Run `./bin/mage update-codeowners` after changing it. Leave it
+;; out for modules whose team has not agreed to review them.
+;;
+;; It is not inherited, but it covers the module's directories, so nested modules inside them come along. A nested
+;; module of another team inside them must set it too; the generator fails until it does. A nested module with an
+;; `:ns-prefix` outside its parent's directories needs its own. Plugin code under `modules/<plugin>/src` is not
+;; supported: give it an owner by hand.
 ;;
 ;;    search
 ;;    {:team       "Metabot"
