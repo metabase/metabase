@@ -247,16 +247,6 @@ person in events has one, and no identity row lacks events. And it checks
 the history: one row per `identify()`, and `person_*` traits on events only
 from someone's first `identify()` on.
 
-```bash
-bun run dev/product-analytics/check-insights.ts
-```
-
-Runs the funnel insight search the same way and checks it finds the effects
-`generate.ts` planted (`insights` in `ground-truth.json`). After regenerating,
-re-sync the database in Metabase so new columns like `trial_source` and
-`person_role` get fingerprints, since insights only consider fingerprinted
-columns.
-
 ## Benchmark the funnel queries
 
 ```bash

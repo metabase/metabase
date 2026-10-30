@@ -1,9 +1,13 @@
+import {
+  type ColumnRoles,
+  EVERY_EVENT,
+  type PageviewRule,
+} from "metabase/event-tables";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { ORDERS_ID, PEOPLE_ID } from "metabase-types/api/mocks/presets";
 
 import { buildBaseQuery } from "./base-query";
-import type { ColumnRoles } from "./columns";
 import { createFlagAllocator } from "./events/allocate-flags";
 import {
   type MockFilter,
@@ -14,6 +18,7 @@ import {
 import type { EventDefinition } from "./events/types";
 import { NO_FILTERS } from "./filters";
 import { IN_RANGE_FLAG } from "./sql/analyses/lookback";
+import { PAGEVIEW_FLAG } from "./sql/analyses/path-nodes";
 
 const STAGE = -1;
 
@@ -21,7 +26,6 @@ const COLUMNS: ColumnRoles = {
   timestamp: "CREATED_AT",
   person: "USER_ID",
   session: null,
-  event_id: "ID",
   event_name: null,
   url_path: null,
 };
@@ -35,6 +39,8 @@ const getFlagParts = (event: EventDefinition) => {
   const { query } = buildBaseQuery(SAMPLE_PROVIDER, ORDERS_ID, {
     dateRange: "",
     columns: COLUMNS,
+    pageviews: null,
+    pathCleaning: [],
     events: flags.events,
     extraColumns: [],
     usersTable: undefined,
@@ -81,6 +87,8 @@ describe("buildBaseQuery", () => {
     const { query, extraColumns } = buildBaseQuery(SAMPLE_PROVIDER, ORDERS_ID, {
       dateRange: "",
       columns: COLUMNS,
+      pageviews: null,
+      pathCleaning: [],
       events: [],
       extraColumns: [
         { as: "cohort_start", column: "CREATED_AT", from: "events" },
@@ -97,13 +105,15 @@ describe("buildBaseQuery", () => {
       Lib.returnedColumns(query, STAGE).map(
         (column) => Lib.displayInfo(query, STAGE, column).name,
       ),
-    ).toEqual(["CREATED_AT", "USER_ID", "ID"]);
+    ).toEqual(["CREATED_AT", "USER_ID"]);
   });
 
   it("left-joins the users table for an extra column of it", () => {
     const { query, extraColumns } = buildBaseQuery(SAMPLE_PROVIDER, ORDERS_ID, {
       dateRange: "",
       columns: COLUMNS,
+      pageviews: null,
+      pathCleaning: [],
       events: [],
       extraColumns: [
         { as: "cohort_attribute", column: "SOURCE", from: "users" },
@@ -131,7 +141,7 @@ describe("buildBaseQuery", () => {
       Lib.returnedColumns(query, STAGE).map(
         (column) => Lib.displayInfo(query, STAGE, column).longDisplayName,
       ),
-    ).toEqual(["Created At", "User ID", "ID", "People - User → Source"]);
+    ).toEqual(["Created At", "User ID", "People - User → Source"]);
   });
 
   it("rejects a users table column without a users table", () => {
@@ -139,6 +149,8 @@ describe("buildBaseQuery", () => {
       buildBaseQuery(SAMPLE_PROVIDER, ORDERS_ID, {
         dateRange: "",
         columns: COLUMNS,
+        pageviews: null,
+        pathCleaning: [],
         events: [],
         extraColumns: [
           { as: "cohort_attribute", column: "SOURCE", from: "users" },
@@ -178,6 +190,8 @@ describe("createFlagAllocator", () => {
       buildBaseQuery(SAMPLE_PROVIDER, ORDERS_ID, {
         dateRange,
         columns: COLUMNS,
+        pageviews: null,
+        pathCleaning: [],
         events: [],
         extraColumns: [],
         usersTable: undefined,
@@ -220,6 +234,48 @@ describe("createFlagAllocator", () => {
 
     it("adds nothing without one", () => {
       const { query, flags } = build("past30days", 0);
+
+      expect(Lib.expressions(query, STAGE)).toHaveLength(0);
+      expect(flags).toEqual([]);
+    });
+  });
+
+  describe("with a pageview rule", () => {
+    const build = (pageviews: PageviewRule) =>
+      buildBaseQuery(SAMPLE_PROVIDER, ORDERS_ID, {
+        dateRange: "",
+        columns: COLUMNS,
+        pageviews,
+        pathCleaning: [],
+        events: [],
+        extraColumns: [],
+        usersTable: undefined,
+        filters: NO_FILTERS,
+        peopleSegments: [],
+        requiredPeopleSegments: [],
+        lookbackDays: 0,
+      });
+
+    it("flags the events where the rule's column has its value", () => {
+      const { query, flags } = build({
+        type: "column_value",
+        column: "QUANTITY",
+        value: 1,
+      });
+      const [isPageview] = Lib.expressions(query, STAGE);
+
+      expect(Lib.displayInfo(query, STAGE, isPageview).displayName).toBe(
+        PAGEVIEW_FLAG,
+      );
+      expect(Lib.expressionParts(query, STAGE, isPageview)).toMatchObject({
+        operator: "case",
+        args: [{ operator: "=", args: [{}, 1] }, 1, 0],
+      });
+      expect(flags).toEqual([PAGEVIEW_FLAG]);
+    });
+
+    it("adds no flag when every event is a pageview", () => {
+      const { query, flags } = build(EVERY_EVENT);
 
       expect(Lib.expressions(query, STAGE)).toHaveLength(0);
       expect(flags).toEqual([]);

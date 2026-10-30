@@ -8,7 +8,8 @@ import type { ComponentType } from "react";
 
 export type SettingSection = "toolbar" | "setup" | "advanced";
 
-export type SettingGroup = "columns";
+/** Sections of the event table settings. Only table settings have one. */
+export type SettingGroup = "required_columns" | "optional_columns" | "pages";
 
 export type SettingKey<S> = keyof S & string;
 

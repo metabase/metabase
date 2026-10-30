@@ -2,7 +2,56 @@
 
 Work we've decided is needed, but not for the prototype. Each section stands on its own.
 
-## Path cleaning
+## Source of truth for an analysis
+
+An analysis is defined by its analysis settings, like `funnel.view` ("How to display the funnel"). They use the viz settings engine, so defaults, validation, dependencies between settings and widgets come for free. But they're used differently: viz settings take a query result and compute how to draw it, while analysis settings build the query itself.
+
+Today the source of truth is split:
+
+- **Dashboards and subscriptions** run the query saved with the card.
+- **The event analysis builder** throws that query away when it reopens the card, and builds a new one from the saved settings.
+
+So the two can disagree. If we change how queries are built from settings, a saved analysis shows one thing on a dashboard and another when opened. Before this ships, decide which one is the source of truth and when a query gets rebuilt.
+
+### Sparse settings
+
+Like viz settings, analysis settings are sparse: only what the user changed is saved, and everything else is a default computed on read. With viz settings that's caused trouble, because changing a default changes every existing card that relied on it. We should consider a different approach for analysis settings.
+
+Table settings make this harder to decide. An analysis that never changed its column roles follows the table's (see [event-table-settings.plan.md](event-table-settings.plan.md)), so an admin changing them changes every such analysis:
+
+- **Against following the table:** someone who saved an analysis was happy with how it looked, and an admin's change later shouldn't change it under them.
+- **For following it:** a fix should reach every analysis, and a table whose columns change shouldn't leave analyses pointing at a column that's gone. For path cleaning especially, analyses that each kept their own copy of the rules would end up with slightly different cleaning scattered across them.
+
+So the answer may differ per setting: some follow the table, and others are fixed when the analysis is saved.
+
+## IDs in saved analyses
+
+The prototype's settings refer to tables and fields by their numeric ids, which differ between instances, so they don't survive serialization, and dependency tracking can't see them. Don't copy this when hardening. Event table settings name columns instead, which are portable.
+
+## Event schemas
+
+Sync recognizes event tables by matching their columns against known schemas ([event-table-settings.plan.md](event-table-settings.plan.md#detection)). Apart from Track's, the prototype's schemas were written from memory of each vendor's docs, not checked against real exports. Don't copy them as they are.
+
+### Validate them
+
+Check each one against the vendor's current docs, and against a real export where there's one to read:
+
+- **GA4:** Google's public sample export (`bigquery-public-data.ga4_obfuscated_sample_ecommerce`) has the real columns.
+- **Snowplow:** Snowplow publishes the `atomic.events` table definition.
+- **Segment, RudderStack, Amplitude, Mixpanel, PostHog:** their warehouse and export docs, and the dbt packages built on them, which list the source columns they read.
+
+Keeping them current is mostly a matter of watching for changes: vendors rarely rename warehouse columns, because their customers' SQL depends on them, but they do add them. The matching only needs a few columns per schema, so added columns don't break it; renames do. A scheduled job, rather than a test, could compare each schema with the vendor's published one, such as GA4's sample dataset.
+
+### Sources split across tables
+
+An event table is one table, but some sources split their events across several:
+
+- **Segment and RudderStack** write `tracks` (every event, with only the common columns), `pages` (pageviews, with `path` and no event name), `identifies`, and one table per event with its properties. The prototype only recognizes `tracks`. The per-event tables have the same common columns, so each of them is likely recognized as an event table too, and fills the table picker.
+- **GA4** exports one table per day (`events_20261029`, plus `events_intraday_…`). Each day is recognized as its own event table, while analyses need every day at once, which BigQuery reads with a wildcard (`events_*`).
+
+Outside Metabase, people usually model these into one events table first: a view or dbt model that unions `tracks` and `pages` (pageviews as an event named for the page), stitches `anonymous_id` to `user_id` through `identifies`, and for GA4 reads the wildcard. Here that means a view in the warehouse, or a model once the table picker accepts models. Recognizing a source should then mean recognizing the modelled table, and not offering the raw pieces.
+
+## Cleaning URL paths
 
 Paths that name pageviews by their URL need the URLs cleaned first. Without cleaning, real data turns into a long tail of nodes that each appear once:
 
@@ -54,13 +103,30 @@ The rules chain as nested `regexReplace` calls, which is fine here, because ever
 
 So it can be a driver feature, the way `:regex` gates `regexextract`.
 
-**UX.** Users shouldn't edit the expression. They'd see an ordered list of rules: pattern, replacement, and a preview against sample paths. The list compiles to the expression, with good defaults for the generic rules.
+**UX.** Users shouldn't edit the expression. They'd see an ordered list of rules: pattern, replacement and a description. The list compiles to the expression, with good defaults for the generic rules.
 
-**Where it lives.** It's per table, not per analysis, so it belongs with the column roles in table metadata. Meanwhile, a model with a cleaned-path custom column works today with no new UX, once the table picker accepts models.
+**Where it lives.** It's per table, not per analysis, so it belongs with the column roles in table metadata ([event-table-settings.plan.md](event-table-settings.plan.md)). Meanwhile, a model with a cleaned-path custom column works today with no new UX, once the table picker accepts models.
+
+The prototype has the list as the `path_cleaning` table setting, and applies it in its ClickHouse SQL with `replaceRegexpAll`, outside MBQL. It checks only that each pattern isn't empty.
+
+### Regex dialects
+
+Every database has its own regular expressions. Metabase passes `regexextract`'s pattern to the database as written, and rules would work the same way, so a rule is written in its database's dialect. They differ in two ways.
+
+**Patterns.** RE2 (ClickHouse, BigQuery) has no lookarounds or backreferences. Postgres, Java (Spark, Databricks, H2) and ICU (MySQL 8) have both, and Snowflake's are POSIX extended. Most simple rules, like the defaults, mean the same in all of them. A pattern can't be translated from one dialect to another.
+
+**Replacements.** A group in a replacement is `\1` in ClickHouse, BigQuery, Snowflake and Postgres, and `$1` in Java and MySQL. That one can be translated: rules could be stored in one syntax, and each driver rewrites it.
+
+These are from memory, so check each driver before relying on them. What follows:
+
+- **The default rules are ClickHouse's.** `getDefaultPathCleaningRules` in `event-tables/path-cleaning.ts` is written for ClickHouse: the trailing slash rule's `\1` is `$1` in Java and MySQL, and the number and UUID rules end in `\b`, which isn't a word boundary in every dialect (Postgres's is `\y`). Each database needs its own defaults, or the replacement translated per driver as above. Don't apply them as they are elsewhere.
+
+- **Validation belongs to the database.** The browser's regular expressions are a third dialect, so a check there is wrong for some databases. Saving a rule could instead run it once on the warehouse against a literal, which only fails when the pattern does.
+- **A preview, if there is one, runs on the warehouse.** PostHog has a tester in the browser that copies RE2's syntax, which works because they only have ClickHouse. Ours would run the rules against a sample of the table's real paths, so it's right for every dialect. Until then, general regex testers like regex101 cover most of it.
 
 ## Recognizing pageviews in other schemas
 
-`events/pageviews.ts` only recognizes Umami and Track (`event_type = 1`). Elsewhere a pageview is an event name, so detecting it means finding a known value in the event name column:
+Sync detects a pageview rule with each event schema (see "Detection" in [event-table-settings.plan.md](event-table-settings.plan.md#detection)). Where the page is, and what's still missing:
 
 | Source | Pageview | Page |
 |---|---|---|
@@ -72,9 +138,9 @@ So it can be a driver feature, the way `:regex` gates `regexextract`.
 | Mixpanel export | `event = '$mp_web_page_view'` | `$current_url` |
 | Segment, RudderStack | a separate `pages` table | `path` |
 
-- **Event name values:** checking them needs the column's field values, which aren't in the table metadata the settings see today.
+- **Page as a property:** GA4, PostHog, Amplitude and Mixpanel have a pageview rule but no URL path column, so the rule does nothing until the URL path role can be an expression.
+- **Plausible** isn't a detected schema yet.
 - **Segment:** the separate `pages` table needs a union with `tracks` before any of this applies.
-- **Whole schemas:** this belongs with fingerprinting whole schemas in [analysis-settings.plan.md](analysis-settings.plan.md), which assigns every role at once.
 
 ## Which events insights compare people by
 

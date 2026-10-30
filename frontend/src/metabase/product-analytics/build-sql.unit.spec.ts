@@ -1,9 +1,9 @@
+import { type StoredSettings, computeSettings } from "metabase/event-tables";
+
 import { getAnalysisConfig } from "./analyses/config";
 import { buildSql } from "./build-sql";
 import { createFlagAllocator } from "./events/allocate-flags";
 import { createMockEventDefinition } from "./events/mocks";
-import { computeSettings } from "./settings/compute";
-import type { StoredSettings } from "./settings/types";
 import type { AnalysisKind } from "./spec/types";
 
 const getSpec = (kind: AnalysisKind, stored: StoredSettings) => {
@@ -31,7 +31,6 @@ const BASE_COLUMNS = {
   timestamp: "ts",
   person: "user_id",
   session: null,
-  event_id: "id",
   event_name: "event_name",
   url_path: null,
 };
@@ -46,7 +45,6 @@ describe("buildSql", () => {
           timestamp: "ts",
           person: "user_id",
           session: null,
-          event_id: "id",
           event_name: "event_name",
           url_path: null,
         },
@@ -76,6 +74,22 @@ describe("buildSql", () => {
     });
 
     expect(built.sql).toContain("`Users__plan` AS breakout_property");
+  });
+
+  it("cleans the URL path with each rule in order", () => {
+    const built = buildSql(getFunnelSpec(), "SELECT 1", {
+      columns: { ...BASE_COLUMNS, url_path: "path" },
+      flags: ["ev_1", "ev_2", "ev_3"],
+      extraColumns: [],
+      pathCleaning: [
+        { pattern: "[?#].*$", replacement: "" },
+        { pattern: "/[0-9]+\\b", replacement: "/:id" },
+      ],
+    });
+
+    expect(built.sql).toContain(
+      "replaceRegexpAll(replaceRegexpAll(`path`, '[?#].*$', ''), '/[0-9]+\\\\b', '/:id') AS url_path",
+    );
   });
 
   describe("cohorts", () => {

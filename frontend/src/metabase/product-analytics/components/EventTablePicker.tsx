@@ -5,6 +5,7 @@ import { skipToken, useGetTableQuery, useListTablesQuery } from "metabase/api";
 import { DataPickerModal } from "metabase/common/components/Pickers";
 import { MiniPickerSearchResults } from "metabase/common/components/Pickers/MiniPicker";
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
+import { isEventTable } from "metabase/event-tables";
 import {
   Box,
   Button,
@@ -18,8 +19,6 @@ import {
 } from "metabase/ui";
 import { isConcreteTableId } from "metabase-types/api";
 import type { ConcreteTableId, TableId } from "metabase-types/api";
-
-const EVENT_TABLE_ENTITY_TYPE = "entity/EventTable";
 
 const SEARCH_MODELS: MiniPickerPickableItem["model"][] = ["table"];
 
@@ -52,9 +51,7 @@ export const EventTablePicker = ({
   );
   const tables = useListTablesQuery();
   const eventTables = (tables.data ?? []).filter(
-    (item) =>
-      item.entity_type === EVENT_TABLE_ENTITY_TYPE &&
-      isConcreteTableId(item.id),
+    (item) => isEventTable(item) && isConcreteTableId(item.id),
   );
   const isSearching = searchQuery.trim().length > 0;
 

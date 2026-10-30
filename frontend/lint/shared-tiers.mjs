@@ -73,6 +73,7 @@ const SHARED_DOMAIN = [
   "shared/custom-viz",
   "shared/documents",
   "shared/embedding-ee",
+  "shared/event-tables",
   "shared/metrics-ui",
   "shared/nav",
   "shared/notifications",

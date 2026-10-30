@@ -91,6 +91,11 @@
   #{:display_name :description :entity_type :visibility_type :caveats :points_of_interest :data_layer :data_source
     :owner_email :owner_user_id :field_order :show_in_getting_started :data_authority :is_published :collection_id})
 
+(def user-only-table-columns
+  "The Table columns that only `metabase_table_user_settings` has, read as they are rather than merged with a
+  `metabase_table` column."
+  #{:event_settings})
+
 (def table-user-settings-flags
   "The user-settable Table columns a user can clear, mapped to the flag that says the user set the column, NULL
   included."
@@ -105,8 +110,8 @@
   "Every column of `metabase_table`. Spelled out rather than read from `:metabase.warehouse-schema.schema/table`,
   which lives in a module above this one; `metabase.warehouse-schema-overlay.core-test` fails if the two drift."
   #{:active :archived_at :caveats :collection_id :created_at :data_authority :data_layer :data_source
-    :database_require_filter :db_id :deactivated_at :description :display_name :entity_type :estimated_row_count
-    :field_order :id :initial_sync_status :is_defective_duplicate :is_published :is_upload :is_writable :name
+    :database_require_filter :db_id :deactivated_at :description :detected_event_settings :display_name :entity_type
+    :estimated_row_count :field_order :id :initial_sync_status :is_defective_duplicate :is_published :is_upload :is_writable :name
     :owner_email :owner_user_id :points_of_interest :schema :show_in_getting_started :transform_id :transform_target
     :unique_table_helper :updated_at :view_count :visibility_type})
 
@@ -170,9 +175,11 @@
                                               [:user-settings? {:optional true} :boolean]]]]
    [(if user-settings?
       ^:allow-subquery
-      {:select    (into (mapv #(u/qualified-key :t %) sync-owned-table-columns)
-                        (map (fn [column] [(table-user-settings-column column :t :u) column]))
-                        (sort user-settable-table-columns))
+      {:select    (-> (mapv #(u/qualified-key :t %) sync-owned-table-columns)
+                      (into (map (fn [column] [(table-user-settings-column column :t :u) column]))
+                            (sort user-settable-table-columns))
+                      (into (map (fn [column] [(u/qualified-key :u column) column]))
+                            (sort user-only-table-columns)))
        :from      [[(t2/table-name :model/Table) :t]]
        :left-join (table-user-settings-join :t :u)}
       (t2/table-name :model/Table))

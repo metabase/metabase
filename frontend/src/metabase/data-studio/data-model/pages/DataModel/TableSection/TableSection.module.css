@@ -12,3 +12,14 @@
 .EmptyState {
   padding-bottom: 128px;
 }
+
+/* Tabs scroll sideways rather than wrapping onto a second row. */
+.tabsList {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  & > * {
+    flex-shrink: 0;
+  }
+}

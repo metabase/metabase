@@ -55,3 +55,5 @@ Technical feedback: bugs in metabase-track (client, `0cd3b5b`) and metabase/pa-l
 - Coverage and deduplication
   - Only `pushState`/`replaceState` are hooked, so browser back/forward in a single-page app produces no pageview (no `popstate` handler)
   - `event_id` is generated server-side at processing time. If SQS redelivers a message (standard queues are at-least-once), the duplicate row gets a different `event_id` and can't be deduplicated
+    - Nothing else deduplicates either: the client sends no event id or idempotency key, and `pa_events` is a plain `MergeTree` with `event_id DEFAULT generateUUIDv4()`
+    - So product analysis assumes one row is one event: it counts events with `count()` and has no event id column role. Deduplicating needs a client-generated id per event, then a `ReplacingMergeTree` on it or a dedupe step in the base query

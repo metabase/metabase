@@ -291,3 +291,24 @@
       (classify/classify-fields! table)
       (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name))]
         (is (= :type/Name (:semantic_type updated-field)))))))
+
+(deftest classify-table-event-schema-test
+  (testing "A table whose columns match a known event schema is an event table, with the roles the schema detects"
+    (mt/with-temp [:model/Table table {:name "tracks" :entity_type :entity/GenericTable}
+                   :model/Field _     {:table_id (u/the-id table) :name "timestamp" :base_type :type/DateTimeWithTZ}
+                   :model/Field _     {:table_id (u/the-id table) :name "user_id" :base_type :type/Text}
+                   :model/Field _     {:table_id (u/the-id table) :name "anonymous_id" :base_type :type/Text}
+                   :model/Field _     {:table_id (u/the-id table) :name "event" :base_type :type/Text}]
+      (let [detected #(t2/select-one-fn :detected_event_settings :model/Table :id (u/the-id table))
+            expected {"schema"   "segment"
+                      "settings" {"columns.timestamp"  "timestamp"
+                                  "columns.person"     "user_id"
+                                  "columns.event_name" "event"}}]
+        (classify/classify-table! table)
+        (is (= :entity/EventTable (t2/select-one-fn :entity_type :model/Table :id (u/the-id table))))
+        (is (= expected (detected)))
+        (testing "a later classification writes the detected settings whole, including the parts that didn't change"
+          (t2/update! :model/Table (u/the-id table) {:detected_event_settings {"schema"   "posthog"
+                                                                               "settings" {"columns.person" "user_id"}}})
+          (classify/classify-table! (t2/select-one :model/Table :id (u/the-id table)))
+          (is (= expected (detected))))))))

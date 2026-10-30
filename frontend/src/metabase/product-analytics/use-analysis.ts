@@ -1,7 +1,12 @@
 import { useCallback, useMemo } from "react";
 
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
-import { useMetadataProvider } from "metabase/metadata-store";
+import {
+  type StoredSettings,
+  computeSettings,
+  getMissingColumnRoles,
+  getSettingWidgets,
+} from "metabase/event-tables";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
 import { getPersonColumn, getUsersTableLink } from "./analyses/column-roles";
@@ -15,9 +20,6 @@ import type {
 } from "./analyses/types";
 import type { BaseQueryInput } from "./base-query";
 import { createFlagAllocator } from "./events/allocate-flags";
-import { detectPageviews } from "./events/pageviews";
-import { computeSettings, getSettingWidgets } from "./settings/compute";
-import type { StoredSettings } from "./settings/types";
 import type { AnalysisKind } from "./spec/types";
 import { getLookbackDays } from "./sql/analyses/lookback";
 import { useAnalysisQuery } from "./use-analysis-query";
@@ -72,17 +74,10 @@ export const useAnalysis = <K extends AnalysisKind>({
   );
   const table = tableMetadata.currentData;
   const usersTable = useUsersTable(table, stored);
-  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
-  // Memoized: a new query each render would get new clause ids, and with
-  // them a new base query.
-  const detectedPageviews = useMemo(
-    () => detectPageviews(metadataProvider, table),
-    [metadataProvider, table],
-  );
 
   const context = useMemo<AnalysisContext>(
-    () => ({ table, usersTable, detectedPageviews }),
-    [table, usersTable, detectedPageviews],
+    () => ({ table, usersTable }),
+    [table, usersTable],
   );
   const computed = useMemo(
     () => computeSettings(config.settings, context, stored),
@@ -114,9 +109,16 @@ export const useAnalysis = <K extends AnalysisKind>({
     [config, widgetContext, stored, computed, handleChangeSettings],
   );
 
+  // No analysis runs without these, so they're asked for before anything else.
+  // Until the table loads, nothing is known to be missing.
+  const missingColumnRoles =
+    table !== undefined ? getMissingColumnRoles(computed) : [];
   const flags = createFlagAllocator();
   const specResult = config.toSpec(computed, flags);
-  const spec = specResult.status === "ready" ? specResult.spec : undefined;
+  const spec =
+    specResult.status === "ready" && missingColumnRoles.length === 0
+      ? specResult.spec
+      : undefined;
   const requiredPeopleSegments = computed.filters.people.map(
     flags.segmentFlagFor,
   );
@@ -124,6 +126,8 @@ export const useAnalysis = <K extends AnalysisKind>({
   const base = useStableValue<BaseQueryInput>({
     dateRange: computed.date_range,
     columns: getColumnRoles(computed),
+    pageviews: computed.pageviews,
+    pathCleaning: computed.path_cleaning,
     events: flags.events,
     extraColumns: config.getExtraColumns?.(computed, context) ?? [],
     usersTable: usersTable?.link,
@@ -132,7 +136,13 @@ export const useAnalysis = <K extends AnalysisKind>({
     requiredPeopleSegments,
     lookbackDays: spec !== undefined ? getLookbackDays(spec) : 0,
   });
-  const missing = specResult.status === "incomplete" ? specResult.missing : [];
+  // Until the table loads, its columns aren't known to be missing either.
+  const missing =
+    specResult.status === "incomplete"
+      ? specResult.missing.filter(
+          (setting) => table !== undefined || !setting.isTableSetting,
+        )
+      : [];
   const query = useAnalysisQuery({ spec, tableId, base });
 
   return {
@@ -143,6 +153,7 @@ export const useAnalysis = <K extends AnalysisKind>({
     widgets,
     spec,
     missing,
+    missingColumnRoles,
     display: config.getDisplay(computed),
     question: config.getQuestion?.(computed) ?? config.question,
     vizSettings: config.getVizSettings(computed, colors),

@@ -1,7 +1,6 @@
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { Checkbox, Stack } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-
-import type { SettingWidgetProps } from "../../settings/types";
 
 export type CheckboxCardOption<T extends string> = {
   value: T;

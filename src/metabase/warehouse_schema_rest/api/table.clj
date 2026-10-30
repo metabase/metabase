@@ -202,7 +202,8 @@
    [:data_layer              {:optional true} [:maybe :string]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe :int]]
-   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
+   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:event_settings          {:optional true} [:maybe :metabase.warehouse-schema.schema/event-settings]]])
 
 (def ^:private TableUpdateBodySingle
   "Body of `PUT /api/table/:id`."
@@ -223,7 +224,10 @@
                          (u/select-keys-when
                           :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]
                           :present [:description :caveats :points_of_interest :visibility_type
-                                    :data_layer :data_authority :data_source :owner_email :owner_user_id])
+                                    :data_layer :data_authority :data_source :owner_email :owner_user_id
+                                    :event_settings])
+                         ;; no settings left means the user has none, so the row can go when nothing else is set
+                         (u/update-if-exists :event_settings not-empty)
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]

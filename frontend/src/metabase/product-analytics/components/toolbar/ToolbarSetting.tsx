@@ -1,4 +1,4 @@
-import type { SettingWidget } from "../../settings/types";
+import type { SettingWidget } from "metabase/event-tables";
 
 type ToolbarSettingProps = {
   setting: SettingWidget | undefined;

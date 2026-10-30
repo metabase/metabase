@@ -69,6 +69,7 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
           hideNoisyEvents: false,
           maxNodes: 8,
           minVolume: 5,
+          stepNames: "event_name",
         },
         output: {},
       };

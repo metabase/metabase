@@ -1,13 +1,16 @@
 import type {
+  EventTableSettings,
+  SettingDefinitions,
+} from "metabase/event-tables";
+import type {
   CardDisplayType,
   Table,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type { ColumnRole, ExtraColumn, UsersTableLink } from "../columns";
+import type { ExtraColumn, UsersTableLink } from "../columns";
 import type { EventDefinition, EventFlags } from "../events/types";
 import type { AnalysisFilters } from "../filters";
-import type { SettingDefinitions } from "../settings/types";
 import type {
   AnalysisKind,
   AnalysisSpec,
@@ -38,8 +41,6 @@ export type AnalysisContext = {
   table: Table | undefined;
   /** Undefined until the event table and the users table are both loaded. */
   usersTable: UsersTable | undefined;
-  /** The table's pageviews, when its schema is one we recognize. */
-  detectedPageviews?: EventDefinition;
   /**
    * Colors picked in the display panel, so setup widgets can show the same
    * colors as the chart. Not settings: they don't change the query.
@@ -47,13 +48,7 @@ export type AnalysisContext = {
   displayColors?: DisplayColors;
 };
 
-export type ColumnRoleSettings = {
-  [R in ColumnRole as `columns.${R}`]: string | null;
-};
-
-export type CommonSettings = ColumnRoleSettings & {
-  /** Paths name these events by their page, not their event name. */
-  pageviews: EventDefinition | null;
+export type CommonSettings = EventTableSettings & {
   counting: Grain;
   /** A serialized date filter, e.g. "past90days". See `date-range.ts`. */
   date_range: string;
@@ -136,6 +131,8 @@ export type AnalysisSettingDefinitions<S> = SettingDefinitions<
 export type MissingSetting = {
   key: string;
   message: string;
+  /** Set in the event table settings, rather than the setup panel. */
+  isTableSetting?: boolean;
 };
 
 /** Settings are incomplete until every event the analysis needs is chosen. */

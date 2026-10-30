@@ -1,6 +1,12 @@
 import { getColumnIcon } from "metabase/common/utils/columns";
+import {
+  type ColumnRoles,
+  type StoredSettings,
+  getEventTableSettings,
+  isColumnIn,
+  isColumnInTable,
+} from "metabase/event-tables";
 import * as Lib from "metabase-lib";
-import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isBoolean,
   isCategory,
@@ -8,107 +14,12 @@ import {
   isFK,
   isPK,
   isString,
-  isa,
 } from "metabase-lib/v1/types/utils/isa";
 import type { Field, Table } from "metabase-types/api";
 
-import type { ColumnRole, ColumnRoles, UsersTableLink } from "../columns";
-import type { StoredSettings } from "../settings/types";
+import type { UsersTableLink } from "../columns";
 
 import type { AnalysisContext } from "./types";
-
-type RoleRule = {
-  semanticType?: string;
-  /** Lowercase column names, most likely first. */
-  names: string[];
-  accepts?: (field: Field) => boolean;
-  /** Use the first accepted column when nothing else matches. */
-  fallBackToAnyAccepted?: boolean;
-};
-
-const ROLE_RULES: Record<ColumnRole, RoleRule> = {
-  timestamp: {
-    semanticType: TYPE.CreationTimestamp,
-    names: ["created_at", "timestamp", "event_time", "time", "ts"],
-    accepts: isDate,
-    fallBackToAnyAccepted: true,
-  },
-  person: {
-    semanticType: TYPE.User,
-    names: ["person_id", "user_id", "distinct_id", "visitor_id"],
-  },
-  session: {
-    names: ["session_id"],
-  },
-  event_id: {
-    names: ["event_id", "id"],
-  },
-  event_name: {
-    names: ["event_name", "event", "action"],
-    accepts: isString,
-  },
-  url_path: {
-    semanticType: TYPE.URL,
-    names: ["url_path", "path", "page_path", "pathname"],
-    accepts: isString,
-  },
-};
-
-/** Picks a column for a role: by semantic type, then by name, then by type. */
-export const getDefaultColumn = (
-  table: Table | undefined,
-  role: ColumnRole,
-): string | null => {
-  const { semanticType, names, accepts, fallBackToAnyAccepted } =
-    ROLE_RULES[role];
-  const fields = (table?.fields ?? []).filter(
-    (field) => accepts?.(field) ?? true,
-  );
-
-  const bySemanticType =
-    semanticType !== undefined
-      ? fields.find((field) => isa(field.semantic_type, semanticType))
-      : undefined;
-  const byName = names
-    .map((name) => fields.find((field) => field.name.toLowerCase() === name))
-    .find((field) => field !== undefined);
-  const byType = fallBackToAnyAccepted ? fields[0] : undefined;
-
-  return (bySemanticType ?? byName ?? byType)?.name ?? null;
-};
-
-/** Until the table loads, any stored column is assumed to exist. */
-const isColumnIn = (
-  fields: Field[] | undefined,
-  name: unknown,
-  accepts: (field: Field) => boolean = () => true,
-): boolean =>
-  name === null ||
-  (typeof name === "string" &&
-    (fields === undefined ||
-      fields.some((field) => field.name === name && accepts(field))));
-
-export const isColumnInTable = (
-  table: Table | undefined,
-  name: unknown,
-): boolean => isColumnIn(table?.fields, name);
-
-export const isDateColumnInTable = (
-  table: Table | undefined,
-  name: unknown,
-): boolean => isColumnIn(table?.fields, name, isDate);
-
-const toOptions = (fields: Field[]) =>
-  fields.map((field) => ({
-    value: field.name,
-    label: field.display_name,
-  }));
-
-export const getColumnOptions = (table: Table | undefined) =>
-  toOptions(table?.fields ?? []);
-
-export const getDateColumnOptions = (table: Table | undefined) =>
-  toOptions((table?.fields ?? []).filter(isDate));
 
 /**
  * The person column before the settings are computed: the stored one when
@@ -122,7 +33,7 @@ export const getPersonColumn = (
   const value = stored["columns.person"];
   return typeof value === "string" && isColumnInTable(table, value)
     ? value
-    : getDefaultColumn(table, "person");
+    : getEventTableSettings(table)["columns.person"];
 };
 
 /** The table the person column's foreign key points to, if any. */

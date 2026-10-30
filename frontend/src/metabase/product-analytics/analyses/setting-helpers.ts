@@ -1,8 +1,9 @@
-import type { EventFlags } from "../events/types";
 import type {
+  ActorGrain,
   ActorPredicate,
   AnalysisKind,
   AnalysisSpec,
+  Grain,
   TimeUnit,
 } from "../spec/types";
 
@@ -98,6 +99,10 @@ const EMPTY_SCOPE: ActorPredicate = {
   items: [],
 };
 
+/** Who an analysis follows to count `counting`: events are counted per person. */
+export const getActorGrain = (counting: Grain): ActorGrain =>
+  counting === "event" ? "person" : counting;
+
 /** The parts of a spec every analysis shares. */
 export const getCommonSpec = (
   kind: AnalysisKind,
@@ -109,20 +114,8 @@ export const getCommonSpec = (
   kind,
   // Unused by the planners: the date range lives in the base query.
   timeRange: { preset: "Last 90 days", tz: "UTC" },
-  grain: settings.counting,
+  grain: getActorGrain(settings.counting),
   measure: { agg: "uniq" },
   bucket: { granularity: settings.granularity },
   scope: EMPTY_SCOPE,
 });
-
-/**
- * The pageview event, when there's a URL path column to name pageviews by.
- * Without one, pageviews are named like any other event.
- */
-export const getPageviewSpec = (
-  settings: CommonSettings,
-  events: EventFlags,
-): Pick<AnalysisSpec, "pageview"> =>
-  settings.pageviews !== null && settings["columns.url_path"] !== null
-    ? { pageview: { flag: events.flagFor(settings.pageviews) } }
-    : {};

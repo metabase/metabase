@@ -2,10 +2,10 @@ import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderHookWithProviders, renderRoutes, screen } from "__support__/ui";
+import type { StoredSettings } from "metabase/event-tables";
 import { useNavigate } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
-import type { StoredSettings } from "./settings/types";
 import { encodeSettings } from "./url-state";
 import { JUST_CREATED_STATE } from "./use-add-to-dashboard-toast";
 import { useAnalysisState } from "./use-analysis-state";

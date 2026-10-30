@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { Button, Group, Icon, Select, Stack } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
@@ -10,7 +11,6 @@ import {
   getDisqualifierSteps,
 } from "../../analyses/funnel-disqualifiers";
 import type { EventDefinition } from "../../events/types";
-import type { SettingWidgetProps } from "../../settings/types";
 
 import { EventDefinitionWidget } from "./EventDefinitionWidget";
 
