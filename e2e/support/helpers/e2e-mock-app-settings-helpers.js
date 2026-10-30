@@ -14,7 +14,3 @@ function mockProperty(propertyOrObject, value, url) {
 export function mockSessionProperty(propertyOrObject, value) {
   mockProperty(propertyOrObject, value, "/api/session/properties");
 }
-
-export function mockCurrentUserProperty(propertyOrObject, value) {
-  mockProperty(propertyOrObject, value, "/api/user/current");
-}
