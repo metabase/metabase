@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.databricks-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.databricks-test]}}}}}}
   (:require
+   [clj-http.client :as http]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -705,6 +706,64 @@
       (is (= 11 (:AuthMech spec)))
       (is (= 0 (:Auth_Flow spec)) "WIF pass-through flow, not M2M")
       (is (= "eyJhbGciOi.jwt.sig" (:Auth_AccessToken spec))))))
+
+(defn- mint-github-actions-oidc-token
+  "Returns a JWT for `audience` from the GitHub Actions OIDC endpoint, or nil when not running
+  under a GH Actions job with `id-token: write`."
+  [audience]
+  (let [req-token (System/getenv "ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+        req-url   (System/getenv "ACTIONS_ID_TOKEN_REQUEST_URL")]
+    (when (and (not (str/blank? req-token)) (not (str/blank? req-url)))
+      (let [{:keys [status body]} (http/get (str req-url "&audience=" audience) ; naive, but expected to work
+                                            {:headers          {"Authorization" (str "Bearer " req-token)}
+                                             :throw-exceptions false})]
+        (when (= 200 status)
+          (:value (json/decode+kw body)))))))
+
+(defn- wif-user-or-skip
+  "Returns the WIF service principal's Application ID (what `current_user()` returns for an SP
+  session), or nil to signal skip. Fails loudly when `MB_DATABRICKS_TEST_WIF_USER` is unset; set
+  to 'skip' to opt out explicitly (REPL, forks without a configured federation policy)."
+  []
+  (let [u (tx/db-test-env-var :databricks :wif-user)]
+    (cond
+      (= "skip" u)   nil
+      (str/blank? u) (do (is false
+                             (str "MB_DATABRICKS_TEST_WIF_USER isn't set. Set it to the Databricks "
+                                  "WIF service principal's Application ID (UUID), or to 'skip' to "
+                                  "opt out."))
+                         nil)
+      :else          u)))
+
+(defn- wif-live-details-with-token
+  "WIF details for the live tests, `token-source` merged in (`:wif-token` or `:wif-token-file-path`)."
+  [token-source]
+  (merge {:host      (tx/db-test-env-var-or-throw :databricks :host)
+          :http-path (tx/db-test-env-var-or-throw :databricks :http-path)
+          :catalog   (tx/db-test-env-var-or-throw :databricks :catalog)
+          :auth-mode "wif"}
+         token-source))
+
+(deftest ^:synchronized databricks-wif-live-test
+  ;; End-to-end against a real Databricks workspace with a federation policy trusting GH Actions.
+  ;; In CI (be-tests-databricks-ee with environment: ci) we mint a fresh OIDC token here — GH tokens
+  ;; last ~15 min and the full suite can exceed that, so a token minted at job start would be stale.
+  ;; Locally, MB_DATABRICKS_TEST_WIF_TOKEN_FILE can point to a JWT on disk as a fallback.
+  (mt/test-driver
+    :databricks
+    (when-let [wif-user (wif-user-or-skip)]
+      (let [audience (tx/db-test-env-var-or-throw :databricks :wif-audience)]
+        (when-let [token (or (mint-github-actions-oidc-token audience)
+                             (some-> (tx/db-test-env-var :databricks :wif-token-file)
+                                     slurp
+                                     str/trim))]
+          (let [details (wif-live-details-with-token {:wif-token token})]
+            (testing "can-connect? via WIF"
+              (is (true? (driver/can-connect? :databricks details))))
+            (testing "session identifies as the WIF service principal"
+              (let [spec (sql-jdbc.conn/connection-details->spec :databricks details)
+                    rows (jdbc/query spec ["SELECT current_user() AS user"])]
+                (is (= [{:user wif-user}] rows))))))))))
 
 (deftest ^:parallel mulit-line-comment-test
   (mt/test-driver :databricks
