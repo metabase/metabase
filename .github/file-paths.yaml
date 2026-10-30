@@ -217,13 +217,18 @@ project_ratchet_checks:
   - ".clj-kondo/ratchets-test.edn"
   - ".clj-kondo/config/modules/ratchets.edn"
 
-# The generated CODEOWNERS block depends only on the module config and team.json.
+# The generated CODEOWNERS block depends on the module config, team.json and the code that renders it, which
+# includes everything mage.modules loads.
 project_codeowners_checks:
   - *project_tests_infra
   - ".clj-kondo/config/modules/config.edn"
   - ".clj-kondo/src/hooks/common/modules.clj"
   - ".github/CODEOWNERS"
   - ".github/team.json"
+  - "dev/src/dev/module_cycle_names.clj"
+  - "dev/src/dev/module_explorer.clj"
+  - "dev/src/dev/module_graph.clj"
+  - "mage/src/mage/be_dev.clj"
   - "mage/src/mage/modules.clj"
 
 project_migration_checks:

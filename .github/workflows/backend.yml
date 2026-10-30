@@ -56,7 +56,6 @@ jobs:
     needs: gate
     if: >-
       ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks')
-      || contains(fromJSON(needs.gate.outputs.matched), 'project_codeowners_checks')
       || contains(fromJSON(needs.gate.outputs.matched), 'project_migration_checks')
       || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -82,13 +81,22 @@ jobs:
             ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks')
             || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
           run: ./bin/mage kondo-ratchets
-        - name: Check the generated CODEOWNERS block
-          if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_codeowners_checks') }}
-          run: ./bin/mage update-codeowners --check
+
+  # Babashka only, so it skips the back-end environment that project-checks prepares.
+  codeowners-check:
+    name: 'Project tests: CODEOWNERS'
+    needs: gate
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_codeowners_checks') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the generated CODEOWNERS block
+        run: ./bin/mage update-codeowners --check
 
   project-tests:
     name: Project tests
-    needs: project-checks
+    needs: [project-checks, codeowners-check]
     if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
