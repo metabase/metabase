@@ -30,7 +30,6 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util :as qp.util]
-   [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -174,25 +173,17 @@
                       e)))))
 
 (mu/defn card-id->underlying-query :- ::lib.schema/query
-  "Return the source query info for Card with `card-id`. Pass true as the optional second arg `log?` to enable
-  logging. (The circularity check calls this and will print more than desired)"
+  "Return the source query info for Card with `card-id`. A persisted Model's cached table is never substituted: the
+  sandboxed query always carries the sandbox marker, for which [[metabase.query-processor.middleware.persistence]]
+  skips persistence."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
   (let [;; todo: we need to cache this. We are running this in preprocess, compile, and then again
-        card           (or (lib.metadata/card metadata-providerable card-id)
-                           (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                           {:card-id card-id})))
-        persisted-info (:lib/persisted-info card)
-        persisted?     (qp.persisted/can-substitute? card persisted-info)
-        query          (lib/card->underlying-query metadata-providerable card)]
+        card (or (lib.metadata/card metadata-providerable card-id)
+                 (throw (ex-info (tru "Card {0} does not exist." card-id)
+                                 {:card-id card-id})))]
     (log/debugf "Fetched query from Card %s" card-id)
-    (cond-> query
-      ;; This will be applied, if still appropriate, by the persistence middleware
-      persisted?
-      (assoc :persisted-info/native
-             (qp.persisted/persisted-info-native-query
-              (u/the-id (lib.metadata/database metadata-providerable))
-              persisted-info)))))
+    (lib/card->underlying-query metadata-providerable card)))
 
 (mu/defn- card-sandbox->query :- ::lib.schema/query
   [metadata-providerable          :- ::lib.schema.metadata/metadata-providerable
