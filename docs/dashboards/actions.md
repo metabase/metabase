@@ -58,5 +58,5 @@ If you want people outside of your Metabase to use an action, you can create a [
 
 ## Further reading
 
-- [Actions](../data-modeling/models/actions/start.md)
+- [Model actions](../data-modeling/models/actions/start.md)
 - [Editable tables](../data-modeling/editable-tables.md)

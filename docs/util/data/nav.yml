@@ -255,7 +255,7 @@ categories:
             url: "data-modeling/models/models"
           - name: "Model persistence"
             url: "data-modeling/models/model-persistence"
-          - name: "Actions"
+          - name: "Model actions"
             pages:
               - name: "Overview"
                 url: "data-modeling/models/actions/introduction"

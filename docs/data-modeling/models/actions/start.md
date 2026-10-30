@@ -1,20 +1,14 @@
 ---
-title: Actions overview
+title: Model actions
 redirect_from:
   - /docs/latest/data-modeling/models/actions/start
-  - /docs/latest/actions
-  - /docs/latest/actions/start
 ---
 
-# Actions overview
+# Model actions
 
 ![An action updating a plan on a dashboard](./images/dashboard-action.gif)
 
-Actions let people insert, update, or delete rows in your database. For new actions, use data actions. Use model actions when you need an action button on a dashboard.
-
-## [Data actions](../../data-actions.md)
-
-Create actions that you can run in Data Studio, or share as public forms.
+Model actions are actions that belong to a [model](../models.md). Use a model action when you need an action button on a dashboard. For new actions, use [data actions](../../data-actions.md).
 
 ## [Introduction to actions ](./introduction.md)
 

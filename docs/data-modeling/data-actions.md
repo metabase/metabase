@@ -1,6 +1,9 @@
 ---
 title: Data actions
 summary: Data actions insert, update, or delete rows in your database. You can run them in Data Studio or share them as public forms.
+redirect_from:
+  - /docs/latest/actions
+  - /docs/latest/actions/start
 ---
 
 # Data actions
