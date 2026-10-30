@@ -634,15 +634,21 @@
             (is (=? {:error {:class :validation :code :invalid-arguments}}
                     (invoke-search [#'search/search-tool] {:keyword_queries ["x"] :limit limit})))))))))
 
-(deftest unexpected-search-failure-test
-  (mt/with-test-user :crowberto
-    (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search index unavailable" {})))]
-      (doseq [[tool-var extra-args] [[#'search/search-tool {}]
-                                     [#'search/sql-search-tool {:database_id (mt/id)}]
-                                     [#'search/nlq-search-tool {}]]]
-        (is (= {:error {:class :unrecoverable :code :internal}
-                :output "This call failed and the user was shown the error (:internal). Don't retry it."}
-               (invoke-search [tool-var] (merge extra-args {:keyword_queries ["orders"]}))))))))
+(deftest search-failure-test
+  (testing "a failing search backend lets the agent find the data another way (BOT-2540)"
+    (mt/with-test-user :crowberto
+      (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search Index not found." {})))]
+        (doseq [[tool-var extra-args] [[#'search/search-tool {}]
+                                       [#'search/sql-search-tool {:database_id (mt/id)}]
+                                       [#'search/nlq-search-tool {}]
+                                       [#'search/transform-search-tool {}]]]
+          (testing (str tool-var)
+            (is (= {:error  {:class :recoverable :code ::search/search-failed}
+                    :output (str "Search is not available.\n"
+                                 "Find the data with `read_resource` instead: read `metabase://databases`, "
+                                 "then `metabase://database/{id}/tables` for the tables in one database.")}
+                   (invoke-search [tool-var #'metabot.tools/read-resource-tool]
+                                  (merge extra-args {:keyword_queries ["orders"]}))))))))))
 
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
