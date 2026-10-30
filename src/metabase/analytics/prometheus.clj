@@ -261,10 +261,11 @@
                                 (log/error e "Background metric refresh failed" {:id id}))
                               (finally
                                 (swap! refreshes-in-flight disj id)))))
-                         (catch Exception e
+                         ;; Throwable, not Exception: a thread pool at its limit fails with an Error, and
+                         ;; leaving the claim behind would stop this collector refreshing for good.
+                         (catch Throwable e
                            (swap! refreshes-in-flight disj id)
-                           (log/error "Could not schedule a background metric refresh"
-                                      {:id id, :error (ex-message e)}))))
+                           (log/error e "Could not schedule a background metric refresh" {:id id}))))
                      nil)})
 
 (defn- jvm-collectors
@@ -1191,9 +1192,14 @@
         ;; Collector.remove drops the no-labels child and then recreates it at 0, so the series carries on
         ;; being exported -- as a plausible-looking zero. Give the metric a label instead.
         (throw (ex-info "Cannot remove a series of a metric declared without labels" {:metric metric})))
-      (let [label->value (update-keys (qualified-vals labels) metric/dasherize)
-            ordered      (into-array String (map (comp str label->value) declared))]
-        (.remove ^SimpleCollector raw ordered)))))
+      (let [label->value (update-keys (qualified-vals labels) metric/dasherize)]
+        ;; A name the collector did not declare resolves to nil, and `str` would turn it into the empty
+        ;; string: removal would find no child, report nothing, and leave the series exported for good.
+        (when-not (= (set (keys label->value)) (set declared))
+          (throw (ex-info "Labels do not match the metric's declared label names"
+                          {:metric metric, :declared declared, :given (sort (keys label->value))})))
+        (let [ordered (into-array String (map label->value declared))]
+          (.remove ^SimpleCollector raw ordered))))))
 
 (def ^:private real-reporter
   "A real analytics.interface/Reporter that reports here"

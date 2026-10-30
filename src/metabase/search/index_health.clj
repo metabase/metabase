@@ -98,7 +98,12 @@
   600)
 
 (def ^:private stale-gauge-age-ms
-  "How long a series survives without a refresh. Three intervals, so a missed run doesn't drop it."
+  "How long a series survives without a refresh."
+  ;; The deadline has to clear the longest gap between two publishes, and that gap is not the interval. A
+  ;; scrape stamps its own throttle before calling a collector, and the collector declines while a refresh
+  ;; is still running, so the gap is really the refresh duration rounded up to a whole interval. Three
+  ;; intervals therefore tolerate a refresh of up to two of them, around twenty minutes. Anything slower
+  ;; than that expires its own series and republishes it, which the warning in the sweep reports.
   (* 3 gauge-refresh-interval-s 1000))
 
 (defonce ^:private live-gauge-series
@@ -133,15 +138,22 @@
   (locking live-gauge-series
     (doseq [[[gauge-key labels :as series] published] @live-gauge-series
             :when (>= (u/since-ms published) stale-gauge-age-ms)]
-      (analytics/remove-series! gauge-key labels)
-      (swap! live-gauge-series dissoc series)
-      ;; The realistic cause is a refresh wedged in a database call: it holds its single-flight claim for
-      ;; the life of the process, so this node would otherwise just go quiet about a series that vanished.
-      (log/warn "Stopped exporting a search gauge series this process had not refreshed"
-                {:gauge    gauge-key
-                 :labels   labels
-                 :age-ms   (u/since-ms published)
-                 :limit-ms stale-gauge-age-ms}))))
+      ;; Per series, so that one failure cannot end the sweep for every series behind it in the map.
+      (try
+        (analytics/remove-series! gauge-key labels)
+        (swap! live-gauge-series dissoc series)
+        ;; The realistic cause is a refresh wedged in a database call: it holds its single-flight claim for
+        ;; the life of the process, so this node would otherwise go quiet about a series that vanished.
+        (log/warn "Stopped exporting a search gauge series this process had not refreshed"
+                  {:gauge    gauge-key
+                   :labels   labels
+                   :age-ms   (u/since-ms published)
+                   :limit-ms stale-gauge-age-ms})
+        (catch InterruptedException e
+          (throw e))
+        (catch Exception e
+          (log/error e "Could not stop exporting a stale search gauge series"
+                     {:gauge gauge-key, :labels labels}))))))
 
 (defmethod analytics.core/pull-collector ::expire-stale-gauges [_]
   {:min-interval-s 60

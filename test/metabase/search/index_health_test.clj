@@ -10,6 +10,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- timer-aged-ms
+  "A [[u/start-timer]] value that reads as `ms` milliseconds old."
+  [ms]
+  (- (u/start-timer) (long (* ms 1e6))))
+
 (defmacro ^:private with-gauge-spy
   "Record gauge writes into `calls` as [:set gauge-key labels value] or [:remove gauge-key labels]."
   [calls & body]
@@ -189,11 +194,9 @@
 
 (deftest ^:synchronized expire-stale-gauges!-test
   (let [calls (atom [])
-        live  (atom {[:metabase-search/index-coverage-ratio {:index "fresh"}] ::fresh
-                     [:metabase-search/index-coverage-ratio {:index "stale"}] ::stale})]
-    ;; a map is a function of its keys, so this stands in for the timers' ages
-    (with-redefs [index-health/live-gauge-series live
-                  u/since-ms                    {::fresh 1000, ::stale 3600000}]
+        live  (atom {[:metabase-search/index-coverage-ratio {:index "fresh"}] (timer-aged-ms 1000)
+                     [:metabase-search/index-coverage-ratio {:index "stale"}] (timer-aged-ms 3600000)})]
+    (with-redefs [index-health/live-gauge-series live]
       (with-gauge-spy calls
         (#'index-health/expire-stale-gauges!)
         (testing "a series this node stopped refreshing stops being exported"
@@ -202,4 +205,17 @@
         (testing "and only once"
           (reset! calls [])
           (#'index-health/expire-stale-gauges!)
-          (is (empty? @calls)))))))
+          (is (empty? @calls))))))
+  (testing "a removal that fails leaves its series tracked, and the rest of the sweep still runs"
+    (let [seen (atom [])
+          live (atom {[:metabase-search/index-coverage-ratio {:index "boom"}] (timer-aged-ms 3600000)
+                      [:metabase-search/index-coverage-ratio {:index "ok"}]   (timer-aged-ms 3600000)})]
+      (with-redefs [index-health/live-gauge-series live]
+        (mt/with-dynamic-fn-redefs [analytics/remove-series!
+                                    (fn [_gauge {:keys [index]}]
+                                      (swap! seen conj index)
+                                      (when (= "boom" index)
+                                        (throw (ex-info "registry down" {}))))]
+          (#'index-health/expire-stale-gauges!)))
+      (is (= #{"boom" "ok"} (set @seen)))
+      (is (= [[:metabase-search/index-coverage-ratio {:index "boom"}]] (keys @live))))))

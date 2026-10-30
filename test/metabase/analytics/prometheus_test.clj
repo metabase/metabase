@@ -287,28 +287,38 @@
           ((:f collector)))
         (is (empty? @in-flight))))))
 
-(deftest remove-series!-test
+(deftest ^:synchronized remove-series!-test
   (testing "one label combination stops being exported and its siblings carry on"
     (mt/with-prometheus-system! [port system]
-      (let [exported #(filter (fn [line]
-                                (str/starts-with? line "metabase_search_index_coverage_ratio"))
-                              (metric-lines port))]
-        (prometheus/set! :metabase-search/index-coverage-ratio {:index "appdb"} 0.9)
-        (prometheus/set! :metabase-search/index-coverage-ratio {:index "semantic-search"} 0.5)
+      ;; Reading /metrics runs every registered pull collector, and the search ones publish this same
+      ;; gauge, so these two label values are ones nothing else writes.
+      (let [kept     "remove-series-test-kept"
+            dropped  "remove-series-test-dropped"
+            exported (fn []
+                       (filter #(and (str/starts-with? % "metabase_search_index_coverage_ratio")
+                                     (or (str/includes? % kept) (str/includes? % dropped)))
+                               (metric-lines port)))]
+        (prometheus/set! :metabase-search/index-coverage-ratio {:index kept} 0.9)
+        (prometheus/set! :metabase-search/index-coverage-ratio {:index dropped} 0.5)
         (is (= 2 (count (exported))))
-        (prometheus/remove-series! :metabase-search/index-coverage-ratio {:index "semantic-search"})
+        (prometheus/remove-series! :metabase-search/index-coverage-ratio {:index dropped})
         (testing "the removed series is gone from the exposition, not merely zeroed"
           (is (= 1 (count (exported))))
-          (is (str/includes? (first (exported)) "index=\"appdb\"")))
+          (is (str/includes? (first (exported)) kept)))
         (testing "and the surviving series keeps its value"
           (is (approx= 0.9 (mt/metric-value system :metabase-search/index-coverage-ratio
-                                            {:index "appdb"})))))))
+                                            {:index kept})))))))
   (testing "a metric declared without labels is refused"
     ;; Collector.remove recreates the no-labels child at 0, so such a series cannot stop being exported.
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"declared without labels"
-                            (prometheus/remove-series! :metabase-search/queue-size nil))))))
+                            (prometheus/remove-series! :metabase-search/queue-size nil)))))
+  (testing "labels that do not name the declared set are refused"
+    (mt/with-prometheus-system! [_ _system]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"do not match the metric's declared"
+                            (prometheus/remove-series! :metabase-search/index-coverage-ratio nil))))))
 
 (deftest pull-collector-test
   (testing "a pull collector implementation runs at scrape time and can update one or more declared metrics"
