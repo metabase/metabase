@@ -107,4 +107,36 @@ describe("DatabaseFormError", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("Saved secrets must be re-entered", () => {
+    const setupOptions: SetupOptions = {
+      errorMessage:
+        "Re-enter the saved password and other secrets to change these connection settings.",
+      errorVariant: "secretsReentry",
+    };
+
+    it("should explain that saved credentials need to be re-entered", () => {
+      setup(setupOptions);
+      expect(
+        within(screen.getByRole("alert")).getByText(
+          "Re-enter your saved credentials",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("alert")).getByText(
+          "Re-enter the saved password and other secrets to change these connection settings.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should not render connection troubleshooting help", () => {
+      setup(setupOptions);
+      expect(
+        screen.queryByRole("button", { name: /More troubleshooting tips/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Check Host and Port settings/ }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

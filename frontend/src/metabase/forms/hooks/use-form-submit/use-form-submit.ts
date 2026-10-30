@@ -32,7 +32,11 @@ export const useFormSubmit = <T>({
       } catch (error) {
         console.error(error);
         helpers.setErrors(getFormErrors(error));
-        setState({ status: "rejected", message: getFormMessage(error) });
+        setState({
+          status: "rejected",
+          message: getFormMessage(error),
+          errorCode: getFormErrorCode(error),
+        });
       }
     },
     [onSubmit],
@@ -57,6 +61,12 @@ const getFormErrors = (error: unknown) => {
   }
 
   return {};
+};
+
+const getFormErrorCode = (error: unknown) => {
+  if (isFormError(error) && typeof error.data === "object") {
+    return error.data["error-code"];
+  }
 };
 
 const getFormMessage = (error: unknown) => {
