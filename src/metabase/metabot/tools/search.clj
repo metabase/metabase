@@ -709,7 +709,7 @@
               "tell the user that search is unavailable right now.")})
 
 (tools/defrecoverable search-failed!
-  "The search backend failed, for example because the search index is missing.
+  "The appdb search index is missing, for example because its tables are gone.
 
   Every failure gets [[no-retry-step]], because each retry uses an iteration and logs a stack trace."
   {:payload ::search-scope}
@@ -719,8 +719,6 @@
 
 (defn- do-search
   [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as args}]
-  ;; Recoverable, not `:internal`: the agent can find the data without search, or tell the user that
-  ;; search failed. `read_resource` does not use the search index.
   (let [limit        (min max-search-limit (or limit default-search-limit))
         opts         (merge {:semantic-queries semantic_queries
                              :term-queries     keyword_queries
@@ -731,6 +729,11 @@
         results      (try
                        (search opts)
                        (catch Exception e
+                         ;; A missing index is recoverable: the agent can find the data without search, or tell
+                         ;; the user that search failed. `read_resource` does not use the search index. Any other
+                         ;; failure is not planned for, so it ends the turn as `:internal`.
+                         (when-not (search/index-not-found? e)
+                           (throw e))
                          ;; The runtime logs a recoverable error at debug level, without its cause.
                          (log/error e "Metabot search failed")
                          (search-failed! (search-scope (:metabot opts) (:profile-id opts) (:database-id opts)))))
