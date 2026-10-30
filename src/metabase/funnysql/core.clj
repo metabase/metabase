@@ -52,43 +52,7 @@
            (contains? k-or-k-set f)
            (= f k-or-k-set)))))
 
-(def ^:private require-marked-values
-  (atom false))
-
-(defn require-marked-values!
-  "Set whether a value bound as `?` in a query issued from a module's `db` namespace must arrive marked, as `[:param k]`."
-  [require?]
-  (reset! require-marked-values (boolean require?)))
-
-(defn- marked-context
-  "`context`, compiling values that arrived as a `[:param k]`, are written by `:values` or `:set`, or are the pattern
-  `h2x/like-pattern` escaped for an `:escape`."
-  [context]
-  (reify Context
-    (engine      [_this]     (engine context))
-    (options     [_this]     (assoc (options context) ::marked true))
-    (append-sql! [_this s]   (append-sql! context s))
-    (append-arg! [_this arg] (append-arg! context arg))
-    (result!     [_this]     (result! context))))
-
-(defn- db-namespace-frame
-  "The first stack frame of the current thread in a module's `db` namespace, or nil."
-  []
-  (some (fn [^StackTraceElement frame]
-          (when (and (re-find #"^metabase(_enterprise)?\.[a-z0-9_.]*\bdb\$" (.getClassName frame))
-                     (not (str/starts-with? (.getClassName frame) "metabase.test.")))
-            (str (.getClassName frame) ":" (.getLineNumber frame))))
-        (.getStackTrace (Thread/currentThread))))
-
-(defn- check-marked! [x context]
-  (when (and @require-marked-values (not (::marked (options context))))
-    (when-let [frame (db-namespace-frame)]
-      (throw (ex-info (str "Unmarked " (.getName (class x)) " value in an app-DB query issued from " frame
-                           ". Write it as [:auto/param v].")
-                      {:type ::unmarked-value, :frame frame})))))
-
 (defn- object! [x context]
-  (check-marked! x context)
   (append-sql! context "?")
   (append-arg! context x))
 
@@ -370,12 +334,12 @@
     (let [columns (into (ordered-set/ordered-set) (mapcat keys) rows)]
       (identifier-list! columns context)
       (append-sql! context " VALUES ")
-      (interpose-fn rows #(list! (map (or % {}) columns) (marked-context context)) #(append-sql! context ", ")))
+      (interpose-fn rows #(list! (map (or % {}) columns) context) #(append-sql! context ", ")))
     ;; otherwise assume columns have been specified with `:columns` and assume `rows` is a sequence of sequences, one
     ;; for each row.
     (do
       (append-sql! context "VALUES ")
-      (interpose-fn rows #(list! % (marked-context context)) #(append-sql! context ", ")))))
+      (interpose-fn rows #(list! % context) #(append-sql! context ", ")))))
 
 (defn- drop-table! [table context]
   (let [options (butlast table)
@@ -395,7 +359,7 @@
 
 (defn- set-clause! [kvs context]
   (append-sql! context "SET ")
-  (kvs-map! kvs (marked-context context)))
+  (kvs-map! kvs context))
 
 (defn- delete-from! [identifier context]
   (append-sql! context "DELETE FROM ")
@@ -853,8 +817,7 @@
     vs))
 
 (defn- in! [f [lhs vs] context]
-  (let [context (cond-> context (fn-call-of-type? vs :param) marked-context)
-        vs      (in-values vs context)]
+  (let [vs (in-values vs context)]
     (when-not (or (empty? vs)
                   (sequential? vs)
                   (set? vs)
@@ -987,7 +950,7 @@
   (append-sql! context ")"))
 
 (defn- param! [k context]
-  (object! (param-value k context) (marked-context context)))
+  (object! (param-value k context) context))
 
 (defn- unary-binary-operator! [f x context]
   (case f
@@ -1099,7 +1062,7 @@
 (defn- escape! [[pattern escape-chars] context]
   ;; `ESCAPE` is a postfix operator on a `LIKE` pattern (`... LIKE ? ESCAPE '!'`), not a function call -- compiling it
   ;; as `escape(?, '!')` produces a `Function "ESCAPE" not found` error from the database.
-  (compile! pattern (marked-context context))
+  (compile! pattern context)
   (append-sql! context " ESCAPE ")
   (compile! escape-chars context))
 
