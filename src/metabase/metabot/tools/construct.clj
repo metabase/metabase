@@ -36,7 +36,6 @@
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.query-processor.core :as qp]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -949,11 +948,9 @@
       missing
       (format "missing `%s`" (name missing))
 
-      ;; lib can give a message as a function, which Malli returns without calling; the model reads it in English
-      (fn? message)
-      (cond-> (binding [i18n/*user-locale* "en"] (str (message)))
-        (= :aggregation (last (butlast (:in error))))
-        (str " Wrap the calculation in one, such as `sum` or `count`, or move a per-row calculation to `expressions:`"))
+      ;; `:metabase.lib.schema.aggregation/aggregation`'s check, whose message is a function that calls `tru`
+      (and (fn? message) (= :aggregation (last (butlast (:in error)))))
+      "Aggregations should contain at least one aggregation function. Wrap the calculation in one, such as `sum` or `count`, or move a per-row calculation to `expressions:`"
 
       ;; the message of `::lib.schema.expression/expression.definition`'s aggregation check
       (= "non-aggregation expression" message)
