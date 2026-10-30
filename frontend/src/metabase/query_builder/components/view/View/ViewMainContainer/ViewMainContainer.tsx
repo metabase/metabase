@@ -1,17 +1,22 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
+import { useMemo } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
 import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
+import { IntegrationLegendFilters } from "metabase/prototypes/IntegrationLegendFilters";
+import { getIntegrationClickActions } from "metabase/prototypes/integration-click-actions";
 import { Mode } from "metabase/querying/click-actions/Mode";
 import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
+import { useSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -24,16 +29,20 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
+import { setCardAndRun } from "../../../../actions";
+import { updateUrl } from "../../../../actions/url";
 import { useVisualizationResultQBProps } from "../../../../hooks";
+import { getLastRunCard, getQueryResults } from "../../../../store/selectors";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
+import { useColumnFormulaBar } from "../../ColumnFormulaBar";
+import {
+  getQueryUpdateOptions,
+  readsSlowTable,
+} from "../../FilterAutoApply/utils";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
-
-const clickActionMode = new Mode(getQueryMode, {
-  hasColumnShortcutActions: true,
-});
 
 interface ViewMainContainerProps {
   question: Question;
@@ -89,7 +98,10 @@ interface ViewMainContainerProps {
   isLiveResizable: boolean;
   parameters: UiParameter[];
 
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  updateQuestion: (
+    question: Question,
+    opts?: { run?: boolean; shouldUpdateUrl?: boolean },
+  ) => void;
 }
 
 export const ViewMainContainer = (props: ViewMainContainerProps) => {
@@ -106,16 +118,59 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   } = props;
 
   const visualizationResultProps = useVisualizationResultQBProps();
+  const prototypeData = useSetting("prototype-data");
+  const dispatch = useDispatch();
+  const lastRunCard = useSelector(getLastRunCard);
+  const queryResults = useSelector(getQueryResults);
+  const groupCount = queryResults?.[0]?.data?.rows.length ?? 0;
+  // Prototype: puts back the question of the result, like the browser back
+  // button. The result is up to date again, so nothing runs.
+  const handleResetChanges =
+    lastRunCard != null
+      ? async () => {
+          await dispatch(setCardAndRun(lastRunCard));
+          dispatch(updateUrl());
+        }
+      : undefined;
 
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
+
+  // the add-column button opens the formula bar on a new custom column, where one can be added
+  const columnFormula = useColumnFormulaBar({
+    question,
+    onQuestionChange: (nextQuestion) =>
+      updateQuestion(
+        nextQuestion,
+        getQueryUpdateOptions(nextQuestion.query(), prototypeData),
+      ),
+  });
+  const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
+  const onAddColumn = !isNative && isEditable ? columnFormula.open : undefined;
+  const clickActionMode = useMemo(
+    () =>
+      new Mode(getQueryMode, {
+        hasColumnShortcutActions: true,
+        onAddColumn,
+        mapActions: (actions, clicked, clickedQuestion) =>
+          !isEditable || props.readOnly
+            ? actions
+            : getIntegrationClickActions({
+                actions,
+                clicked,
+                question: clickedQuestion,
+                groupCount,
+                isSlow: readsSlowTable(clickedQuestion.query(), prototypeData),
+              }),
+      }),
+    [onAddColumn, groupCount, prototypeData, isEditable, props.readOnly],
+  );
 
   if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode
     return;
   }
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
   const availableHeight = mainHeight ? mainHeight - footerHeight : undefined;
@@ -141,6 +196,17 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         />
       )}
 
+      {!isNative && isEditable && !props.readOnly && (
+        <IntegrationLegendFilters
+          query={question.query()}
+          onChange={(nextQuery) =>
+            updateQuestion(
+              question.setQuery(nextQuery),
+              getQueryUpdateOptions(nextQuery, prototypeData),
+            )
+          }
+        />
+      )}
       <DebouncedFrame
         className={ViewMainContainerS.StyledDebouncedFrame}
         enabled={!isLiveResizable}
@@ -158,9 +224,11 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           }
           errorAction={<FixSqlQueryButton />}
           onUpdateQuestion={updateQuestion}
+          onResetChanges={handleResetChanges}
         />
       </DebouncedFrame>
       <ObjectDetailSidesheet />
+      {columnFormula.bar}
       <Box ref={footerRef} className={ViewMainContainerS.Footer}>
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
         <ViewFooter className={CS.flexNoShrink} />

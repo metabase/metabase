@@ -1,5 +1,3 @@
 .FilterFooterRoot {
-  &:not(:only-child) {
-    border-top: 1px solid var(--mb-color-border-neutral);
-  }
+  background-color: var(--mb-color-background_surface-primary);
 }

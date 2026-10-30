@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import { t } from "ttag";
 
 import { ExpandingContent } from "metabase/common/components/ExpandingContent";
@@ -12,6 +12,7 @@ import type {
   NotebookStep as INotebookStep,
   NotebookStepAction,
 } from "../../types";
+import { NotebookContext } from "../Notebook/context";
 
 import { NotebookActionButton } from "./NotebookActionButton";
 import S from "./NotebookStep.module.css";
@@ -41,6 +42,7 @@ export function NotebookStep({
   updateQuery,
   readOnly = false,
 }: NotebookStepProps) {
+  const notebookContext = useContext(NotebookContext);
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
     useToggle(false);
 
@@ -92,6 +94,10 @@ export function NotebookStep({
   }, [step, updateQuery]);
 
   const { title, color, Step, StepHeader } = getStepConfig(step.type);
+  const StepComponent =
+    step.type === "filter" && !readOnly
+      ? (notebookContext?.filterStepComponent ?? Step)
+      : Step;
 
   const canPreview = step.previewQuery != null && !readOnly;
   const hasPreviewButton = !isPreviewOpen && canPreview;
@@ -112,7 +118,7 @@ export function NotebookStep({
 
         <Flex align="center">
           <Box flex={`1 1 ${(11 / 12) * 100}%`} maw="75rem">
-            <Step
+            <StepComponent
               step={step}
               query={step.query}
               stageIndex={step.stageIndex}

@@ -8,7 +8,7 @@ import type { NotebookDataPickerOptions } from "../../types";
 import { NotebookStepList } from "../NotebookStepList";
 
 import { VisualizeButton } from "./VisualizationButton";
-import { NotebookProvider } from "./context";
+import { type NotebookContextType, NotebookProvider } from "./context";
 
 export type NotebookProps = {
   question: Question;
@@ -23,6 +23,7 @@ export type NotebookProps = {
   readOnly?: boolean;
   modelsFilterList?: DataPickerValue["model"][];
   dataPickerOptions?: NotebookDataPickerOptions;
+  filterStepComponent?: NotebookContextType["filterStepComponent"];
 };
 
 export const Notebook = ({
@@ -38,6 +39,7 @@ export const Notebook = ({
   setQueryBuilderMode,
   modelsFilterList,
   dataPickerOptions,
+  filterStepComponent,
 }: NotebookProps) => {
   const dispatch = useDispatch();
 
@@ -50,6 +52,7 @@ export const Notebook = ({
     <NotebookProvider
       modelsFilterList={modelsFilterList}
       dataPickerOptions={dataPickerOptions}
+      filterStepComponent={filterStepComponent}
     >
       <Box pos="relative" p={{ base: "1rem", sm: "2rem" }}>
         <NotebookStepList
