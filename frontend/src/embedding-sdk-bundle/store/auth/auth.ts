@@ -7,10 +7,6 @@ import { createAsyncThunk } from "metabase/redux/utils";
 
 // This is an SDK-only plugin and we co-locate it with its OSS usage for convenience and better three-shaking.
 export const PLUGIN_EMBEDDING_SDK_AUTH = {
-  getOrRefreshSession: async (
-    _config: MetabaseAuthConfig,
-    _store: SdkStore,
-  ): Promise<MetabaseEmbeddingSessionToken | null> => null,
   initAuth: async (
     _config: any, // should be `MetabaseAuthConfig & { isLocalHost?: boolean }` but we can't import it for now (it's EE code)
     _dispatch: { dispatch: Dispatch },
@@ -21,6 +17,10 @@ export const PLUGIN_EMBEDDING_SDK_AUTH = {
   ): Promise<any | null> => {
     return null;
   },
+  getOrRefreshSession: async (
+    _config: MetabaseAuthConfig,
+    _store: SdkStore,
+  ): Promise<MetabaseEmbeddingSessionToken | null> => null,
 };
 
 export const initAuth = createAsyncThunk(
