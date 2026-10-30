@@ -4,6 +4,7 @@ import {
   discriminatingFilesForTest,
   fileExceedsBaseline,
 } from "./baseline.mjs";
+import { buildFunctionManifest } from "./functions.mjs";
 import {
   apiRoutes,
   buildRouteTable,
@@ -266,5 +267,61 @@ describe("baselinePerTestDeltas", () => {
   it("returns an empty map for entries without per-test data", () => {
     expect(baselinePerTestDeltas({ coverage: {} })).toEqual({});
     expect(baselinePerTestDeltas(undefined)).toEqual({});
+  });
+});
+
+describe("buildFunctionManifest", () => {
+  const file = "/ci/repo/frontend/src/metabase/a.ts";
+  const functionMaps = {
+    [file]: { 0: { name: "boot", line: 1 }, 1: { name: "rare", line: 9 } },
+  };
+
+  it("interns functions as file#line#name, counts firing tests, and merges attempts", () => {
+    const entries = {
+      "e2e/test/scenarios/x.cy.spec.ts": {
+        spec: "e2e/test/scenarios/x.cy.spec.ts",
+        tests: [
+          { title: "x does one", f: { [file]: { 0: 1 } } },
+          { title: "x does one", f: { [file]: { 1: 2 } } },
+          { title: "x does two", f: { [file]: { 0: 3, 1: 0 } } },
+        ],
+      },
+    };
+    const manifest = buildFunctionManifest(entries, functionMaps, "/ci/repo");
+    expect(manifest.keys).toEqual([
+      "frontend/src/metabase/a.ts#1#boot",
+      "frontend/src/metabase/a.ts#9#rare",
+    ]);
+    expect(manifest.totalTests).toBe(2);
+    expect(manifest.frequency).toEqual([2, 1]);
+    expect(manifest.tests).toEqual([
+      {
+        spec: "e2e/test/scenarios/x.cy.spec.ts",
+        title: "x does one",
+        fired: [0, 1],
+      },
+      {
+        spec: "e2e/test/scenarios/x.cy.spec.ts",
+        title: "x does two",
+        fired: [0],
+      },
+    ]);
+  });
+
+  it("drops files outside the repo and ids without a function map entry", () => {
+    const entries = {
+      spec: {
+        spec: "spec",
+        tests: [
+          {
+            title: "t",
+            f: { "/elsewhere/b.ts": { 0: 1 }, [file]: { 7: 1 } },
+          },
+        ],
+      },
+    };
+    const manifest = buildFunctionManifest(entries, functionMaps, "/ci/repo");
+    expect(manifest.keys).toEqual([]);
+    expect(manifest.tests).toEqual([{ spec: "spec", title: "t", fired: [] }]);
   });
 });
