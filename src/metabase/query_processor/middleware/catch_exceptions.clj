@@ -273,12 +273,12 @@
 
 (defn- restricted-exception
   "`e` as thrown to a row-restricted user by a non-userland query. When [[restricted-response-maps]] replaces any message
-  in its chain, an exception with the first message left, the `:type` and `:status-code` of the first exception in the
-  chain that has them, and no cause. Interrupts and cancelations are rethrown as they are, since callers look for them
-  in the chain."
+  in its chain, an exception with the innermost message left, the `:type` and `:status-code` of the innermost exception
+  that has them, and no cause. Interrupts and cancelations are rethrown as they are, since callers look for them in the
+  chain."
   ^Throwable [^Throwable e]
-  (let [chain      (u/full-exception-chain e)
-        maps       (for [ex (reverse chain)]
+  (let [chain      (reverse (u/full-exception-chain e))
+        maps       (for [ex chain]
                      (format-exception ex))
         restricted (restricted-response-maps maps false)]
     (if (or (some #(instance? InterruptedException %) chain)

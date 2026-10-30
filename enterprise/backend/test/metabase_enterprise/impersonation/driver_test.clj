@@ -1196,10 +1196,10 @@
           (let [run-query (fn [sql]
                             (try
                               (qp/process-query (lib/native-query (mt/metadata-provider) sql))
+                              ;; a row-restricted user gets the refusal's message and type, without the cause
                               (catch ExceptionInfo e
-                                {:message         (ex-message e)
-                                 :refusal-message (ex-message (ex-cause e))
-                                 :refusal-data    (ex-data (ex-cause e))})))]
+                                {:message (ex-message e)
+                                 :data    (ex-data e)})))]
             (doseq [[result sql] [[:unparseable "SELECT ("]
                                   [:invalid "SELECT 1; SELECT 2"]
                                   [:unvalidatable (str "SELECT 1 WHERE 1 IN (" (str/join ", " (range 3000)) ")")]]]
@@ -1208,7 +1208,9 @@
                       uncached (mt/with-dynamic-fn-redefs [query-cache/validated-query (fn [_engine _allow-write? _admin? _native validate]
                                                                                          (validate))]
                                  (run-query sql))]
-                  (is (= result (get-in uncached [:refusal-data :impersonation/result])))
+                  (is (= {:message (ex-message (driver.sql/impersonated-query-refusal result sql false nil))
+                          :data    {:type qp.error-type/invalid-query, :status-code 400}}
+                         uncached))
                   (is (= uncached (run-query sql)))
                   (is (t2/exists? :model/ImpersonationQueryCache :input_query sql))
                   (is (= uncached (run-query sql))))))))))))
@@ -1392,7 +1394,7 @@
                        (run-native "with cte as (\n  select 1 as col\n), \nselect * from cte"))))
                 (testing "a query the validator cannot check"
                   (mt/with-dynamic-fn-redefs [sql-tools/validate-executable-stmt (constantly {:verdict :unknown
-                                                                                              :reason  :large-literal-list})]
+                                                                                              :reason  "large-literal-list"})]
                     (is (thrown-with-msg?
                          java.lang.Exception
                          #"Unable to validate this native query on an impersonated database"
