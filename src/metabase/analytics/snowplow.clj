@@ -204,41 +204,29 @@
    [:measurement {:optional true} number?]
    [:error       {:optional true} :string]])
 
-(def ^:private ai-service-event-common
-  "The keys every `ai_service_event` carries. Each event adds `:event`, fixed to its name, and its own closed
-  `:event-details`, see [[ai-service-event]]."
-  [[:hashed-metabase-license-token {:optional true} [:maybe :string]]
+(def ^:private ai-service-event-data
+  [:map {:closed true}
+   [:hashed-metabase-license-token {:optional true} [:maybe :string]]
    [:request-id                    {:optional true} [:maybe :string]]
    [:source                        {:optional true} [:maybe :string]]
+   [:event                         {:optional true} :string]
    [:user-id                       {:optional true} [:maybe ms/PositiveInt]]
    [:session-id                    {:optional true} [:maybe :string]]
    [:profile                       {:optional true} [:maybe :string]]
    [:duration-ms                   {:optional true} [:maybe :int]]
-   [:result                        {:optional true} :string]])
-
-(defn- ai-service-event
-  "The closed shape of the `ai_service_event` named `event`, whose `:event-details` has the closed shape `details`."
-  [event details]
-  (into [:map {:closed true}
-         [:event [:= event]]]
-        (conj ai-service-event-common
-              [:event-details {:optional true} details])))
-
-(def ^:private ai-service-event-data
-  "One shape per event, dispatched on `:event`, so an event admits only its own details."
-  [:multi {:dispatch :event}
-   ["agent_used_tool"
-    (ai-service-event "agent_used_tool"
-                      [:map {:closed true}
-                       ["tool_name"   {:optional true} [:maybe :string]]
-                       ["step"        {:optional true} :int]
-                       ["error_class" {:optional true} :string]
-                       ["error_code"  {:optional true} :string]])]
-   ["agent_turn_finished"
-    (ai-service-event "agent_turn_finished"
-                      [:map {:closed true}
-                       ["finish_reason" {:optional true} :string]
-                       ["steps"         {:optional true} :int]])]])
+   [:result                        {:optional true} :string]
+   [:event-details                 {:optional true}
+    [:or
+     ;; agent_used_tool
+     [:map {:closed true}
+      ["tool_name"   {:optional true} [:maybe :string]]
+      ["step"        {:optional true} :int]
+      ["error_class" {:optional true} :string]
+      ["error_code"  {:optional true} :string]]
+     ;; agent_turn_finished
+     [:map {:closed true}
+      ["finish_reason" {:optional true} :string]
+      ["steps"         {:optional true} :int]]]]])
 
 (def SnowplowEventData
   "Closed shape of the `data` payload accepted by [[track-event!]], as a union of the shapes each `SnowplowSchema`
