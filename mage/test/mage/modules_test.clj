@@ -567,7 +567,7 @@
 (deftest codeowners-entries-test
   (testing "only modules that set :codeowners true get entries, covering their directories and root files"
     (is (= [{:module    'lib
-             :dir       "src/metabase/lib"
+             :src-dir   "src/metabase/lib"
              :team      "Querying Platform"
              :handle    "@metabase/querying-platform"
              :opted-in? true
@@ -661,9 +661,23 @@
               {:type :no-codeowner, :module 'lib, :team "Gadget"}
               {:type :no-source, :module 'lib, :src-dir "src/metabase/lib"}]
              (problems '{lib {:team "Gadget", :codeowners :test}} (constantly false)))))
-    (testing "a team whose codeowner is not a GitHub handle is reported as such"
-      (doseq [value ["" "metabase/metabot" "@" 42]]
-        (is (= [{:type :bad-codeowner, :module 'lib, :team "Gadget", :value value}]
+    (testing "a team whose codeowner is not one GitHub handle is reported once, naming its modules"
+      (doseq [value [""
+                     "metabase/metabot"
+                     "@"
+                     "@metabase/"
+                     "@metabase/metabot @metabase/other"
+                     "@metabase/ux west"
+                     "@metabase/metabot\n* @metabase/other"
+                     42]]
+        (is (= [{:type :bad-codeowner, :team "Gadget", :value value, :modules ['lib 'lib.schema]}]
+               (problems '{lib        {:team "Gadget", :codeowners true}
+                           lib.schema {:codeowners true}}
+                         (constantly true)
+                         {"Gadget" value})))))
+    (testing "user and team handles are valid"
+      (doseq [value ["@someone" "@metabase/metabot" "@metabase/ux.west_2"]]
+        (is (= []
                (problems '{lib {:team "Gadget", :codeowners true}} (constantly true) {"Gadget" value})))))
     (testing "modules that do not set :codeowners are not checked"
       (is (= []
@@ -780,12 +794,12 @@
 (deftest codeowners-problem-message-test
   (testing "each problem names what is wrong and what to do"
     (are [problem expected] (str/includes? (#'mage.modules/codeowners-problem-message problem) expected)
-      {:type :unknown-value, :module 'lib, :value :test}            "Module lib sets :codeowners to :test. Use true"
-      {:type :no-codeowner, :module 'lib, :team "Gadget"}           "its team \"Gadget\" has no \"codeowner\""
-      {:type :bad-codeowner, :module 'lib, :team "Gadget", :value ""} "Use a GitHub handle such as"
-      {:type :no-source, :module 'lib, :src-dir "src/metabase/lib"} "has no code at src/metabase/lib."
-      {:type :shadowed-lines, :lines ["a/b.clj @x"]}                "Move them below the END marker:\n  a/b.clj @x"
-      {:type :broken-markers, :begin 0, :end nil}                   "Fix the markers by hand.")))
+      {:type :unknown-value, :module 'lib, :value :test}                 "lib sets :codeowners to :test. Use true"
+      {:type :no-codeowner, :module 'lib, :team "Gadget"}                "its team \"Gadget\" has no \"codeowner\""
+      {:type :bad-codeowner, :team "Gadget", :value "", :modules ['lib]} "so that lib can opt in"
+      {:type :no-source, :module 'lib, :src-dir "src/metabase/lib"}      "has no code at src/metabase/lib."
+      {:type :shadowed-lines, :lines ["a/b.clj @x"]}                     "Move them below the END marker:\n  a/b.clj @x"
+      {:type :broken-markers, :begin 0, :end nil}                        "Fix the markers by hand.")))
 
 (deftest codeowners-stanza-lines-test
   (testing "a header naming the module and team, then one owner line per pattern"

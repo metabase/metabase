@@ -299,11 +299,10 @@
         (:teams (json/parse-string (slurp team-config-path) true))))
 
 (defn- valid-codeowner?
-  "Whether `value` can stand as a CODEOWNERS owner: a string starting with `@`."
+  "Whether `value` is one GitHub handle, such as `@metabase/metabot` or `@someone`, and nothing else."
   [value]
   (and (string? value)
-       (str/starts-with? value "@")
-       (not (str/blank? (subs value 1)))))
+       (some? (re-matches #"@[A-Za-z0-9-]+(?:/[A-Za-z0-9._-]+)?" value))))
 
 (defn- has-source?
   "Whether `src-dir` exists as a directory, or a root namespace file sits next to where it would be."
@@ -323,9 +322,10 @@
   (true? (get-in modules-config [module :codeowners])))
 
 (defn- codeowners-entries
-  "One entry per module the block must name, in block order: `{:module, :dir, :team, :handle, :opted-in?, :patterns}`.
+  "One entry per module the block must name, in block order.
+  Each is `{:module, :src-dir, :team, :handle, :opted-in?, :patterns}`.
   A module's src and test code go to its team's handle when it, or an opted-in module around it, belongs to that team.
-  Inside an opted-in module's directory, other code is unowned, with a `nil` handle.
+  Inside an opted-in module's directory, a nested module of another team is otherwise unowned, with a `nil` handle.
   An opted-in module always gets an entry.
   Another module gets one only where the nearest entry around it would give its code a different owner.
   Only `:codeowners true` opts in; [[codeowners-config-problems]] reports any other value."
@@ -336,7 +336,7 @@
      (let [team      (modules/module-team modules-config module)
            src-dir   (modules/module-dir modules-config module "src")
            ;; Entries come parent first, so the last one around `src-dir` is the nearest.
-           around    (filter #(path-within? (:dir %) src-dir) entries)
+           around    (filter #(path-within? (:src-dir %) src-dir) entries)
            owners    (filter :opted-in? around)
            opted-in? (opts-in? modules-config module)
            handle    (when (or opted-in? (some #(= team (:team %)) owners))
@@ -345,7 +345,7 @@
          (or opted-in?
              (and (seq owners) (not= handle (:handle (last around)))))
          (conj {:module    module
-                :dir       src-dir
+                :src-dir   src-dir
                 :team      team
                 :handle    handle
                 :opted-in? opted-in?
@@ -359,30 +359,33 @@
    (sort-by #(modules/module-dir modules-config % "src") (keys modules-config))))
 
 (defn- codeowners-config-problems
-  "Problems with the modules that set `:codeowners`, as maps keyed by `:type`, several per module when it has several.
-  An `:unknown-value` problem has `:module` and `:value`, and `:no-source` has `:module` and `:src-dir`.
-  The `:no-codeowner` and `:bad-codeowner` problems have `:module` and `:team`, and a bad one also has `:value`.
+  "Problems with the modules that set `:codeowners`, as maps keyed by `:type`, all of them in one run.
+  Each module problem has `:module`.
+  An `:unknown-value` adds `:value`, a `:no-codeowner` adds `:team`, and a `:no-source` adds `:src-dir`.
+  A team whose codeowner is not one GitHub handle gives a single `:bad-codeowner` (`:team`, `:value`, `:modules`).
   The predicate `source?` takes a module's src directory and says whether its code is there."
   [modules-config team->codeowner source?]
-  (for [[module cfg] (sort-by key modules-config)
-        :when        (contains? cfg :codeowners)
-        :let         [value   (:codeowners cfg)
-                      team    (modules/module-team modules-config module)
-                      handle  (get team->codeowner team)
-                      src-dir (modules/module-dir modules-config module "src")]
-        problem      (cond-> []
-                       (not (true? value))
-                       (conj {:type :unknown-value, :module module, :value value})
+  (let [modules (for [[module cfg] (sort-by key modules-config)
+                      :when        (contains? cfg :codeowners)]
+                  module)]
+    (concat
+     (for [module  modules
+           :let    [team    (modules/module-team modules-config module)
+                    src-dir (modules/module-dir modules-config module "src")]
+           problem (cond-> []
+                     (not (opts-in? modules-config module))
+                     (conj {:type :unknown-value, :module module, :value (get-in modules-config [module :codeowners])})
 
-                       (not (contains? team->codeowner team))
-                       (conj {:type :no-codeowner, :module module, :team team})
+                     (not (contains? team->codeowner team))
+                     (conj {:type :no-codeowner, :module module, :team team})
 
-                       (and (contains? team->codeowner team) (not (valid-codeowner? handle)))
-                       (conj {:type :bad-codeowner, :module module, :team team, :value handle})
-
-                       (not (source? src-dir))
-                       (conj {:type :no-source, :module module, :src-dir src-dir}))]
-    problem))
+                     (not (source? src-dir))
+                     (conj {:type :no-source, :module module, :src-dir src-dir}))]
+       problem)
+     (for [[team team-modules] (sort-by key (group-by #(modules/module-team modules-config %) modules))
+           :let                [handle (get team->codeowner team)]
+           :when               (and (contains? team->codeowner team) (not (valid-codeowner? handle)))]
+       {:type :bad-codeowner, :team team, :value handle, :modules (vec team-modules)}))))
 
 (defn- pattern-covers?
   "Whether CODEOWNERS `pattern`, a directory or a `<path>.*` root-file glob from the block, matches `path`."
@@ -438,8 +441,10 @@
                             module (pr-str (:value problem)))
     :no-codeowner   (format "Module %s sets :codeowners, but its team %s has no \"codeowner\" in %s."
                             module (pr-str (:team problem)) team-config-path)
-    :bad-codeowner  (format "Team %s has \"codeowner\" %s in %s. Use a GitHub handle such as \"@metabase/metabot\"."
-                            (pr-str (:team problem)) (pr-str (:value problem)) team-config-path)
+    :bad-codeowner  (format (str "Team %s has \"codeowner\" %s in %s. Use one GitHub handle, such as"
+                                 " \"@metabase/metabot\", so that %s can opt in.")
+                            (pr-str (:team problem)) (pr-str (:value problem)) team-config-path
+                            (str/join ", " (:modules problem)))
     :no-source      (format (str "Module %s sets :codeowners, but has no code at %s. The generator does not handle"
                                  " plugin code under modules/<plugin>/src; give that directory an owner by hand.")
                             module (:src-dir problem))
@@ -467,6 +472,7 @@
      "#"
      "# Generated by `./bin/mage update-codeowners` from .clj-kondo/config/modules/config.edn. Do not edit by hand."
      "# The `codeowners` section at the top of that file says which modules are owned, and by whom."
+     "# Each team's handle is its \"codeowner\" in .github/team.json."
      "# Exceptions inside these paths go below the END marker: lines above this block lose to it."
      "#"]
     (mapcat #(cons "" (codeowners-stanza-lines %)) entries)

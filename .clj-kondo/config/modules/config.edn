@@ -884,7 +884,7 @@
                     :model/User}}
 
   ;; TODO (Chris 2026-10-30) -- CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand.
-  ;; Set :codeowners once :team and that group cover the same people.
+  ;; Once :team and that group cover the same people, delete those lines and set :codeowners, which also owns tests.
   data-apps
   {:team "Embedding"
    :api #{metabase.data-apps.core}
@@ -923,7 +923,7 @@
    :uses #{lib.schema premium-features}}
 
   ;; TODO (Chris 2026-10-30) -- CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand.
-  ;; Set :codeowners once :team and that group cover the same people.
+  ;; Once :team and that group cover the same people, delete those lines and set :codeowners, which also owns tests.
   dependencies
   {:team "Graphy"
    :api  #{metabase.dependencies.hooks}
@@ -2441,7 +2441,7 @@
    :uses #{models util}}
 
   ;; TODO (Chris 2026-10-30) -- CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand.
-  ;; Set :codeowners once :team and that group cover the same people.
+  ;; Once :team and that group cover the same people, delete those lines and set :codeowners, which also owns tests.
   remote-sync
   {:team "UX West"
    :api  #{metabase.remote-sync.core
@@ -3872,7 +3872,7 @@
    :model-exports #{:model/CustomVizPlugin}}
 
   ;; TODO (Chris 2026-10-30) -- CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand.
-  ;; Set :codeowners once :team and that group cover the same people.
+  ;; Once :team and that group cover the same people, delete those lines and set :codeowners, which also owns tests.
   enterprise/data-apps
   {:team "Embedding"
    :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
@@ -3949,7 +3949,7 @@
    :model-imports #{:model/Database :model/Transform}}
 
   ;; TODO (Chris 2026-10-30) -- CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand.
-  ;; Set :codeowners once :team and that group cover the same people.
+  ;; Once :team and that group cover the same people, delete those lines and set :codeowners, which also owns tests.
   enterprise/dependencies
   {:team "Graphy"
    :module-exports #{enterprise/dependencies.replacement}
@@ -4340,7 +4340,7 @@
    :uses #{premium-features}}
 
   ;; TODO (Chris 2026-10-30) -- CODEOWNERS gives its src to the @metabase/data-apps reviewer group by hand.
-  ;; Set :codeowners once :team and that group cover the same people.
+  ;; Once :team and that group cover the same people, delete those lines and set :codeowners, which also owns tests.
   enterprise/remote-sync
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
