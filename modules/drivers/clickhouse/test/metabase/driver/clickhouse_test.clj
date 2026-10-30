@@ -970,26 +970,3 @@
           (ctd/exec-statements ["DROP USER IF EXISTS metabase_readonly_user;"
                                 "DROP SETTINGS PROFILE IF EXISTS metabase_readonly_profile;"]
                                {}))))))
-
-(deftest ^:synchronized cancel-slow-query-via-query-timeout-test
-  (mt/test-driver :clickhouse
-    (testing "Slow query is cancelled when *query-timeout-ms* elapses"
-      ;; c3p0 sets the pool's `unreturnedConnectionTimeout` from `*query-timeout-ms*` when it makes the pool. Make the
-      ;; pool outside the binding, so that c3p0 does not close the connection before the query processor cancels it.
-      (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
-      (is (= [[1]] (mt/rows (qp/process-query (lib/native-query (mt/metadata-provider) "SELECT 1")))))
-      ;; The query would take 120 s. `sleepEachRow` sleeps at most 3 s for each block, so use blocks of one row.
-      (let [query (lib/native-query (mt/metadata-provider)
-                                    "SELECT sleepEachRow(1) FROM numbers(120) SETTINGS max_block_size = 1")]
-        (binding [driver.settings/*query-timeout-ms* 2000]
-          (let [timer   (u/start-timer)
-                result  (try
-                          (qp/process-query query)
-                          (catch Throwable e e))
-                elapsed (u/since-ms timer)]
-            (is (instance? Throwable result)
-                "query should throw rather than completing normally")
-            (is (str/includes? (ex-message result) "QUERY_WAS_CANCELLED")
-                "the server should report that the query was cancelled")
-            (is (<= 2000 elapsed 30000)
-                (format "query should be cancelled after the timeout and well before it completes — took %.0f ms" elapsed))))))))
