@@ -623,7 +623,7 @@
   "The search backend failed, for example because the search index is missing."
   {:payload [:map {:closed true}]}
   [_]
-  {:message "Search is not available."
+  {:message "Search failed."
    :recovery [{:uses #{"read_resource"}
                :text (str "Find the data with `read_resource` instead: read `metabase://databases`, "
                           "then `metabase://database/{id}/tables` for the tables in one database.")}]})
@@ -632,13 +632,14 @@
   [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit]}]
   ;; Recoverable, not `:internal`: a failed search does not stop the agent from finding data,
   ;; because `read_resource` does not use the search index.
-  (let [results (try
-                  (search (merge {:semantic-queries semantic_queries
-                                  :term-queries    keyword_queries
-                                  :entity-types    (or (seq entity_types) (vec default-types))
-                                  :limit           (min max-search-limit
-                                                        (or limit default-search-limit))}
-                                 search-opts))
+  (let [opts    (merge {:semantic-queries semantic_queries
+                        :term-queries    keyword_queries
+                        :entity-types    (or (seq entity_types) (vec default-types))
+                        :limit           (min max-search-limit
+                                              (or limit default-search-limit))}
+                       search-opts)
+        results (try
+                  (search opts)
                   (catch Exception e
                     ;; The runtime logs a recoverable error at debug level, without its cause.
                     (log/error e "Metabot search failed")

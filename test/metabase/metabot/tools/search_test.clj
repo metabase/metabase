@@ -634,7 +634,7 @@
             (is (=? {:error {:class :validation :code :invalid-arguments}}
                     (invoke-search [#'search/search-tool] {:keyword_queries ["x"] :limit limit})))))))))
 
-(deftest search-failure-test
+(deftest ^:parallel search-failure-test
   (testing "a failing search backend lets the agent find the data another way (BOT-2540)"
     (mt/with-test-user :crowberto
       (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search Index not found." {})))]
@@ -644,7 +644,7 @@
                                        [#'search/transform-search-tool {}]]]
           (testing (str tool-var)
             (is (= {:error  {:class :recoverable :code ::search/search-failed}
-                    :output (str "Search is not available.\n"
+                    :output (str "Search failed.\n"
                                  "Find the data with `read_resource` instead: read `metabase://databases`, "
                                  "then `metabase://database/{id}/tables` for the tables in one database.")}
                    (invoke-search [tool-var #'metabot.tools/read-resource-tool]
