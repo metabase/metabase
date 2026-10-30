@@ -85,22 +85,18 @@ function ExpandToggleIcon({
 
 type NameContainerProps = BoxProps & ElementProps<"div">;
 
-// The sidebar wraps it in a Tooltip, which needs the ref
-const NameContainer = React.forwardRef<HTMLDivElement, NameContainerProps>(
-  function NameContainer({ className, ...props }, ref) {
-    return (
-      <Box
-        ref={ref}
-        className={cx(S.name, className)}
-        flex={1}
-        py="sm"
-        pr="sm"
-        pl="xxs"
-        {...props}
-      />
-    );
-  },
-);
+function NameContainer({ className, ...props }: NameContainerProps) {
+  return (
+    <Box
+      className={cx(S.name, className)}
+      flex={1}
+      py="sm"
+      pr="sm"
+      pl="xxs"
+      {...props}
+    />
+  );
+}
 
 type IconContainerProps = FlexProps & {
   transparent?: boolean;

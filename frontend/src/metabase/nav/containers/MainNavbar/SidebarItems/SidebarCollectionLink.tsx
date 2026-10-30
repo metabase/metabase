@@ -18,7 +18,7 @@ import { Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
-import { SidebarItemName } from "./SidebarItemName";
+import { SidebarItemName, SidebarItemTooltip } from "./SidebarItemName";
 import S from "./SidebarItems.module.css";
 
 type DroppableProps = {
@@ -132,30 +132,32 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
             size={12}
           />
         </TreeNode.ExpandToggleButton>
-        {nonNavigable ? (
-          <Flex
-            className={CS.cursorPointer}
-            align="center"
-            w="100%"
-            miw={0}
-            onKeyDown={onKeyDown}
-          >
-            {content}
-          </Flex>
-        ) : (
-          <Flex
-            component={ForwardRefLink}
-            className={S.link}
-            align="center"
-            w="100%"
-            miw={0}
-            to={url}
-            onClick={onSelect}
-            onKeyDown={onKeyDown}
-          >
-            {content}
-          </Flex>
-        )}
+        <SidebarItemTooltip itemName={collection.name}>
+          {nonNavigable ? (
+            <Flex
+              className={CS.cursorPointer}
+              align="center"
+              w="100%"
+              miw={0}
+              onKeyDown={onKeyDown}
+            >
+              {content}
+            </Flex>
+          ) : (
+            <Flex
+              component={ForwardRefLink}
+              className={S.link}
+              align="center"
+              w="100%"
+              miw={0}
+              to={url}
+              onClick={onSelect}
+              onKeyDown={onKeyDown}
+            >
+              {content}
+            </Flex>
+          )}
+        </SidebarItemTooltip>
       </TreeNode.Root>
     );
   },
