@@ -2,15 +2,18 @@
 ;; Hits are compared as sets, not ranks.
 ;; A comparison inherits the scenario query and hits unless an engine gives an alternative {:query, :hits}.
 ;; Comparisons belong here only when at least one engine uses a different query.
-;; A comparison's focus is a user's goal, and `:correct` the results that goal wants, which no engine need achieve.
+;; A comparison's focus is a user's goal, and `:correct` the results that goal wants.
+;; No engine need achieve them.
 ;; Each engine's query is the best one a user could plausibly type for that goal, so no alternative may score
 ;; worse than the scenario query.
+;; Adapted queries use only words from the goal and the scenario query, never words a user would only know
+;; from a card's name.
 ;; The vector arm keeps cards within cosine distance 0.7 of the query; with this model that admits unrelated
 ;; cards and drops related ones, since both sit around 0.6 to 0.75.
 ;; Semantic search returns the union of a keyword arm and a vector arm.
 ;; The keyword arm gives the appdb/PostgreSQL results for every scenario here, but not for every query.
 ;; With a language other than simple, appdb also indexes an unstemmed copy of the text and the semantic index
-;; does not, so a half-typed word such as "runni" finds "running" on appdb but not in the keyword arm.
+;; does not, so a half-typed word such as "shippi" finds "Shipping costs" on appdb but not in the keyword arm.
 ;; Both arms are recorded, but comparisons and statistics count only the vector arm.
 [{:id     "multiword-defaults"
   :focus  "default multiword Boolean and cross-field matches"
@@ -196,12 +199,12 @@
   :comparisons
   ;; A stopword the user typed is probably intentional, e.g. in a show title.
   ;; The English dictionary strips "the" from indexed documents too, so no PostgreSQL query, quoted or not,
-  ;; can require it.
+  ;; can require it; excluding "supplies" is as close as it gets.
   [{:focus   "the show The Office, not office supplies"
     :correct [:A]
     :alternatives
     {:in-place       {:query "office", :hits [:A :B]}
-     :appdb-postgres {:query "\"the office\"", :hits [:A :B]}}}]}
+     :appdb-postgres {:query "office -supplies", :hits [:A]}}}]}
  {:id     "simple-stopword"
   :focus  "same documents/query without English stopword removal"
   :config "simple"
@@ -445,14 +448,15 @@
            :appdb-postgres [:B :C :D :F :G]
            :semantic       {:keyword [:B :C :D :F :G], :vector [:B]}}
   :comparisons
-  ;; Both typed terms are abbreviations; PostgreSQL completes only the last, so the user is better off putting
-  ;; the one that needs completing last. "Reviews" also starts with "rev", but is not about revenue.
-  [{:focus   "customer or revenue cards, typed abbreviated"
+  ;; The typed query abbreviates both words, and PostgreSQL completes only the last, so it misses "Customers".
+  ;; Spelling out "revenue" gives in-place and PostgreSQL exactly the goal; H2 cannot express OR.
+  ;; "Reviews" also starts with "rev", but is not about revenue.
+  [{:focus   "customer or revenue cards"
     :correct [:A :B :C :F :G]
     :alternatives
-    {:in-place       {:query "cust rev", :hits [:A :B :C :D :E :F :G]}
+    {:in-place       {:query "cust revenue", :hits [:A :B :C :F :G]}
      :appdb-h2       {:query "cust", :hits [:A :B :F :G]}
-     :appdb-postgres {:query "rev or cust", :hits [:A :B :F :G]}
+     :appdb-postgres {:query "revenue or cust", :hits [:A :B :C :F :G]}
      :semantic       {:query "customer or revenue reports", :hits [:A :C :F :G]}}}]}
  {:id     "negated-prefix"
   :focus  "final negated term is also prefix-completed"

@@ -56,7 +56,7 @@
     (testing "translated queries, scored against each comparison's correct result set"
       (is (= {:count     13
               :all-equal 1
-              :mean-hits {:in-place       4
+              :mean-hits {:in-place       50/13
                           :appdb-h2       42/13
                           :appdb-postgres 38/13
                           :semantic       4}
@@ -65,9 +65,9 @@
                           [:in-place :semantic]       {:equal 7, :left-superset 2, :left-subset 2, :incomparable 2}
                           [:appdb-h2 :appdb-postgres] {:equal 6, :left-superset 4, :left-subset 3, :incomparable 0}
                           [:appdb-h2 :semantic]       {:equal 6, :left-superset 0, :left-subset 6, :incomparable 1}
-                          [:appdb-postgres :semantic] {:equal 3, :left-superset 1, :left-subset 8, :incomparable 1}}
-              :scores    {:in-place       {:precision 89/140,  :recall 1,       :f1 1624/2145,   :exact 2}
+                          [:appdb-postgres :semantic] {:equal 4, :left-superset 1, :left-subset 8, :incomparable 0}}
+              :scores    {:in-place       {:precision 171/260, :recall 1,       :f1 1101/1430,   :exact 3}
                           :appdb-h2       {:precision 157/195, :recall 123/130, :f1 14999/18018, :exact 5}
-                          :appdb-postgres {:precision 347/390, :recall 64/65,   :f1 289/315,     :exact 9}
+                          :appdb-postgres {:precision 181/195, :recall 1,       :f1 433/455,     :exact 11}
                           :semantic       {:precision 127/195, :recall 64/65,   :f1 9601/12870,  :exact 3}}}
              translations)))))
