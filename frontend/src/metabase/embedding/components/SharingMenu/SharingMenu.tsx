@@ -54,9 +54,9 @@ export function SharingMenu({
             </Group>
           )}
           {/* mx cancels the 0.75rem dropdown padding so the divider runs edge to edge;
-              mt mirrors it so the buttons get the same gap below as above */}
+              my matches the dropdown padding above and below the divider */}
           {hasActions && hasMenuItems && (
-            <Menu.Divider mx="-0.75rem" mt="0.75rem" />
+            <Menu.Divider mx="-0.75rem" my="0.75rem" />
           )}
           {children}
         </SharingMenuCloseContext.Provider>
