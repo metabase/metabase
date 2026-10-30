@@ -8,6 +8,7 @@
    Reading the dashboard, and projecting the result for the model, are left to the tool."
   (:require
    [malli.error :as me]
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.lib.core :as lib]
@@ -46,21 +47,32 @@
   (when-let [explanation (mr/explain schema value)]
     (dashboard-ops/fail! :invalid-payload {:explanation (me/humanize explanation)})))
 
+(def ^:private layout-keys
+  "The dashboard keys that ops edit, which `attrs` must not carry."
+  #{:dashcards :parameters :tabs})
+
+(def ^:private UpdateAttrs
+  "The attributes an update takes: [[dashboards.write/DashUpdates]] without the keys ops edit, and closed."
+  (as-> (mut/closed-schema (mr/resolve-schema dashboards.write/DashUpdates)) s
+    (reduce mut/dissoc s layout-keys)))
+
 (defn- validate-write!
   "Throws `:invalid-payload` when the real save would reject `attrs` or the compiled `payload`.
    A create checks `attrs` against [[dashboards.write/NewDashboard]], and saves any `payload` as an update.
-   An update checks them together, as it saves them.
+   An update checks `attrs` against [[UpdateAttrs]], then checks them and the payload together, as it saves them.
    Dry runs and saves both call it, so a clean dry run is worth trusting."
   [creating? attrs payload]
   (if creating?
     (do (check-schema! dashboards.write/NewDashboard attrs)
         (when payload
           (check-schema! dashboards.write/DashUpdates payload)))
-    (check-schema! dashboards.write/DashUpdates (merge attrs payload))))
+    (do (check-schema! UpdateAttrs attrs)
+        (check-schema! dashboards.write/DashUpdates (merge attrs payload)))))
 
 (defn- check-permission!
   "Throws a 403 unless the user may update `dashboard`, or create a dashboard in the collection `attrs` names.
-   It runs before anything is compiled, on a save as on a dry run, so both refuse a user who cannot write first."
+   [[write!]] runs it once the ops' shape is checked, before anything is compiled, on a save as on a dry run.
+   So both refuse a user who cannot write before saying anything about the payload."
   [dashboard attrs]
   (if dashboard
     (api/write-check dashboard)
@@ -95,8 +107,10 @@
 (defn- dry-run-dashboard
   "The dashboard saving `attrs` and the compiled `payload` to `dash` would produce, shaped like a saved one."
   [dash attrs payload cards]
-  (-> (merge dash attrs payload)
-      (update :dashcards (partial mapv (partial attach-card-metadata cards)))))
+  ;; The payload's series carry ids only, so the rows the dashboard was hydrated with stand in for the stored ones.
+  (let [cards (merge (into {} (comp (mapcat :series) (map (juxt :id identity))) (:dashcards dash)) cards)]
+    (-> (merge dash attrs payload)
+        (update :dashcards (partial mapv (partial attach-card-metadata cards))))))
 
 (defn- hydrated
   "`dash`, a saved row, hydrated with `[:dashcards :series :card] :tabs`."
@@ -122,9 +136,9 @@
    With a `dashboard`, hydrated the same way and already read-checked by the caller, it updates that one.
    Without one it creates a dashboard.
    With `validate-only?` it writes nothing, and returns the dashboard the save would produce.
-   It checks write permission on the dashboard, or create permission on the collection, before anything else.
+   It checks write permission on the dashboard, or create permission on the collection, first after the ops' shape.
    A dry run skips the save's other permission checks, such as moving to a collection and per-field mapping checks.
-   Parameters are edited with ops, so `attrs` must not carry `:parameters`.
+   Ops edit the layout and parameters, so `attrs` must not carry `:dashcards`, `:tabs` or `:parameters`.
    A nil `ops` means none were sent; anything else must be a list of ops.
    Throws an error from [[dashboard-ops/errors]] when an op is invalid or the save would be rejected."
   [{:keys [dashboard validate-only?] :as opts}]
@@ -133,11 +147,12 @@
   (let [ops   (dashboard-ops/prepare-ops (:ops opts))
         attrs (:attrs opts)
         _     (check-permission! dashboard attrs)
-        ;; Compiled against the parameters in attrs, a source card in them would count as already stored, and a dry
-        ;; run would skip the read check the save then fails.
-        _     (when (contains? attrs :parameters)
+        ;; Sent as attributes, `:dashcards` would replace the layout behind the ops' back, and `:tabs` would be
+        ;; dropped silently. Compiled against the parameters in attrs, a source card in them would count as already
+        ;; stored, and a dry run would skip the read check the save then fails.
+        _     (when-let [ks (seq (filter (partial contains? attrs) layout-keys))]
                 (dashboard-ops/fail! :invalid-payload
-                                     {:explanation {:parameters ["should be edited with parameter ops"]}}))
+                                     {:explanation (zipmap ks (repeat ["should be edited with ops"]))}))
         dash  (or dashboard (blank-dashboard attrs))
         ;; Without ops nothing is compiled, so an attribute-only save doesn't rewrite the layout.
         {:keys [payload cards]} (when (seq ops)

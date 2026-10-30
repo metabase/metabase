@@ -168,16 +168,51 @@
           (is (=? {:name "Sales"} (hydrated (:id dash))))
           (is (not (t2/exists? :model/Dashboard :name "New"))))))))
 
-(deftest parameters-in-attrs-are-refused-test
-  (testing "parameters are edited with ops, so attributes carrying them are refused on every path"
+(deftest layout-keys-in-attrs-are-refused-test
+  (testing "ops edit the layout and parameters, so attributes carrying them are refused on every path"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card          card {}
+                     :model/Dashboard     dash {:name "Sales"}
+                     :model/DashboardCard dc   {:dashboard_id (:id dash), :card_id (:id card)}]
+        (doseq [k              [:dashcards :parameters :tabs]
+                dashboard      [nil (hydrated (:id dash))]
+                validate-only? [true false]]
+          (testing (pr-str k (some? dashboard) validate-only?)
+            (is (=? {::dashboard-ops/error :invalid-payload, :explanation {k some?}}
+                    (error-data #(dashboard-write/write! {:dashboard      dashboard
+                                                          :attrs          {:name "With layout", k []}
+                                                          :validate-only? validate-only?}))))))
+        (is (=? {:name "Sales", :dashcards [{:id (:id dc)}]} (hydrated (:id dash))))
+        (is (not (t2/exists? :model/Dashboard :name "With layout"))))))
+  (testing "an update refuses an attribute it doesn't know"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
-        (doseq [dashboard      [nil (hydrated (:id dash))]
-                validate-only? [true false]]
-          (testing (pr-str (some? dashboard) validate-only?)
-            (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:parameters some?}}
-                    (error-data #(dashboard-write/write! {:dashboard      dashboard
-                                                          :attrs          {:name       "With parameters"
-                                                                           :parameters []}
-                                                          :validate-only? validate-only?}))))))
-        (is (not (t2/exists? :model/Dashboard :name "With parameters")))))))
+        (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:nmae some?}}
+                (error-data #(dashboard-write/write! {:dashboard (hydrated (:id dash)), :attrs {:nmae "Typo"}}))))))))
+
+(deftest ops-shape-is-checked-before-permission-test
+  (testing "a malformed op fails as :invalid-op even for a user who may not write, since it needs no dashboard"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Dashboard  dash       {:name "Sales", :collection_id (:id collection)}]
+      (mt/with-non-admin-groups-no-collection-perms collection
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (=? {::dashboard-ops/error :invalid-op}
+                  (error-data #(dashboard-write/write! {:dashboard (hydrated (:id dash))
+                                                        :attrs     {}
+                                                        :ops       [{:op "frobnicate"}]})))))))))
+
+(deftest dry-run-keeps-stored-series-rows-test
+  (testing "a dry run returns a dashcard's stored series as card rows, as the save reads them back"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card                card    {:name "Orders"}
+                     :model/Card                overlay {:name "Overlay"}
+                     :model/Dashboard           dash    {:name "Sales"}
+                     :model/DashboardCard       dc      {:dashboard_id (:id dash), :card_id (:id card)}
+                     :model/DashboardCardSeries _       {:dashboardcard_id (:id dc), :card_id (:id overlay)}]
+        (is (=? {:dashcards [{:id (:id dc), :series [{:id (:id overlay), :name "Overlay"}]}]}
+                (dashboard-write/write! {:dashboard      (hydrated (:id dash))
+                                         :attrs          {}
+                                         :ops            [{:op          "resize"
+                                                           :dashcard_id (:id dc)
+                                                           :size        {:size_x 6 :size_y 4}}]
+                                         :validate-only? true})))))))
