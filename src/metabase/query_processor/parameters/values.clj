@@ -80,45 +80,11 @@
     ::params.types/referenced-query-snippet
     ::params.types/temporal-unit]])
 
-(mu/defn- tag-targets
-  "Given a template tag, returns a set of `target` structures that can be used to target the tag.
-  Potential targets look something like:
-
-     [:dimension [:template-tag {:id <param-id>}]
-     [:dimension [:template-tag <param-name>]]     ; for Field Filters
-
-     [:variable  [:template-tag {:id <param-id>}]]
-     [:variable  [:template-tag <param-name>]]     ; for other types of params
-
-  Targeting template tags by ID is preferable (as of version 44) but targeting by name is supported for backwards
-  compatibility."
-  [tag :- ::lib.schema.template-tag/template-tag]
-  (let [target-type (case (:type tag)
-                      (:dimension :temporal-unit) :dimension
-                      :variable)]
-    #{[target-type [:template-tag (:name tag)]]
-      [target-type [:template-tag {:id (:id tag)}]]}))
-
-(defn- tag-target-pred
-  "Returns a predicate recognizing parameter targets pointing to `tag`."
-  [tag]
-  (let [targets (tag-targets tag)]
-    (fn tag-target? [param-target]
-      (and (vector? param-target)
-           (> (count param-target) 1)
-           (targets (subvec param-target 0 2))
-           ;; legacy dimension params come without stage-number, 0 is the default
-           (= (get-in param-target [2 :stage-number] 0)
-              ;; Currently, we have no multi-stage native queries, so the stage-number is always 0.
-              ;; If in the future we introduce such queries, we can specify the stage-number of tags
-              ;; and they should match the stage-number of the parameter target.
-              (get tag :stage-number 0))))))
-
 (mu/defn- tag-params
   "Return params from the provided `params` list targeting the provided `tag`."
   [tag    :- ::lib.schema.template-tag/template-tag
    params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
-  (let [tag-target? (tag-target-pred tag)]
+  (let [tag-target? (lib/template-tag-target-pred tag)]
     (seq (for [param params
                :when (tag-target? (:target param))]
            param))))

@@ -1637,6 +1637,7 @@
   parameter-target-is-dimension?
   parameter-target-stage-number
   parameter-target-template-tag-name
+  template-tag-target-pred
   update-parameter-target-dimension-options
   update-parameter-target-field-ref]
  [metabase.lib.parameters.parse

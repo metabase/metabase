@@ -20,17 +20,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv some]]))
 
-(defn- tag-for-param
-  "Find the template tag in `template-tags` that matches `param`'s target."
-  [template-tags param]
-  (when-let [name-or-id (lib.parameters/parameter-target-template-tag-name (:target param))]
-    (or (m/find-first #(= (:name %) name-or-id) ; handle name
-                      template-tags)
-        (some (fn [tag]                         ; handle id (defensive, may be unnecessary)
-                (when (= (:id tag) name-or-id)
-                  tag))
-              template-tags))))
-
 (defn- check-must-apply-native-params
   "Throw if a must-apply parameter on native `stage` has no value or matches none of its template tags."
   [stage]
@@ -39,7 +28,8 @@
       (must-apply/no-value? (or (:value param) (:default param)))
       (must-apply/throw-if-must-apply param (tru "it has no value"))
 
-      (not (tag-for-param (:template-tags stage) param))
+      ;; match tags the way substitution does, so a target of the wrong kind or stage counts as no match
+      (not-any? #((lib/template-tag-target-pred %) (:target param)) (:template-tags stage))
       (must-apply/throw-if-must-apply param (tru "it matches no template tag")))))
 
 (mu/defn- expand-stage :- ::lib.schema/stage
@@ -112,6 +102,17 @@
                                    (conj (vec parameters) parameter))))))
    query
    parameters))
+
+(defn- tag-for-param
+  "Find the template tag in `template-tags` that matches `param`'s target."
+  [template-tags param]
+  (when-let [name-or-id (lib.parameters/parameter-target-template-tag-name (:target param))]
+    (or (m/find-first #(= (:name %) name-or-id) ; handle name
+                      template-tags)
+        (some (fn [tag]                         ; handle id (defensive, may be unnecessary)
+                (when (= (:id tag) name-or-id)
+                  tag))
+              template-tags))))
 
 (defn- stage-has-non-default-params?
   "True if a stage has parameters with non-default values.

@@ -605,6 +605,34 @@
                                              :value        [1]
                                              :lib/must-apply? true}))))))
 
+(deftest ^:parallel must-apply-native-param-target-kind-mismatch-fails-closed-test
+  (testing "a must-apply parameter whose target kind does not match its template tag's type throws"
+    (doseq [[description legacy-query target]
+            [["variable target on a field filter tag"
+              {:database (meta/id)
+               :type     :native
+               :native   {:query         "SELECT * FROM venues WHERE {{price}}"
+                          :template-tags {"price" {:name         "price"
+                                                   :display-name "Price"
+                                                   :type         :dimension
+                                                   :widget-type  :number/=
+                                                   :dimension    [:field (meta/id :venues :price) nil]}}}}
+              [:variable [:template-tag "price"]]]
+             ["dimension target on a raw value tag"
+              (assoc-in native-price-query [:native :query] "SELECT * FROM venues [[WHERE price = {{price}}]]")
+              [:dimension [:template-tag "price"]]]]
+            enforce? [true false]]
+      (testing (str description ", schema checks " (if enforce? "on" "off"))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Filter `p1` must be applied, but it could not be: it matches no template tag"
+             (substitute-must-apply-params enforce? legacy-query
+                                           {:id              "p1"
+                                            :type            :number/=
+                                            :target          target
+                                            :value           [1]
+                                            :lib/must-apply? true})))))))
+
 (deftest must-apply-native-param-without-native-parameters-support-fails-closed-test
   (testing "a must-apply parameter on a driver without :native-parameters throws instead of being ignored"
     (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [_driver feature _db] (not= feature :native-parameters))]

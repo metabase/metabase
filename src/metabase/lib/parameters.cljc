@@ -5,6 +5,7 @@
   parameter code. The FE code still creates these by hand. One of these days we'll want to go clean all this stuff up.
 
   See https://metaboat.slack.com/archives/C0645JP1W81/p1760128892249879"
+  (:refer-clojure :exclude [get-in])
   (:require
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.options :as lib.options]
@@ -12,7 +13,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.util.malli :as mu]))
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in]]))
 
 (mu/defn- parameter-target-template-tag :- [:maybe ::lib.schema.parameter/template-tag]
   [target :- ::lib.schema.parameter/target]
@@ -34,6 +37,30 @@
     (cond
       (string? tag-name) tag-name
       (map? tag-name)    (:id tag-name))))
+
+(mu/defn- template-tag-targets
+  "The `:target`s that point to `tag`: `[:dimension ...]` for field filters and temporal units, `[:variable ...]` for
+  other tags, each by tag name or by tag id."
+  [tag :- ::lib.schema.template-tag/template-tag]
+  (let [target-type (case (:type tag)
+                      (:dimension :temporal-unit) :dimension
+                      :variable)]
+    #{[target-type [:template-tag (:name tag)]]
+      [target-type [:template-tag {:id (:id tag)}]]}))
+
+(defn template-tag-target-pred
+  "Return a predicate that is true for a parameter `:target` that points to template `tag`. Parameter substitution
+  uses this to give each tag its values, so anything that must agree with substitution should use it too."
+  [tag]
+  (let [targets (template-tag-targets tag)]
+    (fn tag-target? [param-target]
+      (and (vector? param-target)
+           (> (count param-target) 1)
+           (contains? targets (subvec param-target 0 2))
+           ;; legacy dimension params come without stage-number, 0 is the default. Native queries have one stage,
+           ;; so tags have no `:stage-number` yet; if that changes, it must match the target's.
+           (= (get-in param-target [2 :stage-number] 0)
+              (get tag :stage-number 0))))))
 
 (mu/defn- parameter-target-legacy-field-ref :- [:maybe ::lib.schema.parameter/target.legacy-field-ref]
   [target :- ::lib.schema.parameter/target]

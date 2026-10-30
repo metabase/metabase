@@ -172,6 +172,8 @@
       {:type   (if (and field-base-type (isa? field-base-type :type/Number))
                  :number/=
                  :string/=)
+       ;; names the filter in must-apply errors and logs
+       :name   (name attr-name)
        :target target
        ;; :number/= and :string/= are variadic operators that require a sequential value
        :value  [param-value]

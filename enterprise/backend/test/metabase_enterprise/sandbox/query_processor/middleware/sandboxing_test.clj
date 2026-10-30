@@ -482,7 +482,7 @@
           (testing sandbox-name
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #"Filter .* must be applied, but it could not be"
+                 #"Filter `cat` must be applied, but it could not be"
                  (mu/disable-enforcement
                    (met/with-gtaps! {:gtaps {:venues (sandbox-def)}, :attributes {"cat" ["50" "1"]}}
                      (run-venues-count-query)))))))))))
@@ -2276,7 +2276,7 @@
                                                 [:latitude ["2.5"] [2.5]]
                                                 [:name ["foo"] ["foo"]]]]
         (testing (str field-name " " (pr-str attr-value))
-          (is (=? {:value expected, :lib/must-apply? true}
+          (is (=? {:value expected, :name "cat", :lib/must-apply? true}
                   (attr-remapping->parameter mp nil {"cat" attr-value} (remapping field-name)))))))
     (testing "other list- or map-valued attributes throw instead of dropping the filter"
       (doseq [[field-name attr-value] [[:price ["1" "2"]]
