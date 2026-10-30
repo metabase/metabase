@@ -112,6 +112,8 @@
                        (isClosed [] false)
                        (close [] nil)
                        (isReadOnly [] true)
+                       ;; MotherDuck runs `USE <catalog>` on every checkout
+                       (getCatalog [] "test_catalog")
                        (getMetaData []
                          (reify DatabaseMetaData
                            (supportsTransactionIsolationLevel [_ _] false)))

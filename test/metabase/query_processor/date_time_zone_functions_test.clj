@@ -987,6 +987,12 @@
 ;;; |                                            Datetime diff tests                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- whole-number
+  "Row formatter for `datetimeDiff` results, which must be whole numbers, whatever their numeric type. Leaves a
+  fractional result as it is, so it fails the comparison, where `int` would truncate it and hide the bug."
+  [x]
+  (if (== x (long x)) (long x) x))
+
 (deftest ^:parallel datetime-diff-base-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset test-data
@@ -999,7 +1005,7 @@
                             [:expression "diff-rev"]]}))
               (results [a-query]
                 (first (mt/formatted-rows
-                        [int int]
+                        [whole-number whole-number]
                         (qp/process-query a-query))))]
         (doseq [[unit cases] [[:year [["2021-10-03T09:00:00" "2021-10-03T09:00:00" 0 "same time"]
                                       ["2021-10-03T09:18:09" "2022-10-02T09:18:09" 0 "day under a year"]
@@ -1083,7 +1089,7 @@
                          {"tz,dt" [:datetime-diff $dt_tz $dt :second]
                           "tz,d"  [:datetime-diff $dt_tz $d :second]}})
                       (mt/formatted-rows
-                       [int int])
+                       [whole-number whole-number])
                       first))))))))
 
 (mt/defdataset diff-time-zones-cases
@@ -1128,7 +1134,7 @@
                                 :fields (into [] (for [unit units]
                                                    [:expression (name unit)]))})
                              (mt/formatted-rows
-                              (repeat (count units) int))
+                              (repeat (count units) whole-number))
                              first
                              (zipmap units)))))))))
 
@@ -1257,7 +1263,7 @@
                               :fields (into [] (for [unit units]
                                                  [:expression (name unit)]))})
                            (mt/formatted-rows
-                            (repeat (count units) int))
+                            (repeat (count units) whole-number))
                            first
                            (zipmap units))))]
         (run-datetime-diff-time-zone-tests! diffs)))))
@@ -1274,7 +1280,7 @@
                                                         [(name unit) [:datetime-diff x y unit]]))
                                 :fields (into [] (for [unit units]
                                                    [:expression (name unit)]))})
-                             (mt/formatted-rows (repeat (count units) int))
+                             (mt/formatted-rows (repeat (count units) whole-number))
                              first
                              (zipmap units))))]
           (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :quarter 4, :year 1}
@@ -1297,7 +1303,7 @@
                                        [:expression "datediff1-add"]
                                        [:expression "datediff2"]
                                        [:expression "datediff2-add"]]})
-                      (mt/formatted-rows [int int int int])
+                      (mt/formatted-rows (repeat 4 whole-number))
                       first))))))))
 
 (deftest ^:parallel datetime-diff-type-test

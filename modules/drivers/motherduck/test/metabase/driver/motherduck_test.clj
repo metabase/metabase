@@ -1,18 +1,24 @@
-(ns metabase.driver.motherduck-test
+(ns ^:mb/driver-tests metabase.driver.motherduck-test
   "SQL compilation and connection tests for the MotherDuck driver."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [are deftest is testing]]
+   [metabase.driver :as driver]
    ;; Register the driver before testing its methods.
    [metabase.driver.motherduck]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x])
+  (:import
+   (java.sql Connection)))
+
+(set! *warn-on-reflection* true)
 
 ;; Check DuckDB JSON extraction syntax without a database connection.
 (deftest ^:parallel json-query-test
@@ -47,7 +53,7 @@
 
 ;; DuckDB's regexp_extract returns the whole match and '' on no match. regexExtract must return the first
 ;; capturing group, like Postgres substring(x FROM pattern), and NULL on no match.
-(deftest ^:mb/driver-tests regex-match-first-semantics-test
+(deftest regex-match-first-semantics-test
   (mt/test-driver :motherduck
     (let [mp         (mt/metadata-provider)
           venue-name (lib.metadata/field mp (mt/id :venues :name))
@@ -65,21 +71,25 @@
         "(?P<w>Med\\w+)"   "Medicine"     ; RE2 named group
         "^Blue"            nil))))        ; no match: NULL, not ''
 
-(deftest connection-spec-forces-sslmode-require-test
-  (testing "the :motherduck connection spec forces sslmode=require"
-    (is (=? {:sslmode     "require"
-             :classname   "org.postgresql.Driver"
-             :subprotocol "postgresql"}
-            (sql-jdbc.conn/connection-details->spec
-             :motherduck
-             {:host     "pg.us-east-1-aws.motherduck.com"
-              :port     5432
-              :dbname   "my_db"
-              :user     "metabase"
-              :password "placeholder"
-              :ssl      true})))))
+(deftest ^:parallel connection-spec-verifies-the-server-test
+  (let [details {:host     "pg.us-east-1-aws.motherduck.com"
+                 :port     5432
+                 :dbname   "my_db"
+                 :user     "metabase"
+                 :password "placeholder"
+                 :ssl      true}]
+    (testing "the connection verifies the server's certificate and hostname against the JVM trust store"
+      (is (=? {:sslmode     "verify-full"
+               :sslfactory  "org.postgresql.ssl.DefaultJavaSSLFactory"
+               :classname   "org.postgresql.Driver"
+               :subprotocol "postgresql"}
+              (sql-jdbc.conn/connection-details->spec :motherduck details))))
+    (testing "through an SSH tunnel, where the host is localhost, it verifies only the certificate"
+      (is (=? {:sslmode    "verify-ca"
+               :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"}
+              (sql-jdbc.conn/connection-details->spec :motherduck (assoc details :tunnel-enabled true)))))))
 
-(deftest ^:mb/driver-tests live-connection-test
+(deftest live-connection-test
   (mt/test-driver :motherduck
     (testing "can open an SSL connection to the live MotherDuck pg endpoint and query it"
       ;; The same details the test data loader uses; this throws if MB_MOTHERDUCK_TEST_TOKEN is not set.
@@ -88,6 +98,88 @@
         (testing "SELECT 1 succeeds (proves the TLS handshake + auth completed)"
           (is (= [{:one 1}]
                  (jdbc/query spec ["SELECT 1 AS one"]))))
+        (testing "the server's certificate also passes the chain-only check used through an SSH tunnel"
+          (is (= [{:one 1}]
+                 (jdbc/query (sql-jdbc.conn/connection-details->spec :motherduck (assoc details :tunnel-enabled true))
+                             ["SELECT 1 AS one"]))))
         (testing "current_database() matches the requested dbname"
           (is (= [{:db (:dbname details)}]
                  (jdbc/query spec ["SELECT current_database() AS db"]))))))))
+
+(defn- with-pooled-connection [f]
+  (sql-jdbc.execute/do-with-connection-with-options :motherduck (mt/id) nil f))
+
+(defn- pooled-current-database []
+  (with-pooled-connection
+    (fn [^Connection conn]
+      (with-open [stmt (.createStatement conn)
+                  rs   (.executeQuery stmt "SELECT current_database()")]
+        (.next rs)
+        (.getString rs 1)))))
+
+;; A native query can switch its connection's database. That lasts for the session, and Metabase doesn't qualify
+;; tables with the database, so later queries on the same pooled connection would read the other database.
+(deftest switched-database-does-not-leak-into-pooled-connections-test
+  (mt/test-driver :motherduck
+    (let [test-db  (pooled-current-database)
+          other-db (tx/db-test-env-var :motherduck :server-dbname "my_db")
+          mp       (mt/metadata-provider)]
+      (try
+        (doseq [sql [(format "USE \"%s\"" other-db)
+                     (format "SET search_path = '%s.main'" other-db)
+                     (format "SET schema = '%s.main'" other-db)]]
+          (testing sql
+            (with-pooled-connection
+              (fn [^Connection conn]
+                (with-open [stmt (.createStatement conn)]
+                  (.execute stmt ^String sql))))
+            (testing "later checkouts are back on the connection's own database"
+              (is (= (repeat 5 test-db)
+                     (repeatedly 5 pooled-current-database))))
+            (testing "MBQL queries still find their tables"
+              (is (= [[100]]
+                     (mt/rows (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                    (lib/aggregate (lib/count))))))))))
+        (finally
+          (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))
+
+(mt/defdataset pk-leak-a
+  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+
+(mt/defdataset pk-leak-b
+  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+
+(defn- execute-statements! [& statements]
+  (with-pooled-connection
+    (fn [^Connection conn]
+      (doseq [^String sql statements]
+        (with-open [stmt (.createStatement conn)]
+          ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
+          (.execute stmt sql))))))
+
+;; The endpoint's information_schema.table_constraints and key_column_usage list every database in the account. A
+;; field sync that reads them without the database takes primary keys from same-named tables elsewhere.
+(deftest describe-fields-reads-only-the-current-database-test
+  (mt/test-driver :motherduck
+    (mt/dataset pk-leak-b
+      (execute-statements! "CREATE OR REPLACE TABLE only_b_pk (id INTEGER PRIMARY KEY, v INTEGER)"
+                           "CREATE OR REPLACE TABLE diff_pk (id INTEGER, v INTEGER PRIMARY KEY)"
+                           "CREATE OR REPLACE TABLE both_pk (id INTEGER PRIMARY KEY, v INTEGER)"
+                           "COMMENT ON COLUMN both_pk.v IS 'from the other database'"))
+    (mt/dataset pk-leak-a
+      (execute-statements! "CREATE OR REPLACE TABLE only_b_pk (id INTEGER, v INTEGER)"
+                           "CREATE OR REPLACE TABLE diff_pk (id INTEGER PRIMARY KEY, v INTEGER)"
+                           "CREATE OR REPLACE TABLE both_pk (id INTEGER PRIMARY KEY, v INTEGER)"
+                           "COMMENT ON COLUMN diff_pk.v IS 'from this database'")
+      (testing "each column appears once, with its own database's primary key and comment"
+        (is (= [["both_pk"   "id" true  nil]
+                ["both_pk"   "v"  false nil]
+                ["diff_pk"   "id" true  nil]
+                ["diff_pk"   "v"  false "from this database"]
+                ["only_b_pk" "id" false nil]
+                ["only_b_pk" "v"  false nil]]
+               (into []
+                     (map (juxt :table-name :name :pk? :field-comment))
+                     (driver/describe-fields :motherduck
+                                             (lib.metadata/database (mt/metadata-provider))
+                                             :table-names ["both_pk" "diff_pk" "only_b_pk"]))))))))

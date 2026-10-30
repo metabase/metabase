@@ -36,14 +36,9 @@
    "a_b"])
 
 (def ^:private hostile-name
-  "A column name with every quoting-sensitive character except `;` and `,`, which HoneySQL rejects in entity names
-  before they reach the database."
+  "A table and column name with every quoting-sensitive character except `;` and `,`, which HoneySQL rejects in entity
+  names before they reach the database."
   "q'd\"b\\s?*/--")
-
-(def ^:private hostile-table-name
-  "[[hostile-name]] without the double quote. The endpoint can't resolve a table whose name contains `\"` through
-  `regclass`, which the inherited field sync query uses for column comments, so sync would fail."
-  "q'd b\\s?*/--")
 
 (mt/defdataset sql-injection
   [["canary"
@@ -52,7 +47,7 @@
    ["hostile_values"
     [{:field-name "val", :base-type :type/Text}]
     (mapv vector hostile-strings)]
-   [hostile-table-name
+   [hostile-name
     [{:field-name hostile-name, :base-type :type/Text}]
     [["row 1"] ["row 2"]]]])
 
@@ -92,10 +87,10 @@
   (mt/test-driver :motherduck
     (mt/dataset sql-injection
       (let [mp    (mt/metadata-provider)
-            table (lib.metadata/table mp (mt/id hostile-table-name))
-            field (lib.metadata/field mp (mt/id hostile-table-name hostile-name))]
+            table (lib.metadata/table mp (mt/id hostile-name))
+            field (lib.metadata/field mp (mt/id hostile-name hostile-name))]
         (testing "sync finds the table and column under their exact names"
-          (is (= [hostile-table-name hostile-name] [(:name table) (:name field)])))
+          (is (= [hostile-name hostile-name] [(:name table) (:name field)])))
         (testing "queries on them select, filter and aggregate correctly"
           (is (= {:params [["row 2"]] :inline [["row 2"]]}
                  (rows-both-ways (-> (lib/query mp table)

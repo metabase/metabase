@@ -38,14 +38,30 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql-jdbc.conn/connection-details->spec :motherduck
-  [_driver details]
-  ;; The MotherDuck Postgres endpoint requires TLS. `:sslmode "require"` encrypts the connection without verifying
-  ;; the server certificate or hostname. Set it explicitly so the connection does not inherit another SSL mode.
+  [_driver {:keys [tunnel-enabled] :as details}]
+  ;; The MotherDuck Postgres endpoint requires TLS, and the password is a MotherDuck token, so verify the server.
+  ;; `DefaultJavaSSLFactory` checks the certificate chain against the JVM's trust store; pgjdbc's default factory
+  ;; expects a root certificate file in ~/.postgresql instead. `verify-full` also checks the hostname. Through an SSH
+  ;; tunnel, pgjdbc would check it against localhost, so check only the chain there.
   ;; The startup option enables Metabase compatibility, including Postgres-style array serialization and command tags
   ;; for CREATE TABLE and INSERT.
   (-> (sql-jdbc.conn/connection-details->spec :postgres (assoc details :ssl true))
-      (assoc :sslmode "require"
-             :options "--compatibility-mode=metabase")))
+      (assoc :sslmode    (if tunnel-enabled "verify-ca" "verify-full")
+             :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"
+             :options    "--compatibility-mode=metabase")))
+
+;; SQL on a connection can switch its current database, with `USE`, `SET search_path` or `SET schema`, and the switch
+;; lasts for the session. Metabase qualifies tables with only the schema, so later queries and syncs that reuse the
+;; pooled connection would read the other database. Switch back to the connection's own database at every checkout.
+;; `getCatalog` is the database the connection opened with, whatever SQL has switched to since.
+(defmethod sql-jdbc.execute/do-with-connection-with-options :motherduck
+  [driver db-or-id-or-spec options f]
+  ((get-method sql-jdbc.execute/do-with-connection-with-options :postgres)
+   driver db-or-id-or-spec options
+   (fn [^Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       (.execute stmt (str "USE " (sql.u/quote-name driver :database (.getCatalog conn)))))
+     (f conn))))
 
 ;; The endpoint reports a DuckDB catalog error without Postgres SQLSTATE 42P01. Match the message
 ;; so `driver/table-exists?` returns false for a missing table instead of propagating the exception.
@@ -111,18 +127,76 @@
   [_driver database]
   {:tables (into #{} (sql-jdbc.execute/reducible-query database describe-database-tables-sql))})
 
-;; Field sync uses the inherited information_schema query rather than duckdb_columns() to keep
-;; its type names consistent with query result metadata. The MotherDuck Postgres endpoint exposes
-;; Postgres type names through udt_name, while duckdb_columns() reports native DuckDB types.
-;; Using those native types would require a separate mapping. Reusing the endpoint's type names
-;; lets sync and query results share the Postgres type mapping and preserves JSON semantic-type
-;; detection during sync.
+;; Based on the Postgres query, with three changes:
+;; - Primary keys come from duckdb_constraints(), scoped to the current database. The endpoint's
+;;   information_schema.table_constraints and key_column_usage list every database the connection can see, so the
+;;   Postgres join, which has no catalog, takes keys from same-named tables in other databases and repeats rows.
+;; - Comments come from duckdb_columns(). The Postgres query finds them with `format('%I.%I')::regclass`, and the
+;;   endpoint's regclass doesn't undo the `""` that %I writes for a `"` in a table name, so the lookup fails.
+;; - There's no materialized-view branch, since DuckDB has no materialized views. The generated-column flag is left
+;;   out because the endpoint reports it unreliably.
+;; Columns and their types still come from information_schema.columns. The endpoint gives Postgres type names in
+;; udt_name, where duckdb_columns() has DuckDB's own, so sync and query results share the Postgres type mapping, and
+;; JSON columns are still detected during sync.
+(defmethod sql-jdbc.sync/describe-fields-sql :motherduck
+  [driver & {:keys [schema-names table-names]}]
+  (sql/format
+   {:select    [[:c.column_name :name]
+                [[:case
+                  [:in :c.udt_schema [[:inline "public"] [:inline "pg_catalog"]]]
+                  [:format [:inline "%s"] :c.udt_name]
+                  :else
+                  [:format [:inline "\"%s\".\"%s\""] :c.udt_schema :c.udt_name]]
+                 :database-type]
+                [[:- :c.ordinal_position [:inline 1]] :database-position]
+                [:c.table_schema :table-schema]
+                [:c.table_name :table-name]
+                [[:not= :pk.column_name nil] :pk?]
+                [:dc.comment :field-comment]
+                [[:and
+                  [:or [:= :c.column_default nil] [:= [:lower :c.column_default] [:inline "null"]]]
+                  [:= :c.is_nullable [:inline "NO"]]
+                  [:not [:or
+                         [:and [:!= :c.column_default nil] [:like :c.column_default [:inline "%nextval(%"]]]
+                         [:!= :c.is_identity [:inline "NO"]]]]]
+                 :database-required]
+                [:c.column_default :database-default]
+                [[:or
+                  [:and [:!= :c.column_default nil] [:like :c.column_default [:inline "%nextval(%"]]]
+                  [:!= :c.is_identity [:inline "NO"]]]
+                 :database-is-auto-increment]
+                [[:= :c.is_nullable [:inline "YES"]] :database-is-nullable]]
+    :from      [[:information_schema.columns :c]]
+    :left-join [[{:select [:schema_name :table_name [[:unnest :constraint_column_names] :column_name]]
+                  :from   [[[:duckdb_constraints]]]
+                  :where  [:and
+                           [:= :database_name [:current_database]]
+                           [:= :constraint_type [:inline "PRIMARY KEY"]]]}
+                 :pk]
+                [:and
+                 [:= :c.table_schema :pk.schema_name]
+                 [:= :c.table_name :pk.table_name]
+                 [:= :c.column_name :pk.column_name]]
+                [[:duckdb_columns] :dc]
+                [:and
+                 [:= :dc.database_name [:current_database]]
+                 [:= :c.table_schema :dc.schema_name]
+                 [:= :c.table_name :dc.table_name]
+                 [:= :c.column_name :dc.column_name]]]
+    :where     [:and
+                [:= :c.table_catalog [:current_database]]
+                [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
+                (when (seq schema-names)
+                  [:in :c.table_schema schema-names])
+                (when (seq table-names)
+                  [:in :c.table_name table-names])]
+    :order-by  [:table-schema :table-name :database-position]}
+   :dialect (sql.qp/quote-style driver)))
 
-;; Skip Postgres enum tagging and remove the unreliable generated-column flag. Disabling
-;; :describe-is-generated alone does not remove the value returned by the inherited query.
+;; Skip the Postgres enum tagging, which queries pg_enum.
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :motherduck
-  [_driver _database & _args]
-  (map #(dissoc % :database-is-generated)))
+  [driver database & args]
+  (apply (get-method sql-jdbc.sync/describe-fields-pre-process-xf :sql-jdbc) driver database args))
 
 ;; Use the static Postgres type mapping without querying pg_enum for unknown result types.
 (defmethod driver/dynamic-database-types-lookup :motherduck
@@ -131,8 +205,8 @@
 
 ;; Read primary key columns directly from duckdb_constraints() instead of pgjdbc's joins across
 ;; Postgres catalog views. The column list preserves the key's declaration order.
-;; This serves the JDBC `describe-table` path. Regular field sync uses the inherited
-;; information_schema query, which also reports primary keys.
+;; This serves the JDBC `describe-table` path. Regular field sync reads primary keys in
+;; `describe-fields-sql` above.
 (def ^:private table-pks-sql
   (str "SELECT unnest(constraint_column_names) FROM duckdb_constraints()"
        " WHERE database_name = current_database() AND constraint_type = 'PRIMARY KEY'"
@@ -267,6 +341,13 @@
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime [:decode expr]))
 
+;; Postgres computes these units by dividing a coarser diff, relying on integer division to truncate. DuckDB's `/`
+;; always returns a DOUBLE, so truncate the result. TRUNC comes first because DuckDB's cast to an integer rounds.
+(doseq [unit [:quarter :week :hour :minute]]
+  (defmethod sql.qp/datetime-diff [:motherduck unit]
+    [driver unit x y]
+    (h2x/->integer [:trunc ((get-method sql.qp/datetime-diff [:postgres unit]) driver unit x y)])))
+
 ;; These HoneySQL helpers do not use the driver hierarchy. Pass :postgres explicitly because
 ;; DuckDB accepts the same current-time and interval SQL.
 (defmethod sql.qp/current-datetime-honeysql-form :motherduck
@@ -294,7 +375,10 @@
                       (if timestamptz?
                         expr
                         [:timezone (h2x/literal source-timezone) (h2x/->pg-timestamp expr)])]]
-    (h2x/with-database-type-info expr "timestamp")))
+    ;; The tag makes the inherited :relative-datetime, :now and :today methods wrap NOW() in TIMEZONE(target, NOW()),
+    ;; so both sides of a filter compare in the target zone (#80155). It holds the inlined literal for the same reason.
+    (h2x/with-type-info expr {:database-type                          "timestamp"
+                              :metabase.driver.postgres/target-timezone (h2x/literal target-timezone)})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Driver-managed table DDL                                              |
