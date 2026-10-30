@@ -190,6 +190,30 @@
   [card]
   ((some-fn :include_csv :include_xls) card))
 
+(defn log-unresolved-goals!
+  "Warn about each goal `card` draws on `dashcard` that can't resolve against `data`. Only the query builder shows
+  goal warnings, so this is what ties a sent chart to its broken goal."
+  [card dashcard data]
+  (when-let [failures (seq (dynamic-goals/unresolved-goals card dashcard data))]
+    (let [display (:display (dynamic-goals/goal-scope card dashcard))]
+      (doseq [{:keys [setting reason entity-type entity-id column]} failures]
+        (log/warnf "Dynamic goal %s can't be resolved (%s): %s. Chart card %s%s, display %s"
+                   (name setting)
+                   (name reason)
+                   (dynamic-goals/describe-goal-source entity-type entity-id column)
+                   (:id card)
+                   (if-let [dashcard-id (:id dashcard)] (format ", dashcard %s" dashcard-id) "")
+                   (some-> display name))))))
+
+(defn- draws-goals?
+  "Whether a chart detected as `chart-type` draws the goals of `card` on `dashcard`. An empty result draws none, and a
+  one-cell result of a non-scalar display is drawn as a bare number."
+  [chart-type card dashcard]
+  (case chart-type
+    :empty  false
+    :scalar (= :scalar (some-> (dynamic-goals/goal-scope card dashcard) :display keyword))
+    true))
+
 (mu/defn- render-pulse-card-body :- ::body/RenderedPartCard
   [render-type :- ::body/render-type
    timezone-id :- [:maybe :string]
@@ -199,11 +223,14 @@
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
-    (let [[card dashcard data] (dynamic-goals/resolve-drawn-goals card dashcard data)
-          chart-type           (or (detect-pulse-chart-type card dashcard data)
+    ;; detection reads no goal values, so it can run before they're resolved, while the settings still hold the refs
+    (let [chart-type           (or (detect-pulse-chart-type card dashcard data)
                                    (when (is-attached? card)
                                      :attached)
-                                   :unknown)]
+                                   :unknown)
+          _                    (when (draws-goals? chart-type card dashcard)
+                                 (log-unresolved-goals! card dashcard data))
+          [card dashcard data] (dynamic-goals/resolve-drawn-goals card dashcard data)]
       (log/debugf "Rendering pulse card with chart-type %s and render-type %s" chart-type render-type)
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
