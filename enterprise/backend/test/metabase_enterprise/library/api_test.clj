@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library.api-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [without-library]]
    [metabase.test :as mt]
@@ -82,6 +83,11 @@
                                                                 :archived true}
                           :model/Table      _                 {:collection_id subfolder-id
                                                                :is_published  true}]
+             (is (= [] (below)))))
+         (testing "A published table archived by sync doesn't count"
+           (mt/with-temp [:model/Table _ {:collection_id (:id data-folder)
+                                          :is_published  true
+                                          :archived_at   (t/offset-date-time)}]
              (is (= [] (below))))))))))
 
 (deftest disallow-cross-type-collection-move-via-api-test

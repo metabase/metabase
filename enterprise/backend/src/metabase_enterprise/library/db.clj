@@ -14,9 +14,9 @@
   (t2/select-fn-set :type [:model/Card :type] :collection_id [:in collection-ids] :archived false))
 
 (mu/defn published-table-in-collections?
-  "Whether a published Table exists in the Collections with `collection-ids`."
+  "Whether an unarchived published Table exists in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/exists? :model/Table :is_published true :collection_id [:in collection-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/exists? :model/Table :is_published true :archived_at nil :collection_id [:in collection-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn dashboard-in-collections?
   "Whether an unarchived Dashboard exists in the Collections with `collection-ids`."
