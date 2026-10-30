@@ -279,7 +279,7 @@
                                               {:progress.goal {:id measure-id :type "measure" :column "avg"}}}]
               (testing "with the measure present, the export succeeds"
                 (is (seq (into [] (extract/extract opts)))))
-              (t2/delete! :model/Measure measure-id)
+              (t2/delete! :model/Measure :id measure-id)
               (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
                 (extract-aborts! opts)
                 (is (some #(re-find #"Measure .* is missing from the source database" %) (map :message (messages)))
