@@ -155,7 +155,8 @@
     (testing "an untouched tool from the codebase needs no edit"
       (is (= {:name  "get_timeline_details"
               :args  [:map {:closed true} [:timeline_id :int]]
-              :scope "agent:timelines:read"}
+              :scope "agent:timelines:read"
+              :metabot/curation :navigation}
              (dissoc (tools/declaration adapted) :description))))
     (testing "with the mu/defn preamble stripped from its description"
       (let [{:keys [description]} (tools/declaration adapted)]
