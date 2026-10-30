@@ -78,7 +78,7 @@ describe("SimpleDatePicker", () => {
     expect(includeSwitch).not.toBeChecked();
     await userEvent.click(includeSwitch);
     expect(includeSwitch).toBeChecked();
-    await userEvent.click(screen.getByText("Apply"));
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith({
@@ -89,7 +89,7 @@ describe("SimpleDatePicker", () => {
     });
   });
 
-  it("should preserve the 'Include current' switch when changing the unit or the direction", async () => {
+  it("should preserve the 'Include current' switch across unit and direction changes and submit its last state", async () => {
     const { onChange } = setup({
       value: {
         type: "relative",
@@ -111,7 +111,7 @@ describe("SimpleDatePicker", () => {
     await userEvent.click(screen.getByLabelText("Include this quarter"));
     await selectOperator("Previous", "Next");
     expect(screen.getByLabelText("Include this quarter")).not.toBeChecked();
-    await userEvent.click(screen.getByText("Apply"));
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith({
