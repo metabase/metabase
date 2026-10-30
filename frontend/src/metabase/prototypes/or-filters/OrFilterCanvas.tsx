@@ -25,6 +25,7 @@ import {
   CompactReadingContext as UnifiedCompactReadingContext,
 } from "./directions/expression-bar-unified/settings";
 import type { SummaryPlacement } from "./directions/expression-bar-unified/settings";
+import { ImplicitAndContext } from "./directions/iteration-4-in-place/settings";
 import { ChillFrame } from "./frames/ChillFrame";
 import { NotebookFrame } from "./frames/NotebookFrame";
 import { DrillExamplesTable } from "./harness/DrillExamplesTable";
@@ -113,6 +114,7 @@ function getReadingContext(directionId: string) {
     case "expression-bar-split":
     case "expression-bar-summary-menu":
     case "iteration-4-separation":
+    case "iteration-4-in-place":
       return UnifiedCompactReadingContext;
     default:
       return CompactReadingContext;
@@ -138,6 +140,9 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
   );
   const [summaryPlacement, setSummaryPlacement] =
     useState<SummaryPlacement>("caret");
+  const [implicitAnd, setImplicitAnd] = useState(
+    direction.hasImplicitAndSetting ?? false,
+  );
   const [saved, setSaved] = useState<SavedQuestion>();
   const [areFiltersHidden, setAreFiltersHidden] = useState(false);
   const [areDrillsOpen, setAreDrillsOpen] = useState(false);
@@ -183,209 +188,237 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
     direction.hasCompactReadingOn === true;
 
   const hasSummaryPlacement = direction.id === "expression-bar-unified";
+  const hasImplicitAnd = direction.hasImplicitAndSetting === true;
+  const hasSettings = hasCompactReading || hasImplicitAnd;
 
   const ReadingContext = getReadingContext(direction.id);
 
   return (
     <ReadingContext.Provider value={hasCompactReading && compactReading}>
       <SummaryPlacementContext.Provider value={summaryPlacement}>
-        <Stack gap="xl">
-          <Stack gap="sm">
-            <Title order={3}>{direction.name}</Title>
-            <Paper p="lg" radius="md">
-              <Stack gap="lg">
-                <Box>
-                  <Text c="text-secondary">{direction.description}</Text>
-                </Box>
+        <ImplicitAndContext.Provider value={hasImplicitAnd && implicitAnd}>
+          <Stack gap="xl">
+            <Stack gap="sm">
+              <Title order={3}>{direction.name}</Title>
+              <Paper p="lg" radius="md">
+                <Stack gap="lg">
+                  <Box>
+                    <Text c="text-secondary">{direction.description}</Text>
+                  </Box>
 
-                <ExampleRow
-                  label={t`Realistic questions`}
-                  examples={REALISTIC_EXAMPLES}
-                  onLoad={loadExample}
-                />
-                <ExampleRow
-                  label={t`Synthetic shapes`}
-                  examples={SYNTHETIC_SHAPE_EXAMPLES}
-                  onLoad={loadExample}
-                >
-                  <Button
-                    ml="auto"
-                    size="sm"
-                    variant="subtle"
-                    leftSection={<Icon name="close" />}
-                    onClick={() => setQuery(clearFilters(query, STAGE_INDEX))}
-                  >
-                    {t`Clear filters`}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="subtle"
-                    leftSection={<Icon name="refresh" />}
-                    disabled={!baseQuery}
-                    onClick={() => {
-                      if (baseQuery) {
-                        setQuery(baseQuery);
-                        setSaved(undefined);
-                        setDisplay(undefined);
-                      }
-                    }}
-                  >
-                    {t`Reset`}
-                  </Button>
-                </ExampleRow>
-                <Stack gap="xs">
-                  <UnstyledButton
-                    onClick={() => setAreDrillsOpen((open) => !open)}
-                  >
-                    <Group gap="xs">
-                      <Icon
-                        name={areDrillsOpen ? "chevrondown" : "chevronright"}
-                        size={12}
-                      />
-                      <Text fw="bold" c="text-secondary">
-                        {t`Drill-throughs`}
-                      </Text>
-                    </Group>
-                  </UnstyledButton>
-                  <Collapse in={areDrillsOpen}>
-                    <DrillExamplesTable onLoad={loadExample} />
-                  </Collapse>
-                </Stack>
-              </Stack>
-            </Paper>
-          </Stack>
-
-          {hasCompactReading && (
-            <Paper withBorder p="lg" radius="md">
-              <Stack gap="sm">
-                <Text fw="bold">{t`Prototype settings`}</Text>
-                <Switch
-                  label={t`Compact reading`}
-                  checked={compactReading}
-                  onChange={(event) =>
-                    setCompactReading(event.currentTarget.checked)
-                  }
-                />
-                <Text
-                  size="sm"
-                  c="text-secondary"
-                >{t`Use shorter comparisons when reading filters. Editing shows the full labels.`}</Text>
-                {hasSummaryPlacement && (
-                  <>
-                    <Text
-                      fw="bold"
-                      mt="sm"
-                    >{t`Mixing summary and row filters`}</Text>
-                    <SegmentedControl
-                      w="fit-content"
-                      value={summaryPlacement}
-                      onChange={(value) =>
-                        setSummaryPlacement(value === "end" ? "end" : "caret")
-                      }
-                      data={[
-                        { value: "caret", label: t`Show an error` },
-                        { value: "end", label: t`Move to the end` },
-                      ]}
-                    />
-                    <Text size="sm" c="text-secondary">
-                      {summaryPlacement === "caret"
-                        ? t`A summary filter lands at the caret. A group that mixes it with row filters ("Count > 50 or Category = Gizmo") is an error on the offending pill.`
-                        : t`A summary filter picked anywhere is carried to the end and AND-ed on, flashing where it lands, while the caret stays put.`}
-                    </Text>
-                  </>
-                )}
-              </Stack>
-            </Paper>
-          )}
-
-          {direction.Canvas ? (
-            <direction.Canvas
-              query={query}
-              onChange={setQuery}
-              heading={heading}
-              display={display}
-            />
-          ) : (
-            <>
-              <Stack gap="sm">
-                <Title order={3}>{t`Chill mode`}</Title>
-                <ChillFrame
-                  heading={saved ? heading : undefined}
-                  isHidden={direction.canHideFilters && areFiltersHidden}
-                  filterButton={
-                    direction.canHideFilters ? (
-                      <Button
-                        size="compact-md"
-                        variant="default"
-                        leftSection={<Icon name="filter" />}
-                        onClick={() => setAreFiltersHidden((hidden) => !hidden)}
-                      >
-                        {areFiltersHidden ? t`Show filters` : t`Hide filters`}
-                      </Button>
-                    ) : (
-                      direction.FilterButton && (
-                        <direction.FilterButton
-                          query={query}
-                          stageIndex={STAGE_INDEX}
-                          variant="chill"
-                          onChange={setQuery}
-                        />
-                      )
-                    )
-                  }
-                  results={
-                    <QueryResults
-                      query={query}
-                      stageIndex={STAGE_INDEX}
-                      display={display ?? DEFAULT_DISPLAY}
-                      onChange={(nextQuery, nextDisplay) => {
-                        setQuery(nextQuery);
-                        setDisplay(nextDisplay);
-                      }}
-                    />
-                  }
-                >
-                  <direction.Component
-                    query={query}
-                    stageIndex={STAGE_INDEX}
-                    variant="chill"
-                    onChange={setQuery}
+                  <ExampleRow
+                    label={t`Realistic questions`}
+                    examples={REALISTIC_EXAMPLES}
+                    onLoad={loadExample}
                   />
-                </ChillFrame>
-              </Stack>
+                  <ExampleRow
+                    label={t`Synthetic shapes`}
+                    examples={SYNTHETIC_SHAPE_EXAMPLES}
+                    onLoad={loadExample}
+                  >
+                    <Button
+                      ml="auto"
+                      size="sm"
+                      variant="subtle"
+                      leftSection={<Icon name="close" />}
+                      onClick={() => setQuery(clearFilters(query, STAGE_INDEX))}
+                    >
+                      {t`Clear filters`}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="subtle"
+                      leftSection={<Icon name="refresh" />}
+                      disabled={!baseQuery}
+                      onClick={() => {
+                        if (baseQuery) {
+                          setQuery(baseQuery);
+                          setSaved(undefined);
+                          setDisplay(undefined);
+                        }
+                      }}
+                    >
+                      {t`Reset`}
+                    </Button>
+                  </ExampleRow>
+                  <Stack gap="xs">
+                    <UnstyledButton
+                      onClick={() => setAreDrillsOpen((open) => !open)}
+                    >
+                      <Group gap="xs">
+                        <Icon
+                          name={areDrillsOpen ? "chevrondown" : "chevronright"}
+                          size={12}
+                        />
+                        <Text fw="bold" c="text-secondary">
+                          {t`Drill-throughs`}
+                        </Text>
+                      </Group>
+                    </UnstyledButton>
+                    <Collapse in={areDrillsOpen}>
+                      <DrillExamplesTable onLoad={loadExample} />
+                    </Collapse>
+                  </Stack>
+                </Stack>
+              </Paper>
+            </Stack>
 
-              <Stack gap="sm">
-                <Title order={3}>{t`Notebook mode`}</Title>
-                {direction.NotebookCanvas ? (
-                  <direction.NotebookCanvas query={query} onChange={setQuery} />
-                ) : (
-                  <NotebookFrame>
+            {hasSettings && (
+              <Paper withBorder p="lg" radius="md">
+                <Stack gap="sm">
+                  <Text fw="bold">{t`Prototype settings`}</Text>
+                  {hasCompactReading && (
+                    <>
+                      <Switch
+                        label={t`Compact reading`}
+                        checked={compactReading}
+                        onChange={(event) =>
+                          setCompactReading(event.currentTarget.checked)
+                        }
+                      />
+                      <Text
+                        size="sm"
+                        c="text-secondary"
+                      >{t`Use shorter comparisons when reading filters. Editing shows the full labels.`}</Text>
+                    </>
+                  )}
+                  {hasImplicitAnd && (
+                    <>
+                      <Switch
+                        label={t`Implicit AND`}
+                        checked={implicitAnd}
+                        onChange={(event) =>
+                          setImplicitAnd(event.currentTarget.checked)
+                        }
+                      />
+                      <Text
+                        size="sm"
+                        c="text-secondary"
+                      >{t`ANDs are never shown or typed, as in "Without AND": pills side by side are AND-ed; only "or" and parentheses are spelled out. Off, a plain AND chain hides its connectors at rest and shows them while editing.`}</Text>
+                    </>
+                  )}
+                  {hasSummaryPlacement && (
+                    <>
+                      <Text
+                        fw="bold"
+                        mt="sm"
+                      >{t`Mixing summary and row filters`}</Text>
+                      <SegmentedControl
+                        w="fit-content"
+                        value={summaryPlacement}
+                        onChange={(value) =>
+                          setSummaryPlacement(value === "end" ? "end" : "caret")
+                        }
+                        data={[
+                          { value: "caret", label: t`Show an error` },
+                          { value: "end", label: t`Move to the end` },
+                        ]}
+                      />
+                      <Text size="sm" c="text-secondary">
+                        {summaryPlacement === "caret"
+                          ? t`A summary filter lands at the caret. A group that mixes it with row filters ("Count > 50 or Category = Gizmo") is an error on the offending pill.`
+                          : t`A summary filter picked anywhere is carried to the end and AND-ed on, flashing where it lands, while the caret stays put.`}
+                      </Text>
+                    </>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+
+            {direction.Canvas ? (
+              <direction.Canvas
+                query={query}
+                onChange={setQuery}
+                heading={heading}
+                display={display}
+              />
+            ) : (
+              <>
+                <Stack gap="sm">
+                  <Title order={3}>{t`Chill mode`}</Title>
+                  <ChillFrame
+                    heading={saved ? heading : undefined}
+                    isHidden={direction.canHideFilters && areFiltersHidden}
+                    filterButton={
+                      direction.canHideFilters ? (
+                        <Button
+                          size="compact-md"
+                          variant="default"
+                          leftSection={<Icon name="filter" />}
+                          onClick={() =>
+                            setAreFiltersHidden((hidden) => !hidden)
+                          }
+                        >
+                          {areFiltersHidden ? t`Show filters` : t`Hide filters`}
+                        </Button>
+                      ) : (
+                        direction.FilterButton && (
+                          <direction.FilterButton
+                            query={query}
+                            stageIndex={STAGE_INDEX}
+                            variant="chill"
+                            onChange={setQuery}
+                          />
+                        )
+                      )
+                    }
+                    results={
+                      <QueryResults
+                        query={query}
+                        stageIndex={STAGE_INDEX}
+                        display={display ?? DEFAULT_DISPLAY}
+                        onChange={(nextQuery, nextDisplay) => {
+                          setQuery(nextQuery);
+                          setDisplay(nextDisplay);
+                        }}
+                      />
+                    }
+                  >
                     <direction.Component
                       query={query}
                       stageIndex={STAGE_INDEX}
-                      variant="notebook"
+                      variant="chill"
                       onChange={setQuery}
                     />
-                  </NotebookFrame>
-                )}
+                  </ChillFrame>
+                </Stack>
+
+                <Stack gap="sm">
+                  <Title order={3}>{t`Notebook mode`}</Title>
+                  {direction.NotebookCanvas ? (
+                    <direction.NotebookCanvas
+                      query={query}
+                      onChange={setQuery}
+                    />
+                  ) : (
+                    <NotebookFrame>
+                      <direction.Component
+                        query={query}
+                        stageIndex={STAGE_INDEX}
+                        variant="notebook"
+                        onChange={setQuery}
+                      />
+                    </NotebookFrame>
+                  )}
+                </Stack>
+              </>
+            )}
+
+            {direction.Canvas && direction.NotebookCanvas && (
+              <Stack gap="sm">
+                <Title order={3}>{t`Notebook mode`}</Title>
+                <direction.NotebookCanvas query={query} onChange={setQuery} />
               </Stack>
-            </>
-          )}
+            )}
 
-          {direction.Canvas && direction.NotebookCanvas && (
             <Stack gap="sm">
-              <Title order={3}>{t`Notebook mode`}</Title>
-              <direction.NotebookCanvas query={query} onChange={setQuery} />
+              <Title order={3}>{t`Preview query`}</Title>
+              <Paper withBorder radius="md" p="lg">
+                <FilterTreeInspector query={query} stageIndex={STAGE_INDEX} />
+              </Paper>
             </Stack>
-          )}
-
-          <Stack gap="sm">
-            <Title order={3}>{t`Preview query`}</Title>
-            <Paper withBorder radius="md" p="lg">
-              <FilterTreeInspector query={query} stageIndex={STAGE_INDEX} />
-            </Paper>
           </Stack>
-        </Stack>
+        </ImplicitAndContext.Provider>
       </SummaryPlacementContext.Provider>
     </ReadingContext.Provider>
   );

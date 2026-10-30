@@ -61,4 +61,6 @@ export type FilterDirection = {
   draft?: boolean;
   /** Offers the "Compact reading" setting, switched on when the direction opens. */
   hasCompactReadingOn?: boolean;
+  /** Offers the "Implicit AND" setting (ANDs never shown nor typed), switched on when the direction opens. */
+  hasImplicitAndSetting?: boolean;
 };

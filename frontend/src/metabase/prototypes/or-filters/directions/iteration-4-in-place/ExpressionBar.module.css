@@ -354,27 +354,7 @@
   padding: 0;
 }
 
-/* A filter on the summary: the filter purple, a shade darker, in the same stream as the rest. */
-.pillSummary > [data-testid="filter-pill"] {
-  color: color-mix(
-    in srgb,
-    var(--mb-color-core-filter),
-    var(--mb-color-text-primary) 35%
-  );
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-core-filter) 38%,
-    transparent
-  );
-}
-
-.pillSummary > [data-testid="filter-pill"]:hover {
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-core-filter) 48%,
-    transparent
-  );
-}
+/* A filter on the summary looks like any other pill here; the class only marks it. */
 
 /* Tokens a relocation just created (parentheses, an "and") fade in once the pills have landed. */
 .tokenFresh {
@@ -424,7 +404,7 @@
   padding: 0.5rem 0.5rem 0.5rem 0.75rem;
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background_page-primary);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
   color: var(--mb-color-text-primary);
   font-size: 0.8125rem;
@@ -442,7 +422,7 @@
   height: 8px;
   border-top: 1px solid var(--mb-color-border-neutral);
   border-left: 1px solid var(--mb-color-border-neutral);
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background_page-primary);
   transform: rotate(45deg);
 }
 
@@ -484,4 +464,79 @@
 
 .calloutUndo:hover {
   text-decoration: underline;
+}
+
+/* Where a hidden "and" was: pills read with the QB panel's spacing between them. */
+.gapHiddenAnd,
+.barRoundOps .gapHiddenAnd {
+  width: var(--mantine-spacing-sm);
+}
+
+/* Implicit ANDs: the draft pill needs the same room around it as a pill beside a pill. */
+.caretSlotSpaced:has(> :not(.typingIdle)),
+.caretSlotSpaced:has(> .typingIdle:focus-within) {
+  padding: 0 0.375rem;
+}
+
+/* Between pills, the empty draft is only a caret: no room is made until there is text. */
+.caretSlotMid:has([data-testid="draft-filter-pill"] input[size="1"]) {
+  padding: 0;
+
+  /* The caret takes no room and draws over the gap, so the pills on either side stay put. */
+  & [data-testid="draft-filter-pill"] {
+    width: 0;
+    min-width: 0;
+    min-height: 0;
+    border-width: 0;
+    justify-content: center;
+  }
+
+  & input[size="1"] {
+    flex: none;
+    width: 2px;
+    min-width: 0;
+  }
+}
+
+/* The same for the closed caret: an empty one between pills only draws over the gap. */
+.caretSlotMid:has(> .typingIdle:not(.typingText)) {
+  padding: 0;
+
+  & .typingIdle {
+    width: 0;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  & .input {
+    flex: none;
+  }
+}
+
+/* The gap where a hidden AND sits is a caret target: hovering it shows where the caret would land. */
+.gapHiddenAnd {
+  position: relative;
+}
+
+.gapHiddenAnd:hover::before {
+  content: "";
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 50%;
+  width: 1px;
+  background-color: var(--mb-color-text-secondary);
+}
+
+/* The pill the arrow keys stopped on: Enter edits it, Backspace removes it. */
+.pillSelected {
+  border-radius: 0.75rem;
+  box-shadow:
+    0 0 0 2px var(--mb-color-background_page-primary),
+    0 0 0 4px var(--mb-color-core-brand);
+}
+
+/* While a pill is selected the focused input stays for the keys, but draws no caret. */
+.typingCaretHidden .input {
+  caret-color: transparent;
 }

@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type RefObject,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -33,6 +34,7 @@ import * as Lib from "metabase-lib";
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
 import { matchLogic } from "../expression-bar-drill/LogicColumnList";
 import { compactLabel } from "../expression-bar-unified/ExpressionBar";
+import { CompactReadingContext } from "../expression-bar-unified/settings";
 import {
   getAggregationColumns,
   useSummaryStage,
@@ -68,6 +70,7 @@ import {
 } from "./draft-pill/DraftFilterPill";
 import type { DraftColumn } from "./draft-pill/types";
 import { type ColumnGroup, getDraftColumn } from "./draft-pill/utils";
+import { ImplicitAndContext } from "./settings";
 
 export type ExpressionBarProps = {
   query: Lib.Query;
@@ -134,6 +137,8 @@ export function ExpressionBar({
   focusKey,
   withSummary = false,
 }: ExpressionBarProps) {
+  const implicitAnds = useContext(ImplicitAndContext);
+  const compactReading = useContext(CompactReadingContext);
   const summaryStageIndex = stageIndex + 1;
   const summaryStage = useSummaryStage(query, stageIndex);
   const summary = withSummary ? summaryStage : undefined;
@@ -216,6 +221,11 @@ export function ExpressionBar({
   );
   const [tokens, setTokens] = useState(committedTokens);
   const [callout, setCallout] = useState<Callout>();
+  // Arrow keys stop on each pill before stepping past it: the stopped-on pill
+  // is selected, Enter opens its editor, Backspace removes it.
+  const [selected, setSelected] = useState<number>();
+  // Bumped to open the selected pill's editor.
+  const [editRequest, setEditRequest] = useState(0);
   // Tokens a relocation just created (parentheses, an "and") and the pill it moved.
   const [fresh, setFresh] = useState<ReadonlySet<number>>(() => new Set());
   const [movedKey, setMovedKey] = useState<string>();
@@ -271,6 +281,13 @@ export function ExpressionBar({
   const errorPosition = parsed.ok ? undefined : parsed.position;
   const parenDepths = useMemo(() => getParenDepths(tokens), [tokens]);
   const isExpanded = hasFocus || isOpen || openPillCount > 0;
+  // A plain AND chain reads as the QB's pills: no connectors until you edit.
+  const isPlainAnd = tokens.every(
+    (token) => token.type === "filter" || isAndToken(token),
+  );
+  const hidesAnds = implicitAnds || (isPlainAnd && !isExpanded);
+  // Shorter comparisons while reading; editing shows the full labels.
+  const isCompact = compactReading && !isExpanded && !isDirty;
   const nesting = Math.max(
     0,
     ...tokens.map((token, index) =>
@@ -297,23 +314,43 @@ export function ExpressionBar({
         />,
       ];
     }
-    if (isCloseParen(tokens[index - 1])) {
+    // A hidden AND takes no room, so the row after a group starts at the next visible token.
+    if (hidesAnds && isAndToken(tokens[index])) {
+      return [];
+    }
+    const closeIndex =
+      hidesAnds && isAndToken(tokens[index - 1]) ? index - 2 : index - 1;
+    if (isCloseParen(tokens[closeIndex])) {
       return [
         <RowBreak
           key={`row-${index}`}
           isBreak
-          indent={parenDepths[index - 1]}
+          indent={parenDepths[closeIndex]}
         />,
       ];
     }
     return [];
   };
 
+  // With implicit ANDs the caret steps over a hidden one with its neighbor.
+  const caretLeftOf = (index: number) =>
+    implicitAnds && isAndToken(tokens[index - 1]) && index > 1
+      ? index - 2
+      : index - 1;
+  const caretRightOf = (index: number) =>
+    implicitAnds && isAndToken(tokens[index]) && index + 1 < tokens.length
+      ? index + 2
+      : index + 1;
+
   // Two operators can't sit side by side, so next to one the logic row offers none.
+  // An operator typed beside another takes its place (an "or" next to an
+  // "and", hidden or not), so one is always allowed. With implicit ANDs, AND
+  // itself is never offered.
   const isOp = (token?: Token) => token?.type === "op";
-  const isTokenAllowed = (token: Token) =>
-    !isOp(token) ||
-    (!isOp(tokens[caretIndex - 1]) && !isOp(tokens[caretIndex]));
+  const isTokenAllowed = (token: Token) => !(implicitAnds && isAndToken(token));
+  const logicKeywords = implicitAnds
+    ? LOGIC_KEYWORDS.filter((keyword) => !isAndToken(keyword.token))
+    : LOGIC_KEYWORDS;
 
   // The text typed in the pill's column step, for the logic row: a typed
   // keyword lights up, and Space or Enter enters it, unless the arrow keys
@@ -322,7 +359,7 @@ export function ExpressionBar({
   const [hasNavigated, setHasNavigated] = useState(false);
   // The shared matcher spells its tokens in the rows-only model; the bar's own keywords carry the stage-aware ones.
   const typedLogicLabel = matchLogic(typed)?.label;
-  const typedLogic = LOGIC_KEYWORDS.find(
+  const typedLogic = logicKeywords.find(
     (keyword) => keyword.label === typedLogicLabel,
   );
   const logicMatch =
@@ -360,12 +397,67 @@ export function ExpressionBar({
   const moveCaret = (index: number, { open = true } = {}) => {
     resetDraft();
     setCallout(undefined);
+    setSelected(undefined);
     setCaret(index);
     setIsOpen(open);
     if (!open) {
       skipOpenOnFocusRef.current = true;
     }
     focusInput();
+  };
+
+  // The pill the arrow key would step past, if a pill is what sits there.
+  const pillLeftOf = (index: number) => {
+    const skip = implicitAnds && isAndToken(tokens[index - 1]) ? 1 : 0;
+    const pill = index - 1 - skip;
+    return tokens[pill]?.type === "filter" ? pill : undefined;
+  };
+  const pillRightOf = (index: number) => {
+    const skip = implicitAnds && isAndToken(tokens[index]) ? 1 : 0;
+    const pill = index + skip;
+    return tokens[pill]?.type === "filter" ? pill : undefined;
+  };
+
+  // The selected pill: the idle caret keeps the focus, the pill wears it.
+  const selectPill = (index: number) => {
+    close({ keepFocus: true });
+    setCallout(undefined);
+    setSelected(index);
+  };
+
+  // Left: off a selected pill to before it; onto the pill before the caret; or one step.
+  const moveLeft = ({ open = true } = {}) => {
+    if (selected != null) {
+      moveCaret(selected, { open });
+      return;
+    }
+    const pill = pillLeftOf(caretIndex);
+    if (pill != null) {
+      selectPill(pill);
+    } else if (caretIndex > 0) {
+      moveCaret(caretLeftOf(caretIndex), { open });
+    }
+  };
+
+  const moveRight = ({ open = true } = {}) => {
+    if (selected != null) {
+      moveCaret(selected + 1, { open });
+      return;
+    }
+    const pill = pillRightOf(caretIndex);
+    if (pill != null) {
+      selectPill(pill);
+    } else if (caretIndex < tokens.length) {
+      moveCaret(caretRightOf(caretIndex), { open });
+    }
+  };
+
+  const removeSelectedPill = () => {
+    if (selected != null) {
+      const next = removeTokenAt(tokens, selected);
+      setSelected(undefined);
+      applyTokens(next, Math.min(caretIndex, next.length));
+    }
   };
 
   // The shortcut reads the latest caret helper without re-subscribing every render.
@@ -397,7 +489,11 @@ export function ExpressionBar({
    * is complete and one sits inside a group, it is carried to the end, the
    * pills glide, and a callout under the moved pill says why, with Undo.
    */
-  const applyTokens = (nextTokens: Token[], nextCaret: number): boolean => {
+  const applyTokens = (rawTokens: Token[], rawCaret: number): boolean => {
+    // Nobody can see a stray AND, so none is left behind.
+    const { tokens: nextTokens, caret: nextCaret } = implicitAnds
+      ? tidyImplicitAnds(rawTokens, rawCaret)
+      : { tokens: rawTokens, caret: rawCaret };
     const relocation = hasSummary
       ? relocateSummaryFilters(nextTokens, stageIndex, isMeasureFilter)
       : undefined;
@@ -465,7 +561,16 @@ export function ExpressionBar({
     if (!isTokenAllowed(token)) {
       return;
     }
-    const next = insertToken(tokens, caretIndex, token);
+    // An operator typed beside another takes its place.
+    const isAndBefore = isOp(token) && isOp(tokens[caretIndex - 1]);
+    const isAndAfter = isOp(token) && !isAndBefore && isOp(tokens[caretIndex]);
+    const at = isAndBefore ? caretIndex - 1 : caretIndex;
+    const without = tokens.filter(
+      (_token, index) =>
+        !(isAndBefore && index === caretIndex - 1) &&
+        !(isAndAfter && index === caretIndex),
+    );
+    const next = insertToken(without, at, token);
     // After a relocation the pill stays closed, so its dropdown doesn't cover the note.
     if (applyTokens(next.tokens, next.caret)) {
       close({ keepFocus: true });
@@ -521,9 +626,14 @@ export function ExpressionBar({
     close({ keepFocus: true });
   };
 
+  // Backspace over a hidden AND removes the pill before it instead.
   const removeTokenBeforeCaret = () => {
-    if (caretIndex > 0) {
-      applyTokens(removeTokenAt(tokens, caretIndex - 1), caretIndex - 1);
+    const index =
+      implicitAnds && isAndToken(tokens[caretIndex - 1])
+        ? caretIndex - 2
+        : caretIndex - 1;
+    if (index >= 0) {
+      applyTokens(removeTokenAt(tokens, index), index);
       resetDraft();
     }
   };
@@ -632,7 +742,7 @@ export function ExpressionBar({
       input.selectionStart === 0 &&
       caretIndex > 0
     ) {
-      moveCaret(caretIndex - 1);
+      moveLeft();
       return true;
     }
     if (
@@ -640,7 +750,7 @@ export function ExpressionBar({
       input.selectionEnd === typed.length &&
       caretIndex < tokens.length
     ) {
-      moveCaret(caretIndex + 1);
+      moveRight();
       return true;
     }
     return false;
@@ -657,7 +767,11 @@ export function ExpressionBar({
     }
     if (event.key === "Enter") {
       event.preventDefault();
-      commit();
+      if (selected != null) {
+        setEditRequest((request) => request + 1);
+      } else {
+        commit();
+      }
       return;
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -666,28 +780,40 @@ export function ExpressionBar({
         !moveToAdjacentRow(event.key === "ArrowUp") &&
         event.key === "ArrowDown"
       ) {
+        setSelected(undefined);
         setIsOpen(true);
       }
       return;
     }
     if (event.key === "Escape") {
       event.preventDefault();
-      input.blur();
+      if (selected != null) {
+        setSelected(undefined);
+      } else {
+        input.blur();
+      }
       return;
     }
-    if (event.key === "Backspace") {
+    if (event.key === "Backspace" || event.key === "Delete") {
       event.preventDefault();
-      removeTokenBeforeCaret();
+      if (selected != null) {
+        removeSelectedPill();
+      } else if (event.key === "Backspace") {
+        removeTokenBeforeCaret();
+      }
       return;
     }
-    if (event.key === "ArrowLeft" && caretIndex > 0) {
+    if (event.key === "ArrowLeft" && (caretIndex > 0 || selected != null)) {
       event.preventDefault();
-      moveCaret(caretIndex - 1, { open: false });
+      moveLeft({ open: false });
       return;
     }
-    if (event.key === "ArrowRight" && caretIndex < tokens.length) {
+    if (
+      event.key === "ArrowRight" &&
+      (caretIndex < tokens.length || selected != null)
+    ) {
       event.preventDefault();
-      moveCaret(caretIndex + 1, { open: false });
+      moveRight({ open: false });
     }
   };
 
@@ -724,7 +850,7 @@ export function ExpressionBar({
             <Text size="sm" fw="bold" c="text-secondary" mr="auto">
               {t`Logic`}
             </Text>
-            {LOGIC_KEYWORDS.map((keyword) => {
+            {logicKeywords.map((keyword) => {
               const isAllowed = isTokenAllowed(keyword.token);
               return (
                 <button
@@ -760,6 +886,8 @@ export function ExpressionBar({
     <span
       className={cx(S.typing, S.typingIdle, {
         [S.typingText]: text.length > 0,
+        // A selected pill wears the focus; the caret keeps it but stays out of sight.
+        [S.typingCaretHidden]: selected != null,
       })}
     >
       <input
@@ -770,6 +898,7 @@ export function ExpressionBar({
         aria-label={t`Filter expression`}
         onChange={(event) => {
           setText(event.target.value);
+          setSelected(undefined);
           setIsOpen(true);
         }}
         onFocus={() => {
@@ -828,39 +957,57 @@ export function ExpressionBar({
           ...tokens.flatMap((token, index) => [
             ...rowStart(index),
             index === caretIndex ? (
-              <CaretSlot key="caret" index={caretIndex}>
+              <CaretSlot
+                key="caret"
+                index={caretIndex}
+                isSpaced={implicitAnds}
+                isAtEnd={false}
+              >
                 {caretView}
               </CaretSlot>
             ) : (
               <Gap
                 key={`gap-${index}`}
                 index={index}
+                className={cx({
+                  [S.gapHiddenAnd]: hidesAnds && isAndToken(token),
+                })}
                 onClick={() => moveCaret(index)}
               />
             ),
-            <TokenView
-              key={`token-${index}`}
-              queryFor={queryFor}
-              stageIndex={stageIndex}
-              token={token}
-              tokenKey={keyOf(token)}
-              isInNotebook={isInNotebook}
-              depth={parenDepths[index]}
-              hasError={index === errorPosition}
-              isFlashed={token.type === "filter" && flashed.has(keyOf(token))}
-              isFresh={fresh.has(index)}
-              isMoved={movedKey != null && keyOf(token) === movedKey}
-              onReplace={(next) =>
-                applyTokens(replaceTokenAt(tokens, index, next), caretIndex)
-              }
-              onPopoverChange={(isOpened) =>
-                setOpenPillCount((count) => count + (isOpened ? 1 : -1))
-              }
-              onRemove={() => {
-                const next = removeTokenAt(tokens, index);
-                applyTokens(next, Math.min(caretIndex, next.length));
-              }}
-            />,
+            hidesAnds && isAndToken(token) ? null : (
+              <TokenView
+                key={`token-${index}`}
+                queryFor={queryFor}
+                stageIndex={stageIndex}
+                token={token}
+                tokenKey={keyOf(token)}
+                isInNotebook={isInNotebook}
+                depth={parenDepths[index]}
+                hasError={index === errorPosition}
+                isFlashed={token.type === "filter" && flashed.has(keyOf(token))}
+                isFresh={fresh.has(index)}
+                isMoved={movedKey != null && keyOf(token) === movedKey}
+                isCompact={isCompact}
+                isSelected={index === selected}
+                editRequest={editRequest}
+                onReplace={(next) =>
+                  applyTokens(replaceTokenAt(tokens, index, next), caretIndex)
+                }
+                onPopoverChange={(isOpened) => {
+                  setOpenPillCount((count) => count + (isOpened ? 1 : -1));
+                  // The editor of the selected pill hands the focus back to the bar.
+                  if (!isOpened && index === selected) {
+                    skipOpenOnFocusRef.current = true;
+                    focusInput();
+                  }
+                }}
+                onRemove={() => {
+                  const next = removeTokenAt(tokens, index);
+                  applyTokens(next, Math.min(caretIndex, next.length));
+                }}
+              />
+            ),
           ]),
           ...rowStart(tokens.length),
           // Before the end slot, so a click past the last pill puts the caret after them.
@@ -878,7 +1025,12 @@ export function ExpressionBar({
               ]
             : []),
           caretIndex === tokens.length ? (
-            <CaretSlot key="caret" index={caretIndex}>
+            <CaretSlot
+              key="caret"
+              index={caretIndex}
+              isSpaced={implicitAnds}
+              isAtEnd
+            >
               {caretView}
             </CaretSlot>
           ) : (
@@ -1128,6 +1280,9 @@ function RelocationCallout({
   );
 }
 
+const isAndToken = (token?: Token) =>
+  token?.type === "op" && token.op === "and";
+
 function RowBreak({ isBreak, indent }: { isBreak: boolean; indent: number }) {
   return (
     <>
@@ -1166,22 +1321,76 @@ const SLOT_ATTR = "data-caret-slot";
 
 function CaretSlot({
   index,
+  isSpaced,
+  isAtEnd,
   children,
 }: {
   index: number;
+  /** Implicit ANDs: the open pill needs the room a pill beside a pill has. */
+  isSpaced: boolean;
+  isAtEnd: boolean;
   children: ReactNode;
 }) {
   return (
-    <span className={S.caretSlot} {...{ [SLOT_ATTR]: index }}>
+    <span
+      className={cx(S.caretSlot, {
+        [S.caretSlotSpaced]: isSpaced,
+        [S.caretSlotMid]: isSpaced && !isAtEnd,
+      })}
+      {...{ [SLOT_ATTR]: index }}
+    >
       {children}
     </span>
   );
 }
 
-function Gap({ index, onClick }: { index: number; onClick: () => void }) {
+/**
+ * With implicit ANDs a removal can leave one dangling or doubled where nobody
+ * can see it: next to an operator, a parenthesis, or the ends of the stream.
+ * Those go, and the caret follows the tokens before it.
+ */
+function tidyImplicitAnds(
+  tokens: Token[],
+  caret: number,
+): { tokens: Token[]; caret: number } {
+  const isOpen = (token?: Token) =>
+    token?.type === "paren" && token.side === "open";
+  const isClose = (token?: Token) =>
+    token?.type === "paren" && token.side === "close";
+  const isStray = (token: Token, index: number) => {
+    if (!isAndToken(token)) {
+      return false;
+    }
+    const before = tokens[index - 1];
+    const after = tokens[index + 1];
+    return (
+      before == null ||
+      after == null ||
+      before.type === "op" ||
+      after.type === "op" ||
+      isOpen(before) ||
+      isClose(after)
+    );
+  };
+  const kept = tokens.filter((token, index) => !isStray(token, index));
+  const removedBeforeCaret = tokens
+    .slice(0, caret)
+    .filter((token, index) => isStray(token, index)).length;
+  return { tokens: kept, caret: caret - removedBeforeCaret };
+}
+
+function Gap({
+  index,
+  className,
+  onClick,
+}: {
+  index: number;
+  className?: string;
+  onClick: () => void;
+}) {
   return (
     <span
-      className={S.gap}
+      className={cx(S.gap, className)}
       {...{ [SLOT_ATTR]: index }}
       onClick={(event) => {
         event.stopPropagation();
@@ -1327,6 +1536,12 @@ type TokenViewProps = {
   isFresh: boolean;
   /** A relocation just carried the pill here: it pulses once. */
   isMoved: boolean;
+  /** Reading mode: comparisons shortened to symbols. */
+  isCompact: boolean;
+  /** The arrow keys stopped on this pill. */
+  isSelected: boolean;
+  /** Bumped when Enter is pressed on the selected pill: it opens its editor. */
+  editRequest: number;
   onReplace: (token: Token) => void;
   onRemove: () => void;
   onPopoverChange: (isOpened: boolean) => void;
@@ -1343,6 +1558,9 @@ function TokenView({
   isFlashed,
   isFresh,
   isMoved,
+  isCompact,
+  isSelected,
+  editRequest,
   onReplace,
   onRemove,
   onPopoverChange,
@@ -1385,6 +1603,9 @@ function TokenView({
       clause={token.clause}
       isInNotebook={isInNotebook}
       isSummary={token.stageIndex !== stageIndex}
+      isCompact={isCompact}
+      isSelected={isSelected}
+      editRequest={editRequest}
       className={cx(errorClass, {
         [S.flash]: isFlashed,
         [S.pillMoved]: isMoved,
@@ -1409,8 +1630,11 @@ type FilterTokenViewProps = {
   tokenKey: string;
   clause: Lib.FilterClause;
   isInNotebook: boolean;
-  /** A filter on the summary: the filter color, a shade darker. */
+  /** A filter on the summary: same look, its own stage, a tooltip saying so. */
   isSummary: boolean;
+  isCompact: boolean;
+  isSelected: boolean;
+  editRequest: number;
   className?: string;
   onReplace: (filterable: Lib.Filterable) => void;
   onRemove: () => void;
@@ -1424,12 +1648,25 @@ function FilterTokenView({
   clause,
   isInNotebook,
   isSummary,
+  isCompact,
+  isSelected,
+  editRequest,
   className,
   onReplace,
   onRemove,
   onPopoverChange,
 }: FilterTokenViewProps) {
   const [isOpened, setIsOpenedState] = useState(false);
+  // Enter on the selected pill asks for its editor.
+  const editRequestRef = useRef(editRequest);
+  useEffect(() => {
+    if (isSelected && editRequest !== editRequestRef.current) {
+      setIsOpened(true);
+    }
+    editRequestRef.current = editRequest;
+  });
+  const fullLabel = getFilterLabel(query, stageIndex, clause);
+  const label = isCompact && !isOpened ? compactLabel(fullLabel) : fullLabel;
   const setIsOpened = (next: boolean | ((opened: boolean) => boolean)) => {
     const value = typeof next === "function" ? next(isOpened) : next;
     if (value !== isOpened) {
@@ -1448,7 +1685,11 @@ function FilterTokenView({
       <Popover.Target>
         <Box
           component="span"
-          className={cx(S.pill, { [S.pillSummary]: isSummary }, className)}
+          className={cx(
+            S.pill,
+            { [S.pillSummary]: isSummary, [S.pillSelected]: isSelected },
+            className,
+          )}
           title={isSummary ? t`Applies after summarizing` : undefined}
           {...{ [TOKEN_KEY_ATTR]: tokenKey }}
         >
@@ -1457,7 +1698,7 @@ function FilterTokenView({
               color="core-filter"
               onClick={() => setIsOpened((opened) => !opened)}
             >
-              {getFilterLabel(query, stageIndex, clause)}
+              {label}
               <Icon
                 className={S.notebookPillClose}
                 name="close"
@@ -1472,7 +1713,7 @@ function FilterTokenView({
               onClick={() => setIsOpened((opened) => !opened)}
               onRemoveClick={onRemove}
             >
-              {getFilterLabel(query, stageIndex, clause)}
+              {label}
             </FilterPill>
           )}
         </Box>
