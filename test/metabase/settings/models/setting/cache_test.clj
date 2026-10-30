@@ -8,6 +8,7 @@
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
@@ -59,6 +60,14 @@
   "Reset the value of `last-update-check` so the next cache access will check for updates."
   []
   (.set ^java.util.concurrent.atomic.AtomicLong (var-get #'setting.cache/last-update-check) 0))
+
+(defn- read-until
+  "Call `getter` until it returns `expected`, for up to a second, and return its last value. Any thread reading a
+  setting can be the one that reloads the cache, and while it does, a read here returns the old cache rather than
+  waiting, so a single read can miss the reload."
+  [getter expected]
+  (or (u/poll {:thunk getter, :done? #(= expected %), :interval-ms 10})
+      (getter)))
 
 (deftest update-settings-last-updated-test
   (testing "When I update a Setting, does it set/update `settings-last-updated`?"
@@ -124,7 +133,7 @@
   ;; detect a cache out-of-date situation and flush the cache as appropriate, giving us the updated value when we
   ;; call! :wow:
   (is (= "Bird Can"
-         (setting-test/toucan-name))))
+         (read-until setting-test/toucan-name "Bird Can"))))
 
 ;; Simulate experience where:
 ;; 1. User writes a setting on Server 1
@@ -148,10 +157,12 @@
            (setting-test/toucan-name)))))
 
 (deftest sync-test-3
-  (mt/discard-setting-changes [site-locale]
+  ;; Set site-locale raw rather than through its setter: on Postgres the setter starts a search reindex in the
+  ;; background, which is slow and reads settings while the test does.
+  (mt/with-temporary-raw-setting-values [site-locale "en"]
     (clear-cache!)
-    (system/site-locale! "en")
+    (setting-test/toucan-name! "Reggae Toucan")
     (simulate-another-instance-updating-setting! :site-locale "fr")
     (reset-last-update-check!)
     (is (= "fr"
-           (system/site-locale)))))
+           (read-until system/site-locale "fr")))))
