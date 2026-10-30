@@ -185,7 +185,9 @@
 
 (defn- format-output [matches]
   (if (empty? matches)
-    "<search_results>No matching library entities.</search_results>"
+    (str "<search_results>No matching library entities.</search_results>\n"
+         "<instructions>Rephrase `user_search_prompt` and call `retrieve_library_entities` once more. If there are "
+         "still no matches, ask the user to clarify or narrow the request.</instructions>")
     (str (when (:weak? (first matches))
            (str "<note>No strong library match for this request — treat the results below as weak "
                 "guesses; consider asking the user to clarify or narrow the request.</note>\n"))
@@ -238,8 +240,6 @@
       (blank-search-prompt! {}))
     (let [n       (min max-limit (or limit default-limit))
           matches (build-matches user_search_prompt n)]
-      (when (empty? matches)
-        (no-library-matches! {}))
       {:output            (format-output matches)
        :structured-output {:result-type :search
                            :data        (flatten-data matches)

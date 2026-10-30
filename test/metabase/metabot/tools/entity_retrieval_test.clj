@@ -91,7 +91,7 @@
                          :doc_text sentinel
                          :score    {:total_score 0.9
                                     :scores [{:name :similarity :score 0.9}]}}]
-              search!  #(invoke {:user_search_prompt "secret"})]
+              search!  #(retrieve {:user_search_prompt "secret"})]
           (with-unfiltered-search (fn [_ _] raw)
             (mt/with-dynamic-fn-redefs
               [cs.core/library-entity-keys (constantly #{["model" secret-id]})]
@@ -101,7 +101,7 @@
               (testing "a user without collection access receives neither the entity nor its matched document"
                 (mt/with-test-user :rasta
                   (let [result (search!)]
-                    (is (= {:class :recoverable :code ::entity-retrieval/no-library-matches} (:error result)))
+                    (is (= [] (get-in result [:structured-output :data])))
                     (is (not (str/includes? (pr-str result) sentinel)))))))))))))
 
 (deftest match->xml-locale-independent-test
@@ -234,15 +234,24 @@
                  "library search is being updated.")]
            [:unavailable ::entity-retrieval/library-search-unavailable
             (str "Library search is unavailable.\n"
-                 "Don't retry this call. Tell the user library search is unavailable.")]
-           [[] ::entity-retrieval/no-library-matches
-            (str "No matching library entities.\n"
-                 "Rephrase `user_search_prompt` and call `retrieve_library_entities` once more. "
-                 "If there are still no matches, ask the user to clarify or narrow the request.")]]]
+                 "Don't retry this call. Tell the user library search is unavailable.")]]]
     (testing (str result)
       (with-unfiltered-search (constantly result)
         (is (= {:output output :error {:class :recoverable :code code}}
                (invoke {:user_search_prompt "revenue per region"})))))))
+
+(deftest ^:parallel library-miss-test
+  (testing "a miss is a successful call that tells the model to rephrase once, then ask the user"
+    (with-unfiltered-search (constantly [])
+      (is (= {:output            (str "<search_results>No matching library entities.</search_results>\n"
+                                      "<instructions>Rephrase `user_search_prompt` and call "
+                                      "`retrieve_library_entities` once more. If there are still no matches, ask the "
+                                      "user to clarify or narrow the request.</instructions>")
+              :structured-output {:result-type :search
+                                  :data        []
+                                  :total_count 0
+                                  :weak_match  false}}
+             (invoke {:user_search_prompt "revenue per region"}))))))
 
 (deftest ^:parallel blank-search-prompt-test
   (testing "a blank prompt goes back to the model before anything is searched"
