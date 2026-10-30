@@ -323,7 +323,7 @@ Remote sync uses the same serialization format as the [Metabase CLI serializatio
 - Metrics
 - Dashboards and their cards
 - Documents
-- [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase syncs the app's manifest, bundle, and collection, not the app's source code. You (or your agent) must commit the source code to the same repository yourself, so that you can change the app later.
+- [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase syncs the app's manifest, bundle, and collection, not the app's source code. You (or your agent) must commit the source code to the same repository, so that you can change the app later.
 - SQL snippets
 - [Data actions](../data-actions.md)
 - The glossary

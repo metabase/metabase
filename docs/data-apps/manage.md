@@ -7,6 +7,8 @@ summary: In Data Studio, admins see what each data app reads and writes, make ap
 
 _Data Studio > Data apps_
 
+> **Beta:** Data apps are in beta.
+
 {% include plans-blockquote.html feature="Data apps" is_plural=true %}
 
 Only admins can manage data apps.
@@ -71,10 +73,10 @@ To fix the group's access:
 
 ## Delete a data app
 
-Data Studio doesn't have an option to delete apps. To delete an app, ask your agent, or [log the CLI in](../installation-and-operation/metabase-cli.md#authenticate-the-cli) as an admin and run:
+Data Studio doesn't have an option to delete apps. Delete the app on your development Metabase: ask your agent, or [log the CLI in](../installation-and-operation/metabase-cli.md#authenticate-the-cli) as an admin and run:
 
 ```sh
 mb data-app delete <slug>
 ```
 
-Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access. Push the change to your repo.
+Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access. To delete the app on production too, [push the change](../data-modeling/semantic-layer/remote-sync.md#pushing-changes-to-git) to your branch, merge the branch, and pull the changes on your production Metabase.

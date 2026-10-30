@@ -29,15 +29,13 @@ _Admin > Databases > Data actions_
 
 Before you can create or run actions on a database, an admin has to turn on data actions for that database. The setting covers every kind of action on the database: data actions, actions in [data apps](../data-apps/build.md#what-a-data-app-can-read-and-write), and [model actions](./models/actions/introduction.md).
 
+Data actions only work on PostgreSQL and MySQL databases, and you can't turn them on for a database that uses [database routing](../permissions/database-routing.md).
+
 1. Click the **grid** icon in the upper right, and go to **Admin** > **Databases**.
 2. Click the database.
 3. In the **Data actions** section, turn on **Data actions**.
 
-Data actions only work on PostgreSQL and MySQL databases.
-
 Actions write to your database, so the database user needs [write privileges](../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). If the database has a [writable connection](../databases/writable-connection.md), actions use it.
-
-You can't turn on data actions for a database that uses [database routing](../permissions/database-routing.md).
 
 ## Create a data action
 
