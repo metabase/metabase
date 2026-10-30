@@ -533,7 +533,9 @@
     (let [xml-missing (llm-shape/question->xml {:id 201 :name "Q"})
           xml-empty   (llm-shape/question->xml {:id 202 :name "Q" :query_json {}})]
       (is (not (str/includes? xml-missing "<query>")))
-      (is (not (str/includes? xml-empty "<query>")))))
+      (is (not (str/includes? xml-empty "<query>"))))))
+
+(deftest ^:parallel question->xml-fields-test
   (testing "renders the result columns under ### Fields when :fields is provided"
     ;; Native aliases and aggregates have no Field row, so their ids are strings.
     (let [xml (llm-shape/question->xml
