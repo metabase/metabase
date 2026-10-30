@@ -283,7 +283,9 @@
 (defn- report-tool-usage-xf
   "Transducer that fires an agent_used_tool :snowplow/ai_service_event per tool call.
   Only fires when :source and :request-id are present in tracking-opts. A tool name outside `tools` is
-  model output that may carry user data, so it is reported as \"unknown\"."
+  model output that may carry user data, so it is reported as \"unknown\".
+  A failed call also reports its error class and code, keywords we wrote; never its messages, which may carry
+  user data."
   [{:keys [request-id session-id source profile-id iteration]} tools]
   (map (fn [part]
          (when (and (some? source)
@@ -306,7 +308,10 @@
                                          :event-details                 (cond-> {"tool_name" (if (contains? tools (:function part))
                                                                                                (:function part)
                                                                                                "unknown")}
-                                                                          (some? iteration) (assoc "step" iteration))}))
+                                                                          (some? iteration) (assoc "step" iteration)
+                                                                          (get-in part [:result :error])
+                                                                          (assoc "error_class" (name (get-in part [:result :error :class]))
+                                                                                 "error_code"  (u/qualified-name (get-in part [:result :error :code]))))}))
          part)))
 
 (defn- with-retries

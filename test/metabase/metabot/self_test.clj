@@ -2088,7 +2088,9 @@
                                     "event_details" {"tool_name" "get-time"}}}
                          {:data {"event"         "agent_used_tool"
                                  "result"        "error"
-                                 "event_details" {"tool_name" "unknown"}}}]
+                                 "event_details" {"tool_name"   "unknown"
+                                                  "error_class" "validation"
+                                                  "error_code"  "unknown-tool"}}}]
                         tool-events))
                 (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
                 (is (some #(str/includes? (:message %) "call-2") logs))

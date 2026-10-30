@@ -25,6 +25,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.legacy :as tools.legacy]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
@@ -1520,8 +1521,48 @@
                                   :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000002"}})
                 (let [events (snowplow-test/pop-event-data-and-user-id!)
                       tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
-                  (is (=? [{:data {"event"  "agent_used_tool"
-                                   "result" "error"}}]
+                  (is (=? [{:data {"event"         "agent_used_tool"
+                                   "result"        "error"
+                                   "event_details" {"tool_name"   "search"
+                                                    "error_class" "validation"
+                                                    "error_code"  "invalid-arguments"}}}]
+                          tool-events)))))))))
+    (testing "a declared error reports its fully qualified code"
+      (let [call-count (atom 0)]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_]
+                                      (let [n (swap! call-count inc)]
+                                        (if (= 1 n)
+                                          (mut/mock-llm-response
+                                           [{:type :start :id "msg-1"}
+                                            {:type      :tool-input
+                                             :id        "t1"
+                                             :function  "search"
+                                             :arguments {:semantic_queries ["test"]
+                                                         :keyword_queries  ["test"]
+                                                         :entity_types     ["table"]}}
+                                            {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                             :model "test-model" :id "msg-1"}])
+                                          (mut/mock-llm-response
+                                           [{:type :start :id "msg-2"}
+                                            {:type :text :text "Done"}
+                                            {:type :usage :usage {:promptTokens 150 :completionTokens 30}
+                                             :model "test-model" :id "msg-2"}]))))
+                                    metabot-search/search
+                                    (fn [_args] (recoverable.common/not-found! {}))]
+          (mt/with-log-level [metabase.metabot.agent.core :warn]
+            (mt/with-current-user (mt/user->id :rasta)
+              (snowplow-test/with-fake-snowplow-collector
+                (run-agent-loop! {:messages      [{:role :user :content "test"}]
+                                  :state         {}
+                                  :context       {}
+                                  :profile-id    :internal
+                                  :tracking-opts {:session-id "00000000-0000-0000-0000-000000000003"}})
+                (let [events      (snowplow-test/pop-event-data-and-user-id!)
+                      tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
+                  (is (=? [{:data {"result"        "error"
+                                   "event_details" {"error_class" "recoverable"
+                                                    "error_code"  "metabase.metabot.tools.recoverable.common/not-found"}}}]
                           tool-events)))))))))))
 
 (deftest token-usage-snowplow-test
