@@ -742,6 +742,11 @@
   (collection/check-allowed-content :model/Document (:collection_id model))
   (public-sharing/add-public-uuid-prefix model))
 
+(t2/define-before-delete :model/Document [document]
+  ;; delete through Toucan rather than the FK cascade so the Card hooks run for the Cards saved in this Document,
+  ;; including the checks that refuse deleting one
+  (documents.db/delete-cards-for-document! (:id document)))
+
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
   (public-sharing/add-public-uuid-prefix-if-changed model))
