@@ -103,7 +103,7 @@
     (catch Exception e
       (if (sql-parsing/parse-error? e)
         (throw-unsupported "could not parse %s: %s"
-                     (pr-str sql) (first (str/split-lines (str (sql-parsing/parse-error-message e)))))
+                           (pr-str sql) (first (str/split-lines (str (sql-parsing/parse-error-message e)))))
         (throw e)))))
 
 (mu/defn- arg :- [:maybe [:or ::node [:sequential ::node] :string :boolean number?]]
