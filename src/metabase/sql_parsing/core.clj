@@ -20,6 +20,7 @@
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :as perf])
   (:import
    (java.util.concurrent TimeoutException)))
@@ -692,6 +693,27 @@
   (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
 
 ;;;; Transpile sql
+
+(mu/defn parse-expression :- :map
+  "Parse `sql`, a single expression with no surrounding SELECT such as `sales / target` or
+  `status = 'Shipped' AND amount > 0`, into its sqlglot tree. Each node is a map:
+
+    {:class \"Div\"                     ; the sqlglot expression class
+     :sql   \"sales / target\"          ; the node rendered back to SQL, for messages
+     :args  {:this ..., :expression ...}} ; its named children: nodes, vectors of nodes, strings, booleans, numbers
+
+  A function node also carries `:func`, its SQL name. Column names sit in an `Identifier` node's `:this`, literals in
+  a `Literal` node's `:this` as a string, with `:is_string` saying whether the SQL quoted it.
+
+  Throws a parse error (see [[parse-error?]]) when the SQL does not parse, is empty, is more than one statement, is a
+  statement rather than an expression (`SELECT 1`, `DROP TABLE t`), is longer than `MAX_EXPRESSION_LENGTH` characters
+  or nests deeper than `MAX_EXPRESSION_DEPTH` levels (both in `sql_tools.py`; the tree carries every node's `:sql`, so
+  a long chain of `AND`s is quadratic in size, and rendering recurses once per level). Two failures are not parse
+  errors: an unknown `dialect` is a `ValueError` on the Python side, and a call that outruns the Python timeout
+  (see [[metabase.sql-parsing.graal]]) is reported by the transport."
+  [dialect :- [:maybe :string]
+   sql     :- :string]
+  (protocol/parse-expression (parser) dialect sql))
 
 (defn- normalize-transpilation-result
   [result]

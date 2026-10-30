@@ -65,8 +65,8 @@
   ({:Boolean                   :type/Boolean
     :Integer                   :type/Integer
     :Bigint                    :type/BigInteger
-    :Varbinary                 :type/*
-    :Binary                    :type/*
+    :Varbinary                 :type/Binary
+    :Binary                    :type/Binary
     :Char                      :type/Text
     :Varchar                   :type/Text
     :Money                     :type/Decimal
@@ -81,7 +81,7 @@
     :TimestampTz               :type/DateTimeWithLocalTZ
     :AUTO_INCREMENT            :type/Integer
     (keyword "Long Varchar")   :type/Text
-    (keyword "Long Varbinary") :type/*} database-type))
+    (keyword "Long Varbinary") :type/Binary} database-type))
 
 (defn- copy-local-parameter?
   "Whether a connection parameter name, as a user may have written it, is the client's `disablecopylocal`. The client

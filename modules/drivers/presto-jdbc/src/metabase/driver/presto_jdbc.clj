@@ -88,7 +88,7 @@
     [#"(?i)decimal.*"                  :type/Decimal]
     [#"(?i)varchar.*"                  :type/Text]
     [#"(?i)char.*"                     :type/Text]
-    [#"(?i)varbinary.*"                :type/*]
+    [#"(?i)varbinary.*"                :type/Binary]
     [#"(?i)json"                       :type/Text] ; TODO - this should probably be Dictionary or something
     [#"(?i)date"                       :type/Date]
     [#"(?i)^timestamp$"                :type/DateTime]

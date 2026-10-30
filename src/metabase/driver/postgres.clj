@@ -921,7 +921,7 @@
    :boolean       :type/Boolean
    :box           :type/*
    :bpchar        :type/Text ; "blank-padded char" is the internal name of "character"
-   :bytea         :type/*    ; byte array
+   :bytea         :type/Binary
    :cidr          :type/Structured ; IPv4/IPv6 network address
    :circle        :type/*
    :citext        :type/Text ; case-insensitive text
@@ -929,6 +929,7 @@
    :character     :type/Text
    :date          :type/Date
    :decimal       :type/Decimal
+   :float         :type/Float ; DDL alias for float8; the catalog never reports it, but hand-written schemas (dbt) do
    :float4        :type/Float
    :float8        :type/Float
    :geometry      :type/*

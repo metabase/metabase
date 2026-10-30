@@ -104,6 +104,12 @@
     [:percentile {} (lib.tu/field-clause :venues :id) 0.95]
     {:column-name "percentile", :display-name "0.95th percentile of ID"}
 
+    [:sum-where {} (lib.tu/field-clause :venues :price) [:> {} (lib.tu/field-clause :venues :price) 10]]
+    {:column-name "sum_where_PRICE", :display-name "Sum of Price matching condition"}
+
+    [:distinct-where {} (lib.tu/field-clause :venues :id) [:> {} (lib.tu/field-clause :venues :price) 10]]
+    {:column-name "distinct_where", :display-name "Distinct values of ID matching condition"}
+
     [:case {} [[[:> (lib.tu/field-clause :venues :price) 10] "A"]]]
     {:column-name "case", :display-name "Case"}
 

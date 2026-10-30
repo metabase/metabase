@@ -1,0 +1,11 @@
+version: 2
+models:
+- name: time_spine
+  description: The daily time spine the dbt semantic layer requires. Not a semantic model.
+  time_spine:
+    standard_granularity_column: date_day
+  columns:
+  - name: date_day
+    data_type: date
+    description: One row per day.
+    granularity: day

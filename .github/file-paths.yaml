@@ -169,6 +169,7 @@ backend_specs: &backend_specs
   - "test/**"
   - "dev/test/**"
   - "enterprise/backend/test/**"
+  - "enterprise/backend/test_resources/**"
   - "test_modules/**"
   - "modules/drivers/*/test/**"
   - "test_config/**"

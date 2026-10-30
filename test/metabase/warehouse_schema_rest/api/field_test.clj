@@ -1065,3 +1065,19 @@
         (is (= {:status "success"}
                (mt/user-http-request :crowberto :post 200 (format "field/%d/discard_values" fid))))
         (is (not (t2/exists? :model/FieldValues :id fv)))))))
+
+(deftest update-binary-field-coercion-test
+  (testing "PUT /api/field/:id accepts the bytes->temporal coercions on a binary field"
+    (doseq [base-type [:type/Binary :type/*]
+            strategy  [:Coercion/YYYYMMDDHHMMSSBytes->Temporal :Coercion/ISO8601Bytes->Temporal]]
+      (testing (format "base type %s, strategy %s" base-type strategy)
+        (mt/with-temp [:model/Field {field-id :id} {:base_type base-type, :effective_type base-type}]
+          (is (= ["type/DateTime" (u/qualified-name strategy)]
+                 ((juxt :effective_type :coercion_strategy)
+                  (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
+                                        {:coercion_strategy strategy}))))))))
+  (testing "but not on a field of a type that is not bytes"
+    (mt/with-temp [:model/Field {field-id :id} {:base_type :type/Text, :effective_type :type/Text}]
+      (is (=? {:message "Incompatible coercion strategy."}
+              (mt/user-http-request :crowberto :put 400 (format "field/%d" field-id)
+                                    {:coercion_strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}))))))

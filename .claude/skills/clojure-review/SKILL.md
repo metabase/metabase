@@ -54,7 +54,8 @@ Use this to scan through changes efficiently:
 - [ ] Descriptive names (no `tbl`, `zs'`)
 - [ ] Pure functions named as nouns describing their return value
 - [ ] `kebab-case` for all variables and functions
-- [ ] Side-effect functions end with `!`
+- [ ] Functions that mutate shared global state (not thread-safe) end with `!`, and no others: a function that only
+      validates and throws has no `!`
 - [ ] No namespace-alias repetition in function names
 
 ### Documentation
@@ -128,7 +129,8 @@ Quick scan for common issues:
 | Pattern                                      | Issue                                                       |
 | -------------------------------------------- | ----------------------------------------------------------- |
 | `calculate-age`, `get-user`                  | Pure functions should be nouns: `age`, `user`               |
-| `update-db`, `save-model`                    | Missing `!` for side effects: `update-db!`, `save-model!`   |
+| `update-db`, `save-model`                    | Missing `!` for a mutation of shared state: `update-db!`, `save-model!` |
+| `check-input!`, `throw-unsupported!`         | Throwing is not a side effect; drop the `!`: `check-input`, `throw-unsupported` |
 | `snake_case_var`                             | Should use kebab-case                                       |
 | Public var without docstring                 | Add docstring explaining purpose                            |
 | `;; TODO fix this`                           | Missing author/date: `;; TODO (Name 2025-01-01) -- description` |

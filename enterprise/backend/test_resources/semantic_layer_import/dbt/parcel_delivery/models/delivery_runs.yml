@@ -1,0 +1,115 @@
+version: 2
+models:
+- name: delivery_runs
+  description: One row per delivery run a driver made from a depot.
+  semantic_model:
+    enabled: true
+    name: delivery_runs
+  agg_time_dimension: scheduled_at
+  derived_semantics:
+    dimensions:
+    - name: has_driver
+      type: categorical
+      expr: CASE WHEN driver_id IS NOT NULL THEN TRUE ELSE FALSE END
+    - name: is_unassigned
+      type: categorical
+      expr: CASE WHEN driver_id IS NULL THEN TRUE ELSE FALSE END
+  columns:
+  - name: run_id
+    data_type: text
+    description: Unique identifier of the run.
+    entity:
+      type: primary
+      name: delivery_run
+  - name: depot_id
+    data_type: text
+    description: The depot the run left from.
+    entity:
+      type: foreign
+      name: depot
+  - name: driver_id
+    data_type: text
+    description: The driver assigned to the run, if any.
+    entity:
+      type: foreign
+      name: driver
+  - name: vehicle_plate
+    data_type: text
+    description: The licence plate of the vehicle used.
+    dimension:
+      type: categorical
+  - name: departed_at
+    data_type: timestamp
+    description: When the vehicle left the depot.
+    granularity: day
+    dimension:
+      type: time
+  - name: returned_at
+    data_type: timestamp
+    description: When the vehicle returned to the depot.
+    granularity: day
+    dimension:
+      type: time
+  - name: shift_started_at
+    data_type: timestamp
+    description: When the driver's shift started, including loading time.
+    granularity: day
+    dimension:
+      type: time
+  - name: shift_ended_at
+    data_type: timestamp
+    description: When the driver's shift ended, including unloading time.
+    granularity: day
+    dimension:
+      type: time
+  - name: scheduled_at
+    data_type: timestamp
+    description: When the run was scheduled to start.
+    granularity: day
+    dimension:
+      type: time
+  - name: route_hours
+    data_type: double precision
+    description: Hours spent on the route.
+    dimension:
+      type: categorical
+  - name: route_type
+    data_type: text
+    description: Whether the route was urban, suburban or rural.
+    dimension:
+      type: categorical
+  metrics:
+  - name: run_count
+    label: Run Count
+    type: simple
+    agg: count
+    expr: run_id
+    description: The number of delivery runs.
+  - name: avg_route_hours
+    label: Average Route Hours
+    type: simple
+    agg: average
+    expr: route_hours
+    description: The average hours spent on a route.
+  - name: total_route_hours
+    label: Total Route Hours
+    type: simple
+    agg: sum
+    expr: route_hours
+    description: The total hours spent on routes.
+  - name: median_route_hours
+    label: Median Route Hours
+    type: simple
+    agg: percentile
+    expr: route_hours
+    percentile: 0.5
+    percentile_type: continuous
+    description: The median hours spent on a route.
+  - name: p90_route_hours
+    label: 90th Percentile Route Hours
+    type: simple
+    agg: percentile
+    expr: route_hours
+    percentile: 0.9
+    percentile_type: continuous
+    description: The 90th percentile of hours spent on a route.

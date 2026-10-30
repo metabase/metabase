@@ -109,7 +109,10 @@
                               :describe-is-nullable      true
                               :describe-default-expr     true
                               :metadata/table-existence-check true
-                              :transforms/testing        true}]
+                              :transforms/testing        true
+                              ;; "With default settings unquoted names are converted to upper case"
+                              ;; (`DATABASE_TO_UPPER`), https://h2database.com/html/grammar.html#name
+                              :upper-case-unquoted-identifiers true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -565,14 +568,14 @@
                                 (#{NATIONAL CHARACTER NCHAR} LARGE OBJECT)
                                 NCLOB}
     :type/UUID                #{UUID}
-    :type/*                   #{ARRAY
-                                BINARY
+    :type/Binary              #{BINARY
                                 "BINARY VARYING"
                                 VARBINARY
                                 "BINARY LARGE OBJECT"
                                 BLOB
-                                GEOMETRY
                                 IMAGE}
+    :type/*                   #{ARRAY
+                                GEOMETRY}
     :type/Date                #{DATE}
     :type/DateTime            #{TIMESTAMP}
     :type/Time                #{TIME "TIME WITHOUT TIME ZONE"}

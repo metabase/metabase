@@ -14,6 +14,28 @@ title: Driver interface changelog
 - `metabase.driver/disallowed-connection-parameters` names now match ignoring percent-encoding, `_ . - +` and
   whitespace as well as case.
 
+- Added an `:upper-case-unquoted-identifiers` driver feature flag: whether the warehouse stores an identifier written
+  without quotes in upper case, so that sync sees `CREATE TABLE orders` as `ORDERS`. It describes the warehouse, not a
+  capability, and is for tools that name tables and columns by what sync saw from identifiers written elsewhere (the
+  dbt metrics converter under `dev/` folds dbt's unquoted names with it). H2, Oracle and Snowflake set it. Defaults to
+  `false`, which a warehouse that folds to lower case (Postgres, Redshift, Trino) or keeps the spelling (MySQL, SQL
+  Server) leaves alone.
+
+- `:type/Binary` is a new base type for raw bytes: Postgres `bytea`, MySQL `BLOB` and `VARBINARY`, SQL Server
+  `varbinary`, Oracle `RAW`, and the like. Drivers should return it from `sql-jdbc.sync/database-type->base-type` for
+  such columns instead of `:type/*`. It derives from `:type/fingerprint-unsupported` and
+  `:type/field-values-unsupported`, so sync neither samples these columns for a fingerprint nor scans their distinct
+  values. It is still a plain base type under `:type/*`, not a semantic type. The coercion strategies
+  `:Coercion/YYYYMMDDHHMMSSBytes->Temporal` and `:Coercion/ISO8601Bytes->Temporal` apply to `:type/Binary` as well as
+  to `:type/*`.
+
+  The bundled JDBC drivers return it for their binary column types: H2, MySQL, Postgres, SQLite, Athena, Oracle,
+  Presto, Redshift, Snowflake, SQL Server, Starburst, Vertica, and the Hive-like drivers (Spark SQL, Databricks).
+  BigQuery still maps `BYTES` to `:type/*` and MongoDB maps `binData` to `:type/MongoBinData`. Third-party drivers may
+  map their binary types to `:type/Binary`; a column whose base type changes from `:type/*` to `:type/Binary` on the
+  first sync after upgrading keeps its semantic type (sync no longer clears it when the old base type was `:type/*`)
+  but gets its effective type, coercion strategy and fingerprint reset.
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while

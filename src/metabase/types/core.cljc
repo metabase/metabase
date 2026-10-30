@@ -139,6 +139,14 @@
 (derive :type/Duration :Semantic/*)
 (derive :type/Duration :type/Number)
 
+;;; Binary Types
+
+;; Raw bytes: Postgres `bytea`, MySQL `BLOB`, SQL Server `varbinary`. Like Mongo's binData (below), blobs are files,
+;; images or ciphertext, so sampling them for a fingerprint costs a lot of memory for no useful result, and a list of
+;; their distinct values is useless as a filter widget.
+(derive :type/Binary :type/fingerprint-unsupported)
+(derive :type/Binary :type/field-values-unsupported)
+
 ;;; Text Types
 
 (derive :type/Text :type/*)
@@ -294,6 +302,8 @@
 (derive :type/MongoBinData :type/TextLike)
 ;; binData holds arbitrary binary blobs (files, images, encrypted data) that aren't text-truncated by the sampler, so
 ;; fingerprinting them (sampling the full values) can use enormous amounts of memory for no useful result.
+;;
+;; TODO (Cam 2026-10-26) -- consider whether this should derive from `:type/Binary` instead
 (derive :type/MongoBinData :type/fingerprint-unsupported)
 (derive :type/MySQLEnum :type/Text)
 ;; IP address can be either a data type e.g. Postgres `inet` or a semantic type e.g. a `text` column that has IP
@@ -495,8 +505,12 @@
 
 (coercion-hierarchies/define-types! :Coercion/DateTime->Date  :type/DateTime :type/Date)
 
-(coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal :type/* :type/DateTime)
-(coercion-hierarchies/define-non-inheritable-type! :Coercion/ISO8601Bytes->Temporal :type/* :type/DateTime)
+;; Binary columns sync as `:type/Binary`; drivers that don't know a type map it to `:type/*`, which is also what binary
+;; columns synced before `:type/Binary` existed still have until their next sync. Both may hold byte-encoded timestamps.
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal
+  #{:type/* :type/Binary} :type/DateTime)
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/ISO8601Bytes->Temporal
+  #{:type/* :type/Binary} :type/DateTime)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Float :type/Text :type/Float)
 

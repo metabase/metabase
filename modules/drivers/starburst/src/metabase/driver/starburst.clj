@@ -410,7 +410,7 @@
     [#"(?i)^time\(\d+\) with time zone$"      :type/TimeWithTZ]
     [#"(?i)array"                             :type/Array]
     [#"(?i)map"                               :type/Dictionary]
-    [#"(?i)varbinary.*"                       :type/*]
+    [#"(?i)varbinary.*"                       :type/Binary]
     [#"(?i)row.*"                             :type/*]
     [#".*"                                    :type/*]]))
 

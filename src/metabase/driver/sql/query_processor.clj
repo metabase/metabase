@@ -1675,7 +1675,7 @@
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 (defn- like-clause
-  "Generate honeysql like clause used in `:starts-with`, `:contains` or `:ends-with.
+  "Generate honeysql like clause used in `:starts-with`, `:contains` or `:ends-with`.
   If matching case insensitively, `pattern` is lowercased earlier in [[generate-pattern]]."
   [field pattern {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   ;; TODO - don't we need to escape underscores and percent signs in the pattern, since they have special meanings in

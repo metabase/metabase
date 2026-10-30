@@ -18,6 +18,14 @@
   (testing "binData holds large binary blobs, which must not be fingerprinted (sampling full values OOMs sync)"
     (is (isa? :type/MongoBinData :type/fingerprint-unsupported))))
 
+(deftest ^:parallel binary-test
+  (testing "blobs must be neither fingerprinted nor scanned for field values (both load whole values into memory)"
+    (is (isa? :type/Binary :type/fingerprint-unsupported))
+    (is (isa? :type/Binary :type/field-values-unsupported)))
+  (testing "but :type/Binary is still a plain base type, not a semantic type"
+    (is (isa? :type/Binary :type/*))
+    (is (not (isa? :type/Binary :Semantic/*)))))
+
 (deftest ^:parallel most-specific-common-ancestor-test
   (are [x y expected] (= expected
                          (types/most-specific-common-ancestor x        y)
@@ -82,10 +90,13 @@
     (is (= nil
            (types/coercion-possibilities :type/Number))))
   (testing "Non-inheritable coercions"
-    ;; type/* has a coercion :Coercion/YYYYMMDDHHMMSSBytes->Temporal
-    (is (= {:type/* #{:Coercion/YYYYMMDDHHMMSSBytes->Temporal
-                      :Coercion/ISO8601Bytes->Temporal}}
-           (types/coercion-possibilities :type/*)))
+    ;; type/* and type/Binary have the coercions :Coercion/YYYYMMDDHHMMSSBytes->Temporal and
+    ;; :Coercion/ISO8601Bytes->Temporal
+    (doseq [base-type [:type/* :type/Binary]]
+      (testing base-type
+        (is (= {base-type #{:Coercion/YYYYMMDDHHMMSSBytes->Temporal
+                            :Coercion/ISO8601Bytes->Temporal}}
+               (types/coercion-possibilities base-type)))))
     ;; a random type descendant of type/* should not have this coercion
     (is (= nil (types/coercion-possibilities :type/DruidHyperUnique)))))
 

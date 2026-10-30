@@ -2759,6 +2759,11 @@
            util}
    :model-imports #{:model/User}}
 
+  sql-to-mbql
+  {:team "Querying Platform"
+   :api  #{metabase.sql-to-mbql.core}
+   :uses #{lib lib.schema sql-tools.parsing util}}
+
   sql-tools
   {:team "DevEx"
    :module-exports #{sql-tools.parsing}
@@ -4457,6 +4462,31 @@
            util.config}
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
+
+  enterprise/semantic-layer-import
+  {:team "Querying Platform"
+   :api  #{}
+   :uses #{driver
+           lib
+           lib.metadata
+           lib.metric
+           lib.schema
+           metrics
+           models
+           sql-to-mbql
+           sql-tools
+           util
+           util.classloader
+           warehouse-schema-overlay
+           enterprise/serialization}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Field
+                    :model/Table}}
+
+  enterprise/semantic-layer-import.dbt
+  {:api  #{}
+   :uses #{util enterprise/semantic-layer-import}}
 
   enterprise/serialization
   {:team "Graphy"

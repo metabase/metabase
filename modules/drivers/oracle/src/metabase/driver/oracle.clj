@@ -75,6 +75,8 @@
    "oracle.net.proxyRemoteDNS" "oracle.net.socksProxyPort" "oracle.net.ssl_server_cert_dn"
    "oracle.net.ssl_server_dn_match" "oracle.net.wallet_location" "server"])
 
+;; `:upper-case-unquoted-identifiers`:
+;; https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Database-Object-Names-and-Qualifiers.html
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 true
                               :datetime-diff                    true
@@ -89,7 +91,11 @@
                               ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
                               ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995
                               :regex/lookaheads-and-lookbehinds false
-                              :table-privileges                true}]
+                              :table-privileges                true
+                              ;; "Nonquoted identifiers are not case sensitive. Oracle interprets them as uppercase."
+                              ;; (Database Object Names and Qualifiers, the SQL Language Reference; the URL is in
+                              ;; the comment above this form)
+                              :upper-case-unquoted-identifiers  true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details
@@ -204,8 +210,8 @@
     [#"ANYTYPE"     :type/*]  ; Can be any named SQL type or an unnamed transient type
     [#"ARRAY"       :type/*]
     [#"BFILE"       :type/*]
-    [#"BLOB"        :type/*]
-    [#"RAW"         :type/*]
+    [#"BLOB"        :type/Binary]
+    [#"RAW"         :type/Binary]
     [#"CHAR"        :type/Text]
     [#"CLOB"        :type/OracleCLOB]
     ;; Yes, the DATE is mapped to `:type/DateTime`. Oracle's DATE can store also a time part.
@@ -217,7 +223,7 @@
     [#"FLOAT"       :type/Float]
     ;; Does this make sense?
     [#"INTERVAL"    :type/DateTime]
-    [#"LONG RAW"    :type/*]
+    [#"LONG RAW"    :type/Binary]
     [#"LONG"        :type/Text]
     ;; Media types -- http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i121058
     [#"^ORD"        :type/*]

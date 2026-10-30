@@ -77,6 +77,7 @@
                         poll
                         host-up?
                         ip-address?
+                        name-uuid
                         sorted-take
                         varargs
                         with-timeout

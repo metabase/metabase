@@ -478,7 +478,7 @@
         (and (or (str/starts-with? stn "char")
                  (str/starts-with? stn "varchar")
                  (str/starts-with? stn "text"))
-             (re-find #"character set binary" stn))         :type/*
+             (re-find #"character set binary" stn))         :type/Binary
 
         (str/starts-with? stn "char")                       :type/Text
         (str/starts-with? stn "varchar")                    :type/Text
@@ -499,7 +499,7 @@
         (= stn "boolean")                   :type/Boolean
         (= stn "long")                      :type/BigInteger
         (str/starts-with? stn "decimal(")   :type/Decimal
-        (= stn "binary")                    :type/*
+        (= stn "binary")                    :type/Binary
         (= stn "date")                      :type/Date
         (= stn "timestamp")                 :type/DateTime
         (= stn "timestamptz")               :type/DateTimeWithTZ
@@ -515,7 +515,7 @@
             [[#"(?i)CHARACTER VARYING" :type/Text]       ; Redshift uses CHARACTER VARYING (N) as a synonym for VARCHAR(N)
              [#"(?i)NUMERIC"           :type/Decimal]])  ; and also has a NUMERIC(P,S) type, which is the same as DECIMAL(P,S)
            {:super       :type/*    ; (requested support in metabase#36642)
-            :varbyte     :type/*    ; represents variable-length binary strings
+            :varbyte     :type/Binary ; variable-length binary strings
             :geometry    :type/*    ; spatial data
             :geography   :type/*    ; spatial data
             :intervaly2m :type/*    ; interval literal

@@ -18,9 +18,9 @@
   (atom {}))
 
 (defonce ^:private
-  ^{:doc "Map of base-type -> #{strategy} which are not inheritable. Eg, binary fields are marked `type/*` and may be coerced
-  to timestamps with `:Coercion/YYYYMMDDHHMMSSBytes->Temporal` but we don't want all children of `type/*` to be
-  coerced as such."}
+  ^{:doc "Map of base-type -> #{strategy} which are not inheritable. Eg, binary fields are `:type/Binary` (or `:type/*`
+  when the driver doesn't know the column type) and may be coerced to timestamps with
+  `:Coercion/YYYYMMDDHHMMSSBytes->Temporal` but we don't want all children of `:type/*` to be coerced as such."}
   non-descending-base-type->strategy
   (atom {}))
 
