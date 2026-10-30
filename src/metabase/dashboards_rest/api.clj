@@ -11,8 +11,6 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as app-db]
-   [metabase.channel.email.messages :as messages]
    [metabase.channel.render.core :as channel.render]
    [metabase.collections.children :as collections.children]
    [metabase.collections.core :as collections]
@@ -39,7 +37,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
-   [metabase.pulse.core :as pulse]
+   [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
@@ -947,92 +945,6 @@
                              :num-tabs       (count created-tab-ids)
                              :total-num-tabs total-num-tabs})))
 
-;;;;;;;;;;;; Bad pulse check & repair
-
-(defn- bad-pulse-notification-data
-  "Given a pulse and bad parameters, return relevant notification data:
-  - The name of the pulse
-  - Which selected parameter values are broken
-  - The user info for the creator of the pulse
-  - The users affected by the pulse"
-  [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
-  (let [creator (dashboards-rest.db/user-name-and-email creator_id)]
-    {:pulse-id       bad-pulse-id
-     :pulse-name     pulse-name
-     :bad-parameters parameters
-     :pulse-creator  creator
-     :affected-users (flatten
-                      (for [{pulse-channel-id  :id
-                             channel-type      :channel_type
-                             {:keys [channel]} :details} (dashboards-rest.db/pulse-channels-for-pulse bad-pulse-id)]
-                        (case channel-type
-                          :email (let [pulse-channel-recipients (when (= :email channel-type)
-                                                                  (dashboards-rest.db/pulse-channel-recipients pulse-channel-id))]
-                                   (when (seq pulse-channel-recipients)
-                                     (map
-                                      (fn [{:keys [common_name] :as recipient}]
-                                        (assoc recipient
-                                               :notification-type channel-type
-                                               :recipient common_name))
-                                      (dashboards-rest.db/user-names-and-emails (map :user_id pulse-channel-recipients)))))
-                          :slack {:notification-type channel-type
-                                  :recipient         channel}
-                          nil)))}))
-
-(defn- broken-pulses
-  "Identify and return any pulses used in a subscription that contain parameters that are no longer on the dashboard."
-  [dashboard-id original-dashboard-params]
-  (when (seq original-dashboard-params)
-    (let [{:keys [resolved-params]} (t2/hydrate (dashboards-rest.db/dashboard-parameters dashboard-id) :resolved-params)
-          dashboard-params (set (keys resolved-params))]
-      ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
-      (->> (dashboards-rest.db/unarchived-pulses-for-dashboard dashboard-id)
-           (keep (fn [{:keys [parameters] :as pulse}]
-                   (let [bad-params (filterv
-                                     (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
-                                     parameters)]
-                     (when (seq bad-params)
-                       (assoc pulse :parameters bad-params)))))
-           seq))))
-
-(defn- broken-subscription-data
-  "Given a dashboard id and original parameters, return data (if any) on any broken subscriptions. This will be a seq
-  of maps, each containing:
-  - The pulse id that was broken
-  - name and email data for the dashboard creator and pulse creator
-  - Affected recipient information
-  - Basic descriptive data on the affected dashboard, pulse, and parameters for use in downstream notifications"
-  [dashboard-id original-dashboard-params]
-  (when-some [broken-pulses (broken-pulses dashboard-id original-dashboard-params)]
-    (let [{dashboard-name        :name
-           dashboard-description :description
-           dashboard-creator     :creator} (t2/hydrate (dashboards-rest.db/dashboard-name-columns dashboard-id) :creator)]
-      (for [broken-pulse broken-pulses]
-        (assoc
-         (bad-pulse-notification-data broken-pulse)
-         :dashboard-id dashboard-id
-         :dashboard-name dashboard-name
-         :dashboard-description dashboard-description
-         :dashboard-creator (select-keys dashboard-creator [:first_name :last_name :email :common_name])
-         ;; We will not include links to Metabase for subscriptions created in modular embeddings
-         :disable_links (:disable_links broken-pulse))))))
-
-(defn- handle-broken-subscriptions
-  "Given a dashboard id and original parameters, determine if any of the subscriptions are broken (we've removed params
-  that subscriptions require). If so, archive the subscriptions and notify the dashboard and pulse creators.
-  The notification goes out only once the surrounding transaction commits, so an update that rolls back sends none."
-  [dashboard-id original-dashboard-params]
-  (when-let [broken-subscriptions (seq (broken-subscription-data dashboard-id original-dashboard-params))]
-    (doseq [{:keys [pulse-id]} broken-subscriptions]
-      (pulse/update-pulse! {:id pulse-id :archived true}))
-    ;; One background thread sends them in order. It isn't this one, because an after-commit callback still holds
-    ;; the transaction's connection.
-    (app-db/do-after-commit
-     #(future
-        (run! messages/send-broken-subscription-notification! broken-subscriptions)))))
-
-;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
-
 (defn- update-dashboard!
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
@@ -1070,7 +982,7 @@
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
              ;; Handle broken subscriptions, if any, when parameters changed
              (when parameters
-               (handle-broken-subscriptions id original-params)))
+               (pulse.broken-subscriptions/handle-broken-subscriptions! id original-params)))
            (when update-dashcards-and-tabs?
              (when (not (false? (:archived false)))
                (api/check-not-archived current-dash))
