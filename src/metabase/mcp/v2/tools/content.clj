@@ -398,12 +398,13 @@
                       dashcards)}))
 
 (defn- dashboard-parameters
-  "The `parameters` include: each stored parameter as `dashboard_write` takes it back, with the ids of the dashcards
-   wired to it. The concise row shows only some of its properties."
+  "The `parameters` include: each stored parameter with every property, and the ids of the dashcards wired to it.
+   The concise row shows only some of those properties."
   [row]
-  (let [param-id->dashcard-ids (into {} (map (juxt :id :dashcard_ids)) (:parameters row))]
-    {:parameters (mapv #(m/assoc-some % :dashcard_ids (param-id->dashcard-ids (:id %)))
-                       (:parameters (::dashboard row)))}))
+  (let [dash                   (::dashboard row)
+        param-id->dashcard-ids (projections/parameter-dashcard-ids dash)]
+    {:parameters (mapv #(m/assoc-some % :dashcard_ids (param-id->dashcard-ids (u/qualified-name (:id %))))
+                       (:parameters dash))}))
 
 ;;; ----------------------------------------------------- alert ----------------------------------------------------
 

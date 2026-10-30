@@ -249,16 +249,22 @@
                         (mapv #(m/remove-vals nil? (select-keys % [:id :name])) (:series dc)))
     :inline_parameters (not-empty (:inline_parameters dc))}))
 
-(defn- dashboard-parameters-summary
-  "One row per dashboard parameter, with a subset of its stored properties and the ids of the dashcards wired to it.
+(defn parameter-dashcard-ids
+  "A map from each wired parameter's id, as a string, to the sorted ids of `dash`'s dashcards wired to it.
    A dry run's unsaved dashcards appear under their negative ids."
   [dash]
-  (let [param-id->dashcard-ids (reduce (fn [acc {dashcard-id :id :keys [parameter_mappings]}]
-                                         (reduce #(update %1 (u/qualified-name (:parameter_id %2)) (fnil conj #{}) dashcard-id)
-                                                 acc
-                                                 parameter_mappings))
-                                       {}
-                                       (:dashcards dash))]
+  (update-vals (reduce (fn [acc {dashcard-id :id :keys [parameter_mappings]}]
+                         (reduce #(update %1 (u/qualified-name (:parameter_id %2)) (fnil conj #{}) dashcard-id)
+                                 acc
+                                 parameter_mappings))
+                       {}
+                       (:dashcards dash))
+               (comp vec sort)))
+
+(defn- dashboard-parameters-summary
+  "One row per dashboard parameter, with a subset of its stored properties and the ids of the dashcards wired to it."
+  [dash]
+  (let [param-id->dashcard-ids (parameter-dashcard-ids dash)]
     (mapv (fn [{param-id :id :as param}]
             (m/remove-vals
              nil?
@@ -277,11 +283,7 @@
               ;; The REST endpoint `GET /api/dashboard/:id` returns stored parameters the same way, so
               ;; redacting them only here would not keep them from those users.
               :values_source_config (:values_source_config param)
-              :dashcard_ids         (->> (get param-id->dashcard-ids (u/qualified-name param-id))
-                                         (remove nil?)
-                                         sort
-                                         vec
-                                         not-empty)}))
+              :dashcard_ids         (get param-id->dashcard-ids (u/qualified-name param-id))}))
           (:parameters dash))))
 
 (defn dashboard-row
