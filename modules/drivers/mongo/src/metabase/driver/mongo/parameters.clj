@@ -125,6 +125,7 @@
    stage-number :- :int
    param->value :- [:maybe [:map-of :metabase.lib.schema.common/non-blank-string
                             :metabase.lib.parameters.parse.types/parsed-value]]
+   tracker      :- [:maybe [:fn volatile?]]
    [acc missing] :- [:tuple [:sequential :string] [:maybe [:sequential :string]]]
    in-optional?  :- :boolean
    {:keys [k], :as _param} :- :metabase.lib.parameters.parse.types/param]
@@ -162,13 +163,16 @@
                                     driver-api/wrap-value-literals-in-mbql5
                                     (->> (mongo.qp/compile-filter query stage-number))
                                     json/encode)]
+            (params.values/record-substituted-tag! tracker k)
             [(conj acc compiled-clause) missing])
           ;; no-value field filters inside optional clauses are ignored and omitted entirely
           (and no-value? in-optional?) [acc (conj missing k)]
           ;; otherwise replace it with a {} which is the $match equivalent of 1 = 1, i.e. always true
           no-value?                    [(conj acc "{}") missing]
-          :else                        [(conj acc (substitute-field-filter query v))
-                                        missing]))
+          :else                        (do
+                                         (params.values/record-substituted-tag! tracker k)
+                                         [(conj acc (substitute-field-filter query v))
+                                          missing])))
 
       (lib/parsed-referenced-query-snippet-param? v)
       (substitute-native-query-snippet [acc missing] v)
@@ -181,7 +185,9 @@
       [acc (conj missing k)]
 
       :else
-      [(conj acc (param-value->str nil v)) missing])))
+      (do
+        (params.values/record-substituted-tag! tracker k)
+        [(conj acc (param-value->str nil v)) missing]))))
 
 (declare substitute*)
 
@@ -190,11 +196,15 @@
    stage-number :- :int
    param->value :- [:maybe [:map-of :metabase.lib.schema.common/non-blank-string
                             :metabase.lib.parameters.parse.types/parsed-value]]
+   tracker      :- [:maybe [:fn volatile?]]
    [acc missing] :- [:tuple [:sequential :string] [:maybe [:sequential :string]]]
    {subclauses :args} :- :metabase.lib.parameters.parse.types/optional]
-  (let [[opt-acc opt-missing] (substitute* query stage-number param->value subclauses true)]
+  (let [substituted           (params.values/substituted-tags tracker)
+        [opt-acc opt-missing] (substitute* query stage-number param->value tracker subclauses true)]
     (if (seq opt-missing)
-      [acc missing]
+      (do
+        (params.values/reset-substituted-tags! tracker substituted)
+        [acc missing])
       [(into acc opt-acc) missing])))
 
 (mu/defn- substitute*
@@ -203,6 +213,7 @@
    stage-number :- :int
    param->value :- [:maybe [:map-of :metabase.lib.schema.common/non-blank-string
                             :metabase.lib.parameters.parse.types/parsed-value]]
+   tracker      :- [:maybe [:fn volatile?]]
    xs           :- [:sequential :metabase.lib.parameters.parse/parsed-token]
    in-optional? :- :boolean]
   (reduce
@@ -212,10 +223,10 @@
        [(conj acc x) missing]
 
        (lib/parsed-param? x)
-       (substitute-param query stage-number param->value [acc missing] in-optional? x)
+       (substitute-param query stage-number param->value tracker [acc missing] in-optional? x)
 
        (lib/parsed-optional-param? x)
-       (substitute-optional query stage-number param->value [acc missing] x)
+       (substitute-optional query stage-number param->value tracker [acc missing] x)
 
        :else
        (throw (ex-info (tru "Don''t know how to substitute {0} {1}" (.getName (class x)) (pr-str x))
@@ -224,36 +235,49 @@
    xs))
 
 (mu/defn- substitute
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   param->value :- [:maybe [:map-of :metabase.lib.schema.common/non-blank-string
-                            :metabase.lib.parameters.parse.types/parsed-value]]
-   xs           :- [:sequential :metabase.lib.parameters.parse/parsed-token]]
-  (let [[replaced missing] (substitute* query stage-number param->value xs false)]
-    (when (seq missing)
-      (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
-                      {:type driver-api/qp.error-type.invalid-query})))
-    (when (seq replaced)
-      (str/join replaced))))
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    param->value :- [:maybe [:map-of :metabase.lib.schema.common/non-blank-string
+                             :metabase.lib.parameters.parse.types/parsed-value]]
+    xs           :- [:sequential :metabase.lib.parameters.parse/parsed-token]]
+   (substitute query stage-number param->value nil xs))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    param->value :- [:maybe [:map-of :metabase.lib.schema.common/non-blank-string
+                             :metabase.lib.parameters.parse.types/parsed-value]]
+    tracker      :- [:maybe [:fn volatile?]]
+    xs           :- [:sequential :metabase.lib.parameters.parse/parsed-token]]
+   (let [[replaced missing] (substitute* query stage-number param->value tracker xs false)]
+     (when (seq missing)
+       (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
+                       {:type driver-api/qp.error-type.invalid-query})))
+     (when (seq replaced)
+       (str/join replaced)))))
 
 (mu/defn- parse-and-substitute
   [query        :- ::lib.schema/query
    stage-number :- :int
    param->value :- [:maybe [:map-of :metabase.lib.schema.common/non-blank-string
                             :metabase.lib.parameters.parse.types/parsed-value]]
+   tracker      :- [:maybe [:fn volatile?]]
    x            :- :string]
-  (substitute query stage-number param->value (lib/parse-parameters x false)))
+  (substitute query stage-number param->value tracker (lib/parse-parameters x false)))
 
 (mu/defn substitute-native-parameters :- ::lib.schema/query
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."
   [_driver      :- :keyword
    query        :- ::lib.schema/query
    stage-number :- :int]
-  (let [param->value (params.values/stage->params-map query (lib/query-stage query stage-number))
-        update-stage (fn [native-stage]
-                       (perf/postwalk (fn [x]
-                                        (if (string? x)
-                                          (parse-and-substitute query stage-number param->value x)
-                                          x))
-                                      native-stage))]
-    (lib/update-query-stage query stage-number update :native update-stage)))
+  (let [stage        (lib/query-stage query stage-number)
+        param->value (params.values/stage->params-map query stage)]
+    (params.values/call-with-must-apply-check
+     stage
+     (fn [tracker]
+       (letfn [(update-stage [native-stage]
+                 (perf/postwalk (fn [x]
+                                  (if (string? x)
+                                    (parse-and-substitute query stage-number param->value tracker x)
+                                    x))
+                                native-stage))]
+         (lib/update-query-stage query stage-number update :native update-stage))))))

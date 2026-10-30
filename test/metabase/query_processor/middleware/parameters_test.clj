@@ -633,6 +633,38 @@
                                             :value           [1]
                                             :lib/must-apply? true})))))))
 
+(deftest ^:parallel must-apply-native-param-not-substituted-fails-closed-test
+  (let [param {:id              "p1"
+               :type            :number/=
+               :target          [:variable [:template-tag "price"]]
+               :value           [1]
+               :lib/must-apply? true}
+        query (fn [sql]
+                (-> native-price-query
+                    (assoc-in [:native :query] sql)
+                    (assoc-in [:native :template-tags "name"] {:name "name", :display-name "Name", :type :text})))]
+    (testing "a must-apply parameter throws when its template tag is not substituted"
+      (doseq [[description sql] {"tag not in the query text"
+                                 "SELECT * FROM venues"
+                                 "optional clause dropped because another tag in it has no value"
+                                 "SELECT * FROM venues [[WHERE price = {{price}} AND name = {{name}}]]"}
+              enforce?          [true false]]
+        (testing (str description ", schema checks " (if enforce? "on" "off"))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Filter `p1` must be applied, but it could not be"
+               (substitute-must-apply-params enforce? (query sql) param))))))
+    (testing "a must-apply parameter in an optional clause is substituted when the clause is kept"
+      (is (=? {:stages [{:native "SELECT * FROM venues WHERE price = 1"}]}
+              (substitute-must-apply-params true (query "SELECT * FROM venues [[WHERE price = {{price}}]]") param)))
+      (is (=? {:stages [{:native "SELECT * FROM venues WHERE price = 1 AND name = ?", :params ["x"]}]}
+              (substitute-must-apply-params true (query "SELECT * FROM venues [[WHERE price = {{price}} AND name = {{name}}]]")
+                                            param
+                                            {:id     "p2"
+                                             :type   :string/=
+                                             :target [:variable [:template-tag "name"]]
+                                             :value  ["x"]}))))))
+
 (deftest must-apply-native-param-without-native-parameters-support-fails-closed-test
   (testing "a must-apply parameter on a driver without :native-parameters throws instead of being ignored"
     (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [_driver feature _db] (not= feature :native-parameters))]

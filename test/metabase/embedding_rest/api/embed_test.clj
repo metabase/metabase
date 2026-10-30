@@ -1484,11 +1484,11 @@
       (mt/with-dynamic-fn-redefs [api.embed.common/check-locked-value! (constantly nil)]
         (with-temp-card [card (venue-id-native-card)]
           (testing "card"
-            (is (=? {:status "failed", :error #"Filter .* must be applied, but it could not be.*"}
+            (is (=? {:status "failed", :error #"Filter `v1` must be applied, but it could not be.*"}
                     (client/client :get 400 (card-query-url card "" {:params {:venue_id [nil]}}))))))
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "locked"}}}]
           (testing "dashcard"
-            (is (=? {:status "failed", :error #"Filter .* must be applied, but it could not be.*"}
+            (is (=? {:status "failed", :error #"Filter `_VENUE_ID_` must be applied, but it could not be.*"}
                     (client/client :get 400 (dashcard-url dashcard {:params {:venue_id [nil]}}))))))))))
 
 (deftest card-param-values-require-valid-locked-values-test

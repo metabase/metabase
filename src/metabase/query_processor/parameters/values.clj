@@ -25,6 +25,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.parameters.must-apply :as must-apply]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -485,3 +486,51 @@
                 (when (lib/parsed-referenced-card-query-param? param)
                   (:card-id param))))
         (vals params-map)))
+
+;;; Must-apply parameters
+;;
+;; A `tracker` is a volatile set of the names of the tags that native parameter substitution put a value in place of, or
+;; nil when the stage has no must-apply parameter and nothing needs tracking.
+
+(defn record-substituted-tag!
+  "Record in `tracker` that substitution put a value in place of tag `tag-name`."
+  [tracker tag-name]
+  (some-> tracker (vswap! conj tag-name)))
+
+(defn substituted-tags
+  "The tags `tracker` holds now. Take this before an optional clause, and give it to [[reset-substituted-tags!]] if the
+  clause is left out."
+  [tracker]
+  (some-> tracker deref))
+
+(defn reset-substituted-tags!
+  "Forget the tags `tracker` recorded since [[substituted-tags]] returned `tags`."
+  [tracker tags]
+  (some-> tracker (vreset! tags)))
+
+(defn- must-apply-tag->param
+  "Map of tag name, as [[stage->params-map]] keys it, to the must-apply parameter that targets that tag."
+  [{tags :template-tags, params :parameters}]
+  (into {}
+        (keep (fn [{tag-name :name, :as tag}]
+                (let [tag-target? (lib/template-tag-target-pred tag)]
+                  (when-let [param (some #(when (and (:lib/must-apply? %) (tag-target? (:target %))) %) params)]
+                    [(or (lib/match-and-normalize-tag-name tag-name) tag-name) param]))))
+        tags))
+
+(defn call-with-must-apply-check
+  "Call `(f tracker)`, which substitutes the parameters of native `stage`, and return its result. `f` records each tag it
+  substitutes with [[record-substituted-tag!]]. Throw if the tag of a must-apply parameter was not substituted."
+  [stage f]
+  (let [tag->param (must-apply-tag->param stage)]
+    (if-not (seq tag->param)
+      (f nil)
+      (let [tracker     (volatile! #{})
+            result      (f tracker)
+            substituted @tracker]
+        (doseq [[tag-name param] tag->param
+                :when (not (contains? substituted tag-name))]
+          (must-apply/throw-if-must-apply
+           param
+           (tru "its template tag is not in the query, or is in an optional clause that was left out")))
+        result))))
