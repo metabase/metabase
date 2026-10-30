@@ -23,9 +23,10 @@
 (def ^:private collector-job-key (jobs/key "metabase.task.semantic-metric-collector.job"))
 (def ^:private collector-trigger-key (triggers/key "metabase.task.semantic-metric-collector.trigger"))
 
+;; Labelled because an unlabelled collector can never stop exporting a series; the value matches the
+;; logical index the semantic index-health checks register under.
 (def ^:private store-gauge-labels
-  "The logical index these store gauges belong to, matching the semantic index-health checks.
-  They carry a label because an unlabelled collector cannot stop exporting a series."
+  "The labels the semantic store gauges are published under."
   {:index "semantic-search"})
 
 (defn- row-count
@@ -93,10 +94,9 @@
   store-gauge-collector)
 
 (defn- collect-metrics! []
-  ;; Registered collectors self-gate, so refreshing them is a cheap no-op when their feature is off.
-  ;; This persists the health rows, and republishes this node's gauges on the way. That overlaps the
-  ;; per-process pull collectors harmlessly: the value is still this node's own measurement, not a reading
-  ;; it is holding on another node's behalf.
+  ;; Registered collectors self-gate, so this is a cheap no-op when their feature is off. It persists the
+  ;; health rows and republishes this node's own gauges on the way, overlapping the scrape collectors
+  ;; harmlessly.
   (search.index-health/refresh-search-index-metrics!))
 
 (task/defjob SemanticMetricCollector

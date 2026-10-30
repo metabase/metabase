@@ -231,21 +231,21 @@
 (defn- submit-background-refresh! [f]
   (future-call f))
 
+;; A live refresh is never replaced. One stuck in a socket read cannot be cancelled, so admitting a
+;; replacement would strand another thread on every scrape.
 (defn- claim-refresh!
   "Mark `id` in flight, returning false when it already was."
   [id]
   (let [[before _] (swap-vals! refreshes-in-flight conj id)]
     (not (contains? before id))))
 
+;; Prometheus scrapes every process while a scheduled job runs on one member of a Quartz cluster, so a
+;; collector built this way has each process measure its own series rather than republishing another node's.
 (defn background-refresh-collector
   "A [[pull-collector]] map running `refresh!` on a local single-flight background thread, at most once per
-  `min-interval-s`.
-  Prometheus scrapes every process while a scheduled job runs on one member of a Quartz cluster, so a
-  collector built this way has each process measure its own series rather than republishing another node's.
-  The scrape itself never waits on the measurement.
-  A `refresh!` that never returns holds its claim for the life of the process, which stops its gauges being
-  refreshed. That beats admitting a replacement on every scrape and stranding a thread each time, but it
-  does mean whatever this publishes wants a staleness check of its own."
+  `min-interval-s`. The scrape never waits on the measurement.
+  A `refresh!` that never returns holds its claim for the life of the process, so its gauges stop being
+  refreshed: whatever this publishes wants a staleness check of its own."
   [id min-interval-s refresh!]
   {:min-interval-s min-interval-s
    :f              (fn []
@@ -1174,11 +1174,9 @@
     (.clear ^SimpleCollector (:raw (lookup-collector metric)))))
 
 (defn remove-series!
-  "Call Collector.remove() for one label combination of `metric`, so it stops being exported entirely.
-  Unlike [[clear!]], which drops every label combination, and unlike setting the value to NaN, which keeps
-  exporting the series with a value that poisons `avg`/`sum`. Prometheus marks a series that stops being
-  exported stale, which is what makes queries ignore it.
-  Throws for a metric declared without labels, which has no removable series."
+  "Stop exporting the one series of `metric` that carries `labels`, so Prometheus marks it stale.
+  Where [[clear!]] drops every label combination of a metric, this drops one.
+  Throws when `metric` is not registered, or was declared without labels and so has no removable series."
   [metric labels]
   (when-not system
     (setup!))

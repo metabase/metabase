@@ -116,8 +116,7 @@
     (-clear! r metric)))
 
 (defn remove-series!
-  "Stop exporting one label combination of a metric, so Prometheus marks it stale rather than continuing to
-  scrape a value nothing refreshes. No-op if no reporter is registered."
+  "Stop exporting one label combination of a metric. No-op if no reporter is registered."
   [metric labels]
   (when-let [r @reporter]
     (-remove-series! r metric labels)))

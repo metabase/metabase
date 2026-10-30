@@ -85,7 +85,7 @@
     (is (thrown? InterruptedException (@#'semantic.task.collector/collect-store-gauges!)))))
 
 (deftest job-persists-health-rows-test
-  (testing "the clustered job is what persists health rows; the gauges refresh per process"
+  (testing "the clustered job refreshes every registered measure, which is what persists health rows"
     (let [refreshes (atom 0)]
       (mt/with-dynamic-fn-redefs
         [search.index-health/refresh-search-index-metrics! #(swap! refreshes inc)]
