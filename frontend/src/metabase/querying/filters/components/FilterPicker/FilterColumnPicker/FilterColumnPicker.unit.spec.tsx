@@ -22,6 +22,7 @@ interface SetupOpts {
 
 function setup({ query, stageIndexes }: SetupOpts) {
   const onColumnSelect = jest.fn<void, [ColumnListItem]>();
+  const onExpressionSelect = jest.fn<void, [Lib.DefinedClauseName?]>();
   setupFieldsValuesEndpoints(SAMPLE_DB_FIELD_VALUES);
   renderWithProviders(
     <FilterColumnPicker
@@ -30,10 +31,10 @@ function setup({ query, stageIndexes }: SetupOpts) {
       checkItemIsSelected={() => false}
       onColumnSelect={onColumnSelect}
       onSegmentSelect={jest.fn()}
-      onExpressionSelect={jest.fn()}
+      onExpressionSelect={onExpressionSelect}
     />,
   );
-  return { onColumnSelect };
+  return { onColumnSelect, onExpressionSelect };
 }
 
 describe("FilterColumnPicker", () => {
@@ -163,5 +164,31 @@ describe("FilterColumnPicker", () => {
     expect(
       onColumnSelect.mock.calls.map(([item]) => getColumnRef(item.column)),
     ).toEqual(expectedColumnRefs);
+  });
+
+  it("should pick a custom expression from the search results", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    const { onExpressionSelect } = setup({ query, stageIndexes: [0] });
+
+    await userEvent.type(screen.getByPlaceholderText("Find..."), "coalesce");
+    expect(screen.getByText("Custom Expressions")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("coalesce"));
+
+    expect(onExpressionSelect).toHaveBeenCalledTimes(1);
+    expect(onExpressionSelect).toHaveBeenCalledWith("coalesce");
+  });
+
+  it("should pick a custom expression when the search ends with an opening parenthesis", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    const { onExpressionSelect } = setup({ query, stageIndexes: [0] });
+    const search = screen.getByPlaceholderText("Find...");
+
+    await userEvent.type(search, "foo(");
+    expect(onExpressionSelect).not.toHaveBeenCalled();
+
+    await userEvent.clear(search);
+    await userEvent.type(search, "case(");
+    expect(onExpressionSelect).toHaveBeenCalledTimes(1);
+    expect(onExpressionSelect).toHaveBeenCalledWith("case");
   });
 });
