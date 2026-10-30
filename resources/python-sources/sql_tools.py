@@ -2046,7 +2046,7 @@ _TSQL_STATEMENT_WORDS = frozenset(
 _MYSQL_FAMILY_DIALECTS = frozenset({"mysql", "mariadb", "singlestore", "starrocks", "doris", "tidb"})
 
 
-def _hidden_sql(sql: str, dialect: str):
+def _hidden_sql(sql: str, dialect: str, select: bool):
     """`(reason, detail)` when `sql` holds text its database would run and sqlglot would not parse as a statement of
     its own, else None.
 
@@ -2058,10 +2058,13 @@ def _hidden_sql(sql: str, dialect: str):
     A `U&"..."` identifier is refused in every dialect. Postgres reads its escapes, so `U&"pg_\\0073leep"` names
     `pg_sleep`, and sqlglot keeps them, so the function checks above never see the name. Like the MySQL marks, it is
     looked for in the raw text.
+
+    The T-SQL statement words are looked for only when `select` says the statement is a SELECT, since a write
+    statement starts with one.
     """
     if re.search(r"(?<![\w\$])[uU]&\"", sql) is not None:
         return ("unicode-identifier", None)
-    if dialect == "tsql":
+    if dialect == "tsql" and select:
         quoted = (sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING, sqlglot.TokenType.IDENTIFIER)
         for tok in sqlglot.tokenize(sql, read=dialect):
             if tok.token_type not in quoted and tok.text.upper() in _TSQL_STATEMENT_WORDS:
@@ -2093,7 +2096,7 @@ def _statement_reason(stmt: exp.Expression, sql: str, dialect: str):
         return ("sql-executing-function", executor)
     if _dynamic_function_call(stmt):
         return ("dynamic-function-call", None)
-    return _hidden_sql(sql, dialect)
+    return _hidden_sql(sql, dialect, isinstance(_unbracketed(stmt), (exp.Select, exp.SetOperation)))
 
 
 def _not_read_only_reason(stmts, sql: str, dialect: str):
