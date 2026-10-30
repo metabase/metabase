@@ -1881,7 +1881,15 @@
           (testing "Rendered text lists the result columns the LLM must reference by name"
             (is (str/includes? output "### Fields"))
             (is (str/includes? output (str "<field id=\"" (mt/id :products :category) "\" name=\"CATEGORY\"")))
-            (is (str/includes? output "<field id=\"count\" name=\"count\""))))))))
+            (is (str/includes? output "<field id=\"count\" name=\"count\""))))
+        (testing "The base URI omits the fields, which only /fields returns"
+          (let [read-result (read-uris {:uris [(str "metabase://question/" question-id)]})
+                output      (:output read-result)
+                structured  (get-in read-result [:resources 0 :content :structured-output])]
+            (is (re-find #"<name>\S*My fav card" output))
+            (is (empty? (:fields structured)))
+            (is (not (str/includes? output "### Fields")))
+            (is (not (str/includes? output "<field ")))))))))
 
 (deftest read-native-question-resource-test
   (testing "/fields on a native question renders its result columns, which have no Field ids"
