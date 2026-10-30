@@ -1106,8 +1106,8 @@ const changeValue = ({ fieldName, fieldType, oldValue, newValue }) => {
   cy.findByPlaceholderText(fieldName)
     .should("have.attr", "type", fieldType)
     .should("have.value", oldValue)
-    .clear()
-    .type(newValue);
+    .clear({ scrollBehavior: "center" })
+    .type(newValue, { scrollBehavior: "center" });
 };
 
 function formFieldContainer(label) {
