@@ -139,7 +139,7 @@
       ;; The realistic cause is a refresh wedged in a database call: it holds its single-flight claim for
       ;; the life of the process, so this node would otherwise just go quiet.
       (log/warn "Search gauge series expired: this process stopped refreshing it"
-                {:gauge gauge-key :labels labels})
+                {:gauge gauge-key, :labels labels})
       (analytics/remove-series! gauge-key labels)
       (swap! live-gauge-series dissoc series))))
 

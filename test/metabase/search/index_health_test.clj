@@ -10,6 +10,13 @@
 
 (set! *warn-on-reflection* true)
 
+(defmacro ^:private with-gauge-spy
+  "Record gauge writes into `calls` as [:set gauge-key labels value] or [:remove gauge-key labels]."
+  [calls & body]
+  `(mt/with-dynamic-fn-redefs [analytics/set-gauge!     (fn [& args#] (swap! ~calls conj (into [:set] args#)))
+                               analytics/remove-series! (fn [& args#] (swap! ~calls conj (into [:remove] args#)))]
+     ~@body))
+
 (deftest ^:synchronized register-index-check!-migrates-a-legacy-registry-test
   (testing "a live upgrade migrates the defonce'd registry's former vector value"
     (let [measures (atom [{:check-name :legacy-measure, :collect (constantly nil)}])
@@ -65,8 +72,7 @@
   (let [calls (atom [])
         live  (atom {})]
     (with-redefs [index-health/live-gauge-series live]
-      (mt/with-dynamic-fn-redefs [analytics/set-gauge!     (fn [& args] (swap! calls conj (vec args)))
-                                  analytics/remove-series! (fn [& args] (swap! calls conj (into [:removed] args)))]
+      (with-gauge-spy calls
         (testing "a collector result updates the gauge and returns the health row"
           (is (= {:health 75 :message "ok"}
                  (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
@@ -74,13 +80,13 @@
                                                :collect   (constantly {:value   0.75
                                                                        :health  75
                                                                        :message "ok"})})))
-          (is (= [[:metabase-search/index-coverage-ratio {:index "semantic"} 0.75]] @calls)))
+          (is (= [[:set :metabase-search/index-coverage-ratio {:index "semantic"} 0.75]] @calls)))
         (testing "an inapplicable collector stops exporting a live gauge and returns nil"
           (reset! calls [])
           (is (nil? (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
                                                   :index    :semantic
                                                   :collect   (constantly nil)})))
-          (is (= [[:removed :metabase-search/index-coverage-ratio {:index "semantic"}]] @calls)))
+          (is (= [[:remove :metabase-search/index-coverage-ratio {:index "semantic"}]] @calls)))
         (testing "a throwing collector stops exporting the gauge and returns a degraded row"
           (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
                                         :index    :throwing-collector-test
@@ -91,7 +97,7 @@
                                                 :index    :throwing-collector-test
                                                 :collect   (fn []
                                                              (throw (ex-info "collector boom" {})))})))
-          (is (= [[:removed :metabase-search/index-coverage-ratio {:index "throwing-collector-test"}]]
+          (is (= [[:remove :metabase-search/index-coverage-ratio {:index "throwing-collector-test"}]]
                  @calls)))))))
 
 (deftest run-measure!-propagates-interruption-test
@@ -102,10 +108,8 @@
 
 (deftest ^:synchronized inapplicable-measure-does-not-create-series-test
   (testing "an inapplicable measure neither exports a series nor tries to remove one"
-    (let [calls (atom [])
-          spy   (fn [op] (fn [& args] (swap! calls conj (into [op] args))))]
-      (mt/with-dynamic-fn-redefs [analytics/set-gauge!     (spy :set-gauge!)
-                                  analytics/remove-series! (spy :remove-series!)]
+    (let [calls (atom [])]
+      (with-gauge-spy calls
         (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
                                       :index     :never-emitted-test-engine
                                       :collect   (constantly nil)}))
@@ -118,15 +122,13 @@
           gauge-key :metabase-search/index-coverage-ratio
           labels    {:index "failed-write-test-engine"}
           series    [gauge-key labels]
-          calls     (atom [])
-          spy       (fn [op] (fn [& args] (swap! calls conj (into [op] args))))]
+          calls     (atom [])]
       (try
         (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& _]
                                                            (throw (ex-info "prometheus down" {})))]
           (is (thrown? Exception (publish! gauge-key labels 1.0)))
           (is (not (contains? @live series))))
-        (mt/with-dynamic-fn-redefs [analytics/set-gauge!     (spy :set-gauge!)
-                                    analytics/remove-series! (spy :remove-series!)]
+        (with-gauge-spy calls
           (publish! gauge-key labels nil)
           (is (empty? @calls))
           (publish! gauge-key labels 0.5)
@@ -147,15 +149,14 @@
                  :index     :refresh-isolation-test
                  :collect    (constantly {:value 1.0 :health 100 :message "ok"})}]
       (with-redefs [index-health/live-gauge-series live]
-        (mt/with-dynamic-fn-redefs [analytics/set-gauge!      (fn [& args] (swap! calls conj (vec args)))
-                                    analytics/remove-series!  (fn [& args] (swap! calls conj (into [:removed] args)))
-                                    health-inspector/enabled? (constantly false)]
-          (#'index-health/run-measure! (assoc boom :collect
-                                              (constantly {:value 5 :health 100 :message "was fine"})))
-          (reset! calls [])
-          (run! #'index-health/refresh-index-check! [boom ok])))
-      (is (= [[:removed :metabase-search/index-staleness-seconds {:index "refresh-isolation-test"}]
-              [:metabase-search/index-coverage-ratio {:index "refresh-isolation-test"} 1.0]]
+        (with-gauge-spy calls
+          (mt/with-dynamic-fn-redefs [health-inspector/enabled? (constantly false)]
+            (#'index-health/run-measure! (assoc boom :collect
+                                                (constantly {:value 5, :health 100, :message "was fine"})))
+            (reset! calls [])
+            (run! #'index-health/refresh-index-check! [boom ok]))))
+      (is (= [[:remove :metabase-search/index-staleness-seconds {:index "refresh-isolation-test"}]
+              [:set :metabase-search/index-coverage-ratio {:index "refresh-isolation-test"} 1.0]]
              @calls)))))
 
 (deftest ^:synchronized pull-collector-refreshes-gauges-on-each-instance-test
@@ -202,10 +203,10 @@
     ;; a map is a function of its keys, so this stands in for the timers' ages
     (with-redefs [index-health/live-gauge-series live
                   u/since-ms                    {::fresh 1000, ::stale 3600000}]
-      (mt/with-dynamic-fn-redefs [analytics/remove-series! (fn [& args] (swap! calls conj (vec args)))]
+      (with-gauge-spy calls
         (#'index-health/expire-stale-gauges!)
         (testing "a series this node stopped refreshing stops being exported"
-          (is (= [[:metabase-search/index-coverage-ratio {:index "stale"}]] @calls))
+          (is (= [[:remove :metabase-search/index-coverage-ratio {:index "stale"}]] @calls))
           (is (= #{[:metabase-search/index-coverage-ratio {:index "fresh"}]} (set (keys @live)))))
         (testing "and only once"
           (reset! calls [])

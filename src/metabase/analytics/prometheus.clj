@@ -260,7 +260,7 @@
                          (catch Exception e
                            (swap! refreshes-in-flight disj id)
                            (log/error "Could not schedule a background metric refresh"
-                                      {:id id :error (ex-message e)}))))
+                                      {:id id, :error (ex-message e)}))))
                      nil)})
 
 (defn- jvm-collectors
