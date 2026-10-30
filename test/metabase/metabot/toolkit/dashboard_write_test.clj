@@ -68,13 +68,14 @@
   (testing "a create whose read back fails leaves nothing behind, so the error it reports is true"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {}]
-        (let [dash-name "Created then read back by the toolkit"]
-          (mt/with-dynamic-fn-redefs [dashboard-write/hydrated
-                                      (fn [_] (throw (ex-info "read back failed" {})))]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read back failed"
-                                  (dashboard-write/write! {:attrs {:name dash-name}
-                                                           :ops   [{:op "add_card" :id -1 :card_id (:id card)}]}))))
-          (is (not (t2/exists? :model/Dashboard :name dash-name))))))))
+        (doseq [ops [nil [{:op "add_card" :id -1 :card_id (:id card)}]]]
+          (testing (if ops "with ops" "without ops")
+            (let [dash-name "Created then read back by the toolkit"]
+              (mt/with-dynamic-fn-redefs [dashboard-write/hydrated
+                                          (fn [_] (throw (ex-info "read back failed" {})))]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read back failed"
+                                      (dashboard-write/write! {:attrs {:name dash-name}, :ops ops}))))
+              (is (not (t2/exists? :model/Dashboard :name dash-name))))))))))
 
 (deftest malformed-ops-test
   (testing "ops that are not a list fail as :invalid-op on every path, before anything reads them"
@@ -113,3 +114,51 @@
                                                         :attrs          {}
                                                         :ops            [{:op "add_card" :id -1 :card_id (:id card)}]
                                                         :validate-only? true})))))))))
+
+(deftest save-without-ops-checks-what-a-dry-run-checks-test
+  (testing "a save without ops refuses the attributes its dry run refuses, before any write"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+        (doseq [validate-only? [true false]]
+          (testing (if validate-only? "dry run" "save")
+            (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:parameters some?}}
+                    (error-data #(dashboard-write/write! {:dashboard      (hydrated (:id dash))
+                                                          :attrs          {:parameters [{:id "p" :type "not-a-type"}]}
+                                                          :validate-only? validate-only?}))))))
+        (is (empty? (:parameters (hydrated (:id dash))))))))
+  (testing "a create is held to what creating a dashboard requires, with or without ops"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [ops            [nil [{:op "add_text" :id -1 :markdown "hi"}]]
+              validate-only? [true false]]
+        (testing (pr-str ops validate-only?)
+          (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:name some?}}
+                  (error-data #(dashboard-write/write! {:attrs          {:description "No name"}
+                                                        :ops            ops
+                                                        :validate-only? validate-only?})))))
+        (is (not (t2/exists? :model/Dashboard :description "No name")))))))
+
+(deftest save-without-ops-keeps-the-layout-test
+  (testing "a save without ops changes the attributes and leaves the dashcards as they are"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card          card {}
+                     :model/Dashboard     dash {:name "Sales"}
+                     :model/DashboardCard dc   {:dashboard_id (:id dash), :card_id (:id card)}]
+        (is (=? {:name "Revenue", :dashcards [{:id (:id dc)}]}
+                (dashboard-write/write! {:dashboard (hydrated (:id dash)), :attrs {:name "Revenue"}})))))))
+
+(deftest dry-run-checks-write-permission-test
+  (testing "a dry run is refused where the save would be, for lack of write or create permission"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Dashboard  dash       {:name "Sales", :collection_id (:id collection)}]
+      (mt/with-non-admin-groups-no-collection-perms collection
+        (mt/with-current-user (mt/user->id :rasta)
+          (testing "update"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                  (dashboard-write/write! {:dashboard      (hydrated (:id dash))
+                                                           :attrs          {:name "Revenue"}
+                                                           :validate-only? true}))))
+          (testing "create"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                  (dashboard-write/write! {:attrs          {:name          "New"
+                                                                            :collection_id (:id collection)}
+                                                           :validate-only? true})))))))))

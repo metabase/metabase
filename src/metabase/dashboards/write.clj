@@ -67,21 +67,24 @@
     (doseq [action-id (set/difference (:actions new-references) (:actions stored))]
       (api/read-check :model/Action action-id))))
 
+(def NewDashboard
+  "Schema for the argument to [[create-dashboard!]]: the attributes of a new dashboard."
+  [:map {:closed true}
+   [:name                ms/NonBlankString]
+   [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
+   [:description         {:optional true} [:maybe :string]]
+   [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+   [:width               {:optional true} [:maybe [:enum "fixed" "full"]]]
+   [:auto_apply_filters  {:optional true} [:maybe :boolean]]])
+
 (mu/defn create-dashboard! :- :map
   "Create a Dashboard owned by the current user and return the saved row. `:width` and
   `:auto_apply_filters` fall back to the column defaults when omitted or nil.
   Requires create permission on `:collection_id` (nil = root). Publishes `:event/dashboard-create`."
   [{:keys [name description parameters cache_ttl collection_id collection_position
-           width auto_apply_filters]}
-   :- [:map {:closed true}
-       [:name                ms/NonBlankString]
-       [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
-       [:description         {:optional true} [:maybe :string]]
-       [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
-       [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-       [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-       [:width               {:optional true} [:maybe [:enum "fixed" "full"]]]
-       [:auto_apply_filters  {:optional true} [:maybe :boolean]]]]
+           width auto_apply_filters]} :- NewDashboard]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (api/create-check :model/Dashboard {:collection_id collection_id})
   (check-new-references no-references {:parameters parameters})
