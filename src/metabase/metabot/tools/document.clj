@@ -94,6 +94,7 @@
     {:name                 "document_schema_collect"
      :description          schema-collect-description
      :scope                scope/agent-document-read
+     :metabot/curation     :sql
      :metabot/capabilities #{:permission-write-sql-queries}
      :args                 [:map {:closed true}]})
   (handle [_ _args ctx]
@@ -161,6 +162,7 @@
     {:name                 "document_construct_sql_chart"
      :description          "Construct SQL-backed chart draft payload for document insertion."
      :scope                scope/agent-document-create
+     :metabot/curation     :sql
      :metabot/capabilities #{:permission-write-sql-queries}
      :args                 sql-chart-schema})
   (handle [_ {:keys [database_id name description analysis approach sql viz_settings]} _ctx]
@@ -200,6 +202,7 @@
     {:name        "document_construct_model_chart"
      :description "Construct notebook/model-backed chart draft payload for document insertion."
      :scope       scope/agent-document-create
+     :metabot/curation :gated
      :args        model-chart-schema})
   (handle [_ {:keys [name description query viz_settings]} ctx]
     (let [chart-type (get viz_settings :chart_type)

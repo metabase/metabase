@@ -52,6 +52,7 @@
     {:name        "construct_notebook_query"
      :description tool-description
      :scope       scope/agent-notebook-create
+     :metabot/curation :gated
      :args        slackbot-query-schema})
 
   (handle [_ {:keys [query title display]} _ctx]

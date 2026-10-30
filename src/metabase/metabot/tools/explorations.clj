@@ -123,6 +123,7 @@
                        explorations/research-metric-index-max-metrics " with `truncated: true` – narrow"
                        " with `q`.")
      :scope       scope/agent-explorations-read
+     :metabot/curation :filtered
      :args        list-research-metrics-schema})
 
   (handle [_ {:keys [q]} _ctx]
@@ -166,6 +167,7 @@
                        " matches with `truncated: true` – narrow the search or pass explicit"
                        " `metric_ids`.")
      :scope       scope/agent-explorations-read
+     :metabot/curation :gated
      :args        get-research-candidates-schema})
 
   (handle [_ {:keys [q metric_ids]} _ctx]
@@ -383,6 +385,7 @@
                        " `\"replace_default_dimensions\": true` - then `dimension_ids` must be"
                        " non-empty.")
      :scope       scope/agent-explorations-write
+     :metabot/curation :gated
      :args        add-research-groups-schema})
 
   (handle [_ {:keys [groups]} _ctx]
@@ -427,6 +430,7 @@
                         " dropped – so to remove an entire group prefer `block_ids` directly. Removing"
                         " a block, member, or id that isn't in the plan is a no-op."))
      :scope       scope/agent-explorations-write
+     :metabot/curation :conversation-state
      :args        remove-from-research-plan-schema})
 
   (handle [_ {:keys [block_ids members timeline_ids]} _ctx]
@@ -448,6 +452,7 @@
     {:name        "set_research_name"
      :description "Set the name of the research artifact."
      :scope       scope/agent-explorations-write
+     :metabot/curation :conversation-state
      :args        set-exploration-name-schema})
 
   (handle [_ {:keys [name]} _ctx]
@@ -478,6 +483,7 @@
                        " Timelines already in the plan stay; to drop one, use"
                        " `remove_from_research_plan`.")
      :scope       scope/agent-explorations-write
+     :metabot/curation :conversation-state
      :args        select-exploration-timelines-schema})
 
   (handle [_ {:keys [timeline_ids]} _ctx]
