@@ -217,6 +217,14 @@ project_ratchet_checks:
   - ".clj-kondo/ratchets-test.edn"
   - ".clj-kondo/config/modules/ratchets.edn"
 
+# The generated CODEOWNERS block depends only on the module config and team.json.
+project_codeowners_checks:
+  - *project_tests_infra
+  - ".clj-kondo/config/modules/config.edn"
+  - ".github/CODEOWNERS"
+  - ".github/team.json"
+  - "mage/src/mage/modules.clj"
+
 project_migration_checks:
   - *project_tests_infra
   - "bin/lint-migrations-file/**"

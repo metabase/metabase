@@ -217,6 +217,21 @@ describe("file-paths.yaml", () => {
   });
 
   it.each([
+    ".clj-kondo/config/modules/config.edn",
+    ".github/CODEOWNERS",
+    ".github/team.json",
+    "mage/src/mage/modules.clj",
+  ])("checks the generated CODEOWNERS block when %s changes", (path) => {
+    expect(matches("project_codeowners_checks", path)).toBe(true);
+  });
+
+  it("does not check the CODEOWNERS block for a backend source change", () => {
+    expect(
+      matches("project_codeowners_checks", "src/metabase/search/core.clj"),
+    ).toBe(false);
+  });
+
+  it.each([
     "loki.config.js",
     ".storybook/story-files.cjs",
     ".storybook/preview.tsx",

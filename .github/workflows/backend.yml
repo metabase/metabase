@@ -18,7 +18,7 @@ jobs:
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
-      filters: backend_all project_backend_checks project_migration_checks project_ratchet_checks
+      filters: backend_all project_backend_checks project_codeowners_checks project_migration_checks project_ratchet_checks
 
   # Generated static-viz output can shift without any backend source changing, so the suite follows
   # it too. Only worth probing when nothing else has already decided the suite.
@@ -56,6 +56,7 @@ jobs:
     needs: gate
     if: >-
       ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks')
+      || contains(fromJSON(needs.gate.outputs.matched), 'project_codeowners_checks')
       || contains(fromJSON(needs.gate.outputs.matched), 'project_migration_checks')
       || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -81,6 +82,9 @@ jobs:
             ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks')
             || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
           run: ./bin/mage kondo-ratchets
+        - name: Check the generated CODEOWNERS block
+          if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_codeowners_checks') }}
+          run: ./bin/mage update-codeowners --check
 
   project-tests:
     name: Project tests
