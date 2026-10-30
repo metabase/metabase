@@ -202,7 +202,7 @@
       (is (=? {:credentials {:user "mylogin@srv", :password "p@ss"}}
               (parse-db-url url)))))
   (testing "the host list may name several hosts, IPv6 addresses, or none"
-    (doseq [url ["jdbc:postgresql://db1:5432,db2,[::1]:5433,[fe80::1%25eth0],[fe80::1%25br-test]:5432/mb_semantic_search"
+    (doseq [url ["jdbc:postgresql://db1:5432,db_2,[::1]:5433,[fe80::1%25eth0],[fe80::1%25br-test]:5432/mb"
                  "jdbc:postgresql:///mb_semantic_search"
                  "jdbc:postgresql://?service=pgvector"
                  "jdbc:postgresql:mb_semantic_search"]]
