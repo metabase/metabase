@@ -513,7 +513,9 @@ describe("useCardTagCompletion", () => {
 
   it("should describe models in the root collection", async () => {
     const { complete } = setup({
-      results: [{ id: 7, name: "People Model", type: "model" }],
+      results: [
+        { id: 7, name: "People Model", type: "model", collection_name: null },
+      ],
     });
     const results = await complete("SELECT {{ #people|");
 
