@@ -27,6 +27,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -2399,3 +2400,13 @@
   (testing "ordinary string patterns still compile"
     (is (= [::postgres/regex-match-first [:inline 1] "^Taylor's"]
            (sql.qp/->honeysql :postgres [:regex-match-first 1 "^Taylor's"])))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 5432 :user "u" :db "a?b"}
+                   {:host "localhost:5432/d?b" :port 5432 :user "u" :db "d"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :postgres details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))
