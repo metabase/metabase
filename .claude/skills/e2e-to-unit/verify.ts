@@ -54,6 +54,7 @@ import {
   changedUnitSpecs,
   deletedTests,
   dirtyFiles,
+  fetchBase,
   fileExistsAt,
   lineMapper,
   mergeBase,
@@ -609,6 +610,10 @@ async function main() {
   const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
     encoding: "utf8",
   }).trim();
+  const staleBase = fetchBase(repoRoot, options.base);
+  if (staleBase) {
+    log(`WARNING: ${staleBase}`);
+  }
   options.base = mergeBase(repoRoot, options.base);
 
   if (options.tests.length === 0) {

@@ -49,6 +49,29 @@ export function parseDeletedTests(diff: string): DeletedTest[] {
   return deleted;
 }
 
+/**
+ * Brings the base ref up to date. A local ref that is behind the real branch
+ * is an ancestor of the fork point, so the merge base is that stale commit and
+ * the diff grows by every upstream commit in between.
+ */
+export function fetchBase(repoRoot: string, base: string): string | null {
+  const remote = base.match(/^([^/]+)\/(.+)$/);
+  if (!remote) {
+    return `base \`${base}\` is not a remote ref, so a stale local ref can widen the scope`;
+  }
+  try {
+    execFileSync("git", ["fetch", "--quiet", remote[1], remote[2]], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+    return null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return `could not fetch ${base}, so the scope is whatever the local ref says: ${message}`;
+  }
+}
+
 export function mergeBase(repoRoot: string, base: string): string {
   return execFileSync("git", ["merge-base", base, "HEAD"], {
     cwd: repoRoot,
