@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase-enterprise.impersonation.middleware :as impersonation.middleware]
+   [metabase-enterprise.impersonation.query-cache :as query-cache]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.test :as met]
    [metabase.actions.execution :as actions.execution]
@@ -37,6 +38,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
+   (clojure.lang ExceptionInfo)
    (com.mchange.v2.c3p0 PooledDataSource)
    (java.sql Connection)
    (java.util.concurrent CountDownLatch)))
@@ -1184,6 +1186,32 @@
                     "SET ROLE NONE; DROP TABLE table"
                     "SELECT set_config('role', 'none', false); DROP TABLE table"
                     "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;"))))))))))
+
+(deftest cached-refusal-fails-query-like-uncached-refusal-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-model-cleanup [:model/ImpersonationQueryCache]
+        (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                       :attributes     {"impersonation_attr" "impersonation_role"}}
+          (let [run-query (fn [sql]
+                            (try
+                              (qp/process-query (lib/native-query (mt/metadata-provider) sql))
+                              (catch ExceptionInfo e
+                                {:message         (ex-message e)
+                                 :refusal-message (ex-message (ex-cause e))
+                                 :refusal-data    (ex-data (ex-cause e))})))]
+            (doseq [[result sql] [[:unparseable "SELECT ("]
+                                  [:invalid "SELECT 1; SELECT 2"]
+                                  [:unvalidatable (str "SELECT 1 WHERE 1 IN (" (str/join ", " (range 3000)) ")")]]]
+              (testing result
+                (let [sql      (str "/* " (mt/random-name) " */ " sql)
+                      uncached (mt/with-dynamic-fn-redefs [query-cache/validated-query (fn [_engine _allow-write? _admin? _native validate]
+                                                                                         (validate))]
+                                 (run-query sql))]
+                  (is (= result (get-in uncached [:refusal-data :impersonation/result])))
+                  (is (= uncached (run-query sql)))
+                  (is (t2/exists? :model/ImpersonationQueryCache :input_query sql))
+                  (is (= uncached (run-query sql))))))))))))
 
 (deftest reject-non-select-statements-for-admin-on-impersonated-db-test
   (testing "Admin users are also validated on impersonated databases"

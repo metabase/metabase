@@ -8,6 +8,8 @@
    (com.mchange.v2.resourcepool CannotAcquireResourceException)
    (java.sql SQLException)))
 
+(set! *warn-on-reflection* true)
+
 (defn- tables-attempted
   "Run the describe-table fallback over the test DB with every table failing with `e`. Returns the number of tables
   attempted and whether the run threw."

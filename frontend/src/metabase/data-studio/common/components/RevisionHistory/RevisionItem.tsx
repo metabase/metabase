@@ -49,7 +49,7 @@ export function RevisionItem({
               {action}
             </Text>
           </Stack>
-          <Text size="sm" c="text-disabled" title={formattedDate}>
+          <Text size="sm" c="text-secondary" title={formattedDate}>
             {timeAgo}
           </Text>
         </Flex>

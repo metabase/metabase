@@ -10,6 +10,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
@@ -398,7 +399,9 @@
          ;; Definition query (WITH the metric's own joins) — surfaces FK-less join dimensions that
          ;; the consumer-framed `base-query` drops. Built from the card's `:dataset-query`, not from
          ;; `metric-query`, which frames the metric as a source and hides its definition joins.
-         join-required-dims (when (and query-needed? with-queryable-dimensions?)
+         ;; Only a metric's definition joins are dimensions to offer; a question or model read through the
+         ;; metric path exposes its results, as through its own URI, not the tables its definition reads.
+         join-required-dims (when (and query-needed? with-queryable-dimensions? (= :metric (:type metric-card)))
                               (metric-join-required-dimensions
                                metadata-provider
                                (some->> (:dataset-query metric-card) (lib/query metadata-provider))
@@ -422,7 +425,9 @@
               ;; `[metric, {}, <entity_id>]` aggregation clause to reference this metric.
               :portable_entity_id (metabot.tools.u/metric-card-shape-get card :entity-id :entity_id)
               :verified (verified-review? id "card")}
-       true
+       ;; Under curated-only, only a metric names what it reads: a question or model read through this path
+       ;; exposes its results, as through its own URI, not the table or card its definition reads.
+       (or (not (shared/curated-only?)) (= :metric (:type metric-card)))
        (merge (metabot.tools.u/metric-source-fields
                {:source-card   (when source-card
                                  {:id        (:id source-card)
