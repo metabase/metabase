@@ -22,7 +22,7 @@
       (is (= [] (:steps-taken mem)))))
   (testing "defaults the working state when nil"
     (let [mem (memory/initialize [{:role :user :content "Hello"}] nil)]
-      (is (= {:queries {} :charts {} :todos [] :link-registry {}}
+      (is (= {:queries {} :charts {} :link-registry {}}
              (memory/get-state mem))))))
 
 (deftest ^:parallel initialize-repairs-stripped-queries-test
@@ -124,6 +124,11 @@
       (is (= #{"seeded-q"}
              (get-in (memory/initialize [] persisted) [:state :client-ids]))))))
 
+(deftest ^:parallel persisted-todo-lists-validate-test
+  (testing "state persisted while Metabot had todo tools still validates, since the agent entry point checks it"
+    (is (mr/validate ::metabot.schema/state
+                     {:todos [{:id "1" :content "Find the orders table" :status "pending" :priority "high"}]}))))
+
 (deftest ^:parallel client-ids-persist-once-stored-test
   (let [query   {:database 1}
         earlier (memory/initialize [] {:client-ids #{"from-an-earlier-turn"}})
@@ -162,10 +167,10 @@
              (memory/turn-state mem'))))))
 
 (deftest ^:parallel merge-states-test
-  (testing "map entries merge; scalar/vector entries take the later value"
-    (is (= {:queries {:q1 1 :q2 2} :todos [{:id "b"}]}
-           (memory/merge-states {:queries {:q1 1} :todos [{:id "a"}]}
-                                {:queries {:q2 2} :todos [{:id "b"}]})))))
+  (testing "map entries merge; other entries take the later value"
+    (is (= {:queries {:q1 1 :q2 2} :client-ids #{"b"}}
+           (memory/merge-states {:queries {:q1 1} :client-ids #{"a"}}
+                                {:queries {:q2 2} :client-ids #{"b"}})))))
 
 (deftest ^:parallel get-steps-test
   (testing "retrieves all steps"
