@@ -3,6 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.util.log-error :as log-error]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel log-data-test
   (testing "the entries each exception in the chain lists under `:log/keys`, and nothing else"
     (is (= {:card-id 2, :field-id 1, :field-name "PASSWORD"}
