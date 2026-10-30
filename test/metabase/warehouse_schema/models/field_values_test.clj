@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
+   [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
@@ -183,6 +184,17 @@
   (testing "Correctly get distinct field values for non-text fields"
     (is (= {:values [[1] [2] [3] [4] [5]]}
            (distinct-field-values (mt/id :reviews :rating))))))
+
+(deftest distinct-values-failure-logging-test
+  (let [fetch (fn [ex]
+                (mt/with-dynamic-fn-redefs [metadata-from-qp/table-query (fn [& _] (throw ex))]
+                  (mt/with-log-messages-for-level [messages [metabase.warehouse-schema.models.field-values :warn]]
+                    (is (nil? (distinct-field-values (mt/id :products :category))))
+                    (mapv :level (messages)))))]
+    (testing "a failed fetch is logged"
+      (is (= [:error] (fetch (ex-info "Error executing query" {})))))
+    (testing "a failure the query processor already logged is not logged again"
+      (is (= [] (fetch (ex-info "An error occurred while running the query." {:query/error-logged? true})))))))
 
 (deftest clear-field-values-for-field!-test
   (mt/with-temp [:model/Database    {database-id :id} {}

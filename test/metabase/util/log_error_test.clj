@@ -20,13 +20,3 @@
     (is (= {} (log-error/log-data (Exception. "boom" (ex-info "inner" {:card-id 1}))))))
   (testing "a malformed `:log/keys` gives nothing, so that it can't mask the original error"
     (is (= {} (log-error/log-data (ex-info "boom" {:card-id 1, :log/keys :card-id}))))))
-
-(deftest ^:parallel extend-log-keys-test
-  (testing "adds to the keys already listed"
-    (is (= {:card-id 1, :field-id 2, :log/keys #{:card-id :field-id}}
-           (log-error/extend-log-keys {:card-id 1, :field-id 2, :log/keys #{:card-id}} :field-id))))
-  (testing "lists keys when none were listed"
-    (is (= {:card-id 1, :log/keys #{:card-id}}
-           (log-error/extend-log-keys {:card-id 1} :card-id))))
-  (testing "no keys leaves the data as it is"
-    (is (= {:card-id 1} (log-error/extend-log-keys {:card-id 1})))))

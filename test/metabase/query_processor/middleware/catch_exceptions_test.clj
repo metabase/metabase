@@ -344,7 +344,7 @@
                      (last @contexts))
           query    {:database (mt/id), :info {:card-id 3, :dashboard-id 4, :context :question}}]
       (mt/with-test-user :rasta
-        (with-redefs-fn {#'perms/data-access-token (constantly {})}
+        (with-redefs-fn {#'perms/routing-token-for-db (constantly nil)}
           (fn []
             (testing "an unrestricted user"
               (let [ctx (log-ctx throw-driver-error query)]
@@ -362,10 +362,11 @@
             (testing "ex-data `:log/keys` from the throw site are still there"
               (is (=? {:field-id 1, :card-id 3}
                       (log-ctx (fn [] (throw (ex-info "boom" {:field-id 1, :log/keys #{:field-id}}))) query))))
-            (doseq [[restriction redefs] {:sandbox       {#'perms/sandboxed-user-for-db? (constantly true)}
-                                          :impersonation {#'perms/impersonation-enforced-for-db? (constantly true)}
-                                          :routing       {#'perms/data-access-token (constantly {:routing {1 "digest"}})}
-                                          :unknown       {#'perms/sandboxed-user-for-db? (fn [_] (throw (ex-info "lookup failed" {})))}}]
+            (doseq [[restriction redefs]
+                    {:sandbox       {#'perms/sandboxed-user-for-db? (constantly true)}
+                     :impersonation {#'perms/impersonation-enforced-for-db? (constantly true)}
+                     :routing       {#'perms/routing-token-for-db (constantly {:destination-db-id 2})}
+                     :unknown       {#'perms/sandboxed-user-for-db? (fn [_] (throw (ex-info "lookup failed" {})))}}]
               (testing (str "a row-restricted user: " restriction)
                 (with-redefs-fn redefs
                   (fn []
@@ -376,13 +377,14 @@
 (deftest ^:synchronized row-restricted-user-error-response-test
   (let [generic "An error occurred while running the query."]
     (mt/with-test-user :rasta
-      (doseq [[restriction redefs] {:sandbox       {#'perms/sandboxed-user-for-db? (constantly true)}
-                                    :impersonation {#'perms/impersonation-enforced-for-db?                 (constantly true)
-                                                    #'qp.perms/current-user-has-adhoc-native-query-perms? (constantly false)}
-                                    :routing       {#'perms/data-access-token                             (constantly {:routing {1 "digest"}})
-                                                    #'qp.perms/current-user-has-adhoc-native-query-perms? (constantly false)}}]
+      (doseq [[restriction redefs]
+              {:sandbox       {#'perms/sandboxed-user-for-db? (constantly true)}
+               :impersonation {#'perms/impersonation-enforced-for-db?                 (constantly true)
+                               #'qp.perms/current-user-has-adhoc-native-query-perms? (constantly false)}
+               :routing       {#'perms/routing-token-for-db                          (constantly {:destination-db-id 2})
+                               #'qp.perms/current-user-has-adhoc-native-query-perms? (constantly false)}}]
         (testing restriction
-          (with-redefs-fn (merge {#'perms/data-access-token (constantly {})} redefs)
+          (with-redefs-fn (merge {#'perms/routing-token-for-db (constantly nil)} redefs)
             (fn []
               (testing "a database error"
                 (let [result (catch-exceptions throw-driver-error {:database (mt/id)})]
@@ -431,16 +433,17 @@
                            (catch Exception e
                              e))]
                   (is (= generic (ex-message e)))
-                  (is (= {:type :invalid-query} (ex-data e)))
+                  (testing "marked as logged, since the query processor logged the original message"
+                    (is (= {:type :invalid-query, :query/error-logged? true} (ex-data e))))
                   (is (nil? (ex-cause e))))))))))
     (testing "control: an unrestricted user sees every message"
       (mt/with-test-user :rasta
-        (mt/with-dynamic-fn-redefs [perms/data-access-token (constantly {})]
+        (mt/with-dynamic-fn-redefs [perms/routing-token-for-db (constantly nil)]
           (is (str/includes? (:error (catch-exceptions throw-driver-error {:database (mt/id)})) compiled-sql))
           (is (str/includes? (:error (catch-exceptions throw-schema-error {:database (mt/id)})) "fingerprint")))))
     (testing "an impersonated user who may run native queries still sees the database's message"
       (mt/with-test-user :rasta
-        (mt/with-dynamic-fn-redefs [perms/data-access-token                             (constantly {})
+        (mt/with-dynamic-fn-redefs [perms/routing-token-for-db                           (constantly nil)
                                     perms/impersonation-enforced-for-db?                 (constantly true)
                                     qp.perms/current-user-has-adhoc-native-query-perms? (constantly true)]
           (let [result (catch-exceptions throw-driver-error {:database (mt/id)})]
@@ -460,7 +463,7 @@
         written      (ex-info "You do not have permissions to run this query."
                               {:type qp.error-type/missing-required-permissions})]
     (mt/with-test-user :rasta
-      (mt/with-dynamic-fn-redefs [perms/data-access-token (constantly {})]
+      (mt/with-dynamic-fn-redefs [perms/routing-token-for-db (constantly nil)]
         (testing "an unrestricted user gets the message itself"
           (is (= (ex-message driver-error) (catch-exceptions/user-visible-message driver-error (mt/id)))))
         (mt/with-dynamic-fn-redefs [perms/sandboxed-user-for-db? (constantly true)]

@@ -14,8 +14,7 @@
                     {:status-code 400, :field-id id, :field-name field-name, :log/keys #{:field-id :field-name}}))
 
   logs `field-id` and `field-name` alongside the message. List ids and names that help find the cause, never a query
-  or values from it. A listed key that is absent is skipped. When the data comes from elsewhere, like ex-data being
-  rethrown, use [[extend-log-keys]], which adds to the keys already listed instead of replacing them.
+  or values from it. A listed key that is absent is skipped.
 
   ## Reading them
 
@@ -24,15 +23,6 @@
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
-
-(defn extend-log-keys
-  "Add `ks` to the `:log/keys` of `data`, the keys that go to the error log line, keeping any already listed. For data
-  built elsewhere, like ex-data being rethrown; with a map literal, put `:log/keys` in it instead.
-
-    (throw (ex-info (ex-message e) (log-error/extend-log-keys (merge (ex-data e) {:card-id id}) :card-id) e))"
-  [data & ks]
-  (cond-> data
-    (seq ks) (update :log/keys (fnil into #{}) ks)))
 
 (defn log-data
   "The ex-data entries that each exception in `e`'s chain lists under `:log/keys`, for the error log line. An inner

@@ -1209,7 +1209,9 @@
                                                                                          (validate))]
                                  (run-query sql))]
                   (is (= {:message (ex-message (driver.sql/impersonated-query-refusal result sql false nil))
-                          :data    {:type qp.error-type/invalid-query, :status-code 400}}
+                          :data    {:type                qp.error-type/invalid-query
+                                    :status-code         400
+                                    :query/error-logged? true}}
                          uncached))
                   (is (= uncached (run-query sql)))
                   (is (t2/exists? :model/ImpersonationQueryCache :input_query sql))
@@ -1298,7 +1300,8 @@
                           (format "SET ROLE NONE; DELETE FROM %s WHERE id = -1;" venues-table))))))))))))))
 
 (deftest impersonated-action-write-permission-denied-test
-  (testing "An impersonated custom action whose role lacks write grants fails on the DB permission error and leaves the row unchanged"
+  (testing (str "An impersonated custom action whose role lacks write grants fails on the DB permission error and "
+                "leaves the row unchanged")
     (mt/test-drivers (mt/normal-driver-select {:+features [:connection-impersonation :actions/custom]})
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
@@ -1330,7 +1333,8 @@
                               (actions.execution/execute-action! (action/select-action :id action-id) {})))]
                       (testing "write is denied for a role with only SELECT"
                         ;; the user gets a generic message; the database's denial is in the error log line
-                        (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+                        (mt/with-log-messages-for-level [messages
+                                                         [metabase.query-processor.middleware.catch-exceptions :error]]
                           (is (thrown-with-msg?
                                java.lang.Exception
                                #"An error occurred while running the query"
@@ -1385,16 +1389,17 @@
             (impersonation-default-user driver/*driver*)
             (impersonation-default-role driver/*driver*)
             (with-impersonation-db!
-              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                             :attributes     {"impersonation_attr" role-a}}
+              (impersonation.util-test/with-impersonations!
+                {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                 :attributes     {"impersonation_attr" role-a}}
                 (testing "a query that does not parse"
                   (is (thrown-with-msg?
                        java.lang.Exception
                        #"Unable to parse native query"
                        (run-native "with cte as (\n  select 1 as col\n), \nselect * from cte"))))
                 (testing "a query the validator cannot check"
-                  (mt/with-dynamic-fn-redefs [sql-tools/validate-executable-stmt (constantly {:verdict :unknown
-                                                                                              :reason  "large-literal-list"})]
+                  (mt/with-dynamic-fn-redefs [sql-tools/validate-executable-stmt
+                                              (constantly {:verdict :unknown, :reason "large-literal-list"})]
                     (is (thrown-with-msg?
                          java.lang.Exception
                          #"Unable to validate this native query on an impersonated database"
