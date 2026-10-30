@@ -11,7 +11,10 @@ import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { getGoalWarningMessage } from "metabase/visualizations/components/GoalWarning";
 import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
-import { prefetchVisualizationComponent } from "metabase/viz-core";
+import {
+  getGraphGoalSettingsSection,
+  prefetchVisualizationComponent,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
@@ -43,7 +46,9 @@ export function QueryVisualization(props: QueryVisualizationProps) {
   const isGoalWarningShown = hasGoalWarning && onOpenChartSettings != null;
 
   function handleGoalWarningClick() {
-    onOpenChartSettings?.({ initialChartSettings: { section: t`Display` } });
+    onOpenChartSettings?.({
+      initialChartSettings: { section: getGraphGoalSettingsSection() },
+    });
   }
 
   // The result is not rendered until the query returns, so the chart chunk

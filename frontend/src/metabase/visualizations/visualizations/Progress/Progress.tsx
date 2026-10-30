@@ -13,7 +13,10 @@ import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { getGoalErrors } from "metabase/viz-core";
 
-import { PROGRESS_CHART_DEFINITION } from "./definition";
+import {
+  PROGRESS_CHART_DEFINITION,
+  getProgressGoalSettingsSection,
+} from "./definition";
 import {
   calculateProgressMetrics,
   extractProgressValue,
@@ -92,7 +95,7 @@ function ProgressComponent(props: VisualizationProps) {
   const hasGoalWarning = isQueryBuilder && hasGoalErrors && onOpenChartSettings;
   const handleGoalWarningClick = () => {
     return onOpenChartSettings?.({
-      initialChartSettings: { section: t`Display` },
+      initialChartSettings: { section: getProgressGoalSettingsSection() },
     });
   };
 

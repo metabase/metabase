@@ -67,7 +67,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["progress.value"],
     }),
     "progress.goal": {
-      getSection: () => t`Display`,
+      getSection: getProgressGoalSettingsSection,
       get title() {
         return t`Goal`;
       },
@@ -109,3 +109,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
     },
   },
 };
+
+export function getProgressGoalSettingsSection() {
+  return t`Display`;
+}

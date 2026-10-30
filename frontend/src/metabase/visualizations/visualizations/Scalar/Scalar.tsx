@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -34,7 +33,10 @@ import {
 } from "metabase/viz-core";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
-import { SCALAR_CHART_DEFINITION } from "./definition";
+import {
+  SCALAR_CHART_DEFINITION,
+  getScalarGoalSettingsSection,
+} from "./definition";
 import { scalarToBarTransform } from "./scalars-bar-transform";
 
 const GOAL_WARNING_GAP_PX = 6;
@@ -139,7 +141,7 @@ function ScalarComponent(
   const hasGoalWarning = isQueryBuilder && hasGoalErrors && onOpenChartSettings;
   const handleGoalWarningClick = () => {
     return onOpenChartSettings?.({
-      initialChartSettings: { section: t`Conditional colors` },
+      initialChartSettings: { section: getScalarGoalSettingsSection() },
     });
   };
 
