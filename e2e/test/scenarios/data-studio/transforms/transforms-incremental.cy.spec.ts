@@ -24,7 +24,6 @@ describe("scenarios > admin > transforms incremental", () => {
     cy.intercept("POST", "/api/transform/*/reset-checkpoint").as(
       "resetCheckpoint",
     );
-    cy.intercept("POST", "/api/transform/*/run").as("runTransform");
   });
 
   afterEach(() => {
@@ -70,7 +69,7 @@ describe("scenarios > admin > transforms incremental", () => {
 
       cy.log("run the transform");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
@@ -96,7 +95,7 @@ describe("scenarios > admin > transforms incremental", () => {
 
       cy.go("back");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log(
         "verify the new element was picked up in the incremental transfer",
@@ -133,7 +132,7 @@ describe("scenarios > admin > transforms incremental", () => {
         "go to Runs tab, run transform again and check new run has checkpoint to 31",
       );
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       cy.findByRole("link", { name: "See all runs" }).click();
       cy.findByRole("treegrid", { name: "Transform runs" }).within(() => {
         cy.findAllByRole("row", { name: /MBQL transform/i })
@@ -206,7 +205,9 @@ def transform(animals):
 
         cy.log("run the transform");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded", {
+          timeout: PYTHON_TRANSFORM_RUN_TIMEOUT,
+        });
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
@@ -232,7 +233,9 @@ def transform(animals):
 
         cy.go("back");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded", {
+          timeout: PYTHON_TRANSFORM_RUN_TIMEOUT,
+        });
 
         cy.log(
           "verify the new element was picked up in the incremental transfer",
@@ -269,7 +272,9 @@ def transform(animals):
           "go to Runs tab, run transform again and check new run has checkpoint to 31",
         );
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded", {
+          timeout: PYTHON_TRANSFORM_RUN_TIMEOUT,
+        });
         cy.findByRole("link", { name: "See all runs" }).click();
         cy.findByRole("treegrid", { name: "Transform runs" }).within(() => {
           cy.findAllByRole("row", { name: /Python transform/i })
@@ -327,7 +332,7 @@ def transform(animals):
 
       cy.log("run the transform");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
@@ -352,7 +357,7 @@ def transform(animals):
 
       cy.go("back");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log(
         "verify the new element was picked up in the incremental transfer",
@@ -389,7 +394,7 @@ def transform(animals):
         "go to Runs tab, run transform again and check new run has checkpoint to 31",
       );
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       cy.findByRole("link", { name: "See all runs" }).click();
       cy.findByRole("treegrid", { name: "Transform runs" }).within(() => {
         cy.findAllByRole("row", { name: /SQL transform/i })
@@ -408,18 +413,6 @@ def transform(animals):
 
 function visitTransformListPage() {
   return cy.visit("/data-studio/transforms");
-}
-
-function runTransformAndWaitForSuccess(
-  options: { timeout?: number } = { timeout: PYTHON_TRANSFORM_RUN_TIMEOUT },
-) {
-  getRunButton().click();
-  cy.wait("@runTransform").its("response.statusCode").should("eq", 202);
-  getRunButton(options).should("have.text", "Ran successfully");
-}
-
-function getRunButton(options: { timeout?: number } = {}) {
-  return cy.findAllByTestId("run-button").eq(0, options);
 }
 
 function getQueryEditor() {

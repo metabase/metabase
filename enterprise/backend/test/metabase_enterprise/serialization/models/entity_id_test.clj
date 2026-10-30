@@ -156,6 +156,7 @@
     :model/ViewLog
     :model/Sandbox
     :model/ConnectionImpersonation
+    :model/ImpersonationQueryCache
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment

@@ -82,7 +82,9 @@ export const LoadingAndErrorWrapper = forwardRef<
 
     return (
       <div className={contentClassName}>
-        <h2 className={cx(CS.textNormal, CS.textLight, CS.ieWrapContentFix)}>
+        <h2
+          className={cx(CS.textNormal, CS.textSecondary, CS.ieWrapContentFix)}
+        >
           {getErrorMessage()}
         </h2>
       </div>
@@ -126,7 +128,7 @@ export const LoadingAndErrorWrapper = forwardRef<
       ) : loading ? (
         <div className={contentClassName}>
           {showSpinner && <Loader size="lg" />}
-          <h2 className={cx(CS.textNormal, CS.textLight, CS.mt1)}>
+          <h2 className={cx(CS.textNormal, CS.textSecondary, CS.mt1)}>
             {getLoadingMessages()[messageIndex]}
           </h2>
         </div>
