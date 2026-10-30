@@ -14,9 +14,10 @@
 ;;
 ;; ## `codeowners`:
 ;;
-;; `true` makes the module's team a required reviewer for its src and test directories. Ownership goes to the team's
+;; Makes the module's team a required reviewer for the module's directories in `.github/CODEOWNERS`. Set it to
+;; `true` for the src and test directories, or to `:src` for the src directory only. Ownership goes to the team's
 ;; `assignee` handle in `.github/team.json`, which the team must have. Run `./bin/mage update-codeowners` after
-;; changing it to regenerate `.github/CODEOWNERS`. Leave it out for modules whose team has not agreed to review them.
+;; changing it. Leave it out for modules whose team has not agreed to review them.
 ;;
 ;;    search
 ;;    {:team       "Metabot"
@@ -879,7 +880,7 @@
 
   data-apps
   {:team "Data Apps"
-   :codeowners true
+   :codeowners :src
    :api #{metabase.data-apps.core}
    :uses #{actions
            analytics
@@ -917,7 +918,7 @@
 
   dependencies
   {:team "Data Apps"
-   :codeowners true
+   :codeowners :src
    :api  #{metabase.dependencies.hooks}
    :uses #{premium-features}}
 
@@ -2434,7 +2435,7 @@
 
   remote-sync
   {:team "Data Apps"
-   :codeowners true
+   :codeowners :src
    :api  #{metabase.remote-sync.core
            metabase.remote-sync.init}
    :uses #{api
@@ -3864,7 +3865,7 @@
 
   enterprise/data-apps
   {:team "Data Apps"
-   :codeowners true
+   :codeowners :src
    :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{actions
            api
@@ -3940,7 +3941,7 @@
 
   enterprise/dependencies
   {:team "Data Apps"
-   :codeowners true
+   :codeowners :src
    :module-exports #{enterprise/dependencies.replacement}
    :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
    :uses #{actions
@@ -4330,7 +4331,7 @@
 
   enterprise/remote-sync
   {:team "Data Apps"
-   :codeowners true
+   :codeowners :src
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
            metabase-enterprise.remote-sync.init}

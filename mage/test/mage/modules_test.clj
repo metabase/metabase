@@ -549,83 +549,84 @@
 ;;; CODEOWNERS generation
 ;;; =============================================================================
 
+(def ^:private test-assignees
+  {"Querying Platform" "@metabase/querying-platform"})
+
+(defn- owned-lines
+  "Owner lines of the block generated for `modules-config`, without comments or blank lines."
+  [modules-config]
+  (->> (str/split-lines (#'mage.modules/codeowners-block modules-config test-assignees))
+       (remove #(or (str/blank? %) (str/starts-with? % "#")))))
+
 (deftest codeowners-stanza-lines-test
   (testing "a header naming the module and team, then one owner line per directory"
     (is (= ["# lib (Querying Platform)"
             "src/metabase/lib @metabase/qp"
             "test/metabase/lib @metabase/qp"]
            (#'mage.modules/codeowners-stanza-lines
-            {:module 'lib :team "Querying Platform" :handle "@metabase/qp"
-             :dirs ["src/metabase/lib" "test/metabase/lib"]}))))
-  (testing "a module that owns no existing directory produces no stanza"
-    (is (nil? (#'mage.modules/codeowners-stanza-lines
-               {:module 'ghost :team "UX West" :handle "@metabase/ux" :dirs []})))))
-
-(deftest codeowners-splice-idempotent-test
-  (testing "splicing a block in replaces only the marked region and is idempotent"
-    (let [begin @#'mage.modules/codeowners-begin-marker
-          end   @#'mage.modules/codeowners-end-marker
-          splice @#'mage.modules/splice-codeowners
-          block (str begin "\nfoo/bar @team\n" end)
-          base  "# hand-maintained\ndocs @writers\n"
-          once  (splice base block)
-          twice (splice once block)]
-      (is (str/includes? once "# hand-maintained"))
-      (is (str/includes? once "foo/bar @team"))
-      (is (= once twice))))
-  (testing "text on BOTH sides of the marked region survives, with the block still between them"
-    ;; This is the normal layout: the generated block sits above the hand-maintained rules, so the
-    ;; trailing-content branch of the in-place splice is load-bearing. The idempotence case above
-    ;; leaves an empty tail and would not notice it being dropped.
-    (let [begin  @#'mage.modules/codeowners-begin-marker
-          end    @#'mage.modules/codeowners-end-marker
-          splice @#'mage.modules/splice-codeowners
-          base   (str "# header\n" begin "\nold/path @old\n" end "\n\n# exceptions\nsrc/a.clj @owner\n")
-          block  (str begin "\nnew/path @new\n" end)
-          out    (splice base block)]
-      (is (str/includes? out "# header") "leading content survives")
-      (is (str/includes? out "src/a.clj @owner") "trailing content survives")
-      (is (str/includes? out "new/path @new") "the block was replaced")
-      (is (not (str/includes? out "old/path @old")) "the previous block is gone")
-      (is (< (str/index-of out "# header")
-             (str/index-of out "new/path @new")
-             (str/index-of out "src/a.clj @owner"))
-          "and the block still sits between the two")
-      (is (= out (splice out block)) "still idempotent with content on both sides"))))
-
-(deftest codeowners-block-orders-children-after-parents
-  (testing (str "Stanzas sort by source path so a nested child's dirs come after its parent's. "
-                "CODEOWNERS applies the LAST matching pattern, so reversing this would let the "
-                "parent's module-wide rule swallow its child's ownership.")
-    ;; `lib` and `lib.schema` are used because the generator only emits directories that exist on
-    ;; disk, so an invented nested path would silently drop its stanza and the ordering assertion
-    ;; would pass on a one-element list.
-    (let [config    '{lib        {:team "Querying Platform" :codeowners true}
-                      lib.schema {:team "Querying Platform" :codeowners true}}
-          assignees {"Querying Platform" "@metabase/querying-platform"}
-          block     (#'mage.modules/codeowners-block config assignees)
-          lines     (->> (str/split-lines block)
-                         (filter #(str/starts-with? % "src/metabase/lib")))]
-      (is (= 2 (count lines)) "both parent and child stanzas are emitted")
-      (is (= ["src/metabase/lib @metabase/querying-platform"
-              "src/metabase/lib/schema @metabase/querying-platform"]
-             lines)))))
+            {:module 'lib
+             :team   "Querying Platform"
+             :handle "@metabase/qp"
+             :dirs   ["src/metabase/lib" "test/metabase/lib"]})))))
 
 (deftest codeowners-block-opt-in-test
-  (let [assignees {"Querying Platform" "@metabase/querying-platform"}
-        owned     (fn [config]
-                    (->> (str/split-lines (#'mage.modules/codeowners-block config assignees))
-                         (remove #(or (str/blank? %) (str/starts-with? % "#")))))]
-    (testing "only modules with :codeowners true get owner lines"
-      (is (= ["src/metabase/lib @metabase/querying-platform"
-              "test/metabase/lib @metabase/querying-platform"]
-             (owned '{lib             {:team "Querying Platform" :codeowners true}
-                      query-processor {:team "Querying Platform"}}))))
-    (testing "a nested module without its own :team takes its ancestor's"
-      (is (= ["src/metabase/lib/schema @metabase/querying-platform"
-              "test/metabase/lib/schema @metabase/querying-platform"]
-             (owned '{lib        {:team "Querying Platform"}
-                      lib.schema {:codeowners true}}))))
-    (testing "an opted-in module whose team has no assignee fails instead of losing its owner"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Module lib sets :codeowners but its team \"UX West\""
-                            (owned '{lib {:team "UX West" :codeowners true}}))))))
+  (testing "only modules that set :codeowners get owner lines"
+    (is (= ["src/metabase/lib @metabase/querying-platform"
+            "test/metabase/lib @metabase/querying-platform"]
+           (owned-lines '{lib             {:team "Querying Platform", :codeowners true}
+                          query-processor {:team "Querying Platform"}}))))
+  (testing ":src owns the src directory only"
+    (is (= ["src/metabase/lib @metabase/querying-platform"]
+           (owned-lines '{lib {:team "Querying Platform", :codeowners :src}}))))
+  (testing "enterprise modules own their enterprise/backend directories"
+    (is (= ["enterprise/backend/src/metabase_enterprise/sso @metabase/querying-platform"
+            "enterprise/backend/test/metabase_enterprise/sso @metabase/querying-platform"]
+           (owned-lines '{enterprise/sso {:team "Querying Platform", :codeowners true}}))))
+  (testing "a module's paths are listed whether or not they exist on disk"
+    (is (= ["src/metabase/no_such_module @metabase/querying-platform"]
+           (owned-lines '{no-such-module {:team "Querying Platform", :codeowners :src}}))))
+  (testing "a nested module without its own :team takes its ancestor's"
+    (is (= ["src/metabase/lib/schema @metabase/querying-platform"]
+           (owned-lines '{lib        {:team "Querying Platform"}
+                          lib.schema {:codeowners :src}})))))
+
+(deftest codeowners-block-orders-children-after-parents
+  ;; CODEOWNERS applies the last matching pattern, so a parent stanza after its child's would take the child's
+  ;; directories back.
+  (testing "a nested module's stanza follows its parent's"
+    (is (= ["src/metabase/lib @metabase/querying-platform"
+            "src/metabase/lib/schema @metabase/querying-platform"]
+           (owned-lines '{lib.schema {:team "Querying Platform", :codeowners :src}
+                          lib        {:team "Querying Platform", :codeowners :src}})))))
+
+(deftest codeowners-block-errors-test
+  (testing "an opted-in module whose team has no assignee fails instead of losing its owner"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Module lib sets :codeowners but its team \"UX West\" has no \"assignee\""
+                          (owned-lines '{lib {:team "UX West", :codeowners true}}))))
+  (testing "an unknown :codeowners value fails"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Module lib sets :codeowners to :test; use true \(src and test\) or :src"
+                          (owned-lines '{lib {:team "Querying Platform", :codeowners :test}})))))
+
+(deftest codeowners-splice-test
+  (let [begin  @#'mage.modules/codeowners-begin-marker
+        end    @#'mage.modules/codeowners-end-marker
+        splice @#'mage.modules/splice-codeowners
+        block  (str begin "\nnew/path @new\n" end)]
+    (testing "a file without markers gets the block appended"
+      (is (= (str "docs @writers\n\n" block "\n")
+             (splice "docs @writers\n" block))))
+    (testing "the marked region is replaced, keeping the text on both sides"
+      (let [existing (str "# header\n\n" begin "\nold/path @old\n" end "\n\n# exceptions\nsrc/a.clj @owner\n")
+            out      (splice existing block)]
+        (is (= (str "# header\n\n" block "\n\n# exceptions\nsrc/a.clj @owner\n")
+               out))
+        (is (= out (splice out block))
+            "splicing again changes nothing")))
+    (testing "a file with only one marker, or the markers out of order, fails instead of losing lines"
+      (doseq [existing [(str "# header\n" begin "\nsrc/a.clj @owner\n")
+                        (str "src/a.clj @owner\n" end "\n")
+                        (str end "\nsrc/a.clj @owner\n" begin "\n")]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has a broken generated block"
+                              (splice existing block)))))))

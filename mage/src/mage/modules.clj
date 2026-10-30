@@ -64,15 +64,17 @@
 (def ^:private backend-test-source-file-extensions
   [".clj" ".cljc"])
 
-(defn- module->test-path-prefix [modules-config module]
+(defn- module->path-prefix
+  "Repo-relative directory holding `module`'s namespaces under `tree`, which is `\"src\"` or `\"test\"`."
+  [modules-config module tree]
   (let [ns-prefix (modules/module-ns-prefix modules-config module)]
     (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
-         "test/"
+         tree "/"
          (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
 
 (defn- module->test-paths [modules-config module]
   (let [prefix->module (modules/build-prefix->module modules-config)
-        path-prefix    (module->test-path-prefix modules-config module)
+        path-prefix    (module->path-prefix modules-config module "test")
         test-dir       (io/file path-prefix)
         test-files     (concat
                         (for [extension backend-test-source-file-extensions
@@ -275,10 +277,10 @@
 ;;;; CODEOWNERS
 ;;;; =============================================================================
 
-;;;; `.github/CODEOWNERS` gets a generated block between BEGIN/END markers, one stanza per module that
-;;;; opts in with `:codeowners true` (config.edn). The stanza gives the module's src and test dirs to its
-;;;; team's `assignee` handle (team.json). Lines outside the markers are hand-maintained (frontend, e2e,
-;;;; docs, single files).
+;;;; `.github/CODEOWNERS` gets a generated block between BEGIN/END markers, one stanza per module that opts in with
+;;;; `:codeowners` in config.edn. The stanza gives the module's directories to its team's `assignee` handle in
+;;;; team.json. The block depends only on those two files, so a new directory never makes it stale. Lines outside
+;;;; the markers are hand-maintained (frontend, e2e, docs, single files).
 
 (def ^:private codeowners-path ".github/CODEOWNERS")
 (def ^:private team-config-path ".github/team.json")
@@ -288,6 +290,11 @@
 
 (def ^:private codeowners-end-marker
   "# ===== END generated module ownership =====")
+
+(def ^:private codeowners-value->trees
+  "Directory trees each `:codeowners` value owns."
+  {true ["src" "test"]
+   :src ["src"]})
 
 (defn- team-name->assignee
   "Team name => GitHub CODEOWNERS handle, from the `assignee` field in team.json.
@@ -299,39 +306,25 @@
                   [name assignee])))
         (:teams (json/parse-string (slurp team-config-path) true))))
 
-(defn- module->src-path-prefix
-  "Backend source directory for `module`. Src-tree mirror of [[module->test-path-prefix]]."
-  [modules-config module]
-  (let [ns-prefix (modules/module-ns-prefix modules-config module)]
-    (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
-         "src/"
-         (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
-
-(defn- module->owned-dirs
-  "Existing src and test directories `module` contributes, in CODEOWNERS pattern form (repo-relative,
-  no leading slash), src first. Directories missing on disk are skipped."
-  [modules-config module]
-  (into []
-        (filter #(.isDirectory (io/file ^String %)))
-        [(module->src-path-prefix modules-config module)
-         (module->test-path-prefix modules-config module)]))
-
 (defn- codeowners-stanza-lines
-  "Lines for one module's stanza: a `# module (team)` header then one `dir handle` line per owned
-  directory. `nil` when `dirs` is empty."
+  "Lines for one module's stanza: a `# module (team)` header then one `dir handle` line per directory."
   [{:keys [module team handle dirs]}]
-  (when (seq dirs)
-    (into [(format "# %s (%s)" module team)]
-          (map #(str % " " handle))
-          dirs)))
+  (into [(format "# %s (%s)" module team)]
+        (map #(str % " " handle))
+        dirs))
 
 (defn- module-codeowners-stanza
-  "Resolve `module` against the config and assignees, then render its stanza. `nil` when the module
-  owns no existing directory. Throws when the module's team has no `assignee`, since an opted-in
-  module without a handle would silently lose its owner."
+  "Resolve `module` against the config and assignees, then render its stanza.
+  Throws when the module's `:codeowners` value is unknown or its team has no `assignee`."
   [modules-config assignees module]
-  (let [team   (modules/module-team modules-config module)
+  (let [value  (get-in modules-config [module :codeowners])
+        trees  (codeowners-value->trees value)
+        team   (modules/module-team modules-config module)
         handle (get assignees team)]
+    (when-not trees
+      (throw (ex-info (format "Module %s sets :codeowners to %s; use true (src and test) or :src"
+                              module (pr-str value))
+                      {:module module, :codeowners value})))
     (when-not handle
       (throw (ex-info (format "Module %s sets :codeowners but its team %s has no \"assignee\" in %s"
                               module (pr-str team) team-config-path)
@@ -340,54 +333,60 @@
      {:module module
       :team   team
       :handle handle
-      :dirs   (module->owned-dirs modules-config module)})))
+      :dirs   (map #(module->path-prefix modules-config module %) trees)})))
 
 (defn- codeowners-block
-  "Generated block as one string, marker to marker. One stanza per module with `:codeowners true`,
-  sorted by source path so a nested child's dirs sort after its parent's (CODEOWNERS applies the last
-  matching pattern)."
+  "Generated block as one string, marker to marker, with one stanza per module that sets `:codeowners`."
   [modules-config assignees]
-  (let [stanzas (->> modules-config
-                     (keep (fn [[module cfg]] (when (:codeowners cfg) module)))
-                     (sort-by #(module->src-path-prefix modules-config %))
-                     (keep #(module-codeowners-stanza modules-config assignees %)))]
+  (let [stanzas (->> (for [[module cfg] modules-config
+                           :when (contains? cfg :codeowners)]
+                       module)
+                     ;; CODEOWNERS applies the last matching pattern, so a nested child's stanza must follow its
+                     ;; parent's. Sorting by source path does that.
+                     (sort-by #(module->path-prefix modules-config % "src"))
+                     (map #(module-codeowners-stanza modules-config assignees %)))]
     (str/join
      "\n"
      (concat
       [codeowners-begin-marker
        "#"
        "# Generated by `./bin/mage update-codeowners`. Do not edit by hand."
-       "# A module opts in with `:codeowners true` in .clj-kondo/config/modules/config.edn."
-       "# Its src and test dirs go to its team's \"assignee\" handle in .github/team.json."
+       "# A module opts in with `:codeowners` in .clj-kondo/config/modules/config.edn."
+       "# Its directories go to its team's \"assignee\" handle in .github/team.json."
        "#"]
       (mapcat #(cons "" %) stanzas)
       [""
        codeowners-end-marker]))))
 
 (defn- splice-codeowners
-  "Replace the marked region (inclusive) in `existing` with `block`; append `block` if the markers aren't
-  there yet. Returns text ending in one newline."
+  "Replace the marked region (inclusive) in `existing` with `block`, or append `block` when neither marker is there.
+  Returns text ending in one newline.
+  Throws when only one marker is there, or the end marker comes first."
   [existing block]
   (let [begin (str/index-of existing codeowners-begin-marker)
-        end   (str/index-of existing codeowners-end-marker)
-        spliced (if (and begin end (< begin end))
-                  (str (str/trimr (subs existing 0 begin))
-                       "\n\n" block
-                       (subs existing (+ end (count codeowners-end-marker))))
-                  (str (str/trimr existing) "\n\n" block))]
-    (str (str/trimr spliced) "\n")))
+        end   (str/index-of existing codeowners-end-marker)]
+    (cond
+      (and begin end (< begin end))
+      (str (str/trimr (subs existing 0 begin))
+           "\n\n" block
+           (str/trimr (subs existing (+ end (count codeowners-end-marker))))
+           "\n")
 
-(defn- desired-codeowners []
-  (splice-codeowners (slurp codeowners-path)
-                     (codeowners-block (read-modules-config) (team-name->assignee))))
+      (or begin end)
+      (throw (ex-info (str codeowners-path " has a broken generated block. Its BEGIN and END markers must both be"
+                           " there, in that order. Fix the markers by hand, then run ./bin/mage update-codeowners.")
+                      {:begin begin, :end end}))
+
+      :else
+      (str (str/trimr existing) "\n\n" block "\n"))))
 
 (defn cli-update-codeowners
   "Regenerate the module-ownership block in `.github/CODEOWNERS`.
-  `--check` exits non-zero when the file is stale instead of writing it (for CI)."
+  With `--check`, exit non-zero when the file is stale instead of writing it."
   [cli-args]
   (let [check?   (get-in cli-args [:options :check])
         existing (slurp codeowners-path)
-        desired  (desired-codeowners)]
+        desired  (splice-codeowners existing (codeowners-block (read-modules-config) (team-name->assignee)))]
     (cond
       (= existing desired)
       (do (println (c/green "CODEOWNERS module ownership is up to date."))
