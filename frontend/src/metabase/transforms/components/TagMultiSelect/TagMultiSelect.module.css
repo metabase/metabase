@@ -7,6 +7,6 @@
   visibility: hidden;
 }
 
-.selectItem.editable:hover .actionIcon {
+[data-combobox-option]:hover .selectItem.editable .actionIcon {
   visibility: visible;
 }
