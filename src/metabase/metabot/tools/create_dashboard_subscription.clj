@@ -30,6 +30,7 @@
     {:name        "create_dashboard_subscription"
      :description tool-description
      :scope       scope/agent-dashboard-subscribe
+     :metabot/curation :gated
      :args        [:map {:closed true}
                    [:dashboard_id :int]
                    [:schedule tools.create-alert/schedule-schema]]})

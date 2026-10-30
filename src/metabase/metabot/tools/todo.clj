@@ -112,7 +112,8 @@
                          [:priority [:enum "high" "medium" "low"]]]]]])
 
 (mu/defn ^{:tool-name "todo_write"
-           :scope     scope/agent-todo-write}
+           :scope     scope/agent-todo-write
+           :curation  :navigation}
   todo-write-tool
   "Create and manage a structured task list.
   Write or update the todo list with tasks for tracking progress.
@@ -132,7 +133,8 @@
       (metabot.tools.u/handle-agent-error e))))
 
 (mu/defn ^{:tool-name "todo_read"
-           :scope     scope/agent-todo-read}
+           :scope     scope/agent-todo-read
+           :curation  :navigation}
   todo-read-tool
   "Read the current todo list from memory.
   Returns the list of todos that have been created during this conversation."

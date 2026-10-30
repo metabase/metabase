@@ -22,6 +22,7 @@
                        "Use this tool when you need more information from the user to properly "
                        "complete their SQL request. The agent will stop and wait for the user's response.")
      :scope scope/agent-sql-read
+     :metabot/curation :navigation
      :args [:map {:closed true}
             [:question :string]
             [:options {:optional true} [:maybe [:sequential :string]]]]})

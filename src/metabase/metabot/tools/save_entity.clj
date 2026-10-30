@@ -353,6 +353,7 @@
     {:name        "save_entity"
      :description tool-description
      :scope       scope/agent-question-create
+     :metabot/curation :conversation-state
      :args        save-entity-schema})
 
   (handle [_ {:keys [chart_id destination description] question-name :name} _ctx]

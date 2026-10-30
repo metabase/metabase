@@ -157,6 +157,7 @@
                        "be saved first)\n"
                        "- report_id: Create dashboard for an existing report/question")
      :scope       scope/agent-dashboard-create
+     :metabot/curation :gated
      :args        autogen-dashboard-schema})
 
   (handle [_ {:keys [source]} {:keys [memory-atom]}]

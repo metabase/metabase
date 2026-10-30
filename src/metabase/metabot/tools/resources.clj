@@ -1468,6 +1468,7 @@
     {:name        "read_resource"
      :description tool-description
      :scope       scope/agent-resource-read
+     :metabot/curation :gated
      :args        [:map {:closed true} [:uri uri-arg]]})
 
   (handle [_ {:keys [uri]} _ctx]

@@ -5,6 +5,7 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]))
@@ -267,3 +268,35 @@
         (is (contains? tools "read_resource")
             "precondition: read_resource is active (would otherwise match a skill)")
         (is (not (contains? tools "load_skill")))))))
+
+(def ^:private undeclared-tool
+  "A tool that says nothing about how it keeps a curated-only Metabot within curated content."
+  (reify tools.core/Tool
+    (declaration [_] {:name "undeclared" :description "Declares no :metabot/curation." :args [:map {:closed true}]})
+    (handle [_ _args _ctx] {:output ""})))
+
+(def ^:private misdeclared-tool
+  "A tool whose curation handling is not one of the known ones."
+  (reify tools.core/Tool
+    (declaration [_] {:name             "misdeclared"
+                      :description      "Declares an unknown :metabot/curation."
+                      :args             [:map {:closed true}]
+                      :metabot/curation :open})
+    (handle [_ _args _ctx] {:output ""})))
+
+(deftest register-profile-requires-curation-handling-test
+  (let [base {:name            :scratch
+              :prompt-template "internal.selmer"
+              :max-iterations  10}]
+    (testing "rejects a tool that declares no :metabot/curation, so a new tool can't be registered open by omission"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"declares no :metabot/curation"
+                            (#'profiles/register-profile! (assoc base :tools [#'undeclared-tool])))))
+    (testing "rejects a :metabot/curation value that isn't a known handling"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid tool declaration"
+                            (#'profiles/register-profile! (assoc base :tools [#'misdeclared-tool])))))
+    (testing "every tool of every registered profile declares one"
+      (doseq [profile-id (profiles/registered-profile-ids)
+              tool-var   (:tools (profiles/get-profile profile-id))]
+        (testing (str profile-id " " tool-var)
+          (is (contains? #{:gated :filtered :conversation-state :viewing-context :sql :navigation}
+                         (:metabot/curation (tools.legacy/declaration-of tool-var)))))))))

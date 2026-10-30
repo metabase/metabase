@@ -40,18 +40,26 @@
   (atom {}))
 
 (defn- validate-tool-var!
-  "Validate that a var has the required tool metadata."
+  "Validate that a var holds a tool, that its declaration is valid, that its `:scope` is registered, and that it
+  declares how it keeps a curated-only Metabot within curated content (`:metabot/curation`, see
+  `metabase.metabot.tools.core/::curation`). The last is required of every tool a profile exposes, exempt
+  profiles included: the value describes the handler, not the profile, and a tool without one would otherwise
+  be open until a reviewer noticed."
   [tool-var]
   (when-not (mr/validate tool-var-schema tool-var)
     (throw (ex-info "Invalid tool var: missing :tool-name or :schema metadata"
                     {:tool-var   tool-var
                      :metadata   (meta tool-var)
                      :errors     (me/humanize (mu/explain tool-var-schema tool-var))})))
-  (when-let [required-scope (:scope (meta tool-var))]
-    (when-not (api-scope/registered-scope? required-scope)
-      (throw (ex-info (str "Tool has unregistered scope: " required-scope)
+  ;; The declaration, not the var's metadata: a converted tool carries its scope in the declaration only.
+  (let [{:keys [scope] curation :metabot/curation} (tools.core/validate-tool! (tools.legacy/adapt tool-var))]
+    (when (and scope (not (api-scope/registered-scope? scope)))
+      (throw (ex-info (str "Tool has unregistered scope: " scope)
                       {:tool-var tool-var
-                       :scope    required-scope}))))
+                       :scope    scope})))
+    (when-not curation
+      (throw (ex-info (str "Tool declares no :metabot/curation: " tool-var)
+                      {:tool-var tool-var}))))
   true)
 
 (mu/defn ^:private register-profile!
@@ -78,9 +86,10 @@
     Research plan). Keeps feature context out of the generic agent — only the profiles that need it
     opt in.
 
-  Tool vars are validated at registration time to ensure they have required metadata; any
-  `:always-on-skills` are validated to refer to registered skills, and any `:terminal-tools` to
-  refer to tools the profile actually exposes."
+  Tool vars are validated at registration time to ensure they have a valid declaration, a registered
+  scope, and a `:metabot/curation` value (see [[validate-tool-var!]]); any `:always-on-skills` are
+  validated to refer to registered skills, and any `:terminal-tools` to refer to tools the profile
+  actually exposes."
   [profile :- [:map {:closed true}
                [:name :keyword]
                [:prompt-template :string]
@@ -327,6 +336,11 @@
   "Whether a profile with `profile-id` is registered."
   [profile-id]
   (contains? @*profiles profile-id))
+
+(defn registered-profile-ids
+  "The ids of every registered profile."
+  []
+  (set (keys @*profiles)))
 
 (def ^:private eval-profile-ids
   "Profiles that exist only for evals.

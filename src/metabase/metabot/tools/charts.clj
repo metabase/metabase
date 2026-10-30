@@ -42,6 +42,7 @@
                        "`description` explaining what the chart shows (the metric, the grouping, and any notable "
                        "filter); it is used as the saved question's description.")
      :scope       scope/agent-viz-create
+     :metabot/curation :conversation-state
      :args        create-chart-schema})
 
   (handle [_ {:keys [data_source viz_settings title description]} _ctx]
@@ -81,6 +82,7 @@
                        "the chart. Also provide a concise `description` of what the chart shows; it is used as the "
                        "saved question's description.")
      :scope       scope/agent-viz-edit
+     :metabot/curation :conversation-state
      :args        edit-chart-schema})
 
   (handle [_ {:keys [chart_id new_viz_settings title description]} _ctx]
