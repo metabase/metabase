@@ -190,17 +190,134 @@
    Types/TINYINT                 :type/Integer
    Types/VARCHAR                 :type/Text})
 
+(defn- with-jdbc-base-type
+  "User-defined type aliases (`CREATE TYPE Key10 FROM varchar(10)`) come back as a TYPE_NAME
+  `database-type->base-type` can't resolve. The MSSQL JDBC driver exposes the underlying base type as
+  `DATA_TYPE` (a `java.sql.Types` code); use it as a fallback. `:database-type` stays the alias name."
+  [{:keys [base-type jdbc-type] :as col}]
+  (cond-> col
+    (= base-type :type/*) (assoc :base-type (get jdbc-type->base-type jdbc-type base-type))))
+
+(defn- non-blank-string
+  "Blank extended-property values are absent, matching JDBC `REMARKS` handling. `:field-comment` rejects blank strings."
+  [s]
+  (when-not (str/blank? s)
+    s))
+
+(def ^:private ms-description-text-sql
+  "SQL expression for the text of `ep.value`, or NULL when it is not a character description.
+
+  `sys.extended_properties.value` is `sql_variant`. `TRY_CAST(ep.value AS nvarchar(...))` does not mean
+  \"textual only\": Microsoft documents that `TRY_CAST` returns NULL when a conversion fails, but returns
+  the converted value when it succeeds, and raises when the conversion is explicitly forbidden. `int`,
+  `datetime`, `uniqueidentifier` and the other base types `sql_variant` can hold have a permitted
+  conversion to `nvarchar`, so `TRY_CAST` would stringify them. `SQL_VARIANT_PROPERTY(..., 'BaseType')`
+  is the stored base type. `MS_Description` is a character description (SSMS writes `nvarchar`). The
+  character base types are `char`, `varchar`, `nchar` and `nvarchar`; `sql_variant` cannot store
+  `(n)varchar(max)`, `text` or `ntext`, and reports alias types such as `sysname` as their base type
+  (`nvarchar`).
+
+  `CONVERT` to `nvarchar(max)` is the explicit conversion from `sql_variant` to a large-value type. The
+  target is `nvarchar(max)`, not `nvarchar(4000)`, so an 8000-byte `varchar` value is not truncated. The
+  source itself cannot exceed 8000 bytes."
+  (str "CASE WHEN SQL_VARIANT_PROPERTY(ep.value, 'BaseType') "
+       "IN (N'char', N'varchar', N'nchar', N'nvarchar') "
+       "THEN CONVERT(nvarchar(max), ep.value) ELSE NULL END"))
+
+(def ^:private table-ms-descriptions-sql
+  "One catalog query for table and view `MS_Description` values (`class` 1, `minor_id` 0).
+
+  User tables are `sys.objects.type` `U` and views are `V`, which is what `sp_tables` already returns to
+  sync. Synonyms and functions are not in that list. `is_ms_shipped = 0` skips shipped objects the schema
+  filter would drop anyway. Names are the stored `sysname` values, so they match JDBC `TABLE_SCHEM` /
+  `TABLE_NAME` without lowercasing, including under a case-sensitive collation."
+  (str "SELECT s.name AS table_schema, o.name AS table_name, " ms-description-text-sql " AS description "
+       "FROM sys.extended_properties AS ep "
+       "JOIN sys.objects AS o ON o.object_id = ep.major_id "
+       "JOIN sys.schemas AS s ON s.schema_id = o.schema_id "
+       "WHERE ep.class = 1 AND ep.minor_id = 0 AND ep.name = N'MS_Description' "
+       "AND o.type IN ('U', 'V') AND o.is_ms_shipped = 0"))
+
+(def ^:private column-ms-descriptions-sql
+  "Column `MS_Description` values for one object. Schema and object name are parameters.
+
+  Field sync is already one `sp_columns` call per table (`:describe-fields` is off). This is a second
+  statement on that same connection, after `getColumns` has closed its result set (the driver does not
+  enable MARS). It returns only columns that have the property."
+  (str "SELECT c.name AS column_name, " ms-description-text-sql " AS description "
+       "FROM sys.columns AS c "
+       "JOIN sys.objects AS o ON o.object_id = c.object_id "
+       "JOIN sys.schemas AS s ON s.schema_id = o.schema_id "
+       "JOIN sys.extended_properties AS ep "
+       "ON ep.class = 1 AND ep.major_id = c.object_id AND ep.minor_id = c.column_id "
+       "AND ep.name = N'MS_Description' "
+       "WHERE s.name = ? AND o.name = ? "
+       "AND o.type IN ('U', 'V') AND o.is_ms_shipped = 0"))
+
+(defn- execute-metadata-query
+  "Run `sql` on `conn` and realize every row before returning.
+
+  The statement is closed before the caller starts `getTables` or `getColumns`. There is no catch:
+  a missing catalog or a bad query fails the sync step, the same way `getTables`/`getColumns` and the
+  Postgres description queries do. A caller who cannot see an object gets no row for it (metadata
+  visibility), not an exception."
+  [driver ^Connection conn ^String sql params]
+  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
+              ^ResultSet rs (.executeQuery stmt)]
+    (into [] (jdbc/result-set-seq rs {:identifiers u/lower-case-en :keywordize? true}))))
+
+(defn- description-index
+  [rows key-fn]
+  (into {}
+        (keep (fn [row]
+                (when-let [description (non-blank-string (:description row))]
+                  [(key-fn row) description])))
+        rows))
+
+(defn- table-ms-descriptions
+  [driver conn]
+  (description-index (execute-metadata-query driver conn table-ms-descriptions-sql nil)
+                     (juxt :table_schema :table_name)))
+
+(defn- column-ms-descriptions
+  "`schema` is required. SQL Server catalog rows always carry the schema JDBC stored; a nil schema cannot
+  be told apart from another object of the same name."
+  [driver conn schema table-name]
+  (if (or (str/blank? schema) (str/blank? table-name))
+    {}
+    (description-index (execute-metadata-query driver conn column-ms-descriptions-sql [schema table-name])
+                       :column_name)))
+
+(defn- assoc-table-description
+  "Attach `:description` when this object has a non-blank `MS_Description`. Leave JDBC `:description` alone
+  otherwise (`REMARKS` from `sp_tables` is empty on mssql-jdbc 13.4)."
+  [table descriptions]
+  (if-let [description (get descriptions [(:schema table) (:name table)])]
+    (assoc table :description description)
+    table))
+
+(defn- with-field-comment
+  [field comments]
+  (if-let [comment (get comments (:name field))]
+    (assoc field :field-comment comment)
+    field))
+
+(defmethod sql-jdbc.sync/active-tables :sqlserver
+  [driver conn schema-inclusion-filters schema-exclusion-filters]
+  (let [descriptions (table-ms-descriptions driver conn)]
+    (eduction
+     (map #(assoc-table-description % descriptions))
+     ((get-method sql-jdbc.sync/active-tables :sql-jdbc)
+      driver conn schema-inclusion-filters schema-exclusion-filters))))
+
 (defmethod sql-jdbc.sync/describe-table-fields :sqlserver
-  [driver conn table db-name-or-nil]
-  ;; When TYPE_NAME is a user-defined type alias (`CREATE TYPE Key10 FROM varchar(10)`),
-  ;; `database-type->base-type` can't resolve it. The MSSQL JDBC driver already exposes the underlying
-  ;; base type as `DATA_TYPE` (a `java.sql.Types` code), so use it as a fallback. `:database-type` stays
-  ;; the alias name, so the original type is still visible in field metadata.
-  (into #{}
-        (map (fn [{:keys [base-type jdbc-type] :as col}]
-               (cond-> col
-                 (= base-type :type/*) (assoc :base-type (get jdbc-type->base-type jdbc-type base-type)))))
-        ((get-method sql-jdbc.sync/describe-table-fields :sql-jdbc) driver conn table db-name-or-nil)))
+  [driver conn {schema :schema table-name :name :as table} db-name-or-nil]
+  (let [fields ((get-method sql-jdbc.sync/describe-table-fields :sql-jdbc)
+                driver conn table db-name-or-nil)
+        comments (column-ms-descriptions driver conn schema table-name)]
+    (into #{}
+          (map (comp #(with-field-comment % comments) with-jdbc-base-type))
+          fields)))
 
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for SQL Server that dispatches on type."
