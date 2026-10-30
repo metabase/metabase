@@ -39,6 +39,10 @@ inputs:
     description: Snowplow micro container
     required: false
     default: false
+  metaplow:
+    description: Metabase Track recording sink container
+    required: false
+    default: false
 
 runs:
   using: "composite"
@@ -80,6 +84,7 @@ runs:
         [ "${{ inputs.mocksaml }}" = true ] && SERVICES+=(saml-idp)
         [ "${{ inputs.webhook }}" = true ] && SERVICES+=(webhook-tester)
         [ "${{ inputs.snowplow }}" = true ] && SERVICES+=(snowplow-micro)
+        [ "${{ inputs.metaplow }}" = true ] && SERVICES+=(metaplow-sink)
 
         for attempt in 1 2 3; do
           echo "Docker compose up attempt $attempt of 3..."
@@ -148,4 +153,10 @@ runs:
           echo -e "${Y}checking snowplow micro container..." &&
           while ! nc -z localhost 9090; do sleep 1; done &&
           echo -e "${G}Snowplow micro is up and running!"
+        fi
+
+        if ${{ inputs.metaplow }}; then
+          echo -e "${Y}checking Metabase Track sink container..." &&
+          while ! nc -z localhost 9091; do sleep 1; done &&
+          echo -e "${G}Metabase Track sink is up and running!"
         fi

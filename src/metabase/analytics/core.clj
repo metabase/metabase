@@ -54,7 +54,8 @@
  [metabase.analytics.settings
   anon-tracking-enabled
   anon-tracking-enabled!
-  instance-creation]
+  instance-creation
+  metaplow-url]
  [metabase.analytics.event
   track-event!]
  [metabase.analytics.stats
