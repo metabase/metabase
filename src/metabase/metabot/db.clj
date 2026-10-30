@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection.model]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -886,8 +887,10 @@
   [card-id :- ::lib.schema.id/card
    conversation-id :- :string
    chart-id :- :string]
-  (t2/update! (t2/table-name :model/Card) card-id {:metabot_conversation_id conversation-id
-                                                   :metabot_chart_id        chart-id}))
+  (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (change-log/log-rows! :report_card "update" (constantly [card-id]))
+    (t2/update! (t2/table-name :model/Card) card-id {:metabot_conversation_id conversation-id
+                                                     :metabot_chart_id        chart-id})))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 

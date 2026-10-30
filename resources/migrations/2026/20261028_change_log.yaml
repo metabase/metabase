@@ -1,0 +1,56 @@
+## metabase.change-log.core says what an entry of change_log means and who writes one.
+
+databaseChangeLog:
+  - changeSet:
+      id: cl7mq2
+      author: Filipe Silva
+      comment: Add change_log, the log of the inserts, updates and deletes of the models that derive :hook/change-log
+      changes:
+        - createTable:
+            tableName: change_log
+            remarks: The inserts, updates and deletes of the models that derive :hook/change-log
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: table_name
+                  type: varchar(64)
+                  remarks: The table of the changed row, or '*' for a start marker
+                  constraints:
+                    nullable: false
+              - column:
+                  name: row_id
+                  type: bigint
+                  remarks: The primary key of the changed row, or 0 for a start marker
+                  constraints:
+                    nullable: false
+              - column:
+                  name: action
+                  type: varchar(16)
+                  remarks: insert, update, delete, or start
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the change was logged
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: cl4xr9
+      author: Filipe Silva
+      comment: Index change_log by created_at, for the task that deletes the old rows
+      changes:
+        - createIndex:
+            tableName: change_log
+            indexName: idx_change_log_created_at
+            columns:
+              - column:
+                  name: created_at

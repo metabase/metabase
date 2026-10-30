@@ -1,8 +1,8 @@
 (ns metabase-enterprise.monitor-relay.sql
   "The queries the relay reads the app DB with, for `:postgres` and `:mysql` (MySQL and MariaDB). Each row has the
   shape that `spec/data/ingestion/rows.yaml` in the Metabase Monitor repository defines, at full capability. The
-  engines differ in identifier quoting, in how the query hash becomes hex, and in how a timestamp becomes epoch
-  microseconds and back. Placeholders are JDBC `?`."
+  engines differ in identifier quoting, in how the query hash becomes hex, and in how a timestamp becomes text.
+  Placeholders are JDBC `?`."
   (:require
    [clojure.string :as str]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]))
@@ -24,18 +24,27 @@
 ;;; ------------------------------------------------- fact streams -------------------------------------------------
 
 (def streams
-  "The fact streams, in the order the relay sends them: logins before executions."
-  [:login :execution :view :audit])
+  "The streams, in the order the relay sends them: the change log, then the facts, logins before executions."
+  [:change :login :execution :view :audit])
 
 (def stream-table
   "The app-DB table each stream reads."
-  {:execution "query_execution"
+  {:change    "change_log"
+   :execution "query_execution"
    :login     "login_history"
    :view      "view_log"
    :audit     "audit_log"})
 
 (def ^:private stream-alias
-  {:execution "qe", :login "lh", :view "vl", :audit "al"})
+  {:change "cl", :execution "qe", :login "lh", :view "vl", :audit "al"})
+
+(defn row-id
+  "The key of the id in the rows of `stream`."
+  [stream]
+  (if (= :change stream) :id :event_id))
+
+(defn- change-select [_engine]
+  "SELECT cl.id AS id, cl.table_name AS table_name, cl.row_id AS row_id, cl.action AS action FROM change_log cl")
 
 (defn- execution-select [engine]
   (str "SELECT qe.id AS event_id, qe.started_at AS started_at, qe.running_time AS running_ms,"
@@ -86,6 +95,7 @@
 
 (defn- stream-select [engine stream]
   ((case stream
+     :change    change-select
      :execution execution-select
      :login     login-select
      :view      view-select
@@ -132,16 +142,6 @@
 
 ;;; ------------------------------------------------- state kinds --------------------------------------------------
 
-(defn- micros
-  "The timestamp expression `x` in epoch microseconds, as an integer. On MySQL, run it under the session time zone
-  `+00:00`."
-  [engine x]
-  (if (= engine :mysql)
-    (str "CAST(UNIX_TIMESTAMP(" x ") * 1000000 AS SIGNED)")
-    ;; Each part is a whole number below 2^53, so it is exact also where EXTRACT returns a double (before Postgres 14).
-    (str "(EXTRACT(EPOCH FROM date_trunc('second', " x "))::bigint * 1000000"
-         " + EXTRACT(MICROSECONDS FROM " x ")::bigint % 1000000)")))
-
 (defn- utc-text
   "The timestamp expression `x` as UTC text with milliseconds and `Z`, as `relay.rows` sends a timestamp. On MySQL, run
   it under the session time zone `+00:00`. The driver reads a MySQL `timestamp` in the JVM's time zone, not the
@@ -150,14 +150,6 @@
   (if (= engine :mysql)
     (str "CONCAT(LEFT(DATE_FORMAT(" x ", '%Y-%m-%dT%H:%i:%s.%f'), 23), 'Z')")
     x))
-
-(defn- instant
-  "The timestamp of an epoch-microseconds parameter, the inverse of [[micros]]. On MySQL, run it under the session time
-  zone `+00:00`."
-  [engine]
-  (if (= engine :mysql)
-    "TIMESTAMPADD(MICROSECOND, ?, TIMESTAMP '1970-01-01 00:00:00')"
-    "(TIMESTAMPTZ 'epoch' + ? * INTERVAL '1 microsecond')"))
 
 (defn- field-query
   "Fields with the values users set merged in, as `metabase.warehouse-schema-overlay` merges them."
@@ -181,8 +173,7 @@
     (str "SELECT c.id AS id, c.id AS card_id, c.name AS name, c.collection_id AS collection_id,"
          " c.database_id AS database_id, c.query_type AS query_type, c.dataset_query AS dataset_query,"
          " c.public_uuid AS public_uuid, c.made_public_by_id AS made_public_by_id, c.archived AS archived,"
-         " c." (q engine "type") " AS type, " (micros engine "c.updated_at") " AS _u"
-         " FROM report_card c")
+         " c." (q engine "type") " AS type FROM report_card c")
 
     :dashboard
     (str "SELECT d.id AS id, d.id AS dashboard_id, d.name AS name, d.collection_id AS collection_id,"
@@ -252,8 +243,7 @@
          " u.last_name AS last_name, u.is_superuser AS is_superuser, u.is_active AS is_active,"
          " u.sso_source AS sso_source, u.locale AS locale, " (utc-text engine "u.date_joined") " AS date_joined,"
          " u.tenant_id, u.login_attributes, u." (q engine "type") " AS user_type, "
-         (utc-text engine "u.last_login") " AS last_login,"
-         " " (micros engine "u.updated_at") " AS _u"
+         (utc-text engine "u.last_login") " AS last_login"
          " FROM core_user u")))
 
 (def ^:private state-filter
@@ -287,78 +277,57 @@
   "The state kinds."
   (set (keys state-id)))
 
-(def delta-kinds
-  "The state kinds also read by the time of their last change, in the order the relay sends them. Their rows carry
-  `_u`, that time in epoch microseconds."
-  [:user :card])
-
-(def ^:private changed-column
-  {:user "u.updated_at"
-   :card "c.updated_at"})
-
-(defn- read-clause
-  "The condition, order and limit of `read` over state `kind`, as `[sql params]`."
-  [engine kind [read & args]]
-  (let [id (state-id kind)]
-    (case read
-      :page    [(str id " >= ? ORDER BY " id " LIMIT ?") args]
-      :range   [(str id " BETWEEN ? AND ? ORDER BY " id) args]
-      :ids     (let [[ids] args]
-                 [(str id " IN (" (str/join ", " (repeat (count ids) "?")) ")") ids])
-      :changed (let [[t after-id limit] args
-                     column             (changed-column kind)
-                     at                 (instant engine)]
-                 [(str column " >= " at " AND (" column " > " at " OR " id " >= ?)"
-                       " ORDER BY " column ", " id " LIMIT ?")
-                  [t t after-id limit]]))))
-
-(defn- honey-read
-  "`query`, a HoneySQL map over state `kind`, restricted to `read`."
-  [query kind [read & args]]
-  (let [id (keyword (state-id kind))]
-    (merge query
-           (case read
-             :page  (let [[from limit] args] {:where [:>= id from], :order-by [id], :limit limit})
-             :range (let [[lo hi] args] {:where [:between id lo hi], :order-by [id]})
-             :ids   {:where [:in id (first args)]}))))
+(def table-kinds
+  "Per table of the change log, the state kinds whose rows a change of one of its rows can change, each with the column
+  of the kind's query that holds that row's id. When the column is the kind's own key ([[state-id]]), an asked id that
+  the read does not find is gone from the kind. A read by another column, such as fields by `f.table_id`, names no id of
+  the kind, so it finds none gone. A table that is not here changes no kind."
+  {"core_user"                    [[:user "u.id"] [:notification_recipient "nr.user_id"]
+                                   [:pulse_channel_recipient "pcr.user_id"]]
+   "report_card"                  [[:card "c.id"]]
+   "metabase_field"               [[:field "f.id"]]
+   "metabase_field_user_settings" [[:field_user_settings "fus.field_id"] [:field "f.id"]]
+   "metabase_table"               [[:table "t.id"] [:field "f.table_id"]]
+   ;; A field row takes only the table's name, schema and database, and no user setting changes those.
+   "metabase_table_user_settings" [[:table "t.id"]]
+   "permissions_group"            [[:group "g.id"]]
+   "permissions_group_membership" [[:group_membership "m.id"]]
+   "report_dashboard"             [[:dashboard "d.id"]]
+   "metabase_database"            [[:database "db.id"]]
+   "native_query_snippet"         [[:snippet "s.id"]]
+   "tenant"                       [[:tenant "t.id"]]
+   "notification"                 [[:notification "n.id"]]
+   "notification_card"            [[:notification "n.payload_id"]]
+   "notification_handler"         [[:notification_handler "nh.id"]]
+   "notification_recipient"       [[:notification_recipient "nr.id"]]
+   "notification_subscription"    [[:notification_subscription "ns.id"]]
+   "pulse"                        [[:pulse "p.id"]]
+   "pulse_card"                   [[:pulse_card "pc.id"]]
+   "pulse_channel"                [[:pulse_channel "pch.id"]]
+   "pulse_channel_recipient"      [[:pulse_channel_recipient "pcr.id"]]})
 
 (defn state-query
   "The query for the rows of state `kind` that `read` selects, a HoneySQL map for `:field` and `:table`, which merge
   the values users set, else a `[sql & params]` vector. `read` is one of:
 
   - `[:page from limit]`: the rows with a key at or above `from`, in key order, at most `limit`;
-  - `[:range lo hi]`: the rows with a key from `lo` to `hi`, in key order;
-  - `[:ids ids]`: the rows with a key in `ids`, a non-empty collection;
-  - `[:changed t id limit]`: `:user` and `:card` only, the rows whose `(updated_at, id)` is at or after `(t, id)`, `t`
-    in epoch microseconds, in that order, at most `limit`. On MySQL, run it under the session time zone `+00:00`."
-  [engine kind read]
-  (case kind
-    :field (honey-read (field-query) kind read)
-    :table (honey-read (table-query) kind read)
-    (let [[clause params] (read-clause engine kind read)
-          condition       (when-let [f (state-filter kind)] (f engine))]
-      (into [(str (state-sql engine kind) " WHERE " (some-> condition (str " AND ")) clause)] params))))
+  - `[:in column ids]`: the rows whose `column`, one of the kind's in [[table-kinds]], is in `ids`, a non-empty
+    collection."
+  [engine kind [read & args]]
+  (let [id (state-id kind)]
+    (case kind
+      (:field :table)
+      (merge ((if (= :field kind) field-query table-query))
+             (case read
+               :page (let [[from limit] args] {:where [:>= (keyword id) from], :order-by [(keyword id)], :limit limit})
+               :in   (let [[column ids] args] {:where [:in (keyword column) ids]})))
 
-(defn clock-sql
-  "SQL for the app DB's clock, in epoch microseconds: `r`, now. On Postgres also `o`, the start of the oldest open
-  transaction of Metabase's role on other connections, or NULL when there is none, and `tracked`, whether
-  `track_activities` is on. Without it, Postgres records no transaction's start, so `o` is always NULL. On MySQL, run it
-  under the session time zone `+00:00`."
-  [engine]
-  (if (= engine :mysql)
-    (str "SELECT " (micros engine "NOW(6)") " AS r")
-    (str "SELECT " (micros engine "now()") " AS r,"
-         " (SELECT " (micros engine "min(xact_start)") " FROM pg_stat_activity"
-         " WHERE datname = current_database() AND usename = current_user AND pid <> pg_backend_pid()) AS o,"
-         " current_setting('track_activities') = 'on' AS tracked")))
-
-(defn mysql-oldest-transaction-sql
-  "SQL for `o`, the start of the oldest open InnoDB transaction on other connections in epoch microseconds, or NULL
-  when there is none. Run it under the session time zone `SYSTEM`: InnoDB gives `trx_started` in the server's system
-  time zone. It needs the `PROCESS` privilege."
-  []
-  (str "SELECT " (micros :mysql "MIN(trx_started)") " AS o FROM information_schema.innodb_trx"
-       " WHERE trx_mysql_thread_id <> CONNECTION_ID()"))
+      (let [[clause params] (case read
+                              :page (let [[from limit] args] [(str id " >= ? ORDER BY " id " LIMIT ?") [from limit]])
+                              :in   (let [[column ids] args]
+                                      [(str column " IN (" (str/join ", " (repeat (count ids) "?")) ")") ids]))
+            condition       (when-let [f (state-filter kind)] (f engine))]
+        (into [(str (state-sql engine kind) " WHERE " (some-> condition (str " AND ")) clause)] params)))))
 
 ;;; ------------------------------------------- capabilities and sequences ----------------------------------------
 
@@ -389,6 +358,11 @@
   (str "SELECT 1 AS x FROM " table " WHERE " (q engine "timestamp") " > "
        (if (= engine :mysql) "NOW() - INTERVAL 7 DAY" "now() - interval '7 days'")
        " LIMIT 1"))
+
+(defn change-oldest-sql
+  "SQL for `id`, the change log's smallest id, or NULL when it is empty."
+  []
+  "SELECT MIN(id) AS id FROM change_log")
 
 (defn postgres-sequence-names-sql
   "SQL for one row with, per stream, the name of its table's id sequence, quoted as Postgres quotes it."

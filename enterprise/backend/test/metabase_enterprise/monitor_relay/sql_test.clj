@@ -1,8 +1,11 @@
 (ns metabase-enterprise.monitor-relay.sql-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.monitor-relay.sql :as relay.sql]))
+   [metabase-enterprise.monitor-relay.sql :as relay.sql]
+   [metabase.models.resolution :as models.resolution]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,8 +30,9 @@
           (str/replace "`" "")))))
 
 (def ^:private stream-columns
-  "Each stream's row shape, from the Monitor's `spec/data/ingestion/rows.yaml`."
-  {:execution ["event_id" "started_at" "running_ms" "result_rows" "is_native_flag" "context" "has_error"
+  "Each stream's row shape, from the Monitor's `spec/data/ingestion/rows.yaml`, and the change log's."
+  {:change    ["id" "table_name" "row_id" "action"]
+   :execution ["event_id" "started_at" "running_ms" "result_rows" "is_native_flag" "context" "has_error"
                "database_id" "user_id" "user_email" "is_superuser" "is_active" "sso_source" "card_id" "card_name"
                "collection_id" "card_is_public" "dashboard_id" "dashboard_name" "pulse_id" "is_sandboxed"
                "embedding_client" "ip" "user_agent" "sanitized_user_agent" "auth_method" "embedding_route"
@@ -74,9 +78,9 @@
   (testing "MySQL quotes its reserved words"
     (is (str/includes? (relay.sql/stream-page-sql :mysql :audit) "al.`timestamp` AS ts"))
     (is (str/includes? (relay.sql/stream-page-sql :postgres :audit) "al.timestamp AS ts"))
-    (is (str/includes? (first (relay.sql/state-query :mysql :notification_recipient [:ids [1]]))
+    (is (str/includes? (first (relay.sql/state-query :mysql :notification_recipient [:in "nr.id" [1]]))
                        "nr.`type` AS `type`"))
-    (is (str/includes? (first (relay.sql/state-query :mysql :user [:ids [1]])) "u.`type` AS user_type"))))
+    (is (str/includes? (first (relay.sql/state-query :mysql :user [:in "u.id" [1]])) "u.`type` AS user_type"))))
 
 (def ^:private state-columns
   "Each state kind's row shape, from the Monitor's `spec/data/ingestion/rows.yaml`, after `id`."
@@ -108,84 +112,78 @@
     (is (not (contains? relay.sql/state-kinds :setting))))
   (doseq [engine [:postgres :mysql]
           [kind columns] state-columns]
-    (testing (str engine " " kind ": the key first as id, and for user and card the time of the last change last")
-      (is (= (concat ["id"] columns (when (#{:user :card} kind) ["_u"]))
-             (aliases (first (relay.sql/state-query engine kind [:ids [1]]))))))))
+    (testing (str engine " " kind ": the key first as id")
+      (is (= (cons "id" columns)
+             (aliases (first (relay.sql/state-query engine kind [:page 0 10]))))))))
 
 (deftest ^:parallel state-id-test
   (testing "each kind's key is the expression its rows carry as id"
     (doseq [kind (keys state-columns)]
-      (is (str/starts-with? (first (relay.sql/state-query :postgres kind [:ids [1]]))
+      (is (str/starts-with? (first (relay.sql/state-query :postgres kind [:page 0 10]))
                             (str "SELECT " (relay.sql/state-id kind) " AS id, "))
           kind))
     (is (= "fus.field_id" (relay.sql/state-id :field_user_settings)))))
 
 (deftest ^:parallel state-read-test
   (let [query #(first (relay.sql/state-query %1 %2 %3))]
-    (testing "a state pass pages by key, as a fetch reads the keys above one; a bucket read takes a key range; a fetch
-              takes keys"
+    (testing "a snapshot pages by key; a change page reads the rows whose column is in the ids the log names"
       (is (str/ends-with? (query :postgres :group [:page 0 10])
                           " FROM permissions_group g WHERE g.id >= ? ORDER BY g.id LIMIT ?"))
-      (is (str/ends-with? (query :postgres :group [:range 0 255]) " WHERE g.id BETWEEN ? AND ? ORDER BY g.id"))
-      (is (str/ends-with? (query :postgres :group [:ids [1 2 3]]) " WHERE g.id IN (?, ?, ?)"))
+      (is (str/ends-with? (query :postgres :group [:in "g.id" [1 2 3]]) " WHERE g.id IN (?, ?, ?)"))
+      (is (str/ends-with? (query :postgres :notification_recipient [:in "nr.user_id" [4]]) " WHERE nr.user_id IN (?)"))
       (is (= [7 10] (rest (relay.sql/state-query :postgres :group [:page 7 10]))))
-      (is (= [1 2 3] (rest (relay.sql/state-query :postgres :group [:ids [1 2 3]])))))
+      (is (= [1 2 3] (rest (relay.sql/state-query :postgres :group [:in "g.id" [1 2 3]])))))
     (testing "the two kinds with a filter apply it to every read"
       (is (str/includes? (query :postgres :notification [:page 0 10])
                          " WHERE n.payload_type = 'notification/card' AND n.id >= ?"))
-      (is (str/includes? (query :mysql :notification_subscription [:ids [1]])
-                         " WHERE ns.`type` = 'notification-subscription/cron' AND ns.id IN (?)")))
-    (testing "a delta reads the rows changed at or after a time and id, in that order"
-      (is (= [(str " WHERE u.updated_at >= (TIMESTAMPTZ 'epoch' + ? * INTERVAL '1 microsecond')"
-                   " AND (u.updated_at > (TIMESTAMPTZ 'epoch' + ? * INTERVAL '1 microsecond') OR u.id >= ?)"
-                   " ORDER BY u.updated_at, u.id LIMIT ?")
-              1793178902250001 1793178902250001 7 100]
-             (update (vec (relay.sql/state-query :postgres :user [:changed 1793178902250001 7 100])) 0
-                     #(subs % (str/index-of % " WHERE ")))))
-      (is (str/includes? (query :mysql :card [:changed 1 0 100])
-                         (str " WHERE c.updated_at >= TIMESTAMPADD(MICROSECOND, ?, TIMESTAMP '1970-01-01 00:00:00')"
-                              " AND (c.updated_at > TIMESTAMPADD(MICROSECOND, ?, TIMESTAMP '1970-01-01 00:00:00')"
-                              " OR c.id >= ?) ORDER BY c.updated_at, c.id LIMIT ?"))))
-    (testing "the time of the last change is in epoch microseconds"
-      (is (str/includes? (query :mysql :user [:ids [1]])
-                         "CAST(UNIX_TIMESTAMP(u.updated_at) * 1000000 AS SIGNED) AS _u"))
-      (is (str/includes? (query :postgres :card [:ids [1]])
-                         (str "(EXTRACT(EPOCH FROM date_trunc('second', c.updated_at))::bigint * 1000000"
-                              " + EXTRACT(MICROSECONDS FROM c.updated_at)::bigint % 1000000) AS _u"))))))
+      (is (str/includes? (query :postgres :notification [:in "n.payload_id" [3]])
+                         " WHERE n.payload_type = 'notification/card' AND n.payload_id IN (?)"))
+      (is (str/includes? (query :mysql :notification_subscription [:in "ns.id" [1]])
+                         " WHERE ns.`type` = 'notification-subscription/cron' AND ns.id IN (?)")))))
+
+(deftest ^:parallel table-kinds-test
+  (testing "each table names kinds the relay knows"
+    (doseq [[table reads] relay.sql/table-kinds
+            [kind _column] reads]
+      (is (contains? relay.sql/state-kinds kind) table)))
+  (testing "every kind is read again when a row of its own table changes"
+    (is (= relay.sql/state-kinds
+           (set (for [[_ reads] relay.sql/table-kinds
+                      [kind column] reads
+                      :when (= column (relay.sql/state-id kind))]
+                  kind))))))
+
+(deftest table-kinds-logged-test
+  (testing "Metabase logs the changes of every table the relay maps: a model of each derives :hook/change-log"
+    ;; A model derives the hook when its namespace loads, and Metabase loads some only when they are first used.
+    (run! t2/resolve-model (keys models.resolution/model->namespace))
+    (let [mapped (set (keys relay.sql/table-kinds))
+          logged (into #{}
+                       (comp (filter #(= "model" (namespace %))) (map (comp name t2/table-name)))
+                       (descendants :hook/change-log))]
+      (is (set/subset? mapped logged)
+          (str "No model derives :hook/change-log for " (str/join ", " (sort (set/difference mapped logged))))))))
 
 (deftest ^:parallel overlay-state-test
   (testing "fields and tables read through the overlay, which merges the values users set"
     (doseq [kind [:field :table]]
-      (let [query (relay.sql/state-query :postgres kind [:ids [1]])]
+      (let [query (relay.sql/state-query :postgres kind [:page 0 10])]
         (is (map? query))
         (is (vector? (first (:from query))))))
     (is (= [:id :field_id :table_id :table_name :schema_name :database_id :field_name :active :data_sensitivity
             :semantic_type]
-           (map second (:select (relay.sql/state-query :postgres :field [:ids [1]])))))
+           (map second (:select (relay.sql/state-query :postgres :field [:page 0 10])))))
     (is (= [:id :table_id :name :schema_name :database_id :active :visibility_type :estimated_row_count]
-           (map second (:select (relay.sql/state-query :mysql :table [:ids [1]]))))))
-  (testing "their reads restrict the merged rows by key"
+           (map second (:select (relay.sql/state-query :mysql :table [:page 0 10]))))))
+  (testing "their reads restrict the merged rows by key, or by the column a change names"
     (is (=? {:where [:>= :f.id 256], :order-by [:f.id], :limit 300}
             (relay.sql/state-query :postgres :field [:page 256 300])))
-    (is (=? {:where [:between :t.id 0 511], :order-by [:t.id]}
-            (relay.sql/state-query :mysql :table [:range 0 511])))
-    (is (=? {:where [:in :f.id [4 5]]} (relay.sql/state-query :postgres :field [:ids [4 5]])))
-    (is (=? {:where [:>= :t.id 10], :order-by [:t.id], :limit 10}
-            (relay.sql/state-query :postgres :table [:page 10 10])))))
-
-(deftest ^:parallel clock-sql-test
-  (testing "Postgres reads now and the oldest open transaction of its role in one statement"
-    (is (str/includes? (relay.sql/clock-sql :postgres)
-                       (str "FROM pg_stat_activity WHERE datname = current_database() AND usename = current_user"
-                            " AND pid <> pg_backend_pid()) AS o"))))
-  (testing "MySQL reads now, then the oldest open InnoDB transaction"
-    (is (= "SELECT CAST(UNIX_TIMESTAMP(NOW(6)) * 1000000 AS SIGNED) AS r" (relay.sql/clock-sql :mysql)))
-    (is (str/includes? (relay.sql/mysql-oldest-transaction-sql)
-                       "FROM information_schema.innodb_trx WHERE trx_mysql_thread_id <> CONNECTION_ID()"))))
+    (is (=? {:where [:in :f.table_id [4 5]]} (relay.sql/state-query :postgres :field [:in "f.table_id" [4 5]])))
+    (is (=? {:where [:in :t.id [3]]} (relay.sql/state-query :mysql :table [:in "t.id" [3]])))))
 
 (deftest ^:parallel sequences-sql-test
   (testing "Postgres finds each stream's id sequence, then reads the sequences in one statement"
-    (is (= "SELECT pg_get_serial_sequence('login_history', 'id') AS login"
+    (is (= "SELECT pg_get_serial_sequence('change_log', 'id') AS change"
            (first (str/split (relay.sql/postgres-sequence-names-sql) #", (?=pg_get)"))))
     (is (= (str "SELECT 'login' AS stream, last_value, is_called FROM public.login_history_id_seq"
                 " UNION ALL SELECT 'execution' AS stream, last_value, is_called FROM public.query_execution_id_seq")
@@ -193,7 +191,7 @@
                                               :execution "public.query_execution_id_seq"}))))
   (testing "MySQL reads the next auto-increment value of the streams' tables"
     (is (str/includes? (relay.sql/mysql-auto-increments-sql relay.sql/streams)
-                       "table_name IN ('login_history', 'query_execution', 'view_log', 'audit_log')"))
+                       "table_name IN ('change_log', 'login_history', 'query_execution', 'view_log', 'audit_log')"))
     (is (str/ends-with? (relay.sql/mysql-auto-increments-sql [:view]) "table_name IN ('view_log')"))))
 
 (deftest ^:parallel capability-tables-test

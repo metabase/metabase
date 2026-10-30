@@ -79,6 +79,9 @@ const NO_FEED = createMockMonitorRelayFeed({ at: null, status: null });
 const REFUSED =
   "Metabase Monitor at https://monitor.example.com refused the relay's token. The relay tries again in 5 minutes, or when its URL changes.";
 
+const CHANGE_LOG_REFUSED =
+  "Metabase Monitor at https://monitor.example.com refused this relay: settings.change_log is false: Metabase does not log its changes. It needs the audit log's licence feature (audit-app), and MB_CHANGE_LOG_ENABLED must not be false. The relay tries again in 5 minutes.";
+
 const feedWith = (opts: Partial<MonitorRelayFeedStatus>) =>
   createMockMonitorRelayFeed({
     status: createMockMonitorRelayFeedStatus(opts),
@@ -213,6 +216,25 @@ describe("MonitorRelaySettingsPage", () => {
       ).toBeInTheDocument();
     });
 
+    it("shows a refusal before the feed's phase", async () => {
+      await setup({
+        status: createMockMonitorRelayStatus({
+          node: createMockMonitorRelayNodeState({
+            last_result: { outcome: "refused", message: CHANGE_LOG_REFUSED },
+            failures: 1,
+            paused_until: new Date(Date.now() + 5 * 60_000).toISOString(),
+          }),
+          feed: feedWith({ phase: "live" }),
+        }),
+      });
+
+      const refusal = await screen.findByText(CHANGE_LOG_REFUSED);
+      expect(
+        refusal.compareDocumentPosition(screen.getByText("Live")) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
     it("shows the error when Metabase Monitor cannot be reached", async () => {
       await setup({
         status: createMockMonitorRelayStatus({
@@ -303,6 +325,13 @@ describe("MonitorRelaySettingsPage", () => {
             phase: "loading",
             streams: [
               createMockMonitorRelayStream({
+                stream: "change",
+                w: 830,
+                sequence: 835,
+                floor: 812,
+                target: null,
+              }),
+              createMockMonitorRelayStream({
                 stream: "login",
                 w: 150,
                 sequence: 1200,
@@ -323,6 +352,11 @@ describe("MonitorRelaySettingsPage", () => {
 
       expect(await screen.findByText("Loading history")).toBeInTheDocument();
 
+      const changeRow = screen.getByRole("row", { name: /Change log/ });
+      expect(within(changeRow).getByText("830")).toBeInTheDocument();
+      expect(within(changeRow).getByText("835")).toBeInTheDocument();
+      expect(within(changeRow).getByText("No history")).toBeInTheDocument();
+
       const loginRow = screen.getByRole("row", { name: /Logins/ });
       expect(within(loginRow).getByText("150")).toBeInTheDocument();
       expect(within(loginRow).getByText("1,200")).toBeInTheDocument();
@@ -336,27 +370,18 @@ describe("MonitorRelaySettingsPage", () => {
       expect(within(executionRow).getByText("Not started")).toBeInTheDocument();
     });
 
-    it("shows each kind of state's last full read, its interval, and when user and card changes were read", async () => {
+    it("shows when each kind of state was read in full", async () => {
       await setup({
         status: createMockMonitorRelayStatus({
           feed: feedWith({
             state: [
               createMockMonitorRelayStateKind({
                 kind: "card",
-                pass_age_s: 7200,
-                interval_s: 86400,
-                cursor_age_s: 4,
+                snapshot_age_s: 7200,
               }),
-              {
-                kind: "field",
-                pass_age_s: null,
-                interval_s: 3600,
-              },
               createMockMonitorRelayStateKind({
-                kind: "user",
-                pass_age_s: 60,
-                interval_s: 86400,
-                cursor_age_s: null,
+                kind: "field",
+                snapshot_age_s: null,
               }),
             ],
           }),
@@ -364,20 +389,15 @@ describe("MonitorRelaySettingsPage", () => {
       });
 
       expect(await screen.findByText("State")).toBeInTheDocument();
+      expect(
+        screen.getByRole("columnheader", { name: "Full read" }),
+      ).toBeInTheDocument();
 
       const cardRow = screen.getByRole("row", { name: /Cards/ });
       expect(within(cardRow).getByText("2 hours ago")).toBeInTheDocument();
-      expect(within(cardRow).getByText("24 hours")).toBeInTheDocument();
-      expect(within(cardRow).getByText("4 seconds ago")).toBeInTheDocument();
 
       const fieldRow = screen.getByRole("row", { name: /Fields/ });
-      expect(within(fieldRow).getByText("Never")).toBeInTheDocument();
-      expect(within(fieldRow).getByText("1 hour")).toBeInTheDocument();
-      expect(within(fieldRow).queryByText("Not yet")).not.toBeInTheDocument();
-
-      const userRow = screen.getByRole("row", { name: /Users/ });
-      expect(within(userRow).getByText("1 minute ago")).toBeInTheDocument();
-      expect(within(userRow).getByText("Not yet")).toBeInTheDocument();
+      expect(within(fieldRow).getByText("Not yet")).toBeInTheDocument();
     });
 
     it("shows each node's last call, newest first, and marks this node", async () => {

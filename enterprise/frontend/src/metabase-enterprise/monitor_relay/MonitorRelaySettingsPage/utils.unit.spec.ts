@@ -1,4 +1,10 @@
-import { getHistoryProgress } from "./utils";
+import { getHistoryProgress, getStreamLabel } from "./utils";
+
+describe("getStreamLabel", () => {
+  it("names the change stream", () => {
+    expect(getStreamLabel("change")).toBe("Change log");
+  });
+});
 
 describe("getHistoryProgress", () => {
   it("is null before the stream has a floor", () => {

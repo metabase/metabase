@@ -5,10 +5,7 @@
    [clojure.core.memoize :as memoize]
    [metabase-enterprise.monitor-relay.sql :as relay.sql]
    [metabase.app-db.core :as mdb]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.sql SQLException)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -55,47 +52,15 @@
   [kind read]
   (let [engine (mdb/db-type)
         query  (relay.sql/state-query engine kind read)]
-    (if (and (= :mysql engine) (some #{kind} relay.sql/delta-kinds))
+    ;; The user's times are made text in SQL, in the session time zone.
+    (if (and (= :mysql engine) (= :user kind))
       (in-time-zone "+00:00" #(t2/query query))
       (t2/query query))))
 
-;; Whether MySQL lets the relay read the open transactions, which needs the PROCESS privilege. Once MySQL refuses, it
-;; stays false until Metabase restarts.
-(defonce ^:private open-transactions-readable? (atom true))
-
-(defn- access-denied? [e]
-  (some #(and (instance? SQLException %) (= 1227 (.getErrorCode ^SQLException %)))
-        (take-while some? (iterate ex-cause e))))
-
-(defn- mysql-oldest-transaction []
-  (:o (t2/query-one [(relay.sql/mysql-oldest-transaction-sql)])))
-
-(defn- mysql-clock []
-  (let [r (:r (in-time-zone "+00:00" #(t2/query-one [(relay.sql/clock-sql :mysql)])))]
-    (if-not @open-transactions-readable?
-      {:r r, :o nil, :open-transactions? false}
-      (try
-        {:r r, :o (in-time-zone "SYSTEM" mysql-oldest-transaction), :open-transactions? true}
-        (catch Exception e
-          (if-not (access-denied? e)
-            (throw e)
-            (do
-              (reset! open-transactions-readable? false)
-              (log/info (str "The app DB's user may not read the open transactions (it lacks the PROCESS privilege), "
-                             "so the Metabase Monitor relay reads the users and cards changed in the last 2 minutes "
-                             "again at each run"))
-              {:r r, :o nil, :open-transactions? false})))))))
-
-(defn clock
-  "The app DB's clock, in epoch microseconds: `:r`, now, and `:o`, the start of the oldest transaction open on another
-  connection, or nil when there is none. `:open-transactions?` is false when the relay cannot see them: on MySQL
-  without the `PROCESS` privilege, or on Postgres with `track_activities` off."
+(defn change-oldest
+  "The change log's smallest id, or nil when it is empty."
   []
-  (if (= :mysql (mdb/db-type))
-    (mysql-clock)
-    ;; Metabase never sets `track_activities`, so this connection has the value of the other connections of its role.
-    (let [{:keys [r o tracked]} (t2/query-one [(relay.sql/clock-sql :postgres)])]
-      {:r r, :o o, :open-transactions? tracked})))
+  (:id (t2/query-one [(relay.sql/change-oldest-sql)])))
 
 (defn table-columns
   "The `:table_name` and `:column_name` of every column of `tables`, in column order."

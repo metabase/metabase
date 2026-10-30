@@ -91,6 +91,62 @@
           (is (= [[1 2]] (:gap_reads page)))
           (is (:more? page)))))))
 
+(deftest ^:parallel change-page-cut-test
+  (testing "a change page whose state passes the body size sends fewer log rows, with the state they touch"
+    (let [big     (apply str (repeat (* 3 1024 1024) "x"))
+          entries (for [id (range 1 5)] {:id id, :table_name "report_card", :row_id id, :action "update"})]
+      (mt/with-dynamic-fn-redefs [relay.db/stream-page   (fn [_stream after limit]
+                                                           (take limit (filter #(> (:id %) after) entries)))
+                                  relay.source/sequences (fn [& _streams] {:change 4})
+                                  relay.db/state-rows    (fn [_kind [_read _column ids]]
+                                                           (for [id ids] {:id id, :card_id id, :name big}))]
+        (let [page (relay.source/page :change {:next_from 0} false 100)]
+          (is (= [1 2] (map :id (:rows page))))
+          (is (= [1 2] (map :id (get-in page [:state :card :rows]))))
+          (is (=? {:sequence 4, :more? true} page)))))))
+
+(deftest change-page-growth-test
+  (let [fields     {5 100}
+        wide       (apply str (repeat 600 "é"))
+        reads      (atom 0)
+        read-state (mt/original-fn #'relay.source/read-state)
+        page       (fn [entries next-from]
+                     (reset! reads 0)
+                     (with-redefs [relay.source/max-body-bytes 2000]
+                       (mt/with-dynamic-fn-redefs
+                         [relay.db/stream-page    (fn [_stream after limit]
+                                                    (take limit (filter #(> (:id %) after) entries)))
+                          relay.source/sequences  (fn [& _streams] {:change (count entries)})
+                          relay.source/read-state (fn [found part]
+                                                    (swap! reads + (count part))
+                                                    (read-state found part))
+                          relay.db/state-rows     (fn [kind [_read _column ids]]
+                                                    (case kind
+                                                      :table (for [id ids] {:id id, :table_id id, :name (str "t" id)})
+                                                      :field (for [table-id ids, i (range (fields table-id 1))]
+                                                               {:id (+ (* 1000 table-id) i), :table_id table-id})
+                                                      :card  (for [id ids] {:id id, :card_id id, :name wide})))]
+                         (relay.source/page :change {:next_from next-from} false 100))))
+        tables     (vec (for [id (range 1 9)] {:id id, :table_name "metabase_table", :row_id id, :action "update"}))]
+    (testing "a change page tries the first 1, 2, 4, ... log rows, and sends the longest whose state fits: here the
+              fifth table's 100 fields cut it after the fourth"
+      (let [{:keys [rows state more?]} (page tables 0)]
+        (is (= [1 2 3 4] (map :id rows)))
+        (is (= [1 2 3 4] (map :id (get-in state [:table :rows]))))
+        (is (= #{1 2 3 4} (set (map :table_id (get-in state [:field :rows])))))
+        (is (true? more?))
+        (testing "it reads each log row's state once, and the state of at most twice the log rows it sends"
+          (is (= 8 @reads)))))
+    (testing "one log row goes with its state, whatever its size"
+      (let [{:keys [rows state]} (page tables 4)]
+        (is (= [5] (map :id rows)))
+        (is (= 100 (count (get-in state [:field :rows]))))
+        (is (= 1 @reads))))
+    (testing "the size is the state's JSON in UTF-8 bytes: two cards of 600 two-byte characters do not fit in 2000"
+      (is (= [1] (map :id (:rows (page [{:id 1, :table_name "report_card", :row_id 1, :action "update"}
+                                        {:id 2, :table_name "report_card", :row_id 2, :action "update"}]
+                                       0))))))))
+
 (defn- first-row-of
   "A `first-row` for [[relay.source/floor-search]] over `times`, a map of id to time, and `cutoff`. It counts its reads
   in `reads`."
@@ -120,14 +176,15 @@
 
 (deftest ^:parallel history-floors-test
   (let [since (atom [])]
-    (mt/with-dynamic-fn-redefs [relay.source/sequences (fn [] {:login 50, :execution 70, :view 9, :audit 30})
+    (mt/with-dynamic-fn-redefs [relay.source/sequences (fn [] {:change 5, :login 50, :execution 70, :view 9, :audit 30})
                                 relay.db/time-floor    (fn [stream instant]
                                                          (swap! since conj instant)
                                                          ({:login 12, :view 15} stream))
                                 relay.db/first-row     (fn [_stream id instant]
                                                          (swap! since conj instant)
                                                          (when (<= id 40) {:id id, :after? (>= id 20)}))]
-      (testing "per stream, the earliest row at or after since, and at most the sequence value + 1"
+      (testing "per fact stream, the earliest row at or after since, and at most the sequence value + 1; the change log
+                has no history"
         (is (= {:login 12, :execution 71, :view 10, :audit 20}
                (relay.source/history-floors "2026-06-24T10:00:00Z"))))
       (testing "since may carry an offset; the queries take it as an instant"
@@ -156,19 +213,29 @@
 (deftest sync-report-test
   (when-not (= :h2 (mdb/db-type))
     (mt/with-temporary-setting-values [report-timezone "Europe/Lisbon"]
-      (let [report (relay.source/sync-report "boot")]
-        (testing "the /sync report carries the relay's version, and the tracked settings with the others"
-          (is (=? {:relay_version "0.3.0"
+      (let [report (relay.source/sync-report "boot" true nil)]
+        (testing "the /sync report carries the relay's version, whether Metabase logs its changes, and the tracked
+                  settings with the others"
+          (is (=? {:relay_version "0.4.0"
                    :boot_id       "boot"
                    :settings      {:log_enabled boolean?
+                                   :change_log  true
                                    :tracked     {"report-timezone" "Europe/Lisbon"}}}
                   report))
           (is (= (relay.source/tracked-settings) (get-in report [:settings :tracked]))))
+        (testing "the change log is reported as a stream, with its smallest id"
+          (is (int? (get-in report [:sequences :change])))
+          (is ((some-fn nil? int?) (:change_oldest report))))
         (testing "each fact once: a tracked setting is not also a field of its own"
-          (is (= #{:node_id :boot_id :relay_version :metabase_version :site_uuid :capabilities :settings :sequences}
+          (is (= #{:node_id :boot_id :relay_version :metabase_version :site_uuid :capabilities :settings :sequences
+                   :change_oldest}
                  (set (keys report))))
-          (is (= #{:log_enabled :pii_retention :source_address_header :not_behind_proxy :tracked}
-                 (set (keys (:settings report))))))))))
+          (is (= #{:log_enabled :change_log :pii_retention :source_address_header :not_behind_proxy :tracked}
+                 (set (keys (:settings report))))))
+        (testing "the history floors go only when there are some"
+          (is (= {:since "s1", :floors {:login 1}}
+                 (:history (relay.source/sync-report "boot" true {:since "s1", :floors {:login 1}}))))
+          (is (not (contains? report :history))))))))
 
 (deftest app-db-capabilities-test
   (when-not (= :h2 (mdb/db-type))
@@ -191,7 +258,7 @@
   (t2/query [(format "UPDATE %s SET %s = ? WHERE id = ?" table column) value id]))
 
 (defn- row-of [kind id-key id]
-  (first (filter #(= id (id-key %)) (relay.rows/encode kind (relay.db/state-rows kind [:ids [id]])))))
+  (first (filter #(= id (id-key %)) (relay.rows/encode kind (relay.db/state-rows kind [:in (relay.sql/state-id kind) [id]])))))
 
 (deftest postgres-sequence-after-setval-test
   (when (= :postgres (mdb/db-type))
@@ -297,5 +364,116 @@
         (testing "audit_log finds its floor by a binary search on id"
           (is (= (:id a2) (:audit (relay.source/history-floors "2037-01-01T12:00:00Z")))))
         (testing "with no row at or after since, each floor is the stream's sequence value + 1"
-          (is (= (update-vals (relay.source/sequences) inc)
+          (is (= (update-vals (dissoc (relay.source/sequences) :change) inc)
                  (relay.source/history-floors "2037-01-04T00:00:00Z"))))))))
+
+;;; ------------------------------------------------- change pages -------------------------------------------------
+
+(defn- app-db? []
+  (#{:postgres :mysql} (mdb/db-type)))
+
+(defmacro ^:private with-change-log
+  "Runs `body` with Metabase logging its changes."
+  [& body]
+  `(mt/with-premium-features #{:audit-app}
+     (mt/with-temporary-setting-values [~'change-log-enabled true]
+       ~@body)))
+
+(defn- logged-by
+  "The change log's rows that `thunk` writes, as the relay reads them, start markers aside."
+  [thunk]
+  (let [top (or (:id (t2/query-one ["SELECT MAX(id) AS id FROM change_log"])) 0)]
+    (thunk)
+    (vec (remove #(= "*" (:table_name %)) (relay.db/stream-page :change top 1000)))))
+
+(deftest change-state-test
+  (when (app-db?)
+    (mt/with-temp [:model/Database db      {}
+                   :model/Table    renamed {:db_id (:id db), :name "relay_before"}
+                   :model/Table    other   {:db_id (:id db), :name "relay_other"}
+                   :model/Field    f1      {:table_id (:id renamed), :name "a", :data_sensitivity :PUBLIC}
+                   :model/Field    f2      {:table_id (:id renamed), :name "b"}
+                   :model/Field    _       {:table_id (:id other), :name "c"}]
+      (with-change-log
+        (testing "a table rename sends the table, and the fields of that table only, with the new name"
+          (let [logged (logged-by #(t2/update! :model/Table (:id renamed) {:name "relay_after"}))
+                state  (relay.source/change-state logged)]
+            (is (=? [{:table_name "metabase_table", :row_id (:id renamed), :action "update"}] logged))
+            (is (= [:field :table] (keys state)))
+            (is (=? {:rows [{:id (:id renamed), :name "relay_after"}], :gone []} (:table state)))
+            (is (= #{[(:id f1) "relay_after"] [(:id f2) "relay_after"]}
+                   (set (map (juxt :id :table_name) (get-in state [:field :rows])))))
+            (is (= [] (get-in state [:field :gone])))))
+        (testing "a value a user sets on a table sends the table with the value merged in, and no field: a field row
+                  takes no value a user sets on its table"
+          (let [logged (logged-by #(t2/insert! :model/TableUserSettings {:table_id            (:id other)
+                                                                         :visibility_type     :hidden
+                                                                         :visibility_type_set true}))
+                state  (relay.source/change-state logged)]
+            (is (=? [{:table_name "metabase_table_user_settings", :row_id (:id other), :action "insert"}] logged))
+            (is (= [:table] (keys state)))
+            (is (=? {:rows [{:id (:id other), :visibility_type "hidden"}], :gone []} (:table state)))))
+        (testing "a value a user sets sends the field user settings row, and the field with the value merged in"
+          (let [logged (logged-by #(t2/insert! :model/FieldUserSettings {:field_id (:id f1), :data_sensitivity :PII}))]
+            (is (=? [{:table_name "metabase_field_user_settings", :row_id (:id f1), :action "insert"}] logged))
+            (is (=? {:field_user_settings {:rows [{:id (:id f1), :data_sensitivity "PII"}], :gone []}
+                     :field               {:rows [{:id (:id f1), :data_sensitivity "PII"}], :gone []}}
+                    (relay.source/change-state logged)))))
+        (testing "a user clearing the last value deletes the row: it is gone, and the field's own value is back"
+          (let [logged (logged-by #(t2/update! :model/FieldUserSettings (:id f1) {:data_sensitivity nil}))]
+            (is (=? {:field_user_settings {:rows [], :gone [(:id f1)]}
+                     :field               {:rows [{:id (:id f1), :data_sensitivity "PUBLIC"}], :gone []}}
+                    (relay.source/change-state logged)))))))
+    (mt/with-temp [:model/User                  user  {:email "relay-before@example.com"}
+                   :model/PermissionsGroup      group {}
+                   :model/Pulse                 pulse {}
+                   :model/PulseChannel          pc    {:pulse_id (:id pulse), :channel_type :email, :details {}}
+                   :model/PulseChannelRecipient pcr   {:pulse_channel_id (:id pc), :user_id (:id user)}]
+      (with-change-log
+        (testing "a user's change sends the user, and the recipients that carry the user's email"
+          (is (=? {:user                    {:rows [{:id (:id user), :email "relay-after@example.com"}], :gone []}
+                   :pulse_channel_recipient {:rows [{:id (:id pcr), :email "relay-after@example.com"}], :gone []}}
+                  (relay.source/change-state
+                   (logged-by #(t2/update! :model/User (:id user) {:email "relay-after@example.com"}))))))
+        (testing "a deleted group is gone"
+          (let [logged (logged-by #(t2/delete! :model/PermissionsGroup (:id group)))]
+            (is (=? [{:table_name "permissions_group", :row_id (:id group), :action "delete"}] logged))
+            (is (= {:group {:rows [], :gone [(:id group)]}}
+                   (relay.source/change-state logged)))))
+        (testing "a start marker, and a table no kind reads, change no kind"
+          (is (= {} (relay.source/change-state [{:id 1, :table_name "*", :row_id 0, :action "start"}
+                                                {:id 2, :table_name "collection", :row_id 1, :action "update"}]))))))))
+
+(deftest change-page-test
+  (when (app-db?)
+    (mt/with-temp [:model/PermissionsGroup group {}]
+      (with-change-log
+        (let [[entry] (logged-by #(t2/update! :model/PermissionsGroup (:id group) {:name "relay-renamed"}))
+              page    (relay.source/page :change {:next_from (dec (:id entry))} false 100)]
+          (testing "a change page carries its log rows, its sequence value, and the state rows they touch"
+            (is (=? {:rows     [{:id (:id entry), :table_name "permissions_group", :row_id (:id group)
+                                 :action "update"}]
+                     :sequence #(<= (:id entry) %)
+                     :state    {:group {:rows [{:id (:id group), :name "relay-renamed"}], :gone []}}}
+                    page))))))))
+
+;;; --------------------------------------------------- snapshots --------------------------------------------------
+
+(deftest snapshot-page-test
+  (when (app-db?)
+    (mt/with-temp [:model/PermissionsGroup _ {}
+                   :model/PermissionsGroup _ {}
+                   :model/PermissionsGroup _ {}]
+      (let [pages (loop [from 0, pages []]
+                    (let [page  (relay.source/snapshot-page :group from 2)
+                          pages (conj pages page)]
+                      (if (:last page) pages (recur (inc (:to page)) pages))))]
+        (testing "a snapshot reads every row of its kind, in id pages of at most the limit, each from the id after the
+                  last page's to"
+          (is (= (map :id (t2/query ["SELECT id FROM permissions_group ORDER BY id"]))
+                 (mapcat #(map :id (:rows %)) pages))))
+        (testing "each page but the last ends at its last row's id; the last page is open-ended"
+          (is (every? #(and (false? (:last %)) (= (:id (peek (:rows %))) (:to %))) (butlast pages)))
+          (is (=? {:to nil, :last true} (peek pages))))
+        (testing "each page carries the change log's sequence value"
+          (is (every? (comp int? :at) pages)))))))

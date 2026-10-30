@@ -50,7 +50,8 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies))
+  (derive :hook/dependencies)
+  (derive :hook/change-log))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]

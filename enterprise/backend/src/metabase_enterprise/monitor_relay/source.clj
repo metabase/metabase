@@ -1,6 +1,7 @@
 (ns metabase-enterprise.monitor-relay.source
-  "What the relay reads from this Metabase: the report each `/sync` carries, the history floors, and pages of fact
-  rows, cut to fit the receiver's limits."
+  "What the relay reads from this Metabase: the report each `/sync` carries, the history floors, pages of each stream,
+  cut to fit the receiver's limits, and pages of each state kind's snapshot. A page of the change log carries the state
+  rows its entries touch."
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
@@ -11,13 +12,17 @@
    [metabase-enterprise.monitor-relay.sql :as relay.sql]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :as setting]))
+   [metabase.settings.core :as setting]
+   [metabase.util.json :as json])
+  (:import
+   (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
 
 (def relay-version
-  "The relay's version, which each `/sync` reports. A new version only adds fields."
-  "0.3.0")
+  "The relay's version, which each `/sync` reports. The receiver refuses a relay older than the one it needs (its
+  `MIN_RELAY`)."
+  "0.4.0")
 
 (def max-body-bytes
   "The most JSON one request carries, about. The receiver refuses a body over 32 MiB."
@@ -70,8 +75,9 @@
               :when        (#{:env :database} (setting/get-raw-value-source setting-name))]
           [setting-name (str (setting/get-raw-value setting-name))])))
 
-(defn- settings []
+(defn- settings [change-log?]
   {:log_enabled           (premium-features/log-enabled?)
+   :change_log            change-log?
    :pii_retention         (boolean (setting/get :analytics-pii-retention-enabled))
    :source_address_header (setting/get :source-address-header)
    :not_behind_proxy      (boolean (setting/get :not-behind-proxy))
@@ -94,16 +100,19 @@
                             [stream (dec (long next-id))]))))))
 
 (defn sync-report
-  "The body of a `/sync` from this node, in the relay run `boot-id`."
-  [boot-id]
-  {:node_id          config/local-process-uuid
-   :boot_id          boot-id
-   :relay_version    relay-version
-   :metabase_version config/mb-version-string
-   :site_uuid        (setting/get :site-uuid)
-   :capabilities     (capabilities)
-   :settings         (settings)
-   :sequences        (sequences)})
+  "The body of a `/sync` from this node, in the relay run `boot-id`. `change-log?` is whether Metabase logs its changes
+  now. `history` is the floors to send, or nil."
+  [boot-id change-log? history]
+  (cond-> {:node_id          config/local-process-uuid
+           :boot_id          boot-id
+           :relay_version    relay-version
+           :metabase_version config/mb-version-string
+           :site_uuid        (setting/get :site-uuid)
+           :capabilities     (capabilities)
+           :settings         (settings change-log?)
+           :sequences        (sequences)
+           :change_oldest    (relay.db/change-oldest)}
+    history (assoc :history history)))
 
 (defn log-enabled?
   "Whether Metabase writes `view_log` and `audit_log` rows. When it does not, the relay sends neither stream."
@@ -134,8 +143,9 @@
   left out."
   [since]
   (let [since     (t/instant since)
-        ;; Read before the rows: a row that gets its id after this read is above the floor.
-        sequences (sequences)]
+        ;; Read before the rows: a row that gets its id after this read is above the floor. The change log has no
+        ;; history: a snapshot covers what changed before it.
+        sequences (dissoc (sequences) :change)]
     (into {} (for [[stream top] sequences
                    :let [found (if (= :audit stream)
                                  ;; audit_log has no index on its time
@@ -158,6 +168,59 @@
           (recur more (conj chunk row) (+ size row-size) out)))
       (cond-> out (seq chunk) (conj chunk)))))
 
+(def ^:private ids-per-read 1000)
+
+(defn- read-state
+  "`found` with the rows that the change log `entries` touch read into it now, as the receiver takes them: in `:rows`,
+  per state kind, the rows by id, and in `:asked`, per state kind, the ids asked by the kind's own key."
+  [found entries]
+  (reduce (fn [found [kind column ids]]
+            (let [rows (relay.rows/encode kind (relay.db/state-rows kind [:in column ids]))]
+              (cond-> (update-in found [:rows kind] (fnil into (sorted-map)) (map (juxt :id identity)) rows)
+                (= column (relay.sql/state-id kind))
+                (update-in [:asked kind] (fnil into #{}) ids))))
+          found
+          (for [[table ids]   (update-vals (group-by :table_name entries) #(distinct (map :row_id %)))
+                [kind column] (relay.sql/table-kinds table)
+                ids           (partition-all ids-per-read ids)]
+            [kind column ids])))
+
+(defn- found-state
+  "The `state` of what [[read-state]] found: per state kind, the `:rows` found, and the ids `:gone` from the kind, those
+  in `:asked` that no row has."
+  [{:keys [rows asked]}]
+  (into (sorted-map)
+        (for [[kind by-id] rows]
+          [kind {:rows (vec (vals by-id))
+                 :gone (vec (sort (remove by-id (get asked kind))))}])))
+
+(defn change-state
+  "The `state` of a page of the change log, `entries`: per state kind, the `:rows` of every id the entries touch, read
+  now, and the ids `:gone` from the kind. A kind that no entry touches is left out."
+  [entries]
+  (found-state (read-state {} entries)))
+
+(defn- byte-size
+  "The size of `x` as JSON, in UTF-8 bytes."
+  ^long [x]
+  (alength (.getBytes (json/encode x) StandardCharsets/UTF_8)))
+
+(defn- with-state
+  "A prefix of the change log `entries` whose state fits in one body, and that state. It tries the first 1, 2, 4, ...
+  entries, the last try all of them, and keeps the longest whose state fits, in UTF-8 bytes of JSON. It reads each
+  entry's state once, so a page reads the state of at most twice the entries it sends. One entry goes with its state,
+  whatever its size."
+  [entries]
+  (loop [n     (min 1 (count entries))
+         found (read-state {} (subvec entries 0 n))
+         fit   nil]
+    (let [tried [(subvec entries 0 n) (found-state found)]
+          more  (min (* 2 n) (count entries))]
+      (cond
+        (> (byte-size (second tried)) max-body-bytes) (or fit tried)
+        (= n more)                                    tried
+        :else                                         (recur more (read-state found (subvec entries n more)) tried)))))
+
 (defn- read-gaps
   "Re-reads `gaps` of `stream`, up to `limit` rows in all. Returns `[ranges rows]`: a gap whose read stopped at the
   limit covers only up to the last id it read."
@@ -166,7 +229,7 @@
             (let [remaining (- limit (count rows))]
               (if (pos? remaining)
                 (let [found (vec (relay.db/stream-range stream lo hi remaining))
-                      hi    (if (= (count found) remaining) (:event_id (peek found)) hi)]
+                      hi    (if (= (count found) remaining) ((relay.sql/row-id stream) (peek found)) hi)]
                   [(conj ranges [lo hi]) (into rows found)])
                 (reduced [ranges rows]))))
           [[] []]
@@ -174,24 +237,40 @@
 
 (defn page
   "The next page of `stream` for the cursor `{:next_from :gaps}` that the receiver answered: the re-read gaps (when
-  `gaps?`), then the rows above `next_from`, at most `limit` rows and about `max-body-bytes` in all. Returns the
-  `/rows` body fields `:rows`, `:gap_reads` and `:sequence`, read after the rows, and `:more?`, whether rows may
-  remain above the page."
+  `gaps?`), then the rows above `next_from`, at most `limit` rows and about `max-body-bytes` in all. Returns `:rows`,
+  `:gap_reads` and `:sequence`, read after the rows, `:state` for the change log, read after `:sequence`
+  ([[change-state]]), and `:more?`, whether rows may remain above the page. Every key but `:more?` is a `/rows` body
+  field."
   [stream {:keys [next_from gaps]} gaps? limit]
-  (let [[ranges gap-rows] (if gaps? (read-gaps stream gaps limit) [[] []])
+  (let [row-id            (relay.sql/row-id stream)
+        [ranges gap-rows] (if gaps? (read-gaps stream gaps limit) [[] []])
         remaining         (- limit (count gap-rows))
         new-rows          (if (pos? remaining) (vec (relay.db/stream-page stream (or next_from 0) remaining)) [])
         ;; A gap the receiver reports above next_from would read some rows twice.
-        by-id             (into (sorted-map) (map (juxt :event_id identity)) (concat gap-rows new-rows))
+        by-id             (into (sorted-map) (map (juxt row-id identity)) (concat gap-rows new-rows))
         rows              (relay.rows/encode stream (vals by-id))
         sequence          (get (sequences [stream]) stream)
         sent              (or (first (chunks rows limit max-body-bytes)) [])
+        [sent state]      (if (= :change stream) (with-state sent) [sent nil])
         cut?              (< (count sent) (count rows))
-        last-id           (:event_id (peek sent))]
-    {:rows      sent
-     :gap_reads (if cut?
-                  (vec (for [[lo hi] ranges :when (and last-id (<= lo last-id))]
-                         [lo (min hi last-id)]))
-                  ranges)
-     :sequence  sequence
-     :more?     (or cut? (= (count new-rows) remaining))}))
+        last-id           (row-id (peek sent))]
+    (cond-> {:rows      sent
+             :gap_reads (if cut?
+                          (vec (for [[lo hi] ranges :when (and last-id (<= lo last-id))]
+                                 [lo (min hi last-id)]))
+                          ranges)
+             :sequence  sequence
+             :more?     (or cut? (= (count new-rows) remaining))}
+      state (assoc :state state))))
+
+(defn snapshot-page
+  "The page of state `kind` from the id `from`, as `/state/<kind>` takes it: `:at`, the change log's sequence value read
+  before the rows; `:rows`, at most `limit` rows and about [[max-body-bytes]]; `:to`, the page's last id, nil on the
+  last page; and `:last`."
+  [kind from limit]
+  (let [at    (:change (sequences [:change]))
+        read  (relay.db/state-rows kind [:page from limit])
+        rows  (relay.rows/encode kind read)
+        sent  (or (first (chunks rows limit max-body-bytes)) [])
+        last? (and (< (count read) limit) (= (count sent) (count rows)))]
+    {:at at, :rows sent, :to (when-not last? (:id (peek sent))), :last last?}))

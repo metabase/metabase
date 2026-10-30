@@ -8,8 +8,9 @@
    [metabase-enterprise.monitor-relay.cycle :as relay.cycle]
    [metabase-enterprise.monitor-relay.db :as relay.db]
    [metabase-enterprise.monitor-relay.source :as relay.source]
-   [metabase-enterprise.monitor-relay.state :as relay.state]
+   [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt])
   (:import
    (java.net ConnectException)
@@ -24,19 +25,19 @@
   (let [classify #(select-keys (#'relay.cycle/classify "http://m" %) [:outcome :message])]
     (testing "a 409 is stale: the receiver has moved on, and the run skips that stream or kind"
       (is (= {:outcome :stale
-              :message (str "Metabase Monitor at http://m answered 409 to rows/login: the login stream has no history"
+              :message (str "Metabase Monitor at http://m answered 409 to rows/login: the login stream has no"
                             " floor yet: call /sync. The relay skips it in this run.")}
              (classify {:status 409, :endpoint "rows/login"
-                        :body   {:error "the login stream has no history floor yet: call /sync"}}))))
+                        :body   {:error "the login stream has no floor yet: call /sync"}}))))
     (testing "a 401 or a 403 is a refusal"
       (is (= {:outcome :refused
               :message (str "Metabase Monitor at http://m refused the relay's token. The relay tries again in 5"
                             " minutes, or when its URL changes.")}
              (classify {:status 401, :endpoint "sync", :body {:error "unknown token"}})))
       (is (= {:outcome :refused
-              :message (str "Metabase Monitor at http://m refused this relay: relay '0.1.0' is older than 0.3.0. The"
+              :message (str "Metabase Monitor at http://m refused this relay: relay '0.3.0' is older than 0.4.0. The"
                             " relay tries again in 5 minutes.")}
-             (classify {:status 403, :endpoint "sync", :body {:error "relay '0.1.0' is older than 0.3.0"}}))))
+             (classify {:status 403, :endpoint "sync", :body {:error "relay '0.3.0' is older than 0.4.0"}}))))
     (testing "a 429 or a 503 is a busy receiver, which may say how long to wait, up to 5 minutes"
       (is (= {:outcome :busy
               :message "Metabase Monitor at http://m answered 429 to sync. The relay tries again in 30 seconds."}
@@ -89,61 +90,68 @@
 (def ^:private ok-target {:status :ok, :base "http://monitor:8080", :token "tok"})
 
 (def ^:private all-streams
-  {:login     {:have_through 0, :next_from 0, :gaps []}
+  {:change    {:have_through 810, :next_from 810, :gaps []}
+   :login     {:have_through 0, :next_from 0, :gaps []}
    :execution {:have_through 4, :next_from 7, :gaps [[5 6]]}
    :view      {:have_through 0, :next_from 0, :gaps []}
    :audit     {:have_through 0, :next_from 0, :gaps []}})
 
 (defn- sync-answer [& {:as more}]
   {:status 200
-   :body   (merge {:page_rows   100
-                   :streams     all-streams
-                   :state       {}}
+   :body   (merge {:page_rows 100
+                   :streams   all-streams
+                   :snapshot  []}
                   more)})
 
-(defn- one-page [_stream cursor gaps?]
-  {:rows      [{:event_id (inc (:next_from cursor 0))}]
-   :gap_reads (if gaps? (:gaps cursor) [])
-   :sequence  50
-   :more?     false})
+(def ^:private change-sequence
+  "The change log's sequence value in the tests."
+  811)
+
+(defn- one-page [stream cursor gaps?]
+  (cond-> {:rows      [{:event_id (inc (:next_from cursor 0))}]
+           :gap_reads (if gaps? (:gaps cursor) [])
+           :sequence  50
+           :more?     false}
+    (= :change stream) (assoc :rows     [{:id 811, :table_name "tenant", :row_id 3, :action "update"}]
+                              :sequence change-sequence
+                              :state    {:tenant {:rows [{:id 3, :tenant_id 3, :name "t3"}], :gone []}})))
 
 (defn- read-rows
   "The rows of state `kind` in `source`, `{kind [row …]}`, that `read` selects, as the app DB reads them."
-  [source kind [read & args]]
-  (let [rows (sort-by :id (get source kind))]
+  [source kind [read from limit]]
+  (let [rows (get source kind)]
+    (assert (sequential? rows) "not rows")
     (case read
-      :page    (let [[from limit] args] (take limit (filter #(>= (:id %) from) rows)))
-      :range   (let [[lo hi] args] (filter #(<= lo (:id %) hi) rows))
-      :ids     (filter (comp (set (first args)) :id) rows)
-      :changed (let [[t id limit] args]
-                 (->> (sort-by (juxt :_u :id) rows)
-                      (filter #(not (neg? (compare [(:_u %) (:id %)] [t id]))))
-                      (take limit))))))
-
-(def ^:private app-db-now
-  "The app DB's clock in the tests, in epoch microseconds."
-  100000000)
+      :page (take limit (filter #(>= (:id %) from) (sort-by :id rows))))))
 
 (defn- do-with-fake-receiver!
   "Calls `thunk` with the relay's clock, an atom of milliseconds, against a fake receiver whose `answer` takes the
-  endpoint and the body. Returns the posts, as `[endpoint body]`, and what `thunk` returns, as `:result`."
-  [{:keys [target answer page source app-db-clock log-enabled? floors clock]
+  endpoint and the body. Metabase logs its changes, unless `turn-on!` says otherwise, and `sequences` reads the change
+  log's sequence value. The `/sync` report carries whether Metabase logs its changes, and the history floors when there
+  are some. Returns the posts, as `[endpoint body]`, and what `thunk` returns, as `:result`."
+  [{:keys [target answer page source log-enabled? floors clock turn-on! sequences]
     :or   {target       ok-target
            page         one-page
-           app-db-clock (fn [] {:r app-db-now, :o nil, :open-transactions? true})
            log-enabled? true
-           floors       (fn [_] {})}}
+           floors       (fn [_] {})
+           turn-on!     (constantly true)
+           sequences    (fn [_streams] {:change change-sequence})}}
    thunk]
   (let [posts  (atom [])
         clock  (or clock (atom (#'relay.cycle/now-ms)))
         source (or source (atom {}))]
     (mt/with-dynamic-fn-redefs [relay.cycle/now-ms          (fn [] @clock)
+                                change-log/turn-on!         turn-on!
                                 relay.config/target         (fn [] target)
-                                relay.source/sync-report    (fn [boot-id] {:boot_id boot-id, :sequences {:login 50}})
+                                relay.source/sync-report    (fn [boot-id change-log? history]
+                                                              (cond-> {:boot_id   boot-id
+                                                                       :sequences {:login 50, :change change-sequence}
+                                                                       :settings  {:change_log change-log?}}
+                                                                history (assoc :history history)))
+                                relay.source/sequences      sequences
                                 relay.source/log-enabled?   (fn [] log-enabled?)
                                 relay.source/history-floors floors
                                 relay.db/state-rows         (fn [kind read] (read-rows @source kind read))
-                                relay.db/clock              app-db-clock
                                 relay.source/page           (fn [stream cursor gaps? _limit] (page stream cursor gaps?))
                                 relay.client/post!          (fn [_target endpoint body & _]
                                                               (swap! posts conj [endpoint body])
@@ -172,94 +180,57 @@
       (let [{:keys [posts]} (run-cycles! {:n 3, :target target, :answer (fn [& _] (throw (ex-info "no" {})))})]
         (is (= [] posts))))))
 
-(defn- pass-answer
-  "The answer of a receiver whose mirror is empty to the state pass `step` of `body`: every bucket differs."
-  [{:keys [step buckets] :as body}]
-  {:status 200
-   :body   (case step
-             "root"    {:pass 7, :done false}
-             "buckets" (if (:last body)
-                         {:pass 7, :done false, :lists (for [[b] buckets] [b []])}
-                         {:pass 7})
-             "rows"    {:pass 7, :stored (count (:rows body)), :unchanged 0, :gone 0, :done true})})
-
-(defn- state-answer
-  "The answer of a receiver to the state post `body`: deltas move C to their `next_since`."
-  [{:keys [step next_since] :as body}]
-  (case step
-    "delta" {:status 200, :body {:stored (count (:rows body)), :unchanged 0, :since next_since}}
-    "fetch" {:status 200, :body {:stored (count (:rows body)), :unchanged 0, :gone 0}}
-    (pass-answer body)))
-
-(defn- steps
-  "The `[endpoint step]` of each post, `step` nil for a post that is not a state step."
-  [posts]
-  (map (fn [[endpoint body]] [endpoint (:step body)]) posts))
+(defn- snapshot-answer
+  "The answer of a receiver to the snapshot page `body`."
+  [body]
+  {:status 200, :body {:stored (count (:rows body)), :unchanged 0}})
 
 (def ^:private tenant-rows
   [{:id 3, :tenant_id 3, :name "t3"} {:id 300, :tenant_id 300, :name "t300"}])
 
-(def ^:private every-step
-  "A `/sync` answer's `state` that asks for each kind of step."
-  {:user         {:due false, :since {:t 0, :id 0}}
-   :card         {:due false, :since nil}
-   :group        {:due false, :fetch {:ids [1]}}
-   :table        {:due false, :fetch {:above 0}}
-   :tenant       {:due true}
-   :no_such_kind {:due true}})
-
 (deftest cycle-test
-  (let [source                (atom {:user   [{:id 1, :user_id 1, :email "a@example.com", :_u 99000000}]
-                                     :group  [{:id 1, :group_id 1, :name "g"}]
-                                     :table  [{:id 2, :table_id 2, :name "t"}]
-                                     :tenant tenant-rows})
-        {:keys [posts state]} (run-cycles! {:source source
+  (let [{:keys [posts state]} (run-cycles! {:source (atom {:tenant tenant-rows})
                                             :answer (fn [endpoint body]
-                                                      (if (= "sync" endpoint)
+                                                      (cond
+                                                        (= "sync" endpoint)
                                                         (sync-answer :streams (dissoc all-streams :view :audit)
-                                                                     :state   every-step)
-                                                        (if (str/starts-with? endpoint "state/")
-                                                          (state-answer body)
-                                                          {:status 200, :body {}})))})
+                                                                     :snapshot ["tenant" "no_such_kind"])
+
+                                                        (str/starts-with? endpoint "state/")
+                                                        (snapshot-answer body)
+
+                                                        :else
+                                                        {:status 200, :body {}}))})
         bodies                (group-by first posts)]
-    (testing "a cycle syncs, sends the deltas, the fetches, the pages of each stream, then its state passes"
-      (is (= [["sync" nil]
-              ["state/user" "delta"] ["state/card" "delta"]
-              ["state/group" "fetch"] ["state/table" "fetch"]
-              ["rows/login" nil] ["rows/execution" nil]
-              ["state/tenant" "root"] ["state/tenant" "buckets"] ["state/tenant" "rows"]]
-             (steps posts))))
-    (testing "every state post names this node and its boot"
+    (testing "a cycle syncs, sends the pages of each stream, the change log first, then the snapshots it is asked for;
+              it ignores a kind it does not know"
+      (is (= ["sync" "rows/change" "rows/login" "rows/execution" "state/tenant"] (map first posts))))
+    (testing "every post names this node and its boot"
       (is (every? #(= (:boot-id state) (:boot_id (second %))) (rest posts)))
       (is (every? #(string? (:node_id (second %))) (rest posts))))
-    (testing "a delta reads from the cursor; before the receiver has one, it sends none and sets it"
-      (is (=? {:since {:t 0, :id 0}, :last true, :rows [{:id 1, :_u 99000000, :_h #"[0-9a-f]{32}"}]
-               :next_since {:t (- app-db-now 5000000), :id 0}}
-              (second (first (bodies "state/user")))))
-      (is (= {:step "delta", :since nil, :next_since {:t (- app-db-now 5000000), :id 0}, :last true, :rows []}
-             (dissoc (second (first (bodies "state/card"))) :node_id :boot_id))))
-    (testing "a fetch sends the asked rows and the rows above"
-      (is (=? {:ids [1], :rows [{:id 1, :name "g"}]} (second (first (bodies "state/group")))))
-      (is (=? {:ids [], :rows [{:id 2}]} (second (first (bodies "state/table"))))))
-    (testing "a state pass sends its root, its buckets, then the rows of the buckets that differ"
-      (let [[root buckets rows] (map second (bodies "state/tenant"))]
-        (is (=? {:row_count 2, :bucket_count 2, :read_ms int?} root))
-        (is (=? {:pass 7, :part 0, :last true, :buckets [[0 1 string?] [1 1 string?]]} buckets))
-        (is (=? {:pass 7, :buckets [0 1], :rows [{:id 3} {:id 300}], :gone []} rows))
-        (is (= (:root root) (relay.state/root (:buckets buckets))))))
-    (testing "a page carries its rows, the gaps it re-read and the sequence value"
+    (testing "a cycle posts each change page as the source reads it, with its state"
+      (is (=? {:rows     [{:id 811, :table_name "tenant", :row_id 3, :action "update"}]
+               :state    {:tenant {:rows [{:id 3}], :gone []}}
+               :sequence change-sequence}
+              (second (first (bodies "rows/change"))))))
+    (testing "a fact page carries its rows, the gaps it re-read and the sequence value, and no state"
       (is (= {:rows [{:event_id 8}], :gap_reads [[5 6]], :sequence 50}
-             (select-keys (second (first (bodies "rows/execution"))) [:rows :gap_reads :sequence]))))
-    (testing "a good cycle leaves nothing to wait for, and no state pass"
-      (is (= {:last-result {:outcome :ok, :message "The run had no failure."}, :passes {}}
-             (select-keys state [:last-result :failures :paused-until :backoff-until :passes]))))))
+             (select-keys (second (first (bodies "rows/execution"))) [:rows :gap_reads :sequence :state]))))
+    (testing "a snapshot that fits in a page sends it as its first and last page, with the change log's sequence value"
+      (is (=? {:step "snapshot", :snapshot_id string?, :from 0, :to nil, :at change-sequence, :last true
+               :rows [{:id 3} {:id 300}]}
+              (second (first (bodies "state/tenant"))))))
+    (testing "a good cycle leaves nothing to wait for"
+      (is (= {:last-result {:outcome :ok, :message "The run had no failure."}}
+             (select-keys state [:last-result :failures :paused-until :backoff-until]))))))
 
 (deftest log-disabled-test
-  (testing "without log-enabled?, the relay sends no views or audit events"
+  (testing "without log-enabled?, streams-to-send leaves out views and audit events. The change log needs the same
+            licence feature today, so this is for when it has a feature of its own"
     (let [{:keys [posts]} (run-cycles! {:log-enabled? false
                                         :answer       (fn [endpoint _]
                                                         (if (= "sync" endpoint) (sync-answer) {:status 200}))})]
-      (is (= ["sync" "rows/login" "rows/execution"] (map first posts))))))
+      (is (= ["sync" "rows/change" "rows/login" "rows/execution"] (map first posts))))))
 
 (defn- next-from-last-row [_endpoint body]
   {:status 200, :body {:next_from (:event_id (last (:rows body))), :gaps []}})
@@ -288,7 +259,7 @@
                                                     (sync-answer :streams (select-keys all-streams [:login]))
                                                     (next-from-last-row endpoint body)))})]
       (is (= ["sync" "rows/login" "rows/login" "rows/login"] (map first posts)))))
-  (testing "while a state pass is due, the pages stop 3 s before the deadline, and leave that time to the state passes"
+  (testing "while a snapshot is asked for, the pages stop 3 s before the deadline, and leave that time to it"
     (let [clock           (atom 0)
           {:keys [posts]} (run-cycles! {:clock  clock
                                         :source (atom {:tenant tenant-rows})
@@ -299,23 +270,18 @@
                                                   (case endpoint
                                                     "sync"         (sync-answer
                                                                     :streams (select-keys all-streams [:login])
-                                                                    :state   {:tenant {:due true}})
-                                                    "state/tenant" (pass-answer body)
+                                                                    :snapshot ["tenant"])
+                                                    "state/tenant" (snapshot-answer body)
                                                     (next-from-last-row endpoint body)))})]
-      (is (= [["sync" nil] ["rows/login" nil] ["rows/login" nil]
-              ["state/tenant" "root"] ["state/tenant" "buckets"] ["state/tenant" "rows"]]
-             (steps posts))))))
-
-(def ^:private user-delta
-  {:user {:due false, :since {:t 0, :id 0}}})
+      (is (= ["sync" "rows/login" "rows/login" "state/tenant"] (map first posts))))))
 
 (deftest failure-stops-work-test
   (testing "a failed post ends the cycle's work, and the relay backs off"
     (let [{:keys [posts state]} (run-cycles! {:answer (fn [endpoint _]
                                                         (case endpoint
-                                                          "sync"       (sync-answer :state user-delta)
-                                                          "state/user" {:status 500}))})]
-      (is (= ["sync" "state/user"] (map first posts)))
+                                                          "sync"        (sync-answer)
+                                                          "rows/change" {:status 500}))})]
+      (is (= ["sync" "rows/change"] (map first posts)))
       (is (=? {:failures 1, :backoff-until int?} state))))
   (testing "a run while the relay backs off returns at once: after 1 failure it waits 10 s, after 2 it waits 20 s"
     (let [{:keys [posts state]} (run-cycles! {:n      3
@@ -323,201 +289,128 @@
       (is (= ["sync" "sync"] (map first posts)))
       (is (= 2 (:failures state)))))
   (testing "an error reading the app DB backs off too"
-    (let [{:keys [posts state]} (run-cycles! {:app-db-clock (fn [] (throw (ex-info "relation does not exist" {})))
-                                              :answer       (fn [_ _] (sync-answer :state user-delta))})]
+    (let [{:keys [posts state]} (run-cycles! {:page   (fn [& _] (throw (ex-info "relation does not exist" {})))
+                                              :answer (fn [_ _] (sync-answer))})]
       (is (= ["sync"] (map first posts)))
       (is (=? {:failures 1, :backoff-until int?} state))))
   (testing "a post that keeps failing backs off, although each /sync before it succeeds"
     (let [{:keys [posts state]} (run-cycles! {:n      5
                                               :answer (fn [endpoint _]
                                                         (case endpoint
-                                                          "sync"       (sync-answer :state user-delta)
-                                                          "state/user" {:status 500}))})]
+                                                          "sync"        (sync-answer)
+                                                          "rows/change" {:status 500}))})]
       (is (= 6 (count posts)))
       (is (= 3 (:failures state))))))
 
-(defn- tenant-pass-answer
-  "A receiver whose /sync answer says a `tenant` pass is due when `due?` holds, and that answers each state step with
-  `step-answer`, given the clock, the step and the body."
-  [clock due? step-answer]
+(def ^:private many-tenants
+  (for [id (range 1 6)] {:id id, :tenant_id id, :name (str "t" id)}))
+
+(defn- tenant-receiver
+  "A receiver that asks for a `tenant` snapshot, in pages of 2 rows, until one completes. It keeps the open snapshot as
+  Metabase Monitor does, and its `/sync` answer says where it stands: a page from 0 opens it, a page that continues it
+  moves it on, the last page completes it, and any other page gets a 409. `fail` takes each page's body, and returns
+  nil to take the page, a response to answer instead, `::lost` to take the page and lose the answer, or `::restart` to
+  drop the open snapshot first, as a restart of the receiver does."
+  ([]
+   (tenant-receiver (constantly nil)))
+  ([fail]
+   (let [open  (atom nil)
+         done? (atom false)]
+     (fn [endpoint {:keys [snapshot_id from to last] :as body}]
+       (if (= "sync" endpoint)
+         (sync-answer :streams   {}
+                      :page_rows 2
+                      :snapshot  (if @done? [] ["tenant"])
+                      :open      (if @open {:tenant @open} {}))
+         (let [failure (fail body)]
+           (when (= ::restart failure)
+             (reset! open nil))
+           (cond
+             (and (pos? from) (not= {:snapshot_id snapshot_id, :from from} @open))
+             {:status 409
+              :body   {:error (format "the tenant snapshot %s does not continue at %d: call /sync" snapshot_id from)}}
+
+             (map? failure)
+             failure
+
+             :else
+             (do (reset! open (when-not last {:snapshot_id snapshot_id, :from (inc to)}))
+                 (when last
+                   (reset! done? true))
+                 (if (= ::lost failure)
+                   (throw (HttpTimeoutException. "late"))
+                   (snapshot-answer body))))))))))
+
+(defn- snapshot-pages
+  "The `[snapshot_id from]` of each snapshot page in `posts`."
+  [posts]
+  (keep (fn [[endpoint body]] (when (str/starts-with? endpoint "state/") ((juxt :snapshot_id :from) body))) posts))
+
+(defn- cut-after-first-page
+  "`answer`, which moves `clock` past the run's deadline when the first page of a snapshot is posted."
+  [answer clock]
   (fn [endpoint body]
-    (case endpoint
-      "sync"         (sync-answer :streams {} :state {:tenant {:due (due?)}})
-      "state/tenant" (step-answer clock (:step body) body))))
+    (when (= 0 (:from body))
+      (swap! clock + relay.cycle/interval-ms))
+    (answer endpoint body)))
 
-(deftest pass-across-runs-test
-  (testing "a pass that the deadline cuts goes on in the node's next run, from its memory"
-    (let [clock                 (atom 0)
-          {:keys [posts state]} (run-cycles! {:n      2
-                                              :clock  clock
-                                              :source (atom {:tenant tenant-rows})
-                                              :answer (tenant-pass-answer clock
-                                                                          (constantly false)
-                                                                          (fn [clock step body]
-                                                                            (when (= "root" step)
-                                                                              (swap! clock + relay.cycle/interval-ms))
-                                                                            (pass-answer body)))
-                                              :state  {:boot-id "b"
-                                                       :target  ok-target
-                                                       :passes  {:tenant {:step :read, :next 0, :buckets []
-                                                                          :read-ms 0}}}})]
-      (testing "a pass that has not sent its root goes on only while its kind is due"
-        (is (= [["sync" nil] ["sync" nil]] (steps posts)))
-        (is (= {} (:passes state))))))
-  (doseq [[idle-ms what buckets] [[299999 "goes on from its next chunk" [[0 1 "old"] [1 1 #"[0-9a-f]{32}"]]]
-                                  [300000 "starts again from its first chunk"
-                                   [[0 1 #"[0-9a-f]{32}"] [1 1 #"[0-9a-f]{32}"]]]]]
-    (testing (str "a pass that has not sent its root, and of which this node read no chunk for " idle-ms " ms, " what)
-      (let [{:keys [posts]} (run-cycles! {:clock  (atom 1000000)
-                                          :source (atom {:tenant tenant-rows})
-                                          :answer (tenant-pass-answer nil (constantly true) (fn [_ _ body]
-                                                                                              (pass-answer body)))
-                                          :state  {:boot-id "b"
-                                                   :target  ok-target
-                                                   :passes  {:tenant {:step :read, :next 256, :buckets [[0 1 "old"]]
-                                                                      :read-ms 0, :read-at (- 1000000 idle-ms)}}}})]
-        (is (=? {:buckets buckets} (second (nth posts 2)))))))
-  (let [clock                (atom 0)
-        {:keys [posts state]} (run-cycles! {:n      3
-                                            :clock  clock
-                                            :source (atom {:tenant tenant-rows})
-                                            :answer (tenant-pass-answer clock
-                                                                        (let [syncs (atom 0)] #(= 1 (swap! syncs inc)))
-                                                                        (fn [clock step body]
-                                                                          (when (= "root" step)
-                                                                            (swap! clock + relay.cycle/interval-ms))
-                                                                          (pass-answer body)))})]
-    (testing "after its root, a pass goes on in the next run, though the receiver no longer says it is due"
-      (is (= [["sync" nil] ["state/tenant" "root"]
-              ["sync" nil] ["state/tenant" "buckets"] ["state/tenant" "rows"]
-              ["sync" nil]]
-             (steps posts)))
-      (is (= {} (:passes state)))))
-  (testing "a pass reads at most a chunk of its kind in a run"
-    (with-redefs [relay.state/chunk-rows          1
-                  relay.state/pass-page-rows      300]
-      (let [{:keys [posts]} (run-cycles! {:n      4
-                                          :source (atom {:tenant (for [id (range 1 601)]
-                                                                   {:id id, :tenant_id id, :name (str "t" id)})})
-                                          :answer (tenant-pass-answer nil (constantly true) (fn [_ _ body]
-                                                                                              (pass-answer body)))})]
-        (is (= [["sync" nil] ["sync" nil] ["sync" nil] ["state/tenant" "root"] ["state/tenant" "buckets"]
-                ["state/tenant" "rows"] ["sync" nil]]
-               (steps posts)))
-        (is (=? {:row_count 600, :bucket_count 3} (second (nth posts 3))))))))
+(deftest snapshot-pages-test
+  (let [{:keys [posts]} (run-cycles! {:source    (atom {:tenant many-tenants})
+                                      :answer    (tenant-receiver)
+                                      :sequences (let [n (atom change-sequence)] (fn [_] {:change (swap! n inc)}))})
+        pages           (map second (rest posts))]
+    (testing "a snapshot reads its kind in id pages: each from the id after the last page's to, the last open-ended"
+      (is (= [[1 2] [3 4] [5]] (map #(map :id (:rows %)) pages)))
+      (is (= [[0 2 false] [3 4 false] [5 nil true]] (map (juxt :from :to :last) pages))))
+    (testing "its pages share one snapshot id, and each carries the change log's sequence value read before it"
+      (is (= 1 (count (set (map :snapshot_id pages)))))
+      (is (apply < (map :at pages))))))
 
-(deftest failed-pass-step-test
-  (doseq [[what failure] [["a 409" {:status 409, :body {:error "pass 7 of tenant is not open: call /sync"}}]
-                          ["a 500" {:status 500}]
-                          ["a timeout" ::timeout]]
-          :let [answer (fn [due?]
-                         (tenant-pass-answer nil due? (fn [_ step body]
-                                                        (cond
-                                                          (not= "buckets" step) (pass-answer body)
-                                                          (= ::timeout failure) (throw (HttpTimeoutException. "late"))
-                                                          :else                 failure))))]]
-    (testing (str what " at a pass step drops the pass, and no later run sends that step again")
-      (let [syncs                 (atom 0)
-            {:keys [posts state]} (run-cycles! {:n      3
-                                                :source (atom {:tenant tenant-rows})
-                                                :answer (answer #(= 1 (swap! syncs inc)))})]
-        (is (= [["sync" nil] ["state/tenant" "root"] ["state/tenant" "buckets"] ["sync" nil] ["sync" nil]]
-               (steps posts)))
-        (is (= {} (:passes state)))))
-    (testing (str "after " what " at a pass step, the run " (if (= "a 409" what) "goes on" "fails"))
-      (let [{:keys [state]} (run-cycles! {:source (atom {:tenant tenant-rows})
-                                          :answer (answer (constantly true))})]
-        (if (= "a 409" what)
-          (do (is (=? {:last-result {:outcome :ok}} state))
-              (is (nil? (:failures state))))
-          (is (=? {:failures 1, :last-result {:outcome :failed, :message string?}} state)))))))
+(deftest snapshot-across-runs-test
+  (testing "a snapshot that the deadline cuts goes on in the next run, with its id, from where the /sync answer's open
+            says it stands"
+    (let [clock            (atom 0)
+          {:keys [posts]}  (run-cycles! {:n      2
+                                         :clock  clock
+                                         :source (atom {:tenant many-tenants})
+                                         :answer (cut-after-first-page (tenant-receiver) clock)})
+          [[id] :as pages] (snapshot-pages posts)]
+      (is (= ["sync" "state/tenant" "sync" "state/tenant" "state/tenant"] (map first posts)))
+      (is (= [[id 0] [id 3] [id 5]] pages))))
+  (testing "another node, which keeps nothing of it, goes on the same way"
+    (let [clock            (atom 0)
+          options          {:clock  clock
+                            :source (atom {:tenant many-tenants})
+                            :answer (cut-after-first-page (tenant-receiver) clock)}
+          first-node       (run-cycles! options)
+          other-node       (run-cycles! options)
+          [[id] :as pages] (snapshot-pages (concat (:posts first-node) (:posts other-node)))]
+      (is (= [[id 0] [id 3] [id 5]] pages))))
+  (testing "a kind with no open snapshot starts a new one from id 0, with a new id: here the receiver restarted"
+    (let [clock               (atom 0)
+          source              (atom {:tenant many-tenants})
+          before              (run-cycles! {:clock  clock
+                                            :source source
+                                            :answer (cut-after-first-page (tenant-receiver) clock)})
+          after               (run-cycles! {:clock clock, :source source, :answer (tenant-receiver)})
+          [[a] [b] :as pages] (snapshot-pages (concat (:posts before) (:posts after)))]
+      (is (= [[a 0] [b 0] [b 3] [b 5]] pages))
+      (is (not= a b)))))
 
-(deftest pass-error-test
-  (testing "an error reading the app DB in one pass fails the run, but keeps what the other passes sent in it"
-    (let [syncs           (atom 0)
-          {:keys [posts]} (run-cycles! {:n      2
-                                        :source (atom {:group  [{:id 1, :group_id 1, :name "g"}]
-                                                       :tenant ::not-rows})
-                                        :state  {:boot-id "b"
-                                                 :target  ok-target
-                                                 :passes  {:group  {:step :buckets, :pass 7, :part 0
-                                                                    :buckets [[0 1 "d"]]}
-                                                           :tenant {:step :read, :next 0, :buckets [], :read-ms 0}}}
-                                        :answer (fn [endpoint body]
-                                                  (if (= "sync" endpoint)
-                                                    (sync-answer :streams {}
-                                                                 :state {:tenant {:due (= 1 (swap! syncs inc))}})
-                                                    (pass-answer body)))})]
-      (is (= [["sync" nil] ["state/group" "buckets"] ["state/group" "rows"] ["sync" nil]] (steps posts))))))
-
-(deftest stale-delta-and-fetch-test
-  (testing "a 409 on a delta or a fetch skips that kind; the run goes on with the other kinds and its other work"
-    (let [{:keys [posts state]} (run-cycles! {:source (atom {:group [{:id 1, :group_id 1, :name "g"}]
-                                                             :table [{:id 2, :table_id 2, :name "t"}]})
-                                              :answer (fn [endpoint body]
-                                                        (case endpoint
-                                                          "sync"        (sync-answer
-                                                                         :streams (select-keys all-streams [:login])
-                                                                         :state {:user  {:since {:t 0, :id 0}}
-                                                                                 :card  {:since {:t 0, :id 0}}
-                                                                                 :group {:fetch {:ids [1]}}
-                                                                                 :table {:fetch {:above 0}}})
-                                                          ("state/user"
-                                                           "state/group") {:status 409, :body {:error "starts at 5/0"}}
-                                                          ("state/card"
-                                                           "state/table") (state-answer body)
-                                                          {:status 200, :body {}}))})]
-      (is (= [["sync" nil] ["state/user" "delta"] ["state/card" "delta"] ["state/group" "fetch"] ["state/table" "fetch"]
-              ["rows/login" nil]]
-             (steps posts)))
-      (is (=? {:last-result {:outcome :ok}} state))
-      (is (nil? (:failures state))))))
-
-(defn- later
-  "The later of the cursors `a` and `b`."
-  [a b]
-  (if (pos? (compare [(:t a) (:id a)] [(:t b) (:id b)])) a b))
-
-(deftest delta-parts-test
-  (testing "each delta part sends the since of the previous answer, and reads from just after the previous part's last
-            row, also when that answer's since is below that row"
-    (let [cursor          (atom {:t 80000000, :id 0})
-          {:keys [posts]} (run-cycles! {:source (atom {:user (for [id (range 1 6)]
-                                                               {:id id, :user_id id, :_u 99000000})})
-                                        :answer (fn [endpoint {:keys [next_since] :as body}]
-                                                  (case endpoint
-                                                    "sync"       (sync-answer :streams {}
-                                                                              :page_rows 2
-                                                                              :state {:user {:since @cursor}})
-                                                    "state/user" (do (swap! cursor later next_since)
-                                                                     {:status 200
-                                                                      :body   {:stored    (count (:rows body))
-                                                                               :unchanged 0
-                                                                               :since     @cursor}})))})
-          parts           (map second (rest posts))]
-      (is (= [[1 2] [3 4] [5]] (map #(map :id (:rows %)) parts)))
-      (is (= [false false true] (map :last parts)))
-      (is (= [{:t 80000000, :id 0} {:t 95000000, :id 0} {:t 95000000, :id 0}] (map :since parts)))
-      (is (= (repeat 3 {:t (- app-db-now 5000000), :id 0}) (map :next_since parts))))))
-
-(deftest rows-read-in-their-run-test
-  (testing "a pass's rows step reads its buckets in the run that posts them, never in an earlier run"
-    (let [clock           (atom 0)
-          source          (atom {:tenant tenant-rows})
-          {:keys [posts]} (run-cycles! {:n      2
-                                        :clock  clock
-                                        :source source
-                                        :answer (tenant-pass-answer clock
-                                                                    (let [syncs (atom 0)] #(= 1 (swap! syncs inc)))
-                                                                    (fn [clock step body]
-                                                                      (when (= "buckets" step)
-                                                                        (swap! clock + relay.cycle/interval-ms)
-                                                                        (swap! source assoc-in [:tenant 0 :name] "new"))
-                                                                      (pass-answer body)))})]
-      (is (= [["sync" nil] ["state/tenant" "root"] ["state/tenant" "buckets"]
-              ["sync" nil] ["state/tenant" "rows"]]
-             (steps posts)))
-      (is (= ["new" "t300"] (map :name (:rows (second (last posts)))))))))
+(deftest failed-snapshot-page-test
+  (doseq [[what failure from] [["a 409, as the receiver restarted" ::restart [0 3 0 3 5]]
+                               ["a 500" {:status 500} [0 3 3 5]]
+                               ["a timeout, after the receiver took the page" ::lost [0 3 5]]]]
+    (testing (str what ", at a snapshot page ends that kind for this run: the next run goes on from where the /sync"
+                  " answer's open says")
+      (let [fail?           (atom true)
+            {:keys [posts]} (run-cycles! {:n      2
+                                          :source (atom {:tenant many-tenants})
+                                          :answer (tenant-receiver (fn [body]
+                                                                     (when (and (= 3 (:from body))
+                                                                                (first (reset-vals! fail? false)))
+                                                                       failure)))})]
+        (is (= from (map second (snapshot-pages posts))))))))
 
 (deftest refusal-pauses-test
   (let [refused (run-cycles! {:n 3, :answer (fn [_ _] {:status 401, :body {:error "unknown token"}})})]
@@ -533,19 +426,22 @@
         (is (nil? (:failures state)))))))
 
 (deftest stale-page-test
-  (testing "a 409 on a page skips that stream; the run goes on with the other streams and the state passes, and is not
-            a failure"
-    (let [{:keys [posts state]} (run-cycles! {:source (atom {:tenant tenant-rows})
+  (testing "a 409 on a page skips that stream, or that kind's snapshot; the run goes on with the other streams and
+            kinds, and is not a failure"
+    (let [stale                 (fn [error] {:status 409, :body {:error error}})
+          answers               {"sync"         (sync-answer :snapshot ["tenant" "user"]
+                                                             :open     {:tenant {:snapshot_id "s", :from 3}})
+                                 "rows/login"   (stale "the login stream has no floor yet: call /sync")
+                                 "state/tenant" (stale "the tenant snapshot s does not continue at 3: call /sync")}
+          {:keys [posts state]} (run-cycles! {:source (atom {:tenant tenant-rows, :user [{:id 1, :user_id 1}]})
                                               :answer (fn [endpoint body]
-                                                        (case endpoint
-                                                          "sync"         (sync-answer :state {:tenant {:due true}})
-                                                          "rows/login"   {:status 409
-                                                                          :body   {:error "no history floor yet"}}
-                                                          "state/tenant" (pass-answer body)
-                                                          {:status 200, :body {}}))})]
-      (is (= [["sync" nil] ["rows/login" nil] ["rows/execution" nil] ["rows/view" nil] ["rows/audit" nil]
-              ["state/tenant" "root"] ["state/tenant" "buckets"] ["state/tenant" "rows"]]
-             (steps posts)))
+                                                        (or (answers endpoint)
+                                                            (if (= "state/user" endpoint)
+                                                              (snapshot-answer body)
+                                                              {:status 200, :body {}})))})]
+      (is (= ["sync" "rows/change" "rows/login" "rows/execution" "rows/view" "rows/audit" "state/tenant" "state/user"]
+             (map first posts)))
+      (is (=? [["s" 3] [string? 0]] (snapshot-pages posts)))
       (is (= {:last-result {:outcome :ok, :message "The run had no failure."}}
              (select-keys state [:last-result :failures :paused-until :backoff-until]))))))
 
@@ -654,21 +550,21 @@
     (let [before (t/instant)]
       (is (=? {:last_result  {:outcome "refused"
                               :message (str "Metabase Monitor at http://monitor:8080 refused this relay: relay"
-                                            " '0.1.0' is older than 0.2.0. The relay tries again in 5 minutes.")}
+                                            " '0.3.0' is older than 0.4.0. The relay tries again in 5 minutes.")}
                :failures     1
                :paused_until #(t/<= (t/plus before (t/seconds 299)) % (t/plus (t/instant) (t/minutes 5)))}
-              (node-after! {:answer (fn [_ _] {:status 403, :body {:error "relay '0.1.0' is older than 0.2.0"}})})))))
+              (node-after! {:answer (fn [_ _] {:status 403, :body {:error "relay '0.3.0' is older than 0.4.0"}})})))))
   (testing "a paused node that runs again keeps the pause and its reason"
     (is (=? {:ran_here true, :last_result {:outcome "refused"}, :failures 1, :paused_until some?}
             (node-after! {:n 3, :answer (fn [_ _] {:status 401, :body {:error "unknown token"}})}))))
   (testing "a failed post shows its status"
     (is (=? {:last_result  {:outcome "failed"
-                            :message (str "Metabase Monitor at http://monitor:8080 answered 500 to state/user. The"
+                            :message (str "Metabase Monitor at http://monitor:8080 answered 500 to rows/change. The"
                                           " relay tries again.")}
              :failures     1
              :paused_until nil}
             (node-after! {:answer (fn [endpoint _]
-                                    (if (= "sync" endpoint) (sync-answer :state user-delta) {:status 500}))}))))
+                                    (if (= "sync" endpoint) (sync-answer) {:status 500}))}))))
   (testing "a network error shows the error"
     (is (=? {:last_result {:outcome "failed"
                            :message (str "The relay could not reach Metabase Monitor at http://monitor:8080:"
@@ -678,3 +574,63 @@
     (is (=? {:last_result {:outcome "ok"}, :failures 0}
             (node-after! {:answer (fn [endpoint _]
                                     (if (= "sync" endpoint) (sync-answer) {:status 409, :body {:error "no floor"}}))})))))
+
+;;; -------------------------------------------------- change log --------------------------------------------------
+
+(def ^:private change-log-refusal
+  "What Metabase Monitor answers to a `/sync` whose `settings.change_log` is false."
+  (str "settings.change_log is false: Metabase does not log its changes. It needs the audit log's licence feature"
+       " (audit-app), and MB_CHANGE_LOG_ENABLED must not be false"))
+
+(defn- run-with-change-log!
+  "Runs this node's relay once with the real [[change-log/turn-on!]], against a receiver that refuses a `/sync` whose
+  `settings.change_log` is false, as Metabase Monitor does. Returns the endpoint and `settings.change_log` of each
+  post, as `:posts`, and this node's status, as `:node`."
+  []
+  (reset-node!)
+  (let [{:keys [posts]} (do-with-fake-receiver!
+                         {:turn-on! (mt/original-fn #'change-log/turn-on!)
+                          :answer   (fn [endpoint body]
+                                      (if (and (= "sync" endpoint) (false? (get-in body [:settings :change_log])))
+                                        {:status 403, :body {:error change-log-refusal}}
+                                        (sync-answer)))}
+                         (fn [_] (relay.cycle/cycle!)))]
+    {:posts (map (fn [[endpoint body]] [endpoint (get-in body [:settings :change_log])]) posts)
+     :node  (node-view)}))
+
+(def ^:private refused-for-change-log
+  "This node's status after the receiver refused its `/sync` for `settings.change_log`."
+  {:last_result  {:outcome "refused"
+                  :message (str "Metabase Monitor at http://monitor:8080 refused this relay: " change-log-refusal
+                                ". The relay tries again in 5 minutes.")}
+   :failures     1
+   :paused_until some?})
+
+(deftest change-log-licence-test
+  (testing "with the licence's feature, the relay turns the change log on, and its /sync says Metabase logs"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [change-log-enabled false]
+        (let [{:keys [posts node]} (run-with-change-log!)]
+          (is (true? (change-log/change-log-enabled)))
+          (is (= ["sync" true] (first posts)))
+          (is (=? {:last_result {:outcome "ok"}} node))))))
+  (testing "without it, the relay turns the setting on, but Metabase does not log: the relay posts only a /sync that
+            says so, and the receiver's refusal pauses it"
+    (mt/with-premium-features #{}
+      (mt/with-temporary-setting-values [change-log-enabled false]
+        (let [{:keys [posts node]} (run-with-change-log!)]
+          (is (true? (change-log/change-log-enabled)))
+          (is (= [["sync" false]] posts))
+          (is (=? refused-for-change-log node)))))))
+
+(deftest change-log-off-by-env-test
+  (testing "with MB_CHANGE_LOG_ENABLED=false, the relay writes no setting, posts only a /sync that says Metabase does
+            not log, and the receiver's refusal pauses it"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temporary-setting-values [change-log-enabled false]
+        (mt/with-temp-env-var-value! [mb-change-log-enabled "false"]
+          (let [{:keys [posts node]} (run-with-change-log!)]
+            (is (= "false" (setting/db-stored-value :change-log-enabled)))
+            (is (= :env (setting/get-raw-value-source :change-log-enabled)))
+            (is (= [["sync" false]] posts))
+            (is (=? refused-for-change-log node))))))))

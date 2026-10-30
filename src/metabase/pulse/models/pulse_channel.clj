@@ -5,6 +5,9 @@
    [metabase.models.interface :as mi]
    [metabase.notification.models :as notification.models]
    [metabase.pulse.db :as pulse.db]
+   ;; loads :model/PulseChannelRecipient with this model, so the change log sees the recipients that a pulse channel's
+   ;; delete cascades to
+   [metabase.pulse.models.pulse-channel-recipient]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -120,7 +123,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.always-allow)
-  (derive ::mi/write-policy.superuser))
+  (derive ::mi/write-policy.superuser)
+  (derive :hook/change-log))
 
 (t2/deftransforms :model/PulseChannel
   {:details (mi/transform-encrypted-json "pulse_channel.details")

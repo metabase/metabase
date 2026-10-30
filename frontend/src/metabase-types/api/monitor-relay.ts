@@ -2,9 +2,22 @@ export type MonitorRelayPhase = "waiting" | "loading" | "sealing" | "live";
 
 export type MonitorRelayStream = {
   stream: string;
+  /** The id up to which Metabase Monitor has every row. */
   w: number | null;
+  /**
+   * The highest id the application database has given out, or null when
+   * unknown.
+   */
   sequence: number | null;
+  /**
+   * The first id Metabase Monitor takes from this stream, or null before it
+   * sets one.
+   */
   floor: number | null;
+  /**
+   * The history's last id, or null before the floor. Always null for the
+   * change stream, which has no history.
+   */
   target: number | null;
 };
 
@@ -16,15 +29,8 @@ export type MonitorRelayNode = {
 /** How Metabase Monitor's copy of one kind of state stands. */
 export type MonitorRelayStateKind = {
   kind: string;
-  /** Seconds since its last full read began, or null before the first. */
-  pass_age_s: number | null;
-  /** How often Metabase Monitor reads it in full, in seconds. */
-  interval_s: number;
-  /**
-   * Only for the kinds whose changes are also read, users and cards: seconds
-   * since their changes were last read, or null before the first read.
-   */
-  cursor_age_s?: number | null;
+  /** Seconds since its full read began, or null before it. */
+  snapshot_age_s: number | null;
 };
 
 /** What Metabase Monitor answers to `POST /ingest/v1/status`. */

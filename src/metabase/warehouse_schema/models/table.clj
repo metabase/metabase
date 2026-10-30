@@ -95,6 +95,7 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/dependencies)
+  (derive :hook/change-log)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.

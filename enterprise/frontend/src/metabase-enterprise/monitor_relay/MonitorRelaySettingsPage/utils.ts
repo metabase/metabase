@@ -27,7 +27,7 @@ export function getPhaseDescription(phase: MonitorRelayPhase): string {
     case "waiting":
       return t`${MONITOR_NAME} is choosing where the history starts.`;
     case "loading":
-      return t`This instance sends its history.`;
+      return t`This instance sends its history, and a full read of its state.`;
     case "sealing":
       return t`${MONITOR_NAME} has the history and processes it.`;
     case "live":
@@ -37,6 +37,8 @@ export function getPhaseDescription(phase: MonitorRelayPhase): string {
 
 export function getStreamLabel(stream: string): string {
   switch (stream) {
+    case "change":
+      return t`Change log`;
     case "login":
       return t`Logins`;
     case "execution":

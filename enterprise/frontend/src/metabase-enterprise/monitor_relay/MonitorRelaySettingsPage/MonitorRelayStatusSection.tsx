@@ -56,6 +56,7 @@ function StatusContent({ status }: { status: MonitorRelayStatus }) {
 
   return (
     <Stack gap="xl">
+      <NodeState node={node} base={url.base} />
       {feed.status ? (
         <FeedStatus
           feed={feed.status}
@@ -67,7 +68,6 @@ function StatusContent({ status }: { status: MonitorRelayStatus }) {
       ) : (
         <Text>{t`${MONITOR_NAME} has not answered yet.`}</Text>
       )}
-      <NodeState node={node} base={url.base} />
     </Stack>
   );
 }
@@ -148,6 +148,9 @@ function StreamsTable({ streams }: { streams: MonitorRelayStream[] }) {
 }
 
 function HistoryProgress({ stream }: { stream: MonitorRelayStream }) {
+  if (stream.floor !== null && stream.target === null) {
+    return <Text c="text-secondary">{t`No history`}</Text>;
+  }
   const progress = getHistoryProgress(stream);
   if (progress === null) {
     return <Text c="text-secondary">{t`Not started`}</Text>;
@@ -166,26 +169,18 @@ function StateTable({ state }: { state: MonitorRelayStateKind[] }) {
     <Box>
       <SettingHeader
         title={t`State`}
-        description={t`For each kind of state, when ${MONITOR_NAME} last read all of it, and how often it does. Users and cards also send their changes every few seconds.`}
+        description={t`For each kind of state, when ${MONITOR_NAME} read all of it. It reads each kind once. After that, this instance sends only its changes, every few seconds.`}
       />
       <Table
         columns={[
           { key: "kind", name: t`Kind` },
-          { key: "pass_age_s", name: t`Last full read` },
-          { key: "interval_s", name: t`Every` },
-          { key: "cursor_age_s", name: t`Changes read` },
+          { key: "snapshot_age_s", name: t`Full read` },
         ]}
         rows={state.map((kind) => ({ ...kind, id: kind.kind }))}
         rowRenderer={(kind) => (
           <tr>
             <td>{getStateKindLabel(kind.kind)}</td>
-            <td>{formatAge(kind.pass_age_s, t`Never`)}</td>
-            <td>{duration(kind.interval_s * 1000)}</td>
-            <td>
-              {kind.cursor_age_s !== undefined
-                ? formatAge(kind.cursor_age_s, t`Not yet`)
-                : null}
-            </td>
+            <td>{formatAge(kind.snapshot_age_s, t`Not yet`)}</td>
           </tr>
         )}
       />
@@ -204,7 +199,7 @@ function NodesTable({
     <Box>
       <SettingHeader
         title={t`Nodes`}
-        description={t`The nodes that called ${MONITOR_NAME} in the last 10 minutes, newest first. One node at a time runs the job.`}
+        description={t`The nodes whose calls ${MONITOR_NAME} accepted in the last 10 minutes, newest first. One node at a time runs the job.`}
       />
       <Table
         columns={[
@@ -222,7 +217,9 @@ function NodesTable({
             <td>{getRelativeTime(node.last_sync_at)}</td>
           </tr>
         )}
-        emptyBody={<Text>{t`No node called in the last 10 minutes.`}</Text>}
+        emptyBody={
+          <Text>{t`${MONITOR_NAME} accepted no call in the last 10 minutes.`}</Text>
+        }
       />
     </Box>
   );
@@ -241,32 +238,37 @@ function NodeState({
         title={t`This node`}
         description={base ? t`Sends to ${base}.` : undefined}
       />
-      <SimpleGrid cols={3}>
+      <Stack>
         <Fact
           label={t`Last result`}
           value={node.last_result?.message ?? t`None yet`}
-        />
-        <Fact
-          label={t`Last run`}
-          value={
-            node.last_run_at ? getRelativeTime(node.last_run_at) : t`Never`
-          }
-          note={
-            node.ran_here
-              ? undefined
-              : t`Another node may run the job, or this node's scheduler is off.`
+          negative={
+            node.last_result != null && node.last_result.outcome !== "ok"
           }
         />
-        <Fact
-          label={t`Failures in a row`}
-          value={String(node.failures)}
-          note={
-            node.paused_until
-              ? t`Paused. It tries again ${getRelativeTime(node.paused_until)}.`
-              : undefined
-          }
-        />
-      </SimpleGrid>
+        <SimpleGrid cols={2}>
+          <Fact
+            label={t`Last run`}
+            value={
+              node.last_run_at ? getRelativeTime(node.last_run_at) : t`Never`
+            }
+            note={
+              node.ran_here
+                ? undefined
+                : t`Another node may run the job, or this node's scheduler is off.`
+            }
+          />
+          <Fact
+            label={t`Failures in a row`}
+            value={String(node.failures)}
+            note={
+              node.paused_until
+                ? t`Paused. It tries again ${getRelativeTime(node.paused_until)}.`
+                : undefined
+            }
+          />
+        </SimpleGrid>
+      </Stack>
     </Box>
   );
 }
@@ -275,17 +277,21 @@ function Fact({
   label,
   value,
   note,
+  negative,
 }: {
   label: string;
   value: string;
   note?: string;
+  negative?: boolean;
 }) {
   return (
     <Stack gap="xs">
       <Text c="text-secondary" size="sm">
         {label}
       </Text>
-      <Text fw="bold">{value}</Text>
+      <Text fw="bold" c={negative ? "feedback-negative" : undefined}>
+        {value}
+      </Text>
       {note && (
         <Text c="text-secondary" size="sm">
           {note}

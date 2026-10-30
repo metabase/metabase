@@ -138,7 +138,8 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/dependencies))
+  (derive :hook/dependencies)
+  (derive :hook/change-log))
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column

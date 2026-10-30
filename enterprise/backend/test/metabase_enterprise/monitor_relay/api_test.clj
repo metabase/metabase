@@ -5,6 +5,7 @@
    [metabase-enterprise.monitor-relay.client :as relay.client]
    [metabase-enterprise.monitor-relay.cycle :as relay.cycle]
    [metabase-enterprise.monitor-relay.source :as relay.source]
+   [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.util.json :as json])
@@ -20,16 +21,18 @@
 
 (def ^:private receiver-status
   {:phase        "live"
-   :streams      [{:stream "login", :w 9, :sequence 9, :floor 1, :target 7}]
+   :streams      [{:stream "change", :w 830, :sequence 830, :floor 812, :target nil}
+                  {:stream "login", :w 9, :sequence 9, :floor 1, :target 7}]
    :last_seal_at "2026-10-28T10:00:00Z"
    :nodes        [{:node_id "n1", :last_sync_at "2026-10-28T10:00:05Z"}]
-   :state        [{:kind "user", :pass_age_s 60, :interval_s 86400, :cursor_age_s 4}
-                  {:kind "group", :pass_age_s nil, :interval_s 60}]})
+   :state        [{:kind "user", :snapshot_age_s 60}
+                  {:kind "group", :snapshot_age_s nil}]})
 
 (defn- run-cycle!
   "Runs a relay cycle on this node against a receiver that gives `answer` to every post."
   [answer]
-  (mt/with-dynamic-fn-redefs [relay.source/sync-report (fn [boot-id] {:boot_id boot-id})
+  (mt/with-dynamic-fn-redefs [change-log/turn-on!      (constantly true)
+                              relay.source/sync-report (fn [boot-id _change-log? _history] {:boot_id boot-id})
                               relay.client/post!       (fn [& _] answer)]
     (relay.cycle/cycle!)))
 
@@ -53,7 +56,7 @@
 (deftest status-test
   (reset! @#'relay.cycle/node nil)
   (mt/with-temp-env-var-value! [mb-metabase-monitor-url url]
-    (run-cycle! {:status 200, :body {:streams {}, :state {}}})
+    (run-cycle! {:status 200, :body {:streams {}, :snapshot []}})
     (testing "the URL without its token, this node, and the status that the receiver answers now"
       (let [{:keys [response posts]} (fetch-status! (constantly {:status 200, :body {:status receiver-status}}))]
         (is (=? {:url  {:status "ok", :base "http://monitor:8080"}

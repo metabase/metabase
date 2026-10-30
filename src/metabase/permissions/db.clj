@@ -5,6 +5,7 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.change-log.core :as change-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
@@ -421,7 +422,14 @@
   `user-id-group-id->is-group-manager?`, matching Users to Groups on tenant status; returns the number of rows
   inserted."
   [user-id-group-id->is-group-manager? :- [:map-of [:tuple ms/PositiveInt ms/PositiveInt] :boolean]]
-  (t2/query-one (insert-group-memberships-from-mapping-query user-id-group-id->is-group-manager?)))
+  (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (u/prog1 (t2/query-one (insert-group-memberships-from-mapping-query user-id-group-id->is-group-manager?))
+      ;; raw SQL: the model's change-log hooks do not see these rows
+      (change-log/log-rows! :permissions_group_membership "insert"
+                            #(t2/select-pks-vec :model/PermissionsGroupMembership
+                                                {:where (into [:or]
+                                                              (for [[user-id group-id] (keys user-id-group-id->is-group-manager?)]
+                                                                [:and [:= :user_id user-id] [:= :group_id group-id]]))})))))
 
 (mu/defn other-active-member-count
   "The number of active Users other than `user-id` in the PermissionsGroup with `group-id`."
@@ -722,8 +730,11 @@
 (mu/defn deactivate-all-tenants!
   "Mark every tenant row inactive."
   []
-  (t2/query {:update :tenant
-             :set    {:is_active false}}))
+  (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    ;; raw SQL: the model's change-log hooks do not see these rows
+    (change-log/log-rows! :tenant "update" #(t2/select-fn-vec :id :tenant))
+    (t2/query {:update :tenant
+               :set    {:is_active false}})))
 
 ;;; --------------------------------------------- Databases and Tables ---------------------------------------------
 

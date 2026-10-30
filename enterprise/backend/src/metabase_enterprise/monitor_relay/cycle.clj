@@ -1,12 +1,14 @@
 (ns metabase-enterprise.monitor-relay.cycle
-  "One relay cycle. The relay's Quartz job runs one every 10 s, on one node of the cluster. A cycle posts `/sync`, then
-  sends the `user` and `card` deltas, the rows the receiver asks for by id, the next pages of each stream, logins
-  before executions, and the next steps of its state passes, until 10 s have passed. The protocol is
-  `libs/contract/PUSH.md` in the Metabase Monitor repository.
+  "One relay cycle. The relay's Quartz job runs one every 10 s, on one node of the cluster. A cycle turns Metabase's
+  change log on, and posts `/sync` with whether Metabase logs its changes. It never turns the log off, even when its URL
+  is cleared: the log is Metabase's, and other readers may follow it (`metabase.change-log.core/turn-on!`). Then it
+  sends the next pages of each stream, the change log first and logins before executions, and the next pages of the
+  snapshots the receiver asks for, until 10 s have passed. The protocol is `libs/contract/PUSH.md` in the Metabase
+  Monitor repository.
 
-  Each node keeps its relay's state in memory: its boot id, its failures and pauses, its history floors, its state
-  passes and its last result. Metabase keeps no delivery state: each `/sync` answer says where each stream and state
-  kind stands."
+  Each node keeps its relay's state in memory: its boot id, its failures and pauses, its history floors and its last
+  result. Metabase keeps no delivery state: each `/sync` answer says where each stream and each open snapshot stands,
+  and which kinds to snapshot."
   (:require
    [java-time.api :as t]
    [malli.error :as me]
@@ -14,7 +16,7 @@
    [metabase-enterprise.monitor-relay.config :as relay.config]
    [metabase-enterprise.monitor-relay.source :as relay.source]
    [metabase-enterprise.monitor-relay.sql :as relay.sql]
-   [metabase-enterprise.monitor-relay.state :as relay.state]
+   [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr])
@@ -37,8 +39,8 @@
 
 (def ^:private max-retry-after-seconds 300)
 
-(def ^:private pass-share-ms
-  ;; The end of a run that fact pages leave to the state passes, so a backlog of pages does not stop them.
+(def ^:private snapshot-share-ms
+  ;; The end of a run that stream pages leave to the snapshots, so a backlog of pages does not stop them.
   3000)
 
 (def ^:private status-timeout (Duration/ofSeconds 5))
@@ -54,8 +56,7 @@
   - `:paused-until`, `:backoff-until`: [[now-ms]] times, monotonic, before which a run does nothing. An accepted
     `/sync` clears the pause; a run with no failure, or a new URL, clears both.
   - `:history`: the history floors that each `/sync` sends, `{:since :floors}`. An answer without `history_since`, or
-    a new URL, clears it.
-  - `:passes`: this node's state passes in progress, by kind ([[relay.state/passes!]]). A new URL clears them."
+    a new URL, clears it."
   []
   {:boot-id (str (random-uuid))})
 
@@ -82,7 +83,7 @@
   "The failed `response` of the receiver at `base`, with its `:outcome`, and its `:message`: the sentence that the log
   and the status show, with what the relay does next.
 
-  - `:stale`: a 409. The receiver has moved on from that stream, delta, fetch or state pass. The run skips it.
+  - `:stale`: a 409. The receiver has moved on from that stream or snapshot. The run skips it.
   - `:refused`: a 401 or a 403. The relay pauses for 5 minutes.
   - `:busy`: a 429 or a 503. The relay waits as `Retry-After` asks, or backs off.
   - `:failed`: anything else, such as another status, a network error, or an error reading the app DB, which has no
@@ -192,6 +193,14 @@
        response
        (classify (:base target) (assoc response :endpoint endpoint))))))
 
+(defn- unless-stale
+  "`failure`, or nil when it is `:stale`: a 409, the receiver has moved on from that stream or snapshot. The run then
+  skips it, and goes on with the rest of its work. Logs a stale failure."
+  [failure]
+  (if (= :stale (:outcome failure))
+    (log/debug (:message failure))
+    failure))
+
 (defn- send-stream!
   "Sends pages of `stream` from `cursor`, the receiver's `{:next_from :gaps}`, until no rows remain or `deadline`
   passes. Only the first page re-reads the gaps. Returns the failure that ends the run, or nil."
@@ -199,15 +208,34 @@
   (loop [cursor cursor, gaps? true]
     (let [{:keys [rows gap_reads more?] :as page} (relay.source/page stream cursor gaps? page-rows)]
       (when (or (seq rows) (seq gap_reads))
-        (let [response (send! (:target state) (str "rows/" (name stream))
-                              (merge (ids state) (select-keys page [:rows :gap_reads :sequence])))]
+        (let [response (send! (:target state) (str "rows/" (name stream)) (merge (ids state) (dissoc page :more?)))]
           (cond
-            (not (relay.client/ok? response)) (relay.state/unless-stale response)
+            (not (relay.client/ok? response)) (unless-stale response)
             (and more? (< (now-ms) deadline))  (recur (:body response) false)))))))
+
+(def ^:private state-kinds
+  "The state kinds, in the order the relay snapshots them."
+  (sort-by name relay.sql/state-kinds))
+
+(defn- send-snapshot!
+  "Sends pages of the snapshot of state `kind` from `open`, the receiver's `{:snapshot_id :from}`, or of a new one from
+  id 0, until its last page or `deadline`. A snapshot spans runs and nodes: the next `/sync` answer says where it
+  stands. Returns the failure that ends the run, or nil."
+  [state kind open page-rows deadline]
+  (let [id (or (:snapshot_id open) (str (random-uuid)))]
+    (loop [from (:from open 0)]
+      (when (< (now-ms) deadline)
+        (let [page     (relay.source/snapshot-page kind from page-rows)
+              response (send! (:target state) (str "state/" (name kind))
+                              (merge (ids state) page {:step "snapshot", :snapshot_id id, :from from}))]
+          (cond
+            (not (relay.client/ok? response)) (unless-stale response)
+            (not (:last page))                (recur (inc (:to page)))))))))
 
 (defn- streams-to-send
   "The streams the receiver has a cursor for, in sending order. Without `log-enabled?`, Metabase writes no views or
-  audit events, so the relay sends neither."
+  audit events, so the relay sends neither. The change log needs the same licence feature for now, so this matters
+  only once it has a feature of its own."
   [sync]
   (let [log-enabled? (relay.source/log-enabled?)]
     (filter #(and (get-in sync [:streams %])
@@ -215,27 +243,17 @@
             relay.sql/streams)))
 
 (defn- work!
-  "The work of a cycle after the accepted `/sync` answer `sync`, until `deadline`: the deltas, the fetches, the pages of
-  each stream, then the state passes. While a state pass is in progress or due, the pages stop [[pass-share-ms]] before
-  `deadline`. A stale delta, fetch, stream or state pass is skipped. Returns `[state failure]`: the state with this
-  node's passes, and the failure that ended the run, or nil."
+  "The work of a cycle after the accepted `/sync` answer `sync`, until `deadline`: the pages of each stream, then the
+  snapshots. While a snapshot is asked for, the pages stop [[snapshot-share-ms]] before `deadline`. A stale stream or
+  snapshot is skipped. Returns the failure that ended the run, or nil."
   [state sync deadline]
-  (let [page-rows (min max-page-rows (or (:page_rows sync) default-page-rows))
-        ctx       {:post             (fn [kind body]
-                                       (send! (:target state) (str "state/" (name kind)) (merge (ids state) body)))
-                   :page-rows        page-rows
-                   :now              (now-ms)
-                   :deadline-passed? #(>= (now-ms) deadline)}
-        answer    (:state sync)
-        passes?   (or (seq (:passes state)) (some (comp true? :due) (vals answer)))
-        pages-end (cond-> deadline passes? (- pass-share-ms))]
-    (if-let [failure (or (relay.state/deltas! ctx answer)
-                         (relay.state/fetches! ctx answer)
-                         (some #(send-stream! state % (get-in sync [:streams %]) page-rows pages-end)
-                               (streams-to-send sync)))]
-      [state failure]
-      (let [{:keys [passes failure]} (relay.state/passes! ctx (:passes state) answer)]
-        [(assoc state :passes passes) failure]))))
+  (let [page-rows  (min max-page-rows (or (:page_rows sync) default-page-rows))
+        snapshots? (seq (:snapshot sync))
+        pages-end  (cond-> deadline snapshots? (- snapshot-share-ms))]
+    (or (some #(send-stream! state % (get-in sync [:streams %]) page-rows pages-end)
+              (streams-to-send sync))
+        (some #(send-snapshot! state % (get-in sync [:open %]) page-rows deadline)
+              (filter (set (map keyword (:snapshot sync))) state-kinds)))))
 
 ;;; ---------------------------------------------------- cycle -----------------------------------------------------
 
@@ -263,21 +281,23 @@
       (with-history sync)))
 
 (defn- sync! [state start]
-  (let [response (send! (:target state) "sync" (cond-> (relay.source/sync-report (:boot-id state))
-                                                 (:history state) (assoc :history (:history state))))]
+  (let [;; before sync-report reads the change sequence, so this node's start marker is below the value it reports
+        change-log? (change-log/turn-on!)
+        report      (relay.source/sync-report (:boot-id state) change-log? (:history state))
+        response    (send! (:target state) "sync" report)]
     (if-not (relay.client/ok? response)
       (failed state response)
       ;; The failure count survives a good /sync until the work succeeds too: a page that keeps failing backs off and
       ;; warns once, instead of being sent again every cycle.
-      (let [sync            (:body response)
-            [state failure] (work! (synced state sync) sync (+ start interval-ms))]
-        (if failure
+      (let [sync  (:body response)
+            state (synced state sync)]
+        (if-let [failure (work! state sync (+ start interval-ms))]
           (failed state failure)
           (recovered state))))))
 
 (defn- retarget
   "The state for a new `target`. A new URL ends a pause and a backoff, and drops the history floors found for the old
-  one, the state passes sent to it, and what it answered."
+  one and what it answered."
   [state target]
   (case (:status target)
     :ok        (log/infof "The Metabase Monitor relay sends to %s" (:base target))
@@ -287,7 +307,7 @@
                               "so the relay sends nothing")))
   (-> state
       (assoc :target target)
-      (dissoc :failures :paused-until :backoff-until :history :passes :last-result)))
+      (dissoc :failures :paused-until :backoff-until :history :last-result)))
 
 (defn- waiting?
   "Whether the relay waits at `now`: a refusal paused it, or it backs off."
@@ -354,10 +374,8 @@
                                 [:node_id      :string]
                                 [:last_sync_at :string]]]]
    [:state        [:sequential [:map
-                                [:kind         :string]
-                                [:pass_age_s   [:maybe :int]]
-                                [:interval_s   :int]
-                                [:cursor_age_s {:optional true} [:maybe :int]]]]]])
+                                [:kind           :string]
+                                [:snapshot_age_s [:maybe :int]]]]]])
 
 (defn feed
   "What Metabase Monitor at `target` answers now to `POST /ingest/v1/status`: its `:status`, or why there is none,

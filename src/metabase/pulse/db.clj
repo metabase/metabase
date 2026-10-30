@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.change-log.core :as change-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util.malli :as mu]
@@ -398,7 +399,12 @@
   running model hooks."
   [channel-id :- ms/PositiveInt
    user-ids   :- [:set ::lib.schema.id/user]]
-  (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids]))
+  (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (change-log/log-rows! :pulse_channel_recipient "delete"
+                          #(t2/select-pks-vec :model/PulseChannelRecipient
+                                              :pulse_channel_id channel-id
+                                              :user_id [:in user-ids]))
+    (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids])))
 
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`."

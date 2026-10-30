@@ -2,10 +2,8 @@
 ## is partitioned by started_at and has no index on id (064/20260723_query_execution_partitioned drops the primary key),
 ## so each read scans every partition. MySQL, MariaDB and H2 keep id as the primary key, which they index.
 ##
-## The relay's indexes are built so that the table stays writable wherever the database can do it, as in
-## 20261028_index_core_user_and_report_card_updated_at. Here Postgres cannot: it does not build an index CONCURRENTLY
-## on a partitioned table. So this build blocks inserts into query_execution while it runs. It builds the index on
-## every partition, and each new partition gets it too.
+## Postgres does not build an index CONCURRENTLY on a partitioned table, so this build blocks inserts into
+## query_execution while it runs. It builds the index on every partition, and each new partition gets it too.
 
 databaseChangeLog:
   - changeSet:

@@ -128,6 +128,7 @@
   #{"metabase.analytics.task.send_anonymous_stats.SendAnonymousUsageStats"
     "metabase.audit_app.task.partitions.ManagePartitions"
     "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"
+    "metabase.change_log.task.cleanup.ChangeLogCleanup"
     "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCache"
     "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCacheOnStartup"
     "metabase.explorations.task.collect_orphaned_results.CollectOrphanedExplorationResults"

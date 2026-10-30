@@ -52,9 +52,7 @@ export const createMockMonitorRelayStateKind = (
   opts: Partial<MonitorRelayStateKind> = {},
 ): MonitorRelayStateKind => ({
   kind: "user",
-  pass_age_s: 3600,
-  interval_s: 86400,
-  cursor_age_s: 5,
+  snapshot_age_s: 3600,
   ...opts,
 });
 

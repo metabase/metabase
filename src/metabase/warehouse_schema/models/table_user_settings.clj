@@ -35,7 +35,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/search-index)
-  (derive :hook/dependencies))
+  (derive :hook/dependencies)
+  (derive :hook/change-log))
 
 (methodical/defmethod t2/primary-keys :model/TableUserSettings [_model] [:table_id])
 
