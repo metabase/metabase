@@ -11,18 +11,39 @@ export interface DeletedTest {
 }
 
 const REMOVED_IT = /^-\s*it(?:\.skip|\.only)?\(\s*(["'`])(.*?)\1/;
+/** A tagged test wraps its arguments, so `it(` ends the line and the title opens the next. */
+const REMOVED_IT_WITHOUT_TITLE = /^-\s*it(?:\.skip|\.only)?\(\s*$/;
+const REMOVED_TITLE = /^-\s*(["'`])(.*?)\1\s*,?\s*$/;
 
 export function parseDeletedTests(diff: string): DeletedTest[] {
   const deleted: DeletedTest[] = [];
   let spec = "";
+  let titleIsOnTheNextLine = false;
   for (const line of diff.split("\n")) {
     if (line.startsWith("--- a/")) {
       spec = line.slice("--- a/".length);
+      titleIsOnTheNextLine = false;
       continue;
     }
+    const inScope = spec.startsWith("e2e/test/scenarios/");
     const match = line.match(REMOVED_IT);
-    if (match && spec.startsWith("e2e/test/scenarios/")) {
-      deleted.push({ spec, title: match[2] });
+    if (match) {
+      titleIsOnTheNextLine = false;
+      if (inScope) {
+        deleted.push({ spec, title: match[2] });
+      }
+      continue;
+    }
+    if (REMOVED_IT_WITHOUT_TITLE.test(line)) {
+      titleIsOnTheNextLine = true;
+      continue;
+    }
+    if (titleIsOnTheNextLine) {
+      titleIsOnTheNextLine = false;
+      const title = line.match(REMOVED_TITLE);
+      if (title && inScope) {
+        deleted.push({ spec, title: title[2] });
+      }
     }
   }
   return deleted;

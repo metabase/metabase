@@ -63,6 +63,32 @@ describe("deleted tests from a diff", () => {
       { spec: "e2e/test/scenarios/admin/x.cy.spec.ts", title: "skipped one" },
     ]);
   });
+
+  it("reads a title on the line after it(", () => {
+    const diff = [
+      "--- a/e2e/test/scenarios/filters/y.cy.spec.ts",
+      "+++ b/e2e/test/scenarios/filters/y.cy.spec.ts",
+      "-  it(",
+      '-    "object detail + expression editor",',
+      '-    { tags: "@external" },',
+      "-    () => {",
+      "-  it(",
+      "-    `tagged and skipped`,",
+      "--- a/e2e/test/scenarios/filters/z.cy.spec.ts",
+      "-  it(",
+      "-    H.describeWithSnowplow,",
+    ].join("\n");
+    expect(parseDeletedTests(diff)).toEqual([
+      {
+        spec: "e2e/test/scenarios/filters/y.cy.spec.ts",
+        title: "object detail + expression editor",
+      },
+      {
+        spec: "e2e/test/scenarios/filters/y.cy.spec.ts",
+        title: "tagged and skipped",
+      },
+    ]);
+  });
 });
 
 describe("line mapping through hunks", () => {
