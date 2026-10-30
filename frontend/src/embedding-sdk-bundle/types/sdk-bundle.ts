@@ -6,6 +6,7 @@ import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/C
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
 import type { CreateQuestion } from "embedding-sdk-bundle/components/public/CreateQuestion";
+import type { DataApp } from "embedding-sdk-bundle/components/public/DataApp";
 import type { DateRangeCalendar } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
 import type { DateRangePopover } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 import type { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion/InteractiveQuestion";
@@ -68,6 +69,7 @@ type PublicExports = {
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
   CreateDashboardModal: InternalComponent<typeof CreateDashboardModal>;
   CreateQuestion: InternalComponent<typeof CreateQuestion>;
+  DataApp?: InternalComponent<typeof DataApp>;
   DateRangeCalendar: typeof DateRangeCalendar;
   DateRangePopover: typeof DateRangePopover;
   EditableDashboard: InternalComponent<typeof EditableDashboard>;
