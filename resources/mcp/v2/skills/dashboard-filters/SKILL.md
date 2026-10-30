@@ -72,4 +72,4 @@ Two hard constraints: linked filters read **table-metadata foreign keys only** �
 
 ## To confirm
 
-`get_content {"type": "dashboard", "id": 40, "include": ["parameters"]}` — the write response shows each parameter's `default`, `required`, and value source, but not `filteringParameters`, `values_query_type`, or `isMultiSelect`; read those back before reporting a link or widget mode as set. Dropdown contents: `get_parameter_values`.
+`get_content {"items": [{"type": "dashboard", "id": 40}], "include": ["parameters"]}` — the write response shows each parameter's `default`, `required`, and value source, but not `filteringParameters`, `values_query_type`, or `isMultiSelect`; read those back before reporting a link or widget mode as set. Dropdown contents: `get_parameter_values`.
