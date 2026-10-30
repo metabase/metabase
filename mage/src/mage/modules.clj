@@ -272,7 +272,8 @@
 ;;;; The generated block in `.github/CODEOWNERS` sits between BEGIN/END markers, with one stanza per module that opts
 ;;;; in with `:codeowners` in config.edn.
 ;;;; The stanza gives the module's directories and root namespace files to its team's `codeowner` handle in team.json.
-;;;; A nested module of another team that has not opted in gets lines with no owner instead.
+;;;; A nested module that has not opted in goes to its own team when an opted-in module around it belongs to that
+;;;; team, and gets lines with no owner otherwise.
 ;;;; The block's text depends only on those two files, so a new directory or file never makes it stale.
 ;;;; The generator also refuses an opted-in module whose src directory has no code, which reads the disk.
 ;;;; Lines outside the markers are hand-maintained (frontend, e2e, docs, single files).
@@ -321,28 +322,27 @@
   Inside an opted-in module's directory it is otherwise unowned, with a `nil` handle.
   An opted-in module always gets an entry; another module gets one only where its owner would otherwise differ from
   this rule.
-  Expects a config without [[codeowners-config-problems]]."
+  An unknown `:codeowners` value counts as `true`, so the shadowed-line check still sees that module's paths.
+  [[codeowners-config-problems]] reports the value, and the block is not written until it is fixed."
   [modules-config team->codeowner]
   (reduce
    (fn [entries module]
      (let [team  (modules/module-team modules-config module)
-           trees (set (modules/codeowners-value->trees (get-in modules-config [module :codeowners])))]
+           value (get-in modules-config [module :codeowners])
+           trees (set (when (some? value)
+                        (get modules/codeowners-value->trees value (modules/codeowners-value->trees true))))]
        (into entries
              (for [tree   ["src" "test"]
                    :let   [dir       (modules/module-dir modules-config module tree)
                            ;; Entries come parent first, so the last one containing `dir` is the nearest.
-                           enclosing (fn [pred]
-                                       (last (filter #(and (= tree (:tree %)) (pred %) (path-within? (:dir %) dir))
-                                                     entries)))
-                           current   (enclosing any?)
-                           same-team (enclosing #(and (:opted-in? %) (= team (:team %))))
+                           around    (filter #(and (= tree (:tree %)) (path-within? (:dir %) dir)) entries)
+                           current   (last around)
+                           owners    (filter :opted-in? around)
                            opted-in? (contains? trees tree)
-                           handle    (cond
-                                       opted-in? (get team->codeowner team)
-                                       same-team (:handle same-team)
-                                       :else     nil)]
+                           own-team? (or opted-in? (some #(= team (:team %)) owners))
+                           handle    (when own-team? (get team->codeowner team))]
                    :when  (or opted-in?
-                              (and (enclosing :opted-in?) (not= handle (:handle current))))]
+                              (and (seq owners) (not= handle (:handle current))))]
                {:module    module
                 :tree      tree
                 :dir       dir
@@ -412,20 +412,18 @@
                        (< begin end)))
       {:type :broken-markers, :begin begin, :end end})))
 
-(defn- codeowners-problems
-  "Every problem that stops the block from being generated, as maps keyed by `:type`: those of
-  [[codeowners-config-problems]] and [[markers-problem]], and `:shadowed-lines` (`:lines`) for `entries`.
+(defn- codeowners-file-problems
+  "Problems with the `existing` CODEOWNERS text for the block's `entries`: a [[markers-problem]], or else
+  `:shadowed-lines` (`:lines`).
   Lines are not checked while the markers are broken, since the block's position is then unknown."
-  [existing modules-config team->codeowner source? entries]
-  (let [markers  (markers-problem existing)
-        shadowed (when-not markers
-                   (seq (shadowed-lines existing (mapcat :patterns entries))))]
-    (cond-> (vec (codeowners-config-problems modules-config team->codeowner source?))
-      shadowed (conj {:type :shadowed-lines, :lines (vec shadowed)})
-      markers  (conj markers))))
+  [existing entries]
+  (if-let [markers (markers-problem existing)]
+    [markers]
+    (when-let [shadowed (seq (shadowed-lines existing (mapcat :patterns entries)))]
+      [{:type :shadowed-lines, :lines (vec shadowed)}])))
 
 (defn- codeowners-problem-message
-  "One problem from [[codeowners-problems]] as a sentence saying what to fix."
+  "One problem from [[codeowners-config-problems]] or [[codeowners-file-problems]] as a sentence saying what to fix."
   [{:keys [module] :as problem}]
   (case (:type problem)
     :unknown-value  (format "Module %s sets :codeowners to %s. Use true (src and test) or :src-only."
@@ -461,7 +459,8 @@
      "# Generated by `./bin/mage update-codeowners`. Do not edit by hand."
      "# A module opts in with `:codeowners` in .clj-kondo/config/modules/config.edn."
      "# Its directories and root namespace files go to its team's \"codeowner\" handle in .github/team.json."
-     "# A nested module of another team that has not opted in is left unowned."
+     "# A nested module that has not opted in goes to its own team if an opted-in module around it belongs to that"
+     "# team, and is left unowned otherwise."
      "# Exceptions inside these paths go below the END marker: lines above this block lose to it."
      "#"]
     (mapcat #(cons "" (codeowners-stanza-lines %))
@@ -474,6 +473,7 @@
   Returns text ending in one newline.
   Throws on a [[markers-problem]]."
   [existing block]
+  ;; Callers check the markers first; this guard keeps a bad file from being spliced at the wrong place regardless.
   (when-let [problem (markers-problem existing)]
     (throw (ex-info (codeowners-problem-message problem) problem)))
   (if-let [begin (str/index-of existing codeowners-begin-marker)]
@@ -489,7 +489,8 @@
   `:problems` (`:problems`), `:up-to-date`, `:stale` (with `check?`) or `:write` (`:desired`)."
   [existing modules-config team->codeowner source? check?]
   (let [entries  (codeowners-entries modules-config team->codeowner)
-        problems (codeowners-problems existing modules-config team->codeowner source? entries)
+        problems (into (vec (codeowners-config-problems modules-config team->codeowner source?))
+                       (codeowners-file-problems existing entries))
         desired  (when (empty? problems)
                    (splice-codeowners existing (codeowners-block entries)))]
     (cond
@@ -501,7 +502,7 @@
 (defn cli-update-codeowners
   "Regenerate the module-ownership block in `.github/CODEOWNERS`.
   With `--check`, exit non-zero when the file is stale instead of writing it.
-  Exits non-zero, printing each problem, when [[codeowners-problems]] finds any."
+  Exits non-zero, printing each problem, when [[codeowners-outcome]] finds any."
   [cli-args]
   (let [outcome (codeowners-outcome (slurp codeowners-path)
                                     (read-modules-config)

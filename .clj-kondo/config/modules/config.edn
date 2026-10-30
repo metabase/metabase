@@ -19,10 +19,10 @@
 ;; in `.github/team.json`, which the team must have. Run `./bin/mage update-codeowners` after changing it. Leave it
 ;; out for modules whose team has not agreed to review them.
 ;;
-;; It is not inherited, but it covers the module's directories, so nested modules of the same team inside them come
-;; along. Nested modules of another team are left unowned there unless they set it too. A nested module with an
-;; `:ns-prefix` outside its parent's directories needs its own. Plugin code under `modules/<plugin>/src` is not
-;; supported: give it an owner by hand.
+;; It is not inherited, but it covers the module's directories. A nested module inside them that does not set it goes
+;; to its own team if an opted-in module around it belongs to that team, and is left unowned otherwise. A nested
+;; module with an `:ns-prefix` outside its parent's directories needs its own. Plugin code under
+;; `modules/<plugin>/src` is not supported: give it an owner by hand.
 ;;
 ;;    search
 ;;    {:team       "Metabot"
