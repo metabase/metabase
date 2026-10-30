@@ -270,6 +270,24 @@
                                                                                     StandardOpenOption/TRUNCATE_EXISTING]))]
           (write-manifest! os))))))
 
+(defn compile!
+  "Clean the build output and AOT-compile the Clojure sources for `edition`. Returns the basis to pass to
+  [[package!]]. Doesn't need the frontend build, so it can run while the frontend builds."
+  [edition]
+  (clean!)
+  (doto (create-basis edition)
+    compile-sources!))
+
+(defn package!
+  "Package the output of [[compile!]] and the resources, including the built frontend, into the uberjar."
+  [basis]
+  (with-duration-ms [duration-ms]
+    (copy-resources! basis)
+    (create-uberjar! basis)
+    (add-non-aot-driver-sources!)
+    (update-manifest!)
+    (u/announce "Built %s in %.1f seconds." uberjar-filename (/ duration-ms 1000.0))))
+
 (defn uberjar
   "Build just the uberjar (no i18n, FE, or anything else). You can run this from the CLI like:
 
@@ -277,15 +295,7 @@
     clojure -X:build:build/uberjar :edition :ee"
   [{:keys [edition], :or {edition :oss}}]
   (u/step (format "Build %s uberjar" edition)
-    (with-duration-ms [duration-ms]
-      (clean!)
-      (let [basis (create-basis edition)]
-        (compile-sources! basis)
-        (copy-resources! basis)
-        (create-uberjar! basis)
-        (add-non-aot-driver-sources!)
-        (update-manifest!))
-      (u/announce "Built %s in %.1f seconds." uberjar-filename (/ duration-ms 1000.0)))))
+    (package! (compile! edition))))
 
 (defn detect-class-conflicts
   "Run `b/uber` against `basis` (no AOT, no resources) and return a seq of
