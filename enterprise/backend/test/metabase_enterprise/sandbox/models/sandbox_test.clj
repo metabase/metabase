@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.models.sandbox-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.models.sandbox-test]}}}}}}
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.sandbox.models.sandbox :as sandboxes]
@@ -230,11 +231,24 @@
         ["result metadata" card-msg #(t2/update! :model/Card :id (:id card)
                                                  {:result_metadata (venues-cols "ID" "NAME" "LATITUDE")})]
         ["archive"         card-msg #(t2/update! :model/Card :id (:id card) {:archived true})]
+        ["type -> model"   card-msg #(t2/update! :model/Card :id (:id card) {:type :model})]
+        ["type -> metric"  card-msg #(t2/update! :model/Card :id (:id card) {:type :metric})]
         ["delete"  card-msg #(t2/delete! :model/Card :id (:id card))]]))
     (untouched-test
      with-card-policy
      (fn [{:keys [other]}]
        (t2/update! :model/Card :id (:id other) {:dataset_query (mt/mbql-query venues {:limit 1})})))))
+
+(deftest non-admin-cannot-move-a-policy-card-into-a-dashboard-test
+  (testing "a non-admin cannot move a policy Card into a Dashboard, but may move an unrelated Card"
+    (mt/with-premium-features #{:sandboxes}
+      (with-card-policy
+        (fn [{:keys [card other]}]
+          (mt/with-temp [:model/Dashboard dashboard {}]
+            (mt/with-test-user :rasta
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo card-msg
+                                    (t2/update! :model/Card :id (:id card) {:dashboard_id (:id dashboard)})))
+              (is (= 1 (t2/update! :model/Card :id (:id other) {:dashboard_id (:id dashboard)}))))))))))
 
 (defn- with-snippet-policy
   "A policy whose snippet `outer` splices in snippet `inner`, which in turn reads Card `nested-card` through a
@@ -271,6 +285,9 @@
                                                                   {:content "2 = 2"})]
         ["query of the nested Card"      card-msg    #(t2/update! :model/Card :id (:id nested-card)
                                                                   {:dataset_query (mt/mbql-query venues)})]
+        ["type of the nested Card"       card-msg    #(t2/update! :model/Card :id (:id nested-card) {:type :model})]
+        ["entity id"                     snippet-msg #(t2/update! :model/NativeQuerySnippet :id (:id outer)
+                                                                  {:entity_id (u/generate-nano-id)})]
         ["delete"                        snippet-msg #(t2/delete! :model/NativeQuerySnippet :id (:id outer))]]))
     (untouched-test
      with-snippet-policy
@@ -312,6 +329,8 @@
        [["definition"                       segment-msg #(t2/update! :model/Segment :id (:id outer)
                                                                      {:definition (price-above 4)})]
         ["archive"                          segment-msg #(t2/update! :model/Segment :id (:id outer) {:archived true})]
+        ["table"                            segment-msg #(t2/update! :model/Segment :id (:id outer)
+                                                                     {:table_id (mt/id :checkins)})]
         ["definition of the nested segment" segment-msg #(t2/update! :model/Segment :id (:id inner)
                                                                      {:definition (price-above 4)})]
         ["delete"                           segment-msg #(t2/delete! :model/Segment :id (:id outer))]]))
@@ -373,11 +392,75 @@
         ["definition"                       measure-msg #(t2/update! :model/Measure :id (:id measure)
                                                                      {:definition (sum-of-price 2)})]
         ["archive"                          measure-msg #(t2/update! :model/Measure :id (:id measure) {:archived true})]
+        ["table"                            measure-msg #(t2/update! :model/Measure :id (:id measure)
+                                                                     {:table_id (mt/id :checkins)})]
         ["delete"                           measure-msg #(t2/delete! :model/Measure :id (:id measure))]]))
     (untouched-test
      with-measure-policy
      (fn [{:keys [other]}]
        (t2/update! :model/Measure :id (:id other) {:definition (sum-of-price 2)})))))
+
+;; A non-admin may still make the changes that do not touch what a policy reads: names, descriptions, display,
+;; placement in a Collection, the Card's own parameters, caching, and embedding settings.
+;; The guard refuses any column not in an allow-list, so a forgotten new column is refused, which is safe but makes
+;; non-admin edits that set it fail with a 403. This test makes each new column get a deliberate decision instead.
+(deftest every-policy-dependency-column-is-classified-test
+  (testing "every column of a policy dependency is one a non-admin may change or one only an admin may change"
+    (mt/with-temp [:model/Card              card    {}
+                   :model/NativeQuerySnippet snippet {}
+                   :model/Segment           segment {}
+                   :model/Measure           measure {}]
+      (doseq [[model id allowed refused]
+              [[:model/Card (:id card)
+                @#'sandboxes/card-columns-a-non-admin-may-change @#'sandboxes/card-columns-only-an-admin-may-change]
+               [:model/NativeQuerySnippet (:id snippet)
+                @#'sandboxes/snippet-columns-a-non-admin-may-change @#'sandboxes/snippet-columns-only-an-admin-may-change]
+               [:model/Segment (:id segment)
+                @#'sandboxes/segment-columns-a-non-admin-may-change @#'sandboxes/segment-columns-only-an-admin-may-change]
+               [:model/Measure (:id measure)
+                @#'sandboxes/measure-columns-a-non-admin-may-change @#'sandboxes/measure-columns-only-an-admin-may-change]]]
+        (testing model
+          (let [columns (set (keys (t2/select-one (t2/table-name model) :id id)))]
+            (testing "a new column must be added to the columns a non-admin may change, or to those only an admin may change, in `metabase-enterprise.sandbox.models.sandbox`"
+              (is (= #{} (set/difference columns allowed refused))))
+            (testing "no column is in both lists"
+              (is (= #{} (set/intersection allowed refused))))
+            (testing "the admin-only list names only columns that exist"
+              (is (= #{} (set/difference refused columns))))))))))
+
+(deftest non-admins-may-still-make-cosmetic-changes-to-a-policy-dependency-test
+  (mt/with-premium-features #{:sandboxes}
+    (with-card-policy
+      (fn [{:keys [card]}]
+        (mt/with-temp [:model/Collection coll {}]
+          (mt/with-test-user :rasta
+            (doseq [[op-name changes] [["name"                   {:name (mt/random-name)}]
+                                       ["description"            {:description "new"}]
+                                       ["display"                {:display :bar}]
+                                       ["visualization settings" {:visualization_settings {:table.pivot false}}]
+                                       ["collection"             {:collection_id (:id coll)}]
+                                       ["collection position"    {:collection_position 1}]
+                                       ["parameters"             {:parameters [{:id "p", :type :category, :name "P", :slug "p"}]}]
+                                       ["cache ttl"              {:cache_ttl 10}]
+                                       ["embedding params"       {:embedding_params {:id "enabled"}}]]]
+              (testing op-name
+                (is (= 1 (t2/update! :model/Card :id (:id card) changes)))))))))
+    (with-segment-policy
+      (fn [{:keys [outer]}]
+        (mt/with-test-user :rasta
+          (is (= 1 (t2/update! :model/Segment :id (:id outer) {:name (mt/random-name), :description "new"
+                                                               :caveats "c", :points_of_interest "p"
+                                                               :show_in_getting_started true}))))))
+    (with-measure-policy
+      (fn [{:keys [measure]}]
+        (mt/with-test-user :rasta
+          (is (= 1 (t2/update! :model/Measure :id (:id measure) {:name (mt/random-name), :description "new"}))))))
+    (with-snippet-policy
+      (fn [{:keys [outer]}]
+        (mt/with-temp [:model/Collection coll {:namespace "snippets"}]
+          (mt/with-test-user :rasta
+            (is (= 1 (t2/update! :model/NativeQuerySnippet :id (:id outer) {:description "new"
+                                                                            :collection_id (:id coll)})))))))))
 
 (deftest non-admin-cannot-rewrite-a-policy-snippet-through-the-api-test
   (testing "SEC-1094: a non-admin with native access to an unrelated Database only cannot rewrite a policy snippet"
@@ -441,6 +524,75 @@
                                               {:name            "Renamed"
                                                :result_metadata (:result_metadata served)}))))
           (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names))))))))
+
+(deftest non-admin-may-resend-unchanged-values-in-another-representation-test
+  (testing "a non-admin may send a policy Card's admin-only columns back unchanged, in the form an API client uses"
+    (mt/with-premium-features #{:sandboxes}
+      (with-card-policy
+        (fn [{:keys [card]}]
+          (let [{:keys [type query_type display card_schema]} (t2/select-one :model/Card :id (:id card))]
+            (is (keyword? type))
+            (is (keyword? query_type))
+            (is (keyword? display))
+            (is (instance? Integer card_schema))
+            (mt/with-test-user :rasta
+              (is (= 1 (t2/update! :model/Card :id (:id card) {:name        (mt/random-name)
+                                                               :type        (name type)
+                                                               :query_type  (name query_type)
+                                                               :display     (name display)
+                                                               :card_schema (long card_schema)}))))
+            (is (=? {:type type, :query_type query_type, :display display, :card_schema card_schema}
+                    (t2/select-one :model/Card :id (:id card))))
+            (testing "a new value in string form is still refused"
+              (mt/with-test-user :rasta
+                (doseq [changes [{:type "model"} {:type "metric"} {:query_type "native"}]]
+                  (testing changes
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo card-msg
+                                          (t2/update! :model/Card :id (:id card) changes))))))
+              (is (=? {:type type, :query_type query_type} (t2/select-one :model/Card :id (:id card)))))))))))
+
+(deftest non-admin-may-save-a-policy-card-as-the-frontend-sends-it-test
+  (testing "a non-admin may rename a policy Card by sending back the whole Card, as the frontend does"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {:query (sbx.tu/restricted-column-query (mt/id))}}}
+        (perms/grant-collection-readwrite-permissions! (:id &group) collection/root-collection)
+        (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))
+              served  (mt/user-http-request :crowberto :get 200 (str "card/" card-id))]
+          (is (= "Renamed"
+                 (:name (mt/user-http-request :rasta :put 200 (str "card/" card-id) (assoc served :name "Renamed")))))
+          (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names)))
+          (testing "the whole Card with a changed query is still refused"
+            (is (= "You do not have permissions to modify a question that is used for row and column level security."
+                   (mt/user-http-request :rasta :put 403 (str "card/" card-id)
+                                         (assoc served :dataset_query (mt/mbql-query venues {:limit 1}))))))
+          (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names))))))))
+
+(deftest non-admin-cannot-change-the-type-of-a-policy-card-through-the-api-test
+  (testing "a non-admin who curates the policy Card cannot turn it into a model or metric, or move it into a Dashboard"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {:query (sbx.tu/restricted-column-query (mt/id))}}}
+        (perms/grant-collection-readwrite-permissions! (:id &group) collection/root-collection)
+        (mt/with-temp [:model/Dashboard dashboard {}]
+          (let [card-id   (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))
+                card-type #(t2/select-one-fn :type :model/Card :id card-id)]
+            (doseq [changes [{:type "model"} {:type "metric"} {:dashboard_id (:id dashboard)}]]
+              (testing changes
+                (is (= "You do not have permissions to modify a question that is used for row and column level security."
+                       (mt/user-http-request :rasta :put 403 (str "card/" card-id) changes)))
+                (is (= :question (card-type)))
+                (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))
+            (testing "the non-admin may still make cosmetic edits"
+              (is (=? {:name "Renamed", :description "new", :display "bar", :collection_position 2}
+                      (mt/user-http-request :rasta :put 200 (str "card/" card-id)
+                                            {:name                   "Renamed"
+                                             :description            "new"
+                                             :display                "bar"
+                                             :visualization_settings {:table.pivot false}
+                                             :collection_position    2}))))
+            (is (= ["ID" "NAME" "CATEGORY_ID"] (sandboxed-venues-field-names)))
+            (testing "an admin may change the type"
+              (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:type "model"})
+              (is (= :model (card-type))))))))))
 
 (deftest running-a-policy-card-with-drifted-metadata-as-a-non-admin-test
   (testing "a non-admin running a policy Card whose stored metadata has drifted gets results, but the QP's metadata
