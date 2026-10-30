@@ -45,6 +45,7 @@ export function TreeTable<TData extends TreeNodeData>({
   renderRowLink,
   renderSubRow,
   hierarchical = true,
+  static: isStatic = false,
   classNames,
   styles,
   ariaLabel,
@@ -169,13 +170,13 @@ export function TreeTable<TData extends TreeNodeData>({
       showCheckboxes={showCheckboxes}
       showExpandButtons={hasExpandableRows}
       indentWidth={indentWidth}
-      activeRowId={activeRowId}
-      selectedRowId={selectedRowId}
+      activeRowId={isStatic ? null : activeRowId}
+      selectedRowId={isStatic ? null : selectedRowId}
       isExpanded={row.getIsExpanded()}
       canExpand={row.getCanExpand()}
       measureElement={measureElement}
-      onRowClick={handleRowClick}
-      onRowDoubleClick={onRowDoubleClick}
+      onRowClick={isStatic ? undefined : handleRowClick}
+      onRowDoubleClick={isStatic ? undefined : onRowDoubleClick}
       isDisabled={isRowDisabled?.(row)}
       isChildrenLoading={isChildrenLoading?.(row)}
       isLoading={isRowLoading?.(row)}
@@ -187,7 +188,8 @@ export function TreeTable<TData extends TreeNodeData>({
       renderRowLink={renderRowLink}
       renderSubRow={renderSubRow}
       hierarchical={hierarchical}
-      isClickable={Boolean(onRowClick) || Boolean(renderRowLink)}
+      isClickable={!isStatic && (Boolean(onRowClick) || Boolean(renderRowLink))}
+      isStatic={isStatic}
     />
   );
 
@@ -202,10 +204,10 @@ export function TreeTable<TData extends TreeNodeData>({
         mih={0}
         w="100%"
         role="treegrid"
-        tabIndex={0}
+        tabIndex={isStatic ? undefined : 0}
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
-        onKeyDown={handleKeyDownWithFocus}
+        onKeyDown={isStatic ? undefined : handleKeyDownWithFocus}
       >
         <Box
           ref={bodyRef}

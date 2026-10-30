@@ -33,20 +33,30 @@ const SORTABLE_COLUMNS: TreeTableColumnDef<TestNode>[] = [
   },
 ];
 
+const getNodeId = (node: TestNode) => node.id;
+
+const getRowProps = (row: Row<TestNode>) => ({
+  "data-testid": `row-${row.original.id}`,
+});
+
+interface SetupOpts {
+  columns?: TreeTableColumnDef<TestNode>[];
+  onRowActivate?: (row: { original: TestNode }) => void;
+  isStatic?: boolean;
+}
+
 function setup({
   columns = SORTABLE_COLUMNS,
   onRowActivate,
-}: {
-  columns?: TreeTableColumnDef<TestNode>[];
-  onRowActivate?: (row: { original: TestNode }) => void;
-} = {}) {
+  isStatic = false,
+}: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 200, height: 40 });
 
   function Container() {
     const instance = useTreeTableInstance<TestNode>({
       data: DATA,
       columns,
-      getNodeId: (node) => node.id,
+      getNodeId,
       manualSorting: true,
       onRowActivate,
     });
@@ -56,18 +66,14 @@ function setup({
         instance={instance}
         hierarchical={false}
         ariaLabel="Test table"
+        static={isStatic}
+        getRowProps={getRowProps}
       />
     );
   }
 
   renderWithProviders(<Container />);
 }
-
-const getNodeId = (node: TestNode) => node.id;
-
-const getRowProps = (row: Row<TestNode>) => ({
-  "data-testid": `row-${row.original.id}`,
-});
 
 function setupSelection() {
   mockGetBoundingClientRect({ width: 200, height: 40 });
@@ -114,6 +120,69 @@ describe("TreeTable keyboard interaction", () => {
 
     expect(header).toHaveAttribute("aria-sort", "ascending");
     expect(onRowActivate).not.toHaveBeenCalled();
+  });
+});
+
+describe("TreeTable static mode", () => {
+  it("does not mark a clicked row as active", async () => {
+    setup({ isStatic: true });
+
+    const row = screen.getByTestId("row-1");
+    await userEvent.click(row);
+
+    expect(row).not.toHaveAttribute("data-keyboard-active");
+    expect(row).toHaveAttribute("aria-selected", "false");
+    expect(row).not.toHaveFocus();
+  });
+
+  it("does not move keyboard focus through rows", async () => {
+    const onRowActivate = jest.fn();
+    setup({ isStatic: true, onRowActivate });
+
+    const grid = screen.getByRole("treegrid", { name: "Test table" });
+    grid.focus();
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+
+    expect(screen.getByTestId("row-1")).not.toHaveAttribute(
+      "data-keyboard-active",
+    );
+    expect(onRowActivate).not.toHaveBeenCalled();
+  });
+
+  it("keeps controls inside cells reachable by keyboard and click", async () => {
+    const onAction = jest.fn<void, [string]>();
+    const columns: TreeTableColumnDef<TestNode>[] = [
+      {
+        id: "name",
+        header: "Name",
+        enableSorting: false,
+        cell: ({ row }) => <span>{row.original.name}</span>,
+      },
+      {
+        id: "action",
+        header: "",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <button onClick={() => onAction(row.original.id)}>Open</button>
+        ),
+      },
+    ];
+    setup({ isStatic: true, columns });
+
+    await userEvent.tab();
+    expect(
+      within(screen.getByTestId("row-1")).getByRole("button", {
+        name: "Open",
+      }),
+    ).toHaveFocus();
+
+    await userEvent.click(
+      within(screen.getByTestId("row-2")).getByRole("button", {
+        name: "Open",
+      }),
+    );
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(onAction).toHaveBeenCalledWith("2");
   });
 });
 
