@@ -400,7 +400,7 @@
              :user "bob"
              :password "qaz"
              :ssl true
-             :custom_http_params "select_sequential_consistency=1,join_use_nulls=1,max_threads=42,allow_experimental_analyzer=0"})
+             :custom_http_params "select_sequential_consistency=1,max_threads=42,allow_experimental_analyzer=0"})
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {:host "myclickhouse"
@@ -517,7 +517,7 @@
         (is (true? (driver/can-connect? :clickhouse details)))
         (is (= "//localhost:8123/default?clickhouse_setting_max_threads=5&max_block_size=50"
                (:subname spec)))
-        (is (= "select_sequential_consistency=1,join_use_nulls=1,max_result_rows=10,max_columns_to_read=20"
+        (is (= "select_sequential_consistency=1,max_result_rows=10,max_columns_to_read=20"
                (:custom_http_params spec)))
         (is (= {:max_threads 5
                 :max_block_size 65409 ;; unknown key is ignored
@@ -946,3 +946,30 @@
   (testing "a host written as a URL with a scheme and path is still allowed"
     (is (nil? (driver.u/validate-connection-parameters!
                :clickhouse {:host "https://ch.example.com/x" :port 8443 :dbname "d"})))))
+
+(deftest readonly-user-test
+  (mt/test-driver :clickhouse
+    (testing "A user with `readonly = 1` can run queries"
+      (try
+        (ctd/exec-statements ["CREATE SETTINGS PROFILE OR REPLACE metabase_readonly_profile SETTINGS
+                                 readonly = 1 READONLY,
+                                 select_sequential_consistency CHANGEABLE_IN_READONLY,
+                                 max_execution_time = 30 READONLY;"
+                              "CREATE USER OR REPLACE metabase_readonly_user NOT IDENTIFIED
+                                 SETTINGS PROFILE metabase_readonly_profile;"]
+                             {})
+        (mt/with-temp [:model/Database db {:engine  :clickhouse
+                                           :details (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+                                                        (dissoc :clickhouse-settings)
+                                                        (assoc :user "metabase_readonly_user"))}]
+          (mt/with-db db
+            (is (= [[1 30]]
+                   (->> (str "SELECT toInt64(getSetting('select_sequential_consistency')), "
+                             "toInt64(getSetting('max_execution_time'))")
+                        (lib/native-query (mt/metadata-provider))
+                        qp/process-query
+                        mt/rows)))))
+        (finally
+          (ctd/exec-statements ["DROP USER IF EXISTS metabase_readonly_user;"
+                                "DROP SETTINGS PROFILE IF EXISTS metabase_readonly_profile;"]
+                               {}))))))
