@@ -1,7 +1,12 @@
+import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
+import {
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -75,6 +80,34 @@ describe("MetabotInlineSQLPrompt", () => {
     expect(
       screen.getByRole("button", { name: "connect to a model" }),
     ).toBeInTheDocument();
+  });
+
+  it("opens the AI provider configuration modal from the configure link", async () => {
+    setupLlmProvidersEndpoint();
+    setupLlmProviderTypesEndpoint();
+    setup();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "connect to a model" }),
+    );
+
+    expect(
+      await screen.findByTestId("ai-provider-configuration-modal"),
+    ).toBeInTheDocument();
+  });
+
+  it("disables the generate button until a prompt is typed", async () => {
+    const { rerender } = setup({ isConfigured: true });
+
+    expect(
+      await screen.findByTestId("metabot-inline-sql-generate"),
+    ).toBeDisabled();
+
+    rerender({ value: "   " });
+    expect(screen.getByTestId("metabot-inline-sql-generate")).toBeDisabled();
+
+    rerender({ value: "select all users" });
+    expect(screen.getByTestId("metabot-inline-sql-generate")).toBeEnabled();
   });
 
   it("shows the admin message when the user cannot configure AI", async () => {

@@ -1,11 +1,21 @@
 import userEvent from "@testing-library/user-event";
 import { assocIn } from "icepick";
 
-import { createMockMetabotTextMessage } from "__support__/server-mocks";
+import {
+  createMockMetabotGeneratedCardPart,
+  createMockMetabotTextMessage,
+  setupCardDataset,
+  setupDatabaseEndpoints,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
+  setupTableEndpoints,
+} from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
 import { getMetabotVisible } from "metabase/metabot/state";
 import {
+  createMockDatabase,
   createMockMetabotConversation,
+  createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -13,6 +23,9 @@ import {
   conversationIdForAgent,
   createTestMetabotState,
   enterChatMessage,
+  erroredResponse,
+  lastChatMessage,
+  lastReqBody,
   mockAgentEndpoint,
   setup,
   testConversationId,
@@ -20,6 +33,11 @@ import {
 } from "../../tests/utils";
 
 import { MetabotAsk } from "./MetabotAsk";
+
+jest.mock("metabase/visualizations/components/Visualization", () => ({
+  __esModule: true,
+  default: () => <div data-testid="visualization" />,
+}));
 
 const greetingTitle =
   /What would you like to know\?|What do you want to explore\?|What are you looking to learn\?/;
@@ -67,6 +85,87 @@ describe("MetabotAsk", () => {
     ).toBeInTheDocument();
     expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
     expect(screen.queryByText(greetingTitle)).not.toBeInTheDocument();
+  });
+
+  it("sends messages with the nlq profile", async () => {
+    setupMetabotAsk();
+    const agentSpy = mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+
+    await enterChatMessage("Who is your favorite?");
+
+    const body: unknown = await lastReqBody(agentSpy);
+    expect(body).toMatchObject({
+      message: "Who is your favorite?",
+      profile_id: "nlq",
+    });
+  });
+
+  it("shows a failed response inline in the conversation", async () => {
+    setupMetabotAsk();
+    mockAgentEndpoint({ events: erroredResponse });
+
+    await enterChatMessage("Tell me about my data");
+
+    await waitFor(async () => {
+      expect(await lastChatMessage()).toHaveTextContent(/Something went wrong/);
+    });
+    expect(screen.getByTestId("metabot-chat")).toBeInTheDocument();
+  });
+
+  it("sends a suggested prompt when it is clicked", async () => {
+    setupMetabotAsk({
+      promptSuggestions: [{ prompt: "Show me all orders" }],
+    });
+    const agentSpy = mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+
+    await userEvent.click(await screen.findByText("Show me all orders"));
+
+    const body: unknown = await lastReqBody(agentSpy);
+    expect(body).toMatchObject({ message: "Show me all orders" });
+    expect(agentSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders a streamed chart inline without leaving the conversation", async () => {
+    const TABLE_ID = 2;
+    const conversationRoute = `/metabot/conversation/${ASK_CONVERSATION_ID}`;
+    setupCardDataset();
+    setupDatabaseEndpoints(createMockDatabase({ id: 1 }));
+    setupTableEndpoints(createMockTable({ id: TABLE_ID }));
+    const { router } = setupMetabotAsk({
+      withRouter: true,
+      initialRoute: conversationRoute,
+    });
+    mockAgentEndpoint({
+      events: [createMockMetabotGeneratedCardPart({ tableId: TABLE_ID }).part],
+    });
+
+    await enterChatMessage("Show me all orders");
+
+    expect(
+      await screen.findByTestId("metabot-inline-chart"),
+    ).toBeInTheDocument();
+    expect(router?.location.pathname).toBe(conversationRoute);
+  });
+
+  it("opens the AI provider setup from the greeting when not configured", async () => {
+    setupLlmProviderTypesEndpoint();
+    setupLlmProvidersEndpoint();
+    setupMetabotAsk({
+      currentUser: createMockUser({ is_superuser: true }),
+      isConfigured: false,
+    });
+
+    expect(
+      screen.queryByTestId("ai-provider-configuration-modal"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "connect to a model" }),
+    );
+
+    expect(
+      await screen.findByTestId("ai-provider-configuration-modal"),
+    ).toBeInTheDocument();
   });
 
   it("replaces the untitled placeholder with the generated title", async () => {
