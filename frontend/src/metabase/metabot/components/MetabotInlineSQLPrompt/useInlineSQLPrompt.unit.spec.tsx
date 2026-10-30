@@ -1,7 +1,7 @@
 jest.unmock("@uiw/react-codemirror");
 
 import userEvent from "@testing-library/user-event";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadataFromState } from "__support__/metadata";
@@ -9,24 +9,34 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
+  setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import { MetabotChainOfThought } from "metabase/metabot/components/MetabotChat/MetabotChainOfThought";
 import { MetabotProvider } from "metabase/metabot/context";
 import {
   erroredResponse,
+  lastReqBody,
   mockAgentEndpoint,
 } from "metabase/metabot/tests/utils";
+import { getDiffControls } from "metabase/querying/components/CodeMirrorEditor/test-utils";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditor";
 import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
+  createMockDatabase,
   createMockNativeDatasetQuery,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -45,9 +55,20 @@ jest.mock(
 
 const TEST_DB = createSampleDatabase();
 
+const OTHER_DB = createMockDatabase({ id: 2, name: "Other Database" });
+
 const TEST_CARD = createMockCard({
+  id: 1,
   dataset_query: createMockNativeDatasetQuery({
     database: TEST_DB.id,
+    native: { query: "SELECT 1" },
+  }),
+});
+
+const OTHER_DB_CARD = createMockCard({
+  id: 2,
+  dataset_query: createMockNativeDatasetQuery({
+    database: OTHER_DB.id,
     native: { query: "SELECT 1" },
   }),
 });
@@ -63,6 +84,20 @@ const CODE_EDIT_RESPONSE: SSEEvent[] = [
 const LONG_REASONING_WORD_COUNT = 1500;
 // Keep it at most a third of the replay time above, and below the 30 s jest timeout.
 const SQL_ARRIVAL_TIMEOUT_MS = 5000;
+
+const codeEditResponse = (sql: string): SSEEvent[] => [
+  { type: "start", messageId: `msg-${sql}` },
+  {
+    type: "data-code_edit",
+    data: { buffer_id: "qb", mode: "rewrite", value: sql },
+  },
+];
+
+const TEXT_ONLY_RESPONSE: SSEEvent[] = [
+  { type: "text-start", id: "t1" },
+  { type: "text-delta", id: "t1", delta: "I can help with that!" },
+  { type: "text-end", id: "t1" },
+];
 
 const LONG_REASONING_THEN_CODE_EDIT_RESPONSE: SSEEvent[] = [
   { type: "reasoning-start", id: "r1" },
@@ -95,15 +130,25 @@ function TestEditor({ question }: { question: Question }) {
     togglePrompt,
     isPromptOpen,
     proposedQuestion,
+    handleAcceptProposed,
+    handleRejectProposed,
   } = useInlineSQLPrompt(question, "qb");
-  const query = checkNotNull(question.legacyNativeQuery());
+  const [currentQuestion, setCurrentQuestion] = useState(question);
+  const query = checkNotNull(currentQuestion.legacyNativeQuery());
 
   return (
     <>
       <NativeQueryEditor
-        question={question}
+        question={currentQuestion}
         query={query}
-        setDatasetQuery={jest.fn()}
+        proposedQuestion={proposedQuestion}
+        setDatasetQuery={(nextQuery) =>
+          setCurrentQuestion(
+            currentQuestion.setDatasetQuery(nextQuery.datasetQuery()),
+          )
+        }
+        onAcceptProposed={handleAcceptProposed}
+        onRejectProposed={handleRejectProposed}
         isNativeEditorOpen
         isInitiallyOpen
         extensions={extensions}
@@ -127,6 +172,27 @@ function TestEditor({ question }: { question: Question }) {
   );
 }
 
+function TestPage({
+  questions,
+}: {
+  questions: { initial: Question; otherDatabase: Question };
+}) {
+  const [question, setQuestion] = useState(questions.initial);
+  const [pageKey, setPageKey] = useState(0);
+
+  return (
+    <>
+      <TestEditor key={pageKey} question={question} />
+      <button onClick={() => setQuestion(questions.otherDatabase)}>
+        Switch database
+      </button>
+      <button onClick={() => setPageKey((key) => key + 1)}>
+        Open new SQL page
+      </button>
+    </>
+  );
+}
+
 interface SetupOpts {
   isMetabotEnabled?: boolean;
   otherContent?: ReactElement;
@@ -134,10 +200,11 @@ interface SetupOpts {
 
 function setup({ isMetabotEnabled = true, otherContent }: SetupOpts = {}) {
   setupEnterprisePlugins();
-  setupDatabasesEndpoints([TEST_DB]);
+  setupDatabasesEndpoints([TEST_DB, OTHER_DB]);
   setupUserMetabotPermissionsEndpoint();
   setupCollectionsEndpoints({ collections: [] });
   setupNativeQuerySnippetEndpoints();
+  setupSearchEndpoints([]);
 
   const state = createMockState({
     settings: mockSettings({
@@ -146,17 +213,19 @@ function setup({ isMetabotEnabled = true, otherContent }: SetupOpts = {}) {
     }),
     currentUser: createMockUser(),
     entities: createMockEntitiesState({
-      databases: [TEST_DB],
-      questions: [TEST_CARD],
+      databases: [TEST_DB, OTHER_DB],
+      questions: [TEST_CARD, OTHER_DB_CARD],
     }),
   });
-  const question = checkNotNull(
-    createMockMetadataFromState(state).question(TEST_CARD.id),
-  );
+  const metadata = createMockMetadataFromState(state);
+  const questions = {
+    initial: checkNotNull(metadata.question(TEST_CARD.id)),
+    otherDatabase: checkNotNull(metadata.question(OTHER_DB_CARD.id)),
+  };
 
   renderWithProviders(
     <MetabotProvider>
-      <TestEditor question={question} />
+      <TestPage questions={questions} />
       {otherContent}
     </MetabotProvider>,
     { storeInitialState: state },
@@ -189,6 +258,64 @@ async function startGenerating() {
     "Working on it...",
   );
   return prompt;
+}
+
+function editorContent() {
+  return checkNotNull(document.querySelector<HTMLElement>(".cm-content"));
+}
+
+async function openPrompt() {
+  const button = await screen.findByLabelText("Ask Metabot");
+  if (button.getAttribute("aria-pressed") !== "true") {
+    await userEvent.click(button);
+  }
+  return screen.findByTestId("metabot-inline-sql-prompt");
+}
+
+async function sendPrompt(text: string) {
+  const prompt = await openPrompt();
+  await userEvent.type(within(prompt).getByRole("textbox"), text);
+  await userEvent.click(
+    within(prompt).getByRole("button", { name: "Send to Metabot" }),
+  );
+  return prompt;
+}
+
+type AgentEndpointMock = ReturnType<typeof mockAgentEndpoint>;
+
+// Re-spying on an already mocked fetch would route other requests back into the
+// mock, so restore the previous mock before setting the next response.
+async function generateSql({
+  previousAgent,
+  prompt,
+  sql,
+}: {
+  previousAgent?: AgentEndpointMock;
+  prompt: string;
+  sql: string;
+}) {
+  previousAgent?.mockRestore();
+  const agent = mockAgentEndpoint({ events: codeEditResponse(sql) });
+  await sendPrompt(prompt);
+  await waitFor(() => expect(getDiffControls().row).toBeInTheDocument());
+  const body: unknown = await lastReqBody(agent);
+  return { agent, body };
+}
+
+// CodeMirror resolves a shifted letter binding from `keyCode`, which
+// `userEvent.keyboard` does not set.
+function pressPromptShortcut(target: HTMLElement) {
+  fireEvent.keyDown(target, {
+    key: "I",
+    code: "KeyI",
+    keyCode: 73,
+    ctrlKey: true,
+    shiftKey: true,
+  });
+}
+
+function queryDiffControls() {
+  return document.querySelector(".cm-diff-controls");
 }
 
 async function expectProposedSqlSoon() {
@@ -315,6 +442,189 @@ describe("useInlineSQLPrompt", () => {
       await within(prompt).findByText("Response from Metabot was interrupted"),
     ).toBeInTheDocument();
     expect(within(prompt).queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("opens and closes the prompt with the keyboard shortcut", async () => {
+    setup();
+
+    expect(await screen.findByLabelText("Ask Metabot")).toBeInTheDocument();
+    await userEvent.click(editorContent());
+    pressPromptShortcut(editorContent());
+    const prompt = await screen.findByTestId("metabot-inline-sql-prompt");
+
+    pressPromptShortcut(within(prompt).getByRole("textbox"));
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("metabot-inline-sql-prompt"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("sends the SQL editor as context of the request", async () => {
+    const agent = mockAgentEndpoint({ events: CODE_EDIT_RESPONSE });
+    setup();
+
+    await sendPrompt("select all users");
+
+    const body: unknown = await lastReqBody(agent);
+    expect(body).toMatchObject({
+      context: {
+        user_is_viewing: [
+          {
+            type: "code_editor",
+            buffers: [
+              {
+                id: "qb",
+                source: { language: "sql", database_id: TEST_DB.id },
+              },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
+  it("shows the generated SQL as a diff and applies it on accept", async () => {
+    setup();
+
+    await generateSql({ prompt: "select all users", sql: "SELECT 2" });
+
+    expect(
+      screen.queryByTestId("metabot-inline-sql-prompt"),
+    ).not.toBeInTheDocument();
+    expect(editorContent()).toHaveTextContent("SELECT 1");
+    expect(editorContent()).toHaveTextContent("SELECT 2");
+
+    await userEvent.click(
+      within(getDiffControls().row).getByRole("button", { name: /Accept/ }),
+    );
+
+    await waitFor(() => expect(queryDiffControls()).not.toBeInTheDocument());
+    expect(editorContent()).toHaveTextContent("SELECT 2");
+    expect(editorContent()).not.toHaveTextContent("SELECT 1");
+  });
+
+  it("cancels the in-flight request when the prompt is closed", async () => {
+    const agent = mockAgentEndpoint({
+      stream: new ReadableStream<Uint8Array>(),
+    });
+    setup();
+
+    const prompt = await startGenerating();
+    await userEvent.click(
+      within(prompt).getByTestId("metabot-inline-sql-cancel"),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("metabot-inline-sql-prompt"),
+      ).not.toBeInTheDocument();
+    });
+    const [request] = checkNotNull(agent.mock.calls.at(-1));
+    expect(request).toBeInstanceOf(Request);
+    expect(request instanceof Request && request.signal.aborted).toBe(true);
+    expect(queryDiffControls()).not.toBeInTheDocument();
+  });
+
+  it("shows an error when the response has no SQL", async () => {
+    mockAgentEndpoint({ events: TEXT_ONLY_RESPONSE });
+    setup();
+
+    const prompt = await sendPrompt("do something");
+
+    expect(
+      await within(prompt).findByTestId("metabot-inline-sql-error"),
+    ).toHaveTextContent(
+      "Sorry, I ran into an error. Could you please try that again?",
+    );
+    expect(screen.getByTestId("proposed-sql")).toBeEmptyDOMElement();
+  });
+
+  it("restores the SQL on reject and sends the rejection with the next prompt", async () => {
+    setup();
+
+    const { agent } = await generateSql({
+      prompt: "select all users",
+      sql: "SELECT * FROM users",
+    });
+    await userEvent.click(
+      within(getDiffControls().row).getByRole("button", { name: /Reject/ }),
+    );
+
+    await waitFor(() => expect(queryDiffControls()).not.toBeInTheDocument());
+    expect(editorContent()).toHaveTextContent("SELECT 1");
+    expect(editorContent()).not.toHaveTextContent("SELECT * FROM users");
+
+    const { body } = await generateSql({
+      previousAgent: agent,
+      prompt: "try again",
+      sql: "SELECT id FROM users",
+    });
+    expect(body).toMatchObject({
+      parent_message_id: expect.any(String),
+      message: expect.stringContaining(
+        "User rejected the following suggestion:\n\nSELECT * FROM users",
+      ),
+    });
+  });
+
+  it("keeps the prompt open and starts a new conversation when the database changes", async () => {
+    setup();
+
+    const { agent } = await generateSql({
+      prompt: "select all users",
+      sql: "SELECT 2",
+    });
+    await userEvent.click(
+      within(getDiffControls().row).getByRole("button", { name: /Reject/ }),
+    );
+    await openPrompt();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Switch database" }),
+    );
+    expect(screen.getByTestId("metabot-inline-sql-prompt")).toBeInTheDocument();
+
+    const { body } = await generateSql({
+      previousAgent: agent,
+      prompt: "select something",
+      sql: "SELECT 123",
+    });
+    expect(body).not.toHaveProperty("parent_message_id");
+  });
+
+  it("starts a new conversation on a new SQL page", async () => {
+    setup();
+
+    const { agent } = await generateSql({
+      prompt: "select all users",
+      sql: "SELECT 2",
+    });
+    await userEvent.click(
+      within(getDiffControls().row).getByRole("button", { name: /Accept/ }),
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open new SQL page" }),
+    );
+
+    const { body } = await generateSql({
+      previousAgent: agent,
+      prompt: "new prompt",
+      sql: "SELECT 456",
+    });
+    expect(body).not.toHaveProperty("parent_message_id");
+  });
+
+  it("dismisses the proposal when the SQL is edited by hand", async () => {
+    setup();
+
+    await generateSql({ prompt: "select all users", sql: "SELECT 2" });
+
+    await userEvent.type(editorContent(), " ");
+
+    await waitFor(() => expect(queryDiffControls()).not.toBeInTheDocument());
+    expect(screen.getByTestId("proposed-sql")).toBeEmptyDOMElement();
   });
 
   it("does not render when metabot is not enabled", async () => {

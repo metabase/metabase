@@ -2,11 +2,14 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupSettingsEndpoints,
   setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
+import type { EnterpriseSettingKey } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { MetabotCustomizationPage } from "./MetabotCustomizationPage";
@@ -37,7 +40,36 @@ function setup({
   });
 }
 
+async function getSettingUpdateBodies(
+  settingKey: EnterpriseSettingKey,
+): Promise<unknown[]> {
+  const requests = await findRequests("PUT");
+  return requests
+    .filter(({ url }) => url.endsWith(`/api/setting/${settingKey}`))
+    .map(({ body }): unknown => body);
+}
+
+// jsdom does not decode images, so fire the load event that a browser fires
+// for an intact image.
+function mockImageDecoding() {
+  return jest
+    .spyOn(HTMLImageElement.prototype, "src", "set")
+    .mockImplementation(function (this: HTMLImageElement) {
+      setTimeout(() => this.dispatchEvent(new Event("load")));
+    });
+}
+
+function getIconFileInput() {
+  return checkNotNull(
+    document.querySelector<HTMLInputElement>('input[type="file"]'),
+  );
+}
+
 describe("MetabotCustomizationPage", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("renders the name input with the current metabot name", async () => {
     setup({ metabotName: "My AI Assistant" });
 
@@ -75,6 +107,56 @@ describe("MetabotCustomizationPage", () => {
 
     const preview = await screen.findByAltText("Metabot icon");
     expect(preview).toHaveAttribute("src", "data:image/png;base64,abc123");
+  });
+
+  it("saves the name once after the user stops typing", async () => {
+    setup({ metabotName: "Metabot" });
+
+    const nameInput = await screen.findByLabelText("AI agent's name");
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "HAL 9000");
+
+    await waitFor(async () =>
+      expect(await getSettingUpdateBodies("metabot-name")).toEqual([
+        { value: "HAL 9000" },
+      ]),
+    );
+  });
+
+  it("saves an uploaded icon and offers to remove it", async () => {
+    mockImageDecoding();
+    setup({ metabotIcon: "metabot" });
+
+    await screen.findByText("AI agent's icon");
+    await userEvent.upload(
+      getIconFileInput(),
+      new File(["icon"], "metabot-icon.png", { type: "image/png" }),
+    );
+
+    await waitFor(async () =>
+      expect(await getSettingUpdateBodies("metabot-icon")).toEqual([
+        { value: expect.stringMatching(/^data:image\/png;base64,/) },
+      ]),
+    );
+    expect(
+      await screen.findByRole("button", { name: /Remove custom icon/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("saves the illustrations setting when it is turned off", async () => {
+    setup({ showIllustrations: true });
+
+    const toggle = await screen.findByRole("switch", {
+      name: /Show Metabot illustrations/,
+    });
+    await waitFor(() => expect(toggle).toBeChecked());
+    await userEvent.click(toggle);
+
+    await waitFor(async () =>
+      expect(
+        await getSettingUpdateBodies("metabot-show-illustrations"),
+      ).toEqual([{ value: false }]),
+    );
   });
 
   it("keeps the illustrations toggle after turning illustrations on with the default icon", async () => {

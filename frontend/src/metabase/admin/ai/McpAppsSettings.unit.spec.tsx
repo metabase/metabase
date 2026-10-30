@@ -123,6 +123,31 @@ describe("McpAppsSettings", () => {
     expect(
       await screen.findByRole("link", { name: "Install in Cursor" }),
     ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Cursor and VS Code" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("link", { name: "Install in Cursor" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("points 'Install in Cursor' to a Cursor deeplink that installs this instance's MCP server", async () => {
+    await setup({ commonOrigins: ["cursor-vscode"] });
+
+    const href = (
+      await screen.findByRole("link", { name: "Install in Cursor" })
+    ).getAttribute("href");
+    const [base, query] = (href ?? "").split("?");
+    const params = new URLSearchParams(query);
+    const config: unknown = JSON.parse(atob(params.get("config") ?? ""));
+
+    expect(base).toBe("cursor://anysphere.cursor-deeplink/mcp/install");
+    expect(params.get("name")).toBe("Metabase");
+    expect(config).toEqual({ url: MCP_URL });
   });
 
   it("updates custom inline chart origins on blur", async () => {

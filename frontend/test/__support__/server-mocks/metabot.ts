@@ -240,6 +240,17 @@ export function setupMetabotPromptSuggestionsEndpointError(
   });
 }
 
+/** Mocks the prompt suggestions the chat samples for its empty state. */
+export function setupMetabotSamplePromptSuggestionsEndpoint(
+  metabotEntityId: MetabotInfo["entity_id"],
+  prompts: SuggestedMetabotPromptsResponse["prompts"] = [],
+) {
+  fetchMock.get(
+    `path:/api/metabot/metabot/${metabotEntityId}/prompt-suggestions`,
+    { prompts, limit: prompts.length, offset: 0, total: prompts.length },
+  );
+}
+
 export function setupMetabotAddEntitiesEndpoint(metabotId: MetabotId) {
   fetchMock.put(`path:/api/metabot/metabot/${metabotId}/entities`, {
     status: 204,

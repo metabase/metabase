@@ -10,7 +10,9 @@ import {
   setupGetMetabotConversationEndpoint,
   setupGetMetabotConversationEndpointError,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
@@ -121,6 +123,37 @@ describe("metabot > ui", () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([
+    {
+      showIllustrations: true,
+      hasIllustration: true,
+      hint: "I can help you explore your metrics and models.",
+    },
+    {
+      showIllustrations: false,
+      hasIllustration: false,
+      hint: "Explore your metrics and models with AI.",
+    },
+  ])(
+    "should show the empty state hint and illustration=$hasIllustration when metabot-show-illustrations is $showIllustrations",
+    async ({ showIllustrations, hasIllustration, hint }) => {
+      setup({
+        storeInitialState: {
+          settings: mockSettings({
+            "llm-metabot-configured?": true,
+            "metabot-show-illustrations": showIllustrations,
+          }),
+        },
+      });
+
+      const emptyChatInfo = await screen.findByTestId(
+        "metabot-empty-chat-info",
+      );
+      expect(within(emptyChatInfo).getByText(hint)).toBeInTheDocument();
+      expect(emptyChatInfo.innerHTML.includes("<svg")).toBe(hasIllustration);
+    },
+  );
+
   it("should be able to toggle visibility", async () => {
     const { store } = setup();
     expect(await chat()).toBeInTheDocument();
@@ -141,7 +174,9 @@ describe("metabot > ui", () => {
     const pressShortcut = () =>
       fireEvent.keyDown(window, { key: "e", ctrlKey: true });
 
-    it("should toggle visibility", async () => {
+    it("should toggle visibility and track only the opening", async () => {
+      const trackEvent = jest.mocked(Analytics.trackSimpleEvent);
+      trackEvent.mockClear();
       const { store } = setup({
         withRouter: true,
         initialRoute: "/question/123",
@@ -153,6 +188,15 @@ describe("metabot > ui", () => {
 
       pressShortcut();
       expect(await chat()).toBeInTheDocument();
+      expect(trackEvent).toHaveBeenCalledTimes(1);
+      expect(trackEvent).toHaveBeenCalledWith({
+        event: "metabot_chat_opened",
+        triggered_from: "keyboard_shortcut",
+      });
+
+      pressShortcut();
+      await assertNotVisible();
+      expect(trackEvent).toHaveBeenCalledTimes(1);
     });
 
     it.each([
@@ -569,10 +613,6 @@ describe("metabot > ui", () => {
   });
 
   describe("conversation history", () => {
-    afterEach(() => {
-      jest.restoreAllMocks();
-    });
-
     it("lists past conversations when opened, falling back to a placeholder for untitled ones", async () => {
       setup({
         conversations: [
