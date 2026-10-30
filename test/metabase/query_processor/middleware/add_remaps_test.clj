@@ -603,6 +603,31 @@
         (testing "expected cols"
           (is (not-any? :lib/internal-remap (qp.preprocess/query->expected-cols query))))))))
 
+(deftest ^:parallel disable-remaps-still-strips-internal-remap-test
+  (testing "With remaps disabled, result cols still do not carry the column's whole FieldValues remap"
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      meta/metadata-provider
+                                      (meta/field-metadata :venues :category-id)
+                                      {4 "Foo", 11 "HIDDEN"})
+      (let [cols  (venues-column-metadata)
+            query {:middleware {:disable-remaps? true}}]
+        (is (some :lib/internal-remap cols))
+        (testing "remap-results"
+          (let [result (remap-results query {:cols cols} [[1 "Red Medicine" 4 3]])]
+            (is (= [[1 "Red Medicine" 4 3]]
+                   (get-in result [:data :rows])))
+            (is (= ["ID" "NAME" "CATEGORY_ID" "PRICE"]
+                   (map :name (get-in result [:data :cols]))))
+            (is (not-any? :lib/internal-remap (get-in result [:data :cols])))))
+        (testing "remap-cols"
+          (let [query (merge (lib/query (qp.store/metadata-provider)
+                                        (lib.metadata/table (qp.store/metadata-provider) (meta/id :venues)))
+                             query)
+                cols' (qp.add-remaps/remap-cols query cols)]
+            (is (= ["ID" "NAME" "CATEGORY_ID" "PRICE"]
+                   (map :name cols')))
+            (is (not-any? :lib/internal-remap cols'))))))))
+
 (deftest ^:parallel different-id-types-test
   (testing "Make sure different ID types like Integers vs BigDecimals (Oracle) are handled correctly\n"
     (doseq [{:keys [base-type cast-fn]} [{:base-type :type/Integer,    :cast-fn int}

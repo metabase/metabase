@@ -2589,6 +2589,14 @@
               (is (not-any? :lib/internal-remap (mt/cols result)))
               (is (not-any? :lib/internal-remap (-> result :data :results_metadata :columns)))
               (is (not (str/includes? (pr-str result) "HIDDEN")))))
+          (testing "query results with remaps disabled"
+            (let [result (qp/process-query (assoc query :middleware {:disable-remaps? true}))]
+              (is (true? (-> result :data :is_sandboxed)))
+              (is (= [[22 50] [23 50]]
+                     (mt/rows result)))
+              (is (not-any? :lib/internal-remap (mt/cols result)))
+              (is (not-any? :lib/internal-remap (-> result :data :results_metadata :columns)))
+              (is (not (str/includes? (pr-str result) "HIDDEN")))))
           (testing "pivot query"
             ;; the pivot paths already disagree on rows for an internally remapped breakout
             (qp.pivot.test-util/with-metadata-only-parity
