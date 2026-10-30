@@ -12,8 +12,8 @@ name: Test gate
 # base ref is the stack base) and the top PR (the one at the last position).
 # Every PR in between receives a verdict of `stack-skip` which skips tests so it
 # is only tested once it reaches the bottom of the stack, unless it carries the
-# `ci:run-all` label. The top diffs against `diff-base`, the base-branch commit
-# its merge commit was built on, so the whole stack decides what runs and not
+# `ci:run-all` label. The top diffs against `diff-base`, the newest base-branch
+# commit its merge commit contains, so the whole stack decides what runs and not
 # just the top PR's own slice.
 on:
   workflow_call:
@@ -50,7 +50,7 @@ on:
       diff-base:
         description: >-
           The commit to diff against instead of the PR's own base: set only on the top PR of a
-          stack, to the base-branch commit its merge commit was built on. Callers that narrow by
+          stack, to the newest base-branch commit its merge commit contains. Callers that narrow by
           diff should diff the checkout against it when it is set.
         value: ${{ jobs.should-run.outputs.diff-base }}
 
@@ -82,27 +82,30 @@ jobs:
           # Echoed back as JSON so a force-run can report every requested filter as matched.
           echo "filters=$(jq -Rc 'split("[,\\s]+";"") | map(select(length > 0))' <<< "$FILTERS")" | tee -a "$GITHUB_OUTPUT"
       # A stacked PR that defers is the bottom or the top, and only the top has a base ref other
-      # than the stack's. Callers diff the checkout, which is the PR's merge commit, built on the
-      # base branch as it was when the run started. So the base is that commit's first parent, not
-      # where the stack forked: from the fork point, every commit the base gained since the stack
-      # last synced would count as a change in the stack.
-      - name: Find the base commit the stack was merged into
+      # than the stack's. Callers diff the checkout, which is the PR's merge commit, so the base is
+      # the newest commit of the stack's base branch that the merge commit contains. Where the stack
+      # forked would count every commit the base gained since as a change in the stack. Not the
+      # merge commit's first parent either: GitHub sometimes builds a stacked PR's merge commit on
+      # the PR below it, and that parent would leave the lower PRs' changes out of the diff.
+      - name: Find the base-branch commit the checkout contains
         id: diff-base
         if: >-
           ${{ steps.decide.outputs.verdict == 'defer'
           && github.event.pull_request.stack != null
           && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref }}
         uses: actions/github-script@v9
+        env:
+          STACK_BASE_REF: ${{ github.event.pull_request.stack.base.ref }}
         with:
           script: | # js
             // On a pull_request event, `context.sha` is the merge commit the checkout holds.
-            const { data } = await github.rest.git.getCommit({
+            const { data } = await github.rest.repos.compareCommitsWithBasehead({
               ...context.repo,
-              commit_sha: context.sha,
+              basehead: `${process.env.STACK_BASE_REF}...${context.sha}`,
+              per_page: 1,
             });
-            const base = data.parents[0].sha;
-            core.info(`diff-base: ${base}`);
-            core.setOutput('sha', base);
+            core.info(`diff-base: ${data.merge_base_commit.sha}`);
+            core.setOutput('sha', data.merge_base_commit.sha);
 
   files-changed:
     name: Detect changed files
