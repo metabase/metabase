@@ -757,6 +757,11 @@
                              (some-> (tx/db-test-env-var :databricks :wif-token-file)
                                      slurp
                                      str/trim))]
+          (testing "token claims match the federation policy"
+            (is (= {:iss        "https://token.actions.githubusercontent.com"
+                    :aud        audience
+                    :repository "metabase/metabase"}
+                   (select-keys (driver.u/jwt-claims token) [:iss :aud :repository]))))
           (let [details (wif-live-details-with-token {:wif-token token})]
             (testing "can-connect? via WIF"
               (is (true? (driver/can-connect? :databricks details))))
