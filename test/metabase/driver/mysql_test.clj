@@ -25,6 +25,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
@@ -1251,3 +1252,13 @@
       (is (= ["SELECT CAST(DATE(`some_col`) AS datetime)"]
              (sql/format {:select [[(sql.qp/date :mysql :day (h2x/with-database-type-info :some_col "datetime"))]]}
                          {:dialect :mysql :quoted true}))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 3306 :user "u" :db "a?b"}
+                   {:host "localhost" :port 3306 :user "u" :db "a%3Fb"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :mysql details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))
