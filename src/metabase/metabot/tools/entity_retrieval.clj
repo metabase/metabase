@@ -114,6 +114,8 @@
                         :text (str "Don't retry this call. If you can't find the data another way, tell the user "
                                    "library search is unavailable.")}))})
 
+;; The one production read of the raw index, hence the lint exemption: hydration in [[build-matches]] drops the
+;; hits the current user can't read.
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defn- search-library [user-search-prompt n fallback-scope]
   (let [result (try
