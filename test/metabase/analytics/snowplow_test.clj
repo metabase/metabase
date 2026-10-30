@@ -190,7 +190,7 @@
               (is (= [] (pop-event-data-and-user-id!))))))))))
 
 (deftest ai-service-event-shape-test
-  (testing "an ai_service_event admits only the details of its own event"
+  (testing "an ai_service_event carries the details of one event and nothing else"
     (let [event (fn [name details]
                   {:hashed-metabase-license-token "token"
                    :request-id                    "request"
@@ -208,14 +208,12 @@
                     (map #(get-in % [:data "event"]))
                     (filter #{"agent_used_tool" "agent_turn_finished"})))))
       (is (thrown? clojure.lang.ExceptionInfo
-                   (snowplow/track-event! :snowplow/ai_service_event (event "agent_used_tool" turn) nil))
-          "turn details on the tool event")
+                   (snowplow/track-event! :snowplow/ai_service_event (event "agent_used_tool" (merge tool turn)) nil))
+          "details of two events in one")
       (is (thrown? clojure.lang.ExceptionInfo
-                   (snowplow/track-event! :snowplow/ai_service_event (event "agent_turn_finished" tool) nil))
-          "tool details on the turn event")
-      (is (thrown? clojure.lang.ExceptionInfo
-                   (snowplow/track-event! :snowplow/ai_service_event (event "agent_took_a_nap" {}) nil))
-          "an event without a shape"))))
+                   (snowplow/track-event! :snowplow/ai_service_event
+                                          (event "agent_turn_finished" (assoc turn "tokens" 1)) nil))
+          "a key no event declares"))))
 
 (deftest ^:parallel http-timeouts-test
   (testing "the Snowplow HTTP client has finite timeouts"
