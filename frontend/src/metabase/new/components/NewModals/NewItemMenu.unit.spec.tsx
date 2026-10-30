@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -8,13 +9,14 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { Route } from "metabase/router";
-import type { Database } from "metabase-types/api";
+import type { Database, UserMetabotPermissions } from "metabase-types/api";
 import {
   createMockCollection,
   createMockUser,
+  createMockUserMetabotPermissions,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -29,7 +31,7 @@ type SetupOpts = {
   hasModels?: boolean;
   canWrite?: boolean;
   isConfigured?: boolean;
-  aiFeaturesEnabled?: boolean;
+  metabotPermissions?: Partial<UserMetabotPermissions>;
 };
 
 const SAMPLE_DATABASE = createSampleDatabase();
@@ -39,15 +41,16 @@ async function setup({
   databases = [SAMPLE_DATABASE],
   canWrite = true,
   isConfigured = true,
-  aiFeaturesEnabled = true,
+  metabotPermissions,
 }: SetupOpts = {}) {
   const settings = mockSettings({
     "llm-metabot-configured?": isConfigured,
     "metabot-enabled?": true,
-    "ai-features-enabled?": aiFeaturesEnabled,
   });
 
-  setupUserMetabotPermissionsEndpoint();
+  setupUserMetabotPermissionsEndpoint(
+    createMockUserMetabotPermissions(metabotPermissions),
+  );
   setupDatabasesEndpoints(databases);
   setupCollectionByIdEndpoint({
     collections: [COLLECTION],
@@ -103,8 +106,9 @@ describe("NewItemMenu", () => {
     expect(await screen.findByText("AI exploration")).toBeInTheDocument();
   });
 
-  it("does not show AI exploration when AI features are disabled", async () => {
-    await setup({ aiFeaturesEnabled: false });
+  it("does not show AI exploration without NLQ access", async () => {
+    await setup({ metabotPermissions: { "metabot-nlq": "no" } });
+    await act(() => fetchMock.callHistory.flush(true));
 
     expect(await screen.findByText("Question")).toBeInTheDocument();
     expect(screen.queryByText("AI exploration")).not.toBeInTheDocument();
