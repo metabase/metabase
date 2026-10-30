@@ -303,6 +303,29 @@ describe("NativeQuery", () => {
       });
     });
 
+    describe("required template tags", () => {
+      it.each(["text", "number", "date"] as const)(
+        "should not need a default value for a required %s tag",
+        (type) => {
+          const q = makeQuery().setQueryText(
+            "SELECT * from ORDERS where {{foo}}",
+          );
+          const requiredQuery = q.setTemplateTag(
+            "foo",
+            createMockTemplateTag({
+              name: "foo",
+              "display-name": "Foo",
+              type,
+              required: true,
+              default: undefined,
+            }),
+          );
+
+          expect(requiredQuery.canRun()).toBe(true);
+        },
+      );
+    });
+
     describe("snippet template tags", () => {
       it("should parse snippet tags", () => {
         const q = makeQuery().setQueryText("{{ snippet: foo }}");
