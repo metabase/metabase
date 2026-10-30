@@ -277,8 +277,8 @@
 ;;;; CODEOWNERS
 ;;;; =============================================================================
 
-;;;; `.github/CODEOWNERS` gets a generated block between BEGIN/END markers, one stanza per module that opts in with
-;;;; `:codeowners` in config.edn.
+;;;; The generated block in `.github/CODEOWNERS` sits between BEGIN/END markers, with one stanza per module that opts
+;;;; in with `:codeowners` in config.edn.
 ;;;; The stanza gives the module's directories and root namespace files to its team's `assignee` handle in team.json.
 ;;;; The block depends only on those two files, so a new directory or file never makes it stale.
 ;;;; Lines outside the markers are hand-maintained (frontend, e2e, docs, single files).
@@ -292,6 +292,7 @@
 (def ^:private codeowners-end-marker
   "# ===== END generated module ownership =====")
 
+;; Keep the keys in step with the `:codeowners` enum in `dev.deps-graph/ModuleConfig`.
 (def ^:private codeowners-value->trees
   "Directory trees each `:codeowners` value owns."
   {true      ["src" "test"]
@@ -378,15 +379,19 @@
   Returns text ending in one newline.
   Throws unless each marker is there exactly once with BEGIN first."
   [existing block]
-  (let [occurrences (fn [marker]
-                      (count (re-seq (re-pattern (java.util.regex.Pattern/quote marker)) existing)))
-        begin       (str/index-of existing codeowners-begin-marker)
-        end         (str/index-of existing codeowners-end-marker)]
+  (let [begin  (str/index-of existing codeowners-begin-marker)
+        end    (str/index-of existing codeowners-end-marker)
+        ;; A marker is there at most once when its first and last positions match.
+        single (fn [marker position]
+                 (= position (str/last-index-of existing marker)))]
     (cond
-      (and (nil? begin) (nil? end))
+      (= nil begin end)
       (str (str/trimr existing) "\n\n" block "\n")
 
-      (and (= 1 (occurrences codeowners-begin-marker) (occurrences codeowners-end-marker))
+      (and begin
+           end
+           (single codeowners-begin-marker begin)
+           (single codeowners-end-marker end)
            (< begin end))
       (str (str/trimr (subs existing 0 begin))
            "\n\n" block
@@ -396,8 +401,7 @@
       :else
       (throw (ex-info (str codeowners-path " has a broken generated block. It needs one BEGIN marker and one END"
                            " marker, in that order. Fix the markers by hand, then run ./bin/mage update-codeowners.")
-                      {:begin-markers (occurrences codeowners-begin-marker)
-                       :end-markers   (occurrences codeowners-end-marker)})))))
+                      {:begin begin, :end end})))))
 
 (defn cli-update-codeowners
   "Regenerate the module-ownership block in `.github/CODEOWNERS`.

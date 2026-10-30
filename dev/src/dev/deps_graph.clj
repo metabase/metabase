@@ -177,6 +177,7 @@
    [:model-exports  {:optional true} [:or [:= :any] [:set :keyword]]]
    [:model-imports  {:optional true} [:or [:= :bypass] [:set :keyword]]]
    [:module-exports {:optional true} [:set :symbol]]
+   ;; Keep in step with the keys of `mage.modules/codeowners-value->trees`.
    [:codeowners     {:optional true} [:enum true :src-only]]])
 
 (def ^:private ModulesConfig
