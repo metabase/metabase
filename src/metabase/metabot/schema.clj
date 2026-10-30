@@ -42,8 +42,8 @@
    ::lib.util/query-like])
 
 (mr/def ::todo
-  "One todo item of persisted turn state; only `:id` is guaranteed, since state can hold a partial item
-  between the turn that creates it and the turn that fills in its details."
+  "A todo item in conversation state persisted while Metabot had todo tools. `:todos` stays in [[::state]], a
+  closed map, so those conversations still validate."
   [:map {:closed true}
    [:id :string]
    [:content  {:optional true} [:maybe :string]]

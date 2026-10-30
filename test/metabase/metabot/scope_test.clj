@@ -44,7 +44,6 @@
 (deftest ^:parallel perms->scopes-sql-generation-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})]
     (is (contains? scopes "agent:sql:*"))
-    (is (contains? scopes "agent:transforms:*"))
     (is (contains? scopes "agent:snippets:*"))
     (is (contains? scopes "agent:search"))
     (testing "metric is an MBQL macro gated by NLQ, not SQL generation"

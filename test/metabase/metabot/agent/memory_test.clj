@@ -22,7 +22,7 @@
       (is (= [] (:steps-taken mem)))))
   (testing "defaults the working state when nil"
     (let [mem (memory/initialize [{:role :user :content "Hello"}] nil)]
-      (is (= {:queries {} :charts {} :todos [] :link-registry {}}
+      (is (= {:queries {} :charts {} :link-registry {}}
              (memory/get-state mem))))))
 
 (deftest ^:parallel initialize-repairs-stripped-queries-test
@@ -104,12 +104,12 @@
     (let [mem  (memory/initialize [] {:queries {"q1" {:id "q1"}}})
           mem' (-> mem
                    (memory/set-query "q2" {:id "q2"})
-                   (memory/set-todos [{:id "b"}]))]
+                   (memory/set-chart "c1" {:id "c1"}))]
       (testing "working state carries the seeded baseline plus this turn's writes"
-        (is (= {:queries {"q1" {:id "q1"} "q2" {:id "q2"}} :todos [{:id "b"}]}
+        (is (= {:queries {"q1" {:id "q1"} "q2" {:id "q2"}} :charts {"c1" {:id "c1"}}}
                (memory/get-state mem'))))
       (testing "turn delta carries only this turn's writes — not the seeded baseline"
-        (is (= {:queries {"q2" {:id "q2"}} :todos [{:id "b"}]}
+        (is (= {:queries {"q2" {:id "q2"}} :charts {"c1" {:id "c1"}}}
                (memory/turn-state mem'))))))
   (testing "turn-state is nil until this turn writes something"
     (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})]
@@ -123,6 +123,11 @@
       (is (mr/validate ::metabot.schema/state persisted))
       (is (= #{"seeded-q"}
              (get-in (memory/initialize [] persisted) [:state :client-ids]))))))
+
+(deftest ^:parallel persisted-todo-lists-validate-test
+  (testing "state persisted while Metabot had todo tools still validates, since the agent entry point checks it"
+    (is (mr/validate ::metabot.schema/state
+                     {:todos [{:id "1" :content "Find the orders table" :status "pending" :priority "high"}]}))))
 
 (deftest ^:parallel client-ids-persist-once-stored-test
   (let [query   {:database 1}
@@ -162,10 +167,10 @@
              (memory/turn-state mem'))))))
 
 (deftest ^:parallel merge-states-test
-  (testing "map entries merge; scalar/vector entries take the later value"
-    (is (= {:queries {:q1 1 :q2 2} :todos [{:id "b"}]}
-           (memory/merge-states {:queries {:q1 1} :todos [{:id "a"}]}
-                                {:queries {:q2 2} :todos [{:id "b"}]})))))
+  (testing "map entries merge; other entries take the later value"
+    (is (= {:queries {:q1 1 :q2 2} :client-ids #{"b"}}
+           (memory/merge-states {:queries {:q1 1} :client-ids #{"a"}}
+                                {:queries {:q2 2} :client-ids #{"b"}})))))
 
 (deftest ^:parallel get-steps-test
   (testing "retrieves all steps"

@@ -7,10 +7,9 @@
   or what text each audience sees — that is `metabase.metabot.tools.runtime`'s job, so a tool says
   what happened exactly once.
 
-  A record rather than a function because several of our tools are the *same* tool under different
-  configuration, and a record says so. The four `search` tools share a scope, a title function and a
-  body, and differ only in their name, description, argument schema, allowed entity types and an
-  options map — four instances of one type, not four functions that happen to resemble each other.
+  Several tools use the same implementation with different settings. The three `search` tools share
+  a name, scope, title function and handler, but differ in their descriptions, argument schemas,
+  allowed entity types and options.
 
   Handlers return success only. There is no error-shaped success value and no `{:output \"Failed
   to …\"}` convention: a failure is thrown, so forgetting to handle one cannot silently hand the
@@ -95,9 +94,8 @@
   Closed on purpose: a misspelled key (`:capability`, `:scopes`) would otherwise read as \"this tool
   needs nothing\" and quietly drop a gate.
 
-  `:description` is the model-facing text. It is a field rather than a docstring because a tool that
-  exists in several configurations should be able to build it — the four `search` tools each hardcode
-  theirs today precisely because a docstring cannot be computed.
+  `:description` is the model-facing text. It is a field so that tools with several configurations
+  can compute it. The three `search` tools each hardcode theirs because docstrings cannot be computed.
 
   `:name`, `:description`, `:args` and `:scope` are the neutral core: every consumer needs all four,
   and `:scope` is shared because both surfaces check strings from the same `api-scope` registry (MCP
@@ -400,10 +398,9 @@
   The declaration is the published one, so a batched tool's entry carries its batched `:args` and the
   runtime validates the model's arguments against the shape it was actually offered.
 
-  Rejects two tools claiming the same name: within a profile the name is how the model and the
-  runtime address a tool, so a collision means one of them is unreachable and which one depends on
-  the order of the seq. Across profiles a name legitimately belongs to several tools — `search` has
-  four — which is why there is no global registry."
+  Rejects duplicate names within a profile, where both the model and the runtime use the name to
+  identify a tool. A collision would make one tool unreachable, depending on their order. Tools in
+  different profiles may share a name, as the three `search` tools do, so there is no global registry."
   [tools]
   (reduce (fn [acc tool]
             (let [{tool-name :name :as declared} (validate-tool! tool)]
