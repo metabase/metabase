@@ -207,7 +207,7 @@
   produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
   clean dry run can still be rejected. Returns the resulting dashboard, so no follow-up read is needed.
   Requires write permission on the dashboard, and read permission on each card an op adds, wires, or makes a
-  filter's value source; cards already on the dashboard can stay without it."
+  filter's value source, unless the dashboard already uses that card."
   {:name           "dashboard_write"
    :default-access :allowed
    :scope          metabot.scope/agent-content-write
