@@ -46,9 +46,10 @@
 
 .Row {
   display: flex;
+  flex: 1;
   align-items: center;
+  min-width: 0;
   padding: 0 0.5em;
-  padding-right: 0;
   min-height: 2.25rem;
 }
 
