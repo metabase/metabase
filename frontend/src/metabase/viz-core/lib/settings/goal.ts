@@ -42,7 +42,7 @@ export const getChartGoal = (
 
 export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.show_goal": {
-    getSection: () => t`Display`,
+    getSection: getGraphGoalSettingsSection,
     get title() {
       return t`Goal line`;
     },
@@ -54,7 +54,7 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "graph.goal_value": {
-    getSection: () => t`Display`,
+    getSection: getGraphGoalSettingsSection,
     get title() {
       return t`Goal value`;
     },
@@ -72,7 +72,7 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "graph.goal_label": {
-    getSection: () => t`Display`,
+    getSection: getGraphGoalSettingsSection,
     get title() {
       return t`Goal label`;
     },
@@ -83,6 +83,10 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["graph.show_goal"],
   },
 };
+
+export function getGraphGoalSettingsSection() {
+  return t`Display`;
+}
 
 // Matches the chart's goal line tooltip: y-axis formatting without the column's
 // `scale` multiplier, which applies to series data but not to the goal line

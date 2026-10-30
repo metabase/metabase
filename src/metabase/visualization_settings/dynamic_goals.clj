@@ -175,12 +175,20 @@
             (some? (:max segment)) (update :max #(resolve-or-nil resolve-bound %))))
         segments))
 
+(defn- unresolved-goal-value
+  "What a `:value` goal `setting` holding `goal-value` becomes when it can't resolve."
+  [setting goal-value]
+  ;; the static viz bundle hides the goal line once card and dashcard settings are merged; 0 would misrepresent the data
+  (if (= setting :graph.goal_value)
+    goal-value
+    0))
+
 (defn resolve-dynamic-goals
   "Substitute every shown goal value in `viz-settings` with its [[resolve-goal-value]] resolution, best-effort so the
-  chart still renders: a goal value that can't resolve falls back to 0, and a segment bound that can't resolve
-  becomes nil. A goal the chart doesn't show is left as-is. Toggles are read from `effective-settings`, which
-  defaults to `viz-settings`: resolving one half of a card+dashcard pair has to consult the merge, since either half
-  can flip `graph.show_goal`."
+  chart still renders: a `graph.goal_value` that can't resolve keeps its reference, any other goal value that can't
+  resolve falls back to 0, and a segment bound that can't resolve becomes nil. A goal the chart doesn't show is left
+  as-is. Toggles are read from `effective-settings`, which defaults to `viz-settings`: resolving one half of a
+  card+dashcard pair has to consult the merge, since either half can flip `graph.show_goal`."
   ([viz-settings referenced-entities]
    (resolve-dynamic-goals viz-settings referenced-entities viz-settings))
   ([viz-settings referenced-entities effective-settings]
@@ -190,7 +198,8 @@
         (if (nil? (get viz setting))
           viz
           (case kind
-            :value    (update viz setting #(or (resolve-or-nil resolve-fn %) 0))
+            :value    (update viz setting #(or (resolve-or-nil resolve-fn %)
+                                               (unresolved-goal-value setting %)))
             :segments (update viz setting resolve-segments resolve-fn))))
       viz-settings
       (shown-goal-settings effective-settings)))))

@@ -16,6 +16,7 @@ import {
 } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { OnUpdateGoalWarning } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import type {
   RawSeries,
@@ -60,11 +61,16 @@ const SETTINGS: VisualizationSettings = {
 const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
-  settings?: VisualizationSettings;
   referencedEntities?: ReferencedEntitiesResults;
+  settings?: VisualizationSettings;
+  onUpdateGoalWarning?: OnUpdateGoalWarning;
 };
 
-function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
+function setup({
+  referencedEntities,
+  settings = SETTINGS,
+  onUpdateGoalWarning,
+}: SetupOpts = {}) {
   const series: RawSeries = [
     createMockSingleSeries(
       createMockCard({ display: "row", visualization_settings: settings }),
@@ -78,7 +84,12 @@ function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
     ),
   ];
 
-  renderWithProviders(<Visualization rawSeries={series} />);
+  renderWithProviders(
+    <Visualization
+      rawSeries={series}
+      onUpdateGoalWarning={onUpdateGoalWarning}
+    />,
+  );
 
   return { series };
 }
@@ -128,11 +139,11 @@ describe("row chart dynamic goal", () => {
 
   it("reads an answered goal as a percentage of a normalized stack", async () => {
     setup({
-      settings: { ...SETTINGS, "stackable.stack_type": "normalized" },
       referencedEntities: createMockReferencedEntitiesResults({
         column: "goal",
         value: 50,
       }),
+      settings: { ...SETTINGS, "stackable.stack_type": "normalized" },
     });
 
     const goalLine = await findGoalLine();
@@ -182,29 +193,47 @@ describe("row chart dynamic goal", () => {
     expect(getGraphicsSymbols("goal line")).toHaveLength(0);
   });
 
-  it("draws the goal line at 0 when fetching the reference fails", async () => {
+  it("draws no goal line when fetching the reference fails", async () => {
     setupCardDataset({ status: 500 });
     setup();
 
-    const goalLine = await findGoalLine();
-
-    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
-      getExpectedRowChartGoalX(document.body, 0, MAX_COUNT),
-      0,
+    await waitFor(() =>
+      expect(getGraphicsSymbols("bar")).toHaveLength(ROWS.length),
     );
-    expect(getGraphicsSymbols("bar")).toHaveLength(ROWS.length);
+    expect(getGraphicsSymbols("goal line")).toHaveLength(0);
   });
 
-  it("draws the goal line at 0 when the dataset reports the reference as failed", async () => {
+  it("draws no goal line when the dataset reports the reference as failed", async () => {
     setup({ referencedEntities: FAILED });
 
-    const goalLine = await findGoalLine();
-
-    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
-      getExpectedRowChartGoalX(document.body, 0, MAX_COUNT),
-      0,
+    await waitFor(() =>
+      expect(getGraphicsSymbols("bar")).toHaveLength(ROWS.length),
     );
+    expect(getGraphicsSymbols("goal line")).toHaveLength(0);
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+
+  it("reports a goal warning when the reference cannot be resolved", async () => {
+    const onUpdateGoalWarning = jest.fn<void, [boolean]>();
+    setup({ referencedEntities: FAILED, onUpdateGoalWarning });
+
+    await waitFor(() =>
+      expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true),
+    );
+  });
+
+  it("reports no goal warning when the reference resolves", async () => {
+    const onUpdateGoalWarning = jest.fn<void, [boolean]>();
+    setup({
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: GOAL,
+      }),
+      onUpdateGoalWarning,
+    });
+
+    await findGoalLine();
+    expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(false);
   });
 });
 

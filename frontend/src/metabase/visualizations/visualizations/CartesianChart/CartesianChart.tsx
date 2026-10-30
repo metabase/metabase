@@ -14,6 +14,7 @@ import { DataPointsVisiblePopover } from "metabase/visualizations/components/Dat
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
+import { useReportGoalWarning } from "metabase/visualizations/hooks/use-report-goal-warning";
 import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-events";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -72,6 +73,7 @@ function CartesianChartInner(props: VisualizationProps) {
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
     onSeeAllEvents,
+    onUpdateGoalWarning,
     selectedTimelineEventIds,
   } = props;
 
@@ -86,11 +88,12 @@ function CartesianChartInner(props: VisualizationProps) {
     [originalSettings, outerHeight, outerWidth, isMobile, gridSize],
   );
 
-  const { status: goalStatus, settings } = useResolvedGoalSettings(
-    card,
-    rawSeries[0].data,
-    adjustedSettings,
-  );
+  const {
+    status: goalStatus,
+    settings,
+    errors: goalErrors,
+  } = useResolvedGoalSettings(card, rawSeries[0].data, adjustedSettings);
+  useReportGoalWarning(goalErrors.length > 0, onUpdateGoalWarning);
   const { timelineEvents } = useTimelineEvents({ ...props, settings });
 
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import {
   type ComputedVisualizationSettings,
   type GoalRefError,
+  applyGraphGoalValue,
   getGoalErrors,
   needsGraphGoalResolution,
 } from "metabase/viz-core";
@@ -14,9 +15,9 @@ import {
 } from "./use-resolved-goal-data";
 
 /**
- * Resolves `graph.goal_value` to a number so the chart model only ever sees
- * numbers. A goal that can't resolve falls back to 0 and is reported in
- * `errors`. Returns the given settings untouched when there is nothing to resolve.
+ * Resolves `graph.goal_value` to a number for the chart model. A goal that
+ * can't resolve turns off `graph.show_goal` and is reported in `errors`.
+ * Returns the given settings untouched when there is nothing to resolve.
  */
 export function useResolvedGoalSettings(
   card: Pick<Card, "display" | "dataset_query">,
@@ -33,11 +34,10 @@ export function useResolvedGoalSettings(
   const goalData = useResolvedGoalData(card.dataset_query, data, [goal]);
   const results = goalData.status === "resolved" ? goalData.results : [];
   const errors = getGoalErrors(results);
-  const value = errors.length > 0 ? 0 : (results[0]?.value ?? null);
+  const value = results[0]?.value ?? null;
 
   const resolvedSettings = useMemo(
-    () =>
-      needsResolving ? { ...settings, "graph.goal_value": value } : settings,
+    () => (needsResolving ? applyGraphGoalValue(settings, value) : settings),
     [settings, needsResolving, value],
   );
 

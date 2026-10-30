@@ -237,6 +237,7 @@ export {
 } from "./lib/custom-viz/setting-keys";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
+  applyGraphGoalValue,
   getGoalErrorMessage,
   getGoalErrors,
   getGoalSegmentBounds,
@@ -346,7 +347,11 @@ export {
   NUMBER_COLUMN_SETTINGS,
   tableColumnSettings,
 } from "./lib/settings/column";
-export { getChartGoal, GRAPH_GOAL_SETTINGS } from "./lib/settings/goal";
+export {
+  getChartGoal,
+  getGraphGoalSettingsSection,
+  GRAPH_GOAL_SETTINGS,
+} from "./lib/settings/goal";
 export {
   BOXPLOT_DATA_SETTINGS,
   BOXPLOT_SETTINGS,

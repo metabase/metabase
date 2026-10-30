@@ -10,6 +10,7 @@ import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EC
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import { useReportGoalWarning } from "metabase/visualizations/hooks/use-report-goal-warning";
 import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -59,6 +60,7 @@ function BoxPlotInner({
   visualizationIsClickable,
   onChangeCardAndRun,
   onRender,
+  onUpdateGoalWarning,
   titleMenuItems,
 }: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -83,11 +85,12 @@ function BoxPlotInner({
     [originalSettings, height, width, isMobile, gridSize],
   );
 
-  const { status: goalStatus, settings } = useResolvedGoalSettings(
-    card,
-    rawSeries[0].data,
-    adjustedSettings,
-  );
+  const {
+    status: goalStatus,
+    settings,
+    errors: goalErrors,
+  } = useResolvedGoalSettings(card, rawSeries[0].data, adjustedSettings);
+  useReportGoalWarning(goalErrors.length > 0, onUpdateGoalWarning);
 
   const renderingContext = useBrowserRenderingContext({
     fontFamily,

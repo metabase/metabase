@@ -2,7 +2,6 @@ import { useMounted } from "@mantine/hooks";
 import cx from "classnames";
 import * as d3 from "d3";
 import { useCallback, useEffect, useRef } from "react";
-import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Box } from "metabase/ui";
@@ -34,7 +33,10 @@ import {
   getCenterLabelColor,
   getSegmentLabelColor,
 } from "./constants";
-import { GAUGE_CHART_DEFINITION } from "./definition";
+import {
+  GAUGE_CHART_DEFINITION,
+  getGaugeGoalSettingsSection,
+} from "./definition";
 import { isGaugeRange } from "./types";
 import {
   getGaugeWarningValues,
@@ -98,7 +100,7 @@ function GaugeComponent({
 
   const handleGoalWarningClick = () => {
     return onOpenChartSettings?.({
-      initialChartSettings: { section: t`Ranges` },
+      initialChartSettings: { section: getGaugeGoalSettingsSection() },
     });
   };
 

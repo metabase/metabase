@@ -118,27 +118,19 @@ describe("static row chart with a dynamic goal", () => {
     expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(barX + barWidth / 2, 0);
   });
 
-  it("draws the goal line at 0 for a reference the dataset has not answered", () => {
+  it("draws no goal line for a reference the dataset has not answered", () => {
     const root = setup();
-    const [goalLine] = getRowChartSymbols(root, "goal line");
 
-    expect(goalLine).toHaveTextContent(GOAL_LABEL);
-    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
-      getExpectedRowChartGoalX(root, 0, MAX_COUNT),
-      0,
-    );
+    expect(getRowChartSymbols(root, "bar")).toHaveLength(ROWS.length);
+    expect(getRowChartSymbols(root, "goal line")).toHaveLength(0);
   });
 
-  it("draws the goal line at 0 for a reference the dataset reports as failed", () => {
+  it("draws no goal line for a reference the dataset reports as failed", () => {
     const root = setup({
       referencedEntities: createMockFailedReferencedEntitiesResults(),
     });
-    const [goalLine] = getRowChartSymbols(root, "goal line");
 
-    expect(goalLine).toHaveTextContent(GOAL_LABEL);
-    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
-      getExpectedRowChartGoalX(root, 0, MAX_COUNT),
-      0,
-    );
+    expect(getRowChartSymbols(root, "bar")).toHaveLength(ROWS.length);
+    expect(getRowChartSymbols(root, "goal line")).toHaveLength(0);
   });
 });
