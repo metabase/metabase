@@ -101,6 +101,8 @@ export function SegmentedControl<Value extends string = string>({
       disabled: item.disabled,
       label: (
         <SegmentedControlItemBody
+          // Truncation is only re-measured on resize, so a new label needs a fresh mount.
+          key={item.label}
           content={item}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}

@@ -394,5 +394,24 @@ describe("SegmentedControl", () => {
         await screen.findByRole("tooltip", { name: LONG_LABEL }),
       ).toBeInTheDocument();
     });
+
+    it("should show the tooltip when a label changes to one that's truncated", async () => {
+      const { rerender } = render(
+        <SegmentedControl
+          data={[
+            { value: "code", label: "Code" },
+            { value: "preview", label: "Preview" },
+          ]}
+          value="code"
+        />,
+      );
+
+      rerender(<SegmentedControl data={LONG_LABEL_DATA} value="code" />);
+
+      await userEvent.hover(screen.getByText(LONG_LABEL));
+      expect(
+        await screen.findByRole("tooltip", { name: LONG_LABEL }),
+      ).toBeInTheDocument();
+    });
   });
 });
