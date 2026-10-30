@@ -1168,6 +1168,68 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
+  it(
+    "should keep the series settings popover in place when its height changes (metabase#85020)",
+    // Tall enough for the popover to fit below its button
+    { viewportHeight: 1200 },
+    () => {
+      H.visitQuestionAdhoc({ dataset_query: testQuery, display: "line" });
+      H.openVizSettingsSidebar();
+      H.openSeriesSettings("Count");
+      H.popover().findByText("Line shape").should("be.visible");
+
+      cy.log("the popover fits below its button: its top stays next to it");
+      assertPopoverTop((popoverTop, buttonTop) =>
+        expect(popoverTop).to.be.closeTo(buttonTop, 1),
+      );
+      toggleLineSettings((popoverTop, buttonTop) =>
+        expect(popoverTop).to.be.closeTo(buttonTop, 1),
+      );
+
+      cy.log(
+        "the popover doesn't fit below its button: it moves up, then stays",
+      );
+      cy.viewport(1280, 700);
+      let shiftedTop = 0;
+      assertPopoverTop((popoverTop, buttonTop) => {
+        expect(popoverTop).to.be.below(buttonTop);
+        shiftedTop = popoverTop;
+      });
+      toggleLineSettings((popoverTop) =>
+        expect(popoverTop).to.be.closeTo(shiftedTop, 1),
+      );
+
+      function toggleLineSettings(assertTop) {
+        cy.log("bar hides the line settings, so the popover gets shorter");
+        H.popover().icon("bar").click();
+        H.popover().findByText("Line shape").should("not.exist");
+        assertPopoverTop(assertTop);
+
+        cy.log("line shows them again, so the popover gets taller");
+        H.popover().icon("line").click();
+        H.popover().findByText("Line shape").should("be.visible");
+        assertPopoverTop(assertTop);
+      }
+
+      function assertPopoverTop(assertTop) {
+        cy.findByTestId("settings-count").then(($button) => {
+          H.popover()
+            .should("have.attr", "data-position", "right-start")
+            .and(($popover) => {
+              const popoverRect = $popover[0].getBoundingClientRect();
+              const buttonRect = $button[0].getBoundingClientRect();
+              const viewportHeight =
+                $popover[0].ownerDocument.documentElement.clientHeight;
+
+              expect(popoverRect.top).to.be.at.least(0);
+              expect(popoverRect.bottom).to.be.at.most(viewportHeight);
+              assertTop(popoverRect.top, buttonRect.top);
+            });
+        });
+      }
+    },
+  );
+
   describe("with tracking", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
