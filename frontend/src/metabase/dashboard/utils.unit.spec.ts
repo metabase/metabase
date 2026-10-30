@@ -511,6 +511,13 @@ describe("Dashboard utils", () => {
       expect(parseTabSlug(getMockLocationWithTab("1-tab-name"))).toBe(1);
     });
 
+    it("should still parse slugs generated before normalization", () => {
+      expect(parseTabSlug(getMockLocationWithTab("5-revenue---overview"))).toBe(
+        5,
+      );
+      expect(parseTabSlug(getMockLocationWithTab("5"))).toBe(5);
+    });
+
     it("should return null if the slug is invalid", () => {
       expect(parseTabSlug(getMockLocationWithTab(null))).toBe(null);
       expect(parseTabSlug(getMockLocationWithTab(undefined))).toBe(null);
@@ -529,6 +536,26 @@ describe("Dashboard utils", () => {
       expect(createTabSlug({ id: 1, name: "SoMe-TaB-NaMe" })).toEqual(
         "1-some-tab-name",
       );
+    });
+
+    it("should collapse repeated spaces and hyphens into a single hyphen (metabase#84169)", () => {
+      expect(createTabSlug({ id: 1, name: "Revenue  Overview" })).toEqual(
+        "1-revenue-overview",
+      );
+      expect(createTabSlug({ id: 1, name: "Revenue - Overview" })).toEqual(
+        "1-revenue-overview",
+      );
+      expect(createTabSlug({ id: 1, name: "Q1 -- Overview" })).toEqual(
+        "1-q1-overview",
+      );
+      expect(createTabSlug({ id: 1, name: "  Revenue Overview  " })).toEqual(
+        "1-revenue-overview",
+      );
+    });
+
+    it("should fall back to the tab id when the name has no slug-safe characters", () => {
+      expect(createTabSlug({ id: 1, name: "收入 概览" })).toEqual("1");
+      expect(createTabSlug({ id: 1, name: "???" })).toEqual("1");
     });
 
     it("should return an empty string when tabId or name is invalid", () => {
