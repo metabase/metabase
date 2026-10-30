@@ -95,10 +95,12 @@
   [:merge
    ::data-app.update
    [:map {:closed true}
-    [:id              ms/PositiveInt]]])
+    [:id              ms/PositiveInt]
+    [:bundle_hash     {:optional true} [:maybe :string]]]])
 
 (mr/def ::data-app.update
-  "What an update (or insert) of a DataApp accepts: every column of `:data_app` except `id`, all optional."
+  "What an update (or insert) of a DataApp accepts: every column of `:data_app` except `id` and the `bundle_hash` the
+  model computes, all optional."
   [:map {:closed true}
    [:entity_id       {:optional true} [:maybe :string]]
    [:name            {:optional true} ::slug]
@@ -106,7 +108,6 @@
    [:allowed_hosts   {:optional true} ::allowed-hosts]
    [:bundle_path     {:optional true} ::bundle-path]
    [:bundle          {:optional true} [:maybe ::bundle]]
-   [:bundle_hash     {:optional true} [:maybe :string]]
    [:enabled         {:optional true} [:maybe :boolean]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
