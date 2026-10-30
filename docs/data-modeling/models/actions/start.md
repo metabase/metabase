@@ -10,7 +10,11 @@ redirect_from:
 
 ![An action updating a plan on a dashboard](./images/dashboard-action.gif)
 
-Actions let you write parameterized SQL that can then be attached to buttons, clicks, or even added on the page as form elements.
+Actions let people insert, update, or delete rows in your database. For new actions, use data actions. Use model actions when you need an action button on a dashboard.
+
+## [Data actions](../../data-actions.md)
+
+Create actions that you can run in Data Studio, or share as public forms.
 
 ## [Introduction to actions ](./introduction.md)
 
@@ -23,10 +27,6 @@ Metabase will create basic actions that auto-track a model's schema.
 ## [Custom actions](./custom.md)
 
 Write SQL to create new actions.
-
-## [Data actions](../../data-actions.md)
-
-Create actions that you can run in Data Studio, or share as public forms.
 
 ## [Actions on dashboards](../../../dashboards/actions.md)
 

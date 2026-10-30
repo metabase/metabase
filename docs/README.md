@@ -148,6 +148,7 @@ Metabase's reference documentation.
 
 ### Actions
 
+- [Data actions](./data-modeling/data-actions.md)
 - [Actions overview](./data-modeling/models/actions/start.md)
 - [Introduction to actions](./data-modeling/models/actions/introduction.md)
 - [Basic actions](./data-modeling/models/actions/basic.md)

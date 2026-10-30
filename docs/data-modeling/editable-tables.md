@@ -73,7 +73,7 @@ If you try to delete a row that has foreign key references from other tables, yo
 
 ## Editable table data vs. actions
 
-Metabase offers two ways to modify data in your database: **editable table data** and [actions](../data-modeling/models/actions/introduction.md).
+Metabase offers two ways to modify data in your database: **editable table data** and [actions](./data-actions.md).
 
 ### When to use editable tables
 
@@ -94,4 +94,4 @@ Use actions to:
 - Give non-admins the ability to modify data.
 - Add a button to a dashboard to trigger a form or query.
 
-See [actions](../data-modeling/models/actions/introduction.md).
+See [data actions](./data-actions.md), or [model actions](./models/actions/introduction.md) for dashboard buttons.

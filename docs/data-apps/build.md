@@ -40,7 +40,7 @@ Your agent does most of the work, but here's an overview of the end-to-end proce
 - A development Metabase, connected to your data warehouse, where you build and change your apps.
 - [Remote Sync](../data-modeling/semantic-layer/remote-sync.md), to ship your apps from your development Metabase to production. Your Remote Sync repository also keeps each app's source code.
 - A [semantic layer](../data-modeling/semantic-layer/library.md) with the [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics that your apps read. Your agent can publish tables and create metrics while it builds an app. But for apps that people rely on, use tables and metrics that you trust.
-- If your apps write data, a PostgreSQL or MySQL database with [actions enabled](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database). An app that only shows data doesn't need actions, and can read from any database that Metabase connects to.
+- If your apps write data, a PostgreSQL or MySQL database with [data actions turned on](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database). An app that only shows data doesn't need actions, and can read from any database that Metabase connects to.
 
 ## What a data app can read and write
 
@@ -113,7 +113,7 @@ If you let your agent use Git, the agent can do these steps for you.
 
 Remote Sync doesn't sync an app's group access or its [status](./manage.md#make-an-app-live-or-a-draft) (live or draft), so each Metabase keeps its own. The first pull creates the app on your production Metabase as live, and only admins can open it until you add groups there. Later pulls keep the app's status on production, so you can make the app a draft on production without changing it on development.
 
-Your production Metabase also needs the published tables and metrics that the app reads. Remote Sync syncs them with your [Library](../data-modeling/semantic-layer/library.md), so they ship with the app. If your app uses actions, you must [enable actions](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the production databases that the app writes to.
+Your production Metabase also needs the published tables and metrics that the app reads. Remote Sync syncs them with your [Library](../data-modeling/semantic-layer/library.md), so they ship with the app. If your app uses actions, you must [turn on data actions](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database) on the production databases that the app writes to.
 
 ### What syncs with a data app
 
