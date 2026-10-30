@@ -1467,3 +1467,13 @@
     (doseq [[^String state code expected] [["HY000" 4176 true] ["HY000" 1205 false] [nil 4176 false]]]
       (is (= expected (sql-jdbc.execute/impl-error-in-query?
                        :mysql (SQLTransientConnectionException. "Row read failed" state (int code))))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 3306 :user "u" :db "a?b"}
+                   {:host "localhost" :port 3306 :user "u" :db "a%3Fb"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :mysql details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

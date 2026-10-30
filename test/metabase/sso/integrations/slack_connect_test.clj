@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.server.middleware.exceptions :as mw.exceptions]
+   [metabase.sso.core :as sso]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.sso.settings :as sso-settings]
    [metabase.sso.test-helpers :as sso.test-helpers]
@@ -242,7 +244,34 @@
         (let [result (mt/client :get 400 "/auth/sso/slack-connect"
                                 {:request-options {:redirect-strategy :none}}
                                 :redirect redirect-uri)]
-          (is (str/includes? (str (or (:message result) result)) "Invalid redirect URL")))))))
+          (is (str/includes? (str (or (:message result) result)) "Invalid redirect URL"))
+          (testing "the response does not contain the supplied value"
+            (is (not (str/includes? (str result) redirect-uri)))))))))
+
+(deftest slack-connect-redirect-validation-is-consistent-test
+  (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+    (testing "the initiate path validates with the same predicate used to build the state cookie"
+      ;; `sso-initiate` and `create-oidc-state` both validate the redirect with this one predicate, so a value is
+      ;; classified the same way at both points.
+      (are [url reject?] (= reject?
+                            (try (sso/validate-redirect-url! url) false
+                                 (catch clojure.lang.ExceptionInfo _ true)))
+        "http://metabase.example.com/x"  true
+        "https://metabase.example.com/x" false
+        "https://other.example/x"        true
+        "/foo/bar"                       false))
+    (testing "a rejected redirect produces a 400 whose body is the plain message"
+      (let [supplied "http://metabase.example.com/x"
+            response (try
+                       (sso/validate-redirect-url! supplied)
+                       (is false "expected validate-redirect-url! to throw")
+                       (catch clojure.lang.ExceptionInfo e
+                         (mw.exceptions/api-exception-response e {})))
+            body     (:body response)]
+        (is (= 400 (:status response)))
+        (is (string? body))
+        (is (not (str/includes? body ":trace")))
+        (is (not (str/includes? body supplied)))))))
 
 ;;; -------------------------------------------------- User Provisioning Tests --------------------------------------------------
 
