@@ -63,6 +63,15 @@
   (testing "a card placed on an unknown tab names the op too"
     (is (= "op 0 (\"add_text\"): no tab with id 77 on this dashboard."
            (error-text empty-dash [{:op "add_text" :id -1 :markdown "hi" :tab 77}]))))
+  (testing "a patched mapping naming a card that is not on the dashcard says which cards it may name"
+    (is (= (str "op 0 (\"patch_dashcard\"): card 3 is not on dashcard 7 — a mapping's card_id must be the "
+                "dashcard's card or one of its series. Omit it to filter the dashcard's card.")
+           (error-text (assoc empty-dash :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}])
+                       [{:op          "patch_dashcard"
+                         :dashcard_id 7
+                         :patch       {:parameter_mappings [{:parameter_id "p1"
+                                                             :card_id      3
+                                                             :target       ["dimension" ["field" 1 nil]]}]}}]))))
   (testing "add_parameter names itself quoted, like every op, when the parameter exists"
     (is (= "op 0 (\"add_parameter\"): parameter \"p1\" already exists — use \"update_parameter\"."
            (error-text (assoc empty-dash :parameters [{:id "p1"}])

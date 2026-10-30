@@ -89,6 +89,12 @@
                         "text, heading, or iframe card's own {{placeholder}}.")]
                   dashcard-id))
 
+   :mapping-card-not-on-dashcard
+   (fn [{:keys [dashcard-id card-id]}]
+     (message/msg [(str "card %s is not on dashcard %s — a mapping's card_id must be the dashcard's "
+                        "card or one of its series. Omit it to filter the dashcard's card.")]
+                  card-id dashcard-id))
+
    :unknown-template-tag
    (fn [{:keys [card-id tag tags]}]
      (if (seq tags)
