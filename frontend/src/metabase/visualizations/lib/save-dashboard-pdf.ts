@@ -60,6 +60,7 @@ const getSortedDashCardBounds = (node: HTMLElement): DashCardBounds[] => {
 
 export const findPageBreakCandidates = (
   cards: DashCardBounds[],
+  optimalPageHeight: number,
   offset = 0,
 ): number[] => {
   if (cards.length === 0) {
@@ -70,8 +71,12 @@ export const findPageBreakCandidates = (
 
   const possibleBreaks = new Set(
     cards
-      .filter((card) => card.bottom < maxBottom)
-      .flatMap((card) => [card.bottom, ...card.allowedBreaks]),
+      // The lowest card needs page breaks only when it does not fit on one page
+      .filter(
+        (card) => card.bottom < maxBottom || card.height > optimalPageHeight,
+      )
+      .flatMap((card) => [card.bottom, ...card.allowedBreaks])
+      .filter((pageBreak) => pageBreak < maxBottom),
   );
 
   for (const card of cards) {
@@ -101,7 +106,11 @@ export const getPageBreaks = (
     return [];
   }
 
-  const pageBreakCandidates = findPageBreakCandidates(sortedCards, offset);
+  const pageBreakCandidates = findPageBreakCandidates(
+    sortedCards,
+    optimalPageHeight,
+    offset,
+  );
   const canFitAllCardsInOnePage = optimalPageHeight >= totalHeight;
 
   if (pageBreakCandidates.length === 0 || canFitAllCardsInOnePage) {
@@ -113,6 +122,10 @@ export const getPageBreaks = (
   let candidateIndex = 0;
 
   while (currentPageStart < totalHeight) {
+    if (totalHeight - currentPageStart <= optimalPageHeight) {
+      break;
+    }
+
     const targetBreakPoint = currentPageStart + optimalPageHeight;
 
     while (
