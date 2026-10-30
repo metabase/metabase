@@ -439,11 +439,11 @@
       (mt/with-temp [:model/Dashboard dash {}]
         (let [text (try (dashboard-errors/do-with-teaching-errors
                          #(dashboard-write/write! {:dashboard      (t2/hydrate dash [:dashcards :series :card] :tabs)
-                                                   :attrs          {:parameters "nope"}
+                                                   :attrs          {:cache_ttl 0}
                                                    :validate-only? true}))
                         nil
                         (catch clojure.lang.ExceptionInfo e (ex-message e)))]
-          (is (str/starts-with? text "This change would produce an invalid dashboard: \"parameters\": "))
+          (is (str/starts-with? text "This change would produce an invalid dashboard: \"cache_ttl\": "))
           (is (not (str/includes? text "\n"))))))))
 
 (deftest unreadable-card-is-refused-for-a-non-admin-test

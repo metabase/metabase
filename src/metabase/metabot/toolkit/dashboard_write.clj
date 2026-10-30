@@ -32,7 +32,7 @@
                  [(:id card) card])))))
 
 (defn- normalize-parameters
-  "Coerce the `:parameters` in `m`, attributes or a compiled payload, from their JSON shape to the keyword shape.
+  "Coerce the compiled `:parameters` in `m` from their JSON shape to the internal keyword shape.
    That is the shape the REST endpoint's body decoding produces, so the same payload validates and saves.
    A value too malformed to normalize passes through untouched, and [[validate-write!]] reports it."
   [m]
@@ -60,7 +60,7 @@
 
 (defn- check-permission!
   "Throws a 403 unless the user may update `dashboard`, or create a dashboard in the collection `attrs` names.
-   The save checks the same, so a dry run calls this to refuse what the save would."
+   It runs before anything is compiled, on a save as on a dry run, so both refuse a user who cannot write first."
   [dashboard attrs]
   (if dashboard
     (api/write-check dashboard)
@@ -122,18 +122,23 @@
    With a `dashboard`, hydrated the same way and already read-checked by the caller, it updates that one.
    Without one it creates a dashboard.
    With `validate-only?` it writes nothing, and returns the dashboard the save would produce.
-   A dry run checks write permission on the dashboard, or create permission on the collection.
-   It does not run the save's other permission checks, such as moving to a collection or per-field mapping checks.
+   It checks write permission on the dashboard, or create permission on the collection, before anything else.
+   A dry run skips the save's other permission checks, such as moving to a collection and per-field mapping checks.
+   Parameters are edited with ops, so `attrs` must not carry `:parameters`.
    A nil `ops` means none were sent; anything else must be a list of ops.
    Throws an error from [[dashboard-ops/errors]] when an op is invalid or the save would be rejected."
   [{:keys [dashboard validate-only?] :as opts}]
   ;; Prepared before any branch reads them, so a malformed `ops` fails as :invalid-op rather than crashing a `seq`
   ;; or passing as no ops.
   (let [ops   (dashboard-ops/prepare-ops (:ops opts))
-        attrs (normalize-parameters (:attrs opts))
+        attrs (:attrs opts)
+        _     (check-permission! dashboard attrs)
+        ;; Compiled against the parameters in attrs, a source card in them would count as already stored, and a dry
+        ;; run would skip the read check the save then fails.
+        _     (when (contains? attrs :parameters)
+                (dashboard-ops/fail! :invalid-payload
+                                     {:explanation {:parameters ["should be edited with parameter ops"]}}))
         dash  (or dashboard (blank-dashboard attrs))
-        _     (when validate-only?
-                (check-permission! dashboard attrs))
         ;; Without ops nothing is compiled, so an attribute-only save doesn't rewrite the layout.
         {:keys [payload cards]} (when (seq ops)
                                   (compile-write dash ops))]
