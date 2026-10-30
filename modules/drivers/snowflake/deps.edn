@@ -27,9 +27,11 @@
                                                    org.bouncycastle/bcprov-jdk18on
                                                    ;; resolved from /deps.edn transitively via bcpkix-jdk18on
                                                    org.bouncycastle/bcutil-jdk18on
-                                                   org.jsoup/jsoup]}
+                                                   org.jsoup/jsoup
+                                                   org.ow2.asm/asm]}
   ;; drop when snowflake update driver to the one without the vulnerabilities
-  io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}
+  io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"
+                                     :exclusions  [com.google.guava/guava]}
   ;; pinned: snowflake-jdbc-thin 4.0.2 pulls zstd-jni 1.5.6-5, which has out-of-bounds
   ;; read vulns in ZstdDictCompress/ZstdDictDecompress (CVE-2026-87795 et al.), fixed in 1.5.7-14
   com.github.luben/zstd-jni         {:mvn/version "1.5.7-16"}
