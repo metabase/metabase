@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 
 import {
   PluginPlaceholder,
-  pluginPlaceholderRoute,
+  notFoundRoute,
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { PluginRoute } from "metabase/plugins/types";
 
@@ -23,7 +23,7 @@ type SecurityCenterPlugin = {
 
 const getDefaultPlugin = (): SecurityCenterPlugin => ({
   isEnabled: false,
-  securityCenterPage: pluginPlaceholderRoute,
+  securityCenterPage: notFoundRoute,
   SecurityCenterBanner: PluginPlaceholder,
   SecurityCenterPromoCard: PluginPlaceholder,
   SecurityCenterNavItem: PluginPlaceholder,
