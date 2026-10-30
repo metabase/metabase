@@ -11,11 +11,10 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 defineBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO");
 defineGlobalDependencies();
 
-export { DataApp, type DataAppProps } from "./components/public/DataApp";
-
 export { CollectionBrowser } from "./components/public/CollectionBrowser";
 export { CreateQuestion } from "./components/public/CreateQuestion";
 export { CreateDashboardModal } from "./components/public/CreateDashboardModal";
+export { DataApp, type DataAppProps } from "./components/public/DataApp";
 export { EditableDashboard } from "./components/public/dashboard/EditableDashboard";
 export { InteractiveDashboard } from "./components/public/dashboard/InteractiveDashboard";
 export { StaticDashboard } from "./components/public/dashboard/StaticDashboard";

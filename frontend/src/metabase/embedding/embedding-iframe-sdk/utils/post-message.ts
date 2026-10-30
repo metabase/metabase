@@ -1,3 +1,4 @@
+import { listenForIframeMessages } from "embedding-sdk-shared/lib/listen-for-iframe-messages";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 import type {
@@ -5,43 +6,32 @@ import type {
   SdkIframeEmbedTagMessage,
 } from "../types/embed";
 
-type EajsMessageSource = "embed.js" | "iframe-content";
-
-type EajsMessageBySource = {
-  "embed.js": SdkIframeEmbedMessage;
-  "iframe-content": SdkIframeEmbedTagMessage;
-};
-
-type ListenForEajsMessagesOptions<Source extends EajsMessageSource> = {
-  /** Where the message is expected to come from. */
-  messageSource: Source;
+type ListenForEajsMessagesOptions = {
   expectedOrigin?: string;
-  handler: (message: EajsMessageBySource[Source]) => void;
-} & (Source extends "iframe-content"
-  ? { iframe: HTMLIFrameElement }
-  : { iframe?: never });
+} & (
+  | {
+      messageSource: "embed.js";
+      handler: (message: SdkIframeEmbedMessage) => void;
+    }
+  | {
+      messageSource: "iframe-content";
+      iframe: HTMLIFrameElement;
+      handler: (message: SdkIframeEmbedTagMessage) => void;
+    }
+);
 
-export function listenForEajsMessages<Source extends EajsMessageSource>(
-  options: ListenForEajsMessagesOptions<Source>,
-) {
-  const messageHandler = (event: MessageEvent<EajsMessageBySource[Source]>) => {
-    switch (options.messageSource) {
-      case "embed.js":
-        if (
-          !isWithinIframe() ||
-          !event.isTrusted ||
-          event.source !== window.parent
-        ) {
-          return;
-        }
-        break;
-      case "iframe-content": {
-        const iframeWindow = options.iframe?.contentWindow;
-        if (!iframeWindow || event.source !== iframeWindow) {
-          return;
-        }
-        break;
-      }
+export function listenForEajsMessages(options: ListenForEajsMessagesOptions) {
+  if (options.messageSource === "iframe-content") {
+    return listenForIframeMessages(options);
+  }
+
+  const messageHandler = (event: MessageEvent<SdkIframeEmbedMessage>) => {
+    if (
+      !isWithinIframe() ||
+      !event.isTrusted ||
+      event.source !== window.parent
+    ) {
+      return;
     }
 
     if (options.expectedOrigin && event.origin !== options.expectedOrigin) {

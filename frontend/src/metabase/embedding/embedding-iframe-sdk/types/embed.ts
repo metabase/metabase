@@ -67,8 +67,11 @@ export type SdkIframeEmbedSetSettingsMessage = {
 export type SdkIframeEmbedSubmitSessionTokenMessage = {
   type: "metabase.embed.submitSessionToken";
   data: {
-    /** Omitted when the React SDK provider owns session caching. */
-    authMethod?: MetabaseAuthMethod;
+    /**
+     * Use "provider-managed" when the host owns the session,
+     * so the iframe does not save it to SAML token storage.
+     **/
+    authMethod: MetabaseAuthMethod | "provider-managed";
     sessionToken: MetabaseEmbeddingSessionToken;
   };
 };

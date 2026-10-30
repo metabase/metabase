@@ -1,3 +1,4 @@
+import { DataApp } from "embedding-sdk-bundle/components/public/DataApp";
 import { DateRangeCalendar } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
 import { DateRangePopover } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
@@ -8,7 +9,6 @@ import {
   formatDate,
   formatDateRange,
 } from "embedding-sdk-bundle/lib/format-date-range";
-import { getDataAppSession } from "embedding-sdk-bundle/lib/get-data-app-session";
 import { queryDataset } from "embedding-sdk-bundle/lib/query-dataset";
 import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
@@ -47,6 +47,7 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   CollectionBrowser,
   CreateDashboardModal,
   CreateQuestion,
+  DataApp,
   DateRangeCalendar,
   DateRangePopover,
   EditableDashboard,
@@ -58,7 +59,6 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   StaticDashboard,
   StaticQuestion,
   getSdkStore,
-  getDataAppSession,
   resolveDatasetQuery,
   createDashboard,
   getApplicationName,
