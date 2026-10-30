@@ -262,19 +262,20 @@
     (mapv (fn [{param-id :id :as param}]
             (m/remove-vals
              nil?
+             ;; TODO (Chris 2026-10-30) -- decide with evals which parameter properties concise reads show.
+             ;; A static list's `values_source_config` holds every value, so a long list fills the agent's
+             ;; context in every concise read and every `dashboard_write` response.
+             ;; The row leaves out `values_query_type` and `isMultiSelect`, though a `"none"` query type means
+             ;; the widget is a text box that never offers the static list shown here.
              {:id                   param-id
               :name                 (:name param)
               :type                 (:type param)
               :default              (:default param)
               :required             (:required param)
               :values_source_type   (:values_source_type param)
-              ;; A card source shows the card id and its value and label fields even to a user who cannot
-              ;; read that card. The REST endpoint `GET /api/dashboard/:id` returns stored parameters the
-              ;; same way, so redacting them only here would not keep them from that user.
-              ;;
-              ;; TODO (Chris 2026-10-29) -- decide with evals whether to trim `values_source_config`.
-              ;; A static list carries every value into each concise read and every `dashboard_write`
-              ;; response, and a long one fills the agent's context.
+              ;; A card source shows the card id and its value and label fields even to users who can't read the card.
+              ;; The REST endpoint `GET /api/dashboard/:id` returns stored parameters the same way, so
+              ;; redacting them only here would not keep them from those users.
               :values_source_config (:values_source_config param)
               :dashcard_ids         (->> (get param-id->dashcard-ids (u/qualified-name param-id))
                                          (remove nil?)
