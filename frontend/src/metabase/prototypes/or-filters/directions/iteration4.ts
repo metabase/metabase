@@ -111,6 +111,34 @@ const InPlaceNotebookRowsBar = (props: InPlaceExpressionBarProps) =>
 
 export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
   {
+    id: "iteration-4-with-add-filter-2",
+    get name() {
+      return t`Without AND`;
+    },
+    get description() {
+      return t`A copy of "With add filter": the bar-click filter menu uses symbols (≤, ≥) and adds an "any operator" entry for the series; ANDs are implicit (never shown, never typed), only OR and parentheses can be added, and summary pills are the same purple as row filters.`;
+    },
+    Component: AddFilter2ExpressionBarSplitPrototype,
+    Canvas: (props) =>
+      createElement(AddFilter2DataViewCanvas, {
+        ...props,
+        DataZone: (zoneProps) =>
+          createElement(AddFilter2SummaryInBarDataZone, {
+            ...zoneProps,
+            focusKey: FOCUS_KEY,
+          }),
+        hasThresholdsBesideLegend: false,
+      }),
+    NotebookCanvas: (props) =>
+      createElement(AddFilter2ExpressionBarNotebook, {
+        ...props,
+        FilterBar: AddFilter2NotebookRowsBar,
+        SummarizeBar: AddFilter2SummarizeBar,
+        appliesOnVisualize: true,
+      }),
+    initialExample: REALISTIC_EXAMPLES[0],
+  },
+  {
     id: "iteration-4-draft",
     get name() {
       return t`Darker summary pills`;
@@ -134,35 +162,6 @@ export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
         ...props,
         FilterBar: NotebookRowsBar,
         SummarizeBar,
-        appliesOnVisualize: true,
-      }),
-    initialExample: REALISTIC_EXAMPLES[0],
-  },
-  {
-    id: "iteration-4-separation",
-    hasCompactReadingOn: true,
-    get name() {
-      return t`Separation`;
-    },
-    get description() {
-      return t`A copy of "Draft" with its own copy of the components, so tweaks here leave the draft alone.`;
-    },
-    Component: SeparationExpressionBarSplitPrototype,
-    Canvas: (props) =>
-      createElement(SeparationDataViewCanvas, {
-        ...props,
-        DataZone: (zoneProps) =>
-          createElement(SeparationSummaryInBarDataZone, {
-            ...zoneProps,
-            focusKey: FOCUS_KEY,
-          }),
-        hasThresholdsBesideLegend: false,
-      }),
-    NotebookCanvas: (props) =>
-      createElement(SeparationExpressionBarNotebook, {
-        ...props,
-        FilterBar: SeparationNotebookRowsBar,
-        SummarizeBar: SeparationSummarizeBar,
         appliesOnVisualize: true,
       }),
     initialExample: REALISTIC_EXAMPLES[0],
@@ -198,6 +197,35 @@ export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
     initialExample: REALISTIC_EXAMPLES[0],
   },
   {
+    id: "iteration-4-separation",
+    hasCompactReadingOn: true,
+    get name() {
+      return t`Separation`;
+    },
+    get description() {
+      return t`A copy of "Draft" with its own copy of the components, so tweaks here leave the draft alone.`;
+    },
+    Component: SeparationExpressionBarSplitPrototype,
+    Canvas: (props) =>
+      createElement(SeparationDataViewCanvas, {
+        ...props,
+        DataZone: (zoneProps) =>
+          createElement(SeparationSummaryInBarDataZone, {
+            ...zoneProps,
+            focusKey: FOCUS_KEY,
+          }),
+        hasThresholdsBesideLegend: false,
+      }),
+    NotebookCanvas: (props) =>
+      createElement(SeparationExpressionBarNotebook, {
+        ...props,
+        FilterBar: SeparationNotebookRowsBar,
+        SummarizeBar: SeparationSummarizeBar,
+        appliesOnVisualize: true,
+      }),
+    initialExample: REALISTIC_EXAMPLES[0],
+  },
+  {
     id: "iteration-4-with-add-filter",
     get name() {
       return t`With add filter`;
@@ -226,37 +254,9 @@ export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
     initialExample: REALISTIC_EXAMPLES[0],
   },
   {
-    id: "iteration-4-with-add-filter-2",
-    get name() {
-      return t`Without AND`;
-    },
-    get description() {
-      return t`A copy of "With add filter": the bar-click filter menu uses symbols (≤, ≥) and adds an "any operator" entry for the series; ANDs are implicit (never shown, never typed), only OR and parentheses can be added, and summary pills are the same purple as row filters.`;
-    },
-    Component: AddFilter2ExpressionBarSplitPrototype,
-    Canvas: (props) =>
-      createElement(AddFilter2DataViewCanvas, {
-        ...props,
-        DataZone: (zoneProps) =>
-          createElement(AddFilter2SummaryInBarDataZone, {
-            ...zoneProps,
-            focusKey: FOCUS_KEY,
-          }),
-        hasThresholdsBesideLegend: false,
-      }),
-    NotebookCanvas: (props) =>
-      createElement(AddFilter2ExpressionBarNotebook, {
-        ...props,
-        FilterBar: AddFilter2NotebookRowsBar,
-        SummarizeBar: AddFilter2SummarizeBar,
-        appliesOnVisualize: true,
-      }),
-    initialExample: REALISTIC_EXAMPLES[0],
-  },
-  {
     id: "iteration-4-interacting-with-axis",
     get name() {
-      return t`Interacting with axis`;
+      return t`Side quest: interacting with axis`;
     },
     get description() {
       return t`"Without AND", with axes that answer back. The y-axis title is the measure: replace it or compare with another. The x-axis title is the dimension: change it, regroup it, split it into series or stop. Both read as the chart draws them, with a pill border on hover; the legend is left alone. Filter, sort and top 10 sit under a line in each menu; filters land in the bar, never on the chart.`;

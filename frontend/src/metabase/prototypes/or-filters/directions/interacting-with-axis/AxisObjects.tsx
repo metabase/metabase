@@ -19,6 +19,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { LegendItemDot } from "metabase/visualizations/components/legend/LegendItemDot";
 import * as Lib from "metabase-lib";
 
 import { toFilterClause } from "../../harness/clauses";
@@ -55,7 +56,9 @@ export function MeasureAxisTitle({ query, frame, onChange }: AxisTitleProps) {
     <AxisTarget
       label={frame.text}
       fontSize={frame.fontSize}
-      isVertical
+      fontWeight={frame.fontWeight}
+      isVertical={!frame.legendDot}
+      dot={frame.legendDot}
       menu={(close) => (
         <MeasureMenu
           query={query}
@@ -94,14 +97,27 @@ export function DimensionAxisTitle({ query, frame, onChange }: AxisTitleProps) {
   );
 }
 
+/** Fixed, so axis and legend pills stand the same height whatever their type size. */
+const PILL_LINE_HEIGHT = "1rem";
+
 type AxisTargetProps = {
   label: string;
   fontSize: string;
+  fontWeight?: string;
   isVertical?: boolean;
+  /** A legend item's dot, drawn before the label. */
+  dot?: AxisTitleFrame["legendDot"];
   menu: (close: () => void) => ReactNode;
 };
 
-function AxisTarget({ label, fontSize, isVertical, menu }: AxisTargetProps) {
+function AxisTarget({
+  label,
+  fontSize,
+  fontWeight = "bold",
+  isVertical,
+  dot,
+  menu,
+}: AxisTargetProps) {
   const [isOpened, setIsOpened] = useState(false);
   return (
     <Popover
@@ -116,7 +132,12 @@ function AxisTarget({ label, fontSize, isVertical, menu }: AxisTargetProps) {
           data-active={isOpened || undefined}
           onClick={() => setIsOpened(!isOpened)}
         >
-          <Text fz={fontSize} fw="bold" c="inherit">
+          {dot && (
+            <Box mr={dot.gap}>
+              <LegendItemDot isVisible color={dot.color} size={dot.size} />
+            </Box>
+          )}
+          <Text fz={fontSize} fw={fontWeight} lh={PILL_LINE_HEIGHT} c="inherit">
             {label}
           </Text>
         </UnstyledButton>

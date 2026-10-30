@@ -114,9 +114,17 @@ export function QuestionChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const measureNames = useMemo(() => getMeasureNames(query), [query]);
+  // Past two measures one axis carries several, so only the legend titles them.
+  const hasAxisMeasures =
+    yAxisTitle != null && measureNames.length <= MAX_AXIS_MEASURES;
   const axisTitles = useYAxisTitles(
     containerRef,
     yAxisTitle != null ? measureNames : undefined,
+  );
+  const legendTitles = useYAxisTitles(
+    containerRef,
+    yAxisTitle != null ? measureNames : undefined,
+    "legend",
   );
   const dimensionNames = useMemo(() => getDimensionNames(query), [query]);
   const xAxisTitles = useYAxisTitles(
@@ -242,17 +250,27 @@ export function QuestionChart({
           </Box>
         )}
         {yAxisTitle &&
-          axisTitles.map((axisTitle) => (
-            <Box
-              key={axisTitle.text}
-              pos="absolute"
-              left={axisTitle.centerX}
-              top={axisTitle.centerY}
-              style={{ transform: "translate(-50%, -50%)", zIndex: 1 }}
-            >
-              {yAxisTitle(axisTitle)}
-            </Box>
-          ))}
+          [...(hasAxisMeasures ? axisTitles : []), ...legendTitles].map(
+            (axisTitle) => (
+              <Box
+                key={`${axisTitle.legendDot ? "legend" : "axis"}-${axisTitle.text}`}
+                onMouseEnter={() =>
+                  axisTitle.legendDot != null &&
+                  hoverLegendItem(containerRef, axisTitle.text, "mouseover")
+                }
+                onMouseLeave={() =>
+                  axisTitle.legendDot != null &&
+                  hoverLegendItem(containerRef, axisTitle.text, "mouseout")
+                }
+                pos="absolute"
+                left={axisTitle.centerX}
+                top={axisTitle.centerY}
+                style={{ transform: "translate(-50%, -50%)", zIndex: 1 }}
+              >
+                {yAxisTitle(axisTitle)}
+              </Box>
+            ),
+          )}
         {xAxisTitle &&
           xAxisTitles.map((axisTitle) => (
             <Box
@@ -298,6 +316,9 @@ export function QuestionChart({
 }
 
 const SUMMARY_STAGE = 1;
+const MAX_AXIS_MEASURES = 2;
+/** Matches the axis pill's padding plus its 1px border, so the pill fits the slot. */
+const LEGEND_PILL_INSET = "0 calc(0.5rem + 1px)";
 const LEGEND_ACCESSORY_GAP = 12;
 const LEGEND_WRAP_PADDING = 10;
 
@@ -307,6 +328,9 @@ export type AxisTitleFrame = {
   centerX: number;
   centerY: number;
   fontSize: string;
+  fontWeight?: string;
+  /** Set when the title is a legend item: its dot, drawn the same in the pill. */
+  legendDot?: { color: string; size: string; gap: string };
 };
 
 /** The display names of the measures the chart plots. */
@@ -337,14 +361,41 @@ function getDimensionNames(query: Lib.Query): string[] {
   return _.uniq([info.displayName, info.longDisplayName]);
 }
 
-type AxisOrientation = "vertical" | "horizontal";
+/**
+ * The pill covers the legend item, so it hands its hover on: the chart keeps
+ * fading the other series. No related target, or React drops the mouseover.
+ */
+function hoverLegendItem(
+  containerRef: RefObject<HTMLDivElement>,
+  measureName: string,
+  type: "mouseover" | "mouseout",
+) {
+  const container = containerRef.current;
+  if (!container) {
+    return;
+  }
+  findYAxisTitles(
+    container,
+    [measureName],
+    "legend",
+  )[0]?.firstElementChild?.dispatchEvent(
+    new MouseEvent(type, { bubbles: true, relatedTarget: null }),
+  );
+}
+
+type AxisOrientation = "vertical" | "horizontal" | "legend";
 
 /** The axis titles: labels that name a measure, turned a quarter on the y-axis. */
 function findYAxisTitles(
   container: HTMLElement,
   measureNames: string[],
   orientation: AxisOrientation,
-): SVGTextElement[] {
+): Element[] {
+  if (orientation === "legend") {
+    return Array.from(
+      container.querySelectorAll('[data-testid="legend-item"]'),
+    ).filter((item) => measureNames.includes(item.textContent?.trim() ?? ""));
+  }
   return Array.from(container.querySelectorAll("svg text")).filter(
     (text): text is SVGTextElement => {
       if (
@@ -358,6 +409,40 @@ function findYAxisTitles(
       return orientation === "vertical" ? isTurned : !isTurned;
     },
   );
+}
+
+/**
+ * A legend item, hidden for a pill to take its place: dot, gap and type are
+ * read off it so the pill draws them the same, and the item is padded by the
+ * pill's own padding so the pill fits it exactly.
+ */
+function getLegendFrame(item: Element, containerRect: DOMRect): AxisTitleFrame {
+  const label = item.firstElementChild;
+  const dot = label?.firstElementChild;
+  const title = dot?.nextElementSibling;
+  if (item instanceof HTMLElement) {
+    item.style.padding = LEGEND_PILL_INSET;
+  }
+  if (label instanceof HTMLElement) {
+    label.style.visibility = "hidden";
+  }
+  const rect = item.getBoundingClientRect();
+  const titleStyle = title ? getComputedStyle(title) : undefined;
+  return {
+    text: item.textContent?.trim() ?? "",
+    centerX: Math.round(rect.left - containerRect.left + rect.width / 2),
+    centerY: Math.round(rect.top - containerRect.top + rect.height / 2),
+    fontSize: titleStyle?.fontSize ?? "",
+    fontWeight: titleStyle?.fontWeight,
+    legendDot:
+      dot instanceof HTMLElement
+        ? {
+            color: dot.style.getPropertyValue("--legend-dot-color"),
+            size: dot.style.width,
+            gap: titleStyle?.marginLeft ?? "0",
+          }
+        : undefined,
+  };
 }
 
 /**
@@ -385,7 +470,12 @@ function useYAxisTitles(
         measureNames,
         orientation,
       ).map((title) => {
-        title.style.visibility = "hidden";
+        if (orientation === "legend") {
+          return getLegendFrame(title, containerRect);
+        }
+        if (title instanceof SVGElement) {
+          title.style.visibility = "hidden";
+        }
         const rect = title.getBoundingClientRect();
         return {
           text: title.textContent?.trim() ?? "",
@@ -619,8 +709,13 @@ function getEffectiveDisplay(
   if (Lib.aggregations(query, 0).length === 0) {
     return "table";
   }
-  if (Lib.breakouts(query, 0).length === 0) {
+  const breakoutCount = Lib.breakouts(query, 0).length;
+  if (breakoutCount === 0) {
     return "scalar";
+  }
+  // A bar or line chart can split by a second dimension or plot several measures, not both.
+  if (breakoutCount > 1 && Lib.aggregations(query, 0).length > 1) {
+    return "table";
   }
   return display;
 }

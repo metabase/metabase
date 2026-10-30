@@ -18,16 +18,7 @@ import { FilterPill } from "metabase/querying/filters/components/FilterPanel/Fil
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import { NotebookCellItem } from "metabase/querying/notebook/components/NotebookCell";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Group,
-  Icon,
-  Menu,
-  Popover,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Group, Icon, Popover, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
@@ -803,9 +794,6 @@ export function ExpressionBar({
               {t`Apply`}
             </Button>
           )}
-          <Box className={S.metabot}>
-            <MetabotMenu />
-          </Box>
         </Group>
       </Box>
     </Box>
@@ -822,29 +810,6 @@ function RowBreak({ isBreak, indent }: { isBreak: boolean; indent: number }) {
 }
 
 const METABOT_MENU_ATTR = "data-metabot-menu";
-
-/** Placeholder actions: they only close the menu. */
-function MetabotMenu() {
-  const markAttr = { [METABOT_MENU_ATTR]: true };
-  return (
-    <Menu position="bottom-end">
-      <Menu.Target>
-        <ActionIcon
-          variant="subtle"
-          aria-label={t`Metabot`}
-          {...markAttr}
-          onClick={(event: MouseEvent) => event.stopPropagation()}
-        >
-          <Icon name="metabot" c="icon-brand" />
-        </ActionIcon>
-      </Menu.Target>
-      <Menu.Dropdown {...markAttr}>
-        <Menu.Item>{t`Generate filters`}</Menu.Item>
-        <Menu.Item>{t`Summarize`}</Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
-  );
-}
 
 const SLOT_ATTR = "data-caret-slot";
 const PILL_ATTR = "data-pill-index";
