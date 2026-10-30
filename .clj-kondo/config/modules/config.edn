@@ -14,8 +14,8 @@
 ;;
 ;; ## `codeowners`:
 ;;
-;; Makes the module's team a required reviewer for the module's directories in `.github/CODEOWNERS`. Set it to
-;; `true` for the src and test directories, or to `:src` for the src directory only. Ownership goes to the team's
+;; Makes the module's team a required reviewer for the module's code in `.github/CODEOWNERS`. Set it to `true` for
+;; its src and test code, or to `:src` for its src code only. Ownership goes to the team's
 ;; `assignee` handle in `.github/team.json`, which the team must have. Run `./bin/mage update-codeowners` after
 ;; changing it. Leave it out for modules whose team has not agreed to review them.
 ;;

@@ -552,62 +552,76 @@
 (def ^:private test-assignees
   {"Querying Platform" "@metabase/querying-platform"})
 
-(defn- owned-lines
-  "Owner lines of the block generated for `modules-config`, without comments or blank lines."
+(defn- owned-patterns
+  "Patterns the block generated for `modules-config` gives to `@metabase/querying-platform`, in order.
+  Throws if any line names another owner."
   [modules-config]
-  (->> (str/split-lines (#'mage.modules/codeowners-block modules-config test-assignees))
-       (remove #(or (str/blank? %) (str/starts-with? % "#")))))
+  (vec (for [line  (str/split-lines (#'mage.modules/codeowners-block modules-config test-assignees))
+             :when (not (or (str/blank? line) (str/starts-with? line "#")))
+             :let  [[pattern owner] (str/split line #" ")]]
+         (if (= "@metabase/querying-platform" owner)
+           pattern
+           (throw (ex-info "unexpected owner" {:line line}))))))
 
 (deftest codeowners-stanza-lines-test
-  (testing "a header naming the module and team, then one owner line per directory"
+  (testing "a header naming the module and team, then one owner line per pattern"
     (is (= ["# lib (Querying Platform)"
             "src/metabase/lib @metabase/qp"
-            "test/metabase/lib @metabase/qp"]
+            "src/metabase/lib.* @metabase/qp"]
            (#'mage.modules/codeowners-stanza-lines
-            {:module 'lib
-             :team   "Querying Platform"
-             :handle "@metabase/qp"
-             :dirs   ["src/metabase/lib" "test/metabase/lib"]})))))
+            {:module   'lib
+             :team     "Querying Platform"
+             :handle   "@metabase/qp"
+             :patterns ["src/metabase/lib" "src/metabase/lib.*"]})))))
 
 (deftest codeowners-block-opt-in-test
-  (testing "only modules that set :codeowners get owner lines"
-    (is (= ["src/metabase/lib @metabase/querying-platform"
-            "test/metabase/lib @metabase/querying-platform"]
-           (owned-lines '{lib             {:team "Querying Platform", :codeowners true}
-                          query-processor {:team "Querying Platform"}}))))
-  (testing ":src owns the src directory only"
-    (is (= ["src/metabase/lib @metabase/querying-platform"]
-           (owned-lines '{lib {:team "Querying Platform", :codeowners :src}}))))
-  (testing "enterprise modules own their enterprise/backend directories"
-    (is (= ["enterprise/backend/src/metabase_enterprise/sso @metabase/querying-platform"
-            "enterprise/backend/test/metabase_enterprise/sso @metabase/querying-platform"]
-           (owned-lines '{enterprise/sso {:team "Querying Platform", :codeowners true}}))))
+  (testing "only modules that set :codeowners get owner lines, covering their directories and root files"
+    (is (= ["src/metabase/lib"
+            "src/metabase/lib.*"
+            "test/metabase/lib"
+            "test/metabase/lib_test.*"]
+           (owned-patterns '{lib             {:team "Querying Platform", :codeowners true}
+                             query-processor {:team "Querying Platform"}}))))
+  (testing ":src owns the src code only"
+    (is (= ["src/metabase/lib"
+            "src/metabase/lib.*"]
+           (owned-patterns '{lib {:team "Querying Platform", :codeowners :src}}))))
+  (testing "enterprise modules own their enterprise/backend code"
+    (is (= ["enterprise/backend/src/metabase_enterprise/sso"
+            "enterprise/backend/src/metabase_enterprise/sso.*"
+            "enterprise/backend/test/metabase_enterprise/sso"
+            "enterprise/backend/test/metabase_enterprise/sso_test.*"]
+           (owned-patterns '{enterprise/sso {:team "Querying Platform", :codeowners true}}))))
   (testing "a module's paths are listed whether or not they exist on disk"
-    (is (= ["src/metabase/no_such_module @metabase/querying-platform"]
-           (owned-lines '{no-such-module {:team "Querying Platform", :codeowners :src}}))))
+    (is (= ["src/metabase/no_such_module"
+            "src/metabase/no_such_module.*"]
+           (owned-patterns '{no-such-module {:team "Querying Platform", :codeowners :src}}))))
   (testing "a nested module without its own :team takes its ancestor's"
-    (is (= ["src/metabase/lib/schema @metabase/querying-platform"]
-           (owned-lines '{lib        {:team "Querying Platform"}
-                          lib.schema {:codeowners :src}})))))
+    (is (= ["src/metabase/lib/schema"
+            "src/metabase/lib/schema.*"]
+           (owned-patterns '{lib        {:team "Querying Platform"}
+                             lib.schema {:codeowners :src}})))))
 
 (deftest codeowners-block-orders-children-after-parents
   ;; CODEOWNERS applies the last matching pattern, so a parent stanza after its child's would take the child's
   ;; directories back.
   (testing "a nested module's stanza follows its parent's"
-    (is (= ["src/metabase/lib @metabase/querying-platform"
-            "src/metabase/lib/schema @metabase/querying-platform"]
-           (owned-lines '{lib.schema {:team "Querying Platform", :codeowners :src}
-                          lib        {:team "Querying Platform", :codeowners :src}})))))
+    (is (= ["src/metabase/lib"
+            "src/metabase/lib.*"
+            "src/metabase/lib/schema"
+            "src/metabase/lib/schema.*"]
+           (owned-patterns '{lib.schema {:team "Querying Platform", :codeowners :src}
+                             lib        {:team "Querying Platform", :codeowners :src}})))))
 
 (deftest codeowners-block-errors-test
   (testing "an opted-in module whose team has no assignee fails instead of losing its owner"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Module lib sets :codeowners but its team \"UX West\" has no \"assignee\""
-                          (owned-lines '{lib {:team "UX West", :codeowners true}}))))
+                          (owned-patterns '{lib {:team "UX West", :codeowners true}}))))
   (testing "an unknown :codeowners value fails"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Module lib sets :codeowners to :test; use true \(src and test\) or :src"
-                          (owned-lines '{lib {:team "Querying Platform", :codeowners :test}})))))
+                          (owned-patterns '{lib {:team "Querying Platform", :codeowners :test}})))))
 
 (deftest codeowners-splice-test
   (let [begin  @#'mage.modules/codeowners-begin-marker
