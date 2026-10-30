@@ -49,7 +49,6 @@ function writeQuestionAppResources(root: string) {
       H.dataAppRepresentations.card({
         entityId: QUESTION_APP.question,
         name: "OrdersCount",
-        type: "question",
         collection: QUESTION_APP.collection,
         table: ORDERS_TABLE,
       }),

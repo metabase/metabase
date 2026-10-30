@@ -87,42 +87,25 @@ export function createKitchenSinkDataApp(
   });
 }
 
-/** Creates the model-less "Add team" action, which inserts a team into `scoreboard_actions`. */
+/**
+ * Publishes `scoreboard_actions` to the Library, which must exist, and creates
+ * the "Add team" action, an implicit action that inserts a team into it.
+ */
 export function createAddTeamAction(
   collectionId: CollectionId,
 ): Cypress.Chainable<WritebackAction> {
-  return H.createTestNativeQuery({
-    database: WRITABLE_DB_ID,
-    query:
-      "INSERT INTO scoreboard_actions (team_name, score) VALUES ({{team_name}}, {{score}})",
-    templateTags: {
-      team_name: { type: "text", "display-name": "Team name", required: true },
-      score: { type: "number", "display-name": "Score", required: true },
-    },
-  }).then((dataset_query) =>
-    H.createAction({
+  return H.getTableId({
+    databaseId: WRITABLE_DB_ID,
+    name: "scoreboard_actions",
+  }).then((tableId: number) => {
+    H.publishTables({ table_ids: [tableId] });
+
+    return H.createAction({
       name: "Add team",
-      type: "query",
+      type: "implicit",
+      kind: "row/create",
+      table_id: tableId,
       collection_id: collectionId,
-      dataset_query,
-      parameters: [
-        {
-          id: "team_name",
-          slug: "team_name",
-          name: "Team name",
-          type: "string/=",
-          target: ["variable", ["template-tag", "team_name"]],
-          required: true,
-        },
-        {
-          id: "score",
-          slug: "score",
-          name: "Score",
-          type: "number/=",
-          target: ["variable", ["template-tag", "score"]],
-          required: true,
-        },
-      ],
-    }),
-  );
+    });
+  });
 }

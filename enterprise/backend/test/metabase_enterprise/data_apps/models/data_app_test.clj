@@ -133,3 +133,53 @@
         (is (not (mi/can-read? :model/DataApp id)))
         (is (not (mi/can-write? :model/DataApp id)))
         (is (not (mi/can-create? :model/DataApp {})))))))
+
+(deftest two-data-apps-cannot-share-collection-test
+  (testing "the database refuses a second app on a collection another app already owns"
+    (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {}]
+        (let [insert! (fn [slug collection-id]
+                        (t2/query-one {:insert-into :data_app
+                                       :values      [{:name                   slug
+                                                      :display_name           slug
+                                                      :bundle_path            "index.js"
+                                                      :entity_id              (subs (str slug "-" (apply str (repeat 21 "a"))) 0 21)
+                                                      :resource_collection_id collection-id
+                                                      :created_at             :%now
+                                                      :updated_at             :%now}]}))]
+          (mt/with-temp [:model/Collection {free-id :id} {:namespace :data-apps}]
+            (testing "the same row on a collection no app owns goes in"
+              (insert! "sparrows" free-id)
+              (is (t2/exists? :model/DataApp :name "sparrows")))
+            (is (thrown? Exception (t2/with-transaction [_conn]
+                                     (insert! "finches" collection-id))))
+            (is (not (t2/exists? :model/DataApp :name "finches")))))))))
+
+(deftest data-apps-collection-is-root-collection-of-its-namespace-test
+  (testing "an app given an existing collection gets it only when it is a plain top-level collection of data apps that
+            no other app has"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp]
+        (mt/with-temp [:model/Collection {default-id :id}  {:name "Finance"}
+                       :model/Collection {root-id :id}     {:name "Root" :namespace :data-apps}
+                       :model/Collection {archived-id :id} {:name "Archived" :namespace :data-apps :archived true}
+                       :model/Collection {official-id :id} {:name "Official" :namespace :data-apps :authority_level "official"}
+                       :model/Collection {synced-id :id}   {:name "Synced" :namespace :data-apps :is_remote_synced true}]
+          (let [app! (fn [slug collection-id]
+                       (t2/insert-returning-pk! :model/DataApp {:name                   slug
+                                                                :display_name           slug
+                                                                :bundle_path            "index.js"
+                                                                :resource_collection_id collection-id}))]
+            (doseq [[label collection-id] [["a default-namespace collection" default-id]
+                                           ["an archived collection" archived-id]
+                                           ["an official collection" official-id]]]
+              (testing label
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a top-level collection of data apps"
+                                      (app! "refused" collection-id)))))
+            (testing "a remote-synced one is fine, as remote sync marks an app's collection"
+              (is (pos-int? (app! "synced" synced-id))))
+            (testing "a top-level collection of data apps is fine"
+              (is (pos-int? (app! "accepted" root-id)))
+              (testing "but not for a second app"
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
+                                      (app! "second" root-id)))))))))))

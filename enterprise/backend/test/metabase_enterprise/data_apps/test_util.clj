@@ -179,8 +179,8 @@
           (t2/delete! :model/Collection :id [:in (cons (:id library) (map :id children))]))))))
 
 (defn do-with-sources!
-  "Call `f` with what a data app uses from outside its collection, a venues metric in the Library and a query action
-  that belongs to no model, and with what it can't, a venues model and an action on it, as
+  "Call `f` with what a data app uses from outside its collection, a venues metric in the Library and an implicit action
+  on venues that belongs to no model, and with what it can't, a venues model and an action on it, as
   `{:metric-id :action-id :model-id :model-action-id}`."
   [f]
   (do-with-library!
@@ -197,11 +197,13 @@
                                                   :database_id   (mt/id)
                                                   :dataset_query query}]
          (f {:metric-id       metric-id
-             :action-id       (actions/insert! {:name          "Rename venue"
-                                                :type          :query
-                                                :database_id   (mt/id)
-                                                :dataset_query (lib/native-query mp "UPDATE venues SET name = {{name}}")
-                                                :parameters    [{:id "name" :slug "name" :type :string/=}]})
+             :action-id       (let [action-id (t2/insert-returning-pk! :model/Action {:name       "Update venue"
+                                                                                      :type       :implicit
+                                                                                      :creator_id (mt/user->id :crowberto)})]
+                                (t2/insert! :model/ImplicitAction {:action_id action-id
+                                                                   :kind      "row/update"
+                                                                   :table_id  (mt/id :venues)})
+                                action-id)
              :model-id        model-id
              :model-action-id (actions/insert! {:name "Create venue" :type :implicit :kind :row/create
                                                 :model_id model-id})}))))))

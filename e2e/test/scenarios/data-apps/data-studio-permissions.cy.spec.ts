@@ -171,7 +171,6 @@ describe("scenarios > data apps > data studio permissions", () => {
           H.dataAppRepresentations.card({
             entityId: "warningsOrdersCard000",
             name: "Orders",
-            type: "question",
             collection: "goodAppCollection0000",
             table: ["Sample Database", "PUBLIC", "ORDERS"],
           }),

@@ -224,16 +224,6 @@
 (defmethod serdes/resource-paths "DataApp" [ingested]
   [(ingested-bundle-path ingested)])
 
-(defmethod serdes/load-one! "DataApp"
-  [ingested maybe-local]
-  ;; an app made on the instance keeps its slug: the unique index would refuse the insert anyway, but with an error
-  ;; that doesn't say what to do
-  (when (and (nil? maybe-local) (data-apps.db/data-app-exists? (:slug ingested)))
-    (throw (ex-info (tru "A data app named \"{0}\" already exists on this instance. Delete it, or give the app in the repository another slug."
-                         (:slug ingested))
-                    {:status-code 400})))
-  (serdes/default-load-one! ingested maybe-local))
-
 (defenterprise data-app-collection-ids
   "The resource collections of the data apps, which hold the copies an app runs."
   :feature :none

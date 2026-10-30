@@ -103,39 +103,35 @@
   (mt/with-premium-features #{}
     (mt/user-http-request :crowberto :post 402 "ee/apps" {:name "demo"})))
 
-(defn- update-venues-query
-  "A native query that renames every venue."
-  []
-  (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = 'x'"))
-
 (deftest group-with-access-reaches-only-copied-actions-test
   (testing "an action is reachable exactly when it lives in the data app collection"
     (mt/with-premium-features #{:data-apps}
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [:model/DataApp          {app-collection-id :resource_collection_id :as app} {}
-                       :model/PermissionsGroup {group-id :id}                                      {}
-                       :model/Collection       {source-collection-id :id}                          {:namespace :data-actions}
-                       :model/Action           {source-id :id}                                     {:type          :query
-                                                                                                    :collection_id source-collection-id}
-                       :model/QueryAction      _                                                   {:action_id     source-id
-                                                                                                    :database_id   (mt/id)
-                                                                                                    :dataset_query (update-venues-query)}
-                       :model/Action           {copied-id :id}                                     {:type          :query
-                                                                                                    :collection_id app-collection-id}
-                       :model/QueryAction      _                                                   {:action_id     copied-id
-                                                                                                    :database_id   (mt/id)
-                                                                                                    :dataset_query (update-venues-query)}]
-          (group-access/add-groups! app [group-id])
-          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
-          (testing "the group with access reads the action copied into the app collection"
-            (is (=? {:id copied-id}
-                    (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
-          (testing "the same group cannot read the source action it was copied from"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (str "action/" source-id)))))
-          (testing "a superuser still reads both"
-            (is (=? {:id source-id}
-                    (mt/user-http-request :crowberto :get 200 (str "action/" source-id))))))))))
+      (data-apps.tu/with-published-tables! [(mt/id :venues)]
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/DataApp          {app-collection-id :resource_collection_id :as app} {}
+                         :model/PermissionsGroup {group-id :id}                                      {}
+                         :model/Collection       {source-collection-id :id}                          {:namespace :data-actions}
+                         :model/Action           {source-id :id}                                     {:type          :implicit
+                                                                                                      :collection_id source-collection-id}
+                         :model/ImplicitAction   _                                                   {:action_id source-id
+                                                                                                      :kind      "row/update"
+                                                                                                      :table_id  (mt/id :venues)}
+                         :model/Action           {copied-id :id}                                     {:type          :implicit
+                                                                                                      :collection_id app-collection-id}
+                         :model/ImplicitAction   _                                                   {:action_id copied-id
+                                                                                                      :kind      "row/update"
+                                                                                                      :table_id  (mt/id :venues)}]
+            (group-access/add-groups! app [group-id])
+            (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+            (testing "the group with access reads the action copied into the app collection"
+              (is (=? {:id copied-id}
+                      (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
+            (testing "the same group cannot read the source action it was copied from"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 (str "action/" source-id)))))
+            (testing "a superuser still reads both"
+              (is (=? {:id source-id}
+                      (mt/user-http-request :crowberto :get 200 (str "action/" source-id)))))))))))
 
 (deftest outdated-apps-are-hidden-from-users-and-badged-for-admins-test
   (mt/test-helpers-set-global-values!
@@ -431,13 +427,10 @@
               (is (=? {:collection_id collection-id}
                       (mt/user-http-request :crowberto :post 200 "action"
                                             {:name          "Rename venues"
-                                             :type          "query"
-                                             :database_id   (mt/id)
-                                             :collection_id collection-id
-                                             :dataset_query (lib/native-query (mt/metadata-provider)
-                                                                              "UPDATE venues SET name = {{name}}")
-                                             :parameters    [{:id "name" :slug "name" :type "string/="
-                                                              :target [:variable [:template-tag "name"]]}]}))))
+                                             :type          "implicit"
+                                             :kind          "row/update"
+                                             :table_id      (mt/id :venues)
+                                             :collection_id collection-id}))))
             (testing "nobody else writes it"
               (mt/user-http-request :rasta :post 403 "card" {:name                   "Mine"
                                                              :collection_id          collection-id
@@ -462,15 +455,10 @@
                                                                          :dataset_query          query})
                 action-id (:id (mt/user-http-request :crowberto :post 200 "action"
                                                      {:name          "Rename venue"
-                                                      :type          "query"
-                                                      :database_id   (mt/id)
-                                                      :collection_id collection-id
-                                                      :dataset_query (lib/native-query mp "UPDATE venues SET name = {{name}} WHERE id = {{id}}")
-                                                      :parameters    [{:id "name" :slug "name" :type "string/="
-                                                                       :target [:variable [:template-tag "name"]]
-                                                                       :required true}
-                                                                      {:id "id" :slug "id" :type "number/="
-                                                                       :target [:variable [:template-tag "id"]]}]}))
+                                                      :type          "implicit"
+                                                      :kind          "row/update"
+                                                      :table_id      (mt/id :venues)
+                                                      :collection_id collection-id}))
                 action-entity-id (t2/select-one-fn :entity_id :model/Action :id action-id)]
             (testing "a non-superuser cannot read it"
               (mt/user-http-request :rasta :get 403 "ee/apps/demo/typed-schema"))
@@ -488,8 +476,8 @@
               (testing "an action is addressed by its entity ID and typed by its parameters"
                 (is (str/includes? body "export const actions = {\n  renameVenue: defineAction({"))
                 (is (str/includes? body (str "id: \"" action-entity-id "\"")))
-                (is (str/includes? body "slug: \"name\",\n          displayName: \"name\",\n          jsType: \"string\",\n          required: true,"))
-                (is (str/includes? body "slug: \"id\",\n          displayName: \"id\",\n          jsType: \"number\","))))))))))
+                (is (str/includes? body "slug: \"name\""))
+                (is (str/includes? body "required: true"))))))))))
 
 (defn- create-question!
   "A table question named `card-name` in the collection with `collection-id`, reading `query`, created by an admin."

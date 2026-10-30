@@ -28,6 +28,7 @@ describe(
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      H.createLibrary();
 
       H.resetTestTable({ type: "postgres", table: TEST_TABLE });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });

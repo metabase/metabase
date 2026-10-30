@@ -21,7 +21,6 @@ const APP_ROOT = () =>
 const ORDERS_COUNT_QUESTION = H.dataAppRepresentations.card({
   entityId: QUESTION_ENTITY_ID,
   name: "OrdersCount",
-  type: "question",
   collection: COLLECTION,
   table: ORDERS_TABLE,
   stage: {

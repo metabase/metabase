@@ -180,28 +180,25 @@ const resourceCollection = (
 });
 
 /**
- * A card in the app's collection, as an author writes it: a saved question from a
- * query definition, or a copy of a metric from the repository. `stage`
- * holds the clauses besides the source table.
+ * A question in the app's collection, as an author writes it, from a query
+ * definition. `stage` holds the clauses besides the source table.
  */
 const resourceCard = ({
   entityId,
   name,
-  type,
   collection,
   table,
   stage = {},
 }: {
   entityId: string;
   name: string;
-  type: "question" | "metric";
   collection: string;
   table: PortableTable;
   stage?: ResourceEntity;
 }): ResourceEntity => ({
   name,
-  type,
-  display: type === "metric" ? "scalar" : "table",
+  type: "question",
+  display: "table",
   entity_id: entityId,
   collection_id: collection,
   creator_id: USERS.admin.email,
