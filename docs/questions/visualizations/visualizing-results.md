@@ -193,4 +193,4 @@ See also [Formatting defaults](../../data-modeling/metadata/formatting.md).
 - [Charts with multiple series](../../dashboards/multiple-series.md)
 - [Custom visualizations](./custom.md)
 - [Appearance](../../configuring-metabase/appearance.md)
-- [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices.html)
+- [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices)

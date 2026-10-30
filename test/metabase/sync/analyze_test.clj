@@ -192,12 +192,12 @@
 (defn- analyze-table! [table]
   ;; we're calling `analyze-db!` instead of `analyze-table!` because the latter doesn't care if you try to sync a
   ;; hidden table and will allow that. TODO - Does that behavior make sense?
-  (analyze/analyze-db! (t2/select-one :model/Database :id (:db_id table))))
+  (analyze/analyze-db! (:id (t2/select-one :model/Database :id (:db_id table)))))
 
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
     (letfn [(tests [sync!*]
-              (mt/with-temp [:model/Table table (assoc (fake-table) :visibility_type "hidden")
+              (mt/with-temp [:model/Table table (fake-table)
                              :model/Field field (fake-field table)]
                 (letfn [(set-visibility! [visibility]
                           (set-table-visibility-type-via-api! table visibility)
@@ -226,6 +226,15 @@
       (tests api-sync!)
       (testing "\nsame test but with sync triggered programatically rather than via the API"
         (tests analyze-table!)))))
+
+(deftest dont-analyze-data-layer-hidden-tables-test
+  (testing "a table hidden through the Data Studio data layer stays un-analyzed"
+    (mt/with-temp [:model/Table table (fake-table)
+                   :model/Field field (fake-field table)]
+      (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
+                            {:table_ids [(u/the-id table)] :data_layer "hidden"})
+      (analyze-table! table)
+      (is (false? (fake-field-was-analyzed? field))))))
 
 (deftest analyze-db!-return-value-test
   (testing "Returns values"

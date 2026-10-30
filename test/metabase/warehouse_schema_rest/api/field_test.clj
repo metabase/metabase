@@ -288,7 +288,7 @@
       (testing "Refingerprints field when updated"
         (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/dataset integer-coerceable
-            (sync/sync-database! (t2/select-one :model/Database :id (mt/id)))
+            (sync/sync-database! (:id (t2/select-one :model/Database :id (mt/id))))
             (let [field-id      (mt/id :t :f)
                   set-strategy! (fn [strategy]
                                   (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
@@ -363,7 +363,7 @@
   (testing "PUT /api/field/:id clearing semantic_type on a sync-detected FK hides the target without touching sync data"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {field-id :id} {}]
-      (t2/update! :model/Field field-id {:semantic_type :type/FK :fk_target_field_id target-id})
+      (t2/update! :model/Field :id field-id {:semantic_type :type/FK :fk_target_field_id target-id})
       (testing "before the user's edit, GET shows the sync-detected FK"
         (is (=? {:semantic_type      "type/FK"
                  :fk_target_field_id target-id
@@ -405,8 +405,8 @@
       (mt/with-temp-copy-of-db
         ;; clear out existing human_readable_values in case they're set
         (when-let [id (field-values-id :venues :price)]
-          (t2/update! :model/FieldValues id {:human_readable_values nil}))
-        (t2/update! :model/Field (mt/id :venues :price) {:has_field_values "list"})
+          (t2/update! :model/FieldValues :id id {:human_readable_values nil}))
+        (t2/update! :model/Field :id (mt/id :venues :price) {:has_field_values "list"})
         ;; now update the values via the API
         (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
                (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
@@ -929,7 +929,7 @@
           (mt/with-temp [:model/Database database {:engine driver/*driver* :details (assoc (:details database) :json-unfolding true)}]
             (mt/with-db database
               ;; Sync the new database
-              (sync/sync-database! database)
+              (sync/sync-database! (:id database))
               (let [field (t2/select-one :model/Field :id (mt/id :json :json_bit))
                     get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                     set-json-unfolding-for-field! (fn [v]
@@ -948,11 +948,11 @@
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled for the DB"
                   (set-json-unfolding-for-db! false)
-                  (sync/sync-database! (get-database))
+                  (sync/sync-database! (:id (get-database)))
                   (is (empty? (nested-fields))))
                 (testing "nested fields are added when json unfolding is enabled again for the DB"
                   (set-json-unfolding-for-db! true)
-                  (sync/sync-database! (get-database))
+                  (sync/sync-database! (:id (get-database)))
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled for the field"
                   (set-json-unfolding-for-field! false)
@@ -971,7 +971,7 @@
             (mt/with-temp [:model/Database database {:engine driver/*driver* :details (assoc (:details database) :json-unfolding false)}]
               (mt/with-db database
                 ;; Sync the new database
-                (sync/sync-database! database)
+                (sync/sync-database! (:id database))
                 (let [get-field (fn [] (t2/select-one :model/Field :id (mt/id :json :json_bit)))
                       get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                       set-json-unfolding-for-field! (fn [v]
@@ -1000,11 +1000,11 @@
                     (set-json-unfolding-for-db! true)
                     (is (true? (:json-unfolding (:details (get-database)))))
                     (is (true? (:json_unfolding (get-field))))
-                    (sync/sync-database! (get-database))
+                    (sync/sync-database! (:id (get-database)))
                     (is (seq (nested-fields))))
                   (testing "nested fields are removed when json unfolding is disabled again"
                     (set-json-unfolding-for-db! false)
-                    (sync/sync-database! (get-database))
+                    (sync/sync-database! (:id (get-database)))
                     (is (empty? (nested-fields)))))))))))))
 
 (deftest coercion-strategy-is-respected-after-follow-up-request-test
@@ -1027,7 +1027,7 @@
 (deftest field-values-requires-query-permission-test
   (testing "GET /api/field/:id/values requires query permission (view-data + create-queries)"
     (mt/with-temp-copy-of-db
-      (t2/update! :model/Field (mt/id :venues :price) {:has_field_values "list"})
+      (t2/update! :model/Field :id (mt/id :venues :price) {:has_field_values "list"})
       (testing "User with only view-data permission (no create-queries) cannot access field values"
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."

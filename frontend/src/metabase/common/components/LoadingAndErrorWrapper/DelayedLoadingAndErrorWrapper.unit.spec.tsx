@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { act, render, screen } from "__support__/ui";
 
 import { DelayedLoadingAndErrorWrapper } from "./DelayedLoadingAndErrorWrapper";
 
@@ -10,18 +10,37 @@ describe("DelayedLoadingAndErrorWrapper", () => {
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     });
 
-    it("should display a delayed loader if given a true loading prop", async () => {
-      render(
-        <DelayedLoadingAndErrorWrapper
-          loader={<div data-testid="loader"></div>}
-          delay={100}
-          error={false}
-          loading={true}
-        />,
-      );
+    describe("with a delay", () => {
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
 
-      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-      await screen.findByTestId("loader", undefined, { timeout: 150 });
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it("should display a delayed loader only once the delay has passed", () => {
+        render(
+          <DelayedLoadingAndErrorWrapper
+            loader={<div data-testid="loader"></div>}
+            delay={100}
+            error={false}
+            loading={true}
+          />,
+        );
+
+        expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+        expect(screen.queryByTestId("loader")).not.toBeInTheDocument();
+
+        act(() => {
+          jest.advanceTimersByTime(100);
+        });
+
+        expect(screen.getByTestId("loader")).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("loading-indicator"),
+        ).not.toBeInTheDocument();
+      });
     });
 
     it("should display a given child if loading is false", () => {

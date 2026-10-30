@@ -7,7 +7,7 @@ import {
 } from "metabase/utils/syncing";
 import type { Database } from "metabase-types/api";
 
-import StatusLarge from "../StatusLarge";
+import { StatusLarge } from "../StatusLarge";
 
 export type DatabaseStatusLargeProps = {
   databases: Database[];

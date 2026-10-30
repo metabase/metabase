@@ -312,8 +312,7 @@
   (if (or (= read-or-write :read)
           (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
     (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
-    ;; We need to return a dummy permissions string that cannot possibly belong to a user in
-    ;; the case where an instance is not syncable due to remote-sync being in ':production' mode
+    ;; a path no permissions set holds, not even an admin's `/`, so nobody writes what remote sync keeps read-only
     #{"___no-remote-sync-access"}))
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
@@ -467,7 +466,7 @@
   ;; `:t2-methods` maps t2-model-kw → the installed `mi/can-read?` fn (identity-check test uses the value).
   ;; `:search-models` maps search-model-string → claimed parent t2-model the `:collection_id` is denormalized
   ;; from at index time. The claim is verified against the spec's joins by a contract test; see
-  ;; `metabase-enterprise.semantic-search.index-test`.
+  ;; `metabase-enterprise.search.semantic.index-test`.
   (atom {:t2-methods {} :search-models {}}))
 
 (defn collection-id-only-read-models

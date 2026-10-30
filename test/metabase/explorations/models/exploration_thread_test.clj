@@ -10,7 +10,7 @@
 (def ^:private transcript
   "What [[metabase.explorations.query-plan/record-outcome!]] persists. `:outcome`, `:note` and
   `:planner` are keywords — the orchestrator speaks the same ones the planner protocol does, and
-  [[metabase.explorations.query-plan.transcript]] translates them at the storage boundary."
+  the `::exploration-thread.query-plan-transcript` schema translates them at the storage boundary."
   {:generated-at "2026-08-28T00:00:00Z"
    :thread-id    7
    :planner      :mechanical

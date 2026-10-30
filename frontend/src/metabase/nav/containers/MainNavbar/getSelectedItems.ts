@@ -111,7 +111,12 @@ export function getSelectedItems({
       },
     ];
   }
-  if ((isQuestionPath(pathname) || isModelPath(pathname)) && question) {
+  if (
+    (isQuestionPath(pathname) ||
+      isModelPath(pathname) ||
+      isMetricPath(pathname)) &&
+    question
+  ) {
     return [
       {
         id: question.id(),

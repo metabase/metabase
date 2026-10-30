@@ -125,7 +125,10 @@
   :export?    true
   :setter     :none
   :getter     (comp sort t/available-zone-ids)
-  :doc        false)
+  :doc        false
+  ;; ~600 zone ids that change only when the instance is upgraded, and only the localization admin page
+  ;; reads them, so clients fetch them by key from `GET /api/setting/available-timezones`.
+  :include-in-list? false)
 
 (defsetting system-timezone
   "The timezone used by the system by default. AKA the JVM timezone."
@@ -155,9 +158,9 @@
     (if (premium-features/is-hosted?) ["/tmp"] ["/"])))
 
 (defsetting readable-paths
-  (deferred-tru (str "Comma-separated allowlist of directories Metabase may read files from, e.g. for database "
-                     "secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase "
-                     "Cloud and / (every path) when self-hosted."))
+  (str "Comma-separated allowlist of directories Metabase may read files from, e.g. for database "
+       "secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase "
+       "Cloud and / (every path) when self-hosted.")
   :type       :csv
   :encryption :no
   :visibility :internal
@@ -167,8 +170,8 @@
   :doc        false)
 
 (defsetting writable-paths
-  (deferred-tru (str "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no "
-                     "paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."))
+  (str "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no "
+       "paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted.")
   :type       :csv
   :encryption :no
   :visibility :internal

@@ -7,6 +7,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.driver.util :as driver.u]
    [metabase.indexes-rest.db :as indexes-rest.db]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.indexes.reconcile :as reconcile]
@@ -72,7 +73,9 @@
   [_route-params
    {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
   (let [transform   (api/read-check :model/Transform transform-id)
-        database    (api/check-404 (indexes-rest.db/database (transforms-base.i/target-db-id transform)))
+        database-id (transforms-base.i/target-db-id transform)
+        _           (api/check-404 (some-> database-id indexes-rest.db/database-exists?))
+        database    (driver.u/lib-database database-id)
         {:keys [schema] table-name :name} (:target transform)
         managed     (table-index/select-for-transform transform-id)
         [warehouse warehouse-error]

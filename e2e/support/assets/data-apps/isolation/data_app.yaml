@@ -1,3 +1,9 @@
-name: Isolation
 version: 1
+name: Isolation
+slug: isolation
 path: ./dist/index.js
+entity_id: nu2o-JSPcsIfu3FM0ek24
+serdes/meta:
+- model: DataApp
+  id: nu2o-JSPcsIfu3FM0ek24
+  label: isolation

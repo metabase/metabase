@@ -12,7 +12,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
-import { Box, Flex, Modal, Stack, Text } from "metabase/ui";
+import { Box, Modal, Stack, Text } from "metabase/ui";
 import { useCreateSupportAccessGrantMutation } from "metabase-enterprise/api";
 
 interface GrantAccessModalProps {
@@ -57,62 +57,60 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
 
   return (
     <Modal
+      density="relaxed"
       data-testid="grant-access-modal"
       onClose={onClose}
       opened
       title={t`Grant Access?`}
-      padding="xxl"
     >
-      <Stack>
-        <Box mt="sm">
-          <Text display="inline">
-            {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
-            {t`You are about to allow a Metabase team member to access your instance.`}{" "}
-          </Text>
-          <Text fw="bold" display="inline">
-            {t`The Success Engineer will have full admin access until the grant expires or is revoked.`}
-          </Text>
-        </Box>
-        <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
-          {({ values }) => (
-            <Form>
-              <Stack mt="lg">
-                <FormSelect
-                  name="grant_duration_minutes"
-                  label={t`Access duration`}
-                  data={[
-                    { value: String(24 * 60), label: t`24 hours` },
-                    { value: String(48 * 60), label: t`48 hours` },
-                    { value: String(96 * 60), label: t`96 hours` },
-                  ]}
-                  placeholder={t`Choose...`}
-                  required
-                />
-                <FormTextInput
-                  label={t`Ticket`}
-                  name="ticket_number"
-                  placeholder={t`TICKET-1234`}
-                />
-                <FormTextarea
-                  label={t`Notes`}
-                  minRows={3}
-                  name="notes"
-                  placeholder={t`Add any important information we should know to help you better.`}
-                />
-                <Flex justify="end" mt="lg" gap="lg">
-                  <FormErrorMessage />
-                  <FormSubmitButton
-                    disabled={!values.grant_duration_minutes}
-                    label={t`Grant access`}
-                    style={{ flexShrink: 0 }}
-                    variant="filled"
-                  />
-                </Flex>
-              </Stack>
-            </Form>
-          )}
-        </FormProvider>
-      </Stack>
+      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
+        {({ values }) => (
+          <Form>
+            <Stack gap="xl">
+              <Box>
+                <Text display="inline">
+                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
+                  {t`You are about to allow a Metabase team member to access your instance.`}{" "}
+                </Text>
+                <Text fw="bold" display="inline">
+                  {t`The Success Engineer will have full admin access until the grant expires or is revoked.`}
+                </Text>
+              </Box>
+              <FormSelect
+                name="grant_duration_minutes"
+                label={t`Access duration`}
+                data={[
+                  { value: String(24 * 60), label: t`24 hours` },
+                  { value: String(48 * 60), label: t`48 hours` },
+                  { value: String(96 * 60), label: t`96 hours` },
+                ]}
+                placeholder={t`Choose...`}
+                required
+              />
+              <FormTextInput
+                label={t`Ticket`}
+                name="ticket_number"
+                placeholder={t`TICKET-1234`}
+              />
+              <FormTextarea
+                label={t`Notes`}
+                minRows={3}
+                name="notes"
+                placeholder={t`Add any important information we should know to help you better.`}
+              />
+            </Stack>
+            <Modal.Footer>
+              <FormErrorMessage flex={1} />
+              <FormSubmitButton
+                disabled={!values.grant_duration_minutes}
+                label={t`Grant access`}
+                style={{ flexShrink: 0 }}
+                variant="filled"
+              />
+            </Modal.Footer>
+          </Form>
+        )}
+      </FormProvider>
     </Modal>
   );
 };

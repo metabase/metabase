@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import multiTenantUserStrategyImage from "assets/img/embedding-onboarding/multi-tenant-user-strategy.svg";
 import {
   useCreateCollectionMutation,
   useListCollectionsTreeQuery,
@@ -52,8 +53,7 @@ export const EnableTenantsStepContent = ({
       }
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(
           error,
           t`Failed to enable tenants and create shared collection`,
@@ -65,7 +65,7 @@ export const EnableTenantsStepContent = ({
   return (
     <Stack gap="xl">
       <img
-        src="app/assets/img/embedding-onboarding/multi-tenant-user-strategy.svg"
+        src={multiTenantUserStrategyImage}
         alt=""
         className={S.illustration}
       />

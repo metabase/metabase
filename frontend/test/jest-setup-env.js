@@ -4,6 +4,8 @@ import "@testing-library/jest-dom";
 import * as testingLibrary from "@testing-library/react";
 import fetchMockModule from "fetch-mock";
 
+import { resetRouterForTests } from "metabase/router/navigator";
+
 // Imports compile to lazy requires (see jest.base.conf.js). Resolve these at
 // the top level, so a spec that calls jest.resetModules() cannot make the
 // hooks below load a fresh copy once the run has started.
@@ -15,12 +17,14 @@ const fetchMock = fetchMockModule;
 // A passing wait is not affected, and no test relies on the timeout to pass.
 configure({ asyncUtilTimeout: 10000 });
 
-const REACT_KEY_WARNING_PATTERNS = [
+const FAILING_REACT_WARNING_PATTERNS = [
   /Each child in a list should have a unique "key" prop/,
   /Encountered two children with the same key/,
+  /was not wrapped in act\(/,
+  /not configured to support act\(/,
 ];
 
-const reactKeyWarnings = [];
+const reactWarnings = [];
 const originalConsoleError = console.error;
 
 // Throwing here would land inside React's render, where an error boundary can
@@ -29,41 +33,45 @@ console.error = (...args) => {
   originalConsoleError(...args);
 
   const [template] = args;
-  const isReactKeyWarning =
+  const isFailingReactWarning =
     typeof template === "string" &&
-    REACT_KEY_WARNING_PATTERNS.some((pattern) => pattern.test(template));
+    FAILING_REACT_WARNING_PATTERNS.some((pattern) => pattern.test(template));
 
-  if (isReactKeyWarning) {
-    reactKeyWarnings.push(format(...args));
+  if (isFailingReactWarning) {
+    reactWarnings.push(format(...args));
   }
 };
-
-afterEach(() => {
-  const warnings = reactKeyWarnings.splice(0);
-
-  if (warnings.length > 0) {
-    throw new Error(
-      `Test completed with React key warnings:\n${warnings.join("\n")}`,
-    );
-  }
-});
 
 // jsdom has no layout, so popover positioning computes nothing useful while
 // costing getComputedStyle calls and an extra re-render per position update.
 jest.mock("@floating-ui/dom", () => ({
   ...jest.requireActual("@floating-ui/dom"),
-  // Resolving synchronously keeps the position update inside the act() scope of
-  // the render that asked for it. A resolved promise defers it by a microtask,
-  // which can land after the test ends and makes React log an act() warning.
+  // The caller asks for a position from a layout effect and applies the result
+  // with flushSync. Answered on the spot, that flushSync runs while React is
+  // still rendering, and React logs a warning. Answered from a plain promise,
+  // the state update lands outside act(), and React logs a different one. So
+  // the answer comes a microtask later, inside an act() scope of its own.
   computePosition: (_reference, _floating, options = {}) => ({
-    then: (onFulfilled) =>
-      onFulfilled({
+    then: (onFulfilled) => {
+      const position = {
         x: 0,
         y: 0,
         placement: options.placement ?? "bottom",
         strategy: options.strategy ?? "absolute",
         middlewareData: {},
-      }),
+      };
+      queueMicrotask(() => {
+        // act() itself warns where the environment is not set up for it, which
+        // is the case inside Testing Library's async helpers.
+        if (globalThis.IS_REACT_ACT_ENVIRONMENT) {
+          jest.requireActual("react-dom/test-utils").act(() => {
+            onFulfilled(position);
+          });
+        } else {
+          onFulfilled(position);
+        }
+      });
+    },
   }),
   autoUpdate: (_reference, _floating, update) => {
     update();
@@ -89,6 +97,10 @@ afterEach(async () => {
   // Cleanup React components FIRST to trigger any unmount effects
   cleanup();
 
+  // Clear the router shim's module-level holders so one test's navigation
+  // state cannot leak into the next.
+  resetRouterForTests();
+
   delete window.MetabaseBootstrap;
   // Wait for any pending fetch requests to complete
   await fetchMock.callHistory.flush();
@@ -101,12 +113,27 @@ afterEach(async () => {
   fetchMock.removeRoutes();
   fetchMock.callHistory.clear();
 
+  // Unmount effects and the flush above both render, so the warnings are read
+  // once that work is done and this test still owns them. Draining before the
+  // throw below keeps a test that fails for another reason from reporting its
+  // warnings against the next one.
+  const warnings = reactWarnings.splice(0);
+
   if (unmatched.length > 0) {
     const errors = unmatched.map(
       (call) => `Unmocked ${call.options.method} request to: ${call.url}`,
     );
     throw new Error(
       `Test completed with unmocked routes:\n${errors.join("\n")}`,
+    );
+  }
+
+  if (warnings.length > 0) {
+    throw new Error(
+      `Test completed with React warnings:\n${warnings.join("\n")}\n` +
+        "A warning can come from work that an earlier test left pending. If this " +
+        "test passes on its own, look at the test before it for a render or a " +
+        "request that nothing awaits.",
     );
   }
 });

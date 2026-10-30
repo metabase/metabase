@@ -205,7 +205,12 @@ const setup = async ({
     },
   );
 
-  if (!preventWaitForLoader) {
+  if (preventWaitForLoader) {
+    // These callers assert on the loader, so wait for it to appear rather than
+    // for it to go. The provider settles while this waits, which keeps that
+    // update inside act().
+    await screen.findByTestId("loading-indicator");
+  } else {
     await waitForLoaderToBeRemoved();
   }
 };
@@ -427,6 +432,7 @@ describe("InteractiveQuestion", () => {
         type: "dashboard" as const,
         id: 1,
         name: "Sales Dashboard",
+        navigationId: "visit-1",
       };
       const mockNavigation = makeMockNavigation({ stack: [existingEntry] });
       await setup({ mockNavigation });

@@ -1,6 +1,7 @@
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
+import type { ComponentType } from "react";
 import _ from "underscore";
 
 import { getPublicStore } from "__support__/entities-store";
@@ -20,6 +21,7 @@ import {
 } from "metabase/dashboard/context/mock-context";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { stableStringify } from "metabase/utils/objects";
+import { checkNotNull } from "metabase/utils/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
@@ -78,7 +80,7 @@ export default {
   },
 };
 
-function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+function ReduxDecorator(Story: ComponentType, context: StoryContext) {
   // Unjustified type cast. FIXME
   const dashboard = context.args.dashboard as Dashboard;
   // Unjustified type cast. FIXME
@@ -398,25 +400,19 @@ const createDefaultArgs = ({
 };
 
 function getLastPopover() {
-  // Unjustified type cast. FIXME
-  const lastPopover = Array.from(
-    document.documentElement.querySelectorAll(
-      '[data-element-id="mantine-popover"]',
-    ),
-  ).at(-1) as HTMLElement;
-
-  return within(lastPopover);
+  return within(getLastPopoverElement());
 }
 
 function getLastPopoverElement() {
-  // Unjustified type cast. FIXME
-  const lastPopover = Array.from(
-    document.documentElement.querySelectorAll(
-      '[data-element-id="mantine-popover"]',
-    ),
-  ).at(-1) as HTMLElement;
+  const popovers = document.documentElement.querySelectorAll<HTMLElement>(
+    '[data-element-id="mantine-popover"]',
+  );
+  // Mantine renders an input's options dropdown as a hidden popover when there are no options.
+  const lastPopover = Array.from(popovers)
+    .filter((popover) => popover.checkVisibility())
+    .at(-1);
 
-  return lastPopover;
+  return checkNotNull(lastPopover);
 }
 
 export const LightThemeText = {
@@ -599,10 +595,7 @@ export const LightThemeParameterListSingleWithValue = {
     );
     await userEvent.click(documentElement.getByText("Widget"));
     const popover = getLastPopover();
-    // Unjustified type cast. FIXME
-    (popover.getByText("Gadget").parentNode as HTMLElement).classList.add(
-      "pseudo-hover",
-    );
+    popover.getByTestId("Gadget-filter-value").classList.add("pseudo-hover");
   },
 };
 

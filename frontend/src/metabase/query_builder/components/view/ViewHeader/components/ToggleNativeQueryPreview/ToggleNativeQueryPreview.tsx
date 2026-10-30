@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/databases/utils/engine";
@@ -58,10 +59,9 @@ export const ToggleNativeQueryPreview = ({
   return (
     <Tooltip label={buttonText} position="top">
       <ActionIcon
+        variant="subtle"
         aria-label={buttonText}
-        size={32}
         role="switch"
-        variant="viewHeader"
         onClick={handleClick}
       >
         <Icon name="sql" />

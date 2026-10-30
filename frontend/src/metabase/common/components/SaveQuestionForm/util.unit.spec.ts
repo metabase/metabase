@@ -202,6 +202,28 @@ describe("SaveQuestionForm utils", () => {
       expect(result.name).toBe("Original Question - Modified");
       expect(result.saveType).toBe("overwrite");
     });
+
+    it("should keep the question's own collection over a suggested dashboard (#51851)", () => {
+      const question = new Question(
+        createMockCard({ collection_id: 7, dashboard_id: undefined }),
+      );
+
+      const result = getInitialValues(null, question, 42, 10);
+
+      expect(result.collection_id).toBe(7);
+      expect(result.dashboard_id).toBeUndefined();
+    });
+
+    it("should suggest a dashboard when the question's collection id is null", () => {
+      const question = new Question(
+        createMockCard({ collection_id: null, dashboard_id: undefined }),
+      );
+
+      const result = getInitialValues(null, question, 42, 10);
+
+      expect(result.collection_id).toBeNull();
+      expect(result.dashboard_id).toBe(10);
+    });
   });
 
   describe("getTitle", () => {

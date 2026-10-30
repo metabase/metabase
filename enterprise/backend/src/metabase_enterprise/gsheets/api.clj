@@ -93,7 +93,9 @@
                                         :status-code status-code
                                         :hm/response (loggable-response hm-response)
                                         :message message
-                                        :error_message ((comp :status-reason :body) hm-response)})))))
+                                        :error_message ((comp :status-reason :body) hm-response)
+                                        ;; Harbormaster's status and body, to help debug a failed request
+                                        :response/keys #{:hm/response}})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs
@@ -338,7 +340,7 @@
   stop showing the setup widget.
 
   Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
-  [] :- :gsheets/response
+  []
   (handle-get-connection))
 
 (mu/defn- hm-sync-conn! :- :hm-client/http-reply
@@ -401,4 +403,4 @@
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
     (sync-metadata/sync-db-metadata!
-     (gsheets.db/attached-dwh-database))))
+     (:id (gsheets.db/attached-dwh-database)))))

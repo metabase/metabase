@@ -22,7 +22,7 @@ describe("scenarios > dashboard > text and headings", () => {
       H.expectNoBadSnowplowEvents();
     });
 
-    it("should allow creation, editing, and saving of text boxes", () => {
+    it("should allow creation, editing, and saving of text boxes and headings", () => {
       // should be able to create new text box
       H.editDashboard();
       cy.findByLabelText("Add a heading or text box").click();
@@ -53,13 +53,13 @@ describe("scenarios > dashboard > text and headings", () => {
         .click(); // un-focus text
 
       H.getDashboardCard(1).within(() => {
-        // preview should have no textarea element
-        cy.get("textarea").should("not.exist");
-
         // if no content has been entered, preview should have placeholder content
         cy.findByText(
           "You can use Markdown here, and include variables {{like_this}}",
         ).should("be.visible");
+
+        // preview should have no textarea element
+        cy.get("textarea").should("not.exist");
       });
 
       // should focus textarea editor on click
@@ -78,18 +78,14 @@ describe("scenarios > dashboard > text and headings", () => {
         .click(); // un-focus text
       H.getDashboardCard(1).contains("Text text text").should("be.visible");
 
-      // should render visualization options
+      // should render visualization options, but no visualizer or edit actions
       H.getDashboardCard(1)
         .realHover()
         .within(() => {
-          cy.findByLabelText("Show visualization options").click();
-        });
-
-      // should not render visualizer option
-      H.getDashboardCard(1)
-        .realHover()
-        .within(() => {
+          cy.findByLabelText("Show visualization options").should("be.visible");
           cy.findByLabelText("Visualize another way").should("not.exist");
+          cy.findByLabelText("Edit card").should("not.exist");
+          cy.findByLabelText("Show visualization options").click();
         });
 
       cy.findByRole("dialog").within(() => {
@@ -102,68 +98,7 @@ describe("scenarios > dashboard > text and headings", () => {
         cy.findByText("Cancel").click(); // dismiss modal
       });
 
-      // should not render edit and preview actions
-      H.getDashboardCard(1)
-        .realHover()
-        .within(() => {
-          cy.findByLabelText("Edit card").should("not.exist");
-          cy.findByLabelText("Preview card").should("not.exist");
-        });
-
-      // should allow saving and show up after refresh
-      H.saveDashboard();
-
-      H.getDashboardCard(1).contains("Text text text").should("be.visible");
-    });
-
-    it("should have a scroll bar for long text (metabase#8333)", () => {
-      H.addTextBox(
-        "Lorem ipsum dolor sit amet,\n\nfoo\n\nbar\n\nbaz\n\nboo\n\nDonec quis enim porta.",
-        { delay: 0.5 },
-      );
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "new_text_card_created",
-      });
-
-      cy.findByTestId("edit-bar").findByText("Save").click();
-
-      // The test fails if there is no scroll bar
-      H.getDashboardCard(1)
-        .get(".text-card-markdown")
-        .should("have.css", "overflow-x", "hidden")
-        .should("have.css", "overflow-y", "auto")
-        .scrollTo("bottom");
-    });
-
-    it("should let you add a parameter to a dashboard with a text box (metabase#11927)", () => {
-      H.addTextBox("text text text");
-
-      H.setFilter("Text or Category", "Is");
-
-      H.selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Name");
-      cy.findByTestId("edit-bar").findByText("Save").click();
-
-      // confirm text box and filter are still there
-      H.getDashboardCard(1).contains("text text text").should("be.visible");
-      cy.findByTestId("dashboard-parameters-widget-container")
-        .findByText("Text")
-        .should("be.visible");
-    });
-  });
-
-  describe("heading", () => {
-    beforeEach(() => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-    });
-
-    afterEach(() => {
-      H.expectNoBadSnowplowEvents();
-    });
-
-    it("should allow creation, editing, and saving of heading component", () => {
       // should be able to create new heading
-      H.editDashboard();
       cy.findByLabelText("Add a heading or text box").click();
       H.popover().findByText("Heading").click();
 
@@ -171,7 +106,7 @@ describe("scenarios > dashboard > text and headings", () => {
         event: "new_heading_card_created",
       });
 
-      H.getDashboardCard(1).within(() => {
+      H.getDashboardCard(2).within(() => {
         cy.get("input")
           .should("have.focus")
           .should("have.value", "")
@@ -186,19 +121,19 @@ describe("scenarios > dashboard > text and headings", () => {
       cy.findByTestId("edit-bar")
         .findByText("You're editing this dashboard.")
         .click(); // un-focus heading
-      H.getDashboardCard(1).within(() => {
-        // preview mode should have no input
-        cy.get("input").should("not.exist");
-
+      H.getDashboardCard(2).within(() => {
         cy.get("h2")
           .findByText(
             "You can connect widgets to {{variables}} in heading cards.",
           )
           .should("be.visible");
+
+        // preview mode should have no input
+        cy.get("input").should("not.exist");
       });
 
       // should focus input editor on click
-      H.getDashboardCard(1)
+      H.getDashboardCard(2)
         .click()
         .within(() => {
           cy.get("input").should("have.focus");
@@ -211,33 +146,55 @@ describe("scenarios > dashboard > text and headings", () => {
       cy.findByTestId("edit-bar")
         .findByText("You're editing this dashboard.")
         .click(); // un-focus heading
-      H.getDashboardCard(1)
-        .get("h2")
+      H.getDashboardCard(2)
+        .find("h2")
         .findByText("Example Heading")
         .should("be.visible");
 
-      // should have no visualization options
-      H.getDashboardCard(1)
+      // should have no visualization options or edit actions
+      H.getDashboardCard(2)
         .realHover()
         .within(() => {
+          cy.findByLabelText("Add a filter").should("be.visible");
           cy.findByLabelText("Show visualization options").should("not.exist");
-        });
-
-      // should not render edit and preview actions
-      H.getDashboardCard(1)
-        .realHover()
-        .within(() => {
           cy.findByLabelText("Edit card").should("not.exist");
-          cy.findByLabelText("Preview card").should("not.exist");
         });
 
       // should allow saving and show up after refresh
       H.saveDashboard();
 
-      H.getDashboardCard(1)
-        .get("h2")
+      H.getDashboardCard(1).contains("Text text text").should("be.visible");
+      H.getDashboardCard(2)
+        .find("h2")
         .findByText("Example Heading")
         .should("be.visible");
+    });
+
+    it("should let you add a parameter to a dashboard with a long text box (metabase#8333, metabase#11927)", () => {
+      H.addTextBox(
+        "Lorem ipsum dolor sit amet,\n\nfoo\n\nbar\n\nbaz\n\nboo\n\nDonec quis enim porta.",
+        { delay: 0.5 },
+      );
+
+      H.setFilter("Text or Category", "Is");
+
+      H.selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Name");
+      cy.findByTestId("edit-bar").findByText("Save").click();
+
+      // confirm text box and filter are still there
+      H.getDashboardCard(1)
+        .contains("Lorem ipsum dolor sit amet,")
+        .should("be.visible");
+      cy.findByTestId("dashboard-parameters-widget-container")
+        .findByText("Text")
+        .should("be.visible");
+
+      // scrollTo fails if the text card has no scroll bar
+      H.getDashboardCard(1)
+        .find(".text-card-markdown")
+        .should("have.css", "overflow-x", "hidden")
+        .should("have.css", "overflow-y", "auto")
+        .scrollTo("bottom");
     });
   });
 });
@@ -276,8 +233,8 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       H.fieldValuesCombobox().type("1"),
     );
     cy.button("Add filter").click();
-    H.getDashboardCard(0).findByText("Variable: 1").should("exist");
-    H.getDashboardCard(1).findByText("Variable: 1").should("exist");
+    H.getDashboardCard(0).findByText("Variable: 1").should("be.visible");
+    H.getDashboardCard(1).findByText("Variable: 1").should("be.visible");
 
     cy.findByTestId("dashboard-parameters-widget-container")
       .findByText("1")
@@ -291,6 +248,10 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
 
     H.editDashboard();
 
+    // Edit mode shows the raw template (metabase#31626)
+    H.getDashboardCard(0).findByText("Variable: {{foo}}").should("be.visible");
+    H.getDashboardCard(1).findByText("Variable: {{foo}}").should("be.visible");
+
     cy.findByTestId("edit-dashboard-parameters-widget-container")
       .findByText("Equal to")
       .click();
@@ -298,38 +259,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     H.getDashboardCard(1).findByText("foo").should("exist");
   });
 
-  it("should not transform text variables to plain text (metabase#31626)", () => {
-    H.editDashboard();
-
-    const textContent = "Variable: {{foo}}";
-    H.addTextBoxWhileEditing(textContent, { parseSpecialCharSequences: false });
-    H.addHeadingWhileEditing(textContent, { parseSpecialCharSequences: false });
-
-    H.setFilter("Number", "Equal to");
-
-    H.getDashboardCard(0).findByText("Select…").click();
-    H.popover().findByText("foo").click();
-
-    H.getDashboardCard(1).findByText("Select…").click();
-    H.popover().findByText("foo").click();
-
-    H.saveDashboard();
-
-    H.filterWidget().click();
-    cy.findByPlaceholderText("Enter a number").type("1{enter}");
-    cy.button("Add filter").click();
-
-    // view mode
-    H.getDashboardCard(0).findByText("Variable: 1").should("be.visible");
-    H.getDashboardCard(1).findByText("Variable: 1").should("be.visible");
-
-    H.editDashboard();
-
-    H.getDashboardCard(0).findByText(textContent).should("be.visible");
-    H.getDashboardCard(1).findByText(textContent).should("be.visible");
-  });
-
-  it("should translate parameter values into the instance language", () => {
+  it("should translate and localize parameter values into the instance language", () => {
     // Set user locale to English explicitly so that we can change the site locale separately, without the user
     // locale following it (by default, user locale matches site locale)
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
@@ -376,12 +306,8 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       cy.findByText("Pick up where you left off").should("be.visible");
       cy.findByText("[zz] Pick up where you left off").should("not.exist");
     });
-  });
 
-  it("should localize date parameters in the instance locale", () => {
-    cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
-      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
-    });
+    cy.log("date parameters use the instance locale");
     H.updateSetting("site-locale", "fr");
 
     // Create dashboard with a single date parameter, and a single question

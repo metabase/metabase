@@ -70,5 +70,5 @@ See [Limitations of linking filters](../dashboards/linked-filters.md#limitations
 [filter-widget-gloss]: https://www.metabase.com/glossary/filter-widget
 [foreign-key-gloss]: https://www.metabase.com/glossary/foreign-key
 [join-types]: https://www.metabase.com/learn/sql/working-with-sql/sql-join-types
-[learn-linking]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/linking-filters.html
+[learn-linking]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/linking-filters
 [linked-filter-gloss]: https://www.metabase.com/glossary/linked-filter

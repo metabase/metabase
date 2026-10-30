@@ -63,6 +63,32 @@ describe("file-paths.yaml", () => {
   });
 
   it.each([
+    "frontend/lint/config.mjs",
+    "frontend/lint/oxlint/rule-map.json",
+    "frontend/lint/eslint-plugin-metabase/rules/no-module-side-effects.js",
+    "frontend/lint/tests/oxlint-config.test.mjs",
+  ])(
+    "runs frontend checks without forcing full suites when %s changes",
+    (file) => {
+      expect(matches("frontend_all", file)).toBe(true);
+      expect(matches("frontend_unit_infra", file)).toBe(false);
+      expect(matches("frontend_loki_infra", file)).toBe(false);
+    },
+  );
+
+  it("treats frontend/lint/OXLINT.md as a documentation-only change", () => {
+    expect(matches("frontend_all", "frontend/lint/OXLINT.md")).toBe(false);
+    expect(matches("documentation", "frontend/lint/OXLINT.md")).toBe(true);
+  });
+
+  it.each([
+    "frontend/lint/module-boundaries.mjs",
+    "frontend/lint/shared-tiers.mjs",
+  ])("keeps CI script coverage for %s", (file) => {
+    expect(matches("ci_scripts", file)).toBe(true);
+  });
+
+  it.each([
     "jest.config.js",
     "jest.base.conf.js",
     "jest.esm-packages.js",
@@ -88,6 +114,90 @@ describe("file-paths.yaml", () => {
     ".storybook/story-files.cjs",
     ".github/workflows/loki.yml",
   ])("runs CI script tests when %s changes", (path) => {
+    expect(matches("ci_scripts", path)).toBe(true);
+  });
+
+  // Every suite's gate calls the same workflow, so a change to it has to reach every suite.
+  it.each([
+    "backend_all",
+    "frontend_all",
+    "frontend_loki_all",
+    "e2e_all",
+    "embedding_sdk_components",
+    "embedding_sdk_host_sample_apps",
+    "ci_scripts",
+  ])("runs %s when the test gate changes", (filter) => {
+    expect(matches(filter, ".github/workflows/test.gate.yml")).toBe(true);
+  });
+
+  // The build filters replace what used to be an inline condition in run-tests.yml, so what they
+  // leave out is the whole point: a diff that changes nothing an artifact ships gets no build.
+  it.each([
+    "src/metabase/core.clj",
+    "frontend/src/metabase/App.tsx",
+    "e2e/test/scenarios/question/foo.cy.spec.js",
+    // The SDK component and host-app suites boot a Metabase instance, so their CI entry points
+    // have to build one.
+    ".github/workflows/embedding-sdk.yml",
+  ])("builds the uberjar for %s", (path) => {
+    expect(matches("build_uberjar", path)).toBe(true);
+  });
+
+  it.each([
+    ".clj-kondo/ratchets.edn",
+    "README.md",
+    "docs/questions/introduction.md",
+    // The SDK type checks read the package artifact, not a running instance.
+    "docs/embedding/sdk/introduction.md",
+  ])("skips the uberjar for %s", (path) => {
+    expect(matches("build_uberjar", path)).toBe(false);
+  });
+
+  it.each([
+    "enterprise/frontend/src/embedding-sdk-package/index.ts",
+    "docs/embedding/sdk/introduction.md",
+    ".github/workflows/embedding-sdk.yml",
+  ])("builds the SDK package for %s", (path) => {
+    expect(matches("build_embedding_sdk_package", path)).toBe(true);
+  });
+
+  it("does not build the SDK package for unrelated documentation", () => {
+    expect(
+      matches("build_embedding_sdk_package", "docs/questions/introduction.md"),
+    ).toBe(false);
+  });
+
+  it.each([
+    "docs/embedding/guest-embedding.md",
+    "frontend/src/metabase/home/components/EmbedHomepage/EmbedHomepage.tsx",
+    "bin/verify-doc-links/verify-doc-links.ts",
+  ])("checks the in-product docs links when %s changes", (path) => {
+    expect(matches("in_product_docs_links", path)).toBe(true);
+  });
+
+  it("does not check the in-product docs links for a docs image", () => {
+    expect(
+      matches("in_product_docs_links", "docs/embedding/images/guest.png"),
+    ).toBe(false);
+  });
+
+  // The e2e Metabase Track sink lives outside frontend/ and e2e/, so nothing else would pull it
+  // into either gate: without these entries a sink-only change runs no tests at all. The e2e gate
+  // reaches it through e2e_infra, so a sink-only change also forces a full e2e run.
+  it("covers the e2e Metabase Track sink in both the e2e and the frontend unit gates", () => {
+    expect(matches("e2e_all", "metaplow/sink.js")).toBe(true);
+    expect(matches("e2e_infra", "metaplow/sink.js")).toBe(true);
+    expect(matches("frontend_specs", "metaplow/sink.unit.spec.js")).toBe(true);
+  });
+
+  // e2e-containers.unit.spec.ts asserts over these, and it runs in the ci-scripts suite.
+  it.each([
+    ".github/workflows/e2e-test.yml",
+    ".github/workflows/embedding-sdk-component-tests.yml",
+    ".github/actions/e2e-prepare-containers/action.yml",
+    "metaplow/docker-compose.yml",
+    "deps.edn",
+  ])("runs the CI script tests for %s, which a spec asserts over", (path) => {
     expect(matches("ci_scripts", path)).toBe(true);
   });
 
@@ -151,7 +261,7 @@ describe("file-paths.yaml", () => {
     ".github/workflows/e2e-test.yml",
     ".github/workflows/run-tests.yml",
     ".github/actions/prepare-cypress/action.yml",
-    ".github/scripts/build-e2e-matrix.js",
+    ".github/scripts/build-e2e-matrix.ts",
     ".github/file-paths.yaml",
     "frontend/build/shared/esbuild/side-effect-free-modules-plugin.js",
     "rspack.main.config.js",
@@ -181,5 +291,14 @@ describe("file-paths.yaml", () => {
     "e2e/support/cypress.config.js",
   ])("runs CI-script tests when %s changes", (file) => {
     expect(matches("ci_scripts", file)).toBe(true);
+  });
+
+  it("runs the module cycles test when a cluster is named", () => {
+    expect(
+      matches(
+        "project_backend_checks",
+        ".clj-kondo/config/modules/cycle-clusters.edn",
+      ),
+    ).toBe(true);
   });
 });

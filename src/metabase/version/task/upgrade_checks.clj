@@ -30,7 +30,10 @@
       (throw (Exception. (format "[%d]: %s" status body))))
     (json/decode+kw body)))
 
-(task/defjob ^{:doc "Simple job which looks up all databases and runs a sync on them"} CheckForNewVersions [_]
+(task/defjob CheckForNewVersions
+  "Simple job which looks up all databases and runs a sync on them"
+  {:saved-class "metabase.version.task.upgrade_checks.CheckForNewVersions"}
+  [_]
   (when (version.settings/check-for-updates)
     (log/debug "Checking for new Metabase version info.")
     (try

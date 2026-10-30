@@ -80,7 +80,7 @@ export function DeleteSubscriptionAction({
   return (
     <>
       <Flex className={cx(CS.borderTop, CS.pt1, CS.pb3)} justify="flex-end">
-        <Button variant="subtle" c="text-disabled" onClick={openModal}>
+        <Button variant="subtle" c="text-secondary" onClick={openModal}>
           {t`Delete this subscription`}
         </Button>
       </Flex>
@@ -91,44 +91,42 @@ export function DeleteSubscriptionAction({
         size="lg"
         data-testid="delete-confirmation-modal-pulse"
       >
-        <Flex direction="column" gap="lg" mt="lg">
-          <ul>
-            {confirmItems.map((item, index) => (
-              <li
-                key={index}
-                className={cx(
-                  CS.pb2,
-                  CS.mb2,
-                  CS.borderRowDivider,
-                  CS.flex,
-                  CS.alignCenter,
-                )}
-              >
-                <Checkbox
-                  label={item}
-                  checked={checked[index]}
-                  onChange={(e) =>
-                    setChecked({
-                      ...checked,
-                      [index]: e.currentTarget.checked,
-                    })
-                  }
-                />
-              </li>
-            ))}
-          </ul>
-          <Flex justify="flex-end" gap="sm">
-            <Button onClick={closeModal}>{t`Cancel`}</Button>
-            <Button
-              color={confirmed ? "negative" : undefined}
-              variant="filled"
-              onClick={handleDelete}
-              disabled={!confirmed}
+        <ul>
+          {confirmItems.map((item, index) => (
+            <li
+              key={index}
+              className={cx(
+                CS.pb2,
+                CS.mb2,
+                CS.borderRowDivider,
+                CS.flex,
+                CS.alignCenter,
+              )}
             >
-              {t`Delete`}
-            </Button>
-          </Flex>
-        </Flex>
+              <Checkbox
+                label={item}
+                checked={checked[index]}
+                onChange={(e) =>
+                  setChecked({
+                    ...checked,
+                    [index]: e.currentTarget.checked,
+                  })
+                }
+              />
+            </li>
+          ))}
+        </ul>
+        <Modal.Footer>
+          <Button onClick={closeModal}>{t`Cancel`}</Button>
+          <Button
+            color={confirmed ? "negative" : undefined}
+            variant="filled"
+            onClick={handleDelete}
+            disabled={!confirmed}
+          >
+            {t`Delete`}
+          </Button>
+        </Modal.Footer>
       </Modal>
     </>
   );

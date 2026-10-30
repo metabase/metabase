@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { ThemeProvider as _CompatibilityEmotionThemeProvider } from "@emotion/react";
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";

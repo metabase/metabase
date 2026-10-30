@@ -1,17 +1,17 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
+import { Box, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NormalizedTable } from "metabase-types/api";
 
-import { Container, Label, LabelContainer } from "../MetadataInfo.styled";
+import { Label, LabelContainer } from "../MetadataInfo";
+import { TableLabel } from "../TableLabel/TableLabel";
 
-import {
-  InteractiveTableLabel,
-  LabelButton,
-  LabelLink,
-} from "./ConnectedTables.styled";
+import S from "./ConnectedTables.module.css";
 
 export type ConnectedTable = Pick<
   NormalizedTable,
@@ -25,8 +25,8 @@ type Props = {
 
 export function ConnectedTables({ tables, onConnectedTableClick }: Props) {
   return tables.length ? (
-    <Container>
-      <LabelContainer color="text-primary">
+    <Stack className={CS.overflowAuto} pos="relative" gap="sm">
+      <LabelContainer c="text-primary">
         <Label>{t`Connected to these tables`}</Label>
       </LabelContainer>
       {tables.slice(0, 8).map((fkTable) => {
@@ -40,7 +40,7 @@ export function ConnectedTables({ tables, onConnectedTableClick }: Props) {
           <ConnectedTableLink key={fkTable.id} table={fkTable} />
         );
       })}
-    </Container>
+    </Stack>
   ) : null;
 }
 
@@ -52,9 +52,15 @@ function ConnectedTableButton({
   onClick: (table: ConnectedTable) => void;
 }) {
   return (
-    <LabelButton key={table.id} onClick={() => onClick(table)}>
-      <InteractiveTableLabel table={table} />
-    </LabelButton>
+    <Box
+      component="button"
+      key={table.id}
+      className={S.connectedTable}
+      ta="left"
+      onClick={() => onClick(table)}
+    >
+      <TableLabel className={S.label} table={table} />
+    </Box>
   );
 }
 
@@ -73,8 +79,8 @@ function ConnectedTableLink({ table }: { table: ConnectedTable }) {
   }, [buildQuestion, table.db_id, table.id]);
 
   return (
-    <LabelLink to={url}>
-      <InteractiveTableLabel table={table} />
-    </LabelLink>
+    <Link className={S.connectedTable} to={url}>
+      <TableLabel className={S.label} table={table} />
+    </Link>
   );
 }

@@ -1,23 +1,20 @@
-import type { PropsWithChildren } from "react";
 import {
+  type MetabaseAuthConfig,
   MetabaseProvider,
   type SdkDashboardLoadEvent,
-  defineMetabaseAuthConfig,
 } from "@metabase/embedding-sdk-react";
+import type { PropsWithChildren } from "react";
 
-const authConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: "",
-});
+const authConfig = {} as MetabaseAuthConfig;
 
 const Example = ({ children }: PropsWithChildren) => {
   // [<snippet example>]
   const handleDashboardLoad: SdkDashboardLoadEvent = (dashboard) => {
-    /* do whatever you need to do - e.g. send analytics events, show notifications */
+    // Send analytics events, show notifications, etc.
   };
 
   const eventHandlers = {
     onDashboardLoad: handleDashboardLoad,
-    onDashboardLoadWithoutCards: handleDashboardLoad,
   };
 
   return (

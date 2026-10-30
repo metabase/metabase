@@ -81,6 +81,7 @@ export interface Database extends DatabaseData {
   uploads_table_prefix: string | null;
   is_audit?: boolean;
   is_attached_dwh?: boolean;
+  is_stub?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
 
@@ -103,7 +104,6 @@ export interface DatabaseData {
   // [[metabase.models.interface/to-json]] for `:model/Database`:
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
-  admin_details?: Record<string, unknown> | null;
   schedules: DatabaseSchedules;
   auto_run_queries: boolean | null;
   refingerprint: boolean | null;
@@ -165,9 +165,9 @@ export type ListDatabasesRequest = {
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
   include_analytics?: boolean;
+  include_stubs?: boolean;
   router_database_id?: DatabaseId;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
 };
 
 export interface ListDatabasesResponse {
@@ -185,7 +185,6 @@ export interface ListDatabaseSchemasRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
 }
 
 export interface ListDatabaseSchemaTablesRequest {
@@ -194,7 +193,6 @@ export interface ListDatabaseSchemaTablesRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
   include_measures?: boolean;
 }
 
@@ -206,6 +204,7 @@ export interface ListVirtualDatabaseTablesRequest {
 export interface GetDatabaseMetadataRequest {
   id: DatabaseId;
   include_hidden?: boolean;
+  include_sensitive_fields?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
   skip_fields: true; // make sure we don't get every field of every table
@@ -230,7 +229,6 @@ export interface UpdateDatabaseRequest {
   refingerprint?: boolean | null;
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
-  admin_details?: Record<string, unknown> | null;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;
@@ -239,6 +237,21 @@ export interface UpdateDatabaseRequest {
   cache_ttl?: number | null;
   settings?: DatabaseSettings | null;
 }
+
+export interface ValidateDatabaseRequest {
+  details: {
+    engine: string;
+    details: Record<string, unknown>;
+    /** Validate against an existing database, resolving details it left redacted */
+    id?: DatabaseId;
+  };
+}
+
+export type ValidateDatabaseResponse = {
+  valid: boolean;
+  message?: string;
+  errors?: Record<string, string>;
+};
 
 export type DatabaseEditErrorType = {
   data: {

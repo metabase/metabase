@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.google :as google]
@@ -58,7 +59,7 @@
   (update opts :credentials #(or % (settings-credentials))))
 
 (defn- google-raw [opts]
-  (google/google-raw (with-settings-credentials opts)))
+  (second (google/google-raw (with-settings-credentials opts))))
 
 (defn- list-models
   ([] (list-models {}))
@@ -73,6 +74,7 @@
       "google/gemini-3.5-flash" 1048576
       "google/gemini-3.6-flash" 1048576
       "google/gemini-3.7-flash" 1048576
+      "google/gemini-3.8-flash" 1048576
       "google/gemini-unknown"   nil)))
 
 (deftest context-window-tokens-anthropic-test
@@ -80,10 +82,14 @@
            including when the platform dates it in the `@` spelling"
     (are [model window] (= window (google/context-window-tokens model))
       "anthropic/claude-fable-5"            1000000
+      "anthropic/claude-opus-5-5"           1000000
       "anthropic/claude-opus-5"             1000000
       "anthropic/claude-opus-4-6"           1000000
+      "anthropic/claude-sonnet-5-5"         1000000
       "anthropic/claude-sonnet-5"           1000000
       "anthropic/claude-sonnet-4-6"         1000000
+      "anthropic/claude-haiku-5-5"          1000000
+      "anthropic/claude-haiku-4-5"           200000
       "anthropic/claude-haiku-4-5@20251001"  200000
       "anthropic/claude-unknown"            nil)))
 
@@ -159,7 +165,8 @@
                    :headers {"Content-Type" "application/json"}}
                   req))
           (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
-                  :generationConfig {:thinkingConfig {:includeThoughts true}}}
+                  :generationConfig {:maxOutputTokens 32000
+                                     :thinkingConfig  {:includeThoughts true}}}
                  (json/decode+kw (:body req)))))))))
 
 (deftest google-raw-regional-location-host-test
@@ -399,8 +406,7 @@
               "the URL names the model; a model in the body is rejected by the platform"))))))
 
 (deftest google-raw-anthropic-max-tokens-test
-  (testing "the Anthropic model whitelist supplies max_tokens for a bare current-generation ID, and the @-versioned
-           spelling of a dated ID resolves to the same entry the direct Anthropic adapter uses"
+  (testing "an Anthropic model gets the default max_tokens, whether its ID is bare or @-versioned"
     (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
@@ -409,11 +415,12 @@
                                   self.core/reducible-with-api-errors (fn [r _ _] r)
                                   debug/capture-stream                (fn [r _] r)
                                   http/request                        (fn [req] {:body req})]
-        (doseq [[model max-tokens] {"anthropic/claude-sonnet-4-6"          128000
-                                    "anthropic/claude-fable-5"             128000
-                                    "anthropic/claude-haiku-4-5@20251001"   64000}]
+        (doseq [model ["anthropic/claude-sonnet-4-6"
+                       "anthropic/claude-fable-5"
+                       "anthropic/claude-haiku-4-5"
+                       "anthropic/claude-haiku-4-5@20251001"]]
           (testing model
-            (is (= max-tokens
+            (is (= 32000
                    (:max_tokens (json/decode+kw (:body (google-raw {:model model
                                                                     :input [{:role :user :content "hi"}]}))))))))))))
 
@@ -858,6 +865,29 @@
                     {:status  status
                      :headers {"content-type" "application/json"}
                      :body    body}))))
+
+(def ^:private context-overflow-body
+  "Google's 400 for an input over the model's context window, probed 2026-10-13 on gemini-3.5-flash
+  (https://github.com/metabase/metabase/pull/83989)."
+  (json/encode {:error {:code    400
+                        :message "The input token count exceeds the maximum number of tokens allowed 1048576."
+                        :status  "INVALID_ARGUMENT"}}))
+
+(deftest google-context-overflow-is-full-test
+  (testing "Google's 400 for an input over the context window makes the conversation \"full\""
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [http/request (stub-error (atom []) 400 context-overflow-body)]
+        (let [e (try
+                  (into [] (google {:model "google/gemini-3.5-flash"
+                                    :input [{:role :user :content "hi"}]}))
+                  (catch clojure.lang.ExceptionInfo e
+                    e))]
+          (is (=? {:status 400} (ex-data e)))
+          (is (= self.core/context-full-error-code
+                 (:error-code (self/context-overflow-error e)))))))))
 
 (deftest list-models-anthropic-empty-body-probe-test
   (testing "an anthropic model is probed by posting an empty body to its own streamRawPredict route"
@@ -1320,12 +1350,14 @@
                :as      :stream}
               post-req))
       (testing "the body is a Chat Completions request with an empty model, since the endpoint serves one"
-        (is (=? {:model          ""
-                 :stream         true
-                 :stream_options {:include_usage true}
-                 :messages       [{:role "user" :content "hi"}]
-                 :max_tokens     pos-int?}
-                (json/decode+kw (:body post-req))))))))
+        (let [body (json/decode+kw (:body post-req))]
+          (is (=? {:model          ""
+                   :stream         true
+                   :stream_options {:include_usage true}
+                   :messages       [{:role "user" :content "hi"}]}
+                  body))
+          (testing "and, like vLLM chat with an unknown context window, no output cap"
+            (is (not (contains? body :max_tokens)))))))))
 
 (deftest google-raw-dedicated-endpoint-host-test
   (testing "a dedicated endpoint is served on the DNS name its resource reports, in either spelling Google uses, also when the base URL names Google's host for the location"

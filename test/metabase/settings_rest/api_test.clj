@@ -150,6 +150,19 @@
       (test-api-setting-integer! 42)
       (is (= 42 (fetch-setting :test-api-setting-integer 200))))))
 
+(deftest ^:parallel include-in-list-false-test
+  (testing "a setting marked :include-in-list? false is left out of the bulk payloads but still readable by key"
+    (let [properties (mt/user-http-request :crowberto :get 200 "session/properties")
+          listed     (into #{} (map (comp keyword :key)) (mt/user-http-request :crowberto :get 200 "setting"))]
+      (doseq [setting-key [:engines :available-timezones]]
+        (testing setting-key
+          (testing "left out of GET /api/session/properties, which is the payload the page inlines"
+            (is (not (contains? properties setting-key))))
+          (testing "left out of GET /api/setting"
+            (is (not (contains? listed setting-key))))
+          (testing "still served by GET /api/setting/:key"
+            (is (some? (fetch-setting setting-key 200)))))))))
+
 (deftest ^:parallel engines-mark-h2-superseded-test
   (testing "GET /api/setting/:key"
     (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"

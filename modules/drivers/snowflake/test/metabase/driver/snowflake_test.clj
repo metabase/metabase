@@ -25,14 +25,16 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
@@ -60,6 +62,7 @@
    (java.io StringWriter)
    (java.security KeyFactory)
    (java.security.spec PKCS8EncodedKeySpec)
+   (net.snowflake.client.internal.jdbc SnowflakeConnectString)
    (org.bouncycastle.openssl PKCS8Generator)
    (org.bouncycastle.openssl.jcajce JcaPEMWriter JcaPKCS8Generator JceOpenSSLPKCS8EncryptorBuilder)))
 
@@ -69,12 +72,12 @@
   (mt/test-driver :snowflake
     (testing "details naming no schema fall back to PUBLIC, which is how Metabase has always read them"
       (is (= "PUBLIC"
-             (driver.sql/default-schema :snowflake (mt/db)))))
+             (driver.sql/default-schema :snowflake (lib.metadata/database (mt/metadata-provider))))))
     (testing "schema configured in the JDBC additional options"
       (let [details (assoc (:details (mt/db)) :additional-options "schema=INFORMATION_SCHEMA")]
         (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
           (is (= "INFORMATION_SCHEMA"
-                 (driver.sql/default-schema :snowflake database))))))))
+                 (driver.sql/default-schema :snowflake (driver.u/ensure-lib-database database)))))))))
 
 (deftest ^:parallel connection-hosts-test
   (are [details expected] (= expected (driver/connection-hosts :snowflake details))
@@ -164,12 +167,23 @@
               :json-unfolding false
               :database-position 5}]
             (sort-by :database-position
-                     (into [] (fetch-metadata/fields-metadata (mt/db) {:table-names ["venues"]})))))))
+                     (into [] (fetch-metadata/fields-metadata (lib.metadata/database (mt/metadata-provider)) {:table-names ["venues"]})))))))
 
 (deftest ^:parallel quote-name-test
   (is (nil? (#'driver.snowflake/quote-name nil)))
   (is (= "\"alma\"" (#'driver.snowflake/quote-name "alma")))
   (is (= "\"Al\"\"aba\"\"Ma\"" (#'driver.snowflake/quote-name "Al\"aba\"Ma"))))
+
+(defn- put-get-as-the-client-reads-it
+  "The `enablePutGet` value the Snowflake client resolves `spec` to, asking its own parser. `clojure.java.jdbc` hands
+  it the URL built from `:subname` and every other spec key as a connection property."
+  [spec]
+  (let [url   (str "jdbc:" (:subprotocol spec) ":" (:subname spec))
+        props (java.util.Properties.)]
+    (doseq [[k v] (dissoc spec :classname :subprotocol :subname)
+            :when (some? v)]
+      (.setProperty props (name k) (str v)))
+    (get (.getParameters (SnowflakeConnectString/parse url props)) "ENABLEPUTGET")))
 
 (deftest ^:parallel connection-details->spec-test
   (let [details {:role nil
@@ -215,6 +229,11 @@
         (let [spec (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :additional-options opts))]
           (is (= "false" (:enablePutGet spec)))
           (is (not (re-find #"(?i)enablePutGet" (str (:subname spec))))))))
+    (testing "...including through a detail key in another casing, which the client would read in place of ours"
+      (doseq [k ["Enableputget" "eNableputget" "ENablePutGet" "enableputget" "ENABLEPUTGET" " enablePutGet "]]
+        (testing (pr-str k)
+          (is (= "false" (put-get-as-the-client-reads-it
+                          (sql-jdbc.conn/connection-details->spec :snowflake (assoc details (keyword k) "true"))))))))
     (testing "additional options wins over top-level schema"
       ;; https://github.com/metabase/metabase/issues/65493
       (let [details (assoc details :schema "BAD" :additional-options "schema=GOOD")
@@ -268,6 +287,20 @@
                          :wif-token-file-path tok-path))]
         (is (= "from-file" (:token spec)))))))
 
+(deftest ^:synchronized connection-details->spec-wif-oidc-file-path-readable-paths-test
+  (testing "the token file is read only from a directory `readable-paths` allows"
+    (mt/with-temp-file [tok-path "wif-token"]
+      (spit tok-path "from-file")
+      (let [spec (fn [] (sql-jdbc.conn/connection-details->spec
+                         :snowflake
+                         (assoc wif-base-details
+                                :wif-provider        "OIDC"
+                                :wif-token-file-path tok-path)))]
+        (mt/with-temp-env-var-value! [mb-readable-paths "NONE"]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed" (spec))))
+        (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
+          (is (= "from-file" (:token (spec)))))))))
+
 (defn- fake-jwt
   "Build a JWT-shaped string with `claims` as the payload. Header and signature are placeholders —
   the token is only parseable, not verifiable."
@@ -304,17 +337,70 @@
                        :wif-token    (fake-jwt {:sub "s"})))]
       (is (not (contains? spec :password-expiry-timestamp))))))
 
-(deftest ^:parallel connection-details->spec-wif-cloud-providers-test
-  (testing "WIF AWS/AZURE/GCP set no client-side credential fields"
-    (doseq [provider ["AWS" "AZURE" "GCP"]]
-      (testing provider
-        (let [spec (sql-jdbc.conn/connection-details->spec
-                    :snowflake
-                    (assoc wif-base-details :wif-provider provider))]
-          (is (= "WORKLOAD_IDENTITY" (:authenticator spec)))
-          (is (= provider (:workloadIdentityProvider spec)))
-          (is (not (contains? spec :token)))
-          (is (not (contains? spec :token_file_path))))))))
+(deftest connection-details->spec-wif-cloud-providers-test
+  (testing "WIF AWS/AZURE/GCP set no client-side credential fields (self-hosted only -- Metabase Cloud rejects these)"
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+      (doseq [provider ["AWS" "AZURE" "GCP"]]
+        (testing provider
+          (let [spec (sql-jdbc.conn/connection-details->spec
+                      :snowflake
+                      (assoc wif-base-details :wif-provider provider))]
+            (is (= "WORKLOAD_IDENTITY" (:authenticator spec)))
+            (is (= provider (:workloadIdentityProvider spec)))
+            (is (not (contains? spec :token)))
+            (is (not (contains? spec :token_file_path)))))))))
+
+(deftest connection-details->spec-wif-hosted-rejects-ambient-providers-test
+  (testing "On Metabase Cloud, ambnient WIF providers (e.g., AWS, AZURE, GCP) are not allowed."
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (doseq [provider ["AWS" "AZURE" "GCP"]]
+        (testing provider
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"not available on Metabase Cloud"
+               (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc wif-base-details :wif-provider provider))))))))
+  (testing "WIF OIDC with an explicit token is still allowed on Metabase Cloud."
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :snowflake
+                  (assoc wif-base-details :wif-provider "OIDC" :wif-token "eyJhbGciOi.jwt.sig"))]
+        (is (= "WORKLOAD_IDENTITY" (:authenticator spec)))
+        (is (= "OIDC" (:workloadIdentityProvider spec)))
+        (is (= "eyJhbGciOi.jwt.sig" (:token spec))))))
+  (testing (str "A missing wif-provider on Metabase Cloud is rejected too to prevent the Snowflake JDBC driver "
+                "from using ambient providers.")
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (doseq [[label details] [["nil"   (dissoc wif-base-details :wif-provider)]
+                               ["blank" (assoc wif-base-details :wif-provider "")]]]
+        (testing label
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"required on Metabase Cloud"
+               (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
+  (testing "Off Metabase Cloud, ambient WIF providers continue to work."
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+      (doseq [provider ["AWS" "AZURE" "GCP"]]
+        (testing provider
+          (let [spec (sql-jdbc.conn/connection-details->spec
+                      :snowflake
+                      (assoc wif-base-details :wif-provider provider))]
+            (is (= "WORKLOAD_IDENTITY" (:authenticator spec)))
+            (is (= provider (:workloadIdentityProvider spec)))))))))
+
+(deftest wif-provider-options-hidden-when-hosted-test
+  (let [wif-provider-values
+        (fn [] (->> (:details-fields (:snowflake (driver.u/available-drivers-info)))
+                    (m/find-first #(= "wif-provider" (:name %)))
+                    :options
+                    (mapv :value)))]
+    (testing "On Metabase Cloud, the ambient options are stripped from the wif-provider select."
+      (mt/with-premium-features #{:hosting}
+        (is (= ["OIDC"] (wif-provider-values)))))
+    (testing "Off Metabase Cloud, every provider is offered."
+      (mt/with-premium-features #{}
+        (is (= ["OIDC" "AWS" "AZURE" "GCP"] (wif-provider-values)))))))
 
 (deftest ^:parallel connection-details->spec-wif-strips-legacy-creds-test
   (testing "under WIF, stray password and private-key fields do not leak into the JDBC spec"
@@ -329,6 +415,83 @@
       (is (not (contains? spec :password)))
       (is (not (contains? spec :private_key_file)))
       (is (nil? (:connection-uri spec))))))
+
+(def ^:private oauth-cc-base-details
+  {:account                 "acct.us-east-2.aws"
+   :warehouse               "COMPUTE_WH"
+   :db                      "TESTDB"
+   :user                    "SERVICE_USER"
+   :auth-mode               "oauth-client-credentials"
+   :oauth-client-id         "metabase-client"
+   :oauth-client-secret     "shh"
+   :oauth-token-request-url "https://idp.example.com/oauth2/v1/token"})
+
+(deftest ^:parallel connection-details->spec-oauth-client-credentials-test
+  (testing "oauth-client-credentials emits the Snowflake JDBC OAuth properties"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc oauth-cc-base-details :oauth-scope "session:role:ANALYST"))]
+      (is (= "oauth_client_credentials" (:authenticator spec)))
+      (is (= "metabase-client" (:oauthClientId spec)))
+      (is (= "shh" (:oauthClientSecret spec)))
+      (is (= "https://idp.example.com/oauth2/v1/token" (:oauthTokenRequestUrl spec)))
+      (is (= "session:role:ANALYST" (:oauthScope spec))))))
+
+(deftest ^:parallel connection-details->spec-oauth-client-credentials-scope-optional-test
+  (testing "omitting oauth-scope leaves :oauthScope absent"
+    (let [spec (sql-jdbc.conn/connection-details->spec :snowflake oauth-cc-base-details)]
+      (is (= "oauth_client_credentials" (:authenticator spec)))
+      (is (not (contains? spec :oauthScope)))))
+  (testing "a blank oauth-scope is treated as absent"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc oauth-cc-base-details :oauth-scope "   "))]
+      (is (not (contains? spec :oauthScope))))))
+
+(deftest ^:parallel connection-details->spec-oauth-client-credentials-strips-legacy-creds-test
+  (testing "under oauth-client-credentials, stale password / private-key / wif fields do not leak"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc oauth-cc-base-details
+                       :password            "stale-password"
+                       :private-key-value   "stale-key"
+                       :private-key-options "uploaded"
+                       :wif-provider        "OIDC"
+                       :wif-token           "stale-jwt"))]
+      (is (= "oauth_client_credentials" (:authenticator spec)))
+      (is (not (contains? spec :password)))
+      (is (not (contains? spec :private_key_file)))
+      (is (not (contains? spec :token)))
+      (is (not (contains? spec :workloadIdentityProvider)))
+      (is (nil? (:connection-uri spec)))))
+  (testing "Metabase-side oauth-* detail keys don't leak through alongside the JDBC property names"
+    (let [spec (sql-jdbc.conn/connection-details->spec :snowflake oauth-cc-base-details)]
+      (is (not (contains? spec :oauth-client-id)))
+      (is (not (contains? spec :oauth-client-secret)))
+      (is (not (contains? spec :oauth-token-request-url)))
+      (is (not (contains? spec :oauth-scope))))))
+
+(deftest ^:parallel connection-details->spec-explicit-auth-mode-test
+  (testing "an explicit :auth-mode wins over stale credentials of the previous method"
+    (let [details {:account             "acct.us-east-2.aws"
+                   :warehouse           "COMPUTE_WH"
+                   :db                  "TESTDB"
+                   :user                "SERVICE_USER"
+                   :password            "passwd"
+                   :private-key-options "uploaded"
+                   :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes "pk"))}]
+      (testing "key-pair"
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :snowflake
+                    (assoc details :auth-mode "key-pair" :use-password true))]
+          (is (not (contains? spec :password)))
+          (is (some? (:private_key_file spec)))))
+      (testing "password"
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :snowflake
+                    (assoc details :auth-mode "password" :use-password false))]
+          (is (= "passwd" (:password spec)))
+          (is (not (contains? spec :private_key_file))))))))
 
 (deftest ^:parallel connection-details->spec-wif-role-as-property-test
   (testing "under WIF, :role is in the JDBC properties map"
@@ -357,6 +520,31 @@
       {:auth-mode "wif"      :wif-token "jwt"}
       {:auth-mode "password" :password  "abc"}
       {:auth-mode "key-pair" :private-key-value "xxx"})))
+
+(deftest ^:parallel normalize-details-use-password-follows-auth-mode-test
+  (testing ":use-password follows an explicit :auth-mode"
+    (are [in expected] (= expected (:use-password (#'driver.snowflake/normalize-details in)))
+      {:auth-mode "key-pair" :use-password true  :password "abc" :private-key-id 1} false
+      {:auth-mode "key-pair" :password "abc"}                                       false
+      {:auth-mode "password" :use-password false :password "abc" :private-key-id 1} true
+      {:auth-mode "password" :password "abc" :private-key-id 1}                     true))
+  (testing "the selected method is tried first when the details are migrated"
+    (are [in expected] (= expected (-> (driver/db-details-to-test-and-migrate
+                                        :snowflake
+                                        (#'driver.snowflake/normalize-details in))
+                                       first meta :auth))
+      {:auth-mode "key-pair" :use-password true  :password "abc" :private-key-id 1} :private-key-id
+      {:auth-mode "password" :use-password false :password "abc" :private-key-id 1} :password)))
+
+(deftest ^:parallel db-details-to-test-and-migrate-oauth-client-credentials-test
+  (testing "oauth-client-credentials-only details are unambiguous — no candidates returned"
+    (is (nil? (driver/db-details-to-test-and-migrate :snowflake oauth-cc-base-details))))
+  (testing "when oauth-client-credentials and password are both set, oauth is tried first"
+    (let [candidates (driver/db-details-to-test-and-migrate
+                      :snowflake
+                      (assoc oauth-cc-base-details :password "stale-pw"))]
+      (is (some? candidates))
+      (is (= :oauth-client-credentials (-> candidates first meta :auth))))))
 
 (deftest ^:parallel db-details-to-test-and-migrate-wif-test
   (testing "WIF-only details are unambiguous — no candidates returned"
@@ -453,7 +641,7 @@
             (let [pool-cache @#'sql-jdbc.conn/pool-cache-key->connection-pool
                   cache-key  [(:id db) :default]
                   query!     (fn []
-                               (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db)
+                               (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
                                            ["SELECT CURRENT_USER() AS \"user\""]))]
               (testing "initial query works with token-a"
                 (is (= [{:user wif-user}] (query!))))
@@ -475,6 +663,54 @@
                     (let [new-exp (get-in @pool-cache [cache-key :password-expiry-timestamp])]
                       (is (> new-exp initial-exp)
                           "new pool's :password-expiry-timestamp reflects the fresher token"))))))))))))
+
+(defn- oauth-cc-user-or-skip
+  "Returns the Snowflake service username for the OAuth client-credentials live test, or nil to
+  signal skip. If MB_SNOWFLAKE_TEST_OAUTH_CC_USER isn't set, records a test failure with
+  instructions. Set the env var to 'skip' to opt out explicitly (REPL, forks, release branches)."
+  []
+  (let [u (tx/db-test-env-var :snowflake :oauth-cc-user)]
+    (cond
+      (= "skip" u)   nil
+      (str/blank? u) (do (is false
+                             (str "MB_SNOWFLAKE_TEST_OAUTH_CC_USER isn't set. Set it to the "
+                                  "Snowflake OAuth service user (TYPE=SERVICE), or to 'skip' to "
+                                  "opt out."))
+                         nil)
+      :else          u)))
+
+(defn- oauth-cc-live-details
+  "Details map for the OAuth client-credentials live test. `:role` and `:oauth-scope` are added
+  only when their env vars are set."
+  [user]
+  (let [role  (tx/db-test-env-var :snowflake :oauth-cc-role)
+        scope (tx/db-test-env-var :snowflake :oauth-cc-scope)]
+    (cond-> {:account                 (tx/db-test-env-var-or-throw :snowflake :oauth-cc-account)
+             :user                    user
+             :warehouse               (tx/db-test-env-var-or-throw :snowflake :oauth-cc-warehouse)
+             :db                      (tx/db-test-env-var-or-throw :snowflake :oauth-cc-db)
+             :auth-mode               "oauth-client-credentials"
+             :oauth-client-id         (tx/db-test-env-var-or-throw :snowflake :oauth-cc-client-id)
+             :oauth-client-secret     (tx/db-test-env-var-or-throw :snowflake :oauth-cc-client-secret)
+             :oauth-token-request-url (tx/db-test-env-var-or-throw :snowflake :oauth-cc-token-request-url)}
+      role  (assoc :role role)
+      scope (assoc :oauth-scope scope))))
+
+(deftest ^:synchronized snowflake-oauth-client-credentials-live-test
+  ;; End-to-end test against a real Snowflake user via an External OAuth integration whose IdP
+  ;; (e.g. AWS Cognito) honors the OAuth 2.0 client-credentials grant. The Snowflake JDBC driver
+  ;; itself calls the IdP's token endpoint with `oauth-client-id` + `oauth-client-secret`,
+  ;; receives a JWT, and submits it to Snowflake per new connection.
+  (mt/test-driver
+    :snowflake
+    (when-let [user (oauth-cc-user-or-skip)]
+      (let [details (oauth-cc-live-details user)]
+        (testing "can-connect? via OAuth client-credentials"
+          (is (true? (driver/can-connect? :snowflake details))))
+        (testing "session identifies as the OAuth service user (proves auth flowed through OAuth)"
+          (let [spec (sql-jdbc.conn/connection-details->spec :snowflake details)
+                rows (jdbc/query spec ["SELECT CURRENT_USER() AS \"user\""])]
+            (is (= [{:user user}] rows))))))))
 
 (defn- pem->private-key
   [pem]
@@ -576,7 +812,7 @@
     (qp.store/with-metadata-provider (mt/id)
       (sql-jdbc.execute/do-with-connection-with-options
        :snowflake
-       (mt/db)
+       (mt/id)
        nil
        (fn [^java.sql.Connection conn]
          (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
@@ -638,16 +874,16 @@
                                   {:name "airport", :schema "PUBLIC", :description nil}}]
             (testing "should work with normal details"
               (is (= expected-tables
-                     (into #{} (:tables (driver/describe-database :snowflake (mt/db)))))))
+                     (into #{} (:tables (driver/describe-database :snowflake (lib.metadata/database (mt/metadata-provider))))))))
             (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
               (is (= expected-tables
-                     (into #{} (:tables (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))))
+                     (into #{} (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database (update (mt/db) :details set/rename-keys {:db :dbname}))))))))
             (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
               (is (thrown? Exception
-                           (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
+                           (driver/describe-database :snowflake (driver.u/ensure-lib-database (update (mt/db) :details set/rename-keys {:db :xyz}))))))
             (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
               (is (= expected-tables
-                     (:tables (driver/describe-database :snowflake (assoc (mt/db) :name "ABC"))))))))))))
+                     (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database (assoc (mt/db) :name "ABC")))))))))))))
 
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
@@ -679,7 +915,7 @@
         ;; fetch metadata
         (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
           (is (=? {:tables #{{:name table-name, :schema schema-name, :description nil}}}
-                  (driver/describe-database :snowflake database))))))))
+                  (driver/describe-database :snowflake (driver.u/ensure-lib-database database)))))))))
 
 (deftest describe-database-views-test
   (mt/test-driver :snowflake
@@ -693,7 +929,7 @@
           (jdbc/execute! spec [stmt] {:transaction? false}))
         ;; create the DB object
         (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
-          (let [sync! #(sync/sync-database! database)]
+          (let [sync! #(sync/sync-database! (:id database))]
             ;; create a view
             (doseq [statement [(format "CREATE VIEW \"%s\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";" db-name)
                                (format "GRANT SELECT ON \"%s\".\"PUBLIC\".\"example_view\" TO PUBLIC;" db-name)]]
@@ -720,7 +956,7 @@
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = DOWNSTREAM warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
                               db-name db-name db-name)])
-      (sync/sync-database! (t2/select-one :model/Database (mt/id)) {:scan :schema})
+      (sync/sync-database! (:id (t2/select-one :model/Database :id (mt/id))) {:scan :schema})
       (thunk))))
 
 (defmacro with-dynamic-table!
@@ -747,7 +983,7 @@
       (with-dynamic-table!
         (sql-jdbc.execute/do-with-connection-with-options
          :snowflake
-         (mt/db)
+         (mt/id)
          nil
          (fn [conn]
            (let [dynamic-table (or (t2/select-one :model/Table :name "metabase_fan" :db_id (mt/id))
@@ -784,15 +1020,14 @@
   (testing "the FK path passes raw names to the dynamic table check (#78541)"
     (let [dynamic-table-args (atom nil)
           fk-args            (atom nil)]
-      (with-redefs [driver.snowflake/dynamic-table?
-                    (fn [_conn db-name schema table-name]
-                      (reset! dynamic-table-args [db-name schema table-name])
-                      false)
-
-                    sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata
-                    (fn [_metadata db-name schema table-name]
-                      (reset! fk-args [db-name schema table-name])
-                      [])]
+      (mt/with-dynamic-fn-redefs [driver.snowflake/dynamic-table?
+                                  (fn [_conn db-name schema table-name]
+                                    (reset! dynamic-table-args [db-name schema table-name])
+                                    false)
+                                  sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata
+                                  (fn [_metadata db-name schema table-name]
+                                    (reset! fk-args [db-name schema table-name])
+                                    [])]
         (#'driver.snowflake/reducible-table-fks-from-jdbc-metadata
          (reify java.sql.Connection) (reify java.sql.DatabaseMetaData) "MY_DB" "RAW_DATA" "MY_TABLE"))
       (is (= ["MY_DB" "RAW_DATA" "MY_TABLE"] @dynamic-table-args))
@@ -802,11 +1037,11 @@
 (deftest ^:synchronized describe-table-fields-uuid-column-test
   (mt/test-driver :snowflake
     (testing "Snowflake tables with UUID columns should sync successfully (#71595)"
-      (let [db-name    (#'driver.snowflake/db-name (mt/db))
+      (let [db-name    (#'driver.snowflake/db-name (lib.metadata/database (mt/metadata-provider)))
             table-name (str "uuid_test_" (u.random/random-name))]
         (sql-jdbc.execute/do-with-connection-with-options
          :snowflake
-         (mt/db)
+         (mt/id)
          nil
          (fn [^java.sql.Connection conn]
            (try
@@ -846,12 +1081,12 @@
              the new base_type and clear stale coercion_strategy/semantic_type. Reproduces the
              in-place update path (repro v1 from the Linear issue) where Metabase's Field row is
              preserved across the schema change."
-        (let [db-name    (#'driver.snowflake/db-name (mt/db))
+        (let [db-name    (#'driver.snowflake/db-name (lib.metadata/database (mt/metadata-provider)))
               table-name (str "ghy_3388_" (u.random/random-name))
               run-sql!   (fn [stmts]
                            (sql-jdbc.execute/do-with-connection-with-options
                             :snowflake
-                            (mt/db)
+                            (mt/id)
                             nil
                             (fn [^java.sql.Connection conn]
                               (doseq [stmt stmts]
@@ -863,7 +1098,7 @@
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
             ;; step 2: sync — Metabase creates Table + Field rows for our new table
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (let [original-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   _              (is (some? original-table) "table should be synced")
                   original-field (t2/select-one :model/Field :table_id (:id original-table) :name "text_column")]
@@ -876,7 +1111,7 @@
                                       "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                  qualified qualified)])
               ;; step 4: sync again
-              (sync/sync-database! (mt/db))
+              (sync/sync-database! (mt/id))
               (let [new-field (t2/select-one :model/Field :id (:id original-field))]
                 (testing "after sync, base_type and effective_type both reflect the new numeric column,
                        and stale coercion/semantic type are cleared"
@@ -896,11 +1131,11 @@
               (t2/delete! :model/Table :id (:id original-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
                                     "SELECT \"id\", TRY_TO_NUMBER(\"text_column\", 38, 2) AS \"text_column\" FROM %s;")
                                qualified qualified)])
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (let [fresh-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   fresh-field (t2/select-one :model/Field :table_id (:id fresh-table) :name "text_column")]
               (testing "after fresh-state CREATE OR REPLACE to numeric, base_type and effective_type
@@ -921,17 +1156,17 @@
               (t2/delete! :model/Table :id (:id fresh-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (let [pre-coerce-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   pre-coerce-field (t2/select-one :model/Field :table_id (:id pre-coerce-table) :name "text_column")]
               ;; user enables coercion: this TEXT column is really an integer
-              (t2/update! :model/Field (:id pre-coerce-field)
+              (t2/update! :model/Field :id (:id pre-coerce-field)
                           {:coercion_strategy :Coercion/String->Integer
                            :effective_type    :type/Integer})
               (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
                                       "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                  qualified qualified)])
-              (sync/sync-database! (mt/db))
+              (sync/sync-database! (mt/id))
               (let [after-field (t2/select-one :model/Field :id (:id pre-coerce-field))]
                 (testing "after the underlying TEXT column becomes a native number, the previously
                        user-set coercion strategy should be cleared and effective_type should
@@ -953,19 +1188,19 @@
               (t2/delete! :model/Table :id (:id stale-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (let [v4-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   v4-field (t2/select-one :model/Field :table_id (:id v4-table) :name "text_column")]
               (field-user-settings/upsert-user-settings v4-field
                                                         {:coercion_strategy :Coercion/String->Integer
                                                          :effective_type    :type/Integer})
-              (t2/update! :model/Field (:id v4-field)
+              (t2/update! :model/Field :id (:id v4-field)
                           {:coercion_strategy :Coercion/String->Integer
                            :effective_type    :type/Integer})
               (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
                                       "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                  qualified qualified)])
-              (sync/sync-database! (mt/db))
+              (sync/sync-database! (mt/id))
               (let [after-field         (t2/select-one :model/Field :id (:id v4-field))
                     after-user-settings (t2/select-one :model/FieldUserSettings :field_id (:id v4-field))]
                 (testing "after CREATE OR REPLACE to numeric, the user-set coercion stored in
@@ -992,7 +1227,7 @@
               (t2/delete! :model/Table :id (:id stale-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (let [v5-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   v5-field (t2/select-one :model/Field :table_id (:id v5-table) :name "text_column")]
               (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
@@ -1037,7 +1272,7 @@
                          :database-is-nullable       false
                          :database-required          true
                          :json-unfolding             false}]}
-              (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories)))
+              (-> (driver/describe-table :snowflake (driver.u/ensure-lib-database (assoc (mt/db) :name "ABC")) (t2/select-one :model/Table :id (mt/id :categories)))
                   (update :fields (partial sort-by :name))))))))
 
 (deftest ^:synchronized describe-fks-test
@@ -1053,8 +1288,8 @@
                (into []
                      (driver/describe-fks
                       :snowflake
-                      (-> (lib.metadata/database (mt/metadata-provider))
-                          (assoc :name "ABC"))
+                      (driver.u/ensure-lib-database (-> (lib.metadata/database (mt/metadata-provider))
+                                                        (assoc :name "ABC")))
                       {:schema-names [(:schema table)]
                        :table-names  [(:name table)]}))))))))
 
@@ -1062,7 +1297,7 @@
   (mt/test-driver
     :snowflake
     ;; the test DB authenticates with a private key, so give it a password to switch away from
-    (let [details (assoc (:details (mt/db)) :password "test-password" :use-password true)
+    (let [details (assoc (:details (mt/db)) :password "test-password" :use-password true :auth-mode "password")
           pk-key "testing"]
       (is (=?
            {:user some?
@@ -1079,12 +1314,12 @@
            {:user some?
             :password :hawk/key-not-present
             :private_key_file some?}
-           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :private-key-value pk-key))))
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :auth-mode "key-pair" :private-key-value pk-key))))
       (is (=?
            {:user some?
             :password :hawk/key-not-present
             :private_key_file some?}
-           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :auth-mode "key-pair" :private-key-value pk-key)))))))
 
 (deftest can-connect-test
   (let [pk-key (mt/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
@@ -1193,12 +1428,12 @@
                   (testing (format "use-password: %s private-key-options: %s uses-secret? %s" use-password options uses-secret?)
                     (spit pk-path pk-key)
                     (is (= 3 (count all-possible-details)))
-                    (t2/update! (t2/table-name :model/Database) (mt/id) {:details (json/encode details)})
+                    (t2/update! (t2/table-name :model/Database) :id (mt/id) {:details (json/encode details)})
                     (testing "Connection succeeds and migration occurs"
                       (log/with-no-logs
                         (log.capture/with-log-messages-for-level [messages [metabase.warehouses.models.database :info]]
                           (is (= details-to-succeed
-                                 (database/maybe-test-and-migrate-details! (assoc (t2/select-one :model/Database (mt/id))
+                                 (database/maybe-test-and-migrate-details! (assoc (t2/select-one :model/Database :id (mt/id))
                                                                                   :details details))))
                           (let [success-re #"^Successfully connected, migrating to: (.*)"
                                 msgs (messages)
@@ -1211,7 +1446,7 @@
                             (is (= {:keys success-keys
                                     :keys-removed keys-removed}
                                    migrating-to))))
-                        (let [migrated-details (:details (t2/select-one :model/Database (mt/id)))
+                        (let [migrated-details (:details (t2/select-one :model/Database :id (mt/id)))
                               expected-migrated (cond-> details-to-succeed
                                                   uses-secret? (assoc :private-key-id secret-id)
                                                   :always (dissoc :private-key-options :private-key-value :private-key-path))]
@@ -1284,8 +1519,8 @@
                                              :type :query
                                              :query {:source-table (:id table)}})))))
         ;; Cleanup
-        (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
-        (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
+        (u/ignore-exceptions (t2/delete! :model/Database :id (:id db)))
+        (u/ignore-exceptions (t2/delete! :model/Table :id (:id table)))
         (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
         (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
 
@@ -1332,8 +1567,8 @@
                                              :type :query
                                              :query {:source-table (:id table)}})))))
         ;; Cleanup
-        (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
-        (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
+        (u/ignore-exceptions (t2/delete! :model/Database :id (:id db)))
+        (u/ignore-exceptions (t2/delete! :model/Table :id (:id table)))
         (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
         (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
 
@@ -1727,7 +1962,7 @@
                (sort-by last
                         (into []
                               (map (juxt :name :database-type :base-type :database-position))
-                              (fetch-metadata/fields-metadata (mt/db)))))))))
+                              (fetch-metadata/fields-metadata (lib.metadata/database (mt/metadata-provider))))))))))
 
   ;; The test needs user with no report timezone set and database timezone other than UTC. That's the reason for redefs
   ;; prior to dataset generation.
@@ -1844,14 +2079,14 @@
 
 (deftest have-select-privelege?-timeout-test
   (mt/test-driver :snowflake
-    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table :id (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
           (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT SYSTEM$WAIT(3, 'SECONDS')"])]
             (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
               (sql-jdbc.execute/do-with-connection-with-options
                driver/*driver*
-               (mt/db)
+               (mt/id)
                nil
                (fn [^java.sql.Connection conn]
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
@@ -1861,7 +2096,7 @@
   "Returns a SHA-256 digest of the resolved private key file for `db`."
   [db]
   (-> (:details db)
-      (#'driver.snowflake/resolve-private-key)
+      (#'driver.snowflake/key-pair-jdbc-properties)
       :private_key_file
       slurp
       (.getBytes "UTF-8")
@@ -1906,9 +2141,9 @@
             (mt/with-temp [:model/Database rsa-db {:engine :snowflake :details rsa-details}]
               (let [original-priv-key (get-db-priv-key rsa-db)
                     updating-rsa-db (merge rsa-db {:details rsa-details-2})
-                    _ (t2/update! :model/Database (:id rsa-db) updating-rsa-db)
+                    _ (t2/update! :model/Database :id (:id rsa-db) updating-rsa-db)
                     details-changed? (not= (:details rsa-db) (:details updating-rsa-db))
-                    new-rsa-db (t2/select-one :model/Database (:id rsa-db))
+                    new-rsa-db (t2/select-one :model/Database :id (:id rsa-db))
                     priv-key-after-update (get-db-priv-key new-rsa-db)
                     _ (events/publish-event! :event/database-update {:object new-rsa-db
                                                                      :user-id 1
@@ -2105,7 +2340,7 @@
                      {:name "region",       :schema "PUBLIC", :description nil}
                      {:name "country",      :schema "PUBLIC", :description nil}
                      {:name "airport",      :schema "PUBLIC", :description nil}}
-                   (:tables (driver/describe-database :snowflake db)))))))))))
+                   (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database db))))))))))))
 
 ;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
 ;; Tests to validate that fake sync produces correct metadata for Snowflake.
@@ -2201,3 +2436,57 @@
                           (t/zone-offset "+02:00"))              "2026-07-08 01:02:03.123456789 +0200"
       "not temporal"                                             "not temporal"
       42                                                         42)))
+
+(deftest url-valued-connection-parameters-honor-network-policy-test
+  ;; the client connects to these instead of (or as well as) the account host, so a value naming an internal host has
+  ;; to be refused like the account host itself would be
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (let [check! #(driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
+                                                                   :additional-options %})
+          refusal #(try (check! %) nil (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+      (testing "an internal host is refused whichever parameter names it"
+        (doseq [opts ["authenticator=OAUTH_CLIENT_CREDENTIALS&oauthTokenRequestUrl=http://localhost:18078/steal"
+                      "oauthAuthorizationUrl=http://localhost/authorize"
+                      "serverURL=https://localhost/"
+                      "authenticator=https://localhost/"
+                      "AUTHENTICATOR=http://localhost:8080/okta"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "the client percent-decodes names and values, so an encoded one is refused like the plain one"
+        (doseq [opts ["serverURL=https%3A%2F%2Flocalhost%2F"
+                      "useProxy=true&proxy%48ost=localhost"
+                      "useProxy=true&proxyHost=%6Cocalhost"
+                      "authenticator=https%3A%2F%2Flocalhost%2F"
+                      "authenticat%6Fr=https://localhost/"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "every `authenticator` is checked when one is given more than once"
+        (doseq [opts ["authenticator=SNOWFLAKE_JWT&authenticator=https://localhost/"
+                      "authenticator=https://localhost/&authenticator=SNOWFLAKE_JWT"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "an `authenticator` naming a flow rather than a URL is not treated as a host"
+        (doseq [opts [nil
+                      "authenticator=SNOWFLAKE_JWT"
+                      "authenticator=OAUTH_CLIENT_CREDENTIALS"
+                      "authenticator=externalbrowser"
+                      "authenticator=SNOWFLAKE%5FJWT"]]
+          (is (nil? (check! opts))
+              (str "should be allowed: " opts))))
+      (testing "an `authenticator` detail key reaches the client as a connection property too, in any case"
+        (doseq [k [:authenticator :AUTHENTICATOR :Authenticator]]
+          (is (=? {:status-code 400}
+                  (try (driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
+                                                                        k "https://localhost/"
+                                                                        :additional-options "authenticator=SNOWFLAKE_JWT"})
+                       nil
+                       (catch clojure.lang.ExceptionInfo e (ex-data e))))
+              (str "should be refused: " k)))))))
+
+(deftest authenticator-values-read-connection-uri-test
+  ;; private-key auth moves the connection string from `:subname` into `:connection-uri`
+  (testing "an `authenticator` in `:connection-uri` is found as well as one in `:subname`"
+    (doseq [k [:subname :connection-uri]]
+      (is (= ["https://localhost/"]
+             (#'driver.snowflake/authenticator-values {k "//acct.snowflakecomputing.com/?authenticator=https://localhost/"}))
+          (str "should be found in " k)))))

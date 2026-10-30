@@ -32,8 +32,13 @@
   (import-fk        [this eid model]       "Given a portable ID and model, return the numeric PK.")
   (import-fk-keyed  [this portable model field] "Given a portable identifying field value, return the numeric :id.")
   (import-user      [this email]           "Import a user by email, creating if needed. Returns PK.")
+  (import-database-fk [this db-name]       "Given a portable database name, return the numeric database id.")
   (import-table-fk  [this path]            "Given [db-name schema table-name], return numeric table_id.")
   (import-field-fk  [this path]            "Given [db-name schema table-name field-name], return numeric field_id."))
+
+(defprotocol ResettableCache
+  "A resolver whose memoized lookups can be dropped."
+  (reset-cache! [this] "Drop every memoized lookup."))
 
 ;;; ============================================================
 ;;; Dynamic vars — bound to resolver instances
@@ -143,7 +148,7 @@
     (-> &match
         (assoc :database (if (= fully-qualified-name "database/__virtual")
                            lib.schema.id/saved-questions-virtual-database-id
-                           (import-fk-keyed resolver fully-qualified-name :model/Database :name)))
+                           (import-database-fk resolver fully-qualified-name)))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
     {:card-id (entity-id :guard content-ref?)}
@@ -173,12 +178,12 @@
     [#{:measure "measure"} (entity-id :guard content-ref?)]
     [:measure (import-fk resolver entity-id 'Measure)]
 
-    {:source-table (_ :guard vector?)}
+    {:source-table #'vector?}
     (-> &match
         (update :source-table (partial import-table-fk resolver))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    {:source_table (_ :guard vector?)}
+    {:source_table #'vector?}
     (-> &match
         (update :source_table (partial import-table-fk resolver))
         (->> (mbql-fully-qualified-names->ids* resolver)))
@@ -287,13 +292,13 @@
   ([entity] (export-mbql *export-resolver* entity))
   ([resolver entity]
    (match/replace entity
-     (_ :guard mbql-clause-tag)
+     #'mbql-clause-tag
      (mbql-id->fully-qualified-name resolver &match)
 
-     (_ :guard sequential?)
+     #'sequential?
      (mapv (partial export-mbql resolver) &match)
 
-     (_ :guard map?)
+     #'map?
      (reduce-kv
       (fn [entity k _v]
         (let [f (case k

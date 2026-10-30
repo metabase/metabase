@@ -37,7 +37,7 @@
                             :aggregation [[:count {}]]
                             :breakout [[:field {} (mt/id :orders :id)]]}
                            {:filters [[:= {} [:field {} "ID"] 1]]}]}}
-                (t2/select-one :model/Card card-id)))))))
+                (t2/select-one :model/Card :id card-id)))))))
 
 (deftest card-upgrade-field-refs!-viz-settings-test
   (testing "should upgrade refs in viz settings"
@@ -92,7 +92,7 @@
                   :pivot_table.collapsed_rows
                   {:rows  ["ID"]
                    :value [10]}}}
-                (t2/select-one :model/Card card-id)))))))
+                (t2/select-one :model/Card :id card-id)))))))
 
 (deftest card-upgrade-field-refs!-viz-settings-broken-test
   (testing "should ignore refs in viz settings that cannot be resolved"
@@ -113,7 +113,7 @@
                   {:rows    ["ID"]
                    :columns [[:field 9999 nil]]
                    :values  ["count" [:aggregation 1]]}}}
-                (t2/select-one :model/Card card-id)))))))
+                (t2/select-one :model/Card :id card-id)))))))
 
 (deftest card-upgrade-field-refs!-parameters-test
   (testing "should upgrade refs in `:values_source_config` of parameters"
@@ -133,7 +133,7 @@
         (is (=? {:parameters [{:name "category"
                                :values_source_config {:card_id card1-id
                                                       :value_field [:field "CATEGORY" {}]}}]}
-                (t2/select-one :model/Card card2-id)))))))
+                (t2/select-one :model/Card :id card2-id)))))))
 
 (deftest card-upgrade-field-refs!-non-card-sourced-parameters-test
   (testing "should not change parameters that don't reference cards"
@@ -145,10 +145,10 @@
                                        :name "category"
                                        :type :string/=}]}]
         (replacement.field-refs/upgrade-field-refs! [:card card-id])
-        (is (= updated-at (:updated_at (t2/select-one :model/Card card-id)))
+        (is (= updated-at (:updated_at (t2/select-one :model/Card :id card-id)))
             "Card should not be updated when parameters don't reference cards")
         (is (= [{:id "test-param" :name "category" :type :string/=}]
-               (:parameters (t2/select-one :model/Card card-id)))
+               (:parameters (t2/select-one :model/Card :id card-id)))
             "Parameters should be unchanged")))))
 
 (deftest card-upgrade-field-refs!-native-query-test
@@ -158,7 +158,7 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
         (replacement.field-refs/upgrade-field-refs! [:card card-id])
         (is (=? {:dataset_query {:stages [{:native "SELECT * FROM orders"}]}}
-                (t2/select-one :model/Card card-id)))))))
+                (t2/select-one :model/Card :id card-id)))))))
 
 (deftest card-upgrade-field-refs!-native-query-preserves-result-metadata-test
   (testing "should preserve `:result_metadata` for native queries when parameters change"
@@ -180,7 +180,7 @@
                                     {:card_id source-card-id
                                      :value_field (field-id-ref mp (mt/id :products :category))}}]}]
         (replacement.field-refs/upgrade-field-refs! [:card card-id])
-        (let [card (t2/select-one :model/Card card-id)]
+        (let [card (t2/select-one :model/Card :id card-id)]
           (testing "result_metadata should be preserved"
             (is (=? result-metadata
                     (:result_metadata card))))
@@ -194,7 +194,7 @@
       (mt/with-temp [:model/Card {card-id :id, updated-at :updated_at} {:dataset_query   query
                                                                         :result_metadata result-metadata}]
         (replacement.field-refs/upgrade-field-refs! [:card card-id])
-        (is (= updated-at (:updated_at (t2/select-one :model/Card card-id)))
+        (is (= updated-at (:updated_at (t2/select-one :model/Card :id card-id)))
             "Card should not be updated when native query has no changes")))))
 
 (deftest card-upgrade-field-refs!-broken-query-test
@@ -202,10 +202,10 @@
     (let [mp (mt/metadata-provider)]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query mp "SELECT 1")}]
         ;; simulate a broken query by updating the dataset_query directly
-        (t2/update! :model/Card card-id {:dataset_query {}})
+        (t2/update! :model/Card :id card-id {:dataset_query {}})
         (replacement.field-refs/upgrade-field-refs! [:card card-id])
         (is (=? {:dataset_query {}}
-                (t2/select-one :model/Card card-id)))))))
+                (t2/select-one :model/Card :id card-id)))))))
 
 (deftest card-upgrade-field-refs!-broken-source-card-test
   (testing "should not crash when a parameter references a card with a broken query"
@@ -220,12 +220,12 @@
                                                                      {:card_id broken-card-id
                                                                       :value_field [:field 1 nil]}}]}]
         ;; simulate a broken source card
-        (t2/update! :model/Card broken-card-id {:dataset_query {}})
+        (t2/update! :model/Card :id broken-card-id {:dataset_query {}})
         (replacement.field-refs/upgrade-field-refs! [:card card-id])
         (is (=? {:parameters [{:name "category"
                                :values_source_config {:card_id broken-card-id
                                                       :value_field [:field 1 nil]}}]}
-                (t2/select-one :model/Card card-id)))))))
+                (t2/select-one :model/Card :id card-id)))))))
 
 (deftest card-upgrade-field-refs!-nonexistent-source-card-test
   (testing "should not crash when a parameter references a non-existent card"
@@ -240,12 +240,12 @@
                                                                      {:card_id source-card-id
                                                                       :value_field [:field 1 nil]}}]}]
         ;; delete the source card to simulate a non-existent reference
-        (t2/delete! :model/Card source-card-id)
+        (t2/delete! :model/Card :id source-card-id)
         (replacement.field-refs/upgrade-field-refs! [:card card-id])
         (is (=? {:parameters [{:name "category"
                                :values_source_config {:card_id source-card-id
                                                       :value_field [:field 1 nil]}}]}
-                (t2/select-one :model/Card card-id)))))))
+                (t2/select-one :model/Card :id card-id)))))))
 
 (deftest card-upgrade-field-refs!-join-alias-suffix-test
   (testing "should correctly resolve a name ref disambiguated by a join-alias-derived numeric suffix (e.g. ID_2)"
@@ -258,7 +258,7 @@
         (replacement.field-refs/upgrade-field-refs! [:card card-id])
         (is (=? {:dataset_query {:stages [{:source-table (mt/id :orders)}
                                           {:filters [[:not-null {} [:field {} "Products__ID"]]]}]}}
-                (t2/select-one :model/Card card-id)))))))
+                (t2/select-one :model/Card :id card-id)))))))
 
 (deftest card-upgrade-field-refs!-nested-card-source-test
   (testing "should upgrade a numeric field-id ref in a card sourced from another card (nested indirection)"
@@ -271,7 +271,7 @@
             (replacement.field-refs/upgrade-field-refs! [:card child-id])
             (is (=? {:dataset_query {:stages [{:source-card parent-id
                                                :filters [[:= {} [:field {} "ID"] 1]]}]}}
-                    (t2/select-one :model/Card child-id)))))))))
+                    (t2/select-one :model/Card :id child-id)))))))))
 
 (deftest card-upgrade-field-refs!-no-changes-test
   (testing "should not update a card when there are no changes"
@@ -279,7 +279,7 @@
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
       (mt/with-temp [:model/Card {card-id :id, updated-at :updated_at} {:dataset_query query}]
         (replacement.field-refs/upgrade-field-refs! [:card card-id])
-        (is (= updated-at (:updated_at (t2/select-one :model/Card card-id))))))))
+        (is (= updated-at (:updated_at (t2/select-one :model/Card :id card-id))))))))
 
 ;;; ------------------------------------------------ Transform --------------------------------------------------------
 
@@ -298,7 +298,7 @@
                           :query {:stages [{:source-table (mt/id :orders)
                                             :breakout [[:field {} (mt/id :orders :id)]]}
                                            {:filters [[:= {} [:field {} "ID"] 1]]}]}}}
-                (t2/select-one :model/Transform transform-id)))))))
+                (t2/select-one :model/Transform :id transform-id)))))))
 
 (deftest transform-upgrade-field-refs!-native-query-test
   (testing "should not change a transform with a native query"
@@ -329,7 +329,7 @@
                                                                                   :source {:type "query" :query query}
                                                                                   :target {:database (mt/id) :type "table" :name "out"}}]
         (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
-        (is (= updated-at (:updated_at (t2/select-one :model/Transform transform-id))))))))
+        (is (= updated-at (:updated_at (t2/select-one :model/Transform :id transform-id))))))))
 
 ;;; ------------------------------------------------- Segment ----------------------------------------------------------
 
@@ -345,7 +345,7 @@
                        :where  [:= :id segment-id]})
         (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
         ;; segments return nil when the query is not valid
-        (is (nil? (:definition (t2/select-one :model/Segment segment-id))))))))
+        (is (nil? (:definition (t2/select-one :model/Segment :id segment-id))))))))
 
 (deftest segment-upgrade-field-refs!-no-changes-test
   (testing "should not update a segment when there are no changes"
@@ -355,7 +355,7 @@
       (mt/with-temp [:model/Segment {segment-id :id, updated-at :updated_at} {:table_id   (mt/id :orders)
                                                                               :definition query}]
         (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
-        (is (= updated-at (:updated_at (t2/select-one :model/Segment segment-id))))))))
+        (is (= updated-at (:updated_at (t2/select-one :model/Segment :id segment-id))))))))
 
 ;;; ------------------------------------------------- Measure ----------------------------------------------------------
 
@@ -371,7 +371,7 @@
         (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
         (is (=? {:definition {:stages [{:source-table (mt/id :orders)
                                         :aggregation  [[:sum {} [:field {} (mt/id :orders :total)]]]}]}}
-                (t2/select-one :model/Measure measure-id)))))))
+                (t2/select-one :model/Measure :id measure-id)))))))
 
 (deftest measure-upgrade-field-refs!-broken-query-test
   (testing "should not crash or update a measure with a broken definition"
@@ -386,7 +386,7 @@
                        :where  [:= :id measure-id]})
         (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
         ;; Measure return {} when query is invalid
-        (is (= {} (:definition (t2/select-one :model/Measure measure-id))))))))
+        (is (= {} (:definition (t2/select-one :model/Measure :id measure-id))))))))
 
 (deftest measure-upgrade-field-refs!-no-changes-test
   (testing "should not update a measure when there are no changes"
@@ -397,7 +397,7 @@
                                                                               :name       "test measure"
                                                                               :definition query}]
         (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
-        (is (= updated-at (:updated_at (t2/select-one :model/Measure measure-id))))))))
+        (is (= updated-at (:updated_at (t2/select-one :model/Measure :id measure-id))))))))
 
 ;;; ------------------------------------------------ Dashboard --------------------------------------------------------
 
@@ -416,7 +416,7 @@
         (is (=? {:parameters [{:name "category"
                                :values_source_config {:card_id     card-id
                                                       :value_field [:field "CATEGORY" {}]}}]}
-                (t2/select-one :model/Dashboard dashboard-id)))))))
+                (t2/select-one :model/Dashboard :id dashboard-id)))))))
 
 (deftest dashboard-upgrade-field-refs!-parameter-mappings-test
   (testing "should upgrade refs in dashcard parameter mappings"
@@ -435,7 +435,7 @@
         (is (=? {:parameter_mappings [{:parameter_id "my-param"
                                        :card_id      card-id
                                        :target       [:dimension [:field "ID" {}] {:stage-number 1}]}]}
-                (t2/select-one :model/DashboardCard dashcard-id)))))))
+                (t2/select-one :model/DashboardCard :id dashcard-id)))))))
 
 (deftest dashboard-upgrade-field-refs!-broken-source-card-test
   (testing "should not crash when a dashcard references a card with a broken query"
@@ -448,10 +448,10 @@
                                                                                     :card_id      card-id
                                                                                     :target       (dimension-field-id-ref mp (mt/id :orders :id))}]}]
         ;; simulate a broken card
-        (t2/update! :model/Card card-id {:dataset_query {}})
+        (t2/update! :model/Card :id card-id {:dataset_query {}})
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
         (is (=? {:parameter_mappings [{:target (dimension-field-id-ref mp (mt/id :orders :id))}]}
-                (t2/select-one :model/DashboardCard dashcard-id)))))))
+                (t2/select-one :model/DashboardCard :id dashcard-id)))))))
 
 (defn- make-click-behavior
   [card-id target]
@@ -488,7 +488,7 @@
                        {(json/encode [:name "ID"])
                         {:click_behavior (make-click-behavior target-card-id target)}}}}]
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
-        (let [viz     (:visualization_settings (t2/select-one :model/DashboardCard dashcard-id))
+        (let [viz     (:visualization_settings (t2/select-one :model/DashboardCard :id dashcard-id))
               viz-key (keyword (json/encode target))]
           (testing "global click behavior dimension should be upgraded"
             (is (=? {:click_behavior
@@ -518,5 +518,5 @@
                                             :card_id      card-id
                                             :target       (dimension-field-id-ref mp (mt/id :orders :id))}]}]
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
-        (is (= dash-updated (:updated_at (t2/select-one :model/Dashboard dashboard-id))))
-        (is (= dc-updated (:updated_at (t2/select-one :model/DashboardCard dashcard-id))))))))
+        (is (= dash-updated (:updated_at (t2/select-one :model/Dashboard :id dashboard-id))))
+        (is (= dc-updated (:updated_at (t2/select-one :model/DashboardCard :id dashcard-id))))))))

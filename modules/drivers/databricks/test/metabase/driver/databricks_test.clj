@@ -12,6 +12,7 @@
    [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -22,7 +23,6 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *multi-level?* false)
 
 ;; certain tests need to be run twice; once with the multi-level schema and once without.
@@ -59,11 +59,11 @@
                  {:name "reviews", :schema (maybe-qualify-schema "test-data"), :description nil}
                  {:name "orders", :schema (maybe-qualify-schema "test-data"), :description nil}
                  {:name "products", :schema (maybe-qualify-schema "test-data"), :description nil}}
-               (into #{} (:tables (driver/describe-database :databricks (db)))))))
+               (into #{} (:tables (driver/describe-database :databricks (driver.u/ensure-lib-database (db))))))))
       (testing "`driver/describe-database` returns expected results for `all` schema filters."
-        (let [actual-tables (update (driver/describe-database :databricks (-> (db)
-                                                                              (update :details dissoc :schema-filters-patterns)
-                                                                              (update :details assoc :schema-filters-type "all")))
+        (let [actual-tables (update (driver/describe-database :databricks (driver.u/ensure-lib-database (-> (db)
+                                                                                                            (update :details dissoc :schema-filters-patterns)
+                                                                                                            (update :details assoc :schema-filters-type "all"))))
                                     ;; `:tables` is a reducible (streamed); realize it for the set ops below
                                     :tables #(into #{} %))]
           (testing "tables from multiple schemas were found"
@@ -76,9 +76,9 @@
           (testing "information_schema is excluded"
             (is (empty? (filter #(str/includes? "information_schema" (:schema %)) (:tables actual-tables)))))))
       (testing "`driver/describe-database` returns expected results for `exclusion` schema filters."
-        (let [actual-tables (update (driver/describe-database :databricks (update (db) :details assoc
-                                                                                  :schema-filters-patterns (maybe-qualify-schema "test-data")
-                                                                                  :schema-filters-type "exclusion"))
+        (let [actual-tables (update (driver/describe-database :databricks (driver.u/ensure-lib-database (update (db) :details assoc
+                                                                                                                :schema-filters-patterns (maybe-qualify-schema "test-data")
+                                                                                                                :schema-filters-type "exclusion")))
                                     ;; `:tables` is a reducible (streamed); realize it for the set ops below
                                     :tables #(into #{} %))]
           (testing "tables from multiple schemas were found"
@@ -89,8 +89,8 @@
 (deftest ^:parallel describe-fields-test
   (with-and-without-multi-level
     (mt/test-driver :databricks
-      (let [fields (vec (driver/describe-fields :databricks (db) {:schema-names [(maybe-qualify-schema "test-data")]
-                                                                  :table-names ["orders"]}))]
+      (let [fields (vec (driver/describe-fields :databricks (driver.u/ensure-lib-database (db)) {:schema-names [(maybe-qualify-schema "test-data")]
+                                                                                                 :table-names ["orders"]}))]
         (testing "Underlying query returns only fields from selected catalog"
           (is (= 9 (count fields))))
         (testing "Expected fields are returned"
@@ -174,8 +174,8 @@
   (with-and-without-multi-level
     (mt/test-driver :databricks
       (let [fks (driver/describe-fks :databricks
-                                     (assoc (lib.metadata/database (mt/metadata-provider))
-                                            :details (:details (db)))
+                                     (driver.u/ensure-lib-database (assoc (lib.metadata/database (mt/metadata-provider))
+                                                                          :details (:details (db))))
                                      {:schema-names [(maybe-qualify-schema "test-data")]
                                       :table-names ["orders"]})]
         (testing "Expected fks are returned"
@@ -360,7 +360,17 @@
                          :catalog "ccc"
                          :additional-options "IgnoreTransactions=0;bla=1"}
                         (sql-jdbc.conn/connection-details->spec :databricks)
-                        :subname))))))
+                        :subname))))
+    (testing "Thrift client can be selected"
+      (let [details {:host "localhost",
+                     :engine "databricks",
+                     :catalog "ccc"
+                     :additional-options "UseThriftClient=1"}
+            details2 (dissoc details :additional-options)]
+        (is (= 1 (:UseThriftClient (sql-jdbc.conn/connection-details->spec :databricks
+                                                                           details))))
+        (is (= 0 (:UseThriftClient (sql-jdbc.conn/connection-details->spec :databricks
+                                                                           details2))))))))
 
 (deftest multi-level-schema-test
   (mt/test-driver :databricks
@@ -376,7 +386,7 @@
       (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
         (mt/with-db db
           (testing "With multi-level-schema default (off)"
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
             (is (= 52 (count (t2/select
                               :model/Field
@@ -384,12 +394,12 @@
                               :active true))))
             (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
         (testing "With multi-level-schema on"
-          (t2/update! :model/Database db-id {:details (assoc details
-                                                             :multi-level-schema true
-                                                             :schema-filters-patterns multi-pattern)})
+          (t2/update! :model/Database :id db-id {:details (assoc details
+                                                                 :multi-level-schema true
+                                                                 :schema-filters-patterns multi-pattern)})
           (mt/with-db
-            (t2/select-one :model/Database db-id)
-            (sync/sync-database! (mt/db))
+            (t2/select-one :model/Database :id db-id)
+            (sync/sync-database! (mt/id))
             (is (= #{(format "%s.%s" (:catalog details) "test-data")
                      (format "%s.%s" multicatalog multicatalog-schema)}
                    (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
@@ -400,10 +410,10 @@
                               :active true))))
             (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))))
         (testing "With multi-level-schema off"
-          (t2/update! :model/Database db-id {:details (assoc details :multi-level-schema false)})
+          (t2/update! :model/Database :id db-id {:details (assoc details :multi-level-schema false)})
           (mt/with-db
-            (t2/select-one :model/Database db-id)
-            (sync/sync-database! (mt/db))
+            (t2/select-one :model/Database :id db-id)
+            (sync/sync-database! (mt/id))
             (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
             (is (= 52 (count (t2/select
                               :model/Field
@@ -426,19 +436,19 @@
         ;; First sync with multi-level-schema off
         (mt/with-db db
           (testing "With multi-level-schema default (off)"
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             ;; originally we have unqualified schemas, only in one catalog
             (is (= #{"test-data"}
                    (t2/select-fn-set :schema :model/Table :db_id (mt/id))))))
         (testing "With multi-level-schema on, schemas are qualified"
-          (t2/update! :model/Database db-id {:details (assoc details
-                                                             :multi-level-schema true
-                                                             :schema-filters-patterns multi-pattern)})
+          (t2/update! :model/Database :id db-id {:details (assoc details
+                                                                 :multi-level-schema true
+                                                                 :schema-filters-patterns multi-pattern)})
           ;; Deactivate its tables for testing
           (t2/update! :model/Table {:db_id db-id} {:active false})
           (mt/with-db
-            (t2/select-one :model/Database db-id)
-            (sync/sync-database! (mt/db))
+            (t2/select-one :model/Database :id db-id)
+            (sync/sync-database! (mt/id))
             (is (= #{(format "%s.%s" (:catalog details) "test-data")
                      (format "%s.%s" multicatalog multicatalog-schema)}
                    ;; active` *and* inactive tables both have their schemas changed.
@@ -459,8 +469,8 @@
                                                                               :schema-filters-type "inclusion"
                                                                               :schema-filters-patterns (str/join ", " schema-filters)))}]
         (mt/with-db
-          (t2/select-one :model/Database db-id)
-          (sync/sync-database! (mt/db) {:scan :schema})
+          (t2/select-one :model/Database :id db-id)
+          (sync/sync-database! (mt/id) {:scan :schema})
           (let [table-schemas (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)]
             (is (= schema-filters table-schemas))
             (is (nil? (some #(str/starts-with? % "__databricks") table-schemas)))))))))
@@ -481,7 +491,7 @@
                          :schema-filters-patterns multi-pattern)]
       (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
         (mt/with-db db
-          (sync/sync-database! (mt/db) {:scan :schema})
+          (sync/sync-database! (mt/id) {:scan :schema})
           (let [mp (lib-be/application-database-metadata-provider db-id)
                 [t1-id t2-id] (t2/select-fn-vec
                                :id
@@ -531,6 +541,15 @@
         (is (thrown-with-msg? Exception #"Potentially dangerous keys"
                               (driver/validate-db-details! :databricks details)))))))
 
+(deftest ^:parallel staging-allowed-local-paths-is-rejected-test
+  (testing "the legacy spelling of `VolumeOperationAllowedLocalPaths` enables the same local file reads and writes"
+    (doseq [opts ["StagingAllowedLocalPaths=/"
+                  "stagingallowedlocalpaths=/tmp"
+                  "UseNativeQuery=1;StagingAllowedLocalPaths=/etc"]]
+      (testing opts
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/validate-db-details! :databricks {:additional-options opts})))))))
+
 (deftest can-connect-using-m2m-test
   (mt/test-driver
     :databricks
@@ -551,3 +570,38 @@
                   (lib/native-query (mt/metadata-provider))
                   (qp/process-query)
                   (mt/rows)))))))
+
+(deftest url-valued-connection-parameters-honor-network-policy-test
+  ;; the client fetches tokens and discovery documents from these, or routes through them, so a value naming an
+  ;; internal host has to be refused like the workspace host itself would be
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (let [details {:host "adb-1.azuredatabricks.net" :http-path "/sql/1.0/warehouses/x" :catalog "c" :token "t"}]
+      (doseq [opts ["OAuthDiscoveryURL=http://localhost/.well-known/openid-configuration"
+                    "OIDCDiscoveryEndpoint=http://localhost/.well-known/openid-configuration"
+                    "OAuth2AuthorizationEndPoint=http://localhost/authorize"
+                    "OAuth2TokenEndpoint=http://localhost/token"
+                    "OAuth2ConnAuthAuthorizeEndpoint=http://localhost/authorize"
+                    "OAuth2ConnAuthTokenEndpoint=http://localhost/token"
+                    "UseCFProxy=1;CFProxyHost=localhost;CFProxyPort=3128"
+                    "UseProxy=1;ProxyHost=localhost;ProxyPort=3128"]]
+        (is (=? {:status-code 400}
+                (try (driver.u/validate-connection-hosts! :databricks (assoc details :additional-options opts))
+                     nil
+                     (catch clojure.lang.ExceptionInfo e (ex-data e))))
+            (str "should be refused: " opts))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host      "abc.cloud.databricks.com:443/;b"
+                    :http-path "/sql/1.0/warehouses/x"
+                    :catalog   "main"
+                    :token     "t"}
+                   {:host      "abc.cloud.databricks.com"
+                    :http-path "/sql/1.0/warehouses/x"
+                    :catalog   "main;b"
+                    :token     "t"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :databricks details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

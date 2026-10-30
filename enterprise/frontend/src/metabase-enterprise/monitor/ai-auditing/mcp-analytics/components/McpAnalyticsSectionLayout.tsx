@@ -1,12 +1,15 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { EmptyState } from "metabase/common/components/EmptyState";
 import type { PillTab } from "metabase/common/components/PillTabNavigation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { AiAnalyticsSectionLayout } from "metabase-enterprise/monitor/ai-auditing/components/AiAnalyticsSectionLayout";
+import { NewQuestionButton } from "metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton";
+import { useAuditRowCount } from "metabase-enterprise/monitor/ai-auditing/hooks/useAuditRowCount";
 import {
   VIEW_GROUP_MEMBERS,
   VIEW_MCP_TOOL_CALLS,
@@ -19,7 +22,6 @@ import {
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
 
-import { McpAnalyticsEmptyState } from "./McpAnalyticsEmptyState";
 import {
   McpAnalyticsContextProvider,
   type McpAnalyticsContextValue,
@@ -47,6 +49,7 @@ export function McpAnalyticsSectionLayout() {
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   const toolCallsAudit = useAuditTable(VIEW_MCP_TOOL_CALLS);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
+  const tabCount = useAuditRowCount(toolCallsAudit);
 
   const dataSources = useMemo(
     () => ({
@@ -84,6 +87,7 @@ export function McpAnalyticsSectionLayout() {
     },
     {
       label: t`Tool calls`,
+      count: tabCount,
       to: `${eventsPath}${location.search}`,
       isSelected: (pathname) => pathname === eventsPath,
     },
@@ -126,24 +130,40 @@ export function McpAnalyticsSectionLayout() {
     <AiAnalyticsSectionLayout
       title={t`MCP analytics`}
       tabs={tabs}
+      filtersAction={<NewQuestionButton viewName={VIEW_MCP_TOOL_CALLS} />}
       filters={
         <McpToolCallsFilter
           date={date}
           onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-          user={user}
-          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-          userOptions={userOptions}
-          group={group}
-          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-          groupOptions={groupOptions}
-          groupNoFilterValue={groupNoFilterValue}
-          tenant={tenant}
-          onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
-          tenantOptions={tenantOptions}
-          hasTenants={hasTenants}
+          userFilter={{
+            value: user,
+            options: userOptions,
+            onChange: (val) => patchUrlState({ user: val, page: 0 }),
+          }}
+          groupFilter={{
+            value: group,
+            options: groupOptions,
+            noFilterValue: groupNoFilterValue,
+            onChange: (val) => patchUrlState({ group: val, page: 0 }),
+          }}
+          tenantFilter={
+            hasTenants
+              ? {
+                  value: tenant,
+                  options: tenantOptions,
+                  onChange: (val) => patchUrlState({ tenant: val, page: 0 }),
+                }
+              : undefined
+          }
         />
       }
-      emptyState={<McpAnalyticsEmptyState />}
+      emptyState={
+        <EmptyState
+          icon="audit"
+          title={t`No MCP activity`}
+          message={t`Tool calls from MCP clients will show up here. Try widening the date range or check back once clients start using the server.`}
+        />
+      }
       error={error}
       isInitialLoading={isInitialLoading}
       isTableRoute={isEventsRoute}

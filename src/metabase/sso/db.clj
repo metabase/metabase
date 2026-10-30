@@ -35,6 +35,17 @@
    provider :- :string]
   (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
 
+(mu/defn slack-connect-identity
+  "The user's Slack identity with `:provider_id` and `:metadata` selected, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one [:model/AuthIdentity :provider_id :metadata]
+                 :user_id [:auto/param (long user-id)] :provider "slack-connect"))
+
+(mu/defn delete-slack-connect-identity!
+  "Delete the user's Slack identity, returning the number deleted."
+  [user-id :- ::lib.schema.id/user]
+  (t2/delete! :model/AuthIdentity :user_id [:auto/param (long user-id)] :provider "slack-connect"))
+
 (mu/defn insert-auth-identity!
   "Insert an AuthIdentity linking the User with `user-id` to `provider-id` at `provider`."
   [user-id     :- ::lib.schema.id/user

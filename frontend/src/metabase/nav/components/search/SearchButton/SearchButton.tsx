@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { getSearchTextFromLocation } from "metabase/common/search";
 import { useLocation } from "metabase/router";
-import { Button, type ButtonProps, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Button, type ButtonProps, Flex, Icon } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 
 import S from "./SearchButton.module.css";
@@ -23,16 +23,15 @@ export const SearchButton = (props: ButtonProps) => {
   const isSmallScreen = useIsSmallScreen();
 
   if (isSmallScreen) {
-    // TODO: replace with ActionIcon (GDGT-2457)
     return (
-      <Button
+      <ActionIcon
         variant="subtle"
-        color="neutral"
         size="sm"
-        leftSection={<Icon name="search" />}
         onClick={handleClick}
         aria-label="Search"
-      />
+      >
+        <Icon name="search" />
+      </ActionIcon>
     );
   }
 

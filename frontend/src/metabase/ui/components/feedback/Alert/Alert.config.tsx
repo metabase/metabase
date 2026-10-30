@@ -24,7 +24,7 @@ const COLOR_SETS: Record<AlertColor, AlertColorConfig> = {
   default: {
     icon: "icon-brand",
     background: "background_surface-primary",
-    border: "border",
+    border: "border-neutral",
     title: "text-primary",
   },
   "core-brand": {
@@ -64,11 +64,24 @@ const ALERT_COLORS_BY_VARIANT: Record<AlertVariant, typeof COLOR_SETS> = {
   },
 };
 
-const isAlertColor = (value?: string): value is AlertColor =>
-  value !== undefined && value in COLOR_SETS;
-
 const isAlertVariant = (value?: string): value is AlertVariant =>
   value !== undefined && value in ALERT_COLORS_BY_VARIANT;
+
+export const getAlertColorVars = (
+  variant?: string,
+  alertColor?: AlertColor,
+) => {
+  const colors =
+    ALERT_COLORS_BY_VARIANT[isAlertVariant(variant) ? variant : "default"][
+      alertColor ?? "default"
+    ];
+  return {
+    "--alert-color": color(colors.icon),
+    "--alert-bg": color(colors.background),
+    "--alert-border-color": color(colors.border),
+    "--alert-title-color": color(colors.title),
+  };
+};
 
 export const alertOverrides: MantineThemeOverride["components"] = {
   Alert: Alert.extend({
@@ -83,20 +96,6 @@ export const alertOverrides: MantineThemeOverride["components"] = {
       title: AlertStyles.title,
       message: AlertStyles.message,
       closeButton: AlertStyles.closeButton,
-    },
-    vars: (_theme, props) => {
-      const variant = isAlertVariant(props.variant) ? props.variant : "default";
-      const variantColors = ALERT_COLORS_BY_VARIANT[variant];
-      const colorName = isAlertColor(props.color) ? props.color : "default";
-      const colors = variantColors[colorName];
-      return {
-        root: {
-          "--alert-color": color(colors.icon),
-          "--alert-bg": color(colors.background),
-          "--alert-border-color": color(colors.border),
-          "--alert-title-color": color(colors.title),
-        },
-      };
     },
   }),
 };

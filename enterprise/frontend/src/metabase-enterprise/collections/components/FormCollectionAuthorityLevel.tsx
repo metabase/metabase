@@ -2,9 +2,9 @@ import { useField } from "formik";
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
-import { FormField } from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { Center, Icon, SegmentedControl } from "metabase/ui";
+import { FormField } from "metabase/forms";
+import { SegmentedControl } from "metabase/ui";
 
 import { OFFICIAL_COLLECTION, REGULAR_COLLECTION } from "../constants";
 
@@ -23,7 +23,6 @@ const getOptions = () => [
     label: OFFICIAL_COLLECTION.name,
     value: OFFICIAL_COLLECTION.type,
     icon: OFFICIAL_COLLECTION.icon,
-    selectedColor: OFFICIAL_COLLECTION.color,
   },
 ];
 
@@ -50,16 +49,13 @@ export function FormCollectionAuthorityLevel({
       error={touched ? error : undefined}
     >
       <SegmentedControl
+        w="fit-content"
         value={String(value)}
         onChange={handleChange}
         data={getOptions().map((option) => ({
           value: String(option.value),
-          label: (
-            <Center style={{ gap: 10 }}>
-              <Icon name={option.icon} />
-              {option.label}
-            </Center>
-          ),
+          label: option.label,
+          icon: option.icon,
         }))}
       />
     </FormField>

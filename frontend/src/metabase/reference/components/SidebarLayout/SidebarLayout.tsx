@@ -1,14 +1,20 @@
 import cx from "classnames";
-import type { CSSProperties, ReactElement } from "react";
+import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { Children, cloneElement } from "react";
 
 import CS from "metabase/css/core/index.css";
 
+type LayoutChild = ReactElement<{
+  children?: ReactNode;
+  style?: CSSProperties;
+  className?: string;
+}>;
+
 interface SidebarLayoutProps {
   className?: string;
   style?: CSSProperties;
-  sidebar: ReactElement;
-  children: ReactElement;
+  sidebar: LayoutChild;
+  children: LayoutChild;
 }
 
 export const SidebarLayout = ({

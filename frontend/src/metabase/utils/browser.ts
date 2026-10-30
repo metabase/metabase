@@ -66,6 +66,10 @@ export function isMac() {
   return Boolean(platform.match(/^Mac/));
 }
 
+export function isWindows() {
+  return /Win/.test(navigator.platform);
+}
+
 export const isTouchDevice = () => {
   if (typeof window === "undefined") {
     return false;

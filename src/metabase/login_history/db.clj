@@ -6,18 +6,27 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.login-history.schema :as login-history.schema]
+   [metabase.session.core :as session]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn login-history-for-user
-  "The timestamp, session id, device description, and IP address of the LoginHistory of the User with `user-id`,
-  newest first."
+  "The timestamp, device description, IP address, and `active` flag of the LoginHistory of the User with `user-id`,
+  newest first. `active` is whether the session the login created is still live — would still authenticate a
+  request — by the `session` module's own definition, so a login whose session was revoked, logged out, or expired
+  reads inactive."
   [user-id :- ::lib.schema.id/user]
-  (t2/select [:model/LoginHistory :timestamp :session_id :device_description :ip_address]
-             :user_id user-id
-             {:order-by [[:timestamp :desc]]}))
+  (t2/select :model/LoginHistory
+             {:select    [:lh.timestamp :lh.device_description :lh.ip_address
+                          ;; 1/0, normalised to a boolean by the model's after-select
+                          [(session/live-expr (session/liveness-params)) :active]]
+              :from      [[:login_history :lh]]
+              :left-join (into [[:core_session :session] [:= :session.id :lh.session_id]]
+                               session/session-left-joins)
+              :where     [:= :lh.user_id user-id]
+              :order-by  [[:lh.timestamp :desc]]}))
 
 (mu/defn insert-login-history!
   "Insert the LoginHistory `row`, returning the number of rows inserted."

@@ -40,7 +40,10 @@
     (conj "EmbeddingTheme")
 
     (not (:no-custom-viz-plugins opts))
-    (conj "CustomVizPlugin")))
+    (conj "CustomVizPlugin")
+
+    (not (:no-data-apps opts))
+    (conj "DataApp")))
 
 ;; OsiAiContext is intentionally NOT in the default export set. It's a top-level model that *depends on* its
 ;; entity, extracted unfiltered, so any export — even an untargeted "full" one, which still omits personal and

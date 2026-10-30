@@ -150,6 +150,8 @@
      explorations.contextual-interestingness
      custom-viz-plugin
      dashboards
+     data-apps
+     dependencies
      documents
      api.eid-translation
      embedding
@@ -163,6 +165,7 @@
      events
      explorations
      formatter
+     funnysql
      geojson
      glossary
      indexed-entities
@@ -319,7 +322,8 @@
 (defn- write-explorer!
   "Write the HTML explorer to `output`, or to stdout, and exit."
   [modules-config {:keys [output no-stats]}]
-  (let [html (module-explorer/page (module-explorer/explorer-data modules-config {:stats? (not no-stats)}))]
+  (let [data (module-explorer/explorer-data modules-config {:stats? (not no-stats), :resolve-any? true})
+        html (module-explorer/page data)]
     (if output
       (do (spit output html)
           (println (c/green (str "Wrote " output))))
@@ -455,6 +459,7 @@
    :sparksql
    :sqlite
    :sqlserver
+   :starburst
    :vertica])
 
 (def ^:private driver-directory->drivers
@@ -472,8 +477,7 @@
    "snowflake" [:snowflake]
    "sparksql" [:sparksql]
    "sqlserver" [:sqlserver]
-   ;; starburst tests are currently disabled in drivers.yml
-   ;; "starburst" [:starburst]
+   "starburst" [:starburst]
    "vertica" [:vertica]})
 
 (defn- drivers-with-file-changes

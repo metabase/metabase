@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import { useMemo } from "react";
 
 import { getDashcardData } from "metabase/dashboard/selectors";
-import { isTableDisplay } from "metabase/dashboard/utils";
+import { hasColumnLevelClickBehavior } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -52,7 +52,11 @@ export function ClickBehaviorSidebarContent({
     getDashcardData(state, dashcard.id),
   );
 
-  if (isTableDisplay(dashcard) && !hasSelectedColumn && dashcard.card_id) {
+  if (
+    hasColumnLevelClickBehavior(dashcard) &&
+    !hasSelectedColumn &&
+    dashcard.card_id
+  ) {
     const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
     return (
       <TableClickBehaviorView

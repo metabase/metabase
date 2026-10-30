@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import type {
   AdminNotification,
   AdminNotificationDetail,
@@ -50,19 +48,6 @@ export type NotificationRunSummaryLogProps = {
   isLoading: boolean;
   cardId?: CardId;
   onViewAllClick: () => void;
-};
-
-export type SidebarSectionProps = {
-  title: string;
-  titleAside?: ReactNode;
-  children: ReactNode;
-};
-
-export type DetailsRowProps = {
-  label: ReactNode;
-  value: ReactNode;
-  bold?: boolean;
-  spanLabel?: boolean;
 };
 
 export type SidebarBodyProps = {

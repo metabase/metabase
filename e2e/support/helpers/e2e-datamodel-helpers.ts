@@ -155,7 +155,6 @@ export const DataModel = {
     getReplaceButton: getSourceReplacementReplaceButton,
     getCancelButton: getSourceReplacementCancelButton,
     getTargetPickerButton: getSourceReplacementTargetPickerButton,
-    getDependentsTab: getSourceReplacementDependentsTab,
     getFindAndReplaceButton: getSourceReplacementFindAndReplaceButton,
   },
 };
@@ -178,7 +177,9 @@ function visit({
   basePath?: string;
 } = {}) {
   const normalizedBasePath = getNormalizedBasePath(basePath);
-  cy.intercept("GET", "/api/database").as("datamodel/visit/databases");
+  cy.intercept({ method: "GET", pathname: "/api/database" }).as(
+    "datamodel/visit/databases",
+  );
   cy.intercept("GET", "/api/database/*").as("datamodel/visit/database");
   cy.intercept("GET", "/api/table/*/query_metadata*").as(
     "datamodel/visit/metadata",
@@ -596,7 +597,7 @@ function getFieldSuffixInput() {
 }
 
 function getFieldSectionCloseButton() {
-  return getFieldSectioHeader().findByRole("link", { name: /close/ });
+  return getFieldSectioHeader().findByRole("link", { name: /close/i });
 }
 
 /** preview section helpers */
@@ -946,14 +947,11 @@ function getInterceptsForArea(area: Area) {
   cy.intercept("PUT", "/api/table").as("updateTables");
   cy.intercept("PUT", "/api/table/*").as("updateTable");
 
+  cy.intercept({ method: "GET", pathname: "/api/database" }).as("databases");
+
   if (area === "admin") {
-    cy.intercept("GET", "/api/database?*").as("databases");
     cy.intercept("GET", "/api/field/*/values").as("fieldValues");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-  }
-
-  if (area === "data studio") {
-    cy.intercept("GET", "/api/database").as("databases");
   }
 }
 
@@ -982,12 +980,6 @@ function getSourceReplacementTargetPickerButton() {
     "button",
     "Pick a table, model, or saved question",
   );
-}
-
-function getSourceReplacementDependentsTab(count: number) {
-  return getSourceReplacementModal().findByRole("tab", {
-    name: new RegExp(`${count} items? will be changed`),
-  });
 }
 
 function getSourceReplacementFindAndReplaceButton() {

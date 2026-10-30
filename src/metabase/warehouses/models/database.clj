@@ -55,7 +55,6 @@
 (t2/deftransforms :model/Database
   {:details                        (mi/transform-encrypted-json "metabase_database.details")
    :write_data_details             (mi/transform-encrypted-json "metabase_database.write_data_details")
-   :admin_details                  (mi/transform-encrypted-json "metabase_database.admin_details")
    :engine                         mi/transform-keyword
    :metadata_sync_schedule         mi/transform-cron-string
    :cache_field_values_schedule    mi/transform-cron-string
@@ -69,6 +68,7 @@
 (doto :model/Database
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive :hook/dependencies)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -164,16 +164,6 @@
   [_db-id]
   (mi/superuser?))
 
-(defenterprise mark-transforms-stale-on-database-delete!
-  "Hook called from the `:model/Database` before-delete. Transforms whose `source_database_id`
-   is about to be SET NULL by the FK action survive the delete (so the analyst can read the
-   SQL/Python and rebuild against a new DB), but their dependency-analysis findings need to
-   be re-run so they surface on `/monitor/dependency-diagnostics/broken`. OSS is a no-op
-   (no dependencies module)."
-  metabase-enterprise.dependencies.events
-  [_db-id]
-  nil)
-
 (defn- can-write?
   [db-id]
   (or (some-> db-id db-id->router-db-id can-write?)
@@ -221,26 +211,26 @@
                                 (select-keys database [:let-user-control-scheduling :is_full_sync :is_on_demand]))))))
 
 (defn should-sync?
-  "Should this database be synced at all? Destination (router-child) databases are never synced.
+  "Should the Database with `database-id` be synced at all? Destination (router-child) databases are never synced.
   This is the gate for *explicit*, user-requested syncs (e.g. the Sync-now button), which run
   regardless of the `disable-auto-sync` setting. For automatically-triggered syncs use
   [[should-auto-sync?]]."
-  [db]
-  (not (is-destination? db)))
+  [database-id]
+  (nil? (warehouses.db/router-database-id database-id)))
 
 (defn should-auto-sync?
   "Should this database be synced *automatically* — scheduled sync/analyze, the post-add initial
   sync, and Quartz trigger registration? False when the database isn't syncable at all, or when
   auto-sync is globally suppressed via the `disable-auto-sync` setting."
-  [db]
-  (and (should-sync? db)
+  [database-id]
+  (and (should-sync? database-id)
        (not (warehouses.settings/disable-auto-sync))))
 
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
-    (when (should-auto-sync? database)
+    (when (should-auto-sync? (u/the-id database))
       (sync-databases-trigger/check-and-schedule-tasks-for-db! database))
     (catch Throwable e
       (log/errorf "Error scheduling tasks for DB: %s" (ex-message e)))))
@@ -297,7 +287,6 @@
   "Checks database health off-thread.
    - checks connectivity for the default connection
    - checks connectivity for the write connection (if configured)
-   - checks connectivity for the admin connection (if configured)
    - cleans-up ambiguous legacy db-details"
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
@@ -321,15 +310,8 @@
                  (catch Throwable provider-e
                    (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message provider-e)))))))
          (when (driver.conn/database-write-data-details lib-db)
-           (let [write-details (driver.conn/without-resolution-telemetry
-                                (driver.conn/with-write-connection
-                                  (driver.conn/effective-details database)))]
-             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data")))
-         (when (driver.conn/database-admin-details lib-db)
-           (let [admin-details (driver.conn/without-resolution-telemetry
-                                (driver.conn/with-admin-connection
-                                  (driver.conn/effective-details database)))]
-             (check-connection! database driver engine-str (assoc admin-details :engine engine-str) "admin"))))))))
+           (let [write-details (merge details (driver.conn/details-for-exact-type lib-db :write-data))]
+             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data"))))))))
 
 (defn- health-check-candidates
   "The databases to health check at startup: one representative per unique engine — the lowest-id regular database of
@@ -402,8 +384,7 @@
                driver
                (-> db
                    (m/update-existing-in [:details :auth-provider] keyword)
-                   (m/update-existing-in [:write_data_details :auth-provider] keyword)
-                   (m/update-existing-in [:admin_details :auth-provider] keyword)))))]
+                   (m/update-existing-in [:write_data_details :auth-provider] keyword)))))]
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
@@ -433,14 +414,10 @@
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
-  ;; Mark transforms with this DB as source as stale so dependency-diagnostics re-analyzes
-  ;; them after the row's gone. Must run BEFORE the FK SET NULL fires (which happens when
-  ;; the database row is deleted below) so we can still resolve the affected transforms by
-  ;; source_database_id.
-  (mark-transforms-stale-on-database-delete! id)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
+  (warehouses.db/delete-actions-for-database! id)
   (->> (eduction
         (map t2.realize/realize)
         (partition-all 1000)
@@ -454,7 +431,7 @@
   (when (not= :postgres (mdb/db-type))
     (warehouses.db/delete-cards-for-database! id))
   (try
-    (driver/notify-database-updated driver database)
+    (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
     (catch Throwable e
       (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
 
@@ -475,42 +452,30 @@
 
 (def ^:private details-keys
   "Every place a Database stores a set of connection details."
-  [:details :write_data_details :admin_details])
+  [:details :write_data_details])
 
-(defn- exempt-audit-db?
-  "Whether `database` is the Audit DB as the analytics installer writes it: a clone of the *application* database
-  rather than a warehouse anybody pointed somewhere, carrying no details of its own and reached over the app-db
-  connection. There is no user-supplied host in it to police, and checking it anyway refuses the instance's own app
-  db -- empty details read as `localhost`, since every `:sql-jdbc` client substitutes that. The refusal lands during
-  init, so the instance fails to boot rather than failing a request.
-
-  Narrowed to a database with no details at all, which is the only shape the installer produces
-  ([[metabase-enterprise.audit-app.audit/install-database!]] writes none and nothing else adds any). `:is_audit`
-  alone would be too much to hang this on: it is not writable through the API, but it is in the Database serdes
-  `:copy` set, and serialization import is one of the routes this check exists to cover."
-  [database]
-  (and (:is_audit database)
-       (every? #(empty? (get database %)) details-keys)))
-
-(defn- validate-connection-hosts!
-  "Refuse to store details pointing at a private/internal network address. Enforcing this on the model, and not just on
-  the endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
+(defn- validate-connection-details!
+  "Refuse to store details pointing at a private/internal network address, or setting a connection parameter the driver
+  disallows (see [[driver/disallowed-connection-parameters]]). Enforcing this on the model, and not just on the
+  endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
   import, config-file provisioning, and destination databases.
 
   `keys-to-check` names which of [[details-keys]] to look at. An overlay is checked the way
   [[metabase.driver.connection/effective-details]] resolves it -- merged onto `:details` -- since that, and not the
   overlay by itself, is what a connection is opened with: one holding nothing but credentials repoints nothing.
 
-  The Audit DB is exempt -- see [[exempt-audit-db?]]."
+  An empty details map configures no connection, so it is not checked."
   [engine database keys-to-check]
-  (when-not (exempt-audit-db? database)
-    (when-let [engine (some-> engine keyword)]
-      (driver.u/with-database-network-policy database
-        (doseq [k     keys-to-check
-                :let  [details (get database k)]
-                :when (map? details)]
-          (driver.u/validate-connection-hosts! engine (cond->> details
-                                                        (not= k :details) (merge (:details database)))))))))
+  (when-let [engine (some-> engine keyword)]
+    (driver.u/with-database-network-policy database
+      (doseq [k     keys-to-check
+              :let  [details (get database k)]
+              :when (and (map? details) (seq details))]
+        (let [details (cond->> details
+                        (not= k :details) (merge (:details database)))]
+          (driver.u/validate-connection-hosts! engine details)
+          (when (driver.impl/registered? engine)
+            (driver.u/validate-connection-parameters! engine details)))))))
 
 (t2/define-before-update :model/Database
   [database]
@@ -521,11 +486,11 @@
     ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
     ;; not start failing. Either way the candidate is the merge, since an overlay is resolved against the `:details`
     ;; it accompanies rather than on its own.
-    (validate-connection-hosts! (or (:engine changes) (:engine original))
-                                (merge original changes)
-                                (if (contains? changes :engine)
-                                  details-keys
-                                  (filterv #(contains? changes %) details-keys))))
+    (validate-connection-details! (or (:engine changes) (:engine original))
+                                  (merge original changes)
+                                  (if (contains? changes :engine)
+                                    details-keys
+                                    (filterv #(contains? changes %) details-keys))))
   ;; Note: the "sample database may not be edited" policy is enforced at the API layer
   ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
   ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
@@ -551,8 +516,7 @@
                infer-db-schedules
 
                (or (some? (:details changes))
-                   (some? (:write_data_details changes))
-                   (some? (:admin_details changes)))
+                   (some? (:write_data_details changes)))
                secret/handle-incoming-client-secrets!
 
                (:uploads_enabled changes)
@@ -583,7 +547,7 @@
 
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status engine], :as database}]
-  (validate-connection-hosts! engine database details-keys)
+  (validate-connection-details! engine database details-keys)
   (-> (merge {:is_full_sync true
               :is_on_demand false}
              database)
@@ -643,7 +607,7 @@
     driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json :model/Database
-  "When encoding a Database as JSON remove the `details`, `write_data_details`, `admin_details`, and
+  "When encoding a Database as JSON remove the `details`, `write_data_details`, and
   `initial_sync_error` for any User without write perms for the DB. Users with write perms can see the details but remove anything resembling a
   password. No one gets to see this in an API response!
 
@@ -657,13 +621,12 @@
     (next-method
      (let [db (if (not (mi/can-write? db))
                 (do (log/debug "Fully redacting database details during json encoding.")
-                    (dissoc db :details :write_data_details :admin_details :initial_sync_error))
+                    (dissoc db :details :write_data_details :initial_sync_error))
                 (do (log/debug "Redacting sensitive fields within database details during json encoding.")
                     (-> db
                         (secret/to-json-hydrate-redacted-secrets)
                         (update :details redact-sensitive-fields)
-                        (m/update-existing :write_data_details redact-sensitive-fields)
-                        (m/update-existing :admin_details redact-sensitive-fields))))]
+                        (m/update-existing :write_data_details redact-sensitive-fields))))]
        (update db :settings
                (fn [settings]
                  (when (map? settings)
@@ -677,8 +640,11 @@
                             ;; there is an known issue with exception is ignored when render API response (#32822)
                             ;; If you see this error, you probably need to define a setting for `setting-name`.
                             ;; But ideally, we should resolve the above issue, and remove this try/catch
-                            (log/errorf "Error checking the readability of %s setting. The setting will be hidden in API response. Error: %s"
-                                        setting-name (ex-message e))
+                            (if (setting/registered? setting-name)
+                              (log/errorf "Error checking the readability of %s setting. The setting will be hidden in API response. Error: %s"
+                                          setting-name (ex-message e))
+                              ;; a removed setting stays in the stored settings until the database is saved
+                              (log/debugf "Hiding unknown setting %s in API response" setting-name))
                             ;; let's be conservative and hide it by defaults, if you want to see it,
                             ;; you need to define it :)
                             false)))
@@ -691,23 +657,37 @@
 (defmethod serdes/make-spec "Database"
   [_model-name _opts]
   ;; Connection details are never exported. Import is unconditional.
-  (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
-                           :import              identity}]
-    {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :is_stub
-                 :default_schema :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
+  (let [details-transform  {:export-with-context (fn [_current _ _details] ::serdes/skip)
+                            :import              identity}
+        schedule-transform {:export-with-context (fn [_current _ _schedule] ::serdes/skip)
+                            :import              identity}]
+    {:copy      [:auto_run_queries :caveats
+                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
+                 :default_schema :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
                  :cache_ttl
                  ;; describes a sync on the source instance, and may name its connection details
-                 :initial_sync_error]
-     :transform {:created_at          (serdes/date)
+                 :initial_sync_error
+                 ;; detected by sync, and set again by the importing instance's sync
+                 :dbms_version]
+     :transform {;; randomized per instance unless the connection details, which we never export, let the user
+                 ;; schedule syncs; older files with such details carry the schedules those details require
+                 :cache_field_values_schedule schedule-transform
+                 :metadata_sync_schedule      schedule-transform
                  :details             details-transform
                  :write_data_details  details-transform
-                 :admin_details       details-transform
                  :creator_id          (serdes/fk :model/User)
                  :router_database_id  (serdes/fk :model/Database)
-                 :initial_sync_status {:export identity :import (constantly "complete")}}
+                 :initial_sync_status {:export-with-context (fn [_current _ _status] ::serdes/skip)
+                                       :import              (constantly "complete")}
+                 ;; Never trust an archive's `is_sample`: the real Sample Database is excluded from export
+                 ;; ([[warehouses.db/databases-for-serdes-reducible]]), so any incoming `is_sample true` is forged --
+                 ;; and marking an imported row as the sample DB would let it ride sample-only code paths. Import false.
+                 :is_sample           {:export-with-context (fn [_current _ _is-sample] ::serdes/skip)
+                                       :import              (constantly false)}
+                 :is_stub             {:export-with-context (fn [_current _ _is-stub] ::serdes/skip)
+                                       :import              (constantly false)}}
      :defaults  {:auto_run_queries true
                  :is_attached_dwh  false
                  :is_audit         false
@@ -751,13 +731,24 @@
     (throw (ex-info "h2 is not supported for serialization import"
                     {:engine (:engine ingested) :name (:name ingested)}))))
 
+(defn assert-sqlite-not-hosted!
+  "Refuse to import a SQLite Database on a hosted instance. SQLite is blocked as a warehouse on Metabase Cloud (only
+  the bundled Sample Database, which serdes never exports, is allowed); serialization import is the one write path
+  that never tests the connection, so without this an archive could persist a SQLite row whose attacker-chosen `:db`
+  path is later opened by sync. Mirrors [[assert-not-h2!]]. Self-hosted instances import SQLite normally."
+  [ingested]
+  (when (and (= :sqlite (keyword (:engine ingested)))
+             (premium-features/is-hosted?))
+    (throw (ex-info "SQLite is not available as a data warehouse on Metabase Cloud."
+                    {:engine (:engine ingested) :name (:name ingested) :status-code 400}))))
+
 (defmethod serdes/load-one! "Database"
   [ingested maybe-local]
   (assert-not-h2! ingested)
+  (assert-sqlite-not-hosted! ingested)
   (serdes/default-load-one! (cond-> ingested
                               (:details ingested)            (update :details driver/sanitize-db-details)
-                              (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details)
-                              (:admin_details ingested)      (update :admin_details driver/sanitize-db-details))
+                              (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details))
                             maybe-local))
 
 (def ^{:arglists '([table-id])} table-id->database-id
@@ -780,7 +771,7 @@
                   :updated-at    true}
    :search-terms {:name        search.spec/explode-camel-case
                   :description true}
-   :where [:= :router_database_id nil]
+   :where [:and [:= :router_database_id nil] [:= :is_stub false]]
    :render-terms {:initial-sync-status true}})
 
 (defenterprise hydrate-router-user-attribute

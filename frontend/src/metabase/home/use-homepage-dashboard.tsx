@@ -1,11 +1,9 @@
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { useSelector } from "metabase/redux";
 import { getCustomHomePageDashboardId } from "metabase/selectors/app";
-import { getSettingsLoading } from "metabase/settings";
 
 export const useHomepageDashboard = () => {
   const dashboardId = useSelector(getCustomHomePageDashboardId);
-  const isLoadingSettings = useSelector(getSettingsLoading);
 
   const { data: dashboard, isLoading: isLoadingDashboard } =
     useGetDashboardQuery(dashboardId ? { id: dashboardId } : skipToken);
@@ -13,6 +11,6 @@ export const useHomepageDashboard = () => {
   return {
     dashboardId,
     dashboard,
-    isLoading: isLoadingDashboard || isLoadingSettings,
+    isLoading: isLoadingDashboard,
   };
 };

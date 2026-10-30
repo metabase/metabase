@@ -6,6 +6,7 @@ import {
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   act,
   renderWithProviders,
@@ -20,6 +21,7 @@ import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
   createMockQueryAction,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -36,7 +38,7 @@ function RoutedActionCreatorModal({ onClose }: { onClose: () => void }) {
 
 const MODEL = createMockCard({ id: 1, type: "model" });
 const MODEL_SLUG = `${MODEL.id}-${MODEL.name.toLowerCase()}`;
-const ACTION = createMockQueryAction({ model_id: MODEL.id });
+const ACTION = createMockQueryAction({ model_id: MODEL.id, can_write: true });
 const ACTION_NOT_FOUND_ID = 999;
 const DATABASE = createSampleDatabase({
   settings: { "database-enable-actions": true },
@@ -87,6 +89,9 @@ async function setup({
     {
       withRouter: true,
       initialRoute,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+      }),
     },
   );
 

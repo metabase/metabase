@@ -1787,6 +1787,7 @@
    [:qp/stage-is-from-source-card  {:optional true} [:ref ::lib.schema.id/card]]
    [:qp/stage-had-source-card      {:optional true} [:ref ::lib.schema.id/card]]
    [:qp/skip-persisted-cache       {:optional true} :boolean]
+   [:qp.pivot/forced-shape         {:optional true} [:enum :native-pivot-query :union-all]]
    [:persisted-info/native         {:optional true} ::lib.schema.common/non-blank-string]
    [:source-query/model?           {:optional true} :boolean]
    [:source-query/native-model?    {:optional true} [:maybe :boolean]]
@@ -2408,6 +2409,7 @@
     [:user-parameters                      {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     [:qp/source-card-id                    {:optional true} [:ref ::lib.schema.id/card]]
     [:qp/skip-result-metadata-persistence  {:optional true} :boolean]
+    [:qp/non-default-parameterized?        {:optional true} :boolean]
     [:qp.pivot/unremapped-breakout-combination {:optional true} [:sequential [:int {:min 0}]]]
     [:qp.pivot/remapped-breakout-combination   {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
     [:qp.pivot/num-remapped-cols               {:optional true} [:int {:min 0}]]
@@ -2420,6 +2422,9 @@
     [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
      {:optional true}
      :metabase.lib.schema/sandboxing.original-metadata]
+    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/details
+     {:optional true}
+     :metabase.lib.schema/sandboxing.details]
     ;;
     ;; ACTIONS
     ;;

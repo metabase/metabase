@@ -53,11 +53,10 @@ jobs:
           # get the force-push rejected. Nothing here needs it: the repo is public, so the fetch of the
           # automation branch is anonymous, and every gh call carries its own token.
           persist-credentials: false
-      - name: Set up Java for cold dependency resolution
-        uses: actions/setup-java@v5.2.0
-        with:
-          distribution: temurin
-          java-version: 25
+      # The shrink runs clj-kondo through the Clojure CLI to attribute :discouraged-var/:discouraged-namespace
+      # ignores, so it needs the CLI as well as the JDK.
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
       - name: Shrink ratchets
         run: |
           cp "$KONDO_RATCHETS_FILE" "$RUNNER_TEMP/kondo-ratchets-before.edn"

@@ -77,7 +77,8 @@
     "metabot-enabled"
     "ldap-sync-admin-group"
     "user-recent-views"
-    "most-recently-viewed-dashboard"})
+    "most-recently-viewed-dashboard"
+    "llm-max-tokens"})
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-retired-setting-names*
@@ -97,9 +98,9 @@
 (declare export?)
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
-  (for [{:keys [key value]} (admin-writable-site-wide-settings
-                             :getter (partial get-value-of-type :string))
-        :when (export? key)]
+  (for [{:keys [key value is_env_setting]} (admin-writable-site-wide-settings
+                                            :getter (partial get-value-of-type :string))
+        :when (and (export? key) (not is_env_setting))]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))
@@ -1045,10 +1046,11 @@
          s-name (setting-name setting)]
      (when (and feature (not (has-feature? feature)))
        (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature)
-                       {:status-code 402
-                        :status      "error-premium-feature-not-available"
-                        :setting     s-name
-                        :feature     feature})))
+                       {:status-code   402
+                        :status        "error-premium-feature-not-available"
+                        :setting       s-name
+                        :feature       feature
+                        :response/keys #{:status}})))
      (when (and enabled? (not (enabled?)))
        (throw (ex-info (tru "Setting {0} is not enabled" s-name)
                        {:status-code 400
@@ -1497,9 +1499,9 @@
         setting-definition-symbol (gensym "setting-")]
     `(let [setting-options#          (merge (merge-base ~options) ~setting-metadata)
            ~setting-definition-symbol (register-setting! setting-options#)]
-       ~(when maybe-i18n-exception
-          `(when (#'requires-i18n? ~setting-definition-symbol)
-             (throw ~maybe-i18n-exception)))
+       ~@(when maybe-i18n-exception
+           [`(when (#'requires-i18n? ~setting-definition-symbol)
+               (throw ~maybe-i18n-exception))])
        (-> (def ~setting-getter-fn-symbol (setting-fn :getter ~setting-definition-symbol))
            (alter-meta! merge (setting-fn-metadata :getter ~setting-definition-symbol)))
        ;; unfortunately we can't evaluate this condition at compile time, as the options might contain runtime forms.

@@ -260,7 +260,7 @@ export const EmptyState = {
           instance={instance}
           emptyState={
             <Box ta="center" py="xxl">
-              <Icon name="folder" size={48} c="text-disabled" />
+              <Icon name="folder" size={48} c="text-secondary" />
               <Text c="text-secondary" mt="lg">
                 This collection is empty
               </Text>

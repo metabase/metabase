@@ -130,7 +130,7 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
 
     H.modifyPermission(
       "Orders",
-      EE_DATA_ACCESS_PERMISSION_INDEX,
+      OSS_NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder only",
     );
 

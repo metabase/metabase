@@ -2,6 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
+import {
+  createMockDirtyCardEntity,
+  createMockDirtyTransformEntity,
+  createMockRemoteSyncEntity,
+} from "metabase-types/api/mocks";
 
 import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 
@@ -146,13 +152,68 @@ describe("DataStudioLayout", () => {
     });
   });
 
+  describe("library tab dirty indicators", () => {
+    const LIBRARY_TABS = [
+      "Semantic layer",
+      "Dashboards",
+      "SQL snippets",
+      "Data actions",
+    ];
+    const getTabStatus = (label: string) =>
+      within(screen.getByLabelText(label)).queryByTestId("remote-sync-status");
+
+    it.each([
+      {
+        name: "a dirty snippet",
+        entity: createMockRemoteSyncEntity({ model: "nativequerysnippet" }),
+        tab: "SQL snippets",
+      },
+      {
+        name: "a dirty data action",
+        entity: createMockRemoteSyncEntity({ model: "action", card_id: null }),
+        tab: "Data actions",
+      },
+    ])("shows $name only on the $tab tab", async ({ entity, tab }) => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        remoteSyncBranch: "main",
+        isNavbarOpened: true,
+        dirty: [entity],
+      });
+
+      await waitFor(() => {
+        expect(getTabStatus(tab)).toBeInTheDocument();
+      });
+      const otherTabs = LIBRARY_TABS.filter((otherTab) => otherTab !== tab);
+      for (const otherTab of otherTabs) {
+        expect(getTabStatus(otherTab)).not.toBeInTheDocument();
+      }
+    });
+
+    it("shows Library changes only on the Semantic layer tab", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        remoteSyncBranch: "main",
+        isNavbarOpened: true,
+        dirty: [createMockDirtyCardEntity()],
+      });
+
+      await waitFor(() => {
+        expect(getTabStatus("Semantic layer")).toBeInTheDocument();
+      });
+      expect(getTabStatus("Dashboards")).not.toBeInTheDocument();
+      expect(getTabStatus("SQL snippets")).not.toBeInTheDocument();
+      expect(getTabStatus("Data actions")).not.toBeInTheDocument();
+    });
+  });
+
   describe("transform dirty indicator", () => {
     it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
-        hasTransformDirtyChanges: true,
+        dirty: [createMockDirtyTransformEntity()],
         remoteSyncTransforms: true,
       });
 
@@ -169,7 +230,6 @@ describe("DataStudioLayout", () => {
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
-        hasTransformDirtyChanges: false,
         remoteSyncTransforms: true,
       });
 
@@ -183,12 +243,12 @@ describe("DataStudioLayout", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should not show dirty indicator when remote-sync-transforms setting is disabled", async () => {
+    it("should show dirty indicator for a pending transform removal when remote-sync-transforms setting is disabled", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
-        hasTransformDirtyChanges: true,
+        dirty: [createMockDirtyTransformEntity({ sync_status: "removed" })],
         remoteSyncTransforms: false,
       });
 
@@ -198,8 +258,8 @@ describe("DataStudioLayout", () => {
 
       const transformsTab = screen.getByLabelText("Data transformation");
       expect(
-        within(transformsTab).queryByTestId("remote-sync-status"),
-      ).not.toBeInTheDocument();
+        await within(transformsTab).findByTestId("remote-sync-status"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -251,6 +311,46 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.queryByLabelText("Transforms")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("data apps tab", () => {
+    const enterprisePlugins = [
+      ...(DEFAULT_EE_SETTINGS.enterprisePlugins ?? []),
+      "data-apps" as const,
+    ];
+
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("shows Data apps as an upsell without the data-apps feature", async () => {
+      setup({ ...DEFAULT_EE_SETTINGS, enterprisePlugins });
+
+      const dataAppsTab = await screen.findByRole("link", {
+        name: "Data apps",
+      });
+      expect(within(dataAppsTab).getByTestId("upsell-gem")).toBeInTheDocument();
+      expect(within(dataAppsTab).queryByText("Beta")).not.toBeInTheDocument();
+    });
+
+    it("shows Data apps without an upsell with the data-apps feature", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        enterprisePlugins,
+        tokenFeatures: {
+          ...DEFAULT_EE_SETTINGS.tokenFeatures,
+          "data-apps": true,
+        },
+      });
+
+      const dataAppsTab = await screen.findByRole("link", {
+        name: "Data apps",
+      });
+      expect(
+        within(dataAppsTab).queryByTestId("upsell-gem"),
+      ).not.toBeInTheDocument();
+      expect(within(dataAppsTab).getByText("Beta")).toBeInTheDocument();
     });
   });
 });

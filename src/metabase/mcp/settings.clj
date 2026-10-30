@@ -15,7 +15,7 @@
 ;; logs, or audit events — only a masked form is exposed. Internal callers that actually need to
 ;; HMAC with the secret must use `unobfuscated-mcp-embedding-signing-secret`.
 (defsetting mcp-embedding-signing-secret
-  (deferred-tru "Instance-wide secret used to derive embedding session keys for MCP sessions.")
+  "Instance-wide secret used to derive embedding session keys for MCP sessions."
   :encryption :when-encryption-key-set
   :visibility :internal
   :sensitive? true
@@ -62,7 +62,7 @@
   24)
 
 (defsetting mcp-query-handle-ttl-hours
-  (deferred-tru "Hours a stored MCP query handle is kept before the scheduled GC task deletes it.")
+  "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
   ;; `:positive-integer` rather than `:integer`: the GC deletes handles created before `now - ttl`,
   ;; so 0 puts the cutoff at *now* and clears the whole table on the next run, and a negative takes
   ;; handles minted seconds ago. The type guards the read path too, which a `:setter` cannot —
@@ -148,3 +148,19 @@
          (map str/trim)
          (keep not-empty)
          (str/join " "))))
+
+(def ^:private client-key->setting-key
+  "Maps a client key from [[metabase.mcp.usage/detect-client]] to the key its toggle uses in
+   [[mcp-apps-cors-enabled-clients]]. VS Code shares the Cursor toggle: both render in a vscode-webview."
+  {"claude"        "claude"
+   "chatgpt"       "chatgpt"
+   "cursor-vscode" "cursor-vscode"
+   "vscode"        "cursor-vscode"})
+
+(defn inline-ui-enabled-for-client?
+  "Whether `client-key` may render MCP Apps UI. An iframe from a client the admin switched off fails its CORS
+   preflight, so it would show a broken card. Clients without a toggle are not gated."
+  [client-key]
+  (if-let [setting-key (client-key->setting-key client-key)]
+    (boolean (some #{setting-key} (mcp-apps-cors-enabled-clients)))
+    true))

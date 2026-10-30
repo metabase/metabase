@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [dev.deps-graph]
    [dev.model-boundary-config]
+   [dev.module-graph :as module-graph]
    [hooks.common.modules :as modules]
    [metabase.test-runner]
    [metabase.util.json :as json]
@@ -63,18 +64,17 @@
 (defn- modules-config-zipper
   "Return a zipper pointing to the modules config map node (the value of the `:metabase/modules` key)."
   []
-  (with-open [r (clojure.lang.LineNumberingPushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
-    (let [node               (r.parser/parse-all r)
-          forms-zloc         (z/of-node node)
-          top-level-map-zloc (z/find forms-zloc (fn [zloc]
-                                                  (= (z/tag zloc) :map)))
-          modules-key-zloc   (-> (z/down top-level-map-zloc)
-                                 (z/find (fn [zloc]
-                                           (and (n/keyword-node? (z/node zloc))
-                                                (= (z/sexpr zloc) :metabase/modules)))))
-          config-zloc       (z/find-next modules-key-zloc (fn [zloc]
-                                                            (= (z/tag zloc) :map)))]
-      config-zloc)))
+  (let [node               (r.parser/parse-file-all ".clj-kondo/config/modules/config.edn")
+        forms-zloc         (z/of-node node)
+        top-level-map-zloc (z/find forms-zloc (fn [zloc]
+                                                (= (z/tag zloc) :map)))
+        modules-key-zloc   (-> (z/down top-level-map-zloc)
+                               (z/find (fn [zloc]
+                                         (and (n/keyword-node? (z/node zloc))
+                                              (= (z/sexpr zloc) :metabase/modules)))))
+        config-zloc       (z/find-next modules-key-zloc (fn [zloc]
+                                                          (= (z/tag zloc) :map)))]
+    config-zloc))
 
 (defn- module-names-in-file-order
   "Get the list of modules names as they appear in the config file."
@@ -278,7 +278,7 @@
     (let [ownership    (dev.deps-graph/model-ownership)
           known-models (set (keys ownership))
           config       (modules-config)
-          violations   (dev.deps-graph/model-boundary-violations (dev.deps-graph/kondo-config))]
+          violations   (dev.deps-graph/model-boundary-violations (dev.deps-graph/kondo-config) ownership)]
       (testing "No model boundary violations"
         (doseq [{:keys [file module model defining-module violation-type]} violations]
           (testing (format "\n%s (module %s) references %s (defined in %s) — %s violation"
@@ -358,9 +358,130 @@
                :f #{:d}
                :g #{:h}}]
     (is (= #{#{:a :b} #{:c} #{:d :e :f} #{:g} #{:h}}
-           (set (dev.deps-graph/strongly-connected-components graph))))
+           (set (module-graph/strongly-connected-components graph))))
     (is (= [#{:d :e :f} #{:a :b}]
-           (dev.deps-graph/cyclic-components graph)))))
+           (module-graph/cyclic-components graph)))))
+
+(deftest ^:parallel cycle-metrics-test
+  (testing "a ring is one independent cycle, and every edge holds it together"
+    (is (= {:size           4
+            :edges          4
+            :density        (double (/ 4 12))
+            :cycle-rank     1
+            :strong-bridges [[:a :b] [:b :c] [:c :d] [:d :a]]}
+           (module-graph/cycle-metrics {:a #{:b} :b #{:c} :c #{:d} :d #{:a}} #{:a :b :c :d}))))
+  (testing "a complete digraph has every edge and no single edge that splits it"
+    (is (= {:size           3
+            :edges          6
+            :density        1.0
+            :cycle-rank     4
+            :strong-bridges []}
+           (module-graph/cycle-metrics {:a #{:b :c} :b #{:a :c} :c #{:a :b}} #{:a :b :c}))))
+  (testing "a chord across a ring is not a strong bridge, while every ring edge still is"
+    (is (=? {:cycle-rank 2, :strong-bridges [[:a :b] [:b :c] [:c :a]]}
+            (module-graph/cycle-metrics {:a #{:b :c} :b #{:c} :c #{:a}} #{:a :b :c}))))
+  (testing "edges leaving the component and self-loops are not counted"
+    (is (=? {:edges 4, :strong-bridges [[:a :b] [:b :a] [:b :c] [:c :b]]}
+            (module-graph/cycle-metrics {:a #{:a :b :x} :b #{:a :c} :c #{:b}} #{:a :b :c})))))
+
+(deftest ^:parallel module-cycle-stats-test
+  (let [deps   [{:module 'a, :deps [{:module 'b}]}
+                {:module 'a, :deps [{:module 'c}]}
+                {:module 'b, :deps [{:module 'c}]}
+                {:module 'c, :deps [{:module 'a}]}
+                {:module 'd, :deps [{:module 'a}]}]
+        config '{a {:api :any}
+                 b {}
+                 c {}
+                 d {}}]
+    (testing "stats list each cycle's sizes, rounded density, and cycle rank"
+      (is (= {:api-any-namespaces       2
+              :module-count             4
+              :scc-module-sizes         [3]
+              :scc-namespace-sizes      [4]
+              :scc-densities            [0.67]
+              :scc-cycle-ranks          [2]
+              :upward-requires          0
+              :upward-module-edges      0
+              :upward-internal-requires 0
+              :upward-cycle-requires    0}
+             (dev.deps-graph/module-boundary-stats deps config))))))
+
+(deftest ^:parallel upward-references-test
+  (let [deps   '[{:namespace metabase.x.core
+                  :module    x
+                  :deps      [{:namespace metabase.x.y.core, :module x.y}]}
+                 {:namespace metabase.x.y.core
+                  :module    x.y
+                  :deps      [{:namespace metabase.x.core,   :module x}
+                              {:namespace metabase.x.impl,   :module x}
+                              {:namespace metabase.x.y.impl, :module x.y}]}
+                 {:namespace metabase.w.v.core
+                  :module    w.v
+                  :deps      [{:namespace metabase.w.impl, :module w}]}
+                 {:namespace metabase.x.y.z.core
+                  :module    x.y.z
+                  ;; In a cycle with `z`, which `x` is not part of.
+                  :deps      [{:namespace metabase.x.core, :module x}
+                              {:namespace metabase.z.core, :module z}]}
+                 {:namespace metabase-enterprise.x.core
+                  :module    enterprise/x
+                  :deps      [{:namespace metabase.x.impl, :module x}]}
+                 {:namespace metabase-enterprise.x.y.core
+                  :module    enterprise/x.y
+                  ;; Module `x.y` is not an ancestor: the ancestors of `enterprise/x.y` are `enterprise/x` and `x`.
+                  :deps      [{:namespace metabase.x.y.impl, :module x.y}
+                              {:namespace metabase.x.impl,   :module x}]}
+                 {:namespace metabase.z.core
+                  :module    z
+                  :deps      [{:namespace metabase.x.core,     :module x}
+                              {:namespace metabase.x.y.z.core, :module x.y.z}]}]
+        config '{enterprise/x   {}
+                 enterprise/x.y {}
+                 w              {:api :any}
+                 w.v            {}
+                 x              {}
+                 x.y            {}
+                 x.y.z          {}
+                 z              {}}]
+    (testing "a require into any ancestor is listed, except an enterprise companion requiring its own OSS module"
+      (is (= '[{:namespace          metabase.x.y.core
+                :module             x.y
+                :required-namespace metabase.x.core
+                :ancestor           x
+                :api?               true
+                :cycle?             true}
+               {:namespace          metabase.x.y.core
+                :module             x.y
+                :required-namespace metabase.x.impl
+                :ancestor           x
+                :api?               false
+                :cycle?             true}
+               {:namespace          metabase.w.v.core
+                :module             w.v
+                :required-namespace metabase.w.impl
+                :ancestor           w
+                :api?               true
+                :cycle?             false}
+               {:namespace          metabase.x.y.z.core
+                :module             x.y.z
+                :required-namespace metabase.x.core
+                :ancestor           x
+                :api?               true
+                :cycle?             false}
+               {:namespace          metabase-enterprise.x.y.core
+                :module             enterprise/x.y
+                :required-namespace metabase.x.impl
+                :ancestor           x
+                :api?               false
+                :cycle?             false}]
+             (dev.deps-graph/upward-references deps config))))
+    (testing "stats count upward requires, their module pairs, and the internal and cycle-closing subsets"
+      (is (=? {:upward-requires          5
+               :upward-module-edges      4
+               :upward-internal-requires 2
+               :upward-cycle-requires    2}
+              (dev.deps-graph/module-boundary-stats deps config))))))
 
 (deftest ^:parallel module-boundary-config-values-have-valid-types-test
   (testing "Module boundary keys have the shapes the ratchet counts expect"

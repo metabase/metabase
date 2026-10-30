@@ -2,6 +2,14 @@
 name: clojure-review
 description: Review Clojure and ClojureScript code changes for compliance with Metabase coding standards, style violations, and code quality issues. Use when reviewing pull requests or diffs containing Clojure/ClojureScript code.
 allowed-tools: Read, Grep, Bash, Glob
+metadata:
+  metareview:
+    title: Clojure review
+    kind: agent
+    rule: Clojure files changed
+    watches: ["*.clj", "*.cljc", "*.cljs"]
+    icon: lambda
+    color: green
 ---
 
 # Clojure Code Review Skill

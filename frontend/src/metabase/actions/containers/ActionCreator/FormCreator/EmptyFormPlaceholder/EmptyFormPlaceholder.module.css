@@ -1,0 +1,22 @@
+.iconContainer {
+  position: relative;
+  display: inline-block;
+  align-self: center;
+  padding: 1.25rem;
+  color: var(--mb-color-core-brand);
+}
+
+.list {
+  margin-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.link {
+  margin-top: 1rem;
+  font-weight: bold;
+  color: var(--mb-color-core-brand);
+
+  &:hover {
+    color: var(--mb-color-core-brand-hover);
+  }
+}

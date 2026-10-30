@@ -4,10 +4,28 @@ import path from "node:path";
 import { load as parseYaml } from "js-yaml";
 
 export type DataAppManifest = {
+  slug?: string;
   allowed_hosts?: string[];
+  /** The entity ID of the app's collection, whose file sits under the repository's `collections/data_apps/`. */
+  collection?: string;
 };
 
 const isString = (value: unknown): value is string => typeof value === "string";
+
+const parseCollection = (
+  value: unknown,
+  manifestPath: string,
+): string | undefined => {
+  if (value == null) {
+    return undefined;
+  }
+
+  if (!isString(value)) {
+    throw new Error(`${manifestPath}: "collection" must be an entity ID.`);
+  }
+
+  return value;
+};
 
 const parseAllowedHosts = (
   value: unknown,
@@ -29,6 +47,21 @@ const parseAllowedHosts = (
         nonString,
       )}.`,
     );
+  }
+
+  return value;
+};
+
+const parseSlug = (
+  value: unknown,
+  manifestPath: string,
+): string | undefined => {
+  if (value == null) {
+    return undefined;
+  }
+
+  if (!isString(value)) {
+    throw new Error(`${manifestPath}: "slug" must be a string.`);
   }
 
   return value;
@@ -57,13 +90,15 @@ export const readManifest = (
     );
   }
 
-  const raw: { allowed_hosts?: unknown } =
+  const raw: { slug?: unknown; allowed_hosts?: unknown; collection?: unknown } =
     typeof parsed === "object" && parsed !== null ? parsed : {};
 
   return {
     manifestPath,
     manifest: {
+      slug: parseSlug(raw.slug, manifestPath),
       allowed_hosts: parseAllowedHosts(raw.allowed_hosts, manifestPath),
+      collection: parseCollection(raw.collection, manifestPath),
     },
   };
 };

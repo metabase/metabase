@@ -103,7 +103,7 @@
   "Apply `changes` to the Sandbox with `sandbox-id`, returning the number updated."
   [sandbox-id :- ::lib.schema.id/sandbox
    changes    :- (mut/select-keys ::sandbox.schema/sandbox.update [:card_id :attribute_remappings])]
-  (t2/update! :model/Sandbox sandbox-id changes))
+  (t2/update! :model/Sandbox :id sandbox-id changes))
 
 (mu/defn delete-sandbox!
   "Delete the Sandbox with `sandbox-id`, returning the number deleted."
@@ -134,7 +134,7 @@
   "Set the login attributes of the User with `user-id`, returning the number of rows updated."
   [user-id          :- ::lib.schema.id/user
    login-attributes :- [:maybe users.schema/LoginAttributes]]
-  (t2/update! :model/User user-id {:login_attributes login-attributes}))
+  (t2/update! :model/User :id user-id {:login_attributes login-attributes}))
 
 (mu/defn user-attributes-reducible
   "Reducible merged JWT and login attribute maps of the Users that have any."
@@ -203,7 +203,7 @@
   (t2/select :model/Card
              {:select [:c.id :c.dataset_query :c.database_id :c.card_schema
                        ;; required alongside :card_schema for the Card schema upgrade
-                       :c.type :c.result_metadata :c.dimensions :c.dimension_mappings]
+                       :c.type :c.entity_id :c.result_metadata :c.dimensions :c.dimension_mappings]
               :from   [[(t2/table-name :model/Card) :c]]
               :where  [:exists ^:allow-subquery {:select [[[:inline 1]]]
                                                  :from   [[(t2/table-name :model/Sandbox) :s]]
@@ -213,4 +213,4 @@
   "Set the result metadata of the Card with `card-id`, returning the number updated."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata}))
+  (t2/update! :model/Card :id card-id {:result_metadata result-metadata}))

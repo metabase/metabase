@@ -8,6 +8,7 @@
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.analyze.fingerprint.insights :as insights]
    [metabase.query-processor.schema :as query-processor.schema]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -45,11 +46,10 @@
   "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
   column metadata, adding placeholder values and removing nil keys."
   [column :- ResultColumnMetadata]
-  ;; HACK - not sure why we don't have display_name yet in some cases
-  (merge
-   {:base_type    :type/*
-    :display_name (:name column)}
-   column))
+  (-> column
+      (u/assoc-default :base_type :type/*)
+      ;; HACK - not sure why we don't have display_name yet in some cases
+      (u/assoc-default :display_name (:name column))))
 
 (mu/defn insights-rf :- fn?
   "A reducing function that calculates what is ultimately returned as `[:data :results_metadata]` in userland QP

@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -40,7 +41,7 @@ const REGULAR_ITEMS = [
 const ADMIN_ITEMS = [...REGULAR_ITEMS, "Main app", "Admin"];
 const HOSTED_ITEMS = [...ADMIN_ITEMS];
 
-const WITH_AREAS = [...ADMIN_ITEMS, "Data studio", "Monitor"];
+const WITH_AREAS = [...ADMIN_ITEMS, "Data studio", "Monitor", "Embedding hub"];
 
 const adminNavItem = {
   getName: () => `People`,
@@ -57,6 +58,7 @@ async function setup({
   helpLinkCustomDestinationSetting = "https://custom-destination.com/help",
   instanceCreationDate = dayjs().toISOString(),
   tokenFeatures = {},
+  applicationName,
 }: {
   isAdmin?: boolean;
   isAnalyst?: boolean;
@@ -66,6 +68,7 @@ async function setup({
   helpLinkCustomDestinationSetting?: string;
   instanceCreationDate?: string;
   tokenFeatures?: Partial<TokenFeatures>;
+  applicationName?: string;
 } = {}) {
   setupBugReportingDetailsEndpoint();
 
@@ -76,7 +79,16 @@ async function setup({
     "help-link-custom-destination": helpLinkCustomDestinationSetting,
     "instance-creation": instanceCreationDate,
     "token-features": createMockTokenFeatures(tokenFeatures),
+    ...(applicationName && {
+      "application-name": applicationName,
+      // A non-SVG data URI renders without a fetch of the whitelabel logo
+      "application-logo-url": "data:image/png;base64,iVBORw0KGgo=",
+    }),
   });
+
+  if (applicationName) {
+    setupEnterpriseOnlyPlugin("whitelabel");
+  }
 
   const admin = createMockAdminState({
     app: createMockAdminAppState({
@@ -90,6 +102,7 @@ async function setup({
       <Route path="/admin" element={<AppSwitcher />} />
       <Route path="/data-studio" element={<AppSwitcher />} />
       <Route path="/monitor" element={<AppSwitcher />} />
+      <Route path="/embedding" element={<AppSwitcher />} />
     </>,
     {
       withRouter: true,
@@ -183,6 +196,10 @@ describe("ProfileLink", () => {
       await openProfileLink();
       await assertActiveApp("monitor");
 
+      await userEvent.click(await getEmbeddingHubMenuItem());
+      await openProfileLink();
+      await assertActiveApp("embedding-hub");
+
       await userEvent.click(await getMainAppMenuItem());
       await openProfileLink();
       await assertActiveApp("main");
@@ -215,6 +232,32 @@ describe("ProfileLink", () => {
       WITH_AREAS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
+    });
+
+    it("should not show the embedding hub to non-admins", async () => {
+      await setup({ isAdmin: false });
+
+      expect(screen.queryByText("Embedding hub")).not.toBeInTheDocument();
+    });
+
+    it("should render the app entries in the designed order", async () => {
+      await setup({ isAdmin: true });
+
+      const appOrder = [
+        "Main app",
+        "Admin",
+        "Data studio",
+        "Monitor",
+        "Embedding hub",
+      ];
+      const menuItems = await screen.findAllByRole("menuitem");
+      const appMenuItems = menuItems.filter((menuItem) =>
+        appOrder.includes(menuItem.textContent ?? ""),
+      );
+
+      expect(appMenuItems.map((menuItem) => menuItem.textContent)).toEqual(
+        appOrder,
+      );
     });
 
     it("should show data studio and monitor for analysts when advanced-permissions is available", async () => {
@@ -358,6 +401,24 @@ describe("ProfileLink", () => {
         });
       });
     });
+
+    it("should use the whitelabel application name in the About menu item and modal", async () => {
+      await setup({
+        applicationName: "New Test Co",
+        tokenFeatures: { whitelabel: true },
+      });
+      await openHelpSubmenu();
+
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: "About New Test Co" }),
+      );
+
+      expect(
+        await screen.findByRole("dialog", {
+          name: "Thanks for using New Test Co!",
+        }),
+      ).toBeInTheDocument();
+    });
   });
 });
 
@@ -390,6 +451,11 @@ const assertActiveApp = async (current: CurrentApp) => {
       name: current === "monitor" ? /check_filled/i : /pulse/i,
     }),
   ).toBeInTheDocument();
+  expect(
+    await within(await getEmbeddingHubMenuItem()).findByRole("img", {
+      name: current === "embedding-hub" ? /check_filled/i : /embed/i,
+    }),
+  ).toBeInTheDocument();
 };
 
 const getMainAppMenuItem = () =>
@@ -400,3 +466,5 @@ const getDataStudioMenuItem = () =>
   screen.findByRole("menuitem", { name: /data studio/i });
 const getMonitorMenuItem = () =>
   screen.findByRole("menuitem", { name: /monitor/i });
+const getEmbeddingHubMenuItem = () =>
+  screen.findByRole("menuitem", { name: /embedding hub/i });

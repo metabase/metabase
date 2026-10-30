@@ -17,7 +17,7 @@
    month :- ms/PositiveInt]
   (let [date-part (fn [part-key part-value]
                     (if (= (mdb/db-type) :postgres)
-                      [:= [:date_part ^:allow-raw-sql [:inline (name part-key)] :started_at] part-value]
+                      [:= [:date_part (name part-key) :started_at] part-value]
                       [:= [part-key :started_at] part-value]))]
     (t2/select :query_execution
                {:order-by [[:started_at :desc]]
@@ -61,18 +61,22 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id user-id changes))
 
 (mu/defn sample-database-exists?
   "Whether the sample Database exists."
   []
   (t2/exists? :model/Database :is_sample true))
 
-(mu/defn database-id-by-engine-and-name
-  "The ID of the Database of `engine` named `database-name`, or nil."
-  [engine :- :string
-   database-name :- :string]
-  (t2/select-one-pk :model/Database :engine engine :name database-name))
+(mu/defn database-by-name
+  "The `:id` and `:is_stub` of the Database named `database-name`, or nil."
+  [database-name :- :string]
+  (t2/select-one [:model/Database :id :is_stub] :name database-name))
+
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn insert-database!
   "Insert `database` and return the new instance."
@@ -83,9 +87,9 @@
   "Apply `changes` to the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
    changes :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
+  (t2/update! :model/Database :id database-id changes))
 
 (mu/defn delete-database!
   "Delete the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database database-id))
+  (t2/delete! :model/Database :id database-id))

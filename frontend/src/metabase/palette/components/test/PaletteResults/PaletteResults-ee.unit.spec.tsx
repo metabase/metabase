@@ -2,6 +2,13 @@ import { screen, within } from "__support__/ui";
 
 import { type CommonSetupProps, commonSetup } from "./setup";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
+
 const setup = (props: CommonSetupProps = {}) => {
   commonSetup({ ...props, isEE: true });
 };

@@ -120,11 +120,11 @@ export const ModifyQuestionModal = ({
 
   return (
     <Modal
+      density="relaxed"
       opened={isOpen}
       onClose={onClose}
       size="80%"
       title={t`Modify question`}
-      padding="xl"
     >
       {question && modifiedQuestion ? (
         <>
@@ -139,14 +139,14 @@ export const ModifyQuestionModal = ({
               updateQuestion={handleUpdateQuestion}
             />
           </Box>
-          <Flex mt="xl" justify="flex-end" gap="0.5rem">
+          <Modal.Footer>
             <Button variant="subtle" color="neutral" onClick={onClose}>
               {t`Cancel`}
             </Button>
             <Button variant="filled" onClick={handleSave}>
               {t`Save and use`}
             </Button>
-          </Flex>
+          </Modal.Footer>
         </>
       ) : (
         <Flex h="70vh" align="center" justify="center">

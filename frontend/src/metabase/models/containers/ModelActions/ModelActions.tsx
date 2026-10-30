@@ -58,7 +58,10 @@ function ModelActions({
 
   usePageTitle(model?.displayName() || "");
 
+  const card = model.card();
+  const isModel = model.type() === "model";
   const database = model.database();
+  const databaseId = database?.id;
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const shouldShowActionsUI = hasActions || hasActionsEnabled;
@@ -79,16 +82,16 @@ function ModelActions({
   }, [model]);
 
   useMount(() => {
-    const card = model.card();
-    const isModel = model.type() === "model";
-    if (isModel) {
-      if (model.database()) {
-        loadMetadataForCard(card);
-      }
-    } else {
+    if (!isModel) {
       navigate(Urls.card(card), { replace: true });
     }
   });
+
+  useEffect(() => {
+    if (isModel && databaseId != null) {
+      loadMetadataForCard(card);
+    }
+  }, [card, databaseId, isModel, loadMetadataForCard]);
 
   // The table request is also the permission check: a user who cannot read the
   // table gets no table, and its foreign keys are not asked for.

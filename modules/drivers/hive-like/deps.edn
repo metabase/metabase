@@ -228,7 +228,7 @@
   ;; libthrift 0.24.0 declares runtime deps (httpclient5, httpcore5, jakarta.servlet-api)
   ;; that only serve its THttpClient/TServlet classes; hive-jdbc is built against
   ;; httpclient 4.x and cannot use them, so exclude them to keep the jar lean.
-  org.apache.thrift/libthrift                        {:mvn/version "0.24.0"
+  org.apache.thrift/libthrift                        {:mvn/version "0.25.0"
                                                       :exclusions [jakarta.servlet/jakarta.servlet-api
                                                                    org.apache.commons/commons-lang3
                                                                    org.apache.httpcomponents.client5/httpclient5

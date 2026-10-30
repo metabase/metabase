@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
 } from "__support__/ui";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
@@ -111,6 +113,39 @@ describe("ModelPersistenceLogJobs", () => {
     });
     expect(await screen.findByText("FOO BAR ERROR")).toBeInTheDocument();
     expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
+  });
+
+  it("requests the log in 25-row pages", async () => {
+    await setup({
+      logs: Array.from({ length: 26 }, (_, index) =>
+        getMockModelCacheInfo({
+          id: index + 1,
+          card_id: index + 1,
+          state: "persisted",
+        }),
+      ),
+    });
+    const getPagination = () =>
+      screen.getByRole("navigation", { name: "pagination" });
+    const getLastListParams = () => {
+      const url = fetchMock.callHistory.lastCall("path:/api/persist")?.url;
+      return new URL(url ?? "http://localhost").searchParams;
+    };
+
+    expect(await screen.findByTestId("pagination-total")).toHaveTextContent(
+      "26",
+    );
+    expect(getPagination()).toHaveTextContent("1 - 25 of 26");
+    expect(getLastListParams().get("limit")).toBe("25");
+    expect(getLastListParams().get("offset")).toBe("0");
+
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    await waitFor(() =>
+      expect(getPagination()).toHaveTextContent("26 - 26 of 26"),
+    );
+    expect(getLastListParams().get("limit")).toBe("25");
+    expect(getLastListParams().get("offset")).toBe("25");
   });
 
   it("sorts client-side by Model when its header is clicked", async () => {

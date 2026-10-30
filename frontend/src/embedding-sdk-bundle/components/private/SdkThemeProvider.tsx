@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
+// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { Global } from "@emotion/react";
 import { useContext, useId, useMemo } from "react";
 
@@ -45,7 +45,7 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   const whitelabelColors = useSetting("application-colors");
 
   const themeBrandColor = isEmbeddingThemeV2(theme)
-    ? (theme.colors?.["core-brand"] ?? theme.colors?.brand)
+    ? theme.colors?.["core-brand"]
     : theme?.colors?.brand;
 
   const hasCustomBrandColor = Boolean(

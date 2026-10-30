@@ -86,7 +86,8 @@
    [:query_type {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:table_id {:optional true} [:maybe pos-int?]]
-   [:table_name {:optional true} [:maybe :string]]])
+   [:table_name {:optional true} [:maybe :string]]
+   [:card_id {:optional true} [:maybe pos-int?]]])
 
 ;;; ------------------------------------------- API Response Schemas -------------------------------------------
 
@@ -216,7 +217,12 @@
                     [:kind   [:= "merged"]]
                     [:pulled :int]
                     [:pushed :int]
-                    [:branch [:maybe :string]]]]])
+                    [:branch [:maybe :string]]]]
+   ;; Conflict outcomes: why a task stopped when the cause is not a collision (its `:conflicts` say what collided).
+   ["remote-changed"    [:map {:closed true}
+                         [:kind [:= "remote-changed"]]]]
+   ["history-rewritten" [:map {:closed true}
+                         [:kind [:= "history-rewritten"]]]]])
 
 (mr/def ::remote-sync-task
   "A RemoteSyncTask as selected from the app DB: every column of `:remote_sync_task`."

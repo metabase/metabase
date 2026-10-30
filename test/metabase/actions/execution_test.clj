@@ -61,6 +61,30 @@
 (defn- recorded-template [row]
   (t2/select-one-fn :query :model/Query :query_hash (:hash row)))
 
+(deftest table-action-runs-with-the-fields-it-was-made-with-test
+  (testing "an implicit action without a model ignores sensitive fields when it runs, as when it was made"
+    (mt/with-temp [:model/Database {db-id :id}       {:engine :h2}
+                   :model/Table    {clash-id :id}     {:db_id db-id :name "CLASH"}
+                   :model/Field    _                  {:table_id clash-id :name "id" :base_type :type/Integer
+                                                       :semantic_type :type/PK}
+                   :model/Field    _                  {:table_id clash-id :name "NAME" :base_type :type/Text}
+                   :model/Field    _                  {:table_id clash-id :name "name" :base_type :type/Text
+                                                       :visibility_type :sensitive}
+                   :model/Table    {two-pk-id :id}    {:db_id db-id :name "TWO_PK"}
+                   :model/Field    _                  {:table_id two-pk-id :name "id" :base_type :type/Integer
+                                                       :semantic_type :type/PK}
+                   :model/Field    _                  {:table_id two-pk-id :name "secret" :base_type :type/Integer
+                                                       :semantic_type :type/PK :visibility_type :sensitive}]
+      (mt/with-model-cleanup [:model/Action]
+        (doseq [[description table-id] {"a name that clashes only with a sensitive column" clash-id
+                                        "a second, sensitive primary key"                  two-pk-id}]
+          (testing description
+            (let [action-id            (action/insert! {:type :implicit :name description :kind :row/update
+                                                        :table_id table-id})
+                  build-implicit-query #'actions.execution/build-implicit-query]
+              (is (=? {:row-parameters {}}
+                      (build-implicit-query (action/select-action :id action-id) :model.row/update {"id" 1}))))))))))
+
 (deftest native-action-audit-trail-test
   (testing "a native query action records one QueryExecution row for the write"
     (mt/test-helpers-set-global-values!
@@ -167,15 +191,13 @@
             (testing "a public execution has no executor and its own context"
               (let [since (mt/latest-query-execution-id)]
                 (actions.execution/execute-action! (action/select-action :id action-id) {"id" 1 "name" "Bird"}
-                                                   {:allow-http-actions? false
-                                                    :context             :public-action-execute})
+                                                   {:context :public-action-execute})
                 (is (=? {:context :public-action-execute}
                         (first (mt/action-executions since))))))
             (testing "a public dashcard execution carries the dashboard and the public context"
               (let [since (mt/latest-query-execution-id)]
                 (actions.execution/execute-dashcard! dashboard-id dashcard-id {"id" 1 "name" "Bird"}
-                                                     {:allow-http-actions? false
-                                                      :context             :public-action-execute})
+                                                     {:context :public-action-execute})
                 (is (=? {:context :public-action-execute, :dashboard_id dashboard-id}
                         (first (mt/action-executions since))))))))))))
 
@@ -189,8 +211,7 @@
                 since  (mt/latest-query-execution-id)]
             (request/as-admin
               (actions.execution/execute-action! action {"id" 1 "name" "Bird"}
-                                                 {:allow-http-actions? false
-                                                  :context             :public-action-execute}))
+                                                 {:context :public-action-execute}))
             (is (=? {:context :public-action-execute, :executor_id nil}
                     (first (mt/action-executions since))))))))))
 
@@ -206,8 +227,7 @@
               (mt/with-log-messages-for-level [messages [metabase.actions.audit :warn]]
                 (request/as-admin
                   (actions.execution/execute-action! action {"id" 1 "name" "Bird"}
-                                                     {:allow-http-actions? false
-                                                      :context             :public-action-execute}))
+                                                     {:context :public-action-execute}))
                 (is (=? {:context :public-action-execute, :executor_id nil, :is_impersonated false}
                         (first (mt/action-executions since))))
                 (is (empty? (messages)))))))))))
@@ -232,27 +252,6 @@
                       (is (some? (:parameters row)))
                       (is (= #{1 "Bird"}
                              (into #{} (map :value) (json/decode+kw (:parameters row))))))))))))))))
-
-(deftest http-action-audit-trail-test
-  (testing "a refused HTTP action still leaves a trace, and the trace holds no template"
-    (mt/test-helpers-set-global-values!
-      (mt/with-actions-test-data-and-actions-enabled
-        (mt/with-actions [{:keys [action-id]} {:type :http}]
-          (mt/with-test-user :crowberto
-            (let [action (action/select-action :id action-id)
-                  since  (mt/latest-query-execution-id)]
-              (is (thrown-with-msg? ExceptionInfo #"HTTP actions are disabled."
-                                    (actions.execution/execute-action! action {"id" 1})))
-              (let [row (first (mt/action-executions since))]
-                (is (=? {:context     :action-execute
-                         :action_id   action-id
-                         :database_id nil
-                         :native      false
-                         :error       "HTTP actions are disabled."}
-                        row))
-                (testing "only the internal descriptor is stored, never url/headers/body"
-                  (is (= {:type "internal", :action "http/execute", :action-id action-id}
-                         (recorded-template row))))))))))))
 
 (deftest audit-write-failure-does-not-fail-the-action-test
   (testing "an audit insert that blows up after the warehouse write is logged, not thrown"

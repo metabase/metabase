@@ -30,6 +30,10 @@ export const updateSeriesColor = (
   );
 };
 
+// The first card decides the chart type, including for cards combined on a dashboard.
+export const isRowChartSeries = (series?: RawSeries | Series) =>
+  series?.[0]?.card.display === "row";
+
 export const getNameForCard = (card: SeriesCard) => {
   return card?.name || "";
 };

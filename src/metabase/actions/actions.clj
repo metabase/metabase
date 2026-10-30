@@ -120,7 +120,7 @@
           (swap! *misc-value-cache* assoc unique-key value))
         value)))
 
-(defn check-actions-enabled-for-database!
+(defn check-actions-enabled-for-database
   "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
   [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions db)
@@ -136,7 +136,7 @@
 
   nil)
 
-(defn check-data-editing-enabled-for-database!
+(defn check-data-editing-enabled-for-database
   "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
   [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions/data-editing db)
@@ -155,11 +155,11 @@
 (defn- database-for-action [action-or-id]
   (actions.db/database-for-action (u/the-id action-or-id)))
 
-(defn check-actions-enabled!
-  "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
-   otherwise returns nil."
+(defn check-actions-enabled
+  "Throws an appropriate error if actions are unsupported or disabled for the database the action runs against,
+  otherwise returns nil."
   [action-or-id]
-  (check-actions-enabled-for-database! (api/check-404 (database-for-action action-or-id))))
+  (check-actions-enabled-for-database (api/check-404 (database-for-action action-or-id))))
 
 (defmulti handle-effects!*
   "Trigger bulk side effects in response to individual effects within actions, e.g. table row modified system events."
@@ -279,7 +279,8 @@
    [:user-id          {:optional true} [:maybe ms/PositiveInt]]
    [:action-id        {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard-id     {:optional true} [:maybe ms/PositiveInt]]
-   [:context          {:optional true} [:maybe [:enum :action-execute :public-action-execute]]]])
+   [:context          {:optional true} [:maybe [:enum :action-execute :public-action-execute]]]
+   [:check-access     {:optional true} [:maybe [:=> [:cat] :any]]]])
 
 ;; TODO rename this to just perform-action! and rename the legacy entry point to clearly deprecate it.
 (mu/defn perform-action-v2!
@@ -291,7 +292,7 @@
    arg-map-or-maps :- [:or ::actions.args/any-arg-map [:sequential ::actions.args/any-arg-map]]
    ;; `action-id`, `dashboard-id` and `audit-context` are attribution for the audit row; the scope maps are closed
    ;; schemas, so they ride along as kwargs instead.
-   & {:keys [policy existing-context user-id action-id dashboard-id]
+   & {:keys [policy existing-context user-id action-id dashboard-id check-access]
       audit-context :context}
    :- [:maybe PerformActionOpts]]
   (when (and existing-context user-id)
@@ -331,15 +332,15 @@
       (when db
         (case policy
           :ad-hoc-invocation
-          (check-actions-enabled-for-database! db)
+          (check-actions-enabled-for-database db)
           :model-action
-          (check-actions-enabled-for-database! db)
+          (check-actions-enabled-for-database db)
           :data-editing
           (do
             ;; TODO more granular controls
             (when-not (api/check-superuser)
               (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
-            (check-data-editing-enabled-for-database! db))))
+            (check-data-editing-enabled-for-database db))))
       (log/with-context {:db-id (:id db)}
         (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
           (let [context  (-> existing-context
@@ -363,6 +364,7 @@
                                            :scope    (actions.scope/normalize-scope scope)}
                             :inputs       arg-maps}
                            (fn [{:keys [outputs]}] {:result_rows (count outputs)})
+                           (some-> check-access (apply []))
                            (check-permissions policy arg-maps)
                            (if-not driver
                              (perform-action-internal! action-kw context arg-maps)

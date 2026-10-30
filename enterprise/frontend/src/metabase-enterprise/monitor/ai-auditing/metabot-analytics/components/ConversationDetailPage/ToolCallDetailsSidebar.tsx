@@ -39,6 +39,7 @@ export function ToolCallDetailsSidebar({
         <Flex align="center" justify="space-between" gap="lg" wrap="nowrap">
           <Text id={headingId} fw="bold">{t`Tool Call`}</Text>
           <ActionIcon
+            variant="subtle"
             ref={closeButtonRef}
             aria-label={t`Close`}
             onClick={onClose}

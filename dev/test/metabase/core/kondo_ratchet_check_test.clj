@@ -18,23 +18,33 @@
 
 (defn- report-lines
   "Return [[kondo-ratchet/check-report]] output for `ratchets`. Supply the defaults that
-  [[kondo-ratchet/read-ratchets]] adds to a partial file."
+  [[kondo-ratchet/read-ratchets]] adds to a partial file. `ratchets` may also carry the module ratchets as
+  `:module-counts` and the `:attribute` result as `:attribution`."
   ([ratchets occurrences text]
-   (report-lines ratchets occurrences {} {} text))
+   (report-lines ratchets occurrences {} text))
   ([ratchets occurrences config-actual text]
    (report-lines ratchets occurrences config-actual {} text))
   ([ratchets occurrences config-actual module-actual text]
-   (let [module-ratchets (:module-counts ratchets {})]
+   (let [module-ratchets (:module-counts ratchets {})
+         attribution     (merge {:actual {}, :unresolved []} (:attribution ratchets))]
      (vec (kondo-ratchet/check-report (-> {:config-counts {}, :comment-exempt #{}}
                                           (merge ratchets)
-                                          (dissoc :module-counts))
-                                      module-ratchets occurrences config-actual module-actual text
+                                          (dissoc :module-counts :attribution))
+                                      module-ratchets occurrences attribution config-actual module-actual text
                                       (kondo-ratchet/render-module-ratchets module-ratchets))))))
 
 (deftest ^:parallel clean-test
   (let [ratchets {:ignore-counts {:a 2, :b 1}}]
     (is (= []
            (report-lines ratchets (occurrences {:a 2, :b 1}) (kondo-ratchet/render ratchets))))))
+
+(deftest ^:parallel stale-flat-discouraged-entry-test
+  (let [ratchets {:ignore-counts {:discouraged-var 3, :a 1}}]
+    (is (= [(str ":ignore-counts still has a flat budget for :discouraged-var -- each now has its own field "
+                 "(:discouraged-var-counts); run `./bin/mage kondo-ratchets-shrink` to drop the stale entry")]
+           (report-lines ratchets (occurrences {:discouraged-var 3, :a 1}) (kondo-ratchet/render ratchets)))
+        "a flat entry for a linter with its own per-symbol field fails the check even when its count
+         happens to match, since nothing reads it and it would only mislead")))
 
 (deftest ^:parallel over-budget-test
   (let [ratchets {:ignore-counts {:a 1}}]
@@ -76,6 +86,27 @@
            (report-lines ratchets [] {:a 2, :b 1, :new 1} (kondo-ratchet/render ratchets)))
         "a lowered config count passes; growth and new entries are reported")))
 
+(deftest ^:parallel discouraged-counts-over-budget-test
+  (let [ratchets {:ignore-counts                {}
+                  :discouraged-var-counts       {:a/x 1}
+                  :discouraged-namespace-counts {:some.ns 1}
+                  :attribution                  {:actual {:discouraged-var       {:a/x 2, :a/new 1}
+                                                          :discouraged-namespace {:some.ns 3}}}}]
+    (is (= ["discouraged-namespace symbols over budget -- remove an ignore, or seed the symbol's budget with `./bin/mage kondo-ratchets-shrink --seed <name below>` and explain the increase in the PR:"
+            "  :discouraged-namespace/some.ns: 1 recorded, 3 actual"
+            "discouraged-var symbols over budget -- remove an ignore, or seed the symbol's budget with `./bin/mage kondo-ratchets-shrink --seed <name below>` and explain the increase in the PR:"
+            "  :discouraged-var/a/new: 0 recorded, 1 actual"
+            "  :discouraged-var/a/x: 1 recorded, 2 actual"]
+           (report-lines ratchets [] (kondo-ratchet/render ratchets)))
+        "each field reports its over-budget symbols by their own seed name")))
+
+(deftest ^:parallel unresolved-discouraged-finding-test
+  (let [ratchets {:ignore-counts {}
+                  :attribution   {:unresolved [{:file "f.clj", :line 3, :linters [:discouraged-var]}]}}]
+    (is (= ["ignored discouraged-var/namespace findings with no per-symbol budget -- they can't be budgeted, so remove the ignore or the usage:"
+            "  f.clj:3: :discouraged-var finding not resolved to a configured symbol"]
+           (report-lines ratchets [] (kondo-ratchet/render ratchets))))))
+
 (deftest ^:parallel module-over-budget-test
   (let [ratchets {:ignore-counts {}, :module-counts {:api-any 1, :friend-edges 3}}]
     (is (= ["module escape hatches over budget -- remove one from .clj-kondo/config/modules/config.edn, or raise the budget manually and explain the increase in the PR:"
@@ -90,9 +121,10 @@
 
 (defn- check-with!
   "Output lines of [[kondo-ratchet/check]] against `ratchets` written to a temp file, with `occurrences`
-  standing in for the tree scan; `:thrown?` says whether it failed. `:test-counts` stands in for the test
-  ratchets file, defaulting to an empty (clean) budget; `{:disabled true}` there is honored."
-  [ratchets occurrences]
+  standing in for the tree scan and `opts` passed to it; `:thrown?` says whether it failed. `:test-counts`
+  stands in for the test ratchets file, defaulting to an empty (clean) budget; `{:disabled true}` there is
+  honored."
+  [ratchets occurrences & [opts]]
   (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
                                "kondo-ratchet-check-test"
                                (make-array java.nio.file.attribute.FileAttribute 0)))
@@ -119,7 +151,7 @@
         {:lines   (str/split-lines
                    (with-out-str
                      (try
-                       (kondo-ratchet/check)
+                       (kondo-ratchet/check opts)
                        (catch clojure.lang.ExceptionInfo _
                          (reset! thrown? true)))))
          :thrown? @thrown?}))))
@@ -185,6 +217,42 @@
            (check-with! ratchets occurrences))
         "a disabled test-ratchets file opts the test tree out of enforcement, even with an unbudgeted
          test-only linter")))
+
+(deftest check-discouraged-attribution-test
+  (let [ratchets         {:ignore-counts {}}
+        occurrences      [{:file "f.clj", :line 1, :linters [:discouraged-var], :justified? true}]
+        attribution      {:actual {}, :unattributed [], :unresolved []}
+        ;; check attributes the prod and test occurrences in one call; only the prod ones carry anything here
+        with-attribution (fn [m] {:attribute (constantly [(merge attribution m) attribution])})
+        finding-at       (fn [line] [{:file "f.clj", :line line, :linters [:discouraged-var]}])]
+    (testing "without an :attribute, a discouraged-var ignore fails instead of counting as zero"
+      (is (=? {:lines   [#"attributing :discouraged-var/:discouraged-namespace ignores needs a kondo run.*"]
+               :thrown? true}
+              (check-with! ratchets occurrences))))
+    (testing "an ignore covering no finding warns without failing"
+      (is (= {:lines   ["WARNING: f.clj:1 ignores :discouraged-var but kondo reports no such finding under it -- probably stale, under a nested ignore for the same linter, or in a reader branch kondo skips"
+                        "ok -- 1 ignore forms within 0 policies"
+                        "ok -- 0 test ignore forms within 0 test policies"]
+              :thrown? false}
+             (check-with! ratchets occurrences
+                          (with-attribution {:unattributed (finding-at 1)})))))
+    (testing "a finding with no configured symbol fails"
+      (is (=? {:lines   ["ignored discouraged-var/namespace findings with no per-symbol budget -- they can't be budgeted, so remove the ignore or the usage:"
+                         "  f.clj:2: :discouraged-var finding not resolved to a configured symbol"]
+               :thrown? true}
+              (check-with! ratchets occurrences
+                           (with-attribution {:unresolved (finding-at 2)})))))))
+
+(deftest check-unconfigured-budget-test
+  (let [ratchets {:ignore-counts {:a 1}, :discouraged-var-counts {:a/gone 2, :a/x 1}}]
+    (mt/with-dynamic-fn-redefs [kondo-ratchet/discouraged-count-keys (constantly #{:a/x})]
+      (is (=? {:lines   [#"WARNING: .*ratchets\.edn budgets :discouraged-var symbols no longer configured in \.clj-kondo/config\.edn: :a/gone -- `\./bin/mage kondo-ratchets-shrink` drops them"
+                         "ok -- 1 ignore forms within 3 policies"
+                         "ok -- 0 test ignore forms within 0 test policies"]
+               :thrown? false}
+              (check-with! ratchets (occurrences {:a 1})))
+          "a budget for a symbol removed from the config warns without failing, and the policy count
+           includes the per-symbol budgets"))))
 
 (deftest ^:parallel stale-test
   (let [ratchets {:ignore-counts {:a 5, :gone 2}}]

@@ -229,9 +229,7 @@ interface SetupOpts {
   dataset?: Dataset;
   initialRoute?: string;
   timelines?: Timeline[];
-  // Delay (ms) for the /api/timeline response, used to control its resolution
-  // order relative to the question/bookmarks load.
-  timelinesDelay?: number;
+  timelinesResponse?: () => Promise<Timeline[]>;
 }
 
 export const setup = async ({
@@ -245,7 +243,7 @@ export const setup = async ({
         : `#${serializeCardForUrl(card)}`
   }`,
   timelines = [],
-  timelinesDelay,
+  timelinesResponse,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DB]);
@@ -254,7 +252,7 @@ export const setup = async ({
   setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints([]);
-  setupTimelinesEndpoints(timelines, timelinesDelay);
+  setupTimelinesEndpoints(timelinesResponse ?? timelines);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
   setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
@@ -407,6 +405,17 @@ export const waitForSaveChangesToBeDisabled = async () => {
 export const waitForSaveToBeEnabled = async () => {
   await waitFor(() => {
     expect(screen.getByText("Save")).toBeEnabled();
+  });
+};
+
+export const saveQuestion = async () => {
+  await waitForSaveToBeEnabled();
+  await userEvent.click(screen.getByText("Save"));
+  await userEvent.click(
+    within(screen.getByTestId("save-question-modal")).getByText("Save"),
+  );
+  await waitFor(() => {
+    expect(screen.queryByTestId("save-question-modal")).not.toBeInTheDocument();
   });
 };
 

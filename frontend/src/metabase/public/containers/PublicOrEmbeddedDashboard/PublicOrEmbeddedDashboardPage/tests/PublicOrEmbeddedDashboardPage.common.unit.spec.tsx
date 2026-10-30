@@ -17,6 +17,28 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     setupLastDownloadFormatEndpoints();
   });
 
+  it("shows the grid skeleton, not the empty state, while the dashboard loads", async () => {
+    const { releaseDashboardRequest } = await setupCommon({
+      holdDashboardRequest: true,
+    });
+
+    try {
+      expect(
+        await screen.findByTestId("dashboard-grid-skeleton"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("This dashboard is empty"),
+      ).not.toBeInTheDocument();
+    } finally {
+      releaseDashboardRequest();
+    }
+
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("dashboard-grid-skeleton"),
+    ).not.toBeInTheDocument();
+  });
+
   it("should display dashboard tabs", async () => {
     await setupCommon({ numberOfTabs: 2 });
 

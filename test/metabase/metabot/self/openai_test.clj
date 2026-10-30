@@ -210,6 +210,20 @@
       (testing "no error chunk is produced for an incomplete (partial-but-valid) response"
         (is (empty? (filter #(= :error (:type %)) parts)))))))
 
+(deftest ^:parallel openai-response-completed-reports-stop-test
+  (testing "a terminal response.completed event reports a \"stop\" finish reason on its usage part"
+    ;; Without it, a normal step would leave an earlier step's content-filter in place as the turn's reason.
+    (doseq [[fixture-name opts] [["openai-text"
+                                  {:input [{:role :user :content "Say hello briefly, in under 10 words."}]}]
+                                 ["openai-tool-calls"
+                                  {:input [{:role :user :content "What time is it in Kyiv?"}]
+                                   :tools [(metabot.tu/get-time-tool)]}]]]
+      (testing fixture-name
+        (is (=? {:type              :usage
+                 :finish-reason     "stop"
+                 :raw-finish-reason "completed"}
+                (last (into [] (openai/openai->aisdk-chunks-xf) (fixture fixture-name opts)))))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Usage normalization tests
 ;;; ──────────────────────────────────────────────────────────────────
@@ -368,14 +382,22 @@
 (deftest ^:parallel openai-request-body-reasoning-gating-test
   (testing "reasoning models ask for a summary; others don't"
     (let [reasoning #(:reasoning (openai/openai-request-body {:model % :input []}))]
-      (is (= {:summary "auto"} (reasoning "gpt-5.4")))
+      (is (= {:summary "auto"} (reasoning "gpt-5.5")))
       (is (= {:summary "auto"} (reasoning "gpt-5.6-sol")))
       (is (= {:summary "auto"} (reasoning "gpt-6-astra")))
       (is (= {:summary "auto"} (reasoning "o3")))
+      (is (= {:summary "auto"} (reasoning "gpt-5.4-pro")))
       (testing "bedrock/azure vendor prefix is stripped"
-        (is (= {:summary "auto"} (reasoning "openai.gpt-5.4"))))
+        (is (= {:summary "auto"} (reasoning "openai.gpt-5.5"))))
       (testing "non-reasoning models get no reasoning param"
         (is (nil? (reasoning "gpt-4.1"))))))
+  (testing "GPT-5.4, its mini and its nano default to no reasoning, so chat requests ask for low effort"
+    (are [model] (= {:summary "auto" :effort "low"}
+                    (:reasoning (openai/openai-request-body {:model model :input []})))
+      "gpt-5.4" "gpt-5.4-mini" "gpt-5.4-nano" "gpt-5.4-2026-03-05" "openai.gpt-5.4" "GPT-5.4")
+    (testing "but structured output keeps the model's default"
+      (is (= {:summary "auto"}
+             (:reasoning (openai/openai-request-body {:model "gpt-5.4" :input [] :schema {:type "object"}}))))))
   (testing "reasoning requests ask for encrypted content so items can be replayed"
     (is (= ["reasoning.encrypted_content"]
            (:include (openai/openai-request-body {:model "gpt-5.4" :input []}))))

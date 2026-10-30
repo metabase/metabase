@@ -1,4 +1,10 @@
 import type { CollectionId } from "./collection";
+import type {
+  ContentDiagnosticsDuplicatedUserParams,
+  ContentDiagnosticsImbalancedUserParams,
+  ContentDiagnosticsSlowUserParams,
+  ContentDiagnosticsStaleUserParams,
+} from "./content-diagnostics";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
@@ -71,10 +77,19 @@ export interface User extends BaseUser {
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
+  slack_account_status?: "active" | "inactive" | null;
   can_write_any_collection: boolean;
   personal_collection_id: CollectionId | null;
   tenant_collection_id: CollectionId | null;
-  sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | "oidc" | null;
+  sso_source:
+    | "jwt"
+    | "ldap"
+    | "google"
+    | "scim"
+    | "saml"
+    | "oidc"
+    | "slack"
+    | null;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
@@ -209,9 +224,44 @@ export type UserKeyValue =
       value: boolean;
     }
   | {
+      namespace: "embedding_hub";
+      key: "isNavbarOpened";
+      value: boolean;
+    }
+  | {
       namespace: "dependency_diagnostics";
       key: string;
       value: DependencyDiagnosticsUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "stale";
+      value: ContentDiagnosticsStaleUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "slow";
+      value: ContentDiagnosticsSlowUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "duplicated";
+      value: ContentDiagnosticsDuplicatedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "empty";
+      value: ContentDiagnosticsImbalancedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "sparse";
+      value: ContentDiagnosticsImbalancedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "crowded";
+      value: ContentDiagnosticsImbalancedUserParams;
     }
   | {
       namespace: "schema_viewer";

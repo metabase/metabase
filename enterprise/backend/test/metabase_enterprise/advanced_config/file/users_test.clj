@@ -72,7 +72,7 @@
   (testing "If this is the first user being created, always make the user a superuser regardless of what is specified"
     (try
       (testing "Create the first User"
-        (with-redefs [setup/has-user-setup (constantly false)]
+        (mt/with-dynamic-fn-redefs [setup/has-user-setup (constantly false)]
           (is (= :ok
                  (advanced-config.file/initialize!
                   {:version 1

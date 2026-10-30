@@ -1,0 +1,16 @@
+/* The status bar and tab strip stay put; the columns of the tab content scroll on their own */
+.tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}

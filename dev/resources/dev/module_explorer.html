@@ -9,6 +9,8 @@
   --line:#e4e8ee; --line-strong:#d2d8e0; --accent:#4a6fe8; --accent-soft:#e8eeff;
   --group:#8a94a3; --chip:#eef1f6; --chip-ink:#3a4350; --shadow:0 1px 2px rgba(20,30,50,.06),0 8px 24px rgba(20,30,50,.06);
   --uses:#e8892b; --usedby:#2fa36b;
+  /* one cycle red for every theme; the themes below leave it alone */
+  --cycle:#d0443b;
 }
 /* explicit color-scheme per theme keeps native controls matched and opts out of Chrome auto-darkening */
 :root[data-theme=light],:root[data-theme=solarized-light]{color-scheme:only light}
@@ -87,6 +89,9 @@ header h1 .dim{color:var(--ink-soft);font-weight:400}
 .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .themepick:focus-within{color:var(--ink);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .themepick{display:inline-flex;align-items:center;gap:6px;padding:0 9px}
+.legend-end{margin-left:auto;display:inline-flex;gap:8px;align-items:center}
+.statlink{cursor:pointer}
+.statlink:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
 .themepick .ticon{color:var(--ink-soft);flex-shrink:0}
 .themepick:hover .ticon,.themepick:hover .tchev{color:var(--ink)}
 .themepick select{border:none;background:transparent;color:inherit;font:inherit;font-size:12.5px;
@@ -122,6 +127,27 @@ main{flex:1;display:flex;min-height:0}
 .badge.ent{background:var(--accent-soft);color:var(--accent);opacity:.85}
 .badge.debt{background:transparent;border:1px solid var(--uses);color:var(--uses);padding:0 4px}
 .badge.bypass{background:transparent;border:1px dashed var(--group);color:var(--group);padding:0 4px}
+/* cycles view */
+.cyc-card{margin:0 8px 10px;padding:12px 14px;border:1px solid var(--line);border-left:3px solid var(--cycle);
+  border-radius:10px;background:var(--panel)}
+.cyc-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:9px}
+.cyc-head b{font-size:13px;font-weight:650}
+.cyc-metrics{display:flex;gap:12px;flex-wrap:wrap;color:var(--ink-soft);font-size:12px;font-variant-numeric:tabular-nums}
+.cyc-metrics b{color:var(--ink);font-size:12px;font-weight:600}
+.cyc-card .sub{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin:10px 0 6px}
+/* .chip.bridge outranks the generic .chip rule further down */
+.chip.bridge{display:inline-flex;align-items:center;gap:6px;margin:0 6px 6px 0;cursor:help;color:var(--ink);
+  background:color-mix(in srgb,var(--cycle) 6%,var(--chip));border-color:color-mix(in srgb,var(--cycle) 18%,transparent)}
+.bridge .arrow{color:var(--cycle);font-size:1.25em;line-height:1}
+.chip.bridge.dull{opacity:.35}
+.chip.bridge.teambridge{background:color-mix(in srgb,var(--team) 22%,var(--chip));border-color:var(--team)}
+.chip.bridge.teambridge.inbound{background:color-mix(in srgb,var(--team) 9%,var(--chip));
+  border-color:color-mix(in srgb,var(--team) 45%,transparent)}
+.bridge .end.other{opacity:.5}
+.bridge .end.link{cursor:pointer}
+.bridge .end.link:hover{color:var(--accent);text-decoration:underline}
+.bridge .end.sel{color:var(--accent);font-weight:600}
+.hint{cursor:help;text-decoration:underline dotted;text-underline-offset:3px;text-decoration-thickness:1px}
 .submini{font-size:10px;color:var(--group);margin-left:5px}
 .row.flat{padding-left:8px}
 .ghost.on{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
@@ -129,6 +155,7 @@ main{flex:1;display:flex;min-height:0}
 .row:hover .mini,.row.sel .mini{opacity:1}
 .cnt-in{color:var(--usedby);font-weight:600}
 .cnt-out{color:var(--uses);font-weight:600}
+.cnt-cyc{color:var(--cycle);font-weight:600}
 /* hotspots and graph toolbars */
 .viewbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 8px 10px;padding:9px 14px;
   border:1px solid var(--line);border-radius:10px;background:var(--panel)}
@@ -157,6 +184,18 @@ main{flex:1;display:flex;min-height:0}
 .graph .viewbar{margin-bottom:0}
 #cy{flex:1;min-height:0}
 .graph .note{color:var(--ink-soft);font-size:12px;padding:40px;text-align:center}
+.graphinfo{flex-basis:100%;display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft)}
+.graphinfo b{color:var(--ink);font-weight:600}
+.ghelp{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;
+  border:1px solid var(--line-strong);cursor:help;font-size:11px}
+.gnote{margin-left:auto}
+.gnote code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:var(--uses)}
+.glegend{display:inline-flex;align-items:center;gap:10px;color:var(--ink-soft);font-size:12px}
+.glegend i{display:inline-block;width:20px;border-top:2px solid;vertical-align:middle;margin-right:4px}
+.glegend .l-cyc{border-color:var(--cycle)}
+.glegend .l-bridge{border-color:var(--cycle);border-top-style:dashed}
+.glegend .l-focus{border-color:var(--accent)}
+.glegend .l-plain{border-color:var(--line-strong)}
 .fchip{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 8px;border-radius:20px;font-size:11.5px;
   background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent)}
 .fchip button{border:none;background:transparent;color:inherit;cursor:pointer;padding:0 3px;font-size:13px;line-height:1}
@@ -193,6 +232,8 @@ kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1
   border-radius:6px;background:var(--chip);color:var(--chip-ink);border:1px solid transparent}
 .chip.link{cursor:pointer}
 .chip.link:hover{border-color:var(--accent);color:var(--accent)}
+.chip.teamchip{background:color-mix(in srgb,var(--team) 28%,var(--chip));border-color:var(--team);color:var(--ink)}
+.chip.teamchip.link:hover{border-color:var(--accent);color:var(--accent)}
 .nsuse{margin-bottom:9px}
 .nsuse .nsname{font-size:11.5px;color:var(--ink-soft);margin-bottom:4px;word-break:break-all}
 .empty-note{color:var(--ink-soft);font-size:12px;font-style:italic}
@@ -215,9 +256,15 @@ kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1
   <div class=seg role=group aria-label='View'>
     <button id=view-tree class=on>Tree</button>
     <button id=view-hotspots title='Rank modules by coupling'>Hotspots</button>
+    <button id=view-cycles title='Dependency cycles'>Cycles</button>
     <button id=view-graph title='Dependency graph around the focused modules'>Graph</button>
   </div>
-  <button class=ghost id=debt title='Show only modules with an unfilled boundary (:api :any, :uses :any, or :model-imports :bypass)'>Unfilled only</button>
+  <button class=ghost id=debt title='Show only modules whose boundary uses an escape hatch: :api :any, :uses :any, or :model-imports :bypass'>Escape hatches only</button>
+</header>
+<div class=legend id=legend>
+  <span class=lbl>Teams</span>
+  <!-- the team chips go here; folding and theme sit at the row's far end so the header fits on one line -->
+  <span class=legend-end>
   <div class=seg id=foldctl role=group aria-label='Folding'>
     <button id=expand title='Expand all groups'>Expand</button>
     <button id=collapse title='Collapse all groups'>Collapse</button>
@@ -235,8 +282,8 @@ kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1
     </select>
     <span class=tchev>▾</span>
   </label>
-</header>
-<div class=legend id=legend></div>
+  </span>
+</div>
 <main>
   <div class=tree id=tree></div>
   <div class=graph id=graph hidden>
@@ -262,6 +309,56 @@ const teamCount = {}; MODULES.forEach(m=>{ if(m.team) teamCount[m.team]=(teamCou
 const NS_EDGES = DATA['ns-edges'];
 const NS_FILES = DATA['ns-files'] || {};
 const HAS_ACTUAL_EDGES = Array.isArray(NS_EDGES);
+// whether `:uses :any` modules list their real dependencies, from the source scan or from their own requires
+const USES_KNOWN = HAS_ACTUAL_EDGES || !!DATA['any-uses-resolved'];
+const CYCLES = DATA.cycles || [];
+const DECLARED_CYCLES_NOTE = 'These edges come from the declared <code>:uses</code>, so cycles through a '+
+  '<code>:uses :any</code> module are missing; run <code>(dev.module-explorer/open!)</code> for observed edges.';
+const BRIDGES = new Set(CYCLES.flatMap(c => c['strong-bridges'].map(([a,b]) => a+'->'+b)));
+function sameCycle(a, b){ const ca = byId[a] && byId[a].cycle; return ca != null && byId[b] && ca === byId[b].cycle; }
+const STRONG_BRIDGE_HELP = 'A strong bridge is a single edge whose removal will split or destroy the cycle.';
+// density and cycle rank, with this cycle's numbers in the formula
+function densityHelp(c){
+  return `Density\n= edges ÷ (modules × (modules − 1))\n= ${c.edges} ÷ (${c.size} × ${c.size-1}) = ${c.density.toFixed(2)}\n\n`+
+    '1.00 means every module depends on every other.';
+}
+function cycleRankHelp(c){
+  return `Cycle rank\n= edges − modules + 1\n= ${c.edges} − ${c.size} + 1 = ${c['cycle-rank']}\n\n`+
+    'The number of independent loops.\n'+
+    'Bounds the number of cuts necessary to break the cycle.';
+}
+// [label, value, tooltip] triples shown wherever a cycle is summarised
+function cycleMetrics(c){
+  return [['modules',c.size], ['edges',c.edges], ['density',c.density.toFixed(2),densityHelp(c)],
+          ['cycle rank',c['cycle-rank'],cycleRankHelp(c)], ['strong bridges',c['strong-bridges'].length,STRONG_BRIDGE_HELP]];
+}
+// a cycle's name from cycle-clusters.edn, or its number when it has none
+function cycleLabel(i){ return CYCLES[i].name || 'cycle '+(i+1); }
+function cycleSummary(i){ return cycleLabel(i)+': '+cycleMetrics(CYCLES[i]).map(([label,v]) => v+' '+label).join(' · '); }
+function cycleMetricsEl(c){
+  const ms=document.createElement('span'); ms.className='cyc-metrics';
+  for(const [label,v,help] of cycleMetrics(c)){
+    const s=document.createElement('span'); s.innerHTML=`<b>${v}</b> ${label}`;
+    if(help){ s.title=help; s.classList.add('hint'); }
+    ms.appendChild(s);
+  }
+  return ms;
+}
+// a strong bridge as one pill, "a → b"; each end links to its module when `linkable` allows
+function bridgeEl(a, b, linkable = () => true){
+  const br=document.createElement('span'); br.className='chip bridge'; br.title=STRONG_BRIDGE_HELP;
+  const end = id => {
+    const e=document.createElement('span'); e.className='end'; e.textContent=id;
+    if(linkable(id) && byId[id]){ e.classList.add('link'); e.onclick=()=>navigate(id); }
+    if(id===selected) e.classList.add('sel');
+    // with teams picked, the end no picked team owns recedes
+    if(focusTeams.size && !ownedByFocusTeam(byId[id])) e.classList.add('other');
+    return e;
+  };
+  const arrow=document.createElement('span'); arrow.className='arrow'; arrow.textContent='→';
+  br.append(end(a), arrow, end(b));
+  return br;
+}
 
 // ---- build the display tree from each module's `path` --------------------
 function makeNode(seg){ return {seg, children:new Map(), module:null}; }
@@ -308,18 +405,21 @@ const debtN = MODULES.filter(isDebt).length;
 document.getElementById('stats').innerHTML =
   `<span><b>${MODULES.length}</b> modules</span><span><b>${ent}</b> enterprise</span>`+
   `<span title='namespaces not yet moved to match the module name'><b>${starred}</b> ns-prefixed</span>`+
-  `<span title='modules with an unfilled boundary (:api :any, :uses :any, or :model-imports :bypass)'><b>${debtN}</b> unfilled</span>`+
+  `<span title='modules whose boundary uses an escape hatch: :api :any, :uses :any, or :model-imports :bypass'><b>${debtN}</b> with escape hatches</span>`+
+  `<span id=stat-cycles class=statlink title='Groups of modules that all reach each other${USES_KNOWN ? '' : '. '+DECLARED_CYCLES_NOTE.replace(/<\/?code>/g, '')}. Click to list them.'><b>${CYCLES.length}</b> cycles</span>`+
   `<span><b>${TEAMS.length}</b> teams</span>`;
+document.getElementById('stat-cycles').onclick = () => setView('cycles');
 document.getElementById('modlist').append(...MODULES.map(m=>{ const o=document.createElement('option'); o.value=m.id; return o; }));
 
 const legend = document.getElementById('legend');
-legend.innerHTML = '<span class=lbl>Teams</span>';
+const legendEnd = legend.querySelector('.legend-end');
 for(const t of TEAMS){
   const el = document.createElement('span');
   el.className='tchip'; el.dataset.team=t; el.title='Show only this team';
   el.innerHTML=`<span class=dot style='background:${teamColor[t]}'></span>${t}<span class=ct>${teamCount[t]}</span>`;
-  el.onclick=()=>{ focusTeams.has(t)?focusTeams.delete(t):focusTeams.add(t); refreshTeamChips(); render(); syncHash(true); };
-  legend.appendChild(el);
+  // the detail panel redraws too: its strong bridges dim the ends no picked team owns
+  el.onclick=()=>{ focusTeams.has(t)?focusTeams.delete(t):focusTeams.add(t); refreshTeamChips(); render(); renderDetail(); syncHash(true); };
+  legend.insertBefore(el, legendEnd);
 }
 
 // ---- tree rendering ------------------------------------------------------
@@ -332,23 +432,28 @@ function matches(m){
   if(!query) return true;
   return m.id.toLowerCase().includes(query) || (m.team||'').toLowerCase().includes(query);
 }
-function outCount(m){ return m['uses-any'] && !HAS_ACTUAL_EDGES ? null : m.uses.length; }
+function outCount(m){ return m['uses-any'] && !USES_KNOWN ? null : m.uses.length; }
 function totalCount(m){ const out=outCount(m); return out===null ? null : m['used-by'].length+out; }
-// precompute, for an active filter, the set of node-keys that must remain visible
+function ownedByFocusTeam(m){ return !!(m && m.team && focusTeams.has(m.team)); }
+// precompute, for an active filter, the set of node-keys that must remain visible.
+// With teams picked, a module shows only if a picked team owns it or one of its ancestors; ancestors of a shown
+// module stay too, dimmed when another team owns them.
 function visibleKeys(){
-  if(!query && !debtOnly) return null;
+  const byTeam = focusTeams.size>0;
+  if(!query && !debtOnly && !byTeam) return null;
   const keep = new Set();
-  (function walk(node, path){
+  (function walk(node, path, underOwned){
     let any=false;
     for(const kid of sortedKids(node)){
       const kpath = path.concat(kid.seg);
       const key = kpath.join('/');
-      const self = kid.module && matches(kid.module);
-      const below = walk(kid, kpath);
+      const owned = underOwned || ownedByFocusTeam(kid.module);
+      const self = kid.module && matches(kid.module) && (!byTeam || owned);
+      const below = walk(kid, kpath, owned);
       if(self||below){ keep.add(key); any=true; }
     }
     return any;
-  })(root, []);
+  })(root, [], false);
   return keep;
 }
 
@@ -377,12 +482,20 @@ function makeName(m, label, extraClass){
   if(m&&m['ns-prefix']){ name.classList.add('nsmoved'); name.title='namespaces still at '+m['ns-prefix']+' — not yet moved to match the module name'; }
   return name;
 }
+// " · in <cycle>" after the counts, in the same quiet style; the cycle's label takes the cycle colour
+function appendCycleCount(el, m){
+  if(m.cycle==null) return;
+  const n=document.createElement('span'); n.className='cnt-cyc'; n.textContent=cycleLabel(m.cycle);
+  const s=document.createElement('span'); s.title='in '+cycleSummary(m.cycle); s.append(' · in ', n);
+  el.appendChild(s);
+}
 function appendCounts(row, m){
   const c=document.createElement('span'); c.className='mini';
   const inN=document.createElement('span'); inN.className='cnt-in'; inN.textContent=m['used-by'].length;
   const out=outCount(m);
   const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=out===null?'any':out;
   c.append(inN, ' used by · ', outN, ' uses');
+  appendCycleCount(c, m);
   c.title=`${m['used-by'].length} known modules depend on it · `+
     (out===null?'its unrestricted dependencies are unknown':`it depends on ${out}`);
   row.appendChild(c);
@@ -402,10 +515,10 @@ function buildRow(m, label, hasKids){
   return {row, caret};
 }
 
-// Shown while the unfilled-boundaries filter is active, so the lens explains itself.
+// Shown while the escape-hatch filter is active, so the lens explains itself.
 function debtNotice(){
   const d=document.createElement('div'); d.className='viewbar';
-  d.innerHTML=`<b>Unfilled boundaries</b><span class=desc>the ${debtN} modules whose config still has an `+
+  d.innerHTML=`<b>Escape hatches</b><span class=desc>the ${debtN} modules whose config still has an `+
     `escape hatch instead of a real boundary: <code>:api :any</code> (no API namespace — every namespace is `+
     `public), <code>:uses :any</code> (may depend on any module), or <code>:model-imports :bypass</code> `+
     `(may use any module&#39;s models). The badge on each row says which.</span>`;
@@ -418,8 +531,10 @@ function render(){
   graphEl.hidden = view!=='graph';
   if(view==='graph') return renderGraph();
   if(view==='hotspots') return renderHotspots();
+  if(view==='cycles') return renderCycles();
   const scroll = treeEl.scrollTop;   // full rebuild resets scroll; restore it so selecting a node doesn't jump
   const keep = visibleKeys();
+  const forceOpen = !!(query || debtOnly);
   treeEl.innerHTML='';
   if(debtOnly) treeEl.appendChild(debtNotice());
   const frag = document.createDocumentFragment();
@@ -431,7 +546,8 @@ function render(){
       const m = kid.module;
       const hasKids = kid.children.size>0;
       const {row, caret} = buildRow(m, kid.seg, hasKids);
-      const isOpen = open.has(key) || (keep && keep.has(key));
+      // search results open up to show their matches; a team filter only hides rows, so folding still works
+      const isOpen = open.has(key) || (forceOpen && keep.has(key));
       if(hasKids && isOpen) row.classList.add('open');
       if(hasKids){ const sc=document.createElement('span'); sc.className='submini'; sc.textContent=kid.sub; sc.title=kid.sub+' modules below'; row.appendChild(sc); }
       if(m && visible) visibleIds.push(m.id);   // only rows whose ancestors are all open are keyboard-reachable
@@ -450,18 +566,22 @@ function render(){
 }
 
 // Flat coupling view: rank modules by known dependency counts. A hotspot is a graph-coupling fact,
-// not a code-quality judgement. Config-only data cannot resolve the dependencies behind `:uses :any`.
+// not a code-quality judgement. Without the source scan, `:uses :any` modules count their own requires, if resolved.
 const SORTS = {
   'used-by': {label:'dependents (fan-in)',
               metric:m=>m['used-by'].length,
               desc:HAS_ACTUAL_EDGES
                 ? 'how many modules depend on it in the source scan — a change here has the widest blast radius'
-                : 'how many modules declare it directly — unrestricted consumers are not inferred'},
+                : USES_KNOWN
+                  ? 'how many modules declare it directly, or require it from a :uses :any module'
+                  : 'how many modules declare it directly — unrestricted consumers are not inferred'},
   'uses':    {label:'dependencies (fan-out)',
               metric:outCount,
               desc:HAS_ACTUAL_EDGES
                 ? 'how many modules it depends on in the source scan — the most entangled consumers in the graph'
-                : 'how many modules it declares directly — unrestricted modules sort after known counts'},
+                : USES_KNOWN
+                  ? 'how many modules it declares directly, or requires when it has :uses :any'
+                  : 'how many modules it declares directly — unrestricted modules sort after known counts'},
   'coupling':{label:'total coupling (in + out)',
               metric:totalCount,
               desc:'known dependents plus dependencies — modules that are both load-bearing and entangled'},
@@ -512,13 +632,78 @@ function renderHotspots(){
     const c=document.createElement('span'); c.className='hcounts';
     const inN=document.createElement('span'); inN.className='cnt-in'; inN.textContent=m['used-by'].length;
     const outN=document.createElement('span'); outN.className='cnt-out'; outN.textContent=out===null?'any':out;
-    c.append(inN, ' used by · ', outN, ' uses'); row.appendChild(c);
+    c.append(inN, ' used by · ', outN, ' uses'); appendCycleCount(c, m); row.appendChild(c);
     appendDepMarks(row,m);
     row.onclick=(e)=>{ e.stopPropagation(); select(m.id); };
     visibleIds.push(m.id);
     frag.appendChild(row);
   });
   treeEl.appendChild(frag);
+  treeEl.scrollTop = scroll;
+}
+
+// ---- cycles view: one card per cycle, largest first --------------------------
+
+// a cycle member; with teams picked, the picked teams' members take their team colour so they are easy to find
+function moduleLink(id){
+  const c = chip(id, true), team = byId[id] && byId[id].team;
+  if(ownedByFocusTeam(byId[id])){ c.classList.add('teamchip'); c.style.setProperty('--team', teamColor[team]); }
+  if(id===selected) c.style.borderColor = 'var(--accent)';
+  c.dataset.id = id;   // lets scrollToSelected follow arrow-key moves through the member chips
+  return c;
+}
+function graphCycle(i){
+  focus = new Set(CYCLES[i].modules); degree = 0;
+  view = 'graph'; syncView(); render(); syncHash(true);
+}
+function renderCycles(){
+  const scroll = treeEl.scrollTop;
+  treeEl.innerHTML='';
+  const bar=document.createElement('div'); bar.className='viewbar';
+  bar.innerHTML=`<b>Cycles</b><span class=desc>Groups of modules that all reach each other.`+
+    (USES_KNOWN ? '' : ` ${DECLARED_CYCLES_NOTE}`)+
+    `</span>`;
+  treeEl.appendChild(bar);
+  if(debtOnly) treeEl.appendChild(debtNotice());
+  const shown = new Set(CYCLES.filter(c => c.modules.some(id => matches(byId[id]) && teamOk(byId[id]))));
+  if(!shown.size){
+    const e=document.createElement('div'); e.className='viewbar';
+    e.textContent = CYCLES.length ? 'No cycles match the filters.' : 'No cycles.';
+    treeEl.appendChild(e);
+  }
+  CYCLES.forEach((c,i)=>{
+    if(!shown.has(c)) return;
+    const card=document.createElement('div'); card.className='cyc-card';
+    const head=document.createElement('div'); head.className='cyc-head';
+    const t=document.createElement('b'); t.textContent=cycleLabel(i); head.appendChild(t);
+    head.appendChild(cycleMetricsEl(c));
+    const g=document.createElement('button'); g.className='ghost'; g.textContent='Graph'; g.title='Draw only this cycle';
+    g.onclick=()=>graphCycle(i); head.appendChild(g);
+    card.appendChild(head);
+    const box=document.createElement('div'); box.className='chips';
+    c.modules.forEach(id => { box.appendChild(moduleLink(id)); visibleIds.push(id); });
+    card.appendChild(box);
+    if(c['strong-bridges'].length){
+      const sub=document.createElement('div'); sub.className='sub'; sub.textContent='Strong bridges';
+      sub.title=STRONG_BRIDGE_HELP; sub.classList.add('hint'); card.appendChild(sub);
+      const bb=document.createElement('div');
+      for(const [a,b] of c['strong-bridges']){
+        const br=bridgeEl(a, b);
+        // with teams picked, a bridge takes the colour of the picked team it touches (its source's first);
+        // one the team can cut (the source is theirs) is full strength, one that only reaches into the team is fainter,
+        // and bridges touching none of their modules fade so the team's own stand out
+        const owner = [a, b].map(id => byId[id]).find(ownedByFocusTeam);
+        if(owner){
+          br.classList.add('teambridge'); br.style.setProperty('--team', teamColor[owner.team]);
+          if(owner.id !== a) br.classList.add('inbound');
+        }
+        else if(focusTeams.size) br.classList.add('dull');
+        bb.appendChild(br);
+      }
+      card.appendChild(bb);
+    }
+    treeEl.appendChild(card);
+  });
   treeEl.scrollTop = scroll;
 }
 
@@ -547,37 +732,40 @@ function hiddenFromGraph(id){
   let re=null; try{ re = hideRe && new RegExp(hideRe); }catch(e){}
   return hidden.has(id) || !!(re && re.test(id)) || !teamOk(byId[id]);
 }
-// union of each focused module's `degree`-hop neighbourhood, ignoring edge direction
+// Every module within `degree` hops of a focused one, ignoring edge direction, mapped to its fewest hops.
 function neighbourhood(){
-  const visible = new Set();
-  for(const start of focus){
-    const seen = new Set([start]);
-    let frontier = [start];
-    for(let hop=0; hop<degree && frontier.length; hop++){
-      const next = [];
-      for(const m of frontier) for(const [c,p] of edgesByMod[m]||[])
-        for(const n of [c,p]) if(!seen.has(n) && byId[n] && !hiddenFromGraph(n)){ seen.add(n); next.push(n); }
-      frontier = next;
-    }
-    seen.forEach(n => visible.add(n));
+  const hops = new Map([...focus].map(id => [id, 0]));
+  let frontier = [...focus];
+  for(let hop=1; hop<=degree && frontier.length; hop++){
+    const next = [];
+    for(const m of frontier) for(const [c,p] of edgesByMod[m]||[])
+      for(const n of [c,p]) if(!hops.has(n) && byId[n] && !hiddenFromGraph(n)){ hops.set(n, hop); next.push(n); }
+    frontier = next;
   }
-  return visible;
+  return hops;
+}
+// An edge between two modules on the outer ring was never walked, so drawing it would look like an extra hop.
+// Edges between focused modules always show, so a cycle drawn at 0 hops keeps its edges.
+function withinReach(hops, c, p){
+  const a = hops.get(c), b = hops.get(p);
+  return a !== undefined && b !== undefined && (Math.min(a, b) < degree || (a === 0 && b === 0));
 }
 const nsNodeId = (m, ns) => 'ns:'+m+'/'+ns;
 // Edges into an expanded module point at the API namespace they use; all others collapse to one weighted
 // edge per module pair.
-function graphElements(visible){
+function graphElements(hops){
   const nodes = [], edges = [], pairs = new Map();
-  for(const id of visible){
+  for(const id of hops.keys()){
     const m = byId[id];
     nodes.push({data:{id:'mod:'+id, label:id, type:'module', module:id, team:m.team||'', loc:m.stats?m.stats.loc:0}});
     if(expanded.has(id) && !m['api-any'])
       for(const ns of m.api) nodes.push({data:{id:nsNodeId(id,ns), label:ns, type:'ns', parent:'mod:'+id, module:id}});
   }
   for(const [c,p,ns] of EDGES){
-    if(c===p || !visible.has(c) || !visible.has(p)) continue;
+    if(c===p || !withinReach(hops, c, p)) continue;
     if(ns && expanded.has(p) && byId[p].api.includes(ns)){
-      edges.push({data:{id:'e:'+c+'->'+ns, source:'mod:'+c, target:nsNodeId(p,ns), sourceModule:c, targetModule:p}});
+      edges.push({data:{id:'e:'+c+'->'+ns, source:'mod:'+c, target:nsNodeId(p,ns), sourceModule:c, targetModule:p,
+                        cyc:sameCycle(c,p), bridge:BRIDGES.has(c+'->'+p)}});
     } else {
       const k = c+'->'+p;
       if(!pairs.has(k)) pairs.set(k, {c, p, n:0});
@@ -586,12 +774,13 @@ function graphElements(visible){
   }
   for(const {c,p,n} of pairs.values())
     edges.push({data:{id:'agg:'+c+'->'+p, source:'mod:'+c, target:'mod:'+p, sourceModule:c, targetModule:p,
-                      aggregate:true, weight:NS_EDGES?n:1}});
+                      aggregate:true, weight:NS_EDGES?n:1, cyc:sameCycle(c,p), bridge:BRIDGES.has(c+'->'+p)}});
   return {nodes, edges};
 }
 function graphStyle(){
   const v = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const ink=v('--ink'), soft=v('--ink-soft'), panel=v('--panel'), accent=v('--accent'), line=v('--line-strong'), group=v('--group');
+  const ink=v('--ink'), soft=v('--ink-soft'), panel=v('--panel'), accent=v('--accent'), line=v('--line-strong'), group=v('--group'),
+        cycle=v('--cycle');
   const color = n => teamColor[n.data('team')] || group;
   const size = n => Math.max(36, Math.min(180, Math.sqrt(n.data('loc')||0)*1.4));
   return [
@@ -608,6 +797,10 @@ function graphStyle(){
       'text-background-color':panel, 'text-background-opacity':.85, 'text-background-padding':2}},
     {selector:'.focused', style:{'border-color':accent, 'border-width':3}},
     {selector:'edge.focused', style:{'line-color':accent, 'target-arrow-color':accent, width:2, opacity:1}},
+    // edges inside a cycle stay red even when focused; the strong bridges, which split the cycle on their own, dashed
+    {selector:'edge[?cyc]', style:{'line-color':cycle, 'target-arrow-color':cycle, opacity:.55}},
+    {selector:'edge[?bridge]', style:{'line-style':'dashed', 'line-dash-pattern':[8,4], opacity:1}},
+    {selector:'edge[?cyc].focused', style:{opacity:1}},
     {selector:'.sel', style:{'overlay-color':accent, 'overlay-opacity':.15, 'overlay-padding':6}},
   ];
 }
@@ -650,8 +843,10 @@ function showNodeMenu(node, x, y){
   for(const [label, fn] of items){ const d=document.createElement('div'); d.textContent=label; d.onclick=fn; menuEl.appendChild(d); }
   menuEl.style.left = x+'px'; menuEl.style.top = y+'px'; menuEl.hidden = false;
 }
+// At 0 hops a newly focused module would be drawn alone, so focusing one module brings its neighbours back.
+function focusOnly(id){ focus = new Set([id]); degree ||= 1; }
 function setFocus(id, mode){
-  if(mode==='replace') focus = new Set([id]);
+  if(mode==='replace') focusOnly(id);
   else if(mode==='add') focus.add(id);
   else focus.delete(id);
   syncHash(true);
@@ -685,7 +880,7 @@ function renderGraphBar(visible){
     requestAnimationFrame(() => pick.focus());
   }
   const deg = document.createElement('select'); deg.title = 'Hops out from the focused modules';
-  for(const n of [1,2,3]){ const o=document.createElement('option'); o.value=n; o.textContent=n+(n===1?' hop':' hops'); deg.appendChild(o); }
+  for(const n of [0,1,2,3]){ const o=document.createElement('option'); o.value=n; o.textContent=n+(n===1?' hop':' hops'); deg.appendChild(o); }
   deg.value = degree; deg.onchange = () => { degree = +deg.value; syncHash(true); renderGraph(); };
   bar.appendChild(deg);
   const hre = document.createElement('input'); hre.placeholder = 'hide regex'; hre.value = hideRe; hre.className = 'mono';
@@ -695,11 +890,21 @@ function renderGraphBar(visible){
   if(hidden.size) btn('Show '+hidden.size+' hidden', [...hidden].sort().join(', '), () => { hidden.clear(); syncHash(true); renderGraph(); });
   if(expanded.size) btn('Collapse all', 'Hide every API namespace', () => { expanded.clear(); syncHash(true); renderGraph(); });
   if(cy && focus.size) btn('Re-layout', 'Run the layout again', runLayout);
-  const d = document.createElement('span'); d.className = 'desc';
-  d.textContent = (visible ? visible.size+' modules · '+cy.edges().length+' edges · ' : '') +
-    'click selects · shift-click adds to focus · double-click focuses · right-click for more' +
-    (NS_EDGES ? '' : ' · run (dev.module-explorer/open!) in a dev REPL for namespace-level edges');
-  bar.appendChild(d);
+  // second row: what is drawn, what the lines mean, and how to drive it
+  const info = document.createElement('div'); info.className = 'graphinfo';
+  if(visible){ const n=document.createElement('span'); n.className='gstats';
+    n.innerHTML=`<b>${visible.size}</b> modules · <b>${cy.edges().length}</b> edges`; info.appendChild(n); }
+  const lg = document.createElement('span'); lg.className = 'glegend';
+  lg.innerHTML = `<span><i class=l-plain></i>depends on</span><span><i class=l-focus></i>touches focus</span>`+
+    `<span><i class=l-cyc></i>inside a cycle</span>`+
+    `<span class=hint title='${STRONG_BRIDGE_HELP}'><i class=l-bridge></i>strong bridge: cutting it splits or destroys the cycle</span>`;
+  info.appendChild(lg);
+  const help = document.createElement('span'); help.className = 'ghelp'; help.textContent = '?';
+  help.title = 'Click: select\nShift-click: add to focus\nDouble-click: focus only this\nRight-click: more';
+  info.appendChild(help);
+  if(!NS_EDGES){ const note=document.createElement('span'); note.className='gnote';
+    note.innerHTML='Namespace-level edges: run <code>(dev.module-explorer/open!)</code> in a dev REPL'; info.appendChild(note); }
+  bar.appendChild(info);
 }
 function runLayout(){
   if(layout) layout.stop();
@@ -778,6 +983,23 @@ function nsUsage(m){
   }
   return s;
 }
+// the module's cycle, and the strong bridges that start or end at it
+function cycleSection(m){
+  const c=CYCLES[m.cycle];
+  const s=document.createElement('div'); s.className='sec';
+  const h=document.createElement('h3');
+  h.innerHTML=`<span class=swatch style='background:var(--cycle)'></span>`;
+  h.append(cycleLabel(m.cycle));
+  s.appendChild(h);
+  s.appendChild(cycleMetricsEl(c));
+  const mine=c['strong-bridges'].filter(([a,b]) => a===m.id || b===m.id);
+  const box=document.createElement('div'); box.className='chips'; box.style.marginTop='8px';
+  for(const [a,b] of mine) box.appendChild(bridgeEl(a, b, id => id!==m.id));
+  if(mine.length) s.appendChild(box);
+  const g=document.createElement('button'); g.className='ghost'; g.style.marginTop='6px'; g.textContent='Graph this cycle';
+  g.onclick=()=>graphCycle(m.cycle); s.appendChild(g);
+  return s;
+}
 function expandAncestors(id){ const p=byId[id]&&byId[id].path; if(!p) return; for(let i=1;i<p.length;i++) open.add(p.slice(0,i).join('/')); }
 function scrollToSelected(){ if(!selected) return; const el=treeEl.querySelector('[data-id='+JSON.stringify(selected)+']'); if(el) el.scrollIntoView({block:'center'}); }
 // The hash holds selection, filters, and graph state, so reloads and deep links restore the same view.
@@ -812,7 +1034,7 @@ function select(id){   // user selection → push a history entry
 }
 function navigate(id){   // go to a module from a link: selects it, and in the graph also focuses it
   endKbRun();
-  if(view==='graph') focus = new Set([id]);
+  if(view==='graph') focusOnly(id);
   applySelected(id);
   syncHash(true);
   if(view==='graph') renderGraph();
@@ -862,9 +1084,11 @@ function renderDetail(){
   }
   const api = m['api-any']?['(any — no API namespace yet)']:m.api;
   const uses = m['uses-any']
-    ? (HAS_ACTUAL_EDGES ? (m.uses.length ? m.uses : ['(none observed)']) : ['(any — actual dependencies require a dev REPL)'])
+    ? (USES_KNOWN ? (m.uses.length ? m.uses : ['(none observed)']) : ['(any — actual dependencies require a dev REPL)'])
     : m.uses;
   const secs=[
+    // the cycle goes first: long API and dependency lists would push it out of sight
+    m.cycle!=null && cycleSection(m),
     section('API namespaces', api),
     section(m['uses-any']?'Uses (unrestricted)':'Uses', uses, {link:true, swatch:'var(--uses)'}),
     section('Used by', m['used-by'], {link:true, swatch:'var(--usedby)'}),
@@ -899,11 +1123,11 @@ function applyTheme(v){ v ? rootEl.setAttribute('data-theme',v) : rootEl.removeA
 try{ const saved=localStorage.getItem('mb-modtree-theme'); if(saved!==null){ themeSel.value=saved; applyTheme(saved); } }catch(e){}
 themeSel.onchange=()=>{ applyTheme(themeSel.value); try{ localStorage.setItem('mb-modtree-theme', themeSel.value); }catch(e){} };
 
-// unfilled-boundaries lens + tree/hotspots/graph view
+// escape-hatch lens + tree/hotspots/cycles/graph view
 const debtBtn=document.getElementById('debt');
 debtBtn.onclick=()=>{ debtOnly=!debtOnly; debtBtn.classList.toggle('on',debtOnly); render(); };
 function syncView(){
-  for(const v of ['tree','hotspots','graph']) document.getElementById('view-'+v).classList.toggle('on', view===v);
+  for(const v of ['tree','hotspots','cycles','graph']) document.getElementById('view-'+v).classList.toggle('on', view===v);
   document.getElementById('foldctl').style.display = view==='tree' ? '' : 'none';
   debtBtn.style.display = view==='graph' ? 'none' : '';
 }
@@ -916,7 +1140,7 @@ function setView(v){
   if(view==='tree'&&selected) scrollToSelected();
   syncHash(true);
 }
-for(const v of ['tree','hotspots','graph']) document.getElementById('view-'+v).onclick=()=>setView(v);
+for(const v of ['tree','hotspots','cycles','graph']) document.getElementById('view-'+v).onclick=()=>setView(v);
 syncView();
 
 // keyboard: / focuses search, Esc clears/deselects, ↑/↓ move selection through visible rows

@@ -53,18 +53,22 @@
                        :model/OsiAiContext _ {:ai_context  {:instructions "Use it directly." :synonyms [entity-type]}
                                               :entity_type entity-type :entity_local_id card-id}]
           (let [extracted (extract-for "card" card-id)]
-            (testing "path nests the row under the Card; ai_context copies verbatim; no entity_id/key fields"
+            (testing "path nests the row under the Card; ai_context and entity_id copy verbatim"
               (is (=? {:ai_context  {:instructions "Use it directly." :synonyms [entity-type]}
+                       :entity_id   string?
                        :serdes/meta [{:model "Card" :id card-eid} {:model "OsiAiContext" :id "ai_context"}]}
-                      extracted))
-              (is (not (contains? extracted :entity_id))))
+                      extracted)))
             (testing "depends on the referenced Card"
               (is (= [[{:model "Card" :id card-eid}]] (serdes/deserialization-dependencies extracted))))
             (testing "importing resolves the path back to the local card row"
               (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
               (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
-              (is (=? {:entity_type "card" :entity_local_id card-id}
+              (is (=? {:entity_type "card" :entity_local_id card-id :entity_id (:entity_id extracted)}
                       (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id))))))))))
+
+(deftest ^:parallel extract-order-columns-test
+  (testing "exported rows are ordered by entity_id, so same-named files get the same suffixes on every instance"
+    (is (= [:entity_id] (serdes/extract-order-columns "OsiAiContext" {})))))
 
 (deftest measure-segment-entity-round-trip-test
   (testing "measure and segment refs nest under the entity's path and import back"
@@ -107,6 +111,26 @@
           (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
           (is (=? {:entity_type "table" :entity_local_id table-id}
                   (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id table-id))))))))
+
+(deftest schemaless-table-entity-round-trip-test
+  (testing "a schemaless Table keeps its nil schema in the export, so both import paths find the Table"
+    (mt/with-temp [:model/Table        {table-id :id} {:db_id (mt/id) :schema nil :name "schemaless_table"}
+                   :model/OsiAiContext _              {:ai_context {:instructions "no schema"}
+                                                       :entity_type "table" :entity_local_id table-id}]
+      (let [db-name   (t2/select-one-fn :name :model/Database :id (mt/id))
+            extracted (serdes/with-cache (extract-for "table" table-id))
+            restored  #(t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id table-id)]
+        (is (= [db-name nil "schemaless_table"] (:entity_local_id extracted)))
+        (testing "from an in-memory ingestion carrying the full path"
+          (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id table-id)
+          (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+          (is (=? {:ai_context {:instructions "no schema"}} (restored))))
+        (testing "from files, whose path is rebuilt from the entity"
+          (ts/with-random-dump-dir [dump-dir "osi-schemaless-"]
+            (storage/store! [extracted] (storage.files/file-writer dump-dir))
+            (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id table-id)
+            (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
+            (is (=? {:ai_context {:instructions "no schema"}} (restored)))))))))
 
 (deftest import-over-existing-row-updates-by-compound-key-test
   (testing "importing over an existing row updates it in place via the full compound key, not entity_type alone"

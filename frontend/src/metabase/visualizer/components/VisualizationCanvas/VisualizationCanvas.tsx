@@ -76,7 +76,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           >{t`Start by selecting a dataset`}</Title>
           <Title
             size="h5"
-            c="text-disabled"
+            c="text-secondary"
           >{t`Find something to visualize in the column on the left.`}</Title>
         </Flex>
       </Center>
@@ -122,6 +122,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
         >
           <Tooltip withinPortal={false} label={t`View as table`}>
             <ActionIcon
+              variant="subtle"
               data-testid="visualizer-view-as-table-button"
               onClick={() => {
                 trackVisualizerViewAsTableClicked();

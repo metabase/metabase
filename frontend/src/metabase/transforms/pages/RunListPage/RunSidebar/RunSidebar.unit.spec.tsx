@@ -55,14 +55,16 @@ describe("RunSidebar", () => {
     expect(screen.getByText("Success")).toBeInTheDocument();
   });
 
-  it("should render the error section when message is present", () => {
+  it("should render the error section when message is present", async () => {
     const run = createMockTransformRun({
       status: "failed",
       message: "Something went wrong",
     });
     setup({ run });
 
-    expect(screen.getByRole("region", { name: "Error" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("region", { name: "Error" }),
+    ).toBeInTheDocument();
   });
 
   it("should not render the error section when message is null", () => {

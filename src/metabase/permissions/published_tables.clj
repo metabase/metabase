@@ -38,13 +38,6 @@
   [_table]
   false)
 
-(defenterprise published-table-visible-clause
-  "Returns a HoneySQL clause for published tables visible via collection permissions.
-  OSS implementation returns nil."
-  metabase-enterprise.data-studio.permissions.published-tables
-  [_table-id-column _user-info]
-  nil)
-
 (defenterprise published-table-perm-grant-rows
   "Returns a HoneySQL SELECT producing (id, perm_type, perm_value) rows representing the permission
   grants that published+visible-collection tables provide. Used as a UNION ALL branch in the

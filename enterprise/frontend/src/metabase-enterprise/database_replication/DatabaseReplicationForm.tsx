@@ -282,7 +282,7 @@ export const DatabaseReplicationForm = ({
                               <Text span c="text-secondary" display="inline">
                                 .{table.tableName}
                               </Text>{" "}
-                              <Text span c="text-disabled" display="inline">
+                              <Text span c="text-secondary" display="inline">
                                 {noSyncReason(table)}
                               </Text>
                             </Text>
@@ -396,7 +396,7 @@ export const DatabaseReplicationForm = ({
                 <Stack>
                   <Group justify="space-between">
                     <Box ta="left">
-                      <Text c="text-disabled">{database.name}</Text>
+                      <Text c="text-secondary">{database.name}</Text>
                       {!previewResponseLoading &&
                       typeof previewResponse?.totalEstimatedRowCount ===
                         "number" ? (
@@ -411,7 +411,7 @@ export const DatabaseReplicationForm = ({
                     {previewResponseLoading && <Loader />}
 
                     <Box ta="right">
-                      <Text c="text-disabled">{t`Available Cloud Storage`}</Text>
+                      <Text c="text-secondary">{t`Available Cloud Storage`}</Text>
                       {!previewResponseLoading &&
                       typeof previewResponse?.freeQuota === "number" ? (
                         <Text fw="bold" w="100%">
@@ -428,7 +428,9 @@ export const DatabaseReplicationForm = ({
                     <Progress
                       value={storageUtilizationPercent}
                       color={
-                        previewResponse?.canSetReplication ? "success" : "error"
+                        previewResponse?.canSetReplication
+                          ? "feedback-positive"
+                          : "feedback-negative"
                       }
                     />
                   ) : (

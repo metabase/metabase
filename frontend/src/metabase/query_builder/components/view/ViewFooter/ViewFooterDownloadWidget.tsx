@@ -26,7 +26,6 @@ export const ViewFooterDownloadWidget = () => {
         visualizationSettings={visualizationSettings}
         dashcardId={question.card().dashcardId}
         dashboardId={question.card().dashboardId}
-        variant="viewFooter"
       />
     )
   );

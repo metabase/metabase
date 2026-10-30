@@ -42,10 +42,6 @@ export function setupAnthropicLlmProvider({
   ]);
 }
 
-export function clearLlmProviders() {
-  return setLlmProviders([]);
-}
-
 export function metabotChatSidebar() {
   return cy.findByTestId("metabot-chat");
 }

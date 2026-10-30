@@ -11,19 +11,19 @@
 }
 
 .option:hover:not(:disabled) {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-color: var(--mb-color-border-brand);
 }
 
 .option:focus-visible {
-  outline: 2px solid var(--mb-color-focus);
+  outline: 2px solid var(--mb-color-input-focus);
   outline-offset: 2px;
 }
 
 .option:disabled {
   color: var(--mb-color-text-disabled);
   cursor: not-allowed;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .option:disabled .content {

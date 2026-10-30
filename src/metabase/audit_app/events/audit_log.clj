@@ -182,12 +182,24 @@
 (events/derive! :event/user-reactivated ::user-event)
 (events/derive! :event/password-reset-initiated ::user-event)
 (events/derive! :event/password-reset-successful ::user-event)
+(events/derive! :event/password-changed ::user-event)
 (events/derive! :event/mfa-verification-failed ::user-event)
 (events/derive! :event/mfa-required-enrollment-failed ::user-event)
 (events/derive! :event/mfa-enrolled ::user-event)
 (events/derive! :event/mfa-disabled ::user-event)
+(events/derive! :event/mcp-jwt-token-issued ::user-event)
 
 (methodical/defmethod events/publish-event! ::user-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+;; session events
+
+(events/derive! ::session-event ::event)
+(events/derive! :event/session-revoked ::session-event)
+(events/derive! :event/sessions-revoked ::session-event)
+
+(methodical/defmethod events/publish-event! ::session-event
   [topic event]
   (audit-log/record-event! topic event))
 

@@ -1,36 +1,8 @@
-import { t } from "ttag";
-
 import { Link } from "metabase/common/components/Link";
-import { Card, Group, Icon, SimpleGrid, Stack, Text } from "metabase/ui";
+import { Card, Group, Icon, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./RelatedSettingsSection.module.css";
-import type { RelatedSettingItem } from "./constants";
-
-export function RelatedSettingsSection({
-  items,
-}: {
-  items?: RelatedSettingItem[];
-}) {
-  return (
-    <Stack gap="lg">
-      <Text size="lg" fw="bold" lh="xs">
-        {t`Related settings`}
-      </Text>
-
-      <SimpleGrid cols={{ xs: 1, md: 3 }} spacing="lg">
-        {items?.map((item) => (
-          <RelatedSettingCard
-            key={item.to}
-            icon={item.icon}
-            name={item.name}
-            to={item.to}
-          />
-        ))}
-      </SimpleGrid>
-    </Stack>
-  );
-}
 
 export const RelatedSettingCard = ({
   icon,

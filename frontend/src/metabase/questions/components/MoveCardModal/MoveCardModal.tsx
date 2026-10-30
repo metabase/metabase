@@ -79,6 +79,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         dispatch(
           addUndo({
             message: <MoveCardToast card={card} destination={destination} />,
+            variant: destination ? undefined : "negative",
           }),
         );
 

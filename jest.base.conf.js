@@ -50,12 +50,13 @@ const baseConfig = {
     "^remend$": "<rootDir>/node_modules/remend/dist/index.js",
     "^build-configs/(.*)$": "<rootDir>/frontend/build/$1",
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
-    "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
+    "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)(\\?url)?$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     // The real catalogues are a build artifact, so tests resolve a small fixture
     // per locale instead.
-    "^locales/(.*)\\.json$": "<rootDir>/frontend/test/__mocks__/locales/$1.json",
+    "^locales/(.*)\\.json$":
+      "<rootDir>/frontend/test/__mocks__/locales/$1.json",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
     "csv-parse/browser/esm/sync":

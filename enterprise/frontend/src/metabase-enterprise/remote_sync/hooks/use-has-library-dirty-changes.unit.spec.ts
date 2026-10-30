@@ -191,47 +191,62 @@ describe("useHasLibraryDirtyChanges", () => {
     });
   });
 
-  describe("snippet dirty state", () => {
-    it("returns true when a dirty snippet exists", async () => {
-      const { result } = setup({
-        collections: [
-          createLibraryCollection({ id: 1 }),
-          createMockSnippetsCollection({ id: 100 }),
-        ],
-        dirty: [
-          createMockDirtyEntity({
-            id: 10,
-            model: "nativequerysnippet",
-            name: "My Snippet",
-            collection_id: 100,
-          }),
-        ],
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBe(true);
-      });
-    });
-
-    it("returns true when a dirty snippet exists in root (no collection)", async () => {
+  describe("changes owned by other tabs", () => {
+    it("returns false for a dirty snippet because the SQL snippets tab carries its own badge", async () => {
       const { result } = setup({
         collections: [createLibraryCollection({ id: 1 })],
         dirty: [
           createMockDirtyEntity({
             id: 10,
             model: "nativequerysnippet",
-            name: "Root Snippet",
+            name: "My Snippet",
             collection_id: undefined,
           }),
         ],
       });
 
       await waitFor(() => {
-        expect(result.current).toBe(true);
+        expect(result.current).toBe(false);
       });
     });
 
-    it("returns true when a dirty collection in snippets namespace exists", async () => {
+    it("returns false for a dirty data action because the Data actions tab carries its own badge", async () => {
+      const { result } = setup({
+        collections: [createLibraryCollection({ id: 1 })],
+        dirty: [
+          createMockDirtyEntity({
+            id: 10,
+            model: "action",
+            name: "Refund order",
+            collection_id: undefined,
+            card_id: null,
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(false);
+      });
+    });
+
+    it("returns false for a removed snippet", async () => {
+      const { result } = setup({
+        collections: [createLibraryCollection({ id: 1 })],
+        dirty: [
+          createMockDirtyEntity({
+            id: 10,
+            model: "nativequerysnippet",
+            sync_status: "removed",
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(false);
+      });
+    });
+
+    it("returns false for a removed collection in the snippets namespace", async () => {
       const { result } = setup({
         collections: [
           createLibraryCollection({ id: 1 }),
@@ -241,88 +256,14 @@ describe("useHasLibraryDirtyChanges", () => {
           createMockDirtyEntity({
             id: 100,
             model: "collection",
-            name: "Snippets Folder",
-          }),
-        ],
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBe(true);
-      });
-    });
-
-    it("returns false when dirty collection is not in snippets namespace", async () => {
-      const { result } = setup({
-        collections: [
-          createLibraryCollection({ id: 1 }),
-          createRegularCollection({ id: 2 }),
-          createMockSnippetsCollection({ id: 100 }),
-        ],
-        dirty: [
-          createMockDirtyEntity({
-            id: 2,
-            model: "collection",
-            name: "Regular Collection",
+            sync_status: "removed",
+            collection_id: undefined,
           }),
         ],
       });
 
       await waitFor(() => {
         expect(result.current).toBe(false);
-      });
-    });
-
-    it("returns false when dirty snippets exist but git sync is not visible", async () => {
-      const { result } = setup({
-        isGitSyncVisible: false,
-        collections: [
-          createLibraryCollection({ id: 1 }),
-          createMockSnippetsCollection({ id: 100 }),
-        ],
-        dirty: [
-          createMockDirtyEntity({
-            id: 10,
-            model: "nativequerysnippet",
-            name: "My Snippet",
-            collection_id: 100,
-          }),
-        ],
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBe(false);
-      });
-    });
-
-    it("returns true when nested snippets collection is dirty", async () => {
-      const parentSnippetsCollection = createMockSnippetsCollection({
-        id: 100,
-        name: "Parent Snippets Folder",
-      });
-      const childSnippetsCollection = createMockSnippetsCollection({
-        id: 101,
-        name: "Child Snippets Folder",
-      });
-      // Set up parent-child relationship
-      parentSnippetsCollection.children = [childSnippetsCollection];
-
-      const { result } = setup({
-        collections: [
-          createLibraryCollection({ id: 1 }),
-          parentSnippetsCollection,
-          childSnippetsCollection,
-        ],
-        dirty: [
-          createMockDirtyEntity({
-            id: 101,
-            model: "collection",
-            name: "Child Snippets Folder",
-          }),
-        ],
-      });
-
-      await waitFor(() => {
-        expect(result.current).toBe(true);
       });
     });
   });

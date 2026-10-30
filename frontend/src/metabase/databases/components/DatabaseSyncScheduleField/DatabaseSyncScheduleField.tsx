@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -36,7 +36,7 @@ const DatabaseSyncScheduleField = ({
   );
 
   return (
-    <FormField title={title} description={description}>
+    <FormField mb="lg" title={title} description={description}>
       <Schedule
         mt="lg"
         value={value ?? DEFAULT_SCHEDULE}

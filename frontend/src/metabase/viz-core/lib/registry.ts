@@ -314,6 +314,15 @@ export function getVisualizationTransformed(
   return { series, visualization };
 }
 
+export function canDisplayTimelineEvents(
+  display: VisualizationDisplay | null | undefined,
+) {
+  return (
+    display != null &&
+    "timeline_events.enabled" in (visualizations.get(display)?.settings ?? {})
+  );
+}
+
 export function isCartesianChart(display: VisualizationDisplay) {
   const visualization = visualizations.get(display);
   const settingNames = Object.keys(visualization?.settings ?? {});

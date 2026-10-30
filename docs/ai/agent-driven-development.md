@@ -11,7 +11,7 @@ redirect_from:
 
 Now that we have actual genies, you can just ask the genies to create the content for you (call it "lamp-rubbing development").
 
-Give an agent the [Metabase CLI](../installation-and-operation/metabase-cli.md), and it can create content for you. But since LLMs can be unpredictable, we recommend developing content in a dev instance of Metabase, then using [Remote Sync](../installation-and-operation/remote-sync.md) to get your changes into production.
+Give an agent the [Metabase CLI](../installation-and-operation/metabase-cli.md), and it can create content for you. But since LLMs can be unpredictable, we recommend developing content in a dev instance of Metabase, then using [Remote Sync](../data-modeling/semantic-layer/remote-sync.md) to get your changes into production.
 
 With this set up, a typical workflow using an agent with a development instance of Metabase would be:
 
@@ -31,7 +31,7 @@ To develop your Metabase content with an agent, we've put together a set of tool
 - A Metabase instance to use for development.
 - [**Metabase CLI**](../installation-and-operation/metabase-cli.md): a command-line client (`mb`) your agent uses to create content directly in your Metabase. Use the CLI with the [`/metabase-cli` skill](https://github.com/metabase/agent-skills/tree/main/skills/metabase-cli).
 - [**Metabase Representation Format**](https://github.com/metabase/representations): the YAML schema and spec for every Metabase entity (questions, dashboards, collections, transforms, and so on). This is the format your content takes once you version it as files.
-- [**Remote Sync**](../installation-and-operation/remote-sync.md): push content from a Read-write Metabase into a git repo, and pull it into a Read-only Metabase in production.
+- [**Remote Sync**](../data-modeling/semantic-layer/remote-sync.md): push content from a Read-write Metabase into a git repo, and pull it into a Read-only Metabase in production.
 
 ## Initial setup
 
@@ -107,15 +107,13 @@ The agent writes the CLI commands and creates the questions and dashboard for yo
 
 ### 1. Configure Remote Sync on both Metabase instances
 
-In your development Metabase, configure [Remote Sync in Read-write mode](../installation-and-operation/remote-sync.md#setting-up-remote-sync) pointed at your repo.
+In your development Metabase, configure [Remote Sync in Read-write mode](../data-modeling/semantic-layer/remote-sync.md#setting-up-remote-sync) pointed at your repo.
 
 Set up Remote Sync in your production Metabase in Read-only mode pointed at the same repo.
 
 ### 2. Create a branch from the Metabase UI
 
-Switch branches in Metabase, as the Metabase UI is the source of truth for which branch the development instance pushes to and pulls from.
-
-In your development Metabase, click the **branch dropdown** at the top and [create a new branch](../installation-and-operation/remote-sync.md#creating-a-branch) for your work, like `feature/support-dashboard`.
+In your development Metabase, [create a new branch](../data-modeling/semantic-layer/remote-sync.md#creating-a-branch) for your work, like `feature/support-dashboard`. Metabase switches to the new branch. Your local Git checkout doesn't change which branch Metabase pushes to and pulls from.
 
 ### 3. Ask the agent to create content
 
@@ -127,7 +125,7 @@ Open your development Metabase and confirm the dashboard renders correctly and t
 
 ### 5. If you make any changes in your Metabase, push the new content to the branch
 
-To commit the work, [push the change from your Metabase](../installation-and-operation/remote-sync.md#committing-and-pushing-your-changes). If you don't push your changes from your Metabase to your repo, you could lose work the next time you pull changes into that Metabase.
+To commit the work, [push the change from your Metabase](../data-modeling/semantic-layer/remote-sync.md#committing-and-pushing-your-changes). If you don't push your changes from your Metabase to your repo, you could lose work the next time you pull changes into that Metabase.
 
 ### 6. Open a pull request
 
@@ -135,7 +133,7 @@ Open a pull request so your team can review the YAML diff. They can also use Rem
 
 ### 7. Merge the PR so production picks up the changes
 
-If you've enabled [auto-sync](../installation-and-operation/remote-sync.md#pulling-changes-automatically), your production Metabase (in Read-only mode) will pull the new main branch automatically on its next interval.
+If you've enabled [auto-sync](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-automatically), your production Metabase (in Read-only mode) will pull the new main branch automatically on its next interval.
 
 ## Undoing the agent's changes
 
@@ -146,7 +144,7 @@ Since the agent uses the CLI to create content directly in Metabase, to undo cha
 
 ## Further reading
 
-- [Remote Sync](../installation-and-operation/remote-sync.md)
+- [Remote Sync](../data-modeling/semantic-layer/remote-sync.md)
 - [Metabase CLI](../installation-and-operation/metabase-cli.md)
 - [Metabase Representation Format](https://github.com/metabase/representations)
 - [Agent skills](https://github.com/metabase/agent-skills)

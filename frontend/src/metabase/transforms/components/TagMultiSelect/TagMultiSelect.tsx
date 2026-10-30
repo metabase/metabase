@@ -226,6 +226,7 @@ function ExistingTagSelectItem({
       </Text>
       <Tooltip label={t`Rename tag`}>
         <ActionIcon
+          variant="subtle"
           className={S.actionIcon}
           c="inherit"
           bg="none"
@@ -237,6 +238,7 @@ function ExistingTagSelectItem({
       </Tooltip>
       <Tooltip label={t`Delete tag`}>
         <ActionIcon
+          variant="subtle"
           className={S.actionIcon}
           c="inherit"
           bg="none"

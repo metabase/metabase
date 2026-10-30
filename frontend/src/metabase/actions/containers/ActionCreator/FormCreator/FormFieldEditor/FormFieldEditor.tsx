@@ -1,4 +1,5 @@
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
+import cx from "classnames";
 import type { MutableRefObject } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
@@ -7,7 +8,8 @@ import { ActionFormFieldWidget } from "metabase/actions/components/ActionFormFie
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
 import type { ActionFormFieldProps } from "metabase/actions/types";
 import { inputTypeHasOptions } from "metabase/actions/utils";
-import { Checkbox, Group, Radio } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Box, Checkbox, Flex, Group, Radio, Stack, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type {
   FieldSettings,
@@ -18,16 +20,7 @@ import type {
 import { FieldSettingsButtons } from "../FieldSettingsButtons";
 
 import { DragHandle } from "./DragHandle";
-import {
-  Column,
-  EditorContainer,
-  FormFieldContainer,
-  Header,
-  InputContainer,
-  PreviewContainer,
-  Subtitle,
-  Title,
-} from "./FormFieldEditor.styled";
+import S from "./FormFieldEditor.module.css";
 
 export interface FormFieldEditorProps {
   field: ActionFormFieldProps;
@@ -60,7 +53,7 @@ function cleanOptionValues(values: FieldValueOptions, fieldType: FieldType) {
     .filter(isNotNull);
 }
 
-function FormFieldEditor({
+export function FormFieldEditor({
   field,
   fieldSettings,
   isEditable,
@@ -103,26 +96,32 @@ function FormFieldEditor({
   };
 
   return (
-    <FormFieldContainer data-testid="form-field-container">
-      <EditorContainer>
-        <Column>
+    <Box
+      className={cx(CS.overflowHidden, S.border)}
+      bg="background_page-primary"
+      data-testid="form-field-container"
+    >
+      <Flex gap="sm" p="lg" pb="md" pl="md">
+        <Stack gap={0}>
           {isEditable && (
             <DragHandle
               ref={dragHandleRef}
               dragHandleListeners={dragHandleListeners}
             />
           )}
-        </Column>
-        <Column full>
-          <Header>
-            <Title>{field.title}</Title>
+        </Stack>
+        <Stack gap={0} flex={1}>
+          <Flex justify="space-between" align="center">
+            <Text c="text-primary" fw="bold" lh="md">
+              {field.title}
+            </Text>
             {isEditable && (
               <FieldSettingsButtons
                 fieldSettings={fieldSettings}
                 onChange={onChange}
               />
             )}
-          </Header>
+          </Flex>
           {isEditable && fieldSettings && (
             <Radio.Group
               label={<Subtitle>{t`Field type`}</Subtitle>}
@@ -142,40 +141,51 @@ function FormFieldEditor({
             </Radio.Group>
           )}
           <Subtitle>{t`Appearance`}</Subtitle>
-        </Column>
-      </EditorContainer>
-      <PreviewContainer data-testid="preview-container">
-        <Column />
-        <Column full>
-          <InputContainer>
-            <ActionFormFieldWidget
-              hidden={hidden}
-              actions={
-                <Checkbox
-                  styles={{
-                    label: {
-                      fontSize: "12px",
-                      color: "var(--mb-color-text-secondary)",
-                    },
-                  }}
-                  onChange={() => {
-                    onChange({
-                      ...fieldSettings,
-                      hidden: !hidden,
-                    });
-                  }}
-                  checked={!hidden}
-                  label={t`Show field`}
-                />
-              }
-              formField={field}
+        </Stack>
+      </Flex>
+      <Box
+        className={cx(S.borderTop, S.previewField)}
+        p="lg"
+        pl="xl"
+        pb="xxl"
+        bg="background_page-secondary"
+        data-testid="preview-container"
+      >
+        <ActionFormFieldWidget
+          hidden={hidden}
+          actions={
+            <Checkbox
+              styles={{
+                label: {
+                  fontSize: "12px",
+                  color: "var(--mb-color-text-secondary)",
+                },
+              }}
+              onChange={() => {
+                onChange({
+                  ...fieldSettings,
+                  hidden: !hidden,
+                });
+              }}
+              checked={!hidden}
+              label={t`Show field`}
             />
-          </InputContainer>
-        </Column>
-      </PreviewContainer>
-    </FormFieldContainer>
+          }
+          formField={field}
+        />
+      </Box>
+    </Box>
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormFieldEditor;
+type SubtitleProps = {
+  children: React.ReactNode;
+};
+
+function Subtitle({ children }: SubtitleProps) {
+  return (
+    <Text c="text-secondary" fz="md" fw="bold" lh="md" mt="1.2rem">
+      {children}
+    </Text>
+  );
+}

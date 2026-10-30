@@ -1,6 +1,5 @@
 name: Orders by Category (Stacked Bar)
 entity_id: ciG63nSLHKRTImt5iWEte
-created_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 display: bar
 collection_id: cOlViZsEtTiNgS0ExAmP1
@@ -103,7 +102,6 @@ result_metadata:
   lib/source: source/aggregations
   lib/source-column-alias: count
 visualization_settings:
-  column_settings: null
   graph.dimensions:
   - CREATED_AT
   - CATEGORY
@@ -119,8 +117,6 @@ visualization_settings:
   stackable.stack_type: stacked
 card_schema: 24
 serdes/meta:
-- id: ciG63nSLHKRTImt5iWEte
-  label: orders_by_category__stacked_bar_
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

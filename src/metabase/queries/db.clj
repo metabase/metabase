@@ -4,6 +4,7 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.collections.core :as collections]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -62,6 +63,11 @@
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
   [card-ids :- [:maybe [:or [:set [:maybe ::lib.schema.id/card]] [:sequential [:maybe ::lib.schema.id/card]]]]]
   (t2/select :model/Card :id [:in card-ids]))
+
+(mu/defn timelines
+  "The Timelines with `timeline-ids`; ids of deleted Timelines are skipped."
+  [timeline-ids :- [:set ms/PositiveInt]]
+  (t2/select :model/Timeline :id [:in timeline-ids]))
 
 (mu/defn card-query-info
   "The query-related fields of the Card with `card-id`.
@@ -147,7 +153,7 @@
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
    changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card card-id changes))
+  (t2/update! :model/Card :id card-id changes))
 
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
@@ -287,7 +293,7 @@
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard dashboard-id changes))
+  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn dashcards-for-card
   "The DashboardCards showing the Card with `card-id`."
@@ -354,13 +360,17 @@
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
 
-(mu/defn action-ids-for-model
-  "The IDs of the Actions of the model Card with `model-id`, leaving out archived Actions when `skip-archived`."
-  [model-id      :- ms/PositiveInt
-   skip-archived :- [:maybe :boolean]]
-  (if skip-archived
-    (t2/select-pks-set :model/Action :model_id model-id :archived false)
-    (t2/select-pks-set :model/Action :model_id model-id)))
+(mu/defn move-actions-of-model!
+  "Move the Actions of the model Card with `model-id` to the Collection with `collection-id`, returning the number
+  updated."
+  [model-id      :- ::lib.schema.id/card
+   collection-id :- [:maybe ::lib.schema.id/collection]]
+  (t2/update! :model/Action {:model_id model-id} {:collection_id collection-id}))
+
+(mu/defn delete-actions-of-model!
+  "Delete the Actions of the Card with `model-id`, returning the number deleted."
+  [model-id :- ms/PositiveInt]
+  (t2/delete! :model/Action :model_id model-id))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
@@ -371,16 +381,6 @@
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]
   (t2/delete! :model/Action :id [:in action-ids]))
-
-(mu/defn archive-explicit-actions-for-model!
-  "Archive the non-implicit Actions of the model Card with `model-id`, returning the number updated."
-  [model-id :- ms/PositiveInt]
-  (t2/update! :model/Action {:model_id model-id :type [:not= :implicit]} {:archived true}))
-
-(mu/defn delete-implicit-actions-for-model!
-  "Delete the implicit Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (t2/delete! :model/Action :model_id model-id :type :implicit))
 
 (mu/defn delete-card-moderation-reviews!
   "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
@@ -567,3 +567,27 @@
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
+
+(mu/defn unpublished-table-names :- [:set :string]
+  "Among the Tables with `table-ids`, the names of those not published to the Library."
+  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
+  (or (t2/select-fn-set :name [:model/Table :name] :id [:in table-ids] :is_published false
+                        {:from [(warehouse-schema-overlay/table-query)]})
+      #{}))
+
+(mu/defn library-metric-ids :- [:set ::lib.schema.id/card]
+  "Among `card-ids`, the IDs of the metrics in the Library's Metrics collection or one of its subcollections."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (or (t2/select-fn-set :id [:model/Card :report_card.id] {:join  [:collection [:= :collection.id :report_card.collection_id]]
+                                                           :where [:and
+                                                                   [:in :report_card.id card-ids]
+                                                                   [:= :report_card.type "metric"]
+                                                                   [:= :collection.type collections/library-metrics-collection-type]]})
+      #{}))
+
+(defn card-ids-outside-collection
+  "Among `card-ids`, the IDs of the cards that are not in the collection with `collection-id`."
+  [card-ids collection-id]
+  (t2/select-pks-set :model/Card {:where [:and
+                                          [:in :id card-ids]
+                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))

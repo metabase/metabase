@@ -7,6 +7,7 @@ import {
   getIsAppBarVisible,
   getIsDataApp,
   getIsDataStudioApp,
+  getIsEmbeddingHubApp,
   getIsMonitorApp,
   getIsNavBarEnabled,
 } from "metabase/app/nav/selectors";
@@ -42,7 +43,12 @@ import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
 
-const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
+const getErrorComponent = ({
+  status,
+  data,
+  context,
+  message,
+}: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
     return <Unauthorized />;
   }
@@ -55,7 +61,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (data?.error_code === "archived" && context === "query-builder") {
     return <Archived entityName="question" linkTo="/questions/archive" />;
   }
-  return <GenericError details={data?.message} />;
+  return <GenericError details={message} />;
 };
 
 export function App() {
@@ -74,6 +80,9 @@ export function App() {
   );
   const isMonitorApp = useSelector((state) =>
     getIsMonitorApp(state, routerProps),
+  );
+  const isEmbeddingHubApp = useSelector((state) =>
+    getIsEmbeddingHubApp(state, routerProps),
   );
   const isDataApp = useSelector((state) => getIsDataApp(state, routerProps));
   const isAppBarVisible = useSelector((state) =>
@@ -124,7 +133,11 @@ export function App() {
               <EmbedSetupModals />
               <Metabot
                 hide={
-                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
+                  isAdminApp ||
+                  isDataStudioApp ||
+                  isMonitorApp ||
+                  isEmbeddingHubApp ||
+                  isDataApp
                 }
               />
             </AppContentContainer>

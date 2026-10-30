@@ -27,6 +27,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
+   [metabase.database-routing.core :as database-routing]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -106,7 +107,8 @@
 
 (doto :model/FieldValues
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/dependencies))
 
 (t2/deftransforms :model/FieldValues
   {:human_readable_values mi/transform-json-no-keywordization
@@ -518,7 +520,7 @@
       ;; `distinct-values` returns nil when the warehouse scan failed, which is not the same as a
       ;; field that genuinely has no values: persisting it would read as "empty" and delete the
       ;; values we already have. Leave whatever is cached in place instead.
-      (if-let [{rows :values} (distinct-values field)]
+      (if-let [{rows :values} (database-routing/with-anonymous-router-access (distinct-values field))]
         ;; rows are 1-tuples — unwrap for storage.
         (persist-field-values! field existing-fv (seq (map first rows)))
         ::fv-fetch-failed))
@@ -695,10 +697,6 @@
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldValues" :id "0"}))
 
-(defmethod serdes/deserialization-dependencies "FieldValues" [fv]
-  (let [db-path (first (serdes/path fv))]
-    [[db-path]]))
-
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
@@ -714,11 +712,10 @@
 
 (defmethod serdes/make-spec "FieldValues" [_model-name _opts]
   {:copy      [:values :human_readable_values :has_more_values :hash_key]
-   :transform {:created_at   (serdes/date)
-               :last_used_at (serdes/date)
-               :type         (serdes/kw)
+   :skip [:last_used_at]
+   :transform {:type         (serdes/kw)
                :field_id     {::serdes/fk true
-                              :export     (constantly ::serdes/skip)
+                              :export     #(serdes/*export-field-fk* %)
                               :import-with-context (fn [current _ _]
                                                      (let [field-ref (field-path->field-ref (serdes/path current))]
                                                        (serdes/*import-field-fk* field-ref)))}}
@@ -733,6 +730,9 @@
                    (= (:hash_key ingested) (:hash_key local)) (dissoc :hash_key))]
     ((get-method serdes/load-update! "") "FieldValues" ingested local)))
 
+(defmethod serdes/ingested-path "FieldValues" [_ {:keys [field_id]}]
+  (conj (serdes/field->path field_id) {:model "FieldValues" :id "0"}))
+
 (def ^:private field-values-slug "___fieldvalues")
 
 (defmethod serdes/storage-path "FieldValues" [fv _]
@@ -741,4 +741,4 @@
   (let [hierarchy    (serdes/path fv)
         field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
     (update field-path (dec (count field-path))
-            (fn [segment] (update segment :label str field-values-slug)))))
+            (fn [segment] (assoc segment :suffix field-values-slug)))))

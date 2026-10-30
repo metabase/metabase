@@ -5,9 +5,8 @@ import type { ColorState } from "react-color";
 import { t } from "ttag";
 
 import { ColorInput } from "metabase/common/components/ColorInput";
-import { Group, NumberInput } from "metabase/ui";
+import { Group, NumberInput, Stack } from "metabase/ui";
 
-import { ContentContainer } from "./ColorPicker.styled";
 import { ColorPickerControls } from "./ColorPickerControls";
 
 export type ColorPickerContentAttributes = Omit<
@@ -64,7 +63,7 @@ export const ColorPickerContent = forwardRef(function ColorPickerContent(
   );
 
   return (
-    <ContentContainer {...props} ref={ref}>
+    <Stack {...props} ref={ref} gap="lg" w="16.5rem" p="lg">
       <ColorPickerControls color={value} onChange={handlePickerChange} />
       {showAlpha ? (
         <Group gap="sm" wrap="nowrap" align="flex-start">
@@ -83,7 +82,7 @@ export const ColorPickerContent = forwardRef(function ColorPickerContent(
       ) : (
         <ColorInput value={value} fullWidth onChange={onChange} />
       )}
-    </ContentContainer>
+    </Stack>
   );
 });
 

@@ -29,7 +29,8 @@
                         {:status-code   400
                          :expected-type t
                          :type          (:effective_type field)
-                         :field         (:name field)}))))
+                         :field         (:name field)
+                         :response/keys #{:expected-type :field}}))))
     (throw (ex-info (tru "Could not identify field by ref {0}" ref)
                     {:status-code 400
                      :ref         ref

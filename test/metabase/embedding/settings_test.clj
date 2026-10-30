@@ -4,7 +4,9 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (deftest show-static-embed-terms-test
@@ -55,6 +57,57 @@
                          :user-id (str (mt/user->id :crowberto))}]
                        (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
+(deftest enable-embedding-modular-test
+  (testing "Toggling modular embedding sends a simple_event whose event_detail decodes to the context map"
+    (mt/with-test-user :crowberto
+      (mt/with-premium-features #{:embedding}
+        (mt/with-temporary-setting-values [embedding-app-origins-interactive "https://example.com"
+                                           enable-embedding-modular false]
+          (let [expected-detail {"embedding_app_origin_set"   true
+                                 "number_embedded_questions"  (t2/count :model/Card :enable_embedding true)
+                                 "number_embedded_dashboards" (t2/count :model/Dashboard :enable_embedding true)}
+                ;; `event_detail` arrives as a JSON string, unlike the typed columns `embed_share` used, so decode
+                ;; it before comparing -- that round trip is the thing worth asserting.
+                pop-events! #(for [event (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!))]
+                               (update event :data update "event_detail" json/decode))]
+            (snowplow-test/with-fake-snowplow-collector
+              (embed.settings/enable-embedding-modular! true)
+              (is (= [{:data    {"event"        "modular_embedding_enabled"
+                                 "event_detail" expected-detail}
+                       :user-id (str (mt/user->id :crowberto))}]
+                     (pop-events!)))
+              (mt/with-temporary-setting-values [enable-embedding-modular false]
+                (is (= [{:data    {"event"        "modular_embedding_disabled"
+                                   "event_detail" expected-detail}
+                         :user-id (str (mt/user->id :crowberto))}]
+                       (pop-events!)))))))))))
+
+(deftest enable-embedding-sidecar-test
+  (testing "Toggling side-car embedding sends a simple_event and nothing else"
+    (mt/with-test-user :crowberto
+      (mt/with-temporary-setting-values [enable-embedding-sidecar false
+                                         embedding-secret-key     nil]
+        (snowplow-test/with-fake-snowplow-collector
+          (embed.settings/enable-embedding-sidecar! true)
+          (is (= [{:data    {"event" "sidecar_embedding_enabled"}
+                   :user-id (str (mt/user->id :crowberto))}]
+                 (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!))))
+          (testing "without generating the secret key the other embedding methods sign with"
+            (is (nil? (embed.settings/embedding-secret-key))))
+          (embed.settings/enable-embedding-sidecar! false)
+          (is (= [{:data    {"event" "sidecar_embedding_disabled"}
+                   :user-id (str (mt/user->id :crowberto))}]
+                 (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!)))))))))
+
+(defn- legacy-setting
+  "Reads a deprecated embedding setting that `enable-embedding-modular` replaces."
+  [embedding-method]
+  ;; These tests intentionally exercise deprecated settings.
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (case embedding-method
+    :simple (embed.settings/enable-embedding-simple)
+    :static (embed.settings/enable-embedding-static)))
+
 (deftest enabling-embedding-generates-secret-key-test
   (testing "Enabling embedding auto-generates embedding-secret-key when blank, and preserves an existing key"
     (mt/with-test-user :crowberto
@@ -62,7 +115,7 @@
         (snowplow-test/with-fake-snowplow-collector
           (mt/with-temporary-setting-values [enable-embedding-simple false enable-embedding-static false embedding-secret-key nil]
             (embed.settings/enable-embedding-simple! true)
-            (is (true? (embed.settings/enable-embedding-simple)))
+            (is (true? (legacy-setting :simple)))
             (is (not (str/blank? (embed.settings/embedding-secret-key))))
             (let [generated-key (embed.settings/embedding-secret-key)]
               (embed.settings/enable-embedding-static! true)
@@ -119,6 +172,18 @@
   (depricated-setting-throws #'embed.settings/check-enable-settings! {:mb-enable-embedding true :mb-enable-embedding-interactive false :mb-enable-embedding-static true})
   (depricated-setting-throws #'embed.settings/check-enable-settings! {:mb-enable-embedding true :mb-enable-embedding-interactive false :mb-enable-embedding-sdk true :mb-enable-embedding-static true}))
 
+(deftest deprecated-modular-enabled-embedding-settings-test
+  ;; OK:
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-static true})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-interactive false})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-sdk false})))
+  ;; Not OK: the modular value would silently override each of these.
+  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false :mb-enable-embedding-static true})
+  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-simple false})
+  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false :mb-enable-embedding true}))
+
 (deftest deprecated-origin-embedding-settings-test
   ;; OK:
   (is (nil? (#'embed.settings/check-origins-settings! {})))
@@ -141,24 +206,24 @@
   (let [unsyncd-settings {:enable-embedding             #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
                           :enable-embedding-interactive (embed.settings/enable-embedding-interactive)
                           :enable-embedding-sdk         (embed.settings/enable-embedding-sdk)
-                          :enable-embedding-static      (embed.settings/enable-embedding-static)}]
+                          :enable-embedding-static      (legacy-setting :static)}]
     ;; called for side effects:
     (#'embed.settings/sync-enable-settings! env)
     (cond
       (= expected-behavior :no-op)
       (do (is (= [:no-op (:enable-embedding-interactive unsyncd-settings)] [:no-op (embed.settings/enable-embedding-interactive)]))
           (is (= [:no-op (:enable-embedding-sdk unsyncd-settings)]         [:no-op (embed.settings/enable-embedding-sdk)]))
-          (is (= [:no-op (:enable-embedding-static unsyncd-settings)]      [:no-op (embed.settings/enable-embedding-static)])))
+          (is (= [:no-op (:enable-embedding-static unsyncd-settings)]      [:no-op (legacy-setting :static)])))
 
       (= expected-behavior :sets-all-true)
       (do (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-interactive)]))
           (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-sdk)]))
-          (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-static)])))
+          (is (= [expected-behavior true] [:sets-all-true (legacy-setting :static)])))
 
       (= expected-behavior :sets-all-false)
       (do (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-interactive)]))
           (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-sdk)]))
-          (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-static)])))
+          (is (= [expected-behavior false] [:sets-all-false (legacy-setting :static)])))
 
       :else (throw (ex-info "Invalid expected-behavior in test-enabled-sync." {:expected-behavior expected-behavior})))))
 
@@ -275,3 +340,52 @@
           (mt/with-temp-env-var-value! [mb-embedding-app-origins-interactive "ssh://metabase.com"]
             (is (= "ssh://metabase.com"
                    (embed.settings/embedding-app-origins-interactive)))))))))
+
+(deftest enable-embedding-modular-falls-back-to-the-settings-it-replaces-test
+  (testing "With nothing set, the merged setting stands for the two it replaces"
+    (doseq [legacy-setting [:enable-embedding-simple :enable-embedding-static]]
+      (testing (str "on when only " legacy-setting " is on")
+        (mt/with-temporary-setting-values [enable-embedding-simple false
+                                           enable-embedding-static false]
+          (mt/with-temporary-setting-values [enable-embedding-modular nil]
+            (setting/set-value-of-type! :boolean legacy-setting true)
+            (is (true? (embed.settings/enable-embedding-modular))))))))
+  (testing "off when both are off, even with the SDK on, since the SDK has its own setting"
+    (mt/with-temporary-setting-values [enable-embedding-simple false
+                                       enable-embedding-sdk true
+                                       enable-embedding-static false
+                                       enable-embedding-modular nil]
+      (is (false? (embed.settings/enable-embedding-modular)))))
+  (testing "an explicit value wins over the legacy fallback, so turning it off stays off"
+    (mt/with-temporary-setting-values [enable-embedding-simple true
+                                       enable-embedding-sdk true
+                                       enable-embedding-static true
+                                       enable-embedding-modular false]
+      (is (false? (embed.settings/enable-embedding-modular)))))
+  (testing "a legacy setting given by env var counts towards the fallback"
+    (mt/with-temporary-setting-values [enable-embedding-simple false
+                                       enable-embedding-sdk false
+                                       enable-embedding-static false
+                                       enable-embedding-modular nil]
+      (mt/with-temp-env-var-value! [mb-enable-embedding-static "true"]
+        (is (true? (embed.settings/enable-embedding-modular)))))))
+
+(deftest show-modular-embed-terms-falls-back-to-the-settings-it-replaces-test
+  (testing "With nothing set, the merged setting stands for the two it replaces"
+    (doseq [legacy-setting [:show-simple-embed-terms :show-sdk-embed-terms]]
+      (testing (str "shows the legalese when only " legacy-setting " is unaccepted (true)")
+        (mt/with-temporary-setting-values [show-simple-embed-terms false
+                                           show-sdk-embed-terms false
+                                           show-modular-embed-terms nil]
+          (setting/set-value-of-type! :boolean legacy-setting true)
+          (is (true? (embed.settings/show-modular-embed-terms)))))))
+  (testing "does not show the legalese when both have been accepted (false)"
+    (mt/with-temporary-setting-values [show-simple-embed-terms false
+                                       show-sdk-embed-terms false
+                                       show-modular-embed-terms nil]
+      (is (false? (embed.settings/show-modular-embed-terms)))))
+  (testing "an explicit value wins over the legacy fallback, so accepting (false) keeps the legalese hidden"
+    (mt/with-temporary-setting-values [show-simple-embed-terms true
+                                       show-sdk-embed-terms true
+                                       show-modular-embed-terms false]
+      (is (false? (embed.settings/show-modular-embed-terms))))))

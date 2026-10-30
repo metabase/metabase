@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -16,15 +17,12 @@ import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
-import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
-import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
-import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 
-import { setArchivedQuestion } from "../../actions";
+import { type OnCreateOptions, setArchivedQuestion } from "../../actions";
 import { updateUrl } from "../../actions/url";
 import {
   getQuestionWithoutComposing,
@@ -34,11 +32,8 @@ import { ImpossibleToCreateModelModal } from "../ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "../NewDatasetModal";
 import { PreviewQueryModal } from "../view/PreviewQueryModal";
 
-type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
-
 interface QueryModalsProps {
-  modal: QueryModalType;
-  modalContext: number;
+  modal: QueryModalType | null;
   question: Question;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   originalQuestion: Question;
@@ -60,7 +55,6 @@ export function QueryModals({
   onSave,
   onCreate,
   modal,
-  modalContext,
   card,
   question,
   onCloseModal,
@@ -76,6 +70,11 @@ export function QueryModals({
   const initialCollectionId = useGetDefaultCollectionId();
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
   const visualizationSettings = useSelector(getVisualizationSettings);
+  const questionRef = useLatest(question);
+  const questionToCopy = useMemo(
+    () => (modal === MODAL_TYPES.CLONE ? questionRef.current : undefined),
+    [modal, questionRef],
+  );
 
   const handleAlertCreatedOrUpdated = useCallback(() => {
     dispatch(updateUrl(question, { dirty: false }));
@@ -251,13 +250,17 @@ export function QueryModals({
         />
       );
     case MODAL_TYPES.CLONE:
+      if (!questionToCopy) {
+        return null;
+      }
+
       return (
         <CopyModal
           entityType="cards"
           entityObject={{
-            ...question.card(),
-            collection_id: question.canWrite()
-              ? question.collectionId()
+            ...questionToCopy.card(),
+            collection_id: questionToCopy.canWrite()
+              ? questionToCopy.collectionId()
               : initialCollectionId,
           }}
           copy={async (formValues) => {
@@ -273,6 +276,10 @@ export function QueryModals({
 
             const object = await onCreate(question, {
               dashboardTabId: formValues.dashboard_tab_id,
+              sourceCardId: underlyingQuestion.isSaved()
+                ? underlyingQuestion.id()
+                : undefined,
+              sourceQuestion: underlyingQuestion,
             });
 
             return object.card();
@@ -303,50 +310,6 @@ export function QueryModals({
           padding={0}
         >
           <ImpossibleToCreateModelModal onClose={onCloseModal} />
-        </Modal>
-      );
-    case MODAL_TYPES.NEW_EVENT:
-      return (
-        <Modal
-          opened
-          onClose={onCloseModal}
-          size="lg"
-          withCloseButton={false}
-          padding={0}
-        >
-          <NewEventModal
-            cardId={question.id()}
-            collectionId={question.collectionId()}
-            onClose={onCloseModal}
-          />
-        </Modal>
-      );
-    case MODAL_TYPES.EDIT_EVENT:
-      return (
-        <Modal
-          opened
-          onClose={onCloseModal}
-          size="lg"
-          withCloseButton={false}
-          padding={0}
-        >
-          <EditEventModal eventId={modalContext} onClose={onCloseModal} />
-        </Modal>
-      );
-    case MODAL_TYPES.MOVE_EVENT:
-      return (
-        <Modal
-          opened
-          onClose={onCloseModal}
-          size="lg"
-          withCloseButton={false}
-          padding={0}
-        >
-          <MoveEventModal
-            eventId={modalContext}
-            collectionId={question.collectionId()}
-            onClose={onCloseModal}
-          />
         </Modal>
       );
     case MODAL_TYPES.PREVIEW_QUERY:

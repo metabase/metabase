@@ -76,13 +76,14 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, { id }) =>
+      invalidatesTags: (_, error, { id, collection_id }) =>
         invalidateTags(error, [
           idTag("table", id),
           tag("database"),
           tag("card"),
           tag("dataset"),
           listTag("erd"),
+          ...(collection_id !== undefined ? [listTag("table")] : []),
         ]),
       onQueryStarted: async (
         { id, ...body },

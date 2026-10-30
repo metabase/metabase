@@ -3,7 +3,6 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
-   [metabase-enterprise.remote-sync.events :as rs-events]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -28,16 +27,27 @@
   ->ingestable])
 
 (defenterprise collection-editable?
-  "Determines if a remote-synced collection should be editable.
-
-  Takes a collection to check for editability.
-
-  Returns true if the collection is editable, false otherwise. Returns true when remote-sync-type is :read-write
-  or when the collection is not a remote-synced collection. Always returns true on OSS."
+  "Whether `collection` and what it holds can be edited: always on a read-write instance or on OSS; otherwise not for a
+  remote-synced collection, nor for a data app's collection while remote sync is on."
   :feature :none
   [collection]
   (or (= (settings/remote-sync-type) :read-write)
-      (not (collections/remote-synced-collection? collection))))
+      (not (or (collections/remote-synced-collection? collection)
+               (and (settings/remote-sync-enabled)
+                    (spec/data-apps-namespace-collection?
+                     {:namespace (if (and (map? collection) (contains? collection :namespace))
+                                   (:namespace collection)
+                                   ;; the root collection has no ID, and nothing in it is synced
+                                   (some-> (u/id collection) remote-sync.db/collection-namespace))}))))))
+
+(defenterprise collection-syncable?
+  "Whether `collection` can be remote-synced: a Collection of a namespace remote sync syncs, the Library and every Collection inside it, and any other once custom collections are on."
+  :feature :none
+  [{:keys [location] :as collection}]
+  (or (not (settings/custom-collection? collection))
+      (settings/remote-sync-custom-collections-enabled)
+      (= collections/library-collection-type
+         (some-> location collections/location-path->ids first collections/root-collection-type-by-id))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.
@@ -141,9 +151,7 @@
              :model_id          (:id entity)
              :status            "create"
              :status_changed_at (t/offset-date-time)}
-            (spec/build-sync-object-fields spec entity))))
-  ;; Actions live in their model's collection, not a collection_id of their own.
-  (rs-events/track-untracked-actions! collection-ids))
+            (spec/build-sync-object-fields spec entity)))))
 
 (defn- collections-by-id
   "`{id collection}` for `ids`, carrying the fields the failure descriptions need. Nil and duplicate ids
@@ -237,7 +245,9 @@
                      top-level-ancestor-id
                      (get top-levels))]
     (cond
-      (= :library-synced (get-in (spec/spec-for-model-key (keyword "model" model)) [:eligibility :type]))
+      (let [spec (spec/spec-for-model-key (keyword "model" model))]
+        (or (= :library-synced (get-in spec [:eligibility :type]))
+            (spec/library-content? spec instance)))
       (if library
         {:type       :collection
          :collection (remedy-collection library)}
@@ -453,6 +463,13 @@
                                                            (remote-sync.db/collections sync-on)))
                                        (update :sync-off #(when-let [sync-off (seq %)]
                                                             (remote-sync.db/collections sync-off))))]
+    ;; a data app's collection is synced with its app, and a pull refuses its file once it says remote-synced
+    (when (some spec/data-apps-namespace-collection? sync-on)
+      (throw (ex-info (tru "A data app''s collection is synced with its app and can''t be marked as synced.")
+                      {:status-code 400})))
+    (doseq [collection sync-on
+            :when (not (:is_remote_synced collection))]
+      (collections/assert-remote-syncable (assoc collection :is_remote_synced true)))
     (try
       (t2/with-transaction [_]
         (when (seq sync-on)

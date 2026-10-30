@@ -1,6 +1,5 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
-/* eslint-disable import/order */
 const rspack = require("@rspack/core");
 
 const mainConfig = require("./rspack.main.config");

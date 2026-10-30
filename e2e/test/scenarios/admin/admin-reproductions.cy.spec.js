@@ -19,19 +19,19 @@ describe("issue 26470", { tags: "@external" }, () => {
 
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
 
-    cy.findByTestId("database-model-features-section")
+    cy.findByTestId("database-model-persistence-section")
       .findByLabelText("Model persistence")
       .should("not.be.checked")
       .click({ force: true });
     cy.wait("@persist").its("response.statusCode").should("eq", 204);
 
-    cy.findByTestId("database-model-features-section")
+    cy.findByTestId("database-model-persistence-section")
       .findByLabelText("Model persistence")
       .should("be.checked")
       .click({ force: true });
     cy.wait("@unpersist").its("response.statusCode").should("eq", 204);
 
-    cy.findByTestId("database-model-features-section")
+    cy.findByTestId("database-model-persistence-section")
       .findByLabelText("Model persistence")
       .should("not.be.checked");
   });
@@ -159,7 +159,7 @@ describe("(metabase#45042)", () => {
 
     //ensure that hamburger is visible and functional
     cy.findByTestId("admin-navbar").within(() => {
-      cy.findByRole("button", { name: /burger/ })
+      cy.findByRole("button", { name: "Toggle navigation" })
         .should("be.visible")
         .click();
       cy.findByRole("list", { name: "Navigation links" }).should("exist");
@@ -167,7 +167,7 @@ describe("(metabase#45042)", () => {
     });
 
     // dismiss nav list
-    cy.findByRole("button", { name: /burger/ })
+    cy.findByRole("button", { name: "Toggle navigation" })
       .should("be.visible")
       .click();
     cy.findByRole("list", { name: "Navigation links" }).should("not.exist");

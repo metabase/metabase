@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { Icon, SegmentedControl } from "metabase/ui";
+import { SegmentedControl } from "metabase/ui";
 
 export interface QuestionDisplayToggleProps {
   className?: string;
@@ -14,15 +14,12 @@ export const QuestionDisplayToggle = ({
   isShowingRawTable,
   onToggleRawTable,
 }: QuestionDisplayToggleProps) => {
-  useRegisterShortcut(
-    [
-      {
-        id: "query-builder-toggle-visualization",
-        perform: () => onToggleRawTable(!isShowingRawTable),
-      },
-    ],
-    [isShowingRawTable, onToggleRawTable],
-  );
+  useRegisterShortcut([
+    {
+      id: "query-builder-toggle-visualization",
+      perform: () => onToggleRawTable(!isShowingRawTable),
+    },
+  ]);
 
   return (
     <SegmentedControl
@@ -37,19 +34,13 @@ export const QuestionDisplayToggle = ({
       data={[
         {
           value: "data",
-          label: (
-            <Icon size={16} name="table2" aria-label={t`Switch to data`} />
-          ),
+          ariaLabel: t`Switch to data`,
+          icon: "table2",
         },
         {
           value: "visualization",
-          label: (
-            <Icon
-              size={16}
-              name="lineandbar"
-              aria-label={t`Switch to visualization`}
-            />
-          ),
+          ariaLabel: t`Switch to visualization`,
+          icon: "lineandbar",
         },
       ]}
     />

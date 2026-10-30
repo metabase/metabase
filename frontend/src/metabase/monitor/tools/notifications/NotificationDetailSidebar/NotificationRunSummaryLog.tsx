@@ -2,14 +2,16 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { dayjs } from "metabase/dayjs";
+import {
+  DetailsRow,
+  DetailsTable,
+  SidebarSection,
+} from "metabase/monitor/components/DetailSidebar";
 import { Anchor, Badge, Flex, Loader, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { formatRelativeDate } from "../NotificationsAdminPage/utils";
 
-import { DetailsRow } from "./DetailsRow";
-import { DetailsTable } from "./DetailsTable";
-import { SidebarSection } from "./SidebarSection";
 import type { NotificationRunSummaryLogProps } from "./types";
 
 export const NotificationRunSummaryLog = ({

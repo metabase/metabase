@@ -30,6 +30,7 @@ const MODEL_NAME: Record<EnabledSearchModel, string> = {
   document: "Document",
   exploration: "Research",
   transform: "Transform",
+  "data-app": "Data app",
 };
 
 const TEST_TYPES: Array<EnabledSearchModel> = [
@@ -126,6 +127,13 @@ describe("TypeFilterContent", () => {
         checkboxWrapper.getByLabelText(MODEL_NAME[type]),
       ).toBeInTheDocument();
     });
+  });
+
+  it("should offer Research when explorations are available", async () => {
+    await setup({ availableModels: ["exploration"] });
+
+    expect(getCheckboxes()).toHaveLength(1);
+    expect(screen.getByLabelText(MODEL_NAME.exploration)).toBeInTheDocument();
   });
 
   it("should only display available types", async () => {

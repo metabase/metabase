@@ -6,7 +6,7 @@ import { Tree } from "metabase/common/components/tree";
 import {
   SidebarHeading,
   SidebarSection,
-} from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
+} from "metabase/nav/containers/MainNavbar/Sidebar";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import type { SyncedCollectionsSidebarSectionProps } from "metabase/plugins/types";
 import { Box, Flex, Group, Text } from "metabase/ui";
@@ -65,7 +65,7 @@ export const SyncedCollectionsSidebarSection = ({
         </Flex>
 
         {!hasSyncedCollections && (
-          <Text c="text-disabled" fz="sm" ta="center">
+          <Text c="text-secondary" fz="sm" ta="center">
             {t`No synced collections`}
           </Text>
         )}

@@ -43,6 +43,7 @@ const esmPackages = [
   "marked",
   "mdast.*",
   "micromark.*",
+  "oxlint",
   "parse-entities",
   "property-information",
   "react-markdown",

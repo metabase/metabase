@@ -89,6 +89,22 @@
       (testing "and script-src-elem specifically is never introduced"
         (is (not (contains? (csp-directive-names injection) "script-src-elem")))))))
 
+(deftest csp-header-analytics-collectors-test
+  (testing "the analytics collectors are in connect-src so the browser legs can post to them"
+    (mt/with-temporary-setting-values [anon-tracking-enabled true
+                                       metaplow-url          "https://product-analytics-ingestion.metabase.com/api/send"
+                                       snowplow-url          "https://sp.metabase.com"]
+      (let [connect-src (csp-directive "connect-src")]
+        (is (str/includes? connect-src "https://product-analytics-ingestion.metabase.com/api/send"))
+        (is (str/includes? connect-src "https://sp.metabase.com")))))
+  (testing "and neither is listed when anonymous tracking is off"
+    (mt/with-temporary-setting-values [anon-tracking-enabled false
+                                       metaplow-url          "https://product-analytics-ingestion.metabase.com/api/send"
+                                       snowplow-url          "https://sp.metabase.com"]
+      (let [connect-src (csp-directive "connect-src")]
+        (is (not (str/includes? connect-src "product-analytics-ingestion.metabase.com")))
+        (is (not (str/includes? connect-src "sp.metabase.com")))))))
+
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
     (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.typescriptlang.org/   https://clojure.org"]
@@ -196,7 +212,7 @@
 
 (deftest data-app-unsafe-eval-test
   ;; Near-Membrane needs `eval` to run the app bundle, but it runs it inside a realm
-  ;; iframe served from `/api/apps/sandbox-host`, which carries the grant in its own
+  ;; iframe served from `/api/ee/apps/sandbox-host`, which carries the grant in its own
   ;; CSP. Granting it on the data-app document too would hand `eval`/`Function` to
   ;; anything running there — including guest code that escaped the membrane.
   (testing "the data-app document does not get 'unsafe-eval'"
@@ -694,8 +710,8 @@
       (is (= "60" (get headers "Access-Control-Max-Age"))
           "Expected Access-Control-Max-Age header to be set to 60")))
   (testing "CORS should be enabled when origins are configured regardless of embedding flags"
-    (mt/with-temporary-setting-values [enable-embedding-simple false
-                                       enable-embedding-sdk false]
+    (mt/with-temporary-setting-values [enable-embedding-modular false
+                                       enable-embedding-sdk     false]
       (let [headers (mw.security/access-control-headers "https://example.com"
                                                         "https://example.com")]
         (is (= "https://example.com"
@@ -708,8 +724,8 @@
 
 (deftest test-cors-enabled-when-origins-configured-without-embedding-features
   (testing "CORS headers should be sent when origins are configured even if embedding features are disabled"
-    (mt/with-temporary-setting-values [enable-embedding-sdk    false
-                                       enable-embedding-simple false
+    (mt/with-temporary-setting-values [enable-embedding-sdk      false
+                                       enable-embedding-modular  false
                                        embedding-app-origins-sdk "https://example.com"]
       (let [wrapped-handler (mw.security/add-security-headers
                              (fn [_request respond _raise]

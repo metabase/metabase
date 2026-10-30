@@ -16,9 +16,9 @@
   MBQL suitable for `lib.query/query` / the QP.
 
   Implemented scope for the representations pipeline:
-    * `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` for
+    * `import-database-fk`, `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` for
       warehouse metadata.
-    * `import-fk-keyed` / `export-fk-keyed` for `:model/Database` by `:name`.
+    * `export-fk-keyed` for `:model/Database` by `:name`.
     * `import-fk` / `export-fk` for `Card`, `Measure`, and `Segment` references by `entity_id`.
 
   Everything else throws `:not-implemented-yet` for now.
@@ -117,12 +117,13 @@
 
   The LLM can still self-correct in one turn by listing the parent database's tables with
   the calling surface's discovery tool; the message points it at that path."
-  [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
+  [metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
   (ex-info (tru "No table found matching portable FK {0}." (pr-str path))
            {:status-code  400
             :error        :unknown-table
             :agent-error? true
-            :path         path}))
+            :path         path
+            :database-id  (:id (lib.metadata/database metadata-provider))}))
 
 (defn- table-candidates
   "Resolve `(schema, table-name)` against `metadata-provider`, returning only active tables.
@@ -156,6 +157,9 @@
   re-hallucinating the same bad path. All error branches are marked
   `:agent-error? true` so the outer tool wrapper relays the message verbatim.
 
+  Every error here carries the provider's `:database-id`, which is not permission-checked: read it
+  with `metabase.metabot.tools.recoverable.pipeline/readable-database-id`.
+
   Inactive (`:active false`) tables are dropped by [[table-candidates]], so a stale FK to one
   surfaces here as a 0-candidate miss."
   [metadata-provider [path-db-name path-schema path-table-name :as path]]
@@ -168,7 +172,8 @@
                        :error        :unknown-table
                        :agent-error? true
                        :path         path
-                       :expected-db  current-db})))
+                       :expected-db  current-db
+                       :database-id  current-db-id})))
     (let [candidates (table-candidates metadata-provider current-db-id path-schema path-table-name)]
       (case (count candidates)
         0 (throw (unknown-table-ex-info metadata-provider path))
@@ -181,7 +186,8 @@
                         {:status-code  400
                          :error        :ambiguous-table
                          :agent-error? true
-                         :path         path}))))))
+                         :path         path
+                         :database-id  current-db-id}))))))
 
 (defn- find-field
   "Resolve a field path `[db schema table field …]` to a `:metadata/column` or throw with context.
@@ -732,9 +738,7 @@
   with `metabase.metabot.tools.shared.content-store/read-checked`.
 
   Implemented methods:
-    * `import-table-fk`, `import-field-fk`.
-    * `import-fk-keyed` for `:model/Database` by `:name` (needed because
-      `resolve/import-mbql` dispatches on `:database` keys).
+    * `import-database-fk`, `import-table-fk`, `import-field-fk`.
     * `import-fk` for `Card`, `Measure`, and `Segment` by `entity_id`.
 
   Other methods throw `:not-implemented-yet`."
@@ -760,15 +764,11 @@
          (measure-model? model) (import-measure-by-entity-id metadata-provider content-store eid)
          (segment-model? model) (import-segment-by-entity-id metadata-provider content-store eid)
          :else                  (not-implemented! :import-fk)))
-     (import-fk-keyed [_ portable model field]
-       (cond
-         (and (or (= model :model/Database) (= model 'Database))
-              (= field :name))
-         (import-database-by-name metadata-provider portable)
-
-         :else
-         (not-implemented! :import-fk-keyed)))
+     (import-fk-keyed [_ _portable _model _field] (not-implemented! :import-fk-keyed))
      (import-user     [_ _email]                  (not-implemented! :import-user))
+     (import-database-fk [_ db-name]
+       (when db-name
+         (import-database-by-name metadata-provider db-name)))
      (import-table-fk [_ path]
        (when path
          (:id (find-table metadata-provider path))))

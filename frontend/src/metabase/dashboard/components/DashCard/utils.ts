@@ -1,3 +1,5 @@
+import type { MouseEvent } from "react";
+
 import { getVirtualCardType } from "metabase/dashboard/utils";
 import type {
   BaseDashboardCard,
@@ -15,6 +17,11 @@ import {
 } from "metabase-types/guards/dashboard";
 
 const VIZ_WITH_CUSTOM_MAPPING_UI = ["heading", "placeholder"];
+
+/** Keeps a click on an interactive element inside a dashcard from starting a grid drag. */
+export function preventDragOrInputFocus(event: MouseEvent) {
+  event.stopPropagation();
+}
 
 export function shouldShowParameterMapper({
   dashcard,

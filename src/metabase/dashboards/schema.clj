@@ -7,6 +7,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.timeline.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -101,6 +102,8 @@
     [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
     [:card                   {:optional true} [:maybe [:ref ::queries.schema/card]]]
     [:series                 {:optional true} [:maybe [:sequential [:ref ::queries.schema/card]]]]
+    ;; hydrated onto public and embedded dashcards only
+    [:timeline_events        {:optional true} [:maybe [:sequential [:ref :metabase.timeline.schema/timeline-event]]]]
     [:action                 {:optional true} [:maybe [:merge
                                                        :metabase.actions.schema/action
                                                        [:map {:closed true}

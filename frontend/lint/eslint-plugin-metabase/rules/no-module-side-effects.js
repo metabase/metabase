@@ -218,8 +218,13 @@ module.exports = {
     const sourceRoots = (options.sourceRoots || DEFAULT_SOURCE_ROOTS).map(
       (root) => path.resolve(REPO_ROOT, root),
     );
-    // getScope() on the Program node returns the outer global scope, so ask the scope manager for the module scope itself.
-    const moduleScope = sourceCode.scopeManager.acquire(sourceCode.ast, true);
+    let moduleScope;
+    function getModuleScope() {
+      // Accessing scope constructs the scope tree for the whole file.
+      // getScope(Program) returns the global scope.
+      moduleScope ??= sourceCode.scopeManager.acquire(sourceCode.ast, true);
+      return moduleScope;
+    }
 
     function isInternalModule(source) {
       return (
@@ -229,8 +234,8 @@ module.exports = {
 
     // The import a module-scope name refers to, or null when this file declares the name or it is a global.
     function importOf(name) {
-      const def = moduleScope.set
-        .get(name)
+      const def = getModuleScope()
+        .set.get(name)
         ?.defs.find(
           (def) =>
             def.type === "ImportBinding" &&
@@ -245,7 +250,7 @@ module.exports = {
     }
 
     function isDeclaredHere(name) {
-      return moduleScope.set.has(name) && importOf(name) == null;
+      return getModuleScope().set.has(name) && importOf(name) == null;
     }
 
     // The annotation may sit on the call or on a wrapper around it (`/* #__PURE__ */ foo()!`).
@@ -572,7 +577,7 @@ function resolveSourceFile(base) {
   return (
     candidates.find((candidate) => {
       try {
-        return fs.statSync(candidate).isFile();
+        return fs.statSync(candidate, { throwIfNoEntry: false })?.isFile();
       } catch {
         return false;
       }
