@@ -136,12 +136,15 @@
   (locking live-gauge-series
     (doseq [[[gauge-key labels :as series] published] @live-gauge-series
             :when (>= (u/since-ms published) stale-gauge-age-ms)]
-      ;; The realistic cause is a refresh wedged in a database call: it holds its single-flight claim for
-      ;; the life of the process, so this node would otherwise just go quiet.
-      (log/warn "Search gauge series expired: this process stopped refreshing it"
-                {:gauge gauge-key, :labels labels})
       (analytics/remove-series! gauge-key labels)
-      (swap! live-gauge-series dissoc series))))
+      (swap! live-gauge-series dissoc series)
+      ;; The realistic cause is a refresh wedged in a database call: it holds its single-flight claim for
+      ;; the life of the process, so this node would otherwise just go quiet about a series that vanished.
+      (log/warn "Stopped exporting a search gauge series this process had not refreshed"
+                {:gauge    gauge-key
+                 :labels   labels
+                 :age-ms   (u/since-ms published)
+                 :limit-ms stale-gauge-age-ms}))))
 
 (defmethod analytics.core/pull-collector ::expire-stale-gauges [_]
   {:min-interval-s 60

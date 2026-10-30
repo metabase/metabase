@@ -255,6 +255,10 @@
                           (fn []
                             (try
                               (refresh!)
+                              ;; Nothing derefs this future, so a throw here is otherwise silent. A refresh
+                              ;; that rethrows an interrupt by design would disappear the same way.
+                              (catch Throwable e
+                                (log/error e "Background metric refresh failed" {:id id}))
                               (finally
                                 (swap! refreshes-in-flight disj id)))))
                          (catch Exception e
@@ -1183,6 +1187,8 @@
           ;; the declared label names live on the iapetos collector record, already dasherized -- the very
           ;; list iapetos.collector/set-labels orders values by when it looks a child up
           declared                (:labels collector)]
+      (when-not collector
+        (throw (ex-info "No such metric in the registry" {:metric metric})))
       (when (empty? declared)
         ;; Collector.remove drops the no-labels child and then recreates it at 0, so the series carries on
         ;; being exported -- as a plausible-looking zero. Give the metric a label instead.
