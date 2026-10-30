@@ -16,7 +16,8 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.honey-sql-2 :as h2x])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection ResultSet ResultSetMetaData SQLException Types)
+   (java.time OffsetTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -70,6 +71,34 @@
         "^(?:Red) (\\w+)$" "Medicine"     ; non-capturing groups don't count
         "(?P<w>Med\\w+)"   "Medicine"     ; RE2 named group
         "^Blue"            nil))))        ; no match: NULL, not ''
+
+(defn- read-timetz
+  "Read `s` as a `timetz` value with the driver's TIME reader, through stand-in JDBC objects. Like pgjdbc, the stand-in
+  can't read a TIMETZ value as a LocalTime, so the reader falls back to the string."
+  [s]
+  (let [rs     (reify ResultSet
+                 (^String getString [_ ^int _i] s)
+                 (^Object getObject [_ ^int _i ^Class _class]
+                   (throw (SQLException. "Cannot convert the column of type TIMETZ to requested type LocalTime"))))
+        rsmeta (reify ResultSetMetaData
+                 (getColumnType [_ _i] Types/TIME)
+                 (getColumnTypeName [_ _i] "timetz")
+                 (getColumnLabel [_ _i] "t"))]
+    ((sql-jdbc.execute/read-column-thunk :motherduck rs rsmeta (int 1)))))
+
+;; `timetz-values-test` in `postgres-test` reads the endpoint's format live; these are the other branches.
+(deftest ^:parallel read-timetz-test
+  (testing "NULL"
+    (is (nil? (read-timetz nil))))
+  (testing "a value in Postgres's format goes to the inherited reader, so a fixed endpoint keeps the offset"
+    (is (= (OffsetTime/parse "12:34:56+05:00")
+           (read-timetz "12:34:56+05"))))
+  (testing "any other format fails, naming the value and the column, rather than guessing"
+    (doseq [s ["0001-01-03 07:34:56Z" "0001-12-31 07:34:56Z" "0001-01-01 07:34:56+05" "07:34:56"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Cannot read the TIMETZ value .* in column t\. Cast the column to VARCHAR to read it\."
+                            (read-timetz s))
+          s))))
 
 (deftest ^:parallel connection-spec-verifies-the-server-test
   (let [details {:host     "pg.us-east-1-aws.motherduck.com"

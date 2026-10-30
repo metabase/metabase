@@ -1554,6 +1554,24 @@
         (is (= (get-timezone-with-report-timezone nil)
                (get-timezone-with-report-timezone "Crunk Burger")))))))
 
+(deftest timetz-values-test
+  ;; MotherDuck's endpoint sends TIMETZ values in its own format (QUE-969). Metabase shows every time with an offset in
+  ;; the results time zone, so both drivers must give the same output for the same values.
+  (mt/test-drivers #{:postgres :motherduck}
+    (let [literals ["12:34:56+05" "12:34:56.123456+05:30" "20:00:00-05" "00:00:00+15:59" "23:59:59-15:59"
+                    "12:00:00+05:30:15"]
+          query    (mt/native-query
+                    {:query (str "SELECT "
+                                 (str/join ", " (map-indexed #(format "CAST('%s' AS TIMETZ) AS t%d" %2 %1) literals)))})]
+      (testing "in UTC"
+        (is (= [["07:34:56Z" "07:04:56.123456Z" "01:00:00Z" "08:01:00Z" "15:58:59Z" "06:29:45Z"]]
+               (mt/rows (qp/process-query query)))))
+      (testing "in another report time zone"
+        (mt/with-temporary-setting-values [report-timezone "Asia/Tokyo"]
+          (is (= [["16:34:56+09:00" "16:04:56.123456+09:00" "10:00:00+09:00" "17:01:00+09:00" "00:58:59+09:00"
+                   "15:29:45+09:00"]]
+                 (mt/rows (qp/process-query query)))))))))
+
 (deftest fingerprint-time-fields-test
   (mt/test-driver :postgres
     (testing "Make sure we're able to fingerprint TIME fields (#5911)"

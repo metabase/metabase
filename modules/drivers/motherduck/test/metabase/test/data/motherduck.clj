@@ -101,13 +101,9 @@
                              :type/Integer             "INTEGER"
                              :type/Text                "STRING"
                              :type/Time                "TIME"
-                             ;; The endpoint reports TIMETZ as JDBC Types.TIME, so the reader returns
-                             ;; LocalTime and loses the offset. Map these types to TIME so the test
-                             ;; framework does not claim that the driver preserves time zone offsets.
-                             ;; FIXME: TIMETZ needs upstream fixing. (bshepherdson, 2026-10-28)
-                             :type/TimeWithTZ          "TIME"
-                             :type/TimeWithLocalTZ     "TIME"
-                             :type/TimeWithZoneOffset  "TIME"
+                             :type/TimeWithTZ          "TIMETZ"
+                             :type/TimeWithLocalTZ     "TIMETZ"
+                             :type/TimeWithZoneOffset  "TIMETZ"
                              :type/UUID                "UUID"}]
   (defmethod sql.tx/field-base-type->sql-type [:motherduck base-type]
     [_driver _type]

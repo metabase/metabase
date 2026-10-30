@@ -25,9 +25,11 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection ResultSet ResultSetMetaData Types)
+   (java.time LocalTime OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -379,6 +381,40 @@
     ;; so both sides of a filter compare in the target zone (#80155). It holds the inlined literal for the same reason.
     (h2x/with-type-info expr {:database-type                          "timestamp"
                               :metabase.driver.postgres/target-timezone (h2x/literal target-timezone)})))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Reading results                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private postgres-timetz-pattern
+  "A TIMETZ value in Postgres's text format, such as `12:34:56.789+05:30`."
+  #"\d{2}:\d{2}:\d{2}(?:\.\d+)?[+-]\d{2}(?::\d{2}){0,2}")
+
+(def ^:private endpoint-timetz-pattern
+  "A TIMETZ value as the endpoint sends it: the UTC time in year 1. The date says which way converting to UTC wrapped
+  past midnight. `12:34:56+05` arrives as `0001-01-01 07:34:56Z`, `20:00:00-05` as `0001-01-02 01:00:00Z`, and
+  `00:00:00+15:59` as `0001-12-31 08:01:00Z BC`."
+  #"0001-(?:01-0[12] (\d{2}:\d{2}:\d{2}(?:\.\d+)?)Z|12-31 (\d{2}:\d{2}:\d{2}(?:\.\d+)?)Z BC)")
+
+;; The endpoint sends TIMETZ values in the format above, which pgjdbc can't parse. The inherited reader then falls back
+;; to a generic parser and returns a year-1 ZonedDateTime. Read them as the UTC OffsetTime they represent instead. That
+;; loses the original offset, but Metabase converts every OffsetTime to the results time zone before showing or exporting
+;; it, so the output is the same as Postgres gives for the original value. Values in Postgres's format go to the
+;; inherited reader, so this keeps working if the endpoint is fixed. Fail on any other format rather than guess.
+(defmethod sql-jdbc.execute/read-column-thunk [:motherduck Types/TIME]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:postgres Types/TIME]) driver rs rsmeta i)]
+    (if-not (= "timetz" (.getColumnTypeName rsmeta i))
+      parent-thunk
+      (fn []
+        (when-let [s (.getString rs i)]
+          (if (re-matches postgres-timetz-pattern s)
+            (parent-thunk)
+            (if-let [[_ same-or-next-day previous-day] (re-matches endpoint-timetz-pattern s)]
+              (OffsetTime/of (LocalTime/parse (or same-or-next-day previous-day)) ZoneOffset/UTC)
+              (throw (ex-info (tru "Cannot read the TIMETZ value {0} in column {1}. Cast the column to VARCHAR to read it."
+                                   (pr-str s) (.getColumnLabel rsmeta i))
+                              {:value s, :column (.getColumnLabel rsmeta i)})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Driver-managed table DDL                                              |
