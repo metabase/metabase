@@ -39,27 +39,26 @@
    [:model_ids [:sequential :int]]
    [:metric_ids [:sequential :int]]])
 
-(defn- read-as-question?
-  "Whether the field tools read `card`, requested as `requested-type`, as a question.
-
-  Users call saved questions metrics, and `list_available_fields` has no argument for questions, so a
-  question requested as a metric or a model is read as a question."
-  [card requested-type]
-  (and (= :question (:type card))
-       (contains? #{:metric :model} requested-type)))
-
 (defn- source-entity-type
   "Check that the current user can read `entity-id` as a Metabot resource, and return the entity type to read
-  it as. Throws a recoverable error when a card is not of `entity-type` and is not read as a question."
-  [entity-type entity-id]
-  (if (= entity-type :table)
+  it as: `requested-type`, or `:question` for a saved question requested as a metric or a model. Users call
+  saved questions metrics, and `list_available_fields` has no argument for questions.
+
+  Throws a recoverable error for any other card that is not of `requested-type`."
+  [requested-type entity-id]
+  (if (= requested-type :table)
     (do (resources-tools/check-table-resource-database entity-id)
         :table)
-    (let [card (resources-tools/check-card-resource-database entity-id)]
-      (if (read-as-question? card entity-type)
+    (let [{card-type :type} (resources-tools/check-card-resource-database entity-id)]
+      (cond
+        (= card-type requested-type)
+        card-type
+
+        (and (= card-type :question) (contains? #{:metric :model} requested-type))
         :question
-        (do (tools.u/get-card entity-id entity-type)
-            entity-type)))))
+
+        :else
+        (tools.u/wrong-source-type! {:id entity-id :expected-type requested-type :actual-type card-type})))))
 
 (defn- source-metadata
   [{:keys [entity-type entity-id]}]
@@ -118,15 +117,14 @@
                     (map (fn [id] {:entity-type kind :entity-id id}) ids)))
           [[:table table-ids] [:model model-ids] [:metric metric-ids]]))
   (compose [_ entries _ctx]
-    (let [metadata (reduce (fn [metadata {:keys [item failed? output structured-output]}]
+    (let [metadata (reduce (fn [metadata {:keys [failed? output structured-output]}]
                              (if failed?
                                (update metadata :errors conj output)
-                               (update metadata (if (= :question (:type structured-output))
-                                                  :questions
-                                                  (case (:entity-type item)
-                                                    :table :tables
-                                                    :model :models
-                                                    :metric :metrics))
+                               (update metadata (case (:type structured-output)
+                                                  :table :tables
+                                                  :model :models
+                                                  :metric :metrics
+                                                  :question :questions)
                                        conj structured-output)))
                            {:result-type :metadata :tables [] :models [] :metrics [] :questions [] :errors []}
                            entries)]
@@ -223,17 +221,11 @@
      :scope scope/agent-metadata-read
      :args get-field-values-schema})
   (handle [_ {data-source :data_source source-id :source_id field-id :field_id} _ctx]
-    (let [data-source (tools/with-entity {:kind (if (= data-source "report") :question (keyword data-source))
-                                          :id   source-id}
-                        (if (= data-source "table")
-                          (do (resources-tools/check-table-resource-database source-id)
-                              data-source)
-                          (let [card (resources-tools/check-card-resource-database source-id)]
-                            (if (read-as-question? card (keyword data-source))
-                              "question"
-                              data-source))))]
+    (let [kind        (if (= data-source "report") :question (keyword data-source))
+          entity-type (tools/with-entity {:kind kind :id source-id}
+                        (source-entity-type kind source-id))]
       (tools/with-entity {:kind :field :id field-id}
-        (add-output (field-stats-tools/field-values {:entity-type data-source
+        (add-output (field-stats-tools/field-values {:entity-type (name entity-type)
                                                      :entity-id source-id
                                                      :field-id field-id
                                                      :limit nil})

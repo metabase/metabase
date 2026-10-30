@@ -973,7 +973,7 @@
 (defn get-metadata-result->xml
   "Format the `list_available_fields` result for LLM consumption.
 
-  A question in `questions` was requested as a metric or a model; the output says so for each one."
+  A question in `questions` was requested as a metric or a model; the output says that they are questions."
   [{:keys [metrics tables models questions errors]}]
   (let [metadata-metrics (when (seq metrics)
                            (str "<metrics>\n"
@@ -997,7 +997,6 @@
       :metadata_metrics_xml metadata-metrics
       :metadata_tables_xml metadata-tables
       :metadata_models_xml metadata-models
-      :metadata_question_ids (mapv :id questions)
       :metadata_questions_xml metadata-questions
       :metadata_errors (when (seq errors) (str/join "\n" errors))})))
 

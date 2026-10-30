@@ -48,7 +48,7 @@
       (mt/with-dynamic-fn-redefs [entity-details/get-table-details
                                   (fn [{:keys [entity-id]}]
                                     (if (= entity-id (mt/id :orders))
-                                      {:structured-output {:id entity-id :name "Orders" :fields []}}
+                                      {:structured-output {:id entity-id :type :table :name "Orders" :fields []}}
                                       (throw (ex-info "clojure.lang.ExceptionInfo: private database text" {}))))]
         (let [{:keys [output error]} (invoke-metadata profile "list_available_fields"
                                                       {:table_ids [(mt/id :orders) (mt/id :products)]
@@ -148,9 +148,10 @@
 (deftest metadata-accepts-fifteen-ids-test
   (mt/as-admin
     (mt/with-dynamic-fn-redefs [entity-details/get-table-details
-                                (fn [{:keys [entity-id]}] {:structured-output {:id entity-id :name "Birds" :fields []}})
+                                (fn [{:keys [entity-id entity-type]}]
+                                  {:structured-output {:id entity-id :type entity-type :name "Birds" :fields []}})
                                 entity-details/get-metric-details
-                                (fn [{:keys [metric-id]}] {:structured-output {:id metric-id :name "Bird count"}})]
+                                (fn [{:keys [metric-id]}] {:structured-output {:id metric-id :type :metric :name "Bird count"}})]
       (mt/with-temp [:model/Card {model-id :id} {:type :model}
                      :model/Card {metric-id :id} {:type :metric}]
         (doseq [profile [:document-generate-content :slackbot]]
@@ -296,7 +297,7 @@
                         structured-output))
                 (testing "the output names the card as a question and includes its saved query with the filter"
                   (is (str/includes? output (str "<metabase_question id=\"" question-id "\"")))
-                  (is (str/includes? output (str "Card " question-id " is a saved question, not a metric or a model.")))
+                  (is (str/includes? output "The cards in <questions> are saved questions, not metrics or models."))
                   (is (re-find #"(?s)<query>.*\"ORDERS\".*\"QUANTITY\".*</query>" output)))))
             (doseq [data-source ["metric" "model"]]
               (testing (str profile " get_field_values with data_source " data-source)
@@ -382,12 +383,12 @@
         (doseq [profile [:document-generate-content :slackbot :internal]
                 [actual-type source-id] [["model" model-id] ["question" question-id] ["metric" metric-id]]
                 data-source ["model" "question" "report" "metric"]
-                :let [expected-type (if (= data-source "report") "question" data-source)]
-                :when (and (not= actual-type expected-type)
-                           ;; `get_field_values` reads a question requested as a metric or model as a question.
-                           (not (and (not= profile :internal)
-                                     (= actual-type "question")
-                                     (#{"metric" "model"} data-source))))]
+                :let [expected-type (if (= data-source "report") "question" data-source)
+                      ;; `get_field_values` reads a question requested as a metric or model as a question.
+                      read-as-question? (and (not= profile :internal)
+                                             (= actual-type "question")
+                                             (#{"metric" "model"} data-source))]
+                :when (and (not= actual-type expected-type) (not read-as-question?))]
           (let [{:keys [error output]} (invoke-field-detail profile data-source source-id (mt/id :orders :id))]
             (is (= {:class :recoverable
                     :code (if (= profile :internal)

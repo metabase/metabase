@@ -364,8 +364,8 @@ No metadata available to display. This doesn't mean the column is empty or canno
 {% endif %}
 {% if is_get_metadata_result %}
 {% if metadata_has_any %}
-{% if metadata_metrics_xml %}{{metadata_metrics_xml|safe}}{% endif %}{% if metadata_tables_xml %}{{metadata_tables_xml|safe}}{% endif %}{% if metadata_models_xml %}{{metadata_models_xml|safe}}{% endif %}{% if metadata_questions_xml %}{% for question_id in metadata_question_ids %}Card {{question_id}} is a saved question, not a metric or a model. To query its data, use the table and filters of its saved query.
-{% endfor %}{{metadata_questions_xml|safe}}{% endif %}{% if metadata_errors %}
+{% if metadata_metrics_xml %}{{metadata_metrics_xml|safe}}{% endif %}{% if metadata_tables_xml %}{{metadata_tables_xml|safe}}{% endif %}{% if metadata_models_xml %}{{metadata_models_xml|safe}}{% endif %}{% if metadata_questions_xml %}The cards in <questions> are saved questions, not metrics or models. The saved query of each one shows the table and filters it uses.
+{{metadata_questions_xml|safe}}{% endif %}{% if metadata_errors %}
 <errors>
 The following errors were encountered while fetching metadata:
 {{metadata_errors|safe}}
