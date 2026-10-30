@@ -42,6 +42,7 @@ describe("PROGRESS_CHART_DEFINITION", () => {
       ).toEqual({
         data: series[0].data,
         datasetQuery: series[0].card.dataset_query,
+        display: "progress",
         excludedSelfColumn: "count",
         placeholder: "Enter goal value",
       });

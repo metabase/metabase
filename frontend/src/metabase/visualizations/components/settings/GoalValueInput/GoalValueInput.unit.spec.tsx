@@ -17,6 +17,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type * as Analytics from "metabase/analytics";
 import { api, shouldShowNotAuthorizedPage } from "metabase/api/client";
 import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
@@ -42,6 +43,9 @@ import {
 } from "metabase-types/api/mocks";
 
 import { GoalValueInput } from "./GoalValueInput";
+
+const { trackSimpleEvent } =
+  jest.requireMock<typeof Analytics>("metabase/analytics");
 
 const DATA = createMockDatasetData({
   cols: [
@@ -84,6 +88,7 @@ function setup({
       aria-label="Min"
       data={data}
       datasetQuery={DATASET_QUERY}
+      display="progress"
       excludedSelfColumn={excludedSelfColumn}
       formatOptions={formatOptions}
       id="goal-value"
@@ -460,6 +465,7 @@ describe("GoalValueInput", () => {
           aria-label="Min"
           data={DATA}
           datasetQuery={DATASET_QUERY}
+          display="progress"
           id="goal-value"
           referencedEntities={[]}
           value={value}
@@ -1106,6 +1112,262 @@ describe("GoalValueInput", () => {
       await screen.findByText(NEW_TAB_HINT);
       return pill;
     }
+  });
+
+  describe("analytics", () => {
+    beforeEach(() => {
+      jest.mocked(trackSimpleEvent).mockClear();
+    });
+
+    it("tracks picking a column of this question", async () => {
+      setup();
+
+      await openMenu();
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: /Value from this question/ }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Sum of Total/ }),
+      );
+
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_set",
+        triggered_from: "progress",
+        event_detail: "self_column",
+      });
+    });
+
+    it("tracks picking a single-column measure", async () => {
+      setupEntityPicker([
+        createMockSearchResult({ id: 4, model: "measure", name: "Revenue" }),
+      ]);
+      setupMeasureEndpoint(
+        createMockMeasure({
+          id: 4,
+          name: "Revenue",
+          result_column_name: "revenue",
+        }),
+      );
+      const { onChange } = setup();
+
+      await openMenu();
+      await pickEntity("Revenue");
+
+      await waitFor(() => expect(onChange).toHaveBeenCalled());
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_set",
+        triggered_from: "progress",
+        event_detail: "measure",
+      });
+    });
+
+    it("tracks picking a single-column question with its card type", async () => {
+      setupEntityPicker([
+        createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+      ]);
+      setupCardEndpoints(
+        createMockCard({
+          id: 9,
+          name: "Orders",
+          type: "model",
+          result_metadata: [
+            createMockField({ name: "total", base_type: "type/Integer" }),
+          ],
+        }),
+      );
+      const { onChange } = setup();
+
+      await openMenu();
+      await pickEntity("Orders");
+
+      await waitFor(() =>
+        expect(onChange).toHaveBeenCalledWith({
+          type: "card",
+          id: 9,
+          column: "total",
+        }),
+      );
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_set",
+        triggered_from: "progress",
+        event_detail: "model",
+      });
+    });
+
+    it("tracks picking a column of a multi-column question with its card type", async () => {
+      setupEntityPicker([
+        createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+      ]);
+      setupCardEndpoints(
+        createMockCard({
+          id: 9,
+          name: "Orders",
+          type: "metric",
+          result_metadata: [
+            createMockField({ name: "total", base_type: "type/Integer" }),
+            createMockField({
+              name: "avg",
+              display_name: "Average",
+              base_type: "type/Integer",
+            }),
+          ],
+        }),
+      );
+      setupCardDatasetWithReferencedEntities({});
+      const { onChange } = setup();
+
+      await openMenu();
+      await pickEntity("Orders");
+      expect(trackSimpleEvent).not.toHaveBeenCalled();
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Average/ }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 9,
+        column: "avg",
+      });
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_set",
+        triggered_from: "progress",
+        event_detail: "metric",
+      });
+    });
+
+    it("tracks replacing a column of this question with another one", async () => {
+      const { onChange } = setup({ value: "sum" });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Change value source" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Count/ }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith("count");
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_replaced",
+        triggered_from: "progress",
+        event_detail: "self_column",
+      });
+    });
+
+    it("tracks replacing a column of another question with its card type", async () => {
+      setupCardEndpoints(
+        createMockCard({
+          id: 9,
+          name: "Orders",
+          type: "model",
+          result_metadata: [
+            createMockField({ name: "total", base_type: "type/Integer" }),
+            createMockField({
+              name: "avg",
+              display_name: "Average",
+              base_type: "type/Integer",
+            }),
+          ],
+        }),
+      );
+      setupCardDatasetWithReferencedEntities({});
+      const { onChange } = setup({
+        value: { type: "card", id: 9, column: "total" },
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Change value source" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Average/ }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 9,
+        column: "avg",
+      });
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_replaced",
+        triggered_from: "progress",
+        event_detail: "model",
+      });
+    });
+
+    it("does not track picking the column that is already the goal", async () => {
+      const { onChange } = setup({ value: "sum" });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Change value source" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Sum of Total/ }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith("sum");
+      expect(trackSimpleEvent).not.toHaveBeenCalled();
+    });
+
+    it("does not track typing a static value", () => {
+      const { onChange } = setup({ value: 5 });
+
+      const input = screen.getByRole("textbox", { name: "Min" });
+      fireEvent.change(input, { target: { value: "12.5" } });
+      fireEvent.blur(input);
+
+      expect(onChange).toHaveBeenCalledWith(12.5);
+      expect(trackSimpleEvent).not.toHaveBeenCalled();
+    });
+
+    it("tracks removing a column of this question", async () => {
+      setup({ value: "sum" });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove value source" }),
+      );
+
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_unset",
+        triggered_from: "progress",
+        event_detail: "self_column",
+      });
+    });
+
+    it("tracks removing a column of another question with backspace", async () => {
+      setupCardEndpoints(
+        createMockCard({ id: 9, name: "Orders", type: "metric" }),
+      );
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMockReferencedEntitiesResults({
+            column: "total",
+            value: 250,
+          }),
+        }),
+        value: { type: "card", id: 9, column: "total" },
+      });
+
+      const pill = screen.getByRole("group", { name: "Min" });
+      await userEvent.hover(
+        screen.getByRole("button", { name: "Change value source" }),
+      );
+      expect(await screen.findByText("Orders → total")).toBeInTheDocument();
+      fireEvent.keyDown(pill, { key: "Backspace" });
+
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_unset",
+        triggered_from: "progress",
+        event_detail: "metric",
+      });
+    });
   });
 });
 

@@ -13,6 +13,7 @@ import type {
   SmartScalarComparison,
   SmartScalarComparisonType,
   TableColumnOrderSetting,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -49,6 +50,7 @@ export type ChartSettingSegmentedControlProps = {
 export type ChartSettingGoalValueProps = {
   data: DatasetData;
   datasetQuery?: DatasetQuery;
+  display: VisualizationDisplay;
   excludedSelfColumn?: string;
   formatOptions?: ColumnSettings;
   id: string;
@@ -72,6 +74,7 @@ export type ChartSettingSegmentsEditorProps = {
   canRemoveAll?: boolean;
   data?: DatasetData;
   datasetQuery?: DatasetQuery;
+  display: VisualizationDisplay;
   formatOptions?: ColumnSettings;
   value: GoalSegment[];
   onChange: (value: GoalSegment[]) => void;
