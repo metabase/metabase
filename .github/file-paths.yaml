@@ -221,6 +221,7 @@ project_ratchet_checks:
 project_codeowners_checks:
   - *project_tests_infra
   - ".clj-kondo/config/modules/config.edn"
+  - ".clj-kondo/src/hooks/common/modules.clj"
   - ".github/CODEOWNERS"
   - ".github/team.json"
   - "mage/src/mage/modules.clj"

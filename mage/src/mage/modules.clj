@@ -294,8 +294,8 @@
 
 (def ^:private codeowners-value->trees
   "Directory trees each `:codeowners` value owns."
-  {true ["src" "test"]
-   :src ["src"]})
+  {true      ["src" "test"]
+   :src-only ["src"]})
 
 (def ^:private tree->root-file-suffix
   "Pattern suffix matching a module's root namespace file next to its directory in each tree, such as
@@ -337,7 +337,7 @@
         team   (modules/module-team modules-config module)
         handle (get assignees team)]
     (when-not trees
-      (throw (ex-info (format "Module %s sets :codeowners to %s; use true (src and test) or :src"
+      (throw (ex-info (format "Module %s sets :codeowners to %s; use true (src and test) or :src-only"
                               module (pr-str value))
                       {:module module, :codeowners value})))
     (when-not handle
@@ -374,26 +374,30 @@
        codeowners-end-marker]))))
 
 (defn- splice-codeowners
-  "Replace the marked region (inclusive) in `existing` with `block`, or append `block` when neither marker is there.
+  "Replace the marked region (inclusive) in `existing` with `block`, or append `block` when no marker is there.
   Returns text ending in one newline.
-  Throws when only one marker is there, or the end marker comes first."
+  Throws unless each marker is there exactly once with BEGIN first."
   [existing block]
-  (let [begin (str/index-of existing codeowners-begin-marker)
-        end   (str/index-of existing codeowners-end-marker)]
+  (let [occurrences (fn [marker]
+                      (count (re-seq (re-pattern (java.util.regex.Pattern/quote marker)) existing)))
+        begin       (str/index-of existing codeowners-begin-marker)
+        end         (str/index-of existing codeowners-end-marker)]
     (cond
-      (and begin end (< begin end))
+      (and (nil? begin) (nil? end))
+      (str (str/trimr existing) "\n\n" block "\n")
+
+      (and (= 1 (occurrences codeowners-begin-marker) (occurrences codeowners-end-marker))
+           (< begin end))
       (str (str/trimr (subs existing 0 begin))
            "\n\n" block
            (str/trimr (subs existing (+ end (count codeowners-end-marker))))
            "\n")
 
-      (or begin end)
-      (throw (ex-info (str codeowners-path " has a broken generated block. Its BEGIN and END markers must both be"
-                           " there, in that order. Fix the markers by hand, then run ./bin/mage update-codeowners.")
-                      {:begin begin, :end end}))
-
       :else
-      (str (str/trimr existing) "\n\n" block "\n"))))
+      (throw (ex-info (str codeowners-path " has a broken generated block. It needs one BEGIN marker and one END"
+                           " marker, in that order. Fix the markers by hand, then run ./bin/mage update-codeowners.")
+                      {:begin-markers (occurrences codeowners-begin-marker)
+                       :end-markers   (occurrences codeowners-end-marker)})))))
 
 (defn cli-update-codeowners
   "Regenerate the module-ownership block in `.github/CODEOWNERS`.

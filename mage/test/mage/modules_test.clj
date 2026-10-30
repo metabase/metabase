@@ -582,10 +582,10 @@
             "test/metabase/lib_test.*"]
            (owned-patterns '{lib             {:team "Querying Platform", :codeowners true}
                              query-processor {:team "Querying Platform"}}))))
-  (testing ":src owns the src code only"
+  (testing ":src-only owns the src code only"
     (is (= ["src/metabase/lib"
             "src/metabase/lib.*"]
-           (owned-patterns '{lib {:team "Querying Platform", :codeowners :src}}))))
+           (owned-patterns '{lib {:team "Querying Platform", :codeowners :src-only}}))))
   (testing "enterprise modules own their enterprise/backend code"
     (is (= ["enterprise/backend/src/metabase_enterprise/sso"
             "enterprise/backend/src/metabase_enterprise/sso.*"
@@ -595,12 +595,12 @@
   (testing "a module's paths are listed whether or not they exist on disk"
     (is (= ["src/metabase/no_such_module"
             "src/metabase/no_such_module.*"]
-           (owned-patterns '{no-such-module {:team "Querying Platform", :codeowners :src}}))))
+           (owned-patterns '{no-such-module {:team "Querying Platform", :codeowners :src-only}}))))
   (testing "a nested module without its own :team takes its ancestor's"
     (is (= ["src/metabase/lib/schema"
             "src/metabase/lib/schema.*"]
            (owned-patterns '{lib        {:team "Querying Platform"}
-                             lib.schema {:codeowners :src}})))))
+                             lib.schema {:codeowners :src-only}})))))
 
 (deftest codeowners-block-orders-children-after-parents
   ;; CODEOWNERS applies the last matching pattern, so a parent stanza after its child's would take the child's
@@ -610,8 +610,8 @@
             "src/metabase/lib.*"
             "src/metabase/lib/schema"
             "src/metabase/lib/schema.*"]
-           (owned-patterns '{lib.schema {:team "Querying Platform", :codeowners :src}
-                             lib        {:team "Querying Platform", :codeowners :src}})))))
+           (owned-patterns '{lib.schema {:team "Querying Platform", :codeowners :src-only}
+                             lib        {:team "Querying Platform", :codeowners :src-only}})))))
 
 (deftest codeowners-block-errors-test
   (testing "an opted-in module whose team has no assignee fails instead of losing its owner"
@@ -620,7 +620,7 @@
                           (owned-patterns '{lib {:team "UX West", :codeowners true}}))))
   (testing "an unknown :codeowners value fails"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Module lib sets :codeowners to :test; use true \(src and test\) or :src"
+                          #"Module lib sets :codeowners to :test; use true \(src and test\) or :src-only"
                           (owned-patterns '{lib {:team "Querying Platform", :codeowners :test}})))))
 
 (deftest codeowners-splice-test
@@ -638,9 +638,10 @@
                out))
         (is (= out (splice out block))
             "splicing again changes nothing")))
-    (testing "a file with only one marker, or the markers out of order, fails instead of losing lines"
+    (testing "a file with a missing, repeated or misordered marker fails instead of losing or keeping stale lines"
       (doseq [existing [(str "# header\n" begin "\nsrc/a.clj @owner\n")
                         (str "src/a.clj @owner\n" end "\n")
-                        (str end "\nsrc/a.clj @owner\n" begin "\n")]]
+                        (str end "\nsrc/a.clj @owner\n" begin "\n")
+                        (str begin "\nnew/path @new\n" end "\n" begin "\nold/path @old\n" end "\n")]]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has a broken generated block"
                               (splice existing block)))))))

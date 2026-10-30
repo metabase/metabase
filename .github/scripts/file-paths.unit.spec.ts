@@ -218,6 +218,7 @@ describe("file-paths.yaml", () => {
 
   it.each([
     ".clj-kondo/config/modules/config.edn",
+    ".clj-kondo/src/hooks/common/modules.clj",
     ".github/CODEOWNERS",
     ".github/team.json",
     "mage/src/mage/modules.clj",

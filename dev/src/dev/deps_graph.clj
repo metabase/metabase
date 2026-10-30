@@ -176,7 +176,8 @@
    [:friends        {:optional true} [:set :symbol]]
    [:model-exports  {:optional true} [:or [:= :any] [:set :keyword]]]
    [:model-imports  {:optional true} [:or [:= :bypass] [:set :keyword]]]
-   [:module-exports {:optional true} [:set :symbol]]])
+   [:module-exports {:optional true} [:set :symbol]]
+   [:codeowners     {:optional true} [:enum true :src-only]]])
 
 (def ^:private ModulesConfig
   [:map-of :symbol ModuleConfig])
@@ -446,7 +447,8 @@
   ([deps]
    (let [kondo-config (kondo-config)]
      (-> (ddiff/diff
-          (update-vals kondo-config #(dissoc % :team :friends :model-imports :model-exports :module-exports :ns-prefix))
+          (update-vals kondo-config
+                       #(dissoc % :team :codeowners :friends :model-imports :model-exports :module-exports :ns-prefix))
           (generate-config deps kondo-config))
          ddiff/minimize
          kondo-config-diff-ignore-any
