@@ -249,7 +249,9 @@
                             ;; A marked kv-arg has to come back out as a comparison, since Toucan
                             ;; folded the column into the marker rather than building one.
                             wrap (if kv? #(vector := (second x) %) identity)]
-                        (if (or (nil? v) (and (coll? v) (empty? v) (not (map? v))))
+                        (if (or (nil? v)
+                                (and (coll? v) (empty? v) (not (map? v)))
+                                (and (map? v) (:allow-subquery (meta v))))
                           ;; HoneySQL turns a literal nil in a comparison into `IS NULL`, where a
                           ;; bound parameter would get `= ?` and match nothing. Leave it to HoneySQL.
                           (wrap v)

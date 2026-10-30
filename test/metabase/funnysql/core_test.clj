@@ -1684,3 +1684,28 @@
        clojure.lang.ExceptionInfo
        #"Top-level map key :raw is not currently supported"
        (funnysql/format {:raw "x"} :postgres))))
+
+(defn- format-from-a-db-namespace
+  "`honeysql` compiled by a fn defined in a module's `db` namespace, as an app-DB query issued there would be."
+  [honeysql options]
+  (let [f (binding [*ns* (create-ns 'metabase.funnysql-check.db)]
+            (eval '(clojure.core/fn [q opts] (metabase.funnysql.core/format q :h2 opts))))]
+    (f honeysql options)))
+
+(deftest require-marked-values-test
+  (let [previous @@#'funnysql/require-marked-values]
+    (try
+      (funnysql/require-marked-values! true)
+      (testing "a bare string bound from a db namespace is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unmarked java.lang.String value"
+                              (format-from-a-db-namespace {:select [:a] :from [:t] :where [:= :b "x"]} nil))))
+      (testing "a value that arrived as a param, a written value and an escaped LIKE pattern are accepted"
+        (are [q opts] (some? (format-from-a-db-namespace q opts))
+          {:select [:a] :from [:t] :where [:= :b [:param :p]]} {:params {:p "x"}}
+          {:insert-into :t :values [{:a "x"}]}                  nil
+          {:update :t :set {:a "x"} :where [:= :id 1]}          nil
+          {:select [:a] :from [:t] :where [:like :b (h2x/like-substring "x")]} nil))
+      (testing "a query issued outside a db namespace is not checked"
+        (is (some? (funnysql/format {:select [:a] :from [:t] :where [:= :b "x"]} :h2))))
+      (finally
+        (funnysql/require-marked-values! previous)))))

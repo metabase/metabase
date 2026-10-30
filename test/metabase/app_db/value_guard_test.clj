@@ -23,6 +23,11 @@
       (is (= ["WHERE a = ?" payload]
              (formatted {:where [:= :a [:auto/param payload]]}))))))
 
+(deftest ^:parallel leaves-a-marked-subquery-inline-test
+  (testing "a map the code marked ^:allow-subquery is a subquery, which request data cannot carry"
+    (is (= ["WHERE a IN (SELECT id FROM t)"]
+           (formatted {:where [:in :a [:auto/param ^:allow-subquery {:select [:id] :from [:t]}]]})))))
+
 (deftest ^:parallel binds-each-marker-separately-test
   (is (= ["WHERE (a = ?) AND (b = ?)" 1 2]
          (formatted {:where [:and [:= :a [:auto/param 1]] [:= :b [:auto/param 2]]]}))))
