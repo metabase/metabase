@@ -13,7 +13,7 @@
    (com.unboundid.ldap.sdk LDAPConnection LDAPConnectionOptions LDAPConnectionPool LDAPException
                            SimpleBindRequest StartTLSPostConnectProcessor)
    (com.unboundid.ldap.sdk.extensions StartTLSExtendedRequest)
-   (com.unboundid.util.ssl HostNameSSLSocketVerifier SSLUtil TrustAllTrustManager TrustStoreTrustManager)))
+   (com.unboundid.util.ssl HostNameSSLSocketVerifier SSLUtil TrustStoreTrustManager)))
 
 (set! *warn-on-reflection* true)
 
@@ -68,10 +68,12 @@
                           :security  (sso.settings/ldap-security)}))
 
 (defn- trust-manager
+  "Trust manager backed by `trust-store`. `details->ldap-options` always supplies a store for a TLS
+   connection (the configured one or the JVM default), so a nil store is a programming error."
   ^javax.net.ssl.X509TrustManager [trust-store]
-  (if trust-store
-    (TrustStoreTrustManager. ^String trust-store)
-    (TrustAllTrustManager.)))
+  (when-not trust-store
+    (throw (ex-info "LDAP TLS requires a trust store" {})))
+  (TrustStoreTrustManager. ^String trust-store))
 
 (defn- ldap-connection-options
   "`LDAPConnectionOptions` configured to verify that the server certificate matches the host we
@@ -87,19 +89,26 @@
   ^LDAPConnectionPool [{:keys [host bind-dn password ssl? startTLS? trust-store]}]
   (let [{:keys [address port]} host
         opt      (ldap-connection-options)
+        ;; For SSL the handshake happens in the constructor, so a bad certificate throws here and no
+        ;; connection is left open. For StartTLS the constructor opens a plaintext socket that must be
+        ;; closed if the later upgrade or bind fails.
         conn     (if ssl?
                    (LDAPConnection. (.createSSLSocketFactory (SSLUtil. (trust-manager trust-store)))
                                     opt ^String address (int (or port 636)))
-                   (doto (LDAPConnection. opt ^String address (int (or port 389)))
-                     (.processExtendedOperation
-                      (StartTLSExtendedRequest. (.createSSLContext (SSLUtil. (trust-manager trust-store)))))))
-        bind-req (if bind-dn
-                   (SimpleBindRequest. ^String bind-dn ^String password)
-                   (SimpleBindRequest.))
-        pcp      (when startTLS?
-                   (StartTLSPostConnectProcessor. (.createSSLContext (SSLUtil. (trust-manager trust-store)))))]
-    (.bind conn bind-req)
-    (LDAPConnectionPool. conn 1 1 pcp)))
+                   (LDAPConnection. opt ^String address (int (or port 389))))]
+    (try
+      (let [ssl-ctx  (when startTLS? (.createSSLContext (SSLUtil. (trust-manager trust-store))))
+            bind-req (if bind-dn
+                       (SimpleBindRequest. ^String bind-dn ^String password)
+                       (SimpleBindRequest.))]
+        (when startTLS?
+          (.processExtendedOperation conn (StartTLSExtendedRequest. ssl-ctx)))
+        (.bind conn bind-req)
+        (LDAPConnectionPool. conn 1 1 (when startTLS?
+                                        (StartTLSPostConnectProcessor. ssl-ctx))))
+      (catch Throwable t
+        (.close conn)
+        (throw t)))))
 
 (defn- connect
   "Open an `LDAPConnectionPool` from an options map. TLS connections are built here so the server
