@@ -90,4 +90,7 @@
     :missing-source-in-first-stage
     (tru "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an entity_id string.")
 
+    :uncurated-source
+    (tru "Call `search` to find curated tables, models, or metrics and build the query on those instead. A table related to a curated one may be joined, but not used as the query''s source.")
+
     nil))

@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.core :as self.core]
@@ -51,6 +52,23 @@
                   (quoting/quoted message)
                   (str "Failed to fetch metadata for ID " id ".")))})))
 
+(defn- check-curated-source!
+  "Under [[shared/curated-only?]], reject the source `entity-type` / `entity-id` unless it is curated. Runs after
+  the handler's own existence, read and resource-database checks, so a missing entity still reads as missing."
+  [entity-type entity-id]
+  (when (shared/curated-only?)
+    (curation/check-curated-subject! (str (name entity-type) " " entity-id)
+                                     (case entity-type
+                                       :table  ["table" entity-id]
+                                       :model  ["card" entity-id]
+                                       :metric ["metric" entity-id]))))
+
+(defn- curated-only-details
+  "Under [[shared/curated-only?]], a card's details omit its definition (`:query_json`), as `read_resource`'s do."
+  [result]
+  (cond-> result
+    (shared/curated-only?) (update :structured-output dissoc :query_json)))
+
 (defn get-metadata
   "Fetch metadata for tables, models, and metrics.
 
@@ -64,42 +82,51 @@
       (let [table-results (mapv #(safe-fetch
                                   (fn [table-id]
                                     (resources-tools/check-table-resource-database table-id)
-                                    (entity-details-tools/get-table-details
-                                     {:entity-type :table
-                                      :entity-id table-id
-                                      :with-fields? true
-                                      :with-field-values? false
-                                      :with-related-tables? false
-                                      :with-metrics? false
-                                      :with-default-temporal-breakout? false
-                                      :with-measures? true
-                                      :with-segments? true}))
+                                    ;; an inactive table is missing, as the details treat it, not uncurated
+                                    (when (shared/curated-only?)
+                                      (metabot.tools.u/get-table table-id :db_id))
+                                    (check-curated-source! :table table-id)
+                                    (curated-only-details
+                                     (entity-details-tools/get-table-details
+                                      {:entity-type :table
+                                       :entity-id table-id
+                                       :with-fields? true
+                                       :with-field-values? false
+                                       :with-related-tables? false
+                                       :with-metrics? false
+                                       :with-default-temporal-breakout? false
+                                       :with-measures? true
+                                       :with-segments? true})))
                                   %)
                                 table-ids)
             model-results (mapv #(safe-fetch
                                   (fn [model-id]
                                     (resources-tools/check-card-resource-database model-id)
-                                    (entity-details-tools/get-table-details
-                                     {:entity-type :model
-                                      :entity-id model-id
-                                      :with-fields? true
-                                      :with-field-values? false
-                                      :with-related-tables? false
-                                      :with-metrics? false
-                                      :with-default-temporal-breakout? false
-                                      :with-measures? true
-                                      :with-segments? true}))
+                                    (check-curated-source! :model model-id)
+                                    (curated-only-details
+                                     (entity-details-tools/get-table-details
+                                      {:entity-type :model
+                                       :entity-id model-id
+                                       :with-fields? true
+                                       :with-field-values? false
+                                       :with-related-tables? false
+                                       :with-metrics? false
+                                       :with-default-temporal-breakout? false
+                                       :with-measures? true
+                                       :with-segments? true})))
                                   %)
                                 model-ids)
             metric-results (mapv #(safe-fetch
                                    (fn [metric-id]
                                      (resources-tools/check-card-resource-database metric-id)
-                                     (entity-details-tools/get-metric-details
-                                      {:metric-id metric-id
-                                       :with-default-temporal-breakout? false
-                                       :with-field-values? false
-                                       :with-queryable-dimensions? false
-                                       :with-segments? true}))
+                                     (check-curated-source! :metric metric-id)
+                                     (curated-only-details
+                                      (entity-details-tools/get-metric-details
+                                       {:metric-id metric-id
+                                        :with-default-temporal-breakout? false
+                                        :with-field-values? false
+                                        :with-queryable-dimensions? false
+                                        :with-segments? true})))
                                    %)
                                  metric-ids)
             tables (->> table-results (keep :value) vec)
@@ -156,10 +183,17 @@
   "List all data sources (metrics and models) available to the metabot instance."
   [_args :- [:map {:closed true}]]
   (add-output
-   (entity-details-tools/answer-sources {:metabot-id         shared/*metabot-id*
-                                         :with-field-values? false
-                                         :with-measures?     true
-                                         :with-segments?     true})
+   (cond-> (entity-details-tools/answer-sources {:metabot-id         shared/*metabot-id*
+                                                 :with-field-values? false
+                                                 :with-measures?     true
+                                                 :with-segments?     true})
+     ;; under curated-only a card's details omit its definition, as read_resource's do
+     (shared/curated-only?)
+     (update :structured-output
+             (fn [so]
+               (-> so
+                   (update :metrics (fn [rows] (mapv #(dissoc % :query_json) rows)))
+                   (update :models (fn [rows] (mapv #(dissoc % :query_json) rows)))))))
    format-answer-sources-output))
 
 (def ^:private list-available-fields-schema
@@ -196,6 +230,16 @@
     "table"                                (resources-tools/check-table-resource-database source_id)
     ("model" "metric" "question" "report") (resources-tools/check-card-resource-database source_id)
     nil)
+  (when (shared/curated-only?)
+    ;; an inactive table is missing, as `field-values` treats it, not uncurated
+    (when (= data_source "table")
+      (metabot.tools.u/get-table source_id :db_id))
+    (curation/check-curated-subject! (str data_source " " source_id)
+                                     (case data_source
+                                       "table"                       ["table" source_id]
+                                       "metric"                      ["metric" source_id]
+                                       ("model" "question" "report") ["card" source_id]
+                                       nil)))
   (add-output
    (field-stats-tools/field-values {:entity-type data_source
                                     :entity-id source_id
