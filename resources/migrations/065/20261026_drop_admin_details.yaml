@@ -1,0 +1,21 @@
+## The admin connection is gone, so its connection details column goes too.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-26T00:00:00
+      author: ranquild
+      comment: Drop metabase_database.admin_details
+      changes:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: admin_details
+      rollback:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: admin_details
+                  type: ${text.type}
+                  remarks: Encrypted JSON containing connection details for admin (highest-privilege) operations such as DDL and ownership changes
+                  constraints:
+                    nullable: true

@@ -6,9 +6,12 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.tools.core :as tools]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
@@ -78,6 +81,13 @@
     (when-let [tgt (lib.metadata/field query tgt-id)]
       (column-portable-fk query tgt))))
 
+(defn column-field-id
+  "Return the physical field ID or column alias used as a column's `field_id`."
+  [column]
+  (or (:id column)
+      (:lib/desired-column-alias column)
+      (:lib/source-column-alias column)))
+
 (defn ->result-column
   "Return tool result column for `column` of `query`.
   Uses the real field `:id` when available, falling back to column name for
@@ -92,9 +102,7 @@
         effective-type    (some-> (:effective-type column) u/qualified-name)
         semantic-type     (some-> (:semantic-type column) u/qualified-name)
         coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)
-        field-id          (or (:id column)
-                              (:lib/desired-column-alias column)
-                              (:lib/source-column-alias column))
+        field-id          (column-field-id column)
         portable-fk       (try (column-portable-fk query column)
                                (catch Exception _ nil))
         fk-target-fk      (try (fk-target-portable-fk query column)
@@ -116,20 +124,18 @@
                       :table_reference (table-reference query column)))))
 
 (defn find-column-by-field-id
-  "Find a column in `columns` by its real field ID.
-  `field-id` may be an integer or a string-encoded integer.
-  Returns the matching column or throws an agent error if not found."
+  "Find a column by its emitted field ID, returning nil if no column matches.
+
+  Accepts physical field IDs as integers or numeric strings, and aliases for virtual columns."
   [field-id columns]
-  (let [numeric-id (cond
-                     (int? field-id) field-id
-                     (string? field-id) (parse-long field-id)
-                     :else nil)]
-    (or (when numeric-id
-          (m/find-first #(= (:id %) numeric-id) columns))
-        (throw (ex-info (str "Field " field-id " not found")
-                        {:agent-error? true
-                         :status-code  404
-                         :field-id     field-id})))))
+  (when (some? field-id)
+    (let [numeric-id (cond
+                       (int? field-id) field-id
+                       (string? field-id) (parse-long field-id))]
+      (or (m/find-first #(= (column-field-id %) field-id) columns)
+          (when numeric-id
+            (m/find-first #(= (:id %) numeric-id) columns))
+          (m/find-first #(= (column-field-id %) (str field-id)) columns)))))
 
 (defn schedule->schedule-map
   "Convert a tool schedule map to the schedule-map format used by cron and pulse channels.
@@ -162,11 +168,27 @@
   (-> (metabot.db/active-table-with-columns (into [:model/Table :id] fields) id)
       api/read-check))
 
+(tools/defrecoverable wrong-source-type!
+  "The card ID identifies a different kind of data source."
+  {:payload [:map {:closed true}
+             [:id :int]
+             [:expected-type [:enum :model :question :metric]]
+             [:actual-type [:enum :model :metric :question]]]}
+  [{:keys [id expected-type actual-type]}]
+  {:message (str (if (= expected-type :metric) "Card " "ID ")
+                 id " is a " (name actual-type) ", not a " (name expected-type) ".")
+   :recovery [{:text (str "Retry using a " (name expected-type) " ID.") :uses #{}}]})
+
 (defn get-card
-  "Retrieve the card with `id` from the app DB."
-  [id]
-  (-> (metabot.db/card id)
-      api/read-check))
+  "Retrieve a readable card by ID, optionally requiring a particular card type."
+  ([id]
+   (-> (metabot.db/card id)
+       api/read-check))
+  ([id expected-type]
+   (let [card (get-card id)]
+     (when-not (= expected-type (:type card))
+       (wrong-source-type! {:id id :expected-type expected-type :actual-type (:type card)}))
+     card)))
 
 (defn get-card-by-entity-id
   "Retrieve a readable card by its 21-char NanoID `entity_id`, or `nil` if not found. Used by
@@ -181,24 +203,67 @@
   (some-> (metabot.db/card-by-entity-id entity-id)
           api/read-check))
 
+(defn card-query-metadata
+  "Return an MBQL pivot question's underlying query, or the card metadata for other cards."
+  [card card-metadata]
+  (if (and (= :question (:type card))
+           (= :pivot (:display card))
+           (not (lib/native-only-query? (:dataset-query card-metadata))))
+    (:dataset-query card-metadata)
+    card-metadata))
+
 (defn card-query
-  "Return a query based on the card with ID `card-id`."
+  "Return a query for the model or question with ID `card-id` and card type `expected-type`."
+  [card-id expected-type]
+  (when-let [card (get-card card-id expected-type)]
+    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
+      (lib/query mp (card-query-metadata card (lib.metadata/card mp card-id))))))
+
+(defn card-results-query
+  "Return a query over the result columns of the card with ID `card-id`, whatever its type: what the card exposes,
+  rather than what its definition reads. [[card-query]] widens this to the definition for questions. With
+  `expected-type`, the card must be of that type, as for [[card-query]]."
+  ([card-id]
+   (card-results-query card-id nil))
+  ([card-id expected-type]
+   (when-let [card (if expected-type (get-card card-id expected-type) (get-card card-id))]
+     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
+       (lib/query mp (lib.metadata/card mp card-id))))))
+
+(defn card-definition-table-ids
+  "The ids of the Tables the definition of the card with ID `card-id` reads, plus the Tables one FK hop away from
+  them, following source Cards to their own definitions (ten levels at most), or nil when the card is missing or
+  its query can't be built. A native definition names no Tables and contributes none: its result metadata can map
+  a column to any Field, so it is not trusted to say which Tables it exposes."
   [card-id]
   (when-let [card (get-card card-id)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
-      (lib/query mp (cond-> (lib.metadata/card mp card-id)
-                      ;; pivot questions have strange result-columns so we work with the dataset-query
-                      (#{:question} (:type card)) (get :dataset-query))))))
+      (try
+        (loop [todo #{card-id} seen #{} tables #{} depth 0]
+          (if (or (empty? todo) (= depth 10))
+            tables
+            (let [queries (into []
+                                (comp (keep (fn [{:keys [dataset-query]}] (some->> dataset-query (lib/query mp))))
+                                      (remove lib/any-native-stage?))
+                                (lib.metadata/bulk-metadata mp :metadata/card todo))
+                  refs    (if (seq queries)
+                            (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})
+                            {})
+                  seen    (into seen todo)]
+              (recur (into #{} (remove seen) (:card refs))
+                     seen
+                     (into tables (:table refs))
+                     (inc depth)))))
+        (catch Exception e
+          (log/debug e "Can't walk the card's definition; treating its tables as unknown")
+          nil)))))
 
 (defn metric-query
   "Return a query based on the metric with ID `metric-id`.
 
   Throws an agent error that names the card's type when the card is a question or model."
   [metric-id]
-  (when-let [card (get-card metric-id)]
-    (when-not (= :metric (:type card))
-      (throw (ex-info (str "Card " metric-id " is a " (name (:type card)) ", not a metric.")
-                      {:agent-error? true :status-code 400})))
+  (when-let [card (get-card metric-id :metric)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (lib.metadata/metric mp metric-id)))))
 
@@ -251,34 +316,54 @@
           (comp (filter mi/can-read?) (map (juxt :id identity)))
           (metabot.db/card-source-rows card-ids))))
 
+(defn card-source-table-id
+  "Return the ID of the table that the card with `card-id` reads from, following its source cards.
+
+  Unlike `report_card.table_id`, which is written only when a card is saved, this reads each card's current query, so
+  it reflects an upstream card that has since moved to another table. Return nil when the chain ends in a native query
+  or a missing card."
+  [metadata-providerable card-id]
+  (loop [card-id card-id, seen #{}]
+    (when-let [query (and card-id
+                          (not (seen card-id))
+                          (not-empty (:dataset-query (lib.metadata/card metadata-providerable card-id))))]
+      (or (lib.util/source-table-id query)
+          (recur (lib.util/source-card-id query) (conj seen card-id))))))
+
 (defn metric-required-source
   "Return the source required to use metric `card`, or nil when its definition cannot be read.
 
   Return `{:kind :card, :card-id C}` for a single-stage definition on card C. Otherwise return
   `{:kind :table, :table-id T, :bare-table-only? boolean}`. A single-stage table metric also works on a card over T;
-  a multi-stage metric requires a stage directly on T, even when its definition starts from a card.
-  A nil table ID means there is no usable table source.
+  a multi-stage metric requires a stage directly on T, even when its definition starts from a card. For such a
+  definition, T is the table that the card reads from, per [[card-source-table-id]].
+  A nil table ID means there is no usable table source. Read source cards through `metadata-providerable` when
+  supplied, or an app-DB metadata provider for the definition's database otherwise.
 
   This follows `splice-compatible-metrics` in [[metabase.query-processor.middleware.metrics]]. The query processor
   compares the metric's last stage, so the first stage's `report_card.source_card_id` is insufficient.
   Legacy definitions are converted to MBQL 5 before classification. Missing, blank, or unconvertible definitions
   return nil."
-  [card]
-  (let [definition (metric-card-shape-get card :dataset-query :dataset_query)
-        stages     (or (not-empty (:stages definition))
-                       (when (seq definition)
-                         (try
-                           (:stages (lib/->mbql5 definition))
-                           (catch Exception _ nil))))]
-    (when (seq stages)
-      (if-let [card-id (and (= 1 (count stages)) (:source-card (first stages)))]
-        {:kind :card, :card-id card-id}
-        {:kind             :table
-         ;; The definition's own `:source-table` when it has one, which is what the QP compares; `table_id` is
-         ;; derived at save time and only needed for a card-rooted definition.
-         :table-id         (or (:source-table (first stages))
-                               (metric-card-shape-get card :table-id :table_id))
-         :bare-table-only? (> (count stages) 1)}))))
+  ([card]
+   (metric-required-source nil card))
+  ([metadata-providerable card]
+   (let [definition (metric-card-shape-get card :dataset-query :dataset_query)
+         stages     (or (not-empty (:stages definition))
+                        (when (seq definition)
+                          (try
+                            (:stages (lib/->mbql5 definition))
+                            (catch Exception _ nil))))]
+     (when (seq stages)
+       (if-let [card-id (and (= 1 (count stages)) (:source-card (first stages)))]
+         {:kind :card, :card-id card-id}
+         {:kind             :table
+          :table-id         (or (:source-table (first stages))
+                                (some->> (:source-card (first stages))
+                                         (card-source-table-id
+                                          (or metadata-providerable
+                                              (lib-be/application-database-metadata-provider
+                                               (:database definition))))))
+          :bare-table-only? (> (count stages) 1)})))))
 
 (defn metric-compatible-with-stage?
   "Return whether `required` permits a metric on the stage's source.

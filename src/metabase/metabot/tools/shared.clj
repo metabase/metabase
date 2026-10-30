@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.shared
   "Shared tool helpers and state accessors."
   (:require
+   [metabase.metabot.curation :as curation]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -30,6 +31,13 @@
    agent loop so that tools can adapt their output to the active profile."
   nil)
 
+(defn curated-only?
+  "Whether the current session's tools may only reach curated content: its Metabot has `use_verified_content` on and
+  its profile isn't exempt (see [[curation/curated-only?]]). False outside an agent session, where no Metabot is
+  bound."
+  []
+  (curation/curated-only? *metabot* *profile-id*))
+
 (defn current-memory
   "Returns the current agent memory map, or nil if not in an agent context."
   []
@@ -49,9 +57,12 @@
   (:request-canceled-chan (current-memory)))
 
 (defn current-queries-state
-  "Returns the current queries state map from agent memory."
-  []
-  (get-in (current-memory) [:state :queries] {}))
+  "Returns the current queries state map from agent memory.
+  Reads the memory in `memory-atom`, which a tool gets in its ctx, or else the bound [[*memory-atom*]]."
+  ([]
+   (current-queries-state *memory-atom*))
+  ([memory-atom]
+   (get-in (some-> memory-atom deref) [:state :queries] {})))
 
 (defn current-charts-state
   "Returns the current charts state map from agent memory."

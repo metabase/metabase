@@ -111,16 +111,7 @@ const Field = ({
                     <Icon className={S.chartIcon} name={icon} size={20} />
                   )}
                 </div>
-                <span
-                  className={
-                    getIn(FIELD_SEMANTIC_TYPES_MAP, [
-                      field.semantic_type ?? "",
-                      "name",
-                    ])
-                      ? CS.textMedium
-                      : CS.textLight
-                  }
-                >
+                <span className={CS.textSecondary}>
                   {getIn(FIELD_SEMANTIC_TYPES_MAP, [
                     field.semantic_type ?? "",
                     "name",

@@ -384,11 +384,11 @@
 ;; whole catalog against every tool name in the product rather than one call against one profile.
 
 (deftest ^:parallel render-caps-the-output-test
-  (let [long-message (apply str (repeat 5000 "x"))
-        outcome      (tools.runtime/render {:class :validation :code :invalid-arguments
-                                            :message long-message}
-                                           all-tool-names)]
-    (is (= 4000 (count (:output outcome))))))
+  (doseq [error [{:class :validation :code :invalid-arguments}
+                 {:class :recoverable :code ::tools/all-items-failed :recovery []}]]
+    (let [outcome (tools.runtime/render (assoc error :message (apply str (repeat 5000 "x")))
+                                        all-tool-names)]
+      (is (= 4000 (count (:output outcome)))))))
 
 (deftest ^:parallel runtime-codes-are-declared-test
   (testing "the agent loop and the adapters branch on these, so the list is shared rather than

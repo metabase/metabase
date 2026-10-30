@@ -371,7 +371,7 @@
                                                  :visualization_settings {}})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"must be an integer"
-               (t2/update! :model/DashboardCard (:id dc)
+               (t2/update! :model/DashboardCard :id (:id dc)
                            {:visualization_settings
                             {:link {:entity {:id {:raw "x"} :model "card"}}}})))))
       (testing "a legitimate integer id still works"
@@ -406,7 +406,7 @@
                                                  :visualization_settings {}})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"must be an integer"
-               (t2/update! :model/DashboardCard (:id dc)
+               (t2/update! :model/DashboardCard :id (:id dc)
                            {:visualization_settings
                             {:click_behavior {:type "link" :linkType "question" :targetId {:raw "x"}}}})))))
       (testing "a legitimate integer target id still works"

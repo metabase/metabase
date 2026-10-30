@@ -149,7 +149,7 @@
 (deftest remote-sync-shutdown-fails-this-jvms-running-tasks-test
   (testing "shutdown fails every task whose worker runs in this JVM and leaves a stale open row from elsewhere untouched"
     (let [other-id (new-task-id)
-          _        (t2/update! :model/RemoteSyncTask other-id
+          _        (t2/update! :model/RemoteSyncTask :id other-id
                                {:last_progress_report_at (t/minus (t/offset-date-time) (t/hours 2))})
           own-id   (new-task-id)
           release  (promise)
@@ -173,7 +173,7 @@
   (testing "boot closes open task rows whose owner has been silent past the window and leaves fresh ones alone"
     (mt/with-temporary-setting-values [:remote-sync-url nil]
       (let [stale-id (new-task-id)
-            _        (t2/update! :model/RemoteSyncTask stale-id
+            _        (t2/update! :model/RemoteSyncTask :id stale-id
                                  {:last_progress_report_at (t/minus (t/offset-date-time) (t/hours 2))})
             fresh-id (new-task-id)]
         (#'init/remote-sync-init)
@@ -307,26 +307,21 @@
 ;;; ------------------------------------------- Data app ledger backfill -------------------------------------------
 
 (defn- do-with-untracked-data-apps!
-  "Runs `f` with `{:published :tracked}` data app ids under `remote-sync-type` `sync-type`, where only
-  `:tracked` has a DataApp ledger row."
+  "Runs `f` with the ids of a `:published` and a `:tracked` data app, and the `:published-name` of the first, under
+  `remote-sync-type` `sync-type`, where only `:tracked` has a DataApp ledger row."
   [sync-type f]
   (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                      :remote-sync-type sync-type
                                      :remote-sync-branch "main"]
-    (mt/with-model-cleanup [:model/RemoteSyncObject :model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [insert-app! (fn [slug]
-                          (t2/insert-returning-pk! :model/DataApp {:name         slug
-                                                                   :display_name slug
-                                                                   :bundle_path  "index.js"
-                                                                   :bundle       (.getBytes "BUNDLE" "UTF-8")}))
-            published   (insert-app! "published")
-            tracked     (insert-app! "tracked")]
+    (mt/with-model-cleanup [:model/RemoteSyncObject]
+      (mt/with-temp [:model/DataApp {published :id published-name :name} {}
+                     :model/DataApp {tracked :id tracked-name :name}     {}]
         (t2/delete! :model/RemoteSyncObject :model_type "DataApp")
-        (t2/insert! :model/RemoteSyncObject {:model_type "DataApp" :model_id tracked :model_name "tracked"
+        (t2/insert! :model/RemoteSyncObject {:model_type "DataApp" :model_id tracked :model_name tracked-name
                                              :status "synced" :status_changed_at (t/offset-date-time)})
         (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
                                     remote-sync.object/dirty? (constantly false)]
-          (f {:published published :tracked tracked}))))))
+          (f {:published published :published-name published-name :tracked tracked}))))))
 
 (defn- data-app-rso-statuses []
   (t2/select-fn->fn :model_id :status :model/RemoteSyncObject :model_type "DataApp"))
@@ -335,10 +330,10 @@
   (testing "read-write init tracks every untracked published data app as 'create', once, so the next push writes it"
     (do-with-untracked-data-apps!
      :read-write
-     (fn [{:keys [published tracked]}]
+     (fn [{:keys [published published-name tracked]}]
        (#'init/remote-sync-init)
        (is (= {published "create" tracked "synced"} (data-app-rso-statuses)))
-       (is (=? {:model_name "published"}
+       (is (=? {:model_name published-name}
                (t2/select-one :model/RemoteSyncObject :model_type "DataApp" :model_id published)))
        (testing "a second run inserts nothing"
          (is (= 0 (rs-events/backfill-data-app-tracking!))))))))

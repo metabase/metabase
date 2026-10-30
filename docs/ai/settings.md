@@ -136,6 +136,22 @@ When enabled, Metabot is available to help people create questions, analyze data
 
 Toggling off Metabot only turns off in-app Metabot features. People can still use the [MCP server](./mcp.md) and [Agent API](./agent-api.md) if those are enabled.
 
+### Allow Metabot to read query results
+
+_Internal tab._
+
+This setting determines whether Metabot can run queries and read their _results_, so Metabot can answer questions about values in the results.
+
+Metabot runs queries with the permissions of the person asking, and may send the result rows to your AI provider in order to respond to a prompt.
+
+When this setting is off, Metabot can still build queries and charts for you, but it can't read their results.
+
+Metabot in Slack and in embedded apps doesn't read query results, regardless of this setting.
+
+See [AI privacy](./privacy.md#by-default-metabot-sends-query-results-to-the-ai-provider).
+
+If [`MB_METABOT_QUERY_EXECUTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_query_execution_enabled) is set, the toggle shows its value and is locked.
+
 ### Enable Embedded Metabot
 
 _Embedded tab._

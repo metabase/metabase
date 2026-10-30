@@ -7,6 +7,7 @@
    [metabase-enterprise.transforms-python.init]
    [metabase-enterprise.transforms-python.python-runner :as transforms-python.python-runner]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.transforms.test-dataset :as transforms-dataset]
@@ -139,7 +140,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                      :schema schema
                                                                      :name   "target_table"}]
@@ -155,7 +156,7 @@
                     {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform" original)]
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 10000)
-                (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
+                (is (true? (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) target)))
                 (is (= [["Alice" 25] ["Bob" 30]] (sort-by first (transforms.tu/table-rows table-name))))))))))))
 
 (defn- subsequence?
@@ -292,7 +293,7 @@
                              (disj :snowflake :redshift :bigquery-cloud-sdk))
           (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
             (mt/dataset transforms-dataset/transforms-test
-              (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+              (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
                 (doseq [{:keys [expected
                                 expect-early-feedback
                                 expect-status
@@ -464,7 +465,7 @@
                              (disj :snowflake :bigquery-cloud-sdk :redshift :mongo))
           (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
             (mt/dataset transforms-dataset/transforms-test
-              (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+              (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
                 (with-redefs [transforms-python.execute/python-message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)]
                   (with-transform-cleanup! [target {:type   "table"
                                                     :schema schema
@@ -483,7 +484,7 @@
                                 (is (not (str/includes? (str (:message last-run)) "script started"))))))
                           (when (some? expect-write)
                             (testing "table existence"
-                              (is (= expect-write (driver/table-exists? driver/*driver* (mt/db) target)))))))))
+                              (is (= expect-write (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) target)))))))))
                   ; todo We have not yet covered the case where we rerun the same transform while there might be some hangover.
                   ;      Cancellation addresses the transform and not the run, there is shared mutable state and races on it are possible
                   (testing "the runner is not blocked for a new run"

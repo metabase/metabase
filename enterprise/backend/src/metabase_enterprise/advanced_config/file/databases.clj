@@ -97,7 +97,7 @@
   "Kick off a sync of `database` when syncing databases from the config file is enabled."
   [database]
   (if (advanced-config.settings/config-from-file-sync-databases)
-    (quick-task/submit-task! (fn [] (sync/sync-database! database)))
+    (quick-task/submit-task! (fn [] (sync/sync-database! (u/the-id database))))
     (log/info "Sync on database creation when initializing from file is disabled. Skipping sync.")))
 
 (defn- init-from-config-file!

@@ -80,7 +80,7 @@
 
 (mu/defn ^{:tool-name "old_refused_read"}
   old-refused-read-tool
-  "Lets a read refusal escape, as `get_field_values` does."
+  "Lets an unnamed read refusal escape."
   [{:keys [status]} :- [:map {:closed true} [:status [:enum 403 404]]]]
   (refuse-read! status))
 

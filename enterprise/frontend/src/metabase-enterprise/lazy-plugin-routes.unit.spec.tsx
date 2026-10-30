@@ -7,7 +7,7 @@ import {
   getMcpToolsAccessRoutes,
 } from "metabase-enterprise/ai-controls/routes";
 import getApplicationPermissionsRoutes from "metabase-enterprise/application_permissions/routes";
-import { getRoutes as getDataAppRoutes } from "metabase-enterprise/data_apps/routes";
+import { getRoutes as getDataAppRoutes } from "metabase-enterprise/data-apps/host/routes";
 import { getDataStudioDependencyRoutes } from "metabase-enterprise/dependencies/routes";
 import { getTransformToolsRoutes } from "metabase-enterprise/replacement/routes";
 import { getDataStudioSchemaViewerRoutes } from "metabase-enterprise/schema_viewer/routes";

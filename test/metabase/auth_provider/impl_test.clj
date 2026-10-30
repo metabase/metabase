@@ -32,7 +32,7 @@
               (testing "Connection tests"
                 (is (nil? (warehouses/test-database-connection (:engine db) (:details db)))))
               (testing "Syncing does not blow up"
-                (sync/sync-database! (mt/db)))
+                (sync/sync-database! (mt/id)))
               (testing "Querying"
                 (is (= [["Polo Lounge"]]
                        (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))))))))))

@@ -45,7 +45,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You cannot edit or delete the .* permissions group"
-               (t2/update! :model/PermissionsGroup (u/the-id group) {:name "Cool People"}))))))))
+               (t2/update! :model/PermissionsGroup :id (u/the-id group) {:name "Cool People"}))))))))
 
 (deftest ^:parallel new-users-test
   (testing "newly created users should get added to the appropriate magic groups"
@@ -112,14 +112,14 @@
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "setting is_superuser -> true should add user to Admin"
       (mt/with-temp [:model/User {user-id :id}]
-        (t2/update! :model/User user-id {:is_superuser true})
+        (t2/update! :model/User :id user-id {:is_superuser true})
         (is (true? (t2/exists? :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
 
 (deftest add-remove-from-admin-group-test-4
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "setting is_superuser -> false should remove user from Admin"
       (mt/with-temp [:model/User {user-id :id} {:is_superuser true}]
-        (t2/update! :model/User user-id {:is_superuser false})
+        (t2/update! :model/User :id user-id {:is_superuser false})
         (is (false? (t2/exists? :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
 
 (deftest data-graph-for-group-check-all-groups-test

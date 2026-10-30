@@ -11,6 +11,6 @@
   height: 1.25rem;
   text-align: center;
   font-size: 0.875rem;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
   transition: opacity 0.2s ease-in-out;
 }

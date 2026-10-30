@@ -68,9 +68,11 @@
    [clojure.string :as str]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-export :as query-export]
    [metabase.metabot.scope :as scope]
@@ -98,6 +100,40 @@
   "Maximum number of URIs that can be fetched in a single call."
   5)
 
+(def ^:private max-uri-length
+  "Maximum number of characters in a resource URI."
+  4096)
+
+(def ^:private max-uri-preview-length
+  "URI echoes occupy at most this many characters after escaping."
+  200)
+
+(def ^:private max-batch-error-length
+  "The failed resources in one call share this many characters of displayed error text."
+  2000)
+
+(def ^:private truncation-marker "...[truncated]")
+
+(defn- text-preview
+  "Return a prefix and marker that fit the rendered text budget."
+  [^String text limit length-fn]
+  (if (<= (length-fn text) limit)
+    text
+    (loop [end 0]
+      (let [next-end (.offsetByCodePoints text (int end) 1)
+            candidate (str (subs text 0 next-end) truncation-marker)]
+        (if (> (length-fn candidate) limit)
+          (str (subs text 0 end) truncation-marker)
+          (recur (long next-end)))))))
+
+(defn- uri-preview
+  "Return a URI preview of at most 200 characters after XML or string escaping."
+  [uri]
+  (text-preview uri max-uri-preview-length
+                (fn [text]
+                  (max (count (llm-shape/escape-xml text))
+                       (count (pr-str text))))))
+
 (def ^:private page-size
   "Page size for list responses."
   25)
@@ -121,7 +157,10 @@
                   "metabase://database/{id}/schemas/{schema_name}/tables"]
    "collection"  ["metabase://collection/{id}"
                   "metabase://collection/{id}/items"
-                  "metabase://collection/{id}/subcollections"]
+                  "metabase://collection/{id}/subcollections"
+                  "metabase://collection/root"
+                  "metabase://collection/root/items"
+                  "metabase://collection/root/subcollections"]
    "table"       ["metabase://table/{id}"
                   "metabase://table/{id}/fields"
                   "metabase://table/{id}/fields/{field_id}"
@@ -176,7 +215,7 @@
   "The string is not a metabase:// URI at all."
   {:payload [:map {:closed true} [:uri :string]]}
   [{:keys [uri]}]
-  {:message  (str (pr-str uri) " is not a Metabase resource URI. One starts with `metabase://` and"
+  {:message  (str (pr-str (uri-preview uri)) " is not a Metabase resource URI. One starts with `metabase://` and"
                   " has at least one path segment, for example `metabase://databases`.")
    :recovery [kinds-step search-step]})
 
@@ -188,7 +227,7 @@
              ;; itself unknown — then there is no kind to list shapes for.
              [:kind {:optional true} [:maybe :string]]]}
   [{:keys [uri kind]}]
-  {:message  (str "No resource is served at " (pr-str uri) ".")
+  {:message  (str "No resource is served at " (pr-str (uri-preview uri)) ".")
    :recovery (vec (keep identity [(templates-step kind) kinds-step search-step]))})
 
 (tools/defrecoverable non-numeric-id!
@@ -198,7 +237,7 @@
              [:kind :string]
              [:id   :string]]}
   [{:keys [kind id]}]
-  {:message  (str "Invalid id " (pr-str id) " in URI. Resource URIs use the numeric entity id, not"
+  {:message  (str "Invalid id " (pr-str (uri-preview id)) " in URI. Resource URIs use the numeric entity id, not"
                   " an entity_id, a name or a slug.")
    :recovery (vec (keep identity
                         [(templates-step kind)
@@ -215,7 +254,36 @@
   [{:keys [id type card-uri]}]
   {:message  (str "Card " id " is a " type ", not a metric.")
    :recovery [{:uses #{}
-               :text (str "Read `" card-uri "` instead.")}]})
+               :text (str "Read `" (uri-preview card-uri) "` instead.")}]})
+
+(tools/defrecoverable wrong-card-kind!
+  "Report a question or model URI that names a different kind of card."
+  {:payload [:map {:closed true}
+             [:id :int]
+             [:expected [:enum "question" "model"]]
+             [:actual [:enum "question" "model" "metric"]]
+             [:uri :string]]}
+  [{:keys [id expected actual uri]}]
+  {:message (str "Card " id " is a " actual ", not a " expected ".")
+   :recovery [{:uses #{} :text (str "Read `" (uri-preview uri) "` instead.")}]})
+
+(tools/defrecoverable inactive-table!
+  "Report a readable table that is no longer active."
+  {:payload [:map {:closed true} [:id :int] [:database-id :int]]}
+  [{:keys [id database-id]}]
+  {:message (str "Table " id " is inactive.")
+   :recovery [{:uses #{}
+               :text (str "Read `metabase://database/" database-id "/tables` to find active tables.")}]})
+
+(tools/defrecoverable missing-schema!
+  "Report a database schema with no active tables."
+  {:payload [:map {:closed true} [:database-id :int] [:schema :string]]
+   :status-code 404}
+  [{:keys [database-id schema]}]
+  {:message (str "Schema " (pr-str (uri-preview schema)) " was not found in database " database-id "."
+                 " Schema names are case-sensitive.")
+   :recovery [{:uses #{}
+               :text (str "Read `metabase://database/" database-id "/schemas` for available schema names.")}]})
 
 (tools/defrecoverable invalid-page!
   "A `?page=N` outside the list's range."
@@ -236,9 +304,9 @@
              [:available [:sequential :string]]]}
   [{:keys [id available]}]
   {:message  (if (seq available)
-               (str "No chart or query with id " (pr-str id) " exists in this conversation."
-                    " The ids that do: " (str/join ", " available) ".")
-               (str "No chart or query with id " (pr-str id) " exists in this conversation, and"
+               (str "No chart or query with id " (pr-str (uri-preview id)) " exists in this conversation."
+                    " The ids that do: " (str/join ", " (map uri-preview available)) ".")
+               (str "No chart or query with id " (pr-str (uri-preview id)) " exists in this conversation, and"
                     " none have been created in it yet."))
    :recovery [{:uses #{}
                :text (str "Charts and queries are per-conversation. If the user mentioned this one,"
@@ -263,13 +331,46 @@
      :page  page
      :pages pages}))
 
+(def ^:private item-type->curation-model
+  "List-item `:type` -> the model [[curation/curated-ids]] judges it as, for data-bearing items that carry a
+   curation signal."
+  {"table"     "table"
+   "model"     "card"
+   "question"  "card"
+   "metric"    "card"
+   "dashboard" "dashboard"})
+
+(def ^:private uncuratable-item-types
+  "Data-bearing list-item types that can never be curated, so they're hidden under [[shared/curated-only?]]."
+  #{"transform"})
+
+(defn- curation-key
+  "The `[curation-model id]` pair [[curation/curated-ids]] judges `item` by, or nil for items without a curation
+   signal."
+  [{:keys [type id]}]
+  (when-let [model (item-type->curation-model type)]
+    [model id]))
+
+(defn- curated-items
+  "Keep the `items` a curated-only read may show: curated tables/cards/dashboards, plus navigation items (databases,
+   schemas, collections, documents, dashcards without a card, ...) that carry no data of their own."
+  [items]
+  (let [curated (curation/curated-ids (keep curation-key items))]
+    (filterv (fn [item]
+               (if-let [k (curation-key item)]
+                 (contains? curated k)
+                 (not (uncuratable-item-types (:type item)))))
+             items)))
+
 (defn- list-result
   "Build a structured-output map for a list of items.
    `list-type` is a keyword like :databases, :collection-items, :recents, etc.
-   `query-params` is the parsed URI query-param map; `:page` selects the page (1-indexed string)."
+   `query-params` is the parsed URI query-param map; `:page` selects the page (1-indexed string).
+   Under [[shared/curated-only?]], uncurated items are dropped before paginating so totals stay accurate."
   ([list-type items] (list-result list-type items nil))
   ([list-type items query-params]
-   (let [{:keys [items total page pages]} (paginate-list items (:page query-params))]
+   (let [items (cond-> items (shared/curated-only?) curated-items)
+         {:keys [items total page pages]} (paginate-list items (:page query-params))]
      {:structured-output
       {:result-type :metabot-list
        :list-type   list-type
@@ -314,6 +415,13 @@
                      (when k [(keyword k) (or v "")])))))
          (into {}))))
 
+(def ^:private uri-aspect-aliases
+  "Alternate aspect names accepted for each resource kind."
+  {"table"    {"columns" "fields"}
+   "model"    {"columns" "fields"}
+   "question" {"columns" "fields"}
+   "dashboard" {"cards" "items"}})
+
 (defn- parse-uri
   "Parse a metabase:// URI into a vector of path segments and a query-params map.
 
@@ -334,7 +442,9 @@
                        (mapv codec/url-decode))]
     (when (zero? (count segments))
       (malformed-uri! {:uri uri}))
-    {:segments     segments
+    {:segments     (if-let [aspect (get-in uri-aspect-aliases [(first segments) (get segments 2)])]
+                     (assoc segments 2 aspect)
+                     segments)
      :query-params (parse-query-string qs)}))
 
 ;; ----- Item presenters (list-row shapes) -----
@@ -491,14 +601,17 @@
   (let [recents (or (-> (activity-feed/get-recents api/*current-user-id* [:views])
                         :recents)
                     [])
-        items   (mapv (fn [{:keys [id name model timestamp]}]
-                        (let [type (case model
-                                     :card    "question"
-                                     :dataset "model"
-                                     (clojure.core/name (or model :item)))]
+        items   (mapv (fn [{:keys [id model timestamp] item-name :name}]
+                        ;; recents carry keyword models (`:card`, `:dataset`, ...); list items carry the public
+                        ;; string type, which [[curated-items]] keys on
+                        (let [type (case (some-> model name)
+                                     "card"    "question"
+                                     "dataset" "model"
+                                     nil       "item"
+                                     (name model))]
                           {:type      type
                            :id        id
-                           :name      name
+                           :name      item-name
                            :timestamp timestamp
                            :uri       (llm-shape/metabase-uri (keyword type) id)}))
                       recents)]
@@ -527,12 +640,24 @@
                     (mapv present-card))]
     (list-result :database-models models query-params)))
 
+(defn- curated-table-schemas
+  "The schemas of the Database with `db-id` that hold at least one curated active Table the current user can read.
+   Readable first, then curated, so the listing reveals nothing about a Table the user cannot read."
+  [db-id]
+  (let [_       (perms/prime-table-perms-cache {:db-ids #{db-id}})
+        tables  (filter mi/can-read? (metabot.db/active-tables-for-database db-id))
+        curated (curation/curated-ids (map (fn [{:keys [id]}] ["table" id]) tables))]
+    (into #{}
+          (comp (filter (fn [{:keys [id]}] (contains? curated ["table" id])))
+                (keep :schema))
+          tables)))
+
 (defn- fetch-database-schemas [id-str query-params]
   (let [db-id   (parse-long id-str)
         _       (warehouses/get-database db-id)
         rows    (metabot.db/active-schemas-for-database db-id)
-        schemas (->> rows
-                     (keep :schema)
+        schemas (->> (cond->> (keep :schema rows)
+                       (shared/curated-only?) (filter (curated-table-schemas db-id)))
                      (mapv (fn [s]
                              {:type        "schema"
                               :name        s
@@ -543,21 +668,29 @@
 (defn- fetch-database-schema-tables [id-str schema-name query-params]
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
-        tables (->> (metabot.db/active-tables-in-schema db-id schema-name)
+        rows   (metabot.db/active-tables-in-schema db-id schema-name)
+        _      (when-not (seq rows)
+                 (missing-schema! {:database-id db-id :schema schema-name}))
+        tables (->> rows
                     (filter mi/can-read?)
                     (mapv present-table))]
     (list-result :database-schema-tables tables query-params)))
 
 ;; ----- Collection drill-down -----
 
+(defn- readable-collection [id-str]
+  (if (= id-str "root")
+    (api/read-check (collection/root-collection-with-ui-details nil))
+    (api/read-check :model/Collection (parse-long id-str))))
+
 (defn- fetch-collection [id-str]
-  (let [coll (api/read-check :model/Collection (parse-long id-str))]
+  (let [coll (readable-collection id-str)]
     (entity-result (present-collection coll))))
 
 (defn- fetch-collection-items [id-str query-params]
   (documents/with-content-gate-cache
     (let [coll-id        (parse-long id-str)
-          coll           (api/read-check :model/Collection coll-id)
+          coll           (when-not (= id-str "root") (readable-collection id-str))
           cards          (->> (metabot.db/cards-in-collection coll-id)
                               (filter mi/can-read?))
           dashboards     (->> (metabot.db/dashboards-in-collection coll-id)
@@ -565,7 +698,9 @@
           ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
           documents      (->> (metabot.db/documents-in-collection coll-id)
                               (filter mi/can-read?))
-          subcollections (->> (metabot.db/unarchived-collections-at-location (str (:location coll) coll-id "/"))
+          subcollections (->> (if (= id-str "root")
+                                (metabot.db/navigable-collections false)
+                                (metabot.db/unarchived-collections-at-location (collection/children-location coll)))
                               (filter mi/can-read?))
           items          (concat (map present-collection subcollections)
                                  (map present-card cards)
@@ -574,9 +709,10 @@
       (list-result :collection-items items query-params))))
 
 (defn- fetch-collection-subcollections [id-str query-params]
-  (let [coll-id (parse-long id-str)
-        coll    (api/read-check :model/Collection coll-id)
-        subs    (->> (metabot.db/unarchived-collections-at-location (str (:location coll) coll-id "/"))
+  (let [coll    (when-not (= id-str "root") (readable-collection id-str))
+        subs    (->> (if (= id-str "root")
+                       (metabot.db/navigable-collections false)
+                       (metabot.db/unarchived-collections-at-location (collection/children-location coll)))
                      (filter mi/can-read?)
                      (mapv present-collection))]
     (list-result :collection-subcollections subs query-params)))
@@ -592,12 +728,13 @@
     (warehouses/get-database db-id)))
 
 (defn check-table-resource-database
-  "Require that `table-id`'s backing database is addressable as a Metabot resource (see
-  [[check-resource-database]]). Exported for [[metabase.metabot.tools.metadata]], which needs the
-  same guard for the `get_field_values` tool."
+  "Require that `table-id`'s backing database is addressable as a Metabot resource and return the table.
+
+  See [[check-resource-database]]. Also used by [[metabase.metabot.tools.metadata]]."
   [table-id]
   (when-let [table (api/read-check :model/Table table-id)]
-    (check-resource-database (:db_id table))))
+    (check-resource-database (:db_id table))
+    table))
 
 (defn check-card-resource-database
   "Require that `card-id`'s backing database is addressable as a Metabot resource, and return the card.
@@ -615,20 +752,58 @@
                         :model/Segment (metabot.db/segment-table-id id))]
     (check-table-resource-database table-id)))
 
+(defn- active-table-resource [id]
+  (let [table (check-table-resource-database id)]
+    (when-not (:active table)
+      (inactive-table! {:id id :database-id (:db_id table)}))
+    table))
+
+(defn- check-card-kind [id expected & path-segments]
+  (let [{actual :type :as card} (check-card-resource-database id)]
+    (when-not (= actual expected)
+      (let [path-segments (if (= actual :metric)
+                            (when (= (first path-segments) "fields")
+                              (cons "dimensions" (rest path-segments)))
+                            path-segments)]
+        (wrong-card-kind! {:id id :expected (name expected) :actual (name actual)
+                           :uri (apply llm-shape/metabase-uri actual id path-segments)})))
+    card))
+
+(defn- usable-metrics
+  "The `metrics` embedded in a table's or card's details that a `metric/{id}` read would serve (see
+   [[curation/usable-metric-ids]]). Only metrics the current user can read are judged, so the listing reveals nothing
+   about the curation of one they cannot."
+  [metrics]
+  (let [readable (filterv (fn [{:keys [id]}] (mi/can-read? :model/Card id)) metrics)
+        usable   (curation/usable-metric-ids (map :id readable))]
+    (filterv (fn [{:keys [id]}] (contains? usable id)) readable)))
+
+(defn- curated-only-details
+  "Under [[shared/curated-only?]], trim a table's or card's details `result` to what this Metabot may use: the
+   embedded metrics `metric/{id}` would deny are dropped, and a card's exported definition (`:query_json`) is
+   withheld, since it names the tables the definition reads rather than the result columns the card covers."
+  [result]
+  (cond-> result
+    (and (shared/curated-only?) (seq (get-in result [:structured-output :metrics])))
+    (update-in [:structured-output :metrics] usable-metrics)
+    (shared/curated-only?)
+    (update :structured-output dissoc :query_json)))
+
 (defn- table-details
   "Shared `entity-details/get-table-details` call for both /table/{id} and /table/{id}/fields.
    `entity-type` is :table, :model, or :question."
   [entity-type id with-fields?]
   (case entity-type
-    :table (check-table-resource-database id)
-    (:model :question) (check-card-resource-database id))
-  (entity-details/get-table-details {:entity-type          entity-type
-                                     :entity-id            id
-                                     :with-fields?         with-fields?
-                                     :with-field-values?   false
-                                     :with-related-tables? (= entity-type :table)
-                                     :with-measures?       true
-                                     :with-segments?       true}))
+    :table (active-table-resource id)
+    (:model :question) (apply check-card-kind id entity-type (when with-fields? ["fields"])))
+  (curated-only-details
+   (entity-details/get-table-details {:entity-type          entity-type
+                                      :entity-id            id
+                                      :with-fields?         with-fields?
+                                      :with-field-values?   false
+                                      :with-related-tables? (= entity-type :table)
+                                      :with-measures?       true
+                                      :with-segments?       true})))
 
 (defn- fetch-table [id-str]
   (table-details :table (parse-long id-str) false))
@@ -646,10 +821,8 @@
         result))))
 
 (defn- fetch-table-field [id-str field-id]
-  (let [table-id (parse-long id-str)
-        table    (api/read-check :model/Table table-id)]
-    (api/check-404 (:active table))
-    (check-resource-database (:db_id table))
+  (let [table-id (parse-long id-str)]
+    (active-table-resource table-id)
     (field-values {:entity-type "table"
                    :entity-id   table-id
                    :field-id    field-id
@@ -657,9 +830,8 @@
 
 (defn- fetch-table-derived [id-str query-params]
   (let [table-id   (parse-long id-str)
-        table      (api/read-check :model/Table table-id)
+        table      (active-table-resource table-id)
         db-id      (:db_id table)
-        _          (check-resource-database db-id)
         cards      (->> (metabot.db/cards-for-table table-id)
                         (filter mi/can-read?)
                         (mapv present-card))
@@ -686,16 +858,27 @@
 
 (defn- fetch-card-field [type-str id-str field-id]
   (let [card-id (parse-long id-str)]
-    (check-card-resource-database card-id)
+    (check-card-kind card-id (keyword type-str) "fields" field-id)
     (field-values {:entity-type type-str
                    :entity-id   card-id
                    :field-id    field-id
                    :limit       30})))
 
-(defn- fetch-card-sources [id-str query-params]
-  (let [card (api/read-check :model/Card (parse-long id-str))]
-    (check-resource-database (:database_id card))
-    (list-result :card-sources (card-sources-items card) query-params)))
+(defn- readable-source-item?
+  "Whether the current user can read the table or card a `card-sources-items` entry names."
+  [{:keys [type id]}]
+  (case type
+    "table"                      (mi/can-read? :model/Table id)
+    ("model" "metric" "question") (mi/can-read? :model/Card id)
+    true))
+
+(defn- fetch-card-sources [type-str id-str query-params]
+  (let [card (check-card-kind (parse-long id-str) (keyword type-str) "sources")]
+    ;; under curated-only the list is filtered by curation, so what the user cannot read is dropped first
+    (list-result :card-sources
+                 (cond->> (card-sources-items card)
+                   (shared/curated-only?) (filterv readable-source-item?))
+                 query-params)))
 
 ;; ----- Metric -----
 
@@ -835,6 +1018,13 @@
                        (->> (metabot.db/unarchived-card-summaries card-ids)
                             (filter mi/can-read?)
                             (into {} (map (juxt :id identity)))))
+        ;; An action button's uri points at its backing model, which [[list-result]]'s curation filter can't see
+        ;; through, so under [[shared/curated-only?]] only curated models keep their uri.
+        linkable     (if (shared/curated-only?)
+                       (let [action-card-ids (into [] (keep #(when (:action_id %) (:card_id %))) dashcards)]
+                         (select-keys readable (map second (curation/curated-ids (map #(vector "card" %)
+                                                                                      action-card-ids)))))
+                       readable)
         ->item       (fn [{:keys [id card_id action_id] :as dashcard}]
                        ;; action_id wins over card_id: an action button may reference its backing
                        ;; model through card_id but renders as a button — with a uri to that model
@@ -843,7 +1033,7 @@
                          (when-let [card (get readable card_id)]
                            (assoc (present-card card) :dashcard_id id))
                          (cond-> (present-non-question-dashcard dashcard)
-                           (get readable card_id) (assoc :uri (:uri (present-card (get readable card_id)))))))
+                           (get linkable card_id) (assoc :uri (:uri (present-card (get linkable card_id)))))))
         items        (if (seq tabs)
                        ;; group by tab without emitting tab pseudo-items — those would inflate the
                        ;; paginated total; the tab list rides on the response as `:tabs` instead.
@@ -879,7 +1069,7 @@
   "Present a document as an indexed outline of its top-level blocks. The indices are the
   `position` values the `save_entity` tool accepts when inserting a chart into the document."
   [id-str]
-  (let [document (documents/get-document (parse-long id-str))
+  (let [document (documents/get-document (parse-long id-str) :log-view? false)
         blocks   (get-in document [:document :content])]
     (entity-result
      {:type        "document"
@@ -954,7 +1144,7 @@
 (def ^:private numeric-id-uri-types
   "URI entity-type segments whose next segment must be a numeric id (see `dispatch`)."
   #{"database" "collection" "table" "model" "question" "metric"
-    "measure" "segment" "transform" "dashboard"})
+    "measure" "segment" "transform" "dashboard" "document"})
 
 (defn- check-numeric-id-segment!
   "Entity URIs take numeric ids only. The common miss is the LLM pasting a 21-char entity id
@@ -964,6 +1154,7 @@
   [uri [type-seg id-seg]]
   (when (and (numeric-id-uri-types type-seg)
              (some? id-seg)
+             (not (and (= type-seg "collection") (= id-seg "root")))
              (nil? (parse-long id-seg)))
     (non-numeric-id! {:uri uri :kind type-seg :id id-seg})))
 
@@ -994,8 +1185,48 @@
   [[type-seg id-seg]]
   (if-let [kind (get uri-entity-kinds type-seg)]
     (cond-> {:kind kind}
-      (some-> id-seg parse-long) (assoc :id (parse-long id-seg)))
+      (some-> id-seg parse-long) (assoc :id (parse-long id-seg))
+      (and (= type-seg "collection") (= id-seg "root")) (assoc :id "root"))
     {}))
+
+(defn- curation-subject
+  "What a single-entity URI must be curated as under [[shared/curated-only?]]: a `[model id]` pair — `\"table\"`,
+   `\"card\"`, `\"dashboard\"`, `\"metric\"` (judged by [[curation/curated-metric?]]), `:measure` and `:segment`
+   (judged by [[curation/measure-or-segment-curated?]]: their Table, and the Tables their definition reads), or
+   `\"transform\"` (never curated) — or nil when the URI isn't gated: navigation, collections, documents,
+   conversation state, and `table/{id}/derived` (whose listing is filtered instead), plus measures and segments
+   that don't exist (left to their handler's 404)."
+  [[type-seg id-seg aspect]]
+  (let [id (some-> id-seg parse-long)]
+    (when (and id (pos? id))
+      (case type-seg
+        "table"              (when-not (= aspect "derived") ["table" id])
+        ("model" "question") ["card" id]
+        "metric"             ["metric" id]
+        "dashboard"          ["dashboard" id]
+        "measure"            (when (metabot.db/measure-table-id id) [:measure id])
+        "segment"            (when (metabot.db/segment-table-id id) [:segment id])
+        "transform"          ["transform" id]
+        nil))))
+
+(defn- check-curated-uri!
+  "Under [[shared/curated-only?]], reject a URI naming an entity that isn't curated, without naming the entity. Runs
+   before the handler, so a denied read does none of its work: `table/{id}/fields/{field}` would otherwise compute
+   and persist field values and a fingerprint for a table this Metabot may not use. The handler's own existence,
+   read, and resource-database checks run first, so a missing or routing-destination entity still reads as missing
+   and an inactive table as inactive, rather than uncurated, and whether an unreadable one is curated isn't
+   revealed."
+  [uri segments]
+  (when (shared/curated-only?)
+    (when-let [[model id :as subject] (curation-subject segments)]
+      (case model
+        "table"           (active-table-resource id)
+        ("card" "metric") (check-card-resource-database id)
+        "dashboard"       (api/read-check :model/Dashboard id)
+        :measure          (check-measure-or-segment-resource-database :model/Measure id)
+        :segment          (check-measure-or-segment-resource-database :model/Segment id)
+        "transform"       (transforms/get-transform id))
+      (curation/check-curated-subject! uri subject))))
 
 (defn- dispatch
   "Route a parsed URI to the right fetch handler. The match-one table is the canonical
@@ -1012,6 +1243,7 @@
   (let [{:keys [segments query-params]} (parse-uri uri)]
     (check-numeric-id-segment! uri segments)
     (->> (tools/with-entity (uri-entity segments)
+           (check-curated-uri! uri segments)
            (match/match-one segments
              ;; Navigation
              ["databases"]                                    (fetch-databases-list query-params)
@@ -1040,7 +1272,7 @@
              [(t :guard #{"model" "question"}) id]            (fetch-card t id)
              [(t :guard #{"model" "question"}) id "fields"]   (fetch-card-fields t id)
              [(t :guard #{"model" "question"}) id "fields" & rst] (fetch-card-field t id (str/join "/" rst))
-             [(t :guard #{"model" "question"}) id "sources"]  (fetch-card-sources id query-params)
+             [(t :guard #{"model" "question"}) id "sources"]  (fetch-card-sources t id query-params)
 
              ;; Metric
              ["metric" id]                                    (fetch-metric id)
@@ -1171,66 +1403,64 @@
 (defn- resource-element
   "Wrap a resource body in XML, escaping its URI attribute."
   [uri body]
-  (str "<resource uri=\"" (llm-shape/escape-xml uri) "\">\n" body "\n</resource>"))
+  (str "<resource uri=\"" (llm-shape/escape-xml (uri-preview uri)) "\">\n" body "\n</resource>"))
 
 (def ^:private uri-arg
   "The one thing a read takes. Both declarations below build their `:args` from this, so the single
   and batched forms cannot drift."
-  [:string {:min 1 :description "A metabase:// resource URI"}])
+  [:string {:min 1
+            :max max-uri-length
+            :description "A metabase:// resource URI"
+            :error/message (str "must be a non-empty URI string of at most " max-uri-length " characters")}])
+
+(def ^:private conversation-kinds
+  "URI kinds that read charts and queries from the conversation's state."
+  #{"chart" "query"})
+
+(defn- description
+  "What a caller is told `read_resource` is. Without `agent-loop?`, the chart and query URIs and the
+  `save_entity` note are left out, since they need the agent loop's conversation state and tools."
+  [agent-loop?]
+  (str "Read detailed information about Metabase resources. Copy URIs from `search` or navigation results.\n"
+       "Entity IDs are numeric. Use `collection/root` for the root collection. Schema names are case-sensitive\n"
+       "and URI path segments must be URL-encoded.\n\n"
+       "Shortened URI echoes and error text end with ...[truncated]. Reuse the original URI for another read.\n\n"
+       "SUPPORTED URI FORMS:\n"
+       (str/join "\n" (for [[kind templates] (sort-by key uri-templates)
+                            :when (or agent-loop? (not (conversation-kinds kind)))
+                            uri templates]
+                        (str "- " uri)))
+       "\n\nALIASES (the same trailing segments are accepted):\n"
+       (str/join "\n" (for [[kind aliases] (sort-by key uri-aspect-aliases)
+                            [alias canonical] (sort-by key aliases)]
+                        (str "- metabase://" kind "/{id}/" alias " is an alias for /" canonical)))
+       "\n\nDocuments return a name and an indexed outline of top-level blocks."
+       (when agent-loop?
+         (str " The indices are valid\n"
+              "`position` values for `save_entity` document destinations.\n\n"
+              "Chart and query IDs come from this conversation's state. Chart URIs return the chart type\n"
+              "and its query; query URIs return a query from this conversation."))))
 
 (def ^:private tool-description
   "What the model is told `read_resource` is.
 
   A value rather than a docstring: the batched form has to add its own per-call limits to it, and a
   docstring cannot be computed."
-  (str
-   "Read detailed information about Metabase resources via URI patterns. Use this to navigate\n"
-   "the instance and drill into specific entities. URIs returned by `search` can be fed directly\n"
-   "back here. Only numeric IDs accepted, never alphanumeric entity-id's.\n"
-   "\n"
-   "NAVIGATION (top-level lists):\n"
-   "- metabase://databases - all databases\n"
-   "- metabase://collections - root collections\n"
-   "- metabase://collections?tree=true - flat list of all collections (use :location for hierarchy)\n"
-   "- metabase://user/recent-items - your recently-viewed items\n"
-   "\n"
-   "DATABASE DRILL-DOWN:\n"
-   "- metabase://database/{id}\n"
-   "- metabase://database/{id}/tables\n"
-   "- metabase://database/{id}/models\n"
-   "- metabase://database/{id}/schemas\n"
-   "- metabase://database/{id}/schemas/{schemaName}/tables\n"
-   "\n"
-   "COLLECTION DRILL-DOWN:\n"
-   "- metabase://collection/{id}\n"
-   "- metabase://collection/{id}/items - subcollections + leaves\n"
-   "- metabase://collection/{id}/subcollections\n"
-   "\n"
-   "ENTITY DRILL-DOWN:\n"
-   "- metabase://table/{id}[/fields[/{field_id}]] [/derived]\n"
-   "- metabase://model/{id}[/fields[/{field_id}]] [/sources]\n"
-   "- metabase://question/{id}[/fields[/{field_id}]] [/sources]\n"
-   "- metabase://metric/{id}[/dimensions[/{dim_id}]]\n"
-   "- metabase://measure/{id}\n"
-   "- metabase://segment/{id}\n"
-   "- metabase://transform/{id}[/sources|/target]\n"
-   "- metabase://dashboard/{id}[/items]\n"
-   "- metabase://document/{id} - name + indexed outline of the document's top-level blocks\n"
-   "  (the indices are valid `position` values for `save_entity` document destinations)\n"
-   "\n"
-   "CONVERSATION STATE (charts and queries generated in or pasted into this conversation,\n"
-   "e.g. referenced in a user message as [name](metabase://chart/{id})):\n"
-   "- metabase://chart/{chart_id} - the chart's type and its query\n"
-   "- metabase://query/{query_id} - a query from this conversation's state"))
+  (description true))
 
 (def ^:private batch-note
   "What the batched form adds to [[tool-description]]: the limits that exist only because one call
   can carry several URIs."
   (str "\n\n"
-       "Up to " max-concurrent-uris " URIs may be requested in one call. List responses are capped\n"
+       "Up to " max-concurrent-uris " URIs may be requested in one call.\n"
+       "List responses are capped\n"
        "at " page-size " items per page; when a list is truncated its structured output carries a\n"
        "ready-to-fetch `next-page-uri` — request that rather than building a `page=N` query param\n"
        "by hand. The response also includes `page` (current, 1-indexed) and `pages` (total)."))
+
+(def agent-api-description
+  "The batched description for callers outside the agent loop, such as the Agent API."
+  (str (description false) batch-note))
 
 (defrecord ReadResourceTool []
   tools/Tool
@@ -1259,8 +1489,11 @@
            :args [:map {:closed true}
                   [:uris [:sequential {:min 1
                                        :max max-concurrent-uris
-                                       :error/message (str "must be an array of 1 to "
-                                                           max-concurrent-uris " URI strings")}
+                                       :description (str "A non-empty array of at most " max-concurrent-uris
+                                                         " URIs, each at most " max-uri-length " characters. "
+                                                         "Request fewer URIs or shorten them to fit these limits.")
+                                       :error/message (str "must be a non-empty array of at most "
+                                                           max-concurrent-uris " URIs. Request fewer URIs per call")}
                           uri-arg]]]))
 
   (batched-args [_ {:keys [uris]}]
@@ -1279,13 +1512,14 @@
                              (keep (fn [{:keys [item structured-output]}]
                                      (uri-label (:uri item) structured-output)))
                              (distinct))
-                       entries)]
+                       entries)
+          error-length (quot max-batch-error-length (max 1 (count (filter :failed? entries))))]
       (cond-> {:output (str "<resources>\n"
                             (str/join "\n"
                                       (for [{:keys [item output failed?]} entries]
                                         (resource-element (:uri item)
                                                           (if failed?
-                                                            (str "**Error:** " output)
+                                                            (str "**Error:** " (text-preview output error-length count))
                                                             output))))
                             "\n</resources>")}
         (some :structured-output entries)

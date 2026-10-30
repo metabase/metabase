@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.parameters.field :as parameters.field]
+   [metabase.parameters.field.search-values-query :as search-values-query]
    [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -79,12 +80,29 @@
       ;; Another field review.email => you set it up so that it's a FK to user.email
       ;; And the desired behavior is you can search for review.email, where the query
       ;; should query for email from user.email
-      (t2/update! :model/Field (mt/id :categories :name) {:semantic_type :type/PK})
-      (t2/update! :model/Field (mt/id :users :name) {:semantic_type      :type/FK
-                                                     :has_field_values   "search"
-                                                     :fk_target_field_id (mt/id :categories :name)})
+      (t2/update! :model/Field :id (mt/id :categories :name) {:semantic_type :type/PK})
+      (t2/update! :model/Field :id (mt/id :users :name) {:semantic_type      :type/FK
+                                                         :has_field_values   "search"
+                                                         :fk_target_field_id (mt/id :categories :name)})
       (is (= [["African"]]
-             (parameters.field/search-values (t2/select-one :model/Field (mt/id :users :name))
-                                             (t2/select-one :model/Field (mt/id :users :name))
+             (parameters.field/search-values (t2/select-one :model/Field :id (mt/id :users :name))
+                                             (t2/select-one :model/Field :id (mt/id :users :name))
                                              "African"
                                              nil))))))
+
+(deftest search-values-canceled-query-is-a-warning-test
+  (testing "a search query canceled by a statement timeout logs at warn, other failures at error (GHY-4958)"
+    (let [search (fn [ex]
+                   (mt/with-dynamic-fn-redefs [search-values-query/search-values-query (fn [& _] (throw ex))]
+                     (mt/with-log-messages-for-level [messages [metabase.parameters.field :warn]]
+                       (is (= [] (parameters.field/search-values (t2/select-one :model/Field :id (mt/id :venues :id))
+                                                                 (t2/select-one :model/Field :id (mt/id :venues :name))
+                                                                 "Red")))
+                       (mapv :level (messages)))))]
+      (is (= [:warn]
+             (search (ex-info "Error reducing result rows"
+                              {}
+                              (ex-info "Error executing query: ERROR: canceling statement due to statement timeout"
+                                       {:query/query-canceled? true})))))
+      (is (= [:error]
+             (search (ex-info "Error executing query: Code: 47. DB::Exception: Identifier cannot be resolved" {})))))))

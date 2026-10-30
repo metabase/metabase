@@ -130,10 +130,6 @@ export const TOOL_MESSAGES = {
     active: () => t`Retrieving table metadata`,
     done: () => t`Retrieved table metadata`,
   },
-  get_transform_details: {
-    active: () => t`Getting transform details`,
-    done: () => t`Got transform details`,
-  },
   list_available_fields: { active: () => undefined, done: () => undefined },
   load_skill: { active: () => undefined, done: () => undefined },
   read_resource: {

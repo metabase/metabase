@@ -5,6 +5,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { waitForFloatingPosition } from "__support__/utils";
 import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
 import type {
+  DatePickerTruncationUnit,
   DatePickerUnit,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
@@ -312,6 +313,25 @@ describe("DateOffsetIntervalPicker", () => {
           screen.queryByText(/days (ago|from now)/),
         ).not.toBeInTheDocument();
       });
+
+      it.each<[DatePickerTruncationUnit, string[]]>([
+        ["day", ["days", "weeks", "months", "quarters", "years"]],
+        ["quarter", ["quarters", "years"]],
+      ])(
+        "should list offset units in order for a %s unit",
+        async (unit, offsetUnits) => {
+          await setup({ value: { ...defaultValue, unit } });
+
+          await userEvent.click(
+            screen.getByRole("textbox", { name: "Starting from unit" }),
+          );
+
+          const suffix = direction === "past" ? "ago" : "from now";
+          expect(
+            screen.getAllByRole("option").map((option) => option.textContent),
+          ).toEqual(offsetUnits.map((offsetUnit) => `${offsetUnit} ${suffix}`));
+        },
+      );
 
       it("should display the actual date range", async () => {
         await setup({

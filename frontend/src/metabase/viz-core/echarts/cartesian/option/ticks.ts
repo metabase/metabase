@@ -30,7 +30,7 @@ export const getPadding = (intervalsCount: number) => {
 
 export const getTicksOptions = (
   xAxisModel: TimeSeriesXAxisModel & Pick<WaterfallXAxisModel, "totalXValue">,
-  chartLayout: ChartLayout,
+  chartLayout: Pick<ChartLayout, "outerWidth" | "padding" | "ticksDimensions">,
 ) => {
   const { range, toEChartsAxisValue, interval, intervalsCount, totalXValue } =
     xAxisModel;

@@ -186,7 +186,7 @@ function ResultsFooter({
       />
       <Text fw="bold" c="text-primary" lh="xs">{t`Done`}</Text>
       <Text
-        c="text-disabled"
+        c="text-secondary"
         ml="xxs"
         lh="xs"
       >{t`Preview based on the first 100 rows from each table.`}</Text>
@@ -202,7 +202,7 @@ function DismissButton({ onDismiss }: { onDismiss: () => void }) {
       size="sm"
       radius="xl"
       variant="subtle"
-      c="text-disabled"
+      c="text-secondary"
       onClick={onDismiss}
       aria-label={t`Dismiss`}
     >
@@ -228,7 +228,7 @@ function ExecutionOutputLogs({
         <AnsiLogs>{executionResult.logs}</AnsiLogs>
       ) : (
         <Text
-          c="text-disabled"
+          c="text-secondary"
           fz="sm"
           fs="italic"
         >{t`No logs to display`}</Text>

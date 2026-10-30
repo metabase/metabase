@@ -52,7 +52,8 @@
    :sandbox   [:table :table_id]
    :segment   [:name :description :created_at :creator :creator_id :table :table_id]
    :measure   [:name :description :created_at :creator :creator_id :table :table_id]
-   :action    [:name :description :type :model_id :parameters :created_at :creator :creator_id :collection :collection_id]})
+   :action    [:name :description :type :model_id :parameters :created_at :creator :creator_id :collection :collection_id]
+   :data-app  [:name :display_name :description :created_at]})
 
 (mr/def ::data-value
   [:schema {::mr/deliberately-open true, :description "any column or hydrated value of a dependency-tracked entity"}
@@ -69,7 +70,8 @@
 
 (mr/def ::usages
   [:map-of
-   [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure :action]
+   [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure :action
+    :data-app]
    ::deps.dependency-types/entity-id])
 
 (mr/def ::normalized-finding-error
@@ -184,6 +186,13 @@
     [:type [:= :action]]
     [:data (fields-for :action)]]])
 
+(mr/def ::data-app-entity
+  [:merge ::base-entity
+   [:map
+    [:id   ms/PositiveInt]
+    [:type [:= :data-app]]
+    [:data (fields-for :data-app)]]])
+
 (mr/def ::entity
   [:multi {:dispatch :type}
    [:table     [:ref ::table-entity]]
@@ -195,7 +204,8 @@
    [:sandbox   [:ref ::sandbox-entity]]
    [:segment   [:ref ::segment-entity]]
    [:measure   [:ref ::measure-entity]]
-   [:action    [:ref ::action-entity]]])
+   [:action    [:ref ::action-entity]]
+   [:data-app  [:ref ::data-app-entity]]])
 
 (mr/def ::entity-data
   "The `:data` of an `::entity` as the helpers that filter and sort entities read it: the keys of `entity-keys`, each
@@ -229,7 +239,8 @@
    :metabase-enterprise.sandbox.schema/sandbox
    :metabase.segments.schema/segment
    :metabase.measures.schema/measure
-   ::actions.schema/action])
+   ::actions.schema/action
+   :metabase.data-apps.schema/data-app])
 
 (mu/defn- entity-value :- ::entity
   [entity-type :- ::deps.dependency-types/dependency-types
@@ -270,7 +281,8 @@
    :sandbox   [:id :table_id]
    :segment   [:id :name :description :created_at :creator_id :table_id]
    :measure   [:id :name :description :created_at :creator_id :table_id]
-   :action    [:id :name :description :type :model_id :parameters :created_at :creator_id :collection_id]})
+   :action    [:id :name :description :type :model_id :parameters :created_at :creator_id :collection_id]
+   :data-app  [:id :name :display_name :description :created_at]})
 
 (mr/def ::include-archived-items
   [:enum :exclude :all :only])
@@ -406,7 +418,10 @@
                  (map #(collection.root/hydrate-root-collection
                         %
                         (collection.root/root-collection-with-ui-details
-                         (dependencies.db/action-root-namespace (nil? (:model_id %)))))))))
+                         (dependencies.db/action-root-namespace (nil? (:model_id %)))))))
+    ;; Like the data-app API, which gives a non-admin only an app's names.
+    :data-app (cond->> entities
+                (not api/*is-superuser?*) (map #(select-keys % [:id :name :display_name])))))
 
 (mu/defn- fetch-and-hydrate-nodes :- [:map-of ::deps.schema/node Entity]
   "Fetches and hydrates entities for the given nodes.
@@ -459,7 +474,7 @@
    {:keys [id type]} :- [:map {:closed true}
                          [:id {:optional true} ms/PositiveInt]
                          [:type {:optional true} ::deps.dependency-types/dependency-types]]]
-  (api/read-check (deps.dependency-types/dependency-type->model type) id)
+  (api/read-check (dependencies.db/entity type id))
   (let [starting-nodes [[type id]]
         upstream-graph (readable-graph-dependencies {:include-archived-items :all})
         downstream-graph (graph/cached-graph (readable-graph-dependents))
@@ -483,8 +498,8 @@
   [entity :- ::entity-node]
   (let [data (:data entity)]
     (case (:type entity)
-      :table   (:display_name data)
-      :sandbox nil
+      (:table :data-app) (:display_name data)
+      :sandbox           nil
       (:name data))))
 
 (mu/defn- entity-location :- [:maybe :string]
@@ -575,7 +590,7 @@
     :or {include-personal-collections false
          sort-column :name
          sort-direction :asc}} :- dependents-args]
-  (api/read-check (deps.dependency-types/dependency-type->model type) id)
+  (api/read-check (dependencies.db/entity type id))
   (let [downstream-graph (graph/cached-graph (readable-graph-dependents {:broken broken}))
         nodes (vec (-> (graph/children-of downstream-graph [[type id]])
                        (get [type id])))
@@ -835,7 +850,7 @@
     :or {include-personal-collections false
          sort-column :name
          sort-direction :asc}} :- broken-dependents-args]
-  (api/read-check (deps.dependency-types/dependency-type->model entity-type) id)
+  (api/read-check (dependencies.db/entity entity-type id))
   (let [normalize-types (fn normalize-types [types]
                           (if (keyword? types)
                             [(name types)]
@@ -863,11 +878,19 @@
         (sort-dependents sort-column sort-direction))))
 
 (api.macros/defendpoint :get "/backfill-status" :- [:map
-                                                    [:complete :boolean]]
-  "Whether no entity awaits the computation of its dependencies, as `complete`, for superusers."
+                                                    [:complete :boolean]
+                                                    [:failed [:sequential [:map
+                                                                           [:type ::deps.dependency-types/dependency-types]
+                                                                           [:id   ms/PositiveInt]]]]]
+  "Whether no entity awaits the computation of its dependencies, as `complete`, and the entities whose dependencies
+  the job gave up computing until they change, as `failed`, for superusers. Those don't count as awaiting, so the
+  graph is only whole when `complete` is true and `failed` is empty."
   [_route-params _query-params]
   (api/check-superuser)
-  {:complete (not (deps.dependency-status/has-pending-entities?))})
+  ;; Unpaged, assuming the job gives up on few entities. Page `failed` if instances with many show up.
+  {:complete (not (deps.dependency-status/has-pending-entities?))
+   :failed   (mapv (fn [{:keys [entity_type entity_id]}] {:type entity_type :id entity_id})
+                   (dependencies.db/given-up-dependency-statuses))})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

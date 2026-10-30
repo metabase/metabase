@@ -175,7 +175,7 @@
                                         :parameterized false :running_time 30000 :result_rows 0}]
               ;; the body can only be written once the copy has an id, and `collection_id` rides along
               ;; because the document's after-update syncs it onto every card the document owns
-              (t2/update! :model/Document doc-id
+              (t2/update! :model/Document :id doc-id
                           {:collection_id coll-id
                            :document      {:type    "doc"
                                            :content [{:type "cardEmbed" :attrs {:id doc-card}}]}})
@@ -279,7 +279,7 @@
                        :model/Card {resolved :id} {:collection_id coll-id :last_used_at (stale-instant)}
                        :model/Card {still :id}    {:collection_id coll-id :last_used_at (stale-instant)}]
           (scan/scan!)                                            ; scan 1: both stale
-          (t2/update! :model/Card resolved {:last_used_at (fresh-instant)})  ; resolved is now fresh
+          (t2/update! :model/Card :id resolved {:last_used_at (fresh-instant)})  ; resolved is now fresh
           (scan/scan!)                                            ; scan 2: only `still` is stale
           (let [active (set (map :entity_id (t2/select :model/ContentDiagnosticsFinding
                                                        :entity_type :card
@@ -495,7 +495,7 @@
                   (testing "card has no owner column → owner is null"
                     (is (nil? (get-in row [:details :owner]))))))
               (testing "invalidating the latest hides the entity AND drops it from total; older row does NOT resurface"
-                (t2/update! :model/ContentDiagnosticsFinding new-id {:invalidated_at (t/offset-date-time)})
+                (t2/update! :model/ContentDiagnosticsFinding :id new-id {:invalidated_at (t/offset-date-time)})
                 (let [resp (fetch)
                       ids  (fetched-ids resp)]
                   (is (not (contains? ids new-id)))
@@ -608,7 +608,7 @@
                     (is (contains? (fetched-ids resp) pers-fid))
                     (is (= 2 (:total resp)))))
                 (testing "exclusion is live: moving the card out of the personal collection re-surfaces it"
-                  (t2/update! :model/Card pers-card {:collection_id reg-id})
+                  (t2/update! :model/Card :id pers-card {:collection_id reg-id})
                   (let [ids (fetched-ids (fetch))]                  ; default (exclude personal)
                     (is (contains? ids pers-fid))))))))))))        ; now in a regular collection → returned
 

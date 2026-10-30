@@ -8,7 +8,7 @@
 (set! *warn-on-reflection* true)
 
 (setting/defsetting transform-timeout
-  (deferred-tru "The timeout for a transform job, in minutes.")
+  "The timeout for a transform job, in minutes."
   :type       :integer
   :visibility :internal
   :default    (* 4 60)
@@ -26,7 +26,7 @@
 ;; python-runner service is single-threaded; dispatching them in parallel would just queue them
 ;; against their own per-call timeouts.
 (setting/defsetting transform-run-job-sql-concurrency
-  (deferred-tru "Maximum number of SQL-backed transforms a single transform-job run may execute in parallel.")
+  "Maximum number of SQL-backed transforms a single transform-job run may execute in parallel."
   :type       :integer
   :visibility :internal
   :default    3

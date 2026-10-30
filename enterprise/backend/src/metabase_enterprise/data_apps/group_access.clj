@@ -1,7 +1,6 @@
 (ns metabase-enterprise.data-apps.group-access
   (:require
    [metabase-enterprise.data-apps.db :as data-apps.db]
-   [metabase-enterprise.data-apps.resources :as resources]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.api.common :as api]
    [metabase.graph.core :as graph]
@@ -10,37 +9,56 @@
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
-(defn assigned-groups
-  "Assigned groups with their member counts."
+(defn- access-group-ids
+  "The ids of the groups other than Administrators that can read the resource collection of `app`."
   [app]
-  (let [using-tenants? (setting/get :use-tenants)
-        group-ids     (into #{} (map :permission_group_id) (data-apps.db/app-assignments [(:id app)]))]
+  (if-let [collection-id (:resource_collection_id app)]
+    (disj (perms/collection-read-access-group-ids collection-id) (:id (perms/admin-group)))
+    #{}))
+
+(defn assigned-groups
+  "The groups other than Administrators that can read the resource collection of `app`, with their member counts."
+  [app]
+  (let [using-tenants? (setting/get :use-tenants)]
     (mapv (fn [group]
             (assoc group :name (perms/group-display-name group using-tenants?)))
-          (t2/hydrate (perms/groups-by-ids group-ids) :member_count))))
+          (t2/hydrate (perms/groups-by-ids (access-group-ids app)) :member_count))))
+
+(defn- check-assignable-groups
+  "Throws unless every group with an id in `group-ids` exists and is neither a tenant group nor Administrators."
+  [group-ids]
+  (let [group-tenant-flags (perms/group-tenant-flags (set group-ids))]
+    (api/check-404 (every? #(contains? group-tenant-flags %) group-ids))
+    (api/check-400 (not-any? #(or (get group-tenant-flags %) (= % (:id (perms/admin-group)))) group-ids)
+                   (tru "Tenant groups and admins cannot be assigned to data apps."))))
+
+(defn- app-collection
+  "The resource collection of `app`, or a 404."
+  [app]
+  (api/check-404 (some-> (:resource_collection_id app) data-apps.db/resource-collection)))
 
 (defn add-groups!
-  "Assign groups to app and update app collection grants."
+  "Grant groups read access to the resource collection of `app`."
   [app group-ids]
-  (let [group-ids (vec (distinct group-ids))]
+  (let [group-ids  (vec (distinct group-ids))
+        collection (app-collection app)]
+    (check-assignable-groups group-ids)
     (perms/with-global-permissions-lock
       (t2/with-transaction [_conn]
-        (let [assigned (into #{} (map :permission_group_id) (data-apps.db/app-assignments [(:id app)]))]
-          (api/check-400 (not-any? assigned group-ids) (tru "One or more groups already have access to this data app.")))
-        (data-apps.db/insert-assignments! (:id app) group-ids)
-        (resources/reconcile-existing-collection-permissions! app))))
+        (api/check-400 (not-any? (access-group-ids app) group-ids)
+                       (tru "One or more groups already have access to this data app."))
+        (doseq [group-id group-ids]
+          (perms/grant-collection-read-permissions! group-id collection)))))
   (assigned-groups app))
 
 (defn remove-group!
-  "Remove an assignment and its collection grants in one transaction."
+  "Revoke a group's access to the resource collection of `app`."
   [app group-id]
-  (perms/with-global-permissions-lock
-    (t2/with-transaction [_conn]
-      (api/check-404 (pos? (data-apps.db/delete-assignments! (:id app) [group-id])))
-      (when-not (= group-id (:id (perms/admin-group)))
-        (when-let [collection (some-> (:id app) data-apps.db/data-app :resource_collection_id
-                                      data-apps.db/resource-collection)]
-          (perms/revoke-collection-permissions! group-id collection)))))
+  (let [collection (app-collection app)]
+    (perms/with-global-permissions-lock
+      (t2/with-transaction [_conn]
+        (api/check-404 (contains? (access-group-ids app) group-id))
+        (perms/revoke-collection-permissions! group-id collection))))
   nil)
 
 (defn- group-has-table-access?
@@ -87,12 +105,12 @@
     (vec (into (set table) outputs))))
 
 (defn permission-warnings
-  "Missing table access for assigned groups, including access inherited from All Users."
-  [{app-id :id collection-id :resource_collection_id}]
-  (let [assigned-ids (mapv :permission_group_id (data-apps.db/app-assignments [app-id]))
-        table-ids    (when (and (seq assigned-ids) collection-id)
+  "Missing table access for the groups with access to `app`, including access inherited from All Users."
+  [{collection-id :resource_collection_id :as app}]
+  (let [assigned-ids (sort (access-group-ids app))
+        table-ids    (when (seq assigned-ids)
                        (resource-table-ids collection-id))]
-    (if (and (seq assigned-ids) (seq table-ids))
+    (if (seq table-ids)
       (let [tables       (table-details table-ids)
             all-users-id (:id (perms/all-users-group))
             access       (group-table-access (conj (set assigned-ids) all-users-id) tables)]

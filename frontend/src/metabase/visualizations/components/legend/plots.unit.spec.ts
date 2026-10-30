@@ -12,7 +12,7 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { type LegendChart, getLegendPlots } from "./plots";
+import { type LegendChart, getLegendPlots, getPlotsWithoutAxes } from "./plots";
 
 const CATEGORY_COUNT = 20;
 const LABEL_WIDTH = 40;
@@ -86,6 +86,21 @@ describe("getLegendPlots", () => {
     expect(plots.none.hasXAxisLabels).toBe(true);
     expect(plots.row.hasXAxisLabels).toBe(true);
     expect(plots.column.hasXAxisLabels).toBe(false);
+  });
+
+  it("should pass the chart's internal inset through", () => {
+    expect(plots.none.internalInset.left).toBeGreaterThan(0);
+    expect(plots.none.internalInset.right).toBeGreaterThan(0);
+    expect(plots.row.internalInset).toEqual(plots.none.internalInset);
+  });
+});
+
+describe("getPlotsWithoutAxes", () => {
+  it("should report no internal inset", () => {
+    const size = { width: 600, height: 200 };
+    const plots = getPlotsWithoutAxes({ none: size, row: size, column: size });
+
+    expect(plots.none.internalInset).toEqual({ left: 0, right: 0 });
   });
 });
 

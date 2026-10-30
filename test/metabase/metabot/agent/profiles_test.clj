@@ -267,28 +267,3 @@
         (is (contains? tools "read_resource")
             "precondition: read_resource is active (would otherwise match a skill)")
         (is (not (contains? tools "load_skill")))))))
-
-(deftest terminal-tools-are-still-unconverted-test
-  (testing (str "Every tool a profile can end a turn on is still an `mu/defn` var. "
-                "`metabase.metabot.agent.core/answer-producing?` requires `:structured-output` "
-                "from them on top of the absence of `:error`, because each one catches its own "
-                "exceptions and returns `{:output \"Query 3 not found\"}` — a failure with no "
-                "`:error` for the adapter to find, which would otherwise end the turn and deliver "
-                "that sentence as the answer.\n\n"
-                "When one of these is converted it throws instead, its failure carries an `:error`, "
-                "and the extra requirement becomes wrong: a converted tool that answers without "
-                "structured output would stop being terminal. So this test is the tripwire — if it "
-                "fails because you converted one of these, delete the `:structured-output` clause "
-                "in `answer-producing?` and this test with it.")
-    (let [terminal (for [[profile-id profile] @@#'profiles/*profiles
-                         :let  [by-name (into {} (map (juxt #(:name (tools.legacy/declaration-of %))
-                                                            identity))
-                                              (:tools profile))]
-                         tool-name (:terminal-tools profile)]
-                     [profile-id tool-name (get by-name tool-name)])]
-      (is (seq terminal) "no terminal tools found — has :terminal-tools moved?")
-      (doseq [[profile-id tool-name tool-var] terminal]
-        (testing (str profile-id " / " tool-name)
-          (is (some? tool-var) "a profile lists a terminal tool it does not expose")
-          (is (tools.legacy/legacy-tool? tool-var)
-              (str tool-name " is converted now — see this test's docstring")))))))

@@ -473,8 +473,7 @@ describe("dynamic query clauses", () => {
     const { rerender } = renderHook(() =>
       useMetabaseQuery(
         defineQuery({
-          source: TEST_SCHEMA.tables.orders,
-          savedQuestionEntityId: PUBLISHED_QUESTION_ENTITY_ID,
+          source: { type: "card", entityId: PUBLISHED_QUESTION_ENTITY_ID },
         }),
         {
           filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "x")],
