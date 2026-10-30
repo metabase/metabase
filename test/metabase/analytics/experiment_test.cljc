@@ -8,17 +8,17 @@
 (defn- make-test-reporter [calls]
   (reify analytics.interface/Reporter
     (-inc! [_ metric labels amount]
-      (swap! calls conj {:op :inc! :metric metric :labels labels :amount amount}))
+      (swap! calls conj {:op :inc!, :metric metric, :labels labels, :amount amount}))
     (-dec-gauge! [_ metric labels amount]
-      (swap! calls conj {:op :dec-gauge! :metric metric :labels labels :amount amount}))
+      (swap! calls conj {:op :dec-gauge!, :metric metric, :labels labels, :amount amount}))
     (-set-gauge! [_ metric labels amount]
-      (swap! calls conj {:op :set-gauge! :metric metric :labels labels :amount amount}))
+      (swap! calls conj {:op :set-gauge!, :metric metric, :labels labels, :amount amount}))
     (-observe! [_ metric labels amount]
-      (swap! calls conj {:op :observe! :metric metric :labels labels :amount amount}))
+      (swap! calls conj {:op :observe!, :metric metric, :labels labels, :amount amount}))
     (-clear! [_ metric]
-      (swap! calls conj {:op :clear! :metric metric}))
+      (swap! calls conj {:op :clear!, :metric metric}))
     (-remove-series! [_ metric labels]
-      (swap! calls conj {:op :remove-series! :metric metric :labels labels}))))
+      (swap! calls conj {:op :remove-series!, :metric metric, :labels labels}))))
 
 (defn- do-with-test-reporter! [f]
   (let [calls             (atom [])
