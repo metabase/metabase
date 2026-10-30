@@ -101,6 +101,7 @@ const FRESH_MS = 1500;
 type Callout = {
   /** The moved pill the callout hangs under. */
   tokenKey: string;
+  title: string;
   message: string;
   undo: { tokens: Token[]; caret: number };
 };
@@ -536,9 +537,10 @@ export function ExpressionBar({
     }, FRESH_MS);
     setCallout({
       tokenKey: keyOf(moved),
+      title: t`${movedLabel} moved to the end`,
       message: relocation.hadOr
-        ? t`${movedLabel} filters the summarized result, so it can't be inside an "or". It now applies after ${rest}.`
-        : t`${movedLabel} filters the summarized result, so it can't be grouped with filters on rows. It now applies after ${rest}.`,
+        ? t`Summary filters can't sit inside an "or". It now applies after ${rest}.`
+        : t`Summary filters can't be grouped with row filters. It now applies after ${rest}.`,
       undo: { tokens, caret: caretIndex },
     });
     return true;
@@ -1074,6 +1076,7 @@ export function ExpressionBar({
             key={callout.tokenKey}
             barRef={barRef}
             tokenKey={callout.tokenKey}
+            title={callout.title}
             message={callout.message}
             onUndo={undoRelocation}
             onClose={() => setCallout(undefined)}
@@ -1213,6 +1216,7 @@ function useFlip() {
 type RelocationCalloutProps = {
   barRef: RefObject<HTMLDivElement>;
   tokenKey: string;
+  title: string;
   message: string;
   onUndo: () => void;
   onClose: () => void;
@@ -1222,6 +1226,7 @@ type RelocationCalloutProps = {
 function RelocationCallout({
   barRef,
   tokenKey,
+  title,
   message,
   onUndo,
   onClose,
@@ -1267,12 +1272,8 @@ function RelocationCallout({
       // the Undo button must not blur the input before it runs.
       onMouseDown={(event) => event.preventDefault()}
     >
-      <span className={S.calloutDot} />
-      <span>{message}</span>
-      <button type="button" className={S.calloutUndo} onClick={onUndo}>
-        {t`Undo`}
-      </button>
       <ActionIcon
+        className={S.calloutClose}
         size="xs"
         variant="subtle"
         c="text-secondary"
@@ -1281,6 +1282,20 @@ function RelocationCallout({
       >
         <Icon name="close" size={10} />
       </ActionIcon>
+      <Text size="sm" fw="bold" lh="1.3" pr="lg">
+        {title}
+      </Text>
+      <Text size="xs" c="text-secondary" lh="1.35" pr="lg">
+        {message}
+      </Text>
+      <Button
+        size="compact-sm"
+        variant="default"
+        className={S.calloutUndo}
+        onClick={onUndo}
+      >
+        {t`Undo`}
+      </Button>
     </div>
   );
 }

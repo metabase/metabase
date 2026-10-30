@@ -171,7 +171,7 @@ export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
     hasCompactReadingOn: true,
     hasImplicitAndSetting: true,
     get name() {
-      return t`Iteration 4 in place`;
+      return t`Stay put, push out on OR`;
     },
     get description() {
       return t`One bar, one kind of pill. Filters on the summary (Count ≥ 3) are typed like any other column (a "Summary" group in the chooser) and stay exactly where you put them while the expression is a plain AND chain. The instant one would end up inside an "or", it glides to the end as an AND-ed conjunct, the "or" group gets its parentheses, and a note under the moved pill says why, with Undo.`;
