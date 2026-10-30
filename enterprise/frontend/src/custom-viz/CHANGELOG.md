@@ -2,6 +2,12 @@
 
 This changelog covers the `@metabase/custom-viz` npm package — the API and CLI for building custom visualizations for Metabase. Changes to how Metabase itself hosts custom visualization plugins are covered by the [Metabase changelog](https://www.metabase.com/changelog).
 
+## Unreleased
+
+### Bug Fixes
+
+- **Security:** updated Vite in scaffolded projects from 8.0.16 to 8.1.6 to pick up upstream security fixes ([#85837](https://github.com/metabase/metabase/pull/85837)).
+
 ## 2.0.0
 
 ### ⚠ BREAKING CHANGES
