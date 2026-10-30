@@ -159,7 +159,7 @@ function LibraryPageContent() {
       defaultMoveCollectionIds={defaultMoveCollectionIds}
       emptyState={
         !libraryCollection && !isLoadingCollections ? (
-          <LibraryEmptyState />
+          <LibraryEmptyState section="semantic-layer" />
         ) : undefined
       }
       createMenu={

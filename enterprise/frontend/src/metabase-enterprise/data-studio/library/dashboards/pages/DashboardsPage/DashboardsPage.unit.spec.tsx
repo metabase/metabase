@@ -315,11 +315,15 @@ describe("DashboardsPage", () => {
     expect(screen.queryByText("No dashboards yet")).not.toBeInTheDocument();
   });
 
-  it("offers to create the semantic layer when there is no library", async () => {
+  it("offers to create the library when there is none, without pitching the semantic layer", async () => {
     setup({ hasLibrary: false });
 
     expect(
-      await screen.findByText("Create my semantic layer"),
+      await screen.findByText("Dashboards your team can trust"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Create my library")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Create my semantic layer"),
+    ).not.toBeInTheDocument();
   });
 });

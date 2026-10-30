@@ -128,7 +128,7 @@ function getEmptyState({
     return undefined;
   }
   if (libraryCollection == null) {
-    return <LibraryEmptyState />;
+    return <LibraryEmptyState section="dashboards" />;
   }
   // The collection tree leaves out the sections the user cannot read
   if (dashboardCollection == null) {
