@@ -92,20 +92,35 @@
                                                                 :full :full))) cards))))
      (t2/hydrate pulses :can_write))))
 
+(defn- without-collection-for-dashboard-subscription
+  "Set `:collection_id` and `:collection_position` in `pulse-data` to nil when it is a dashboard subscription.
+
+  `before-insert` takes `:collection_id` from the dashboard only when the request sends none. Without this step, the
+  permission check would demand write access to the request's collection. A user who has it would get the
+  subscription saved there, and `maybe-reconcile-collection-position!` would shift the pinned items in it."
+  [{:keys [dashboard_id] :as pulse-data}]
+  (cond-> pulse-data
+    dashboard_id (assoc :collection_id nil :collection_position nil)))
+
 (defn create-pulse-with-perm-checks!
-  "Create a new Pulse with permissions checks."
+  "Create a new Pulse with permissions checks.
+
+  A dashboard subscription ignores `:collection_id` and `:collection_position` in `pulse-data`. It goes in the
+  collection of its dashboard, and it has no pin position. View access to the dashboard is enough to subscribe to it:
+  https://github.com/metabase/metabase/pull/17722"
   [cards channels pulse-data]
   (perms/check-has-application-permission :subscription false)
-  (api/create-check :model/Pulse (assoc pulse-data :cards cards))
-  (t2/with-transaction [_conn]
-    ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
-    ;; check that and fix it if needed
-    (api/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
-    ;; ok, now create the Pulse
-    (let [pulse (api/check-500
-                 (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
-      (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
-      pulse)))
+  (let [pulse-data (without-collection-for-dashboard-subscription pulse-data)]
+    (api/create-check :model/Pulse (assoc pulse-data :cards cards))
+    (t2/with-transaction [_conn]
+      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
+      ;; check that and fix it if needed
+      (api/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
+      ;; ok, now create the Pulse
+      (let [pulse (api/check-500
+                   (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
+        (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
+        pulse))))
 
 (def ^:private PulseChannelType
   [:enum "email" "slack" "http"])
@@ -249,7 +264,10 @@
   "Apply `pulse-updates` to the Pulse with `id`, running the same permission checks `PUT /api/pulse/:id`
   runs: the subscription/monitoring application permission, a write check on the Pulse, read checks on
   any `:cards`, the collection-change check, and the advanced-permissions gate on adding recipients.
-  Returns the updated Pulse."
+  Returns the updated Pulse.
+
+  A dashboard subscription ignores `:collection_id` and `:collection_position` in `pulse-updates`, as it does on
+  create: it stays in the collection of its dashboard, and it has no pin position."
   [id {:keys [cards] :as pulse-updates}]
   ;; Validate `:cards` up front so a bad card ref is a clean 400, not a 500. This fn is called
   ;; directly (e.g. from the agent API), not only through the PUT endpoint whose schema already
@@ -263,7 +281,11 @@
     (perms/check-has-application-permission :monitoring)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-has-application-permission :subscription false)))
-  (let [pulse-before-update (api/write-check (models.pulse/retrieve-pulse id))]
+  (let [pulse-before-update (api/write-check (models.pulse/retrieve-pulse id))
+        ;; Drop the keys before every check below: the collection check would demand write access to the old and the
+        ;; requested collection, and `before-update` throws on any change to `:collection_id`, so `dissoc` is needed.
+        pulse-updates       (cond-> pulse-updates
+                              (:dashboard_id pulse-before-update) (dissoc :collection_id :collection_position))]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
