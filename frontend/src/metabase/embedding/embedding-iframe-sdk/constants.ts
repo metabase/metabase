@@ -1,6 +1,7 @@
 import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
+  DataAppEmbedOptions,
   ExplorationEmbedOptions,
   MetabotEmbedOptions,
   QuestionEmbedOptions,
@@ -60,6 +61,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "entityTypes",
     "customContext",
   ] satisfies (keyof QuestionEmbedOptions)[],
+  dataApp: ["path"] satisfies (keyof DataAppEmbedOptions)[],
   exploration: [
     "template",
     "questionId",
@@ -122,6 +124,7 @@ export const ALLOWED_EMBED_SETTING_KEYS = uniq([
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.base,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.dashboard,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.chart,
+  ...ALLOWED_EMBED_SETTING_KEYS_MAP.dataApp,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.exploration,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.browser,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.metabot,

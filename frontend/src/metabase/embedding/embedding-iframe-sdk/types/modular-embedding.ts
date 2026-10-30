@@ -353,6 +353,22 @@ export interface MetabaseMetabotAttributes {
 }
 
 /**
+ * Attributes for the `<metabase-data-app>` web component.
+ *
+ * Embeds a Metabase data app. Only available for authenticated (SSO) modular embeds.
+ *
+ * @remarks Pro/Enterprise
+ **/
+export interface MetabaseDataAppAttributes {
+  /**
+   * App slug, optionally followed by routes and query parameters.
+   *
+   * For example, `my-app` or `my-app/orders/details?tab=summary`.
+   **/
+  path: string;
+}
+
+/**
  * Settings for `defineMetabaseConfig()`.
  *
  * Page-level configuration shared by every web component on the page.
@@ -461,4 +477,5 @@ export interface ComponentToAttributes {
   "metabase-dashboard": MetabaseDashboardAttributes;
   "metabase-browser": MetabaseBrowserAttributes;
   "metabase-metabot": MetabaseMetabotAttributes;
+  "metabase-data-app": MetabaseDataAppAttributes;
 }

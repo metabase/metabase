@@ -91,7 +91,6 @@ const UNIMPORTABLE = new Set<string>([
   "frontend/src/metabase/app-main.ts",
   "frontend/src/metabase/app-public.ts",
   "frontend/src/metabase/app.tsx",
-  "enterprise/frontend/src/metabase-enterprise/sdk-iframe-embedding-script-plugins.ts",
 
   // Build tooling: node scripts and bundler configs, not app code.
   "enterprise/frontend/src/custom-viz/scripts/check-package-versions.ts",

@@ -340,6 +340,7 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
       })
     | BrowserEmbedOptions
     | MetabotEmbedOptions
+    | DataAppEmbedOptions
   );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
@@ -353,4 +354,5 @@ export type SdkIframeEmbedSettingKey =
   | keyof SdkIframeQuestionEmbedSettings
   | keyof ExplorationEmbedOptions
   | keyof BrowserEmbedOptions
-  | keyof MetabotEmbedOptions;
+  | keyof MetabotEmbedOptions
+  | keyof DataAppEmbedOptions;

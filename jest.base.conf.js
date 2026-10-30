@@ -75,7 +75,9 @@ const baseConfig = {
      */
     "sdk-iframe-embedding-ee-plugins":
       "<rootDir>/frontend/src/metabase/utils/noop.ts",
-    "ee-plugins": "<rootDir>/frontend/src/metabase/utils/noop.ts",
+    "^sdk-iframe-embedding-script-ee-plugins$":
+      "<rootDir>/frontend/src/metabase/utils/noop.ts",
+    "^ee-plugins$": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     "ee-overrides": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     /**
      * Docs snippets are loaded as raw text (asset/source) in rspack.
