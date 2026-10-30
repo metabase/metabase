@@ -360,6 +360,108 @@ describe("NativeQuery", () => {
         ]);
       });
 
+      it("should replace the inner tags of a snippet when its content changes", () => {
+        const oldSnippet = createMockNativeQuerySnippet({
+          name: "filter-snippet",
+          content: "category = {{filter}}",
+          template_tags: {
+            filter: createMockTemplateTag({ name: "filter", type: "text" }),
+          },
+        });
+        const oldQuery = makeQuery(
+          "",
+          {},
+          createMockMetadata({ snippets: [oldSnippet] }),
+        ).setQueryText(
+          "select id from products where {{snippet: filter-snippet}}",
+        );
+        expect(oldQuery.templateTags().map((tag) => tag.name)).toEqual([
+          "snippet: filter-snippet",
+          "filter",
+        ]);
+
+        const newSnippet = createMockNativeQuerySnippet({
+          ...oldSnippet,
+          content: "ean = {{ean}} or vendor = {{vendor}}",
+          template_tags: {
+            ean: createMockTemplateTag({ name: "ean", type: "text" }),
+            vendor: createMockTemplateTag({ name: "vendor", type: "text" }),
+          },
+        });
+        const newQuery = makeQuery(
+          oldQuery.queryText(),
+          oldQuery.templateTagsMap(),
+          createMockMetadata({ snippets: [newSnippet] }),
+        ).updateSnippet(oldSnippet, newSnippet);
+
+        expect(newQuery.queryText()).toBe(oldQuery.queryText());
+        expect(newQuery.templateTags().map((tag) => tag.name)).toEqual([
+          "snippet: filter-snippet",
+          "ean",
+          "vendor",
+        ]);
+      });
+
+      it("should keep the changed type of a snippet's inner tag", () => {
+        const snippet = createMockNativeQuerySnippet({
+          name: "filter-snippet",
+          content: "ID = {{filter}}",
+          template_tags: {
+            filter: createMockTemplateTag({ name: "filter", type: "text" }),
+          },
+        });
+        const metadata = createMockMetadata({ snippets: [snippet] });
+        const queryText =
+          "select id from products where {{snippet: filter-snippet}}";
+        const parsedQuery = makeQuery("", {}, metadata).setQueryText(queryText);
+        const filterTag = checkNotNull(parsedQuery.templateTagsMap().filter);
+
+        const queryWithNumberTag = parsedQuery
+          .setTemplateTag("filter", { ...filterTag, type: "number" })
+          .setQueryText(`${queryText} limit 1`);
+
+        expect(queryWithNumberTag.templateTagsMap().filter).toMatchObject({
+          id: filterTag.id,
+          name: "filter",
+          type: "number",
+        });
+      });
+
+      it("should link a renamed snippet tag to the snippet with the new name (metabase#15387)", () => {
+        const ordersSnippet = createMockNativeQuerySnippet({
+          id: 1,
+          name: "Table: Orders",
+          content: "ORDERS",
+        });
+        const reviewsSnippet = createMockNativeQuerySnippet({
+          id: 2,
+          name: "Table: Reviews",
+          content: "REVIEWS",
+        });
+        const metadata = createMockMetadata({
+          snippets: [ordersSnippet, reviewsSnippet],
+        });
+        const ordersQuery = makeQuery("", {}, metadata).setQueryText(
+          "select * from {{snippet: Table: Orders}} limit 1",
+        );
+        expect(ordersQuery.templateTags()).toMatchObject([
+          { name: "snippet: Table: Orders", "snippet-id": ordersSnippet.id },
+        ]);
+
+        const reviewsQuery = ordersQuery.setQueryText(
+          "select * from {{snippet: Table: Reviews}} limit 1",
+        );
+
+        expect(reviewsQuery.templateTags()).toEqual([
+          expect.objectContaining({
+            name: "snippet: Table: Reviews",
+            type: "snippet",
+            "snippet-id": reviewsSnippet.id,
+            "snippet-name": reviewsSnippet.name,
+          }),
+        ]);
+      });
+
       it("should update query text with new snippet names", () => {
         const q = makeQuery("{{ snippet: foo }}", {
           "snippet: foo": createMockTemplateTag({
