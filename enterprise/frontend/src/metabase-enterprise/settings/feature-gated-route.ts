@@ -1,7 +1,10 @@
 import type { ComponentType } from "react";
 import { createElement } from "react";
 
-import { NotFound } from "metabase/common/components/ErrorPages";
+// Not the barrel: it pulls the diagnostic modal, which closes an import cycle
+// back onto the plugin slots this module helps build.
+import { NotFound } from "metabase/common/components/ErrorPages/NotFound";
+import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
 import type { PluginRoute } from "metabase/plugins/types";
 import type { TokenFeature } from "metabase-types/api";
 
@@ -28,7 +31,7 @@ export interface FeatureGatedRoute extends PluginRoute {
 export function featureGatedRoute(
   feature: TokenFeature,
   enabled: PluginRoute,
-  disabled: PluginRoute,
+  disabled: PluginRoute = notFoundRoute,
 ): FeatureGatedRoute {
   const route = () => (hasPremiumFeature(feature) ? enabled() : disabled());
 

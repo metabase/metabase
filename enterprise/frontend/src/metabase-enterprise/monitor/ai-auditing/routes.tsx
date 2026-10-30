@@ -183,7 +183,7 @@ const gatedOnAiControls = (enabled: PluginRoute) =>
  */
 export function getAiAuditingRoutes() {
   return (
-    <Route lazy={featureGatedRoute("audit_app", outletRoute, notFoundRoute)}>
+    <Route lazy={featureGatedRoute("audit_app", outletRoute)}>
       <Route index element={redirect("usage")} />
       <Route element={<GatedMetabotAnalyticsAvailabilityLayout />}>
         <Route path="usage">
@@ -199,19 +199,11 @@ export function getAiAuditingRoutes() {
         </Route>
         <Route
           path="conversations"
-          lazy={featureGatedRoute(
-            "ai_controls",
-            conversationsPage,
-            notFoundRoute,
-          )}
+          lazy={featureGatedRoute("ai_controls", conversationsPage)}
         />
         <Route
           path="conversations/:convoId"
-          lazy={featureGatedRoute(
-            "ai_controls",
-            conversationDetailPage,
-            notFoundRoute,
-          )}
+          lazy={featureGatedRoute("ai_controls", conversationDetailPage)}
         />
       </Route>
       {getMcpAnalyticsRoutes()}

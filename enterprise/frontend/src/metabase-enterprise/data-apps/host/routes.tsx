@@ -1,4 +1,3 @@
-import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
 import { Outlet, Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
@@ -45,7 +44,7 @@ export function getRoutes() {
   return (
     <Route
       path={`${Urls.DATA_APP_URL_SEGMENT}/:slug`}
-      lazy={featureGatedRoute("data-apps", dataAppLayout, notFoundRoute)}
+      lazy={featureGatedRoute("data-apps", dataAppLayout)}
     >
       <Route index lazy={dataAppView} />
       {/* Sub-paths under /apps/:slug are owned by the iframe's router.
