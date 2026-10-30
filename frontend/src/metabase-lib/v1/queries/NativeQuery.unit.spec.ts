@@ -402,6 +402,25 @@ describe("NativeQuery", () => {
         );
         expect(q.templateTags().map((v) => v["card-id"])).toEqual([1, 2, 1]);
       });
+
+      it("should keep differently-named tags for the same card verbatim", () => {
+        const queryText = "SELECT 1 FROM {{#1-foo}} AS a, {{#1-bar}} AS b";
+        const q = makeQuery().setQueryText(queryText);
+
+        expect(q.queryText()).toBe(queryText);
+        expect(q.templateTagsMap()).toEqual({
+          "#1-foo": expect.objectContaining({
+            name: "#1-foo",
+            type: "card",
+            "card-id": 1,
+          }),
+          "#1-bar": expect.objectContaining({
+            name: "#1-bar",
+            type: "card",
+            "card-id": 1,
+          }),
+        });
+      });
     });
   });
 
