@@ -25,7 +25,8 @@
   (mt/with-model-cleanup [:model/ImpersonationQueryCache]
     (doseq [[result allow-write? reason message] [[:unparseable   false nil                  #"Unable to parse native query"]
                                                   [:invalid       false nil                  #"Must be a single select statement"]
-                                                  [:invalid       true  nil                  #"Must be a single insert, update, or delete statement"]]]
+                                                  [:invalid       true  nil                  #"Must be a single insert, update, or delete statement"]
+                                                  [:unvalidatable false "large-literal-list" #"Unable to validate this native query"]]]
       (testing (str result " allow-write? " allow-write?)
         (let [native  (mt/random-name)
               refusal (driver.sql/impersonated-query-refusal result native allow-write? reason)]
