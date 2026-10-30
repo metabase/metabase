@@ -247,8 +247,11 @@
                   :data    {}}
                  {:message (ex-message e), :data (ex-data e)}))))))
   (testing "a host list that isn't hosts and ports throws without quoting it"
-    (doseq [url ["jdbc:postgresql://alice:se/c?password=cret@db/mb"  ; `/` and then `?` in the password
+    (doseq [url ["jdbc:postgresql://alice:se/c?password=cret@db/mb"     ; `/` and then `?` in the password
                  "jdbc:postgresql://alice:se/c?user=cret@db/mb"
+                 "jdbc:postgresql://alice:se/c\nx?password=cret@db/mb"  ; a line break after the `/`
+                 "jdbc:postgresql://alice:se/c\r\nx?password=cret@db/mb"
+                 "jdbc:postgresql://alice:se/c\u2028x?password=cret@db/mb"
                  "jdbc:postgresql://db:port/mb"
                  "jdbc:postgresql://db:5432,/mb"]]
       (testing url

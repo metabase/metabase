@@ -162,7 +162,7 @@
   "Throw if the host part of `url` isn't a host list, without quoting it."
   [^String url]
   ;; An unencoded `/` or `?` in the credentials ends the host part early, before their `@`.
-  (when-let [[_ host-list] (re-matches #"[^/]*//([^/]*)(?:/.*)?" url)]
+  (when-let [[_ host-list] (re-find #"^[^/]*//([^/]*)" url)]
     (when-not (re-matches host-list-re host-list)
       (throw (ex-info (str "MB_PGVECTOR_DB_URL has a malformed host list. Percent-encode reserved characters "
                            "in its credentials, e.g. @ as %40, / as %2F and ? as %3F.")
