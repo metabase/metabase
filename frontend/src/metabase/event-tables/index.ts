@@ -14,13 +14,21 @@ export {
   getDetectedEventSchemaName,
   isEventTable,
 } from "./event-schemas";
+export { EVERY_EVENT, type PageviewRule } from "./pageviews";
+export {
+  type PathCleaningRule,
+  getDefaultPathCleaningRules,
+} from "./path-cleaning";
 export {
   type ColumnRoleKey,
   EVENT_TABLE_SETTINGS,
   type EventTableContext,
+  type EventTableSection,
   type EventTableSettings,
   getEventTableSettings,
+  getEventTableSections,
   getMissingColumnRoles,
+  isColumnRoleKey,
 } from "./event-table-settings";
 export {
   computeSettings,

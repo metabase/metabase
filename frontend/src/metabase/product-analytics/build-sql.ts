@@ -1,5 +1,5 @@
 // Type-only: the barrel's widgets need a browser, and the SQL builds without one.
-import type { ColumnRoles } from "metabase/event-tables";
+import type { ColumnRoles, PathCleaningRule } from "metabase/event-tables";
 import { getObjectKeys } from "metabase/utils/objects";
 
 import { PLANNER_COLUMN_NAMES, type ProjectedColumn } from "./columns";
@@ -58,6 +58,8 @@ export type BaseColumns = {
    */
   cohorts?: readonly BaseCohort[];
   peopleSegments?: BasePeopleSegments;
+  /** Applied here too: MBQL has no regex replace. */
+  pathCleaning?: readonly PathCleaningRule[];
 };
 
 const planAnalysis = (spec: AnalysisSpec): QueryPlan => {
@@ -114,18 +116,46 @@ const peopleSegmentsCte = ({
   ].join("\n"),
 });
 
-/** Renames the mapped table columns to the names the planners read. */
-const projectBase = (
-  baseSql: string,
-  { columns, flags, extraColumns, cohorts = [], peopleSegments }: BaseColumns,
-) => {
+/** Each rule replaces every match in the previous one's result. */
+const cleanPathSql = (sql: string, rules: readonly PathCleaningRule[]) =>
+  rules.reduce(
+    (cleaned, { pattern, replacement }) =>
+      `replaceRegexpAll(${cleaned}, ${lit(pattern)}, ${lit(replacement)})`,
+    sql,
+  );
+
+/** The SQL for a role's column, read from the base query's columns. */
+const roleSql = (
+  role: keyof ColumnRoles,
+  { columns, pathCleaning = [] }: BaseColumns,
+): string => {
+  const source = columns[role];
+  if (source === null) {
+    return MISSING_COLUMN_SQL[role];
+  }
+  return role === "url_path"
+    ? cleanPathSql(ident(source), pathCleaning)
+    : ident(source);
+};
+
+/**
+ * Renames the mapped table columns to the names the planners read, with the
+ * URL path cleaned.
+ */
+const projectBase = (baseSql: string, baseColumns: BaseColumns) => {
+  const {
+    columns,
+    flags,
+    extraColumns,
+    cohorts = [],
+    peopleSegments,
+  } = baseColumns;
   const segmentFlags = peopleSegments?.flags ?? [];
   const projected = [
-    ...getObjectKeys(PLANNER_COLUMN_NAMES).map((role) => {
-      const source = columns[role];
-      const sql = source !== null ? ident(source) : MISSING_COLUMN_SQL[role];
-      return `${sql} AS ${PLANNER_COLUMN_NAMES[role]}`;
-    }),
+    ...getObjectKeys(PLANNER_COLUMN_NAMES).map(
+      (role) =>
+        `${roleSql(role, baseColumns)} AS ${PLANNER_COLUMN_NAMES[role]}`,
+    ),
     ...extraColumns.map(({ as, alias }) => `${ident(alias)} AS ${as}`),
     ...flags.map(flagSql),
     // People without a users table row aren't in any segment.

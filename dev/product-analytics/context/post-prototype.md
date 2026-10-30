@@ -51,6 +51,7 @@ An event table is one table, but some sources split their events across several:
 
 Outside Metabase, people usually model these into one events table first: a view or dbt model that unions `tracks` and `pages` (pageviews as an event named for the page), stitches `anonymous_id` to `user_id` through `identifies`, and for GA4 reads the wildcard. Here that means a view in the warehouse, or a model once the table picker accepts models. Recognizing a source should then mean recognizing the modelled table, and not offering the raw pieces.
 
+## Cleaning URL paths
 
 Paths that name pageviews by their URL need the URLs cleaned first. Without cleaning, real data turns into a long tail of nodes that each appear once:
 
@@ -102,13 +103,30 @@ The rules chain as nested `regexReplace` calls, which is fine here, because ever
 
 So it can be a driver feature, the way `:regex` gates `regexextract`.
 
-**UX.** Users shouldn't edit the expression. They'd see an ordered list of rules: pattern, replacement, and a preview against sample paths. The list compiles to the expression, with good defaults for the generic rules.
+**UX.** Users shouldn't edit the expression. They'd see an ordered list of rules: pattern, replacement and a description. The list compiles to the expression, with good defaults for the generic rules.
 
 **Where it lives.** It's per table, not per analysis, so it belongs with the column roles in table metadata ([event-table-settings.plan.md](event-table-settings.plan.md)). Meanwhile, a model with a cleaned-path custom column works today with no new UX, once the table picker accepts models.
 
+The prototype has the list as the `path_cleaning` table setting, and applies it in its ClickHouse SQL with `replaceRegexpAll`, outside MBQL. It checks only that each pattern isn't empty.
+
+### Regex dialects
+
+Every database has its own regular expressions. Metabase passes `regexextract`'s pattern to the database as written, and rules would work the same way, so a rule is written in its database's dialect. They differ in two ways.
+
+**Patterns.** RE2 (ClickHouse, BigQuery) has no lookarounds or backreferences. Postgres, Java (Spark, Databricks, H2) and ICU (MySQL 8) have both, and Snowflake's are POSIX extended. Most simple rules, like the defaults, mean the same in all of them. A pattern can't be translated from one dialect to another.
+
+**Replacements.** A group in a replacement is `\1` in ClickHouse, BigQuery, Snowflake and Postgres, and `$1` in Java and MySQL. That one can be translated: rules could be stored in one syntax, and each driver rewrites it.
+
+These are from memory, so check each driver before relying on them. What follows:
+
+- **The default rules are ClickHouse's.** `getDefaultPathCleaningRules` in `event-tables/path-cleaning.ts` is written for ClickHouse: the trailing slash rule's `\1` is `$1` in Java and MySQL, and the number and UUID rules end in `\b`, which isn't a word boundary in every dialect (Postgres's is `\y`). Each database needs its own defaults, or the replacement translated per driver as above. Don't apply them as they are elsewhere.
+
+- **Validation belongs to the database.** The browser's regular expressions are a third dialect, so a check there is wrong for some databases. Saving a rule could instead run it once on the warehouse against a literal, which only fails when the pattern does.
+- **A preview, if there is one, runs on the warehouse.** PostHog has a tester in the browser that copies RE2's syntax, which works because they only have ClickHouse. Ours would run the rules against a sample of the table's real paths, so it's right for every dialect. Until then, general regex testers like regex101 cover most of it.
+
 ## Recognizing pageviews in other schemas
 
-`events/pageviews.ts` only recognizes Umami and Track (`event_type = 1`). Elsewhere a pageview is an event name, so detecting it means finding a known value in the event name column:
+Sync detects a pageview rule with each event schema (see "Detection" in [event-table-settings.plan.md](event-table-settings.plan.md#detection)). Where the page is, and what's still missing:
 
 | Source | Pageview | Page |
 |---|---|---|
@@ -120,9 +138,9 @@ So it can be a driver feature, the way `:regex` gates `regexextract`.
 | Mixpanel export | `event = '$mp_web_page_view'` | `$current_url` |
 | Segment, RudderStack | a separate `pages` table | `path` |
 
-- **Event name values:** checking them needs the column's field values, which aren't in the table metadata the settings see today.
+- **Page as a property:** GA4, PostHog, Amplitude and Mixpanel have a pageview rule but no URL path column, so the rule does nothing until the URL path role can be an expression.
+- **Plausible** isn't a detected schema yet.
 - **Segment:** the separate `pages` table needs a union with `tracks` before any of this applies.
-- **Whole schemas:** this belongs with fingerprinting whole schemas in [analysis-settings.plan.md](analysis-settings.plan.md), which assigns every role at once.
 
 ## Which events insights compare people by
 

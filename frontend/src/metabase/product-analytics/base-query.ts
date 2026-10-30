@@ -1,7 +1,11 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { ColumnRoles } from "metabase/event-tables";
+import type {
+  ColumnRoles,
+  PageviewRule,
+  PathCleaningRule,
+} from "metabase/event-tables";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
@@ -23,6 +27,7 @@ import {
 import { findColumn, findJoinedColumn } from "./find-column";
 import type { AllocatedPeopleSegment } from "./segments/types";
 import { ALL_HISTORY_DAYS, IN_RANGE_FLAG } from "./sql/analyses/lookback";
+import { PAGEVIEW_FLAG } from "./sql/analyses/path-nodes";
 
 const STAGE = -1;
 
@@ -51,6 +56,10 @@ const getEventFilter = (
 export type BaseQueryInput = {
   dateRange: string;
   columns: ColumnRoles;
+  /** A rule on a column adds `PAGEVIEW_FLAG`. */
+  pageviews: PageviewRule | null;
+  /** Applied to the compiled SQL instead; see `BaseColumns`. */
+  pathCleaning: readonly PathCleaningRule[];
   events: readonly AllocatedEvent[];
   extraColumns: readonly ExtraColumn[];
   /** Needed when an extra column comes from the users table. */
@@ -75,7 +84,10 @@ export type BuiltBaseQuery = {
   query: Lib.Query;
   databaseId: number;
   extraColumns: ProjectedColumn[];
-  /** The 0/1 columns: one per event, and `IN_RANGE_FLAG` with a lookback. */
+  /**
+   * The 0/1 columns: one per event, `IN_RANGE_FLAG` with a lookback, and
+   * `PAGEVIEW_FLAG` with a pageview rule on a column.
+   */
   flags: string[];
 };
 
@@ -242,6 +254,7 @@ export const buildBaseQuery = (
   {
     dateRange,
     columns,
+    pageviews,
     events,
     extraColumns,
     usersTable,
@@ -292,6 +305,15 @@ export const buildBaseQuery = (
     ));
   }
 
+  const hasPageviewFlag = pageviews?.type === "column_value";
+  if (hasPageviewFlag) {
+    const isPageview = Lib.expressionClause("=", [
+      findColumn(query, pageviews.column),
+      pageviews.value,
+    ]);
+    query = Lib.expression(query, STAGE, PAGEVIEW_FLAG, asFlag(isPageview));
+  }
+
   for (const { flag, event } of events) {
     query = Lib.expression(
       query,
@@ -310,6 +332,7 @@ export const buildBaseQuery = (
   const flags = [
     ...events.map(({ flag }) => flag),
     ...(hasLookback ? [IN_RANGE_FLAG] : []),
+    ...(hasPageviewFlag ? [PAGEVIEW_FLAG] : []),
   ];
   const selected = [
     ...eventColumns.map((name) => findColumn(query, name)),

@@ -2,6 +2,7 @@
   "Classifier that recognizes event tables by their columns, against the schemas of well-known event trackers and
   warehouse exports, and detects which column plays each product analytics role."
   (:require
+   [medley.core :as m]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -14,25 +15,33 @@
   GA4 matches with no timestamp, for the user to fill in. Roles that aren't columns at all, like PostHog's session in
   `properties`, aren't listed.
 
+  `:pageviews` is the column and value that mark a pageview, which paths name by their URL path. It's detected
+  even for schemas without a URL path column, so it applies once someone picks one.
+
   The third-party schemas were written from memory of each vendor's docs and haven't been checked against real
   exports; see \"Event schemas\" in `dev/product-analytics/context/post-prototype.md`."
   [{:schema    "metabase-track"
     :roles     {:timestamp "created_at", :person "person_id", :session "session_id", :event_name "event_name"
                 :url_path  "url_path"}
-    :required  #{:timestamp :person :session :event_name :url_path}}
+    :required  #{:timestamp :person :session :event_name :url_path}
+    ;; Umami's event types: 1 is a pageview, 2 a custom event
+    :pageviews {:column "event_type", :value 1}}
    {:schema    "snowplow"
     :roles     {:timestamp "derived_tstamp", :person "domain_userid", :session "domain_sessionid"
                 :event_name "event_name", :url_path "page_urlpath"}
     :required  #{:timestamp :person :event_name}
-    :signature ["collector_tstamp"]}
+    :signature ["collector_tstamp"]
+    :pageviews {:column "event_name", :value "page_view"}}
    {:schema    "ga4"
     :roles     {:timestamp "event_timestamp", :person "user_pseudo_id", :event_name "event_name"}
     :required  #{:timestamp :person :event_name}
-    :signature ["event_params"]}
+    :signature ["event_params"]
+    :pageviews {:column "event_name", :value "page_view"}}
    {:schema    "amplitude"
     :roles     {:timestamp "event_time", :person "user_id", :session "session_id", :event_name "event_type"}
     :required  #{:timestamp :person :event_name}
-    :signature ["amplitude_id"]}
+    :signature ["amplitude_id"]
+    :pageviews {:column "event_type", :value "[Amplitude] Page Viewed"}}
    {:schema    "segment"
     :roles     {:timestamp "timestamp", :person "user_id", :event_name "event", :url_path "context_page_path"}
     :required  #{:timestamp :person :event_name}
@@ -40,37 +49,52 @@
    {:schema    "posthog"
     :roles     {:timestamp "timestamp", :person "distinct_id", :event_name "event"}
     :required  #{:timestamp :person :event_name}
-    :signature ["properties"]}
+    :signature ["properties"]
+    :pageviews {:column "event", :value "$pageview"}}
    {:schema    "mixpanel"
     :roles     {:timestamp "time", :person "distinct_id", :event_name "event"}
-    :required  #{:timestamp :person :event_name}}])
+    :required  #{:timestamp :person :event_name}
+    :pageviews {:column "event", :value "$mp_web_page_view"}}])
+
+(defn- field-type-isa? [field type]
+  (isa? (or (:effective_type field) (:base_type field)) type))
 
 (defn- temporal? [field]
-  (isa? (or (:effective_type field) (:base_type field)) :type/Temporal))
+  (field-type-isa? field :type/Temporal))
 
 (def ^:private role-accepts
   "What a column needs, beyond its name, to play a role."
   {:timestamp temporal?})
 
+(defn- detect-pageviews
+  "The pageview rule for `pageviews`, keyed like the frontend's `PageviewRule`, when its column exists with a type
+  that can hold its value."
+  [fields-by-name {:keys [column value]}]
+  (when-let [field (fields-by-name column)]
+    (when (field-type-isa? field (if (number? value) :type/Number :type/Text))
+      {"type" "column_value", "column" (:name field), "value" value})))
+
 (defn- match-schema
   "The settings `schema` detects for a table with `fields-by-name`, keyed by lower-case name, or nil."
-  [fields-by-name {:keys [roles required signature] :as schema}]
+  [fields-by-name {:keys [roles required signature pageviews] :as schema}]
   (let [named-field (fn [role] (fields-by-name (get roles role)))]
     (when (and (every? named-field required)
                (every? fields-by-name signature))
       {"schema"   (:schema schema)
-       "settings" (into {}
-                        (keep (fn [role]
-                                (when-let [field (named-field role)]
-                                  (when ((role-accepts role any?) field)
-                                    [(str "columns." (name role)) (:name field)]))))
-                        (keys roles))})))
+       "settings" (cond-> (into {}
+                                (keep (fn [role]
+                                        (when-let [field (named-field role)]
+                                          (when ((role-accepts role any?) field)
+                                            [(str "columns." (name role)) (:name field)]))))
+                                (keys roles))
+                    pageviews (m/assoc-some "pageviews" (detect-pageviews fields-by-name pageviews)))})))
 
 (mu/defn detect-event-schema :- [:maybe [:map
                                          ["schema" :string]
-                                         ["settings" [:map-of :string :string]]]]
-  "The first known event schema `fields` match: its name, and the column it detects for each role it can, keyed like
-  the frontend's analysis settings (`\"columns.person\"`). Nil when no known schema matches."
+                                         ["settings" [:map-of :string :any]]]]
+  "The first known event schema `fields` match: its name, the column it detects for each role it can, keyed like the
+  frontend's analysis settings (`\"columns.person\"`), and its `\"pageviews\"` rule. Nil when no known schema
+  matches."
   [fields :- [:sequential [:map [:name :string]]]]
   (let [fields-by-name (u/index-by (comp u/lower-case-en :name) fields)]
     (some #(match-schema fields-by-name %) event-schemas)))

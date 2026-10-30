@@ -20,7 +20,6 @@ import { commonSettings, hasSessionColumn } from "./common-settings";
 import {
   getCommonSpec,
   getEventDefinitionProps,
-  getPageviewSpec,
   incomplete,
   isBoolean,
   isEventDefinitionList,
@@ -52,14 +51,18 @@ const getVisitSpec = (settings: PathsSettings): PathsVisit =>
     ? { kind: "session" }
     : { kind: "inactivity", gap: settings["paths.inactivity"] };
 
-/** A table without event names can still name each step by its page. */
+/** Pageviews are named by their URL path, and other events by their name. */
 const getStepNames = (
   settings: PathsSettings,
 ): PathsSpec["stepNames"] | undefined => {
-  if (settings["columns.event_name"] !== null) {
-    return "event";
+  switch (settings.pageviews?.type) {
+    case "every_event":
+      return "url_path";
+    case "column_value":
+      return "url_path_on_pageviews";
+    case undefined:
+      return settings["columns.event_name"] !== null ? "event_name" : undefined;
   }
-  return settings["columns.url_path"] !== null ? "url_path" : undefined;
 };
 
 const getMinVolumeTitle = (grain: Grain): string => {
@@ -254,7 +257,6 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
         minVolume: settings["paths.min_volume"],
         stepNames,
       },
-      ...getPageviewSpec(settings, events),
       output: {},
     });
   },

@@ -76,6 +76,22 @@ describe("buildSql", () => {
     expect(built.sql).toContain("`Users__plan` AS breakout_property");
   });
 
+  it("cleans the URL path with each rule in order", () => {
+    const built = buildSql(getFunnelSpec(), "SELECT 1", {
+      columns: { ...BASE_COLUMNS, url_path: "path" },
+      flags: ["ev_1", "ev_2", "ev_3"],
+      extraColumns: [],
+      pathCleaning: [
+        { pattern: "[?#].*$", replacement: "" },
+        { pattern: "/[0-9]+\\b", replacement: "/:id" },
+      ],
+    });
+
+    expect(built.sql).toContain(
+      "replaceRegexpAll(replaceRegexpAll(`path`, '[?#].*$', ''), '/[0-9]+\\\\b', '/:id') AS url_path",
+    );
+  });
+
   describe("cohorts", () => {
     const starting = createMockEventDefinition({ name: "Signed up" });
     const returning = createMockEventDefinition({ name: "Came back" });

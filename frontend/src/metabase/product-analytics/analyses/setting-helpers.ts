@@ -1,4 +1,3 @@
-import type { EventFlags } from "../events/types";
 import type {
   ActorGrain,
   ActorPredicate,
@@ -120,15 +119,3 @@ export const getCommonSpec = (
   bucket: { granularity: settings.granularity },
   scope: EMPTY_SCOPE,
 });
-
-/**
- * The pageview event, when there's a URL path column to name pageviews by.
- * Without one, pageviews are named like any other event.
- */
-export const getPageviewSpec = (
-  settings: CommonSettings,
-  events: EventFlags,
-): Pick<AnalysisSpec, "pageview"> =>
-  settings.pageviews !== null && settings["columns.url_path"] !== null
-    ? { pageview: { flag: events.flagFor(settings.pageviews) } }
-    : {};

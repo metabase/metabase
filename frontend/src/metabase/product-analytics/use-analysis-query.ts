@@ -146,6 +146,7 @@ const useCompiledBase = ({
               return column !== null ? [{ column, ids }] : [];
             }),
             peopleSegments: people.compiled,
+            pathCleaning: base.pathCleaning,
           },
         }
       : undefined;

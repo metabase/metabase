@@ -1,6 +1,9 @@
 import {
+  EVERY_EVENT,
+  type PageviewRule,
   type StoredSettings,
   computeSettings,
+  getDefaultPathCleaningRules,
   getSettingWidgets,
 } from "metabase/event-tables";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -798,10 +801,35 @@ describe("analysis settings", () => {
   });
 
   describe("pageviews", () => {
-    const PAGEVIEW = createMockEventDefinition({ name: "Pageview" });
+    const PAGEVIEW_RULE: PageviewRule = {
+      type: "column_value",
+      column: "event_type",
+      value: 1,
+    };
+
+    const PAGES_TABLE = createMockTable({
+      ...EVENT_TABLE,
+      fields: [
+        ...(EVENT_TABLE.fields ?? []),
+        createMockField({ id: 11, name: "path", base_type: "type/Text" }),
+        createMockField({
+          id: 12,
+          name: "event_type",
+          base_type: "type/Integer",
+        }),
+      ],
+      detected_event_settings: {
+        schema: "metabase-track",
+        settings: {
+          ...EVENT_TABLE.detected_event_settings?.settings,
+          "columns.url_path": "path",
+          pageviews: PAGEVIEW_RULE,
+        },
+      },
+    });
 
     const getPathsSql = (stored: StoredSettings) => {
-      const { specResult, allocation } = setup({
+      const { computed, specResult, allocation } = setup({
         kind: "paths",
         stored: { ...REQUIRED_EVENTS.paths, ...stored },
       });
@@ -811,50 +839,92 @@ describe("analysis settings", () => {
         flags: allocation.events.map(({ flag }) => flag),
         extraColumns: [],
       });
-      return { spec, sql: built.sql };
+      return { computed, spec, sql: built.sql };
     };
 
-    it("defaults to the pageviews detected in the table", () => {
-      const config = getAnalysisConfig("paths");
-      const computed = computeSettings(
-        config.settings,
-        {
-          table: EVENT_TABLE,
-          usersTable: undefined,
-          detectedPageviews: PAGEVIEW,
-        },
-        {},
-      );
+    it("defaults to the table's pageview rule", () => {
+      const { computed } = setup({ kind: "paths", table: PAGES_TABLE });
 
-      expect(computed.pageviews).toEqual(PAGEVIEW);
+      expect(computed.pageviews).toEqual(PAGEVIEW_RULE);
     });
 
-    it("defaults to none when the table has no pageviews we recognize", () => {
-      const { computed } = setup({ kind: "paths", table: EVENT_TABLE });
+    it("defaults to none when the table has no pageview rule", () => {
+      const { computed, isHidden } = setup({
+        kind: "paths",
+        table: EVENT_TABLE,
+        stored: { "columns.url_path": "plan" },
+      });
 
       expect(computed.pageviews).toBeNull();
+      expect(isHidden("pageviews")).toBe(false);
     });
 
-    it("names pageviews by their URL path", () => {
+    it("names pageviews by their URL path, and other events by their name", () => {
       const { spec, sql } = getPathsSql({
-        pageviews: PAGEVIEW,
+        pageviews: PAGEVIEW_RULE,
         "columns.url_path": "path",
       });
 
-      expect(spec.pageview).toEqual({ flag: "ev_2" });
+      expect(spec.paths?.stepNames).toBe("url_path_on_pageviews");
       expect(sql).toContain(
-        "if(ev_2, url_path, ifNull(event_name, '')) AS step_name",
+        "if(is_pageview = 1, ifNull(url_path, ''), ifNull(event_name, '')) AS step_name",
       );
     });
 
-    it("names every step by its URL path without an event name column", () => {
-      const { spec, sql } = getPathsSql({
+    it("makes every event a pageview without an event name column", () => {
+      const { computed, spec, sql } = getPathsSql({
         "columns.event_name": null,
         "columns.url_path": "path",
       });
 
+      expect(computed.pageviews).toEqual(EVERY_EVENT);
       expect(spec.paths?.stepNames).toBe("url_path");
       expect(sql).toContain("ifNull(url_path, '') AS step_name");
+    });
+
+    it("has no pageviews without a URL path column", () => {
+      const { computed, spec, sql } = getPathsSql({ pageviews: PAGEVIEW_RULE });
+
+      expect(computed.pageviews).toBeNull();
+      expect(spec.paths?.stepNames).toBe("event_name");
+      expect(sql).toContain("ifNull(event_name, '') AS step_name");
+    });
+
+    it("leaves out the table's rule when the analysis has no event name column", () => {
+      const { computed, isHidden } = setup({
+        kind: "paths",
+        table: PAGES_TABLE,
+        stored: { "columns.event_name": null },
+      });
+
+      expect(computed.pageviews).toEqual(EVERY_EVENT);
+      expect(isHidden("pageviews")).toBe(true);
+    });
+
+    it("rejects a rule whose value doesn't fit its column", () => {
+      const { computed } = setup({
+        kind: "paths",
+        table: PAGES_TABLE,
+        stored: {
+          pageviews: { type: "column_value", column: "event_type", value: "1" },
+        },
+      });
+
+      expect(computed.pageviews).toEqual(PAGEVIEW_RULE);
+    });
+
+    it("keeps a rule on a numeric column with a semantic type", () => {
+      const table = createMockTable({
+        ...PAGES_TABLE,
+        fields: PAGES_TABLE.fields?.map((field) =>
+          field.name === "event_type"
+            ? { ...field, semantic_type: "type/FK" }
+            : field,
+        ),
+      });
+      const { computed } = setup({ kind: "paths", table });
+
+      expect(computed.pageviews).toEqual(PAGEVIEW_RULE);
     });
 
     it("asks for a column to name steps by when there's neither", () => {
@@ -868,13 +938,34 @@ describe("analysis settings", () => {
         missing: [expect.objectContaining({ isTableSetting: true })],
       });
     });
+  });
 
-    it("names pageviews like other events without a URL path column", () => {
-      const { spec, sql } = getPathsSql({ pageviews: PAGEVIEW });
+  describe("path cleaning", () => {
+    const CUSTOM_RULES = [{ pattern: "/v[0-9]+", replacement: "" }];
 
-      expect(spec.pageview).toBeUndefined();
-      expect(sql).toContain("ifNull(event_name, '') AS step_name");
-      expect(sql).not.toContain("url_path, ifNull");
+    it("uses the table's rules", () => {
+      const { computed } = setup({
+        kind: "paths",
+        table: {
+          ...EVENT_TABLE,
+          event_settings: {
+            "columns.url_path": "plan",
+            path_cleaning: CUSTOM_RULES,
+          },
+        },
+      });
+
+      expect(computed.path_cleaning).toEqual(CUSTOM_RULES);
+    });
+
+    it("uses the default rules for a URL path only the analysis picks", () => {
+      const { computed } = setup({
+        kind: "paths",
+        table: EVENT_TABLE,
+        stored: { "columns.url_path": "plan" },
+      });
+
+      expect(computed.path_cleaning).toEqual(getDefaultPathCleaningRules());
     });
   });
 

@@ -41,8 +41,6 @@ export type AnalysisContext = {
   table: Table | undefined;
   /** Undefined until the event table and the users table are both loaded. */
   usersTable: UsersTable | undefined;
-  /** The table's pageviews, when its schema is one we recognize. */
-  detectedPageviews?: EventDefinition;
   /**
    * Colors picked in the display panel, so setup widgets can show the same
    * colors as the chart. Not settings: they don't change the query.
@@ -51,8 +49,6 @@ export type AnalysisContext = {
 };
 
 export type CommonSettings = EventTableSettings & {
-  /** Paths name these events by their page, not their event name. */
-  pageviews: EventDefinition | null;
   counting: Grain;
   /** A serialized date filter, e.g. "past90days". See `date-range.ts`. */
   date_range: string;

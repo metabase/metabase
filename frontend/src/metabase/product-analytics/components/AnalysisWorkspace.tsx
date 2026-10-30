@@ -477,7 +477,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
         <EventTableSettingsModal
           table={table}
           widgets={widgets.filter(
-            (widget) => widget.group === "columns" && !widget.hidden,
+            (widget) => widget.group !== undefined && !widget.hidden,
           )}
           stored={stored}
           opened={isTableSettingsOpen}

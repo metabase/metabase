@@ -4,7 +4,6 @@ import type { PathNodeKind, PathsColumns } from "metabase/viz-core";
 
 import type { AnalysisSpec } from "../../spec/types";
 import { lit } from "../compile/dialect";
-import { flagSql } from "../compile/flag";
 
 /** The columns the paths chart reads beside source, target and weight. */
 export const PATHS_COLUMNS: PathsColumns = {
@@ -13,15 +12,23 @@ export const PATHS_COLUMNS: PathsColumns = {
   targetKind: "target_kind",
 };
 
-/** What a step is called: a pageview's URL path, or any other event's name. */
-export const stepNameSql = ({ pageview, paths }: AnalysisSpec): string => {
-  if (paths?.stepNames === "url_path") {
-    return "ifNull(url_path, '')";
+/** 1 on the events the table's pageview rule matches, 0 on the rest. */
+export const PAGEVIEW_FLAG = "is_pageview";
+
+const URL_PATH_SQL = "ifNull(url_path, '')";
+const EVENT_NAME_SQL = "ifNull(event_name, '')";
+
+/** What a step is called. See `PathsSpec["stepNames"]`. */
+export const stepNameSql = ({ paths }: AnalysisSpec): string => {
+  switch (paths?.stepNames) {
+    case "url_path":
+      return URL_PATH_SQL;
+    case "url_path_on_pageviews":
+      return `if(${PAGEVIEW_FLAG} = 1, ${URL_PATH_SQL}, ${EVENT_NAME_SQL})`;
+    case "event_name":
+    case undefined:
+      return EVENT_NAME_SQL;
   }
-  const eventName = "ifNull(event_name, '')";
-  return pageview !== undefined
-    ? `if(${flagSql(pageview.flag)}, url_path, ${eventName})`
-    : eventName;
 };
 
 export const kindSql = (kind: PathNodeKind): string => lit(kind);

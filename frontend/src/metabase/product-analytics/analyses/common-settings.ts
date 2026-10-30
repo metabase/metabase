@@ -13,7 +13,6 @@ import {
 import { SegmentedControl } from "metabase/ui";
 
 import { AddFilterButton } from "../components/AddFilterButton";
-import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { BreakoutMenu } from "../components/toolbar/BreakoutMenu";
 import { CountingMenu } from "../components/toolbar/CountingMenu";
 import { DateRangeButton } from "../components/toolbar/DateRangeButton";
@@ -24,7 +23,7 @@ import type { ActorGrain, Grain, Granularity } from "../spec/types";
 
 import { BREAKOUT_VIEWS, isBreakout } from "./breakout";
 import { getUserPropertyOptions, isUserPropertyColumn } from "./column-roles";
-import { isOneOf, isOptionalEventDefinition } from "./setting-helpers";
+import { isOneOf } from "./setting-helpers";
 import type {
   AnalysisContext,
   AnalysisSettingDefinitions,
@@ -40,15 +39,56 @@ export const getColumnRoles = (settings: EventTableSettings): ColumnRoles => ({
 });
 
 /**
+ * The table's value for a setting. When the analysis overrides a setting it
+ * depends on, and it no longer fits, the setting's own default.
+ */
+const getTableDefault = <K extends keyof EventTableSettings>(
+  key: K,
+  context: AnalysisContext,
+  settings: Partial<CommonSettings>,
+): EventTableSettings[K] => {
+  const definition = EVENT_TABLE_SETTINGS[key];
+  const tableValue = getEventTableSettings(context.table)[key];
+  return definition.isValid(tableValue, context, settings)
+    ? tableValue
+    : definition.getDefault(context, settings);
+};
+
+/**
  * A table setting, defaulting to the table's value: an analysis only keeps
  * what it overrides, so it follows later changes to the table.
  */
-const tableSetting = (
+const columnRoleSetting = (
   key: ColumnRoleKey,
 ): SettingDefinition<AnalysisContext, CommonSettings, ColumnRoleKey> => ({
   ...EVENT_TABLE_SETTINGS[key],
-  getDefault: (context) => getEventTableSettings(context.table)[key],
+  getDefault: (context, settings) => getTableDefault(key, context, settings),
 });
+
+const pageviewsSetting: SettingDefinition<
+  AnalysisContext,
+  CommonSettings,
+  "pageviews"
+> = {
+  ...EVENT_TABLE_SETTINGS.pageviews,
+  getDefault: (context, settings) =>
+    getTableDefault("pageviews", context, settings),
+};
+
+const pathCleaningSetting: SettingDefinition<
+  AnalysisContext,
+  CommonSettings,
+  "path_cleaning"
+> = {
+  ...EVENT_TABLE_SETTINGS.path_cleaning,
+  // Without a URL path, the table has no rules because it has nothing to
+  // clean, not because someone chose none, so a URL path picked here gets
+  // the default rules.
+  getDefault: (context, settings) =>
+    getEventTableSettings(context.table)["columns.url_path"] !== null
+      ? getTableDefault("path_cleaning", context, settings)
+      : EVENT_TABLE_SETTINGS.path_cleaning.getDefault(context, settings),
+};
 
 const COLUMN_FOR_GRAIN: Record<ActorGrain, ColumnRoleKey> = {
   person: "columns.person",
@@ -178,22 +218,11 @@ export const commonSettings = ({
       usersTable: context.usersTable,
     }),
   }),
-  "columns.timestamp": tableSetting("columns.timestamp"),
-  "columns.person": tableSetting("columns.person"),
-  "columns.event_name": tableSetting("columns.event_name"),
-  "columns.session": tableSetting("columns.session"),
-  "columns.url_path": tableSetting("columns.url_path"),
-  pageviews: withWidgetProps({
-    getTitle: () => t`Pageviews`,
-    getHint: () =>
-      t`Paths show each pageview as its URL path, rather than as one event.`,
-    group: "columns",
-    getSection: () => "advanced",
-    widget: EventDefinitionWidget,
-    getDefault: (context) => context.detectedPageviews ?? null,
-    isValid: (value) => isOptionalEventDefinition(value),
-    getProps: (context) => ({ table: context.table, emptyLabel: t`None` }),
-    // temporarily hidden until we have better UX for this
-    getHidden: () => true,
-  }),
+  "columns.timestamp": columnRoleSetting("columns.timestamp"),
+  "columns.person": columnRoleSetting("columns.person"),
+  "columns.event_name": columnRoleSetting("columns.event_name"),
+  "columns.session": columnRoleSetting("columns.session"),
+  "columns.url_path": columnRoleSetting("columns.url_path"),
+  pageviews: pageviewsSetting,
+  path_cleaning: pathCleaningSetting,
 });

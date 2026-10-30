@@ -665,6 +665,8 @@ function makePerson(i: number) {
   return {
     i,
     rng,
+    // Its own stream, so drawing a URL's details doesn't change anything else.
+    urlRng: rngFrom(`${SEED}:url:${i}`),
     distinctId: `user_${i}`,
     traits: {
       email: `${firstName}.${lastName}${i}@${domain}`.toLowerCase(),
@@ -691,6 +693,20 @@ function makePerson(i: number) {
 
 type Person = ReturnType<typeof makePerson>;
 
+const REPORTS_PER_PERSON = 3;
+
+/**
+ * A report's page names the report, as real apps' URLs carry ids, so paths
+ * need cleaning: each person has a few reports of their own.
+ */
+function urlPathFor(person: Person, path: string): string {
+  if (path !== "/app/reports") {
+    return path;
+  }
+  const report = Math.floor(person.urlRng() * REPORTS_PER_PERSON);
+  return `${path}/${person.i * REPORTS_PER_PERSON + report + 1}`;
+}
+
 function emit(
   buffer: EventRow[],
   person: Person,
@@ -713,7 +729,7 @@ function emit(
     visit_id: sessionId,
     event_type: spec.type,
     event_name: spec.name,
-    url_path: spec.path,
+    url_path: urlPathFor(person, spec.path),
     hostname: HOSTNAME,
     referrer_domain: spec.sessionStart
       ? pick(person.rng, [
