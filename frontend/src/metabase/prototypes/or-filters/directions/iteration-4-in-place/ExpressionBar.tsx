@@ -394,11 +394,14 @@ export function ExpressionBar({
   };
 
   // Arrow keys keep the popover as it is, so a closed one stays closed.
+  // Between two pills joined by a hidden AND there is one caret place, centered
+  // in the gap before the AND: the place after it is folded onto it, so the
+  // caret lands in the same spot whichever side it comes from.
   const moveCaret = (index: number, { open = true } = {}) => {
     resetDraft();
     setCallout(undefined);
     setSelected(undefined);
-    setCaret(index);
+    setCaret(implicitAnds && isAndToken(tokens[index - 1]) ? index - 1 : index);
     setIsOpen(open);
     if (!open) {
       skipOpenOnFocusRef.current = true;
@@ -962,6 +965,8 @@ export function ExpressionBar({
                 index={caretIndex}
                 isSpaced={implicitAnds}
                 isAtEnd={false}
+                // It stands in for the gap it replaces, at the gap's width, so nothing moves.
+                isOverHiddenAnd={hidesAnds && isAndToken(token)}
               >
                 {caretView}
               </CaretSlot>
@@ -1323,12 +1328,15 @@ function CaretSlot({
   index,
   isSpaced,
   isAtEnd,
+  isOverHiddenAnd = false,
   children,
 }: {
   index: number;
   /** Implicit ANDs: the open pill needs the room a pill beside a pill has. */
   isSpaced: boolean;
   isAtEnd: boolean;
+  /** The slot replaces the wide gap of a hidden AND, and keeps its width. */
+  isOverHiddenAnd?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -1336,6 +1344,7 @@ function CaretSlot({
       className={cx(S.caretSlot, {
         [S.caretSlotSpaced]: isSpaced,
         [S.caretSlotMid]: isSpaced && !isAtEnd,
+        [S.caretSlotHiddenAnd]: isOverHiddenAnd,
       })}
       {...{ [SLOT_ATTR]: index }}
     >

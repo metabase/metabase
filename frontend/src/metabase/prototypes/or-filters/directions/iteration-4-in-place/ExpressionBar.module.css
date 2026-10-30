@@ -540,3 +540,9 @@
 .typingCaretHidden .input {
   caret-color: transparent;
 }
+
+/* The idle caret standing where a hidden AND's gap was keeps that gap's width, centered. */
+.caretSlotHiddenAnd:has(> .typingIdle:not(.typingText)),
+.barRoundOps .caretSlotHiddenAnd:has(> .typingIdle:not(.typingText)) {
+  min-width: var(--mantine-spacing-sm);
+}
