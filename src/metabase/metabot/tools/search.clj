@@ -629,37 +629,44 @@
   {:uses #{"read_resource"}
    :text (apply str "Find the data with `read_resource` instead: " uri-text)})
 
+(def ^:private no-retry-step
+  {:uses #{"search"}
+   :text (str "Do not call `search` again in this turn. If you cannot find the data another way, "
+              "tell the user that search is unavailable right now.")})
+
 (tools/defrecoverable search-failed!
   "The search backend failed, for example because the search index is missing.
 
-  The recovery step browses only the content that the failed search was limited to. `read_resource`
-  has no verified-content filter, so a search limited to verified content gets no step."
+  The browse step browses only the content that the failed search was limited to. `read_resource`
+  has no verified-content filter, so a search limited to verified content gets no browse step. Every
+  failure gets [[no-retry-step]], because each retry uses an iteration and logs a stack trace."
   {:payload [:map {:closed true}
              [:collection-id [:maybe :int]]
              [:database-id   [:maybe :int]]
              [:verified-only :boolean]]}
   [{:keys [collection-id database-id verified-only]}]
   {:message  "Search failed."
-   :recovery (cond
-               verified-only
-               []
+   :recovery (-> (cond
+                   verified-only
+                   []
 
-               collection-id
-               [(browse-instead-step "read `metabase://collection/" collection-id "/items`.")]
+                   collection-id
+                   [(browse-instead-step "read `metabase://collection/" collection-id "/items`.")]
 
-               database-id
-               [(browse-instead-step "read `metabase://database/" database-id "/tables` and `metabase://database/"
-                                     database-id "/models`.")]
+                   database-id
+                   [(browse-instead-step "read `metabase://database/" database-id "/tables` and `metabase://database/"
+                                         database-id "/models`.")]
 
-               :else
-               [(browse-instead-step "read `metabase://collections` for metrics, models, questions and "
-                                     "dashboards, or `metabase://databases`, then `metabase://database/{id}/tables`, "
-                                     "for tables.")])})
+                   :else
+                   [(browse-instead-step "read `metabase://collections` for metrics, models, questions and "
+                                         "dashboards, or `metabase://databases`, then `metabase://database/{id}/tables`, "
+                                         "for tables.")])
+                 (conj no-retry-step))})
 
 (defn- do-search
   [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit]}]
-  ;; Recoverable, not `:internal`: a failed search does not stop the agent from finding data,
-  ;; because `read_resource` does not use the search index.
+  ;; Recoverable, not `:internal`: the agent can find the data without search, or tell the user that
+  ;; search failed. `read_resource` does not use the search index.
   (let [opts    (merge {:semantic-queries semantic_queries
                         :term-queries    keyword_queries
                         :entity-types    (or (seq entity_types) (vec default-types))

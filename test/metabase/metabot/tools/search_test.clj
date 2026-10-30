@@ -641,6 +641,8 @@
         (let [instance-step (str "Find the data with `read_resource` instead: read `metabase://collections` for "
                                  "metrics, models, questions and dashboards, or `metabase://databases`, then "
                                  "`metabase://database/{id}/tables`, for tables.")
+              no-retry-step (str "Do not call `search` again in this turn. If you cannot find the data another "
+                                 "way, tell the user that search is unavailable right now.")
               confined      {:entity_id metabot.config/embedded-metabot-id :collection_id 42}]
           (doseq [[scope tool-var extra-args metabot step]
                   [["the instance" #'search/search-tool {} nil instance-step]
@@ -657,11 +659,15 @@
                    ["verified content" #'search/nlq-search-tool {} (assoc confined :use_verified_content true) nil]]]
             (testing (str tool-var " limited to " scope)
               (is (= {:error  {:class :recoverable :code ::search/search-failed}
-                      :output (str "Search failed." (some->> step (str "\n")))}
+                      :output (str/join "\n" (remove nil? ["Search failed." step no-retry-step]))}
                      (invoke-search [tool-var #'metabot.tools/read-resource-tool]
                                     (merge extra-args {:keyword_queries ["orders"]})
                                     metabot
-                                    "internal"))))))))))
+                                    "internal")))))
+          (testing "a profile without `read_resource`, like slackbot, is still told to stop searching"
+            (is (= {:error  {:class :recoverable :code ::search/search-failed}
+                    :output (str "Search failed.\n" no-retry-step)}
+                   (invoke-search [#'search/search-tool] {:keyword_queries ["orders"]})))))))))
 
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
