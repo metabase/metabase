@@ -90,6 +90,79 @@ describe("scalar utils", () => {
       expect(screen.getByText("$10.00 - $100.00")).toBeInTheDocument();
       expect(screen.getByText("≥ $100.00")).toBeInTheDocument();
     });
+
+    it("rounds a dynamic bound like the displayed value", () => {
+      render(
+        <>
+          {getTooltipContent(
+            [
+              {
+                min: 12345.678901234,
+                max: null,
+                color: "green",
+                label: "high",
+              },
+            ],
+            { column: createMockColumn({ base_type: TYPE.Float }) },
+          )}
+        </>,
+      );
+
+      expect(screen.getByText("≥ 12,345.68")).toBeInTheDocument();
+    });
+
+    it("renders scientific bounds like the displayed value", () => {
+      render(
+        <>
+          {getTooltipContent(SEGMENTS, {
+            column: createMockColumn({ base_type: TYPE.Float }),
+            number_style: "scientific",
+            jsx: true,
+          })}
+        </>,
+      );
+
+      expect(screen.getByText("high").closest("tr")).toHaveTextContent(
+        "≥ 1×102",
+      );
+    });
+
+    it("compacts the bounds when the displayed value is compact by setting", () => {
+      render(
+        <>
+          {getTooltipContent(
+            [{ min: 10000, max: 20000, color: "green", label: "high" }],
+            {
+              column: createMockColumn({ base_type: TYPE.Float }),
+              compact: true,
+            },
+          )}
+        </>,
+      );
+
+      expect(screen.getByText("10.0k - 20.0k")).toBeInTheDocument();
+    });
+
+    it("does not style the bounds as links when the column has a click behavior", () => {
+      render(
+        <>
+          {getTooltipContent(SEGMENTS, {
+            click_behavior: {
+              type: "link",
+              linkType: "url",
+              linkTemplate: "https://example.com",
+            },
+            column: createMockColumn({ base_type: TYPE.Float }),
+            jsx: true,
+          })}
+        </>,
+      );
+
+      expect(screen.getByText("≥ 100")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("link-formatted-text"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("compactifyValue", () => {

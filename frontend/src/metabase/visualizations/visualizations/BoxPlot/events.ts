@@ -6,7 +6,10 @@ import type {
   OnChangeCardAndRun,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import { getGoalLineHoverData } from "metabase/visualizations/visualizations/CartesianChart/events";
+import {
+  getGoalFormatter,
+  getGoalLineHoverData,
+} from "metabase/visualizations/visualizations/CartesianChart/events";
 import {
   type BoxPlotChartModel,
   type ComputedVisualizationSettings,
@@ -164,7 +167,7 @@ export function useBoxPlotEvents({
             const eventData = getGoalLineHoverData(
               settings,
               event.event.event.target,
-              chartModel.leftAxisModel?.formatGoal,
+              getGoalFormatter(chartModel),
             );
 
             onHoverChange?.(eventData);

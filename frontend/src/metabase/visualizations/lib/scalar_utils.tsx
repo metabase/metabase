@@ -79,22 +79,27 @@ const formatSegmentRange = (
   { min, max }: ResolvedOpenEndedGoalSegment,
   formatOptions: ColumnSettings,
 ) => {
+  // bounds aren't clickable, so they shouldn't look like links
   const format = (bound: number) =>
-    formatValue(bound, { ...formatOptions, jsx: false, compact: false });
+    formatValue(bound, { ...formatOptions, click_behavior: undefined });
 
   if (min != null && max != null) {
-    return `${format(min)} - ${format(max)}`;
+    return (
+      <>
+        {format(min)} - {format(max)}
+      </>
+    );
   }
 
   if (min != null) {
-    return `≥ ${format(min)}`;
+    return <>≥ {format(min)}</>;
   }
 
   if (max != null) {
-    return `≤ ${format(max)}`;
+    return <>≤ {format(max)}</>;
   }
 
-  return "";
+  return null;
 };
 
 function toNumber(value: RowValue): number {
