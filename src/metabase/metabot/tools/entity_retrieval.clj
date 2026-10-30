@@ -105,15 +105,6 @@
               {:uses #{"search"}
                :text "Use `search` to find data for the user's request."}]})
 
-(tools/defrecoverable no-library-matches!
-  "No readable library entities match the request."
-  {:payload [:map {:closed true}]}
-  [_]
-  {:message  "No matching library entities."
-   :recovery [{:uses #{"retrieve_library_entities"}
-               :text (str "Rephrase `user_search_prompt` and call `retrieve_library_entities` once more. "
-                          "If there are still no matches, ask the user to clarify or narrow the request.")}]})
-
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defn- search-library [user-search-prompt n]
   (let [result (try
