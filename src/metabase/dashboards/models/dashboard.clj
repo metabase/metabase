@@ -78,12 +78,14 @@
 (t2/define-before-delete :model/Dashboard
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
-    (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
-    (dashboards.db/delete-dashboard-revisions! dashboard-id)
-    ;; delete through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
-    (dashboards.db/delete-pulses-for-dashboard! dashboard-id)
-    ;; and so the Card hooks run for the Cards saved in this Dashboard, including the checks that refuse deleting one
-    (dashboards.db/delete-cards-for-dashboard! dashboard-id)))
+    ;; one transaction, so a failure part-way undoes the rows; Cards go first so a refused Card delete stops before
+    ;; the PulseChannel hook removes SendPulse triggers, which Quartz commits on its own connection
+    (t2/with-transaction [_conn]
+      (dashboards.db/delete-cards-for-dashboard! dashboard-id)
+      (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
+      (dashboards.db/delete-dashboard-revisions! dashboard-id)
+      ;; through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
+      (dashboards.db/delete-pulses-for-dashboard! dashboard-id))))
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]

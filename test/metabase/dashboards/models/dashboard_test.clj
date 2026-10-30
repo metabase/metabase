@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -175,6 +176,18 @@
          (t2/delete! :model/Dashboard :id dash-id)
          (is (nil? (t2/select-one :model/Pulse :id pulse-id)))
          (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id))))))))
+
+(deftest delete-dashboard-is-atomic-test
+  (testing "a failure partway through deleting a Dashboard undoes the whole delete, even inside an outer transaction"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card      {card-id :id} {:dashboard_id dash-id}
+                   :model/Revision  _             {:model "Dashboard", :model_id dash-id
+                                                   :user_id (mt/user->id :crowberto), :object {}}]
+      (mt/with-dynamic-fn-redefs [dashboards.db/delete-pulses-for-dashboard! (fn [_] (throw (ex-info "boom" {})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (t2/delete! :model/Dashboard :id dash-id))))
+      (is (t2/exists? :model/Dashboard :id dash-id))
+      (is (t2/exists? :model/Card :id card-id))
+      (is (t2/exists? :model/Revision :model "Dashboard" :model_id dash-id)))))
 
 (deftest delete-dashboard-runs-card-delete-hooks-test
   (testing "hard deleting a Dashboard deletes the Cards saved in it through the model, so their delete hooks run"
