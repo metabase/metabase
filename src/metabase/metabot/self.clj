@@ -285,9 +285,10 @@
   Only fires when :source and :request-id are present in tracking-opts. A tool name outside `tools` is
   model output that may carry user data, so it is reported as \"unknown\".
 
-  A failed call also reports the error's class and code from the contract (`tools.runtime/invoke`), so
-  the fleet view can rank failures by code and count the unclassified ones (`internal`). Both are catalog
-  keywords; the message and the recovery text never leave the instance."
+  A failed call also reports its error's class and code from `tools.runtime/invoke`.
+  The codes are namespaced keywords, so moving or renaming one changes the reported value.
+  They describe the whole call, not the failed items inside a batched call.
+  The message and the recovery text never leave the instance."
   [{:keys [request-id session-id source profile-id iteration]} tools]
   (map (fn [part]
          (when (and (some? source)
