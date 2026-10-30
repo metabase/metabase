@@ -301,12 +301,13 @@
 
 (defn- capturing-group-count
   "Count the capturing groups in regex `pattern`. Java's syntax covers the RE2 syntax DuckDB accepts, except
-  RE2's `(?P<name>...)` named groups, which are rewritten to Java's `(?<name>...)` first.
+  RE2's `(?P<name>...)` named groups, whose syntax and names (`_` is allowed) Java rejects. Names don't affect the
+  count, so named groups are rewritten to plain `(...)` first.
 
   Return 0 when the pattern still doesn't compile in Java; DuckDB reports any real syntax error when the query runs."
   [pattern]
   (try
-    (-> (str/replace pattern "(?P<" "(?<")
+    (-> (str/replace pattern #"\(\?P<\w+>" "(")
         java.util.regex.Pattern/compile
         (.matcher "")
         (.groupCount))

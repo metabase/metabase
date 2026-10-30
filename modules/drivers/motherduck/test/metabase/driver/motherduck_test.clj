@@ -70,6 +70,7 @@
         "^Red \\w+$"       "Red Medicine" ; no group: the whole match
         "^(?:Red) (\\w+)$" "Medicine"     ; non-capturing groups don't count
         "(?P<w>Med\\w+)"   "Medicine"     ; RE2 named group
+        "^(?P<first_word>\\w+) Medicine$" "Red" ; a name Java rejects
         "^Blue"            nil))))        ; no match: NULL, not ''
 
 (defn- read-unparseable
