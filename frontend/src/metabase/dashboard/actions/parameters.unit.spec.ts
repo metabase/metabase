@@ -5,9 +5,11 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
 import { getParameters } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
 import { performUndo } from "metabase/redux/undo";
+import type { ParameterTarget } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboardCard,
@@ -16,6 +18,11 @@ import {
   createMockParameter,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
+import {
+  PRODUCTS,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import {
   MATCHING_TARGET,
@@ -141,6 +148,127 @@ describe("setParameterType", () => {
           },
         },
       },
+    });
+  });
+
+  describe("native template tags", () => {
+    const FIELD_FILTER_TARGET: ParameterTarget = [
+      "dimension",
+      ["template-tag", "category"],
+      { "stage-number": 0 },
+    ];
+    const VARIABLE_TARGET: ParameterTarget = [
+      "variable",
+      ["template-tag", "text"],
+    ];
+
+    const fieldFilterCard = createMockCard({
+      id: 10,
+      dataset_query: createMockNativeDatasetQuery({
+        database: SAMPLE_DB_ID,
+        native: {
+          query: "select * from PRODUCTS where {{category}}",
+          "template-tags": {
+            category: {
+              id: "category-tag",
+              name: "category",
+              "display-name": "Category",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "widget-type": "string/=",
+            },
+          },
+        },
+      }),
+    });
+
+    const variableCard = createMockCard({
+      id: 11,
+      dataset_query: createMockNativeDatasetQuery({
+        database: SAMPLE_DB_ID,
+        native: {
+          query: "select * from PRODUCTS where CATEGORY = {{text}}",
+          "template-tags": {
+            text: {
+              id: "text-tag",
+              name: "text",
+              "display-name": "Text",
+              type: "text",
+            },
+          },
+        },
+      }),
+    });
+
+    const nativeState = createMockState({
+      entities: createMockEntitiesState({
+        databases: [createSampleDatabase()],
+        questions: [fieldFilterCard, variableCard],
+      }),
+      dashboard: createMockDashboardState({
+        dashboardId: 1,
+        dashboards: {
+          "1": createMockStoreDashboard({
+            id: 1,
+            dashcards: [1, 2],
+            parameters: [
+              createMockParameter({
+                id: "1",
+                type: "string/=",
+                sectionId: "string",
+              }),
+            ],
+          }),
+        },
+        dashcards: {
+          "1": createMockDashboardCard({
+            id: 1,
+            card_id: fieldFilterCard.id,
+            card: fieldFilterCard,
+            parameter_mappings: [
+              {
+                parameter_id: "1",
+                card_id: fieldFilterCard.id,
+                target: FIELD_FILTER_TARGET,
+              },
+            ],
+          }),
+          "2": createMockDashboardCard({
+            id: 2,
+            card_id: variableCard.id,
+            card: variableCard,
+            parameter_mappings: [
+              {
+                parameter_id: "1",
+                card_id: variableCard.id,
+                target: VARIABLE_TARGET,
+              },
+            ],
+          }),
+        },
+      }),
+    });
+
+    it("should keep a field filter mapping that still accepts the new operator", async () => {
+      const store = setup(nativeState);
+      await store.dispatch(setParameterType("1", "string/contains", "string"));
+      expect(
+        store.getState().dashboard.dashcards["1"].parameter_mappings,
+      ).toEqual([
+        {
+          parameter_id: "1",
+          card_id: fieldFilterCard.id,
+          target: FIELD_FILTER_TARGET,
+        },
+      ]);
+    });
+
+    it("should drop a variable mapping that the new operator cannot target", async () => {
+      const store = setup(nativeState);
+      await store.dispatch(setParameterType("1", "string/contains", "string"));
+      expect(
+        store.getState().dashboard.dashcards["2"].parameter_mappings,
+      ).toEqual([]);
     });
   });
 });
