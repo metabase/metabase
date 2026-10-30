@@ -653,6 +653,8 @@
                                      (:visualization_settings card))
           {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
       (when (= :svg type)
+        ;; static-viz resolved this chart's goals itself; without an SVG the card-body fallback warns instead
+        (render.card/log-unresolved-goals! card dashcard data)
         (js.svg/svg-string->bytes content)))))
 
 (defn- param-entries

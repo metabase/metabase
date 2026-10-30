@@ -743,7 +743,7 @@
 
 (defn- render-broken-goal
   "Renders a bar card whose goal references a card that failed, with `graph.show_goal` set to `show-goal`. Returns
-  the HTML and the viz settings the JS renderer got."
+  the HTML, the viz settings the JS renderer got, and the messages warned about this render."
   [show-goal]
   (let [captured (atom nil)
         card     {:id                     1
@@ -759,22 +759,81 @@
                                          :base_type    :type/Integer
                                          :source       :aggregation}]
                   :rows                [["a" 1]]
-                  :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}
-        html     (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                  :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}
+                  ;; the result carries the card's settings too, as a notification's does
+                  :viz-settings        {:graph.show_goal  show-goal
+                                        :graph.goal_value goal-ref}}]
+    (mt/with-log-messages-for-level [messages [metabase.channel.render :warn]]
+      (let [html (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
                                                                (reset! captured viz-settings)
                                                                {:type :svg :content stub-svg})]
                    ;; render-pulse-card-for-display returns the content hiccup directly
                    (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data data})))]
-    {:html html, :viz-settings @captured}))
+        {:html html, :viz-settings @captured, :warnings (mapv :message (messages))}))))
 
 (deftest ^:parallel render-failed-dynamic-goal-test
   (testing "a failed referenced query still renders the chart, keeping the goal reference for the JS renderer to hide"
-    (let [{:keys [html viz-settings]} (render-broken-goal true)]
+    (let [{:keys [html viz-settings warnings]} (render-broken-goal true)]
       (is (not (str/includes? html render-error-box)))
-      (is (= goal-ref (:graph.goal_value viz-settings))))))
+      (is (= goal-ref (:graph.goal_value viz-settings)))
+      (testing "and warns once, naming the goal but not the referenced query's error"
+        (is (= [(str "Dynamic goal graph.goal_value can't be resolved (query-failed): card 42, column target. "
+                     "Chart card 1, display bar")]
+               warnings))))))
 
 (deftest ^:parallel render-hidden-failed-dynamic-goal-test
   (testing "a goal line the card doesn't show is left as-is: nothing renders that value"
-    (let [{:keys [html viz-settings]} (render-broken-goal false)]
+    (let [{:keys [html viz-settings warnings]} (render-broken-goal false)]
       (is (not (str/includes? html render-error-box)))
-      (is (= goal-ref (:graph.goal_value viz-settings))))))
+      (is (= goal-ref (:graph.goal_value viz-settings)))
+      (testing "and nothing warns about it"
+        (is (empty? warnings))))))
+
+(deftest ^:parallel render-failed-self-column-scalar-segment-test
+  (testing "a scalar segment bound naming a missing column of the same query still renders, and warns"
+    (let [segments [{:min 0 :max "nope" :color "#84BB4C"}]
+          card     {:id                     1
+                    :name                   "scalar with a broken self-column bound"
+                    :display                :scalar
+                    :visualization_settings {:scalar.segments segments}}
+          data     {:cols         [{:name "count" :display_name "Count" :base_type :type/Integer}]
+                    :rows         [[42]]
+                    :viz-settings {:scalar.segments segments}}]
+      (mt/with-log-messages-for-level [messages [metabase.channel.render :warn]]
+        (let [html (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data data}))]
+          (is (not (str/includes? html render-error-box)))
+          (is (str/includes? html "42"))
+          (is (= [(str "Dynamic goal scalar.segments can't be resolved (column-not-found): column nope. "
+                       "Chart card 1, display scalar")]
+                 (mapv :message (messages)))))))))
+
+(deftest ^:parallel render-undrawn-failed-dynamic-goal-test
+  (testing "a chart drawn without its goals doesn't warn about one that can't resolve"
+    (let [viz      {:graph.dimensions ["x"]
+                    :graph.metrics    ["y"]
+                    :graph.show_goal  true
+                    :graph.goal_value goal-ref}
+          card     {:id 1 :name "line with broken goal" :display :line :visualization_settings viz}
+          warnings (fn [data]
+                     (mt/with-log-messages-for-level [messages [metabase.channel.render :warn]]
+                       (binding [js.svg/*javascript-visualization* (fn [_cards-with-data _viz]
+                                                                     {:type :svg :content stub-svg})]
+                         (channel.render/render-pulse-card-for-display
+                          nil card {:data (assoc data
+                                                 :viz-settings        viz
+                                                 :referenced_entities {"card" {"42" {:status "failed"
+                                                                                     :error  "boom"}}})}))
+                       (mapv :message (messages))))]
+      (testing "an empty result renders as no results"
+        (are [rows] (empty? (warnings {:cols [{:name "x" :display_name "X" :base_type :type/Text}
+                                              {:name "y" :display_name "Y" :base_type :type/Integer}]
+                                       :rows rows}))
+          []
+          [[nil]]))
+      (testing "a one-cell result renders as a bare number"
+        (is (empty? (warnings {:cols [{:name "y" :display_name "Y" :base_type :type/Integer}]
+                               :rows [[1]]}))))
+      (testing "while the same chart with rows to draw does warn"
+        (is (= 1 (count (warnings {:cols [{:name "x" :display_name "X" :base_type :type/Text}
+                                          {:name "y" :display_name "Y" :base_type :type/Integer}]
+                                   :rows [["a" 1]]}))))))))
