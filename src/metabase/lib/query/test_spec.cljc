@@ -1,6 +1,7 @@
 (ns metabase.lib.query.test-spec
   (:refer-clojure :exclude [mapv name])
   (:require
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
@@ -137,6 +138,13 @@
        (or (= strategy :default)
            (== (strategy binning) (strategy mbql)))))
 
+(defn- binning-error-message [{:keys [strategy num-bins]} binning-strategies]
+  (let [supported-counts (keep (comp :num-bins :mbql) binning-strategies)]
+    (if (and (= strategy :num-bins) (seq supported-counts))
+      (str "Unsupported bin count " num-bins ". Supported counts for this field are "
+           (str/join ", " (butlast supported-counts)) ", and " (last supported-counts) ".")
+      "No binning strategy found")))
+
 (mu/defn- find-binning-strategy :- ::lib.schema.binning/binning-option
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -145,7 +153,8 @@
   (let [binning-strategies (lib.binning/available-binning-strategies query stage-number column)
         matches (filterv (partial matches-binning? binning) binning-strategies)]
     (case (count matches)
-      0 (throw (ex-info "No binning strategy found" {:binning-strategies binning-strategies :binning binning}))
+      0 (throw (ex-info (binning-error-message binning binning-strategies)
+                        {:binning-strategies binning-strategies :binning binning}))
       1 (first matches)
       (throw (ex-info "Multiple binning strategies found" {:matches matches :binning binning})))))
 

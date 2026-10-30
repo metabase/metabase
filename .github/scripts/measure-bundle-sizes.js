@@ -22,7 +22,7 @@ const SDK_ROOT = "resources/frontend_client/app/embedding-sdk";
 
 // The chunk runtime is inlined into the bootstrap, never sent as a standalone file.
 const SDK_RUNTIME_RE = /embedding-sdk-chunk-runtime\./;
-const notRuntime = name => !SDK_RUNTIME_RE.test(name);
+const notRuntime = (name) => !SDK_RUNTIME_RE.test(name);
 
 // One locale catalogue per chunk, named by the `webpackChunkName: "locale-[request]"`
 // comment in localization.ts. A session loads exactly one and an English session
@@ -31,10 +31,10 @@ const notRuntime = name => !SDK_RUNTIME_RE.test(name);
 // rather than any code change, so counting them makes every catalogue update look
 // like a bundle regression.
 const LOCALE_CHUNK_RE = /(^|\/)locale-/;
-const notLocale = name => !LOCALE_CHUNK_RE.test(name);
+const notLocale = (name) => !LOCALE_CHUNK_RE.test(name);
 
-const assetFiles = (root, names) => names.map(name => path.join(root, name));
-const unique = files => [...new Set(files)];
+const assetFiles = (root, names) => names.map((name) => path.join(root, name));
+const unique = (files) => [...new Set(files)];
 
 // MEASURE_ROOT lets callers point at an extracted tree (e.g. the PR bundle-size
 // check measures a current and a base-ref tree); defaults to cwd for the stats
@@ -42,13 +42,15 @@ const unique = files => [...new Set(files)];
 // SDK_ASYNC_CHUNKS_LOADABLE (see selectChunkedSdkAssets) toggles whether async
 // SDK chunks count toward "total".
 function buildConfig(env) {
-  const baseDir = env.MEASURE_ROOT ? path.resolve(env.MEASURE_ROOT) : process.cwd();
+  const baseDir = env.MEASURE_ROOT
+    ? path.resolve(env.MEASURE_ROOT)
+    : process.cwd();
   const bundleFilter = env.MEASURE_BUNDLES
-    ? new Set(env.MEASURE_BUNDLES.split(",").map(bundle => bundle.trim()))
+    ? new Set(env.MEASURE_BUNDLES.split(",").map((bundle) => bundle.trim()))
     : null;
   return {
     resolve: (...relativeParts) => path.resolve(baseDir, ...relativeParts),
-    isBundleWanted: bundle => !bundleFilter || bundleFilter.has(bundle),
+    isBundleWanted: (bundle) => !bundleFilter || bundleFilter.has(bundle),
     // Async SDK chunks are reachable once output.publicPath is set so import()
     // chunks are actually fetched at runtime — which landed in master. Defaults
     // to true to match master; set SDK_ASYNC_CHUNKS_LOADABLE=false to measure an
@@ -89,7 +91,7 @@ function collectJsFiles(absolutePath) {
   }
   return fs
     .readdirSync(absolutePath, { withFileTypes: true })
-    .flatMap(entry => {
+    .flatMap((entry) => {
       const childPath = path.join(absolutePath, entry.name);
       if (entry.isDirectory()) {
         return collectJsFiles(childPath);
@@ -100,7 +102,9 @@ function collectJsFiles(absolutePath) {
 
 function readStats(config, statsFile) {
   const statsPath = config.resolve(statsFile);
-  return fs.existsSync(statsPath) ? JSON.parse(fs.readFileSync(statsPath, "utf8")) : null;
+  return fs.existsSync(statsPath)
+    ? JSON.parse(fs.readFileSync(statsPath, "utf8"))
+    : null;
 }
 
 // An entrypoint's .js assets for a given field: "assets" = its initial
@@ -111,7 +115,9 @@ function entrypointJsAssets(stats, name, field = "assets") {
   if (!entry || !entry[field]) {
     return null;
   }
-  return entry[field].map(asset => asset.name || asset).filter(assetName => assetName.endsWith(".js"));
+  return entry[field]
+    .map((asset) => asset.name || asset)
+    .filter((assetName) => assetName.endsWith(".js"));
 }
 
 /**
@@ -125,8 +131,15 @@ function selectAppAssets(stats) {
   if (!initialAssets) {
     throw new Error('app: stats-main.json / "app-main" entrypoint missing');
   }
-  const reachableAssets = entrypointJsAssets(stats, "app-main", "reachableAssets");
-  return { initialAssets, reachableAssets: reachableAssets?.filter(notLocale) ?? null };
+  const reachableAssets = entrypointJsAssets(
+    stats,
+    "app-main",
+    "reachableAssets",
+  );
+  return {
+    initialAssets,
+    reachableAssets: reachableAssets?.filter(notLocale) ?? null,
+  };
 }
 
 /**
@@ -142,7 +155,9 @@ function selectLegacySdkAssets(stats, { sdkAsyncChunksLoadable }) {
   if (!initialNames) {
     return null;
   }
-  const reachableNames = entrypointJsAssets(stats, "embedding-sdk", "reachableAssets") || initialNames;
+  const reachableNames =
+    entrypointJsAssets(stats, "embedding-sdk", "reachableAssets") ||
+    initialNames;
   const initial = unique(initialNames).filter(notRuntime);
   return {
     initialNames: initial,
@@ -163,20 +178,36 @@ function selectLegacySdkAssets(stats, { sdkAsyncChunksLoadable }) {
  * against a collapsed one (an apples-to-oranges ~30% phantom).
  */
 function selectChunkedSdkAssets(stats, { sdkAsyncChunksLoadable }) {
-  const chunkedInitial = entrypointJsAssets(stats, "embedding-sdk-chunked", "assets");
+  const chunkedInitial = entrypointJsAssets(
+    stats,
+    "embedding-sdk-chunked",
+    "assets",
+  );
   if (!chunkedInitial) {
-    throw new Error('embedding-sdk-chunked: stats-embedding-sdk.json / "embedding-sdk-chunked" entrypoint missing');
+    throw new Error(
+      'embedding-sdk-chunked: stats-embedding-sdk.json / "embedding-sdk-chunked" entrypoint missing',
+    );
   }
-  const bootstrapInitial = entrypointJsAssets(stats, "embedding-sdk-bootstrap", "assets") || [];
-  const chunkedReachableAssets = entrypointJsAssets(stats, "embedding-sdk-chunked", "reachableAssets");
+  const bootstrapInitial =
+    entrypointJsAssets(stats, "embedding-sdk-bootstrap", "assets") || [];
+  const chunkedReachableAssets = entrypointJsAssets(
+    stats,
+    "embedding-sdk-chunked",
+    "reachableAssets",
+  );
   const chunkedReachable = chunkedReachableAssets || chunkedInitial;
-  const bootstrapReachable = entrypointJsAssets(stats, "embedding-sdk-bootstrap", "reachableAssets") || bootstrapInitial;
+  const bootstrapReachable =
+    entrypointJsAssets(stats, "embedding-sdk-bootstrap", "reachableAssets") ||
+    bootstrapInitial;
   return {
-    initialNames: unique([...bootstrapInitial, ...chunkedInitial]).filter(notRuntime),
+    initialNames: unique([...bootstrapInitial, ...chunkedInitial]).filter(
+      notRuntime,
+    ),
     reachableNames: unique([...bootstrapReachable, ...chunkedReachable])
       .filter(notRuntime)
       .filter(notLocale),
-    includesAsyncChunks: chunkedReachableAssets != null && sdkAsyncChunksLoadable,
+    includesAsyncChunks:
+      chunkedReachableAssets != null && sdkAsyncChunksLoadable,
   };
 }
 
@@ -185,33 +216,64 @@ function measureApp(config) {
   if (!fs.existsSync(dist)) {
     throw new Error(`Bundle output not found for "app": ${dist}`);
   }
-  const { initialAssets, reachableAssets } = selectAppAssets(readStats(config, "artifacts/stats-main.json"));
+  const { initialAssets, reachableAssets } = selectAppAssets(
+    readStats(config, "artifacts/stats-main.json"),
+  );
   if (!reachableAssets) {
-    console.warn("app: stats has no reachableAssets; app total falls back to the whole app/dist");
+    console.warn(
+      "app: stats has no reachableAssets; app total falls back to the whole app/dist",
+    );
   }
-  const totalFiles = reachableAssets ? assetFiles(dist, reachableAssets) : collectJsFiles(dist);
+  const totalFiles = reachableAssets
+    ? assetFiles(dist, reachableAssets)
+    : collectJsFiles(dist);
   return [
-    { bundle: "app", kind: "initial", ...sizeOf(assetFiles(dist, initialAssets)) },
+    {
+      bundle: "app",
+      kind: "initial",
+      ...sizeOf(assetFiles(dist, initialAssets)),
+    },
     { bundle: "app", kind: "total", ...sizeOf(totalFiles) },
   ];
 }
 
 function measureLegacySdk(config) {
   const absRoot = config.resolve(SDK_ROOT);
-  const selected = selectLegacySdkAssets(readStats(config, "artifacts/stats-embedding-sdk.json"), config);
+  const selected = selectLegacySdkAssets(
+    readStats(config, "artifacts/stats-embedding-sdk.json"),
+    config,
+  );
   if (!selected) {
     // No stats / older layout: fall back to whatever sits in the legacy dir.
     const candidates = [`${SDK_ROOT}/legacy`, `${SDK_ROOT}.js`];
-    const chosen = candidates.find(candidate => fs.existsSync(config.resolve(candidate)));
+    const chosen = candidates.find((candidate) =>
+      fs.existsSync(config.resolve(candidate)),
+    );
     if (!chosen) {
-      console.warn(`Skipping "embedding-sdk-legacy": output not found (${candidates.join(", ")})`);
+      console.warn(
+        `Skipping "embedding-sdk-legacy": output not found (${candidates.join(", ")})`,
+      );
       return [];
     }
-    return [{ bundle: "embedding-sdk-legacy", kind: "total", ...sizeOf(collectJsFiles(config.resolve(chosen))) }];
+    return [
+      {
+        bundle: "embedding-sdk-legacy",
+        kind: "total",
+        ...sizeOf(collectJsFiles(config.resolve(chosen))),
+      },
+    ];
   }
   return [
-    { bundle: "embedding-sdk-legacy", kind: "initial", ...sizeOf(assetFiles(absRoot, selected.initialNames)) },
-    { bundle: "embedding-sdk-legacy", kind: "total", ...sizeOf(assetFiles(absRoot, selected.reachableNames)) },
+    {
+      bundle: "embedding-sdk-legacy",
+      kind: "initial",
+      ...sizeOf(assetFiles(absRoot, selected.initialNames)),
+    },
+    {
+      bundle: "embedding-sdk-legacy",
+      kind: "total",
+      ...sizeOf(assetFiles(absRoot, selected.reachableNames)),
+    },
   ];
 }
 
@@ -222,34 +284,58 @@ function measureChunkedSdk(config) {
     return [];
   }
   const absRoot = config.resolve(SDK_ROOT);
-  const { initialNames, reachableNames, includesAsyncChunks } = selectChunkedSdkAssets(
-    readStats(config, "artifacts/stats-embedding-sdk.json"),
-    config,
-  );
+  const { initialNames, reachableNames, includesAsyncChunks } =
+    selectChunkedSdkAssets(
+      readStats(config, "artifacts/stats-embedding-sdk.json"),
+      config,
+    );
   const initial = sizeOf(assetFiles(absRoot, initialNames));
-  const total = includesAsyncChunks ? sizeOf(assetFiles(absRoot, reachableNames)) : initial;
+  const total = includesAsyncChunks
+    ? sizeOf(assetFiles(absRoot, reachableNames))
+    : initial;
   return [
     { bundle: "embedding-sdk-chunked", kind: "initial", ...initial },
-    { bundle: "embedding-sdk-chunked", kind: "total", reachable: includesAsyncChunks, ...total },
+    {
+      bundle: "embedding-sdk-chunked",
+      kind: "total",
+      reachable: includesAsyncChunks,
+      ...total,
+    },
   ];
 }
 
 // Single-file/dir bundles loaded in one shot — total only.
 function measureWholeDir(config, bundle, candidates) {
-  const chosen = candidates.find(candidate => fs.existsSync(config.resolve(candidate)));
+  const chosen = candidates.find((candidate) =>
+    fs.existsSync(config.resolve(candidate)),
+  );
   if (!chosen) {
-    console.warn(`Skipping "${bundle}": output not found (${candidates.join(", ")})`);
+    console.warn(
+      `Skipping "${bundle}": output not found (${candidates.join(", ")})`,
+    );
     return [];
   }
-  return [{ bundle, kind: "total", ...sizeOf(collectJsFiles(config.resolve(chosen))) }];
+  return [
+    {
+      bundle,
+      kind: "total",
+      ...sizeOf(collectJsFiles(config.resolve(chosen))),
+    },
+  ];
 }
 
 const bundles = {
   app: measureApp,
   "embedding-sdk-legacy": measureLegacySdk,
   "embedding-sdk-chunked": measureChunkedSdk,
-  "embedding-sdk-package": config => measureWholeDir(config, "embedding-sdk-package", ["resources/embedding-sdk/dist"]),
-  "embed-js": config => measureWholeDir(config, "embed-js", ["resources/frontend_client/app/embed.js"]),
+  "embedding-sdk-package": (config) =>
+    measureWholeDir(config, "embedding-sdk-package", [
+      "resources/embedding-sdk/dist",
+    ]),
+  "embed-js": (config) =>
+    measureWholeDir(config, "embed-js", [
+      "resources/frontend_client/app/embed.js",
+    ]),
 };
 
 function measureBundleSizes(config) {
@@ -268,5 +354,7 @@ module.exports = {
 };
 
 if (require.main === module) {
-  console.log(JSON.stringify(measureBundleSizes(buildConfig(process.env)), null, 2));
+  console.log(
+    JSON.stringify(measureBundleSizes(buildConfig(process.env)), null, 2),
+  );
 }

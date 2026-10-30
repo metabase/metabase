@@ -252,7 +252,7 @@
       ;; todo: some other response if already persisted?
       api/generic-204-no-content
       (driver.conn/with-write-connection
-        (let [[success? error] (ddl.i/check-can-persist database)
+        (let [[success? error] (ddl.i/check-can-persist (driver.u/lib-database id))
               schema           (ddl.i/schema-name database (system/site-uuid))]
           (if success?
             ;; do secrets require special handling to not clobber them or mess up encryption?

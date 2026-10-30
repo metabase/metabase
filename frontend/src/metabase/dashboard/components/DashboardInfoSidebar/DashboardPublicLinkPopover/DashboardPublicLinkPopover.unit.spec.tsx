@@ -78,8 +78,9 @@ describe("DashboardPublicLinkPopover", () => {
     ).toBeInTheDocument();
   });
 
-  it("should not display extensions for the public link", () => {
+  it("should not display extensions for the public link", async () => {
     setup();
+    await screen.findByDisplayValue(`${SITE_URL}/public/dashboard/mock-uuid`);
 
     expect(screen.queryByTestId("extension-option")).not.toBeInTheDocument();
   });
@@ -112,8 +113,9 @@ describe("DashboardPublicLinkPopover", () => {
     ).toHaveLength(1);
   });
 
-  it("should not show non-admins the option to remove a public link", () => {
+  it("should not show non-admins the option to remove a public link", async () => {
     setup({ isAdmin: false });
+    await screen.findByDisplayValue(`${SITE_URL}/public/dashboard/mock-uuid`);
 
     expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
   });

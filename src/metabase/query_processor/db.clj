@@ -56,17 +56,19 @@
   (t2/delete! (t2/table-name :model/QueryCache) :updated_at [:<= updated-before]))
 
 (mu/defn insert-query-executions!
-  "Insert the QueryExecution `rows`."
+  "Insert the QueryExecution `rows`. Runs in its own (possibly nested) transaction so that if the app DB rejects a
+  row, the failure is rolled back to a savepoint instead of aborting a caller's enclosing transaction."
   [rows :- [:sequential
             ::queries.schema/query-execution.update]]
-  (t2/insert! :model/QueryExecution rows))
+  (t2/with-transaction [_conn]
+    (t2/insert! :model/QueryExecution rows)))
 
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id` without touching `updated_at`."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata
-                                   :updated_at      :updated_at}))
+  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
+                                       :updated_at      :updated_at}))
 
 (mu/defn update-cards-last-used-at!
   "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`."

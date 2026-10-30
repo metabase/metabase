@@ -111,7 +111,12 @@ export function provideActionListTags(
 export function provideActionTags(
   action: WritebackAction,
 ): TagDescription<TagType>[] {
-  return [idTag("action", action.id)];
+  return [
+    idTag("action", action.id),
+    ...(action.type === "implicit" && action.table_id != null
+      ? [idTag("table", action.table_id)]
+      : []),
+  ];
 }
 
 export function provideActivityItemListTags(

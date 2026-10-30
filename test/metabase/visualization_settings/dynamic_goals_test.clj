@@ -183,25 +183,26 @@
       (is (= viz (dynamic-goals/resolve-dynamic-goals :line viz nil))))))
 
 (deftest ^:parallel resolve-dynamic-goals-hidden-goal-test
-  (let [viz {:graph.goal_value {:id 2 :type "card" :column "total"}}] ; entity 2 failed
+  (let [ref {:id 2 :type "card" :column "total"} ; entity 2 failed
+        viz {:graph.goal_value ref}]
     (testing "a goal line the chart doesn't show is left alone, even when its reference failed"
       (are [show-goal] (= (assoc viz :graph.show_goal show-goal)
                           (dynamic-goals/resolve-dynamic-goals
                            :line (assoc viz :graph.show_goal show-goal) referenced-entities))
         false
         nil))
-    (testing "and falls back to 0 once the goal line is shown"
-      (is (= 0 (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
-                                   :line (assoc viz :graph.show_goal true) referenced-entities)))))
+    (testing "and keeps its reference once the goal line is shown"
+      (is (= ref (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
+                                     :line (assoc viz :graph.show_goal true) referenced-entities)))))
     (testing "toggles can come from a separate effective-settings map"
       (is (= viz (dynamic-goals/resolve-dynamic-goals :line viz referenced-entities {:graph.show_goal false})))
-      (is (= 0 (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
-                                   :line viz referenced-entities {:graph.show_goal true})))))))
+      (is (= ref (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
+                                     :line viz referenced-entities {:graph.show_goal true})))))))
 
 (deftest ^:parallel resolve-dynamic-goals-unresolved-test
   (let [failed {:id 2 :type "card" :column "total"}]
-    (testing "a goal value that can't resolve falls back to 0, so the chart still renders"
-      (is (= {:graph.show_goal true :graph.goal_value 0}
+    (testing "a graph goal value that can't resolve keeps its reference, any other falls back to 0"
+      (is (= {:graph.show_goal true :graph.goal_value failed}
              (dynamic-goals/resolve-dynamic-goals :line {:graph.show_goal true :graph.goal_value failed}
                                                   referenced-entities)))
       (is (= {:progress.goal 0}

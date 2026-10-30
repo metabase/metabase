@@ -7,6 +7,7 @@ export const DYNAMIC_GOAL_CARTESIAN_DISPLAYS = [
   "bar",
   "combo",
   "line",
+  "row",
   "scatter",
   "waterfall",
 ] as const satisfies readonly VisualizationDisplay[];
@@ -15,7 +16,6 @@ export const DYNAMIC_GOAL_CARTESIAN_DISPLAYS = [
 export const DYNAMIC_GOAL_DISPLAYS = [
   ...DYNAMIC_GOAL_CARTESIAN_DISPLAYS,
   "boxplot",
-  "row",
 ] as const satisfies readonly VisualizationDisplay[];
 
 export function queryEChartsGoalLine() {

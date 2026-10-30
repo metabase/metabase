@@ -57,7 +57,7 @@ export const TimelineEventStack = ({
   const count = groups.length;
 
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const collapseTimeoutRef = useRef<number>();
+  const collapseTimeoutRef = useRef<number>(undefined);
   const isPointerInsideRef = useRef(false);
   const onExpandedChangeRef = useRef(onExpandedChange);
   onExpandedChangeRef.current = onExpandedChange;

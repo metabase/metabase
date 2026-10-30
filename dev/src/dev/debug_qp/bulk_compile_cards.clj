@@ -35,7 +35,7 @@
                         (.submit pool ^Callable
                                  (fn []
                                    (try
-                                     (let [card-query (t2/select-one-fn :dataset_query :model/Card card-id)
+                                     (let [card-query (t2/select-one-fn :dataset_query :model/Card :id card-id)
                                            {:keys [query params error]} (try
                                                                           (qp.compile/compile card-query)
                                                                           (catch Throwable e

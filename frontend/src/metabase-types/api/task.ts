@@ -35,6 +35,11 @@ export type ListTasksRequest = {
 } & PaginationRequest &
   Partial<SortingOptions<ListTasksSortColumn>>;
 
+export type TaskCountsResponse = {
+  tasks: number;
+  runs: number;
+};
+
 export type ListTasksResponse = {
   data: Task[];
 } & PaginationResponse;

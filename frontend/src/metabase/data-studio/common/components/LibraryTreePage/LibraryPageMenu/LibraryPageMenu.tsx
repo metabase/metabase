@@ -3,7 +3,6 @@ import { t } from "ttag";
 import type { CollectionRowModalState } from "metabase/common/collections/components/CollectionRowModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { getUserIsAdmin } from "metabase/current-user";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import type { Collection, IconName } from "metabase-types/api";
@@ -17,7 +16,7 @@ export type LibraryPageAction = {
 export type LibraryPageMenuProps = {
   label: string;
   actions?: LibraryPageAction[];
-  /** Admins get a Change permissions item for it, unless remote sync is read-only. */
+  /** Admins get a Change permissions item for it. */
   permissionsCollection?: Collection;
   onOpenModal: (modal: CollectionRowModalState) => void;
 };
@@ -29,11 +28,9 @@ export function LibraryPageMenu({
   onOpenModal,
 }: LibraryPageMenuProps) {
   const isAdmin = useSelector(getUserIsAdmin);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
-  const editablePermissionsCollection =
-    isAdmin && !isRemoteSyncReadOnly ? permissionsCollection : undefined;
+  const editablePermissionsCollection = isAdmin
+    ? permissionsCollection
+    : undefined;
 
   if (editablePermissionsCollection == null && actions.length === 0) {
     return null;

@@ -7,7 +7,6 @@ import {
   setupRemappedFieldValueEndpoint,
 } from "__support__/server-mocks";
 import {
-  act,
   createMockClipboardData,
   renderWithProviders,
   screen,
@@ -807,11 +806,12 @@ describe("StringFilterValuePicker", () => {
 
         const input = screen.getByRole("combobox", { name: "Filter value" });
         await userEvent.type(input, "a@b.com");
-        // blurring commits the typed value; wrap it so the resulting state
-        // updates in MultiAutocomplete are flushed inside act()
-        act(() => {
-          input.blur();
-        });
+
+        // Clicking away commits the typed value, the way MultiAutocomplete's
+        // own spec blurs it. The input clears once the commit lands.
+        await userEvent.click(document.body);
+        await waitFor(() => expect(input).toHaveValue(""));
+
         expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
       });
 

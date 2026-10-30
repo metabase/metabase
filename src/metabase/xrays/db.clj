@@ -58,7 +58,7 @@
                 [:= :ts.count_non_pks 1]] :list-like?]]
              {:from       [(warehouse-schema-overlay/table-query)]
               :inner-join [[^:allow-subquery {:select   [:f.table_id
-                                                         [:%count.* "count"]
+                                                         [:%count.* :count]
                                                          [[:count [:case [:or [:not= :semantic_type "type/PK"]
                                                                           [:= :f.semantic_type nil]]
                                                                    [:inline 1] :else [:inline nil]]]
@@ -273,4 +273,4 @@
 (mu/defn model-index
   "The ModelIndex with `model-index-id`, or nil."
   [model-index-id :- ms/PositiveInt]
-  (t2/select-one :model/ModelIndex model-index-id))
+  (t2/select-one :model/ModelIndex :id [:auto/param model-index-id]))

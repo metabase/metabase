@@ -33,6 +33,8 @@ export { queryToSearch, toFacadeLocation } from "./location";
 export { createLocationMirror, type LocationMirror } from "./location-mirror";
 export {
   getIsNavigationPending,
+  getPendingNavigationPath,
+  getRouterLocation,
   navigate,
   notifyLocationListeners,
   subscribeLocation,

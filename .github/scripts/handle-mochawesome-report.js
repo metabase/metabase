@@ -9,7 +9,7 @@ const collectTestsByType = ({ type, suite, path, cache = [] }) => {
   const { [type]: typeList, suites, tests } = suite;
 
   for (const uuid of typeList) {
-    const foundTestByUuid = tests.find(test => test.uuid === uuid);
+    const foundTestByUuid = tests.find((test) => test.uuid === uuid);
     if (!foundTestByUuid) {
       logger.error(`Test with uuid ${uuid} not found`);
       throw new Error(`Test with uuid ${uuid} not found`);
@@ -36,7 +36,7 @@ const extractTestResultsInfo = ({ results, stats }) => {
 
   const testType = "failures";
 
-  const failedTests = results.flatMap(result =>
+  const failedTests = results.flatMap((result) =>
     collectTestsByType({
       type: testType,
       suite: result,
@@ -60,7 +60,7 @@ async function generateReport() {
 exports.generateReport = generateReport;
 
 function parseReport(report) {
-  return extractTestResultsInfo(report).failedTests.map(test => ({
+  return extractTestResultsInfo(report).failedTests.map((test) => ({
     title: test.fullTitle,
     error: test.err?.message,
     path: test.path,
@@ -69,7 +69,7 @@ function parseReport(report) {
 
 exports.parseReport = parseReport;
 
-const groupTestsByPath = report => {
+const groupTestsByPath = (report) => {
   return report.reduce((acc, item) => {
     if (!acc[item.path]) {
       acc[item.path] = [];
@@ -89,7 +89,7 @@ function formatSummary(report) {
     summary += `| ${path} |\n`;
     summary += "| :--- |\n";
 
-    tests.forEach(test => {
+    tests.forEach((test) => {
       summary += `| ${test.title}`;
       summary += "<p></p>"; // adds extra space after title
       summary += `<details>`;

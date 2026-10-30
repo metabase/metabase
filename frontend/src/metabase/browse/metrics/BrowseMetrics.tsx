@@ -152,7 +152,7 @@ function MetricsEmptyState({
   newMetricLink: string;
 }) {
   const { url: metricsDocsLink, showMetabaseLinks } = useDocsUrl(
-    "data-modeling/metrics",
+    "data-modeling/semantic-layer/metrics",
   );
 
   return (

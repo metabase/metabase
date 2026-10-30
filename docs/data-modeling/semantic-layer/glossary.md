@@ -45,7 +45,7 @@ Metabot will start using glossary terms automatically.
 
 ## Glossary terms sync with the Library
 
-If you [sync the Library to Git](./library.md#versioning-the-library) with [Remote sync](../../installation-and-operation/remote-sync.md), Metabase syncs your glossary terms along with the rest of the Library.
+If you [sync the Library to Git](./library.md#versioning-the-library) with [Remote sync](./remote-sync.md), Metabase syncs your glossary terms along with the rest of the Library.
 
 ## Glossary outside Data Studio
 

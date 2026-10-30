@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Flex, Stack, Text, rem } from "metabase/ui";
 
 import type { ContentDirectionType } from "./utils";

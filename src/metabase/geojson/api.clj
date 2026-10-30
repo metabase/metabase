@@ -108,7 +108,7 @@
   "Reads the provided URL and responds with the contents as a stream."
   [url respond]
   (with-open [^BufferedReader reader (url->reader url)
-              is                     (ReaderInputStream. reader)]
+              is                     (.get (doto (ReaderInputStream/builder) (.setReader reader)))]
     (respond (-> (response/response is)
                  (response/content-type "application/json")))))
 

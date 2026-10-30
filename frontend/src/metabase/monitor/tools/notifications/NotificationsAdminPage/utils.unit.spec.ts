@@ -1,7 +1,7 @@
 import { dayjs } from "metabase/dayjs";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import type { NotificationChannelType } from "metabase-types/api";
 
-import { PAGE_SIZE } from "./constants";
 import type { NotificationsUrlState } from "./types";
 import {
   buildListParams,

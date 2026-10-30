@@ -9,8 +9,12 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { getGoalWarningMessage } from "metabase/visualizations/components/GoalWarning";
 import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
-import { prefetchVisualizationComponent } from "metabase/viz-core";
+import {
+  getGraphGoalSettingsSection,
+  prefetchVisualizationComponent,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
@@ -33,10 +37,19 @@ export function QueryVisualization(props: QueryVisualizationProps) {
     result,
     errorAction,
     maxTableRows = HARD_ROW_LIMIT,
+    onOpenChartSettings,
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [hasGoalWarning, setHasGoalWarning] = useState(false);
+  const isGoalWarningShown = hasGoalWarning && onOpenChartSettings != null;
+
+  function handleGoalWarningClick() {
+    onOpenChartSettings?.({
+      initialChartSettings: { section: getGraphGoalSettingsSection() },
+    });
+  }
 
   // The result is not rendered until the query returns, so the chart chunk
   // would only start downloading then. Start it from the display alone, so it
@@ -64,7 +77,17 @@ export function QueryVisualization(props: QueryVisualizationProps) {
         className={S.overlay}
       />
       {!isObjectDetail && (
-        <Warnings warnings={warnings} className={S.warnings} size={18} />
+        <Warnings
+          className={S.warnings}
+          severity={isGoalWarningShown ? "error" : "warning"}
+          size={18}
+          warnings={
+            isGoalWarningShown
+              ? [getGoalWarningMessage("goal"), ...warnings]
+              : warnings
+          }
+          onClick={isGoalWarningShown ? handleGoalWarningClick : undefined}
+        />
       )}
       <Box
         className={cx(S.visualization, QueryBuilderS.Visualization, {
@@ -77,7 +100,6 @@ export function QueryVisualization(props: QueryVisualizationProps) {
             className={S.spread}
             error={result.error}
             errorType={result.error_type}
-            via={result.via ?? []}
             question={question}
             duration={result.duration ?? 0}
             errorAction={errorAction}
@@ -88,6 +110,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
             maxTableRows={maxTableRows}
             className={S.spread}
             onUpdateWarnings={setWarnings}
+            onUpdateGoalWarning={setHasGoalWarning}
           />
         ) : !isRunning && !isDirtyStateShown ? (
           <VisualizationEmptyState>

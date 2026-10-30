@@ -38,7 +38,7 @@ export function GoalWarningIcon({ source, onClick }: GoalWarningIconProps) {
   );
 }
 
-function getGoalWarningMessage(source: GoalWarningSource) {
+export function getGoalWarningMessage(source: GoalWarningSource) {
   return match(source)
     .with("goal", () => t`Couldn't get the goal value. Click to open settings.`)
     .with(

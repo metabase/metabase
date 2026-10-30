@@ -53,22 +53,22 @@ describe("resolveGoalSettings", () => {
       });
     });
 
-    it("falls back to 0 for an unanswered reference", () => {
+    it("hides the goal line for an unanswered reference", () => {
       const series = createSeries(createData({}), display);
 
       expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({
-        ...REFERENCED_SETTINGS,
-        "graph.goal_value": 0,
+        "graph.show_goal": false,
+        "graph.goal_value": null,
       });
     });
 
-    it("falls back to 0 for a failed reference", () => {
+    it("hides the goal line for a failed reference", () => {
       const failed = createData(createMockFailedReferencedEntitiesResults());
       const series = createSeries(failed, display);
 
       expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({
-        ...REFERENCED_SETTINGS,
-        "graph.goal_value": 0,
+        "graph.show_goal": false,
+        "graph.goal_value": null,
       });
     });
   });

@@ -21,7 +21,6 @@
    [clojure.string :as str]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.common :as api]
-   [metabase.api.macros.scope :as scope]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -204,7 +203,7 @@
   tree a single `agent:query:run`, and every credential minted for a client holding that scope satisfies it.
   Raw SQL costs more, and that difference is spent here: it needs the user's groups to allow the `execute_sql`
   MCP tool, which `check-execute-sql-allowed!` (a no-arg fn that throws when they do not) decides, an
-  SQL-execution scope (`agent:sql:run`, or v1's concrete `agent:sql:execute`) off the credential's signed claim,
+  `agent:sql:run` off the credential's signed claim,
   and the `mcp-execute-sql-enabled` kill switch.
 
   A credential whose claim is simply absent fails closed: a rolling deploy can hand this node one minted before
@@ -225,9 +224,9 @@
       ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s
       ;; state apart by which 403 message it got back.
       (let [token-scopes (:token-scopes claims)]
-        (when-not (or (contains? token-scopes ::scope/unrestricted)
-                      (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-run)
-                      (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-execute))
+        ;; Exact match on the MCP scope: wildcards, the unrestricted sentinel, and v1's agent:sql:execute are not
+        ;; MCP scopes, so none of them stands in for agent:sql:run.
+        (when-not (contains? token-scopes metabot.scope/agent-sql-run)
           (throw (ex-info (str "Running raw SQL requires the " metabot.scope/agent-sql-run
                                " scope, which this client was not granted.")
                           {:status-code 403}))))

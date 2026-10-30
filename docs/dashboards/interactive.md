@@ -95,10 +95,10 @@ What we need to do here is to type in the full URL of where a user should go whe
 For example, we could type a URL like this:
 
 ```
-https://www.metabase.com/search.html?query={% raw %}{{Category}}{% endraw %}
+https://www.metabase.com/search?query={% raw %}{{Category}}{% endraw %}
 ```
 
-The important part is the `{% raw %}{{Category}}{% endraw %}` bit. What we’re doing here is referring to the `Category` that the user clicked on. So if someone clicks on the `Widget` bar in our chart, the value of the `Category` column for that bar (`Widget`) would be inserted into our URL: `https://www.metabase.com/search.html?query=Widget`. Your URL can use as many column variables as you want - you can even refer to the same column multiple times in different parts of the URL. To see which variables you can include in the URL, click on the dropdown menu **Values you can reference**.
+The important part is the `{% raw %}{{Category}}{% endraw %}` bit. What we’re doing here is referring to the `Category` that the user clicked on. So if someone clicks on the `Widget` bar in our chart, the value of the `Category` column for that bar (`Widget`) would be inserted into our URL: `https://www.metabase.com/search?query=Widget`. Your URL can use as many column variables as you want - you can even refer to the same column multiple times in different parts of the URL. To see which variables you can include in the URL, click on the dropdown menu **Values you can reference**.
 
 Next we’ll click **Done**, then **Save** our dashboard. Now when we click our chart, we’ll be taken to the URL that we entered above, with the value of the clicked bar inserted into the URL.
 

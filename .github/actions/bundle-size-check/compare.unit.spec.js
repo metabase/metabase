@@ -11,7 +11,11 @@ const total = (gzipBytes, over = {}) => ({
   ...over,
 });
 
-const appInitial = gzipBytes => ({ bundle: "app", kind: "initial", gzipBytes });
+const appInitial = (gzipBytes) => ({
+  bundle: "app",
+  kind: "initial",
+  gzipBytes,
+});
 
 const compare = ({ current, base, threshold = 2, gateKeys = [SDK_GATE] }) =>
   compareBundles({ current, base, threshold, gateKeys });
@@ -25,18 +29,27 @@ describe("outputPrefix", () => {
 
 describe("compareBundles", () => {
   it("gates on the chunked SDK total and flags an increase past the threshold", () => {
-    const { gates, report } = compare({ current: [total(110)], base: [total(100)] });
+    const { gates, report } = compare({
+      current: [total(110)],
+      base: [total(100)],
+    });
 
-    expect(gates).toEqual([{ gateKey: SDK_GATE, status: "increased", percent: 10 }]);
+    expect(gates).toEqual([
+      { gateKey: SDK_GATE, status: "increased", percent: 10 },
+    ]);
     expect(report[0]).toContain("current vs base");
   });
 
   it("flags a decrease and stays stable within the threshold", () => {
-    expect(compare({ current: [total(90)], base: [total(100)] }).gates[0]).toMatchObject({
+    expect(
+      compare({ current: [total(90)], base: [total(100)] }).gates[0],
+    ).toMatchObject({
       status: "decreased",
       percent: -10,
     });
-    expect(compare({ current: [total(101)], base: [total(100)] }).gates[0]).toMatchObject({
+    expect(
+      compare({ current: [total(101)], base: [total(100)] }).gates[0],
+    ).toMatchObject({
       status: "stable",
       percent: 1,
     });
@@ -72,13 +85,22 @@ describe("compareBundles", () => {
       gateKeys: [APP_GATE, SDK_GATE],
     });
 
-    expect(gates[0]).toEqual({ gateKey: APP_GATE, status: "stable", percent: 0 });
+    expect(gates[0]).toEqual({
+      gateKey: APP_GATE,
+      status: "stable",
+      percent: 0,
+    });
     expect(gates[1].error).toContain("embedding-sdk-chunked total");
   });
 
   it("reports a bundle/kind present on only one side without erroring", () => {
-    const { report } = compare({ current: [total(100), appInitial(50)], base: [total(100)] });
+    const { report } = compare({
+      current: [total(100), appInitial(50)],
+      base: [total(100)],
+    });
 
-    expect(report.some(line => line.includes("present only in current build"))).toBe(true);
+    expect(
+      report.some((line) => line.includes("present only in current build")),
+    ).toBe(true);
   });
 });

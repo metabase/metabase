@@ -24,6 +24,7 @@ describe("SCALAR_CHART_DEFINITION", () => {
         canRemoveAll: true,
         data,
         datasetQuery: card.dataset_query,
+        display: "scalar",
       });
     });
 

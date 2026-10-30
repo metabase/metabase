@@ -58,7 +58,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["gauge.segments"],
     },
     "gauge.segments": {
-      getSection: () => t`Ranges`,
+      getSection: getGaugeGoalSettingsSection,
       getDefault(series) {
         let value = 100;
         try {
@@ -85,9 +85,14 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
         return {
           data,
           datasetQuery: card.dataset_query,
+          display: card.display,
           formatOptions: column && settings.column?.(column),
         };
       },
     },
   },
 };
+
+export function getGaugeGoalSettingsSection() {
+  return t`Ranges`;
+}

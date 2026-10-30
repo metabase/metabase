@@ -37,7 +37,6 @@
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml])
   (:import
@@ -58,6 +57,9 @@
     ;; instance-specific build version, no longer serialized (GHY-4013). Legacy baseline fixtures still
     ;; carry it, which exercises that such exports still import cleanly now that it's skipped.
     :metabase_version
+    ;; sync state, no longer serialized; legacy baseline fixtures still carry it
+    :dbms_version
+    :initial_sync_status
     ;; result_metadata is non-deterministic for dashboard/document cards because the Card before-update hook
     ;; re-computes it without :verified-result-metadata? set. Fixing this properly requires making serdes
     ;; load set :verified-result-metadata? on Card updates, which is not straightforward.
@@ -75,26 +77,14 @@
        (map (partial strip-base-path dir))
        (into (sorted-set))))
 
-(def ^:private slug-id-prefix-re
-  #"#\d+([- ])")
-
-(defn- replace-entropy
-  [s]
-  ;; Template tag slugs have the form `#1-my-card-name`, and their default display names `#1 My Card Name`, where `1`
-  ;; is the record ID. Record IDs depend on import order which is non-deterministic. Replace them with a deterministic
-  ;; placeholder.
-  (str/replace s slug-id-prefix-re "#<some-id>$1"))
-
 (defn read-yaml
   "Reads a YAML file and returns Clojure data, with ignored fields removed."
   [file]
   (walk/postwalk
    (fn [x]
-     (cond
-       (map? x) (reduce dissoc x ignored-fields)
-       (string? x) (replace-entropy x)
-       (keyword? x) (keyword (replace-entropy (u/qualified-name x)))
-       :else x))
+     (if (map? x)
+       (reduce dissoc x ignored-fields)
+       x))
    (yaml/parse-string (slurp file))))
 
 (defn non-empty-diff [diff]

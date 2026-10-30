@@ -6,6 +6,7 @@ import { GoalValueInput } from "./GoalValueInput";
 export const ChartSettingGoalValue = ({
   data,
   datasetQuery,
+  display,
   excludedSelfColumn,
   formatOptions,
   id,
@@ -23,6 +24,7 @@ export const ChartSettingGoalValue = ({
     <GoalValueInput
       data={data}
       datasetQuery={datasetQuery}
+      display={display}
       excludedSelfColumn={excludedSelfColumn}
       formatOptions={formatOptions}
       id={id}

@@ -1,10 +1,10 @@
-import { useState } from "react";
 import {
   CreateDashboardModal,
   EditableDashboard,
   type MetabaseDashboard,
   useCreateDashboardApi,
 } from "@metabase/embedding-sdk-react";
+import { useState } from "react";
 
 const ExampleHook = () => {
   const options = {

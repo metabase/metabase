@@ -1,16 +1,8 @@
 import type { IsolationTestEnv, Report } from "./types";
 
-export const getEnv = (): IsolationTestEnv => {
-  const env = (
-    globalThis as { __METABASE_DATA_APP_TEST_ENV__?: IsolationTestEnv }
-  ).__METABASE_DATA_APP_TEST_ENV__;
-
-  if (!env) {
-    throw new Error("isolation fixture: missing test env");
-  }
-
-  return env;
-};
+export const getEnv = (): IsolationTestEnv => ({
+  instanceUrl: window.location.origin,
+});
 
 export const describeError = (err: unknown): string =>
   (err as { message?: string })?.message ?? String(err);

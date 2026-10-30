@@ -10,6 +10,7 @@ interface ChartSettingInputProps {
   placeholder: string;
   onChange: (value: string) => void;
   id?: string;
+  disabled?: boolean;
   leftSection?: ReactNode;
   rightSection?: ReactNode;
 }
@@ -20,6 +21,7 @@ export const ChartSettingInput = ({
   onChange,
   placeholder,
   id,
+  disabled,
   leftSection,
   rightSection,
 }: ChartSettingInputProps) => {
@@ -41,6 +43,7 @@ export const ChartSettingInput = ({
       data-testid={id}
       aria-label={ariaLabel}
       placeholder={placeholder}
+      disabled={disabled}
       leftSection={leftSection}
       leftSectionPointerEvents={leftSection == null ? undefined : "all"}
       rightSection={rightSection}

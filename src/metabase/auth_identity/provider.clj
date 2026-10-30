@@ -58,10 +58,12 @@
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.auth-identity.session :as auth-session]
+   [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.notification.core :as notification]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.schema :as request.schema]
+   [metabase.settings.core :as setting]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -83,6 +85,7 @@
 
 (def ^:private disabled-account-message (deferred-tru "Your account is disabled. Please contact your administrator."))
 (def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
+(def ^:private personal-only-message (deferred-tru "This login is only for personal accounts."))
 
 ;;; -------------------------------------------------- Multimethod: validate --------------------------------------------------
 
@@ -220,6 +223,11 @@
        - Authentication data (credentials, tokens, etc.)
        - :device-info - Device information for session tracking
        - :redirect-url - Optional redirect URL after login
+       - :session/skip? - Optional; when true, the login creates no session
+       - :user/personal-only? - Optional; when true, a user who is not a personal account is refused before any
+         change is made to them
+       - :jwt/require-exp-and-iat? - Optional; when true, a JWT login refuses a JWT that lacks an `exp` or `iat`
+         claim, or whose `iat` is in the future
 
    Returns:
      Map with one of three result types:
@@ -287,10 +295,12 @@
    [:authenticated-user {:optional true} [:maybe (ms/InstanceOfClass clojure.lang.IDeref)]]
    [:claims {:optional true} [:maybe ms/JWTClaims]]
    [:code {:optional true} [:maybe :string]]
+   [:created-new-user? {:optional true} [:maybe :boolean]]
    [:device-info {:optional true} [:maybe DeviceInfo]]
    [:email {:optional true} [:maybe :string]]
    [:error {:optional true} [:maybe :keyword]]
    [:jwt-data {:optional true} [:maybe ms/JWTClaims]]
+   [:jwt/require-exp-and-iat? {:optional true} [:maybe :boolean]]
    [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
    [:oidc-nonce {:optional true} [:maybe :string]]
    [:oidc-provider {:optional true} [:maybe :keyword]]
@@ -304,6 +314,7 @@
    [:server-name {:optional true} [:maybe :string]]
    [:server-port {:optional true} [:maybe :int]]
    [:session/provider {:optional true} [:maybe :keyword]]
+   [:session/skip? {:optional true} [:maybe :boolean]]
    [:slack-data {:optional true} [:maybe [:map-of :string :string]]]
    [:state {:optional true} [:maybe :string]]
    [:success? {:optional true} [:maybe [:or :boolean [:enum :redirect]]]]
@@ -313,6 +324,7 @@
    [:user-data {:optional true} [:maybe UserData]]
    [:user-id {:optional true} [:maybe :int]]
    [:user-provisioning-enabled? {:optional true} [:maybe :boolean]]
+   [:user/personal-only? {:optional true} [:maybe :boolean]]
    [:username {:optional true} [:maybe :string]]])
 
 (mu/defn- apply-inactive-check
@@ -331,6 +343,24 @@
          (not (get-in request [:user :is_active]))) (assoc :success? false
                                                            :error disabled-account-snippet
                                                            :message disabled-account-message)))
+
+(mu/defn- apply-personal-only-check
+  "Refuses a `request` that sets `:user/personal-only?` for a user who is not a personal account.
+
+  Remove the user from the request on refusal so the rest of the login cannot change their account."
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user {:optional true} [:maybe ::users.schema/user]]]
+                     login-pipeline-entries)]]
+  (cond-> request
+    (and (:user/personal-only? request)
+         (:user request)
+         (not= :personal (get-in request [:user :type])))
+    (-> (dissoc :user)
+        (assoc :success? false
+               :error    :non-personal-user
+               :message  personal-only-message))))
 
 (mu/defn- create-session!
   "Create a new session for a user, attributed to the AuthIdentity of `(:session/provider request)` when a `login!`
@@ -391,7 +421,17 @@
   [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
    :error :message :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor :session/provider
    :jwt-data :claims
-   :tenant-slug :tenant-attributes :user-provisioning-enabled?])
+   :tenant-slug :tenant-attributes :user-provisioning-enabled? :created-new-user?])
+
+(defn- notify-admins-of-new-sso-user!
+  "Email admins that an SSO login provisioned a new user, if `send-new-sso-user-admin-email?` is enabled. A failure
+  to send is logged rather than failing a login whose user has already been committed."
+  [{user-id :id}]
+  (when (setting/get :send-new-sso-user-admin-email?)
+    (try
+      (messages/send-user-joined-admin-notification-email! (auth-identity.db/user user-id) :sso-auth? true)
+      (catch Exception e
+        (log/errorf e "Error sending new SSO user notification to admins for user %d" user-id)))))
 
 (methodical/defmethod login! :around ::provider
   [provider request]
@@ -407,6 +447,7 @@
                                  provider (some-> user-id class .getName))))
                  (when-let [email (get-in $ [:user-data :email])]
                    (auth-identity.db/user-login-columns-by-email email)))))
+    (apply-personal-only-check $)
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
@@ -415,12 +456,15 @@
     ;; user's tenant assignment was lost) must not leave a half-provisioned account behind (UXW-4898)
     (t2/with-transaction [_]
       (next-method provider $))
+    (cond-> $
+      (:created-new-user? $) (u/prog1 (notify-admins-of-new-sso-user! (:user <>))))
     (apply-inactive-check $)
     (apply-mfa-gate provider $)
     (cond-> $
       (and (true? (:success? $))
            (:user $)
-           (not (:mfa/pending? $))) (create-session! provider))
+           (not (:mfa/pending? $))
+           (not (:session/skip? $))) (create-session! provider))
     (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims
                     :oidc-provider-key :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor])))
 
@@ -469,18 +513,32 @@
           (events/publish-event! :event/user-invited {:object (assoc (auth-identity.db/user (:id <>))
                                                                      :sso_source (name provider))}))))))
 
+(defn- create-or-update-user!
+  [provider request]
+  (let [existing-user (:user request)
+        user-data     (:user-data request)]
+    (cond
+      existing-user
+      {:user              (cond-> existing-user
+                            user-data (update-user! user-data provider))
+       :created-new-user? false}
+
+      user-data
+      {:user              (create-user! user-data provider)
+       :created-new-user? true}
+
+      :else
+      {:user              nil
+       :created-new-user? false})))
+
 (methodical/defmethod login! ::create-user-if-not-exists
   [provider request]
-  (let [user (or (when-let [user (:user request)]
-                   (cond-> user
-                     (:user-data request) (update-user! (:user-data request) provider)))
-                 (when-let [user-data (:user-data request)]
-                   (create-user! user-data provider)))
-        redirect-url (or (:redirect-url request) "/")]
+  (let [{:keys [user created-new-user?]} (create-or-update-user! provider request)]
     (assoc request
-           :success? true
-           :user user
-           :redirect-url redirect-url)))
+           :success?          true
+           :user              user
+           :redirect-url      (or (:redirect-url request) "/")
+           :created-new-user? created-new-user?)))
 
 (methodical/prefer-method! #'login! ::provider ::create-user-if-not-exists)
 

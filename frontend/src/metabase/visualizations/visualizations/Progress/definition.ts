@@ -67,7 +67,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["progress.value"],
     }),
     "progress.goal": {
-      getSection: () => t`Display`,
+      getSection: getProgressGoalSettingsSection,
       get title() {
         return t`Goal`;
       },
@@ -92,6 +92,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
         return {
           data,
           datasetQuery: card.dataset_query,
+          display: card.display,
           excludedSelfColumn: settings["progress.value"],
           formatOptions: column && settings.column?.(column),
           placeholder: t`Enter goal value`,
@@ -109,3 +110,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
     },
   },
 };
+
+export function getProgressGoalSettingsSection() {
+  return t`Display`;
+}

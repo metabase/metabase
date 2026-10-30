@@ -163,7 +163,7 @@ config:
     gsheets: null
     health-check-logging-enabled: true
     help-link: metabase
-    help-link-custom-destination: https://www.metabase.com/help/premium
+    help-link-custom-destination: https://www.metabase.com/help-premium
     hide-stacktraces: false
     humanization-strategy: simple
     index-update-thread-count: 2
@@ -268,7 +268,7 @@ config:
     metabot-limit-unit: tokens
     metabot-name: Metabot
     metabot-nlq-system-prompt: ''
-    metabot-query-execution-enabled: false
+    metabot-query-execution-enabled: true
     metabot-quota-reached-message: You have reached your AI usage limit for the current period. Please contact your administrator.
     metabot-recent-views-enabled: true
     metabot-show-illustrations: true
@@ -293,6 +293,7 @@ config:
     oidc-user-provisioning-enabled: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
+    pivot-max-result-rows: 200000
     premium-embedding-token: null
     query-caching-early-refresh-ratio: 0.1
     query-caching-max-kb: 2000
@@ -305,6 +306,7 @@ config:
     remote-sync-auto-import-rate: 5
     remote-sync-branch: null
     remote-sync-check-changes-cache-ttl-seconds: 60
+    remote-sync-custom-collections-enabled: false
     remote-sync-git-timeout-seconds: 60
     remote-sync-task-time-limit-ms: 300000
     remote-sync-token: null

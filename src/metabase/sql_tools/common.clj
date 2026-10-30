@@ -61,6 +61,15 @@
                   {:transform id}))
               transforms))))
 
+(defn resolve-table-specs
+  "Resolve the table `specs` parsed out of a native query with [[find-table-or-transform]], keeping each spec that
+  matches nothing as `{:unresolved-table spec}`."
+  [driver database tables transforms specs]
+  (into #{}
+        (map #(or (find-table-or-transform driver database tables transforms %)
+                  {:unresolved-table (cond-> % (nil? (:schema %)) (dissoc :schema))}))
+        specs))
+
 (mu/defn table-name :- [:maybe :string]
   "Computes a table name from a table reference"
   [raw-col :- [:map {:closed true}

@@ -139,7 +139,9 @@
    ;; returned for Table
    :is_published        :boolean
    :data_authority      :text
-   :data_layer          :text))
+   :data_layer          :text
+   ;; returned for DataApp
+   :data_app_slug       :text))
 
 (def ^:private SearchColumn
   "Enum of every key of [[all-search-columns]]."
@@ -293,10 +295,11 @@
                                (map first)
                                ;; data_authority/data_layer are curation signals, not name/text fields —
                                ;; exclude them from exact-match ranking (and to keep in-place ordering stable).
+                               ;; data_app_slug repeats a data app's name.
                                (remove #{:collection_authority_level :moderated_status
                                          :initial_sync_status :pk_ref :location
                                          :collection_location :data_authority
-                                         :data_layer :document}))
+                                         :data_layer :document :data_app_slug}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -356,6 +359,7 @@
         [:collection.type :collection_type]
         [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
+        [:card.database_id :database_id]
         :dashboard_id
         bookmark-col dashboardcard-count-col
         [:display :display_type]))
@@ -454,6 +458,10 @@
   [_]
   [:id :name :description :created_at :updated_at])
 
+(defmethod columns-for-model "data-app"
+  [_]
+  [:id :name :display_name :description :created_at :updated_at [:name :data_app_slug]])
+
 (mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
@@ -464,10 +472,12 @@
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
 
-(mu/defn- from-clause-for-model :- [:tuple [:tuple :keyword :keyword]]
+(mu/defn- from-clause-for-model :- [:tuple [:tuple :any :keyword]]
   [model :- SearchableModel]
   (let [{:keys [db-model alias]} (get search.config/model-to-db-model model)]
-    [[(t2/table-name db-model) alias]]))
+    (if (= model "table")
+      [(warehouse-schema-overlay/table-query {:alias alias})]
+      [[(t2/table-name db-model) alias]])))
 
 (mu/defn- base-query-for-model :- [:map {:closed true}
                                    [:select :any]
@@ -561,6 +571,13 @@
 (defmethod search-query-for-model "transform"
   [_model search-ctx]
   (base-query-for-model "transform" search-ctx))
+
+(defmethod search-query-for-model "data-app"
+  [model search-ctx]
+  (-> (base-query-for-model model search-ctx)
+      (sql.helpers/where (search.permissions/permitted-data-apps-clause
+                          search-ctx
+                          (search.config/column-with-model-alias model :id)))))
 
 (defmethod search-query-for-model "database"
   [model search-ctx]

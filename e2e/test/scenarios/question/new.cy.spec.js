@@ -361,11 +361,18 @@ describe("scenarios > question > new", () => {
       cy.realPress("Tab").realPress("Tab").realPress("Tab");
       cy.findByLabelText("Description").should("be.focused");
 
+      cy.log(
+        "should suggest the collection the question was started in over a recent dashboard (metabase#51851)",
+      );
       cy.findByTestId("save-question-modal")
         .findByLabelText(/Where do you want to save/)
+        .should("have.text", "Third collection")
         .click();
 
-      H.entityPickerModal().findByText("New collection").click();
+      H.entityPickerModal()
+        .button("New collection")
+        .should("be.enabled")
+        .click();
 
       const NEW_COLLECTION = "Foo";
       H.collectionOnTheGoModal().within(() => {

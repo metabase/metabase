@@ -6,8 +6,10 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupListDataAppsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupRootCollectionItemsEndpoint,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -20,6 +22,7 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type {
   Collection,
   CollectionItem,
+  DataApp,
   Database,
   LibraryCollection,
   RecentItem,
@@ -356,6 +359,9 @@ export type SetupOpts = Partial<EntityPickerModalProps> & {
   }>;
   libraryCollection?: Collection;
   libraryCollectionItems?: CollectionItem[];
+  /** The data apps the user can read; turns on the data apps feature. */
+  dataApps?: DataApp[];
+  dataAppsDelayMs?: number;
 };
 
 export const setup = async ({
@@ -364,6 +370,9 @@ export const setup = async ({
   databases,
   libraryCollection,
   libraryCollectionItems,
+  dataApps,
+  dataAppsDelayMs,
+  searchResults,
   ...rest
 }: SetupOpts = {}) => {
   process.env.OVERSCAN = "20"; // for VirtualizedList overscan
@@ -379,16 +388,26 @@ export const setup = async ({
     ? createMockLibraryCollectionItem(libraryCollection)
     : undefined;
 
-  const state = libraryCollectionItem
-    ? createMockState({
-        settings: mockSettings({
-          "token-features": createMockTokenFeatures({ library: true }),
-        }),
-      })
-    : undefined;
+  const hasLibrary = libraryCollectionItem !== undefined;
+  const hasDataAppsFeature = dataApps !== undefined;
+  const state =
+    hasLibrary || hasDataAppsFeature
+      ? createMockState({
+          settings: mockSettings({
+            "token-features": createMockTokenFeatures({
+              library: hasLibrary,
+              "data-apps": hasDataAppsFeature,
+            }),
+          }),
+        })
+      : undefined;
 
-  if (libraryCollectionItem) {
+  if (hasLibrary) {
     setupEnterpriseOnlyPlugin("library");
+  }
+  if (dataApps) {
+    setupEnterpriseOnlyPlugin("data-apps");
+    setupListDataAppsEndpoint(dataApps, dataAppsDelayMs);
   }
   fetchMock.get(
     "path:/api/ee/library",
@@ -449,7 +468,11 @@ export const setup = async ({
     setupCollectionItemsEndpoint(endpoint);
   }
 
-  fetchMock.get("path:/api/search", mockSearchResults);
+  if (searchResults) {
+    setupSearchEndpoints(searchResults);
+  } else {
+    fetchMock.get("path:/api/search", mockSearchResults);
+  }
   fetchMock.get("path:/api/user/recipients", { data: [] });
   const onChange = jest.fn();
   const onClose = jest.fn();

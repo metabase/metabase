@@ -75,7 +75,7 @@
                  :model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "foo"}]
     (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
                           {:user_attribute "bar"})
-    (is (= "bar" (t2/select-one-fn :user_attribute :model/DatabaseRouter router-id)))))
+    (is (= "bar" (t2/select-one-fn :user_attribute :model/DatabaseRouter :id router-id)))))
 
 (deftest deleting-database-routers-works
   (mt/with-temp [:model/Database {db-id :id} {}
@@ -151,8 +151,8 @@
                  :model/Database {dest-db-id :id} {:router_database_id db-id}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}]
     (mt/user-http-request :crowberto :delete 204 (str "database/" db-id))
-    (is (not (t2/exists? :model/Database dest-db-id)))
-    (is (not (t2/exists? :model/Database db-id)))))
+    (is (not (t2/exists? :model/Database :id dest-db-id)))
+    (is (not (t2/exists? :model/Database :id db-id)))))
 
 (deftest destination-databases-are-hidden-from-regular-database-api
   (mt/with-temp [:model/Database {db-id :id} {}

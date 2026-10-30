@@ -283,7 +283,7 @@
                   fb        (by-entity [:card card-b])]
               (is (some? fa))
               (is (some? fb))
-              (t2/update! :model/Card card-b {:name (str prefix " Renamed Unique")})
+              (t2/update! :model/Card :id card-b {:name (str prefix " Renamed Unique")})
               (scan/scan!)
               (testing "both prior findings are soft-invalidated and neither entity has an active one"
                 (is (some? (:invalidated_at (t2/select-one :model/ContentDiagnosticsFinding :id (:id fa)))))
@@ -327,8 +327,8 @@
              :model/Card {card-b :id} {:collection_id coll-id :name nm :type :model :view_count 7 :display :table}]
             (scan/scan!)
             ;; Visualization display is live context, not frozen with the scan verdict.
-            (t2/update! :model/Card card-a {:display :bar})
-            (t2/update! :model/Card card-b {:display :line})
+            (t2/update! :model/Card :id card-a {:display :bar})
+            (t2/update! :model/Card :id card-b {:display :line})
             (let [resp  (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/duplicated"
                                               :query prefix)
                   by-id (into {} (map (juxt (juxt :entity_type :entity_id) identity)) (:data resp))]
@@ -390,7 +390,7 @@
                 (is (contains? by-type "transform"))
                 (is (not (contains? (get-in by-type ["transform" :details]) :view_count))))
               (testing "view_count is hydrated live at read time, not frozen at scan time"
-                (t2/update! :model/Card card-id {:view_count 99})
+                (t2/update! :model/Card :id card-id {:view_count 99})
                 (let [card-f (some #(when (= "card" (:entity_type %)) %)
                                    (:data (mt/user-http-request :crowberto :get 200
                                                                 "ee/content-diagnostics/duplicated" :query prefix)))]

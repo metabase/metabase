@@ -7,7 +7,7 @@ default: &default
   - "locales/**"
   - "bin/**/!(*.md)"
 
-workflows:
+workflows: &workflows
   - added|modified: ".github/workflows/*.{yml,yaml}"
 
 shared_sources: &shared_sources
@@ -67,6 +67,7 @@ frontend_specs: &frontend_specs
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
   - "enterprise/frontend/**/*.unit.*"
+  - "metaplow/**/*.unit.*"
   - "jest.config.js"
   - "jest.base.conf.js"
   - "jest.esm-packages.js"
@@ -126,8 +127,12 @@ ci_scripts:
   - ".github/file-paths.yaml"
   - ".github/scripts/**"
   - ".github/actions/**"
-  - ".github/workflows/e2e-{test,tests,matrix-builder}.yml"
-  - ".github/workflows/loki.yml"
+  # e2e-containers.unit.spec.ts asserts that every workflow starting one analytics collector
+  # container starts the other, and that three files agree on the sink's port. A new workflow is
+  # exactly the drift it exists to catch, so this follows all of them, not a list.
+  - ".github/workflows/*.{yml,yaml}"
+  - "metaplow/**"
+  - "deps.edn"
   - ".storybook/story-files.cjs"
   - "e2e/runner/read-spec-paths.js"
   - "e2e/support/cypress.config.js"
@@ -270,6 +275,11 @@ snowplow: &snowplow
   - "bin/lint-snowplow-schemas.bb"
   - "bin/lint-snowplow-schemas-test.bb"
 
+# The recording sink the e2e suite asserts Metabase Track events against, the counterpart to
+# `snowplow/` above.
+metaplow: &metaplow
+  - "metaplow/**"
+
 # e2e harness/support code (commands, support file, runner). Not in the
 # instrumented bundle, so it maps to no covered module — a change here forces a
 # full e2e run (see create-test-plan / e2eInfraTouched).
@@ -279,10 +289,11 @@ e2e_infra: &e2e_infra
   - *frontend_configs
   - *shared_e2e
   - *snowplow
+  - *metaplow
   - "e2e/**/!(*.cy.spec.@(js|jsx|ts|tsx))"
   - "frontend/build/**"
   - "patches/**"
-  - ".github/scripts/build-e2e-matrix.js"
+  - ".github/scripts/build-e2e-matrix.ts"
   - ".github/file-paths.yaml"
 
 e2e_all: &e2e_all
@@ -300,6 +311,14 @@ documentation:
 
 docs:
   - "docs/**"
+
+# The calls to useDocsUrl/getDocsUrl, the pages they link to, and bin/verify-doc-links, which checks
+# one against the other in .github/workflows/docs-links.yml.
+in_product_docs_links:
+  - *frontend_sources
+  - "docs/**/*.md"
+  - "bin/verify-doc-links/**"
+  - ".github/workflows/docs-links.yml"
 
 embedding_documentation: &embedding_documentation
   - ".typedoc/**"
@@ -322,6 +341,7 @@ build_uberjar:
   - *e2e_all
   - *embedding_sdk_components
   - *embedding_sdk_host_sample_apps
+  - *workflows
 
 yaml:
   - "**/*.yml"
