@@ -1,6 +1,10 @@
 # Before changing this file, make sure you have read how we use it:
 # https://www.notion.so/metabase/Pull-Request-Code-Review-Guide-374f05df889748b69d67af753f9bc9b8?pvs=4#36550c04ceab40b5a8b8bee6264b090c
 
+# TODO (Chris 2026-10-30): Frontend ownership is hand-written below. The frontend module map in
+# frontend/lint/module-boundaries.mjs could carry each element's team and feed a generated block, as the backend
+# module config does.
+
 # @metabase/querying-platform
 # Not enforced: uncomment these lines once the team agrees to review these paths.
 # src/metabase/lib @metabase/querying-platform
