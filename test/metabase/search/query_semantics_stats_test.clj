@@ -14,20 +14,6 @@
     :left-subset   #{:A}    #{:A :B}
     :incomparable  #{:A :B} #{:B :C}))
 
-(deftest translated-comparisons-change-a-query-test
-  (doseq [{:keys [scenario-id focus specs]} (stats/translation-rows fixtures/cases)]
-    (is (< 1 (count (set (map (comp :query specs) stats/engines))))
-        (str scenario-id " / " focus " does not adapt any query"))))
-
-(deftest alternatives-score-no-worse-test
-  ;; An adapted query that scores below the scenario query would understate the engine.
-  (doseq [{:keys [id comparisons] :as case} fixtures/cases
-          {:keys [focus correct alternatives]} comparisons
-          [engine {:keys [hits]}] alternatives
-          :let [f1 #(:f1 (stats/score (set correct) (set %)))]]
-    (is (<= (f1 (fixtures/expected-hits case engine)) (f1 hits))
-        (str id " / " focus " / " (name engine) " scores worse than the scenario query"))))
-
 (deftest correct-score-test
   (are [expected correct hits] (= expected (stats/score correct hits))
     {:precision 1,   :recall 1,   :f1 1}   #{}      #{}
@@ -36,6 +22,20 @@
     {:precision 1,   :recall 1/2, :f1 2/3} #{:A :B} #{:A}
     {:precision 1/2, :recall 1,   :f1 2/3} #{:A}    #{:A :B}
     {:precision 0,   :recall 0,   :f1 0}   #{:A}    #{:B}))
+
+(deftest translated-comparisons-change-a-query-test
+  (doseq [{:keys [scenario-id focus specs]} (stats/translation-rows fixtures/cases)]
+    (is (< 1 (count (set (map (comp :query specs) stats/engines))))
+        (str scenario-id " / " focus " does not adapt any query"))))
+
+(deftest alternatives-score-no-worse-test
+  ;; An adapted query that scores below the scenario query would understate the engine.
+  (doseq [{:keys [id comparisons] :as scenario} fixtures/cases
+          {:keys [focus correct alternatives]}    comparisons
+          :let [f1 #(:f1 (stats/score (set correct) (set %)))]
+          [engine {:keys [hits]}]                 alternatives]
+    (is (<= (f1 (fixtures/expected-hits scenario engine)) (f1 hits))
+        (str id " / " focus " / " (name engine) " scores worse than the scenario query"))))
 
 (deftest corpus-statistics-test
   (let [{:keys [same-query translations]} (stats/summary fixtures/cases)]
