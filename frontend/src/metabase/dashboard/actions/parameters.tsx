@@ -21,6 +21,10 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
+import {
+  getMappingOptionByTarget,
+  getParameterMappingOptions,
+} from "metabase/parameters/utils/mapping-options";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { createAction, createThunkAction } from "metabase/redux";
 import { selectTab, setParameterValues } from "metabase/redux/dashboard";
@@ -769,7 +773,11 @@ export const setParameterType = createThunkAction(
             sectionId,
           );
       } else if (parameter.type !== type) {
-        resetNativeCardParameterMappings(getState, dispatch, parameterId);
+        resetIncompatibleNativeCardParameterMappings(
+          getState,
+          dispatch,
+          setParamType(parameter, type, sectionId),
+        );
       }
 
       if (!haveRestoredParameterMappingsToPristine) {
@@ -785,10 +793,13 @@ export const setParameterType = createThunkAction(
     },
 );
 
-function resetNativeCardParameterMappings(
+// A native card's variables and field filters only accept some parameter types,
+// so changing the operator can invalidate a mapping. Drop only the mappings the
+// new type can no longer target - the rest stay connected.
+function resetIncompatibleNativeCardParameterMappings(
   getState: GetState,
   dispatch: Dispatch,
-  parameterId: ParameterId,
+  parameter: Parameter,
 ) {
   const dashboard = getDashboardComplete(getState());
   const dashcards = dashboard?.dashcards ?? [];
@@ -804,10 +815,27 @@ function resetNativeCardParameterMappings(
       const newParameterMappings = parameterMappings.filter(
         (parameterMapping) => {
           const question = questionById[parameterMapping.card_id];
-          return (
-            parameterMapping.parameter_id !== parameterId ||
+          if (
+            parameterMapping.parameter_id !== parameter.id ||
             !question ||
             !Lib.queryDisplayInfo(question.query()).isNative
+          ) {
+            return true;
+          }
+
+          const options = getParameterMappingOptions(
+            question,
+            parameter,
+            question.card(),
+            dashcard,
+          );
+          return (
+            getMappingOptionByTarget(
+              options,
+              parameterMapping.target,
+              question,
+              parameter,
+            ) != null
           );
         },
       );
