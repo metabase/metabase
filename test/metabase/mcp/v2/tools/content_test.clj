@@ -246,7 +246,10 @@
 
 (deftest get-content-dashboard-parameters-include-test
   (testing "BOT-2524: the parameters include shows the properties the concise row leaves out"
-    (mt/with-temp [:model/Dashboard {dash-id :id} {:parameters [{:id "state" :name "State" :slug "state" :type "string/="}
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:parameters [{:id   "state"
+                                                                 :name "State"
+                                                                 :slug "state"
+                                                                 :type "string/="}
                                                                 {:id                  "city"
                                                                  :name                "City"
                                                                  :slug                "city"
