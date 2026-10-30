@@ -234,6 +234,23 @@ describe("StringFilterValuePicker", () => {
       expect(onChange).toHaveBeenCalledWith(["Gadget"]);
     });
 
+    it("should search the list of values by substring (metabase#20551)", async () => {
+      await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        fieldId,
+        fieldValues: PRODUCT_CATEGORY_VALUES,
+      });
+
+      await userEvent.type(screen.getByPlaceholderText("Search the list"), "i");
+      expect(screen.getByText("Doohickey")).toBeInTheDocument();
+      expect(screen.getByText("Gizmo")).toBeInTheDocument();
+      expect(screen.getByText("Widget")).toBeInTheDocument();
+      expect(screen.queryByText("Gadget")).not.toBeInTheDocument();
+    });
+
     it("should allow to update selected values", async () => {
       const { onChange } = await setupStringPicker({
         query,

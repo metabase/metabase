@@ -1,4 +1,7 @@
-import type { DateFilterValue } from "metabase/querying/common/types";
+import type {
+  DateFilterValue,
+  DatePickerTruncationUnit,
+} from "metabase/querying/common/types";
 import { setLocalization } from "metabase/utils/i18n";
 import * as Lib from "metabase-lib";
 import {
@@ -77,6 +80,34 @@ describe("getDateFilterClause", () => {
       displayName: "Created At is today",
     },
     {
+      value: { type: "relative", value: -1, unit: "day" },
+      displayName: "Created At is yesterday",
+    },
+    {
+      value: { type: "relative", value: -1, unit: "week" },
+      displayName: "Created At is in the previous week",
+    },
+    {
+      value: { type: "relative", value: -7, unit: "day" },
+      displayName: "Created At is in the previous 7 days",
+    },
+    {
+      value: { type: "relative", value: -30, unit: "day" },
+      displayName: "Created At is in the previous 30 days",
+    },
+    {
+      value: { type: "relative", value: -1, unit: "month" },
+      displayName: "Created At is in the previous month",
+    },
+    {
+      value: { type: "relative", value: -3, unit: "month" },
+      displayName: "Created At is in the previous 3 months",
+    },
+    {
+      value: { type: "relative", value: -12, unit: "month" },
+      displayName: "Created At is in the previous 12 months",
+    },
+    {
       value: { type: "relative", value: -2, unit: "year" },
       displayName: "Created At is in the previous 2 years",
     },
@@ -89,6 +120,27 @@ describe("getDateFilterClause", () => {
         offsetUnit: "year",
       },
       displayName: "Created At is in the previous 2 years, starting 1 year ago",
+    },
+    {
+      value: {
+        type: "relative",
+        value: -1,
+        unit: "year",
+        offsetValue: -2,
+        offsetUnit: "year",
+      },
+      displayName: "Created At is in the previous year, starting 2 years ago",
+    },
+    {
+      value: {
+        type: "relative",
+        value: 30,
+        unit: "day",
+        offsetValue: 7,
+        offsetUnit: "day",
+      },
+      displayName:
+        "Created At is in the next 30 days, starting 7 days from now",
     },
     {
       value: { type: "relative", value: 4, unit: "month" },
@@ -144,6 +196,41 @@ describe("getDateFilterClause", () => {
       const filter = getDateFilterClause(column, value);
       expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
         displayName,
+      });
+    },
+  );
+
+  it.each<[DatePickerTruncationUnit, string]>([
+    ["minute", "minutes"],
+    ["hour", "hours"],
+    ["day", "days"],
+    ["week", "weeks"],
+    ["month", "months"],
+    ["quarter", "quarters"],
+    ["year", "years"],
+  ])(
+    "should convert a relative filter value with a %s offset to a filter clause",
+    (unit, pluralUnit) => {
+      const pastFilter = getDateFilterClause(column, {
+        type: "relative",
+        value: -10,
+        unit,
+        offsetValue: -10,
+        offsetUnit: unit,
+      });
+      const futureFilter = getDateFilterClause(column, {
+        type: "relative",
+        value: 10,
+        unit,
+        offsetValue: 10,
+        offsetUnit: unit,
+      });
+
+      expect(Lib.displayInfo(query, stageIndex, pastFilter)).toMatchObject({
+        displayName: `Created At is in the previous 10 ${pluralUnit}, starting 10 ${pluralUnit} ago`,
+      });
+      expect(Lib.displayInfo(query, stageIndex, futureFilter)).toMatchObject({
+        displayName: `Created At is in the next 10 ${pluralUnit}, starting 10 ${pluralUnit} from now`,
       });
     },
   );
