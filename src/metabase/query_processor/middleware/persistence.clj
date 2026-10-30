@@ -17,7 +17,6 @@
                (:destination-database/id query)))
     (match/replace query
       {:persisted-info/native &truthy}
-      ;; Signal to the SQL QP's independent persisted-cache lookup that it should not use the cache for this
-      ;; query. See [[metabase.driver.sql.query-processor/resolve-persisted-source-sql]].
-      (-> &match (dissoc :persisted-info/native) (assoc :qp/skip-persisted-cache true)))
+      ;; the SQL compiler reads the cache only from a stage's `:persisted-info/native`
+      (dissoc &match :persisted-info/native))
     query))

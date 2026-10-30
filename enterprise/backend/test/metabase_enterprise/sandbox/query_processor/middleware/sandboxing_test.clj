@@ -18,6 +18,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -47,6 +48,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
@@ -1499,6 +1501,81 @@
                     (is (= "Addr"      (get-in cols ["ADDRESS"  :display_name])))
                     (is (= "Pwd"       (get-in cols ["PASSWORD" :display_name])))
                     (is (= :type/Title (get-in cols ["NAME"     :semantic_type])))))))))))))
+
+(deftest model-metadata-lib-names-do-not-move-values-under-column-sandbox-test
+  (testing (str "Lib name keys in a model's saved metadata that disagree with its query do not put another column's "
+                "values under a column that a column sandbox hides")
+    (met/with-gtaps! {:gtaps      {:venues {:query (mt/mbql-query venues
+                                                     {:fields   [$id $name $category_id $longitude]
+                                                      :order-by [[:asc $id]]})}}
+                      :attributes {}}
+      (let [mp          (mt/metadata-provider)
+            model-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                            (lib/order-by (lib.metadata/field mp (mt/id :venues :id)))
+                            (lib/limit 3))
+            real-cols   (lib.metadata.result-metadata/returned-columns model-query)
+            forged-cols (mapv (fn [col]
+                                (cond-> col
+                                  (= (:name col) "NAME")
+                                  (assoc :lib/original-name        "PRICE"
+                                         :lib/deduplicated-name    "LATITUDE"
+                                         :lib/source-column-alias  "PRICE"
+                                         :lib/desired-column-alias "LATITUDE")))
+                              real-cols)]
+        (doseq [[metadata-name metadata] {:forged forged-cols, :real real-cols}]
+          (let [mp       (lib.tu/mock-metadata-provider
+                          mp
+                          {:cards [{:id              1
+                                    :type            :model
+                                    :dataset-query   model-query
+                                    :result-metadata metadata}]})
+                ref      (fn [col-name base-type]
+                           [:field {:lib/uuid (str (random-uuid)) :base-type base-type} col-name])
+                base     (lib/query mp (lib.metadata/card mp 1))
+                visible  (assoc-in base [:stages 0 :fields]
+                                   [(ref "ID" :type/Integer) (ref "NAME" :type/Text) (ref "LONGITUDE" :type/Float)])
+                hidden   (assoc-in base [:stages 0 :fields]
+                                   [(ref "PRICE" :type/Integer) (ref "LATITUDE" :type/Float)])
+                breakout (-> base
+                             (assoc-in [:stages 0 :breakout] [(ref "PRICE" :type/Integer)])
+                             (assoc-in [:stages 0 :aggregation] [[:count {:lib/uuid (str (random-uuid))}]]))]
+            (doseq [enforce? [true false]
+                    :let [run (fn [user query]
+                                (mt/with-test-user user
+                                  (try
+                                    (mt/rows (if enforce?
+                                               (qp/process-query query)
+                                               (mu/disable-enforcement (qp/process-query query))))
+                                    (catch clojure.lang.ExceptionInfo e
+                                      {::error-type (:type (ex-data e)), ::message (ex-message e)}))))]]
+              (testing (format "metadata = %s, schema checks = %s" metadata-name enforce?)
+                (testing "admin (unsandboxed) sees every column's own values"
+                  (is (= [[1 "Red Medicine" -165.374]
+                          [2 "Stout Burgers & Beers" -118.329]
+                          [3 "The Apple Pan" -118.428]]
+                         (run :crowberto visible)))
+                  (is (= [[3 10.0646] [2 34.0996] [2 34.0406]]
+                         (run :crowberto hidden)))
+                  (is (= [[2 2] [3 1]]
+                         (run :crowberto breakout))))
+                (testing "sandboxed user sees the visible columns' own values"
+                  (is (= [[1 "Red Medicine" -165.374]
+                          [2 "Stout Burgers & Beers" -118.329]
+                          [3 "The Apple Pan" -118.428]]
+                         (run :rasta visible))))
+                (testing "sandboxed user gets no values under the hidden columns"
+                  ;; each row's hidden values: every column of `hidden`, the breakout column of `breakout`
+                  (doseq [[query-name query hidden-vals] [[:hidden hidden identity]
+                                                          [:breakout breakout (comp list first)]]]
+                    (testing query-name
+                      (let [rows (run :rasta query)]
+                        ;; refused, as a permission error or as the warehouse not finding the hidden column in
+                        ;; the sandbox query; any other error would be a different breakage
+                        (is (if (map? rows)
+                              (or (= :missing-required-permissions (::error-type rows))
+                                  (boolean (re-find #"\"__mb_source\"?\.\"?(PRICE|LATITUDE)" (::message rows))))
+                              (every? nil? (mapcat hidden-vals rows)))
+                            (pr-str rows))))))))))))))
 
 (deftest is-sandboxed-success-test
   (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"

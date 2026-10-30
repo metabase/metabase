@@ -73,10 +73,14 @@
                                       ;; This is for detecting circular refs below, and is later used as part of
                                       ;; permissions enforcement
                                       (assoc stage :qp/stage-is-from-source-card card-id))
-                      ;; TODO (Cam 2026-02-25) Check if attaching the metadata is even necessary anymore
-                      card-metadata (into []
-                                          (remove :remapped-from)
-                                          (lib.card/card-returned-columns metadata-providerable card))
+                      ;; The Card's saved metadata is the only description of a native stage's columns. An MBQL
+                      ;; stage's columns come from its query, which the saved metadata (edited, stale or sent by a
+                      ;; client) need not match, so it is not attached there.
+                      native?       (= (:lib/type (last stages)) :mbql.stage/native)
+                      card-metadata (when native?
+                                      (into []
+                                            (remove :remapped-from)
+                                            (lib.card/card-returned-columns metadata-providerable card)))
                       last-stage    (cond-> (last stages)
                                       (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
                                       ;; This will be applied, if still appropriate, by

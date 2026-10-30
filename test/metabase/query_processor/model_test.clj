@@ -4,13 +4,18 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.test :as mt]))
+   [metabase.query-processor.test :as qp]
+   [metabase.test :as mt]
+   [metabase.util.malli :as mu]))
 
 (deftest ^:parallel join-in-model-display-name-test
   (let [mp       (mt/metadata-provider)
@@ -182,3 +187,100 @@
               (is (=? {:display-name "[RENAMED]"
                        :id           (mt/id :products :id)}
                       (returned-col (qp.preprocess/preprocess query)))))))))))
+
+(defn- forge-lib-names
+  "Give the column named `col-name` in `cols` Lib name keys that point at other columns."
+  [cols col-name forged]
+  (mapv (fn [col]
+          (cond-> col
+            (= (:name col) col-name) (merge forged)))
+        cols))
+
+(deftest model-metadata-lib-names-disagree-with-query-test
+  (testing "Lib name keys in a model's saved metadata that disagree with its query do not move values between columns"
+    (let [mp          (mt/metadata-provider)
+          model-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                          (lib/order-by (lib.metadata/field mp (mt/id :venues :id)))
+                          (lib/limit 3))
+          real-cols   (lib.metadata.result-metadata/returned-columns model-query)]
+      (doseq [[forgery-name forged]
+              {:none            {}
+               :all-keys        {:lib/original-name        "PRICE"
+                                 :lib/deduplicated-name    "LATITUDE"
+                                 :lib/source-column-alias  "PRICE"
+                                 :lib/desired-column-alias "CATEGORY_ID"}
+               :desired-alias   {:lib/desired-column-alias "PRICE"}
+               :source-alias    {:lib/source-column-alias "PRICE"}
+               :original-name   {:lib/original-name "PRICE"}}
+              enforce? [true false]]
+        (testing (format "forgery = %s, schema checks = %s" forgery-name enforce?)
+          (let [mp    (lib.tu/mock-metadata-provider
+                       mp
+                       {:cards [{:id              1
+                                 :type            :model
+                                 :dataset-query   model-query
+                                 :result-metadata (-> real-cols
+                                                      (forge-lib-names "NAME" forged)
+                                                      (forge-lib-names "CATEGORY_ID" {:display-name "Kategory"}))}]})
+                card  (lib.metadata/card mp 1)
+                run   (fn [query]
+                        (if enforce?
+                          (qp/process-query query)
+                          (mu/disable-enforcement (qp/process-query query))))]
+            (testing "field refs by name return those columns' values"
+              (let [query (assoc-in (lib/query mp card) [:stages 0 :fields]
+                                    [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "PRICE"]
+                                     [:field {:lib/uuid (str (random-uuid)) :base-type :type/Text} "NAME"]])]
+                (is (= [[3 "Red Medicine"]
+                        [2 "Stout Burgers & Beers"]
+                        [2 "The Apple Pan"]]
+                       (mt/rows (run query))))))
+            (testing "running the model returns every column under its own name, with user-edited metadata"
+              (let [result (run (lib/query mp card))]
+                (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
+                       (map :name (mt/cols result))))
+                (is (= "Kategory" (:display_name (m/find-first (comp #{"CATEGORY_ID"} :name) (mt/cols result)))))
+                (is (= [1 "Red Medicine" 4 10.0646 -165.374 3]
+                       (first (mt/rows result))))))))))))
+
+(driver/register! ::h2-with-stage-ctes, :parent :h2)
+
+(defmethod sql.qp/use-ctes-for-stages? ::h2-with-stage-ctes
+  [_driver]
+  true)
+
+(defn- rows-compiled-by
+  "Rows of `query` compiled by `driver` and run on H2. `:h2` compiles stages as nested subselects, and
+  `::h2-with-stage-ctes` as the CTEs that Postgres, MySQL and others use."
+  [driver query]
+  (let [{sql :query, params :params} (driver/with-driver driver
+                                       (qp.compile/compile query))]
+    (mt/rows (qp/process-query {:database (mt/id), :type :native, :native {:query sql, :params params}}))))
+
+(deftest model-metadata-lib-names-on-every-compilation-path-test
+  (testing "Lib name keys in a model's saved metadata do not move values between columns, whether stages compile to
+            subselects or to CTEs"
+    (let [mp          (mt/metadata-provider)
+          model-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                          (lib/order-by (lib.metadata/field mp (mt/id :venues :id)))
+                          (lib/limit 3))
+          mp          (lib.tu/mock-metadata-provider
+                       mp
+                       {:cards [{:id              1
+                                 :type            :model
+                                 :dataset-query   model-query
+                                 :result-metadata (forge-lib-names
+                                                   (lib.metadata.result-metadata/returned-columns model-query)
+                                                   "NAME"
+                                                   {:lib/desired-column-alias "PRICE"})}]})
+          field-ref   (fn [col-name base-type]
+                        [:field {:lib/uuid (str (random-uuid)) :base-type base-type} col-name])
+          query       (assoc-in (lib/query mp (lib.metadata/card mp 1)) [:stages 0 :fields]
+                                [(field-ref "PRICE" :type/Integer)
+                                 (field-ref "NAME" :type/Text)])]
+      (doseq [driver [:h2 ::h2-with-stage-ctes]]
+        (testing driver
+          (is (= [[3 "Red Medicine"]
+                  [2 "Stout Burgers & Beers"]
+                  [2 "The Apple Pan"]]
+                 (rows-compiled-by driver query))))))))
