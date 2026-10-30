@@ -144,18 +144,16 @@ export function registerAiControlsUpsellPagePrefetch(): void {
   );
 }
 
-const PassThroughOutlet = () => <Outlet />;
-
 const GatedRequireMetabotConfigured = featureGatedComponent(
   "ai_controls",
   RequireMetabotConfigured,
-  PassThroughOutlet,
+  Outlet,
 );
 
 const GatedRequireMcpEnabled = featureGatedComponent(
   "ai_controls",
   RequireMcpEnabled,
-  PassThroughOutlet,
+  Outlet,
 );
 
 export function getAiControlsRoutes() {

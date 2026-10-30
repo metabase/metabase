@@ -16,8 +16,6 @@ import {
   MetabotAnalyticsAvailabilityLayout,
 } from "./components/AvailabilityLayouts";
 
-const PassThroughOutlet = () => <Outlet />;
-
 /**
  * The AI auditing pages, in one chunk. Every loader names it, so moving between
  * usage, conversations, MCP, CLI and data apps does not cost a fetch each time.
@@ -169,7 +167,7 @@ function getCliAnalyticsRoutes() {
 const GatedMetabotAnalyticsAvailabilityLayout = featureGatedComponent(
   "ai_controls",
   MetabotAnalyticsAvailabilityLayout,
-  PassThroughOutlet,
+  Outlet,
 );
 
 const gatedOnAiControls = (enabled: PluginRoute) =>
@@ -210,7 +208,11 @@ export function getAiAuditingRoutes() {
       {getCliAnalyticsRoutes()}
       <Route
         path="data-apps"
-        lazy={featureGatedRoute("data-apps", dataAppsAnalyticsPage, notFoundRoute)}
+        lazy={featureGatedRoute(
+          "data-apps",
+          dataAppsAnalyticsPage,
+          notFoundRoute,
+        )}
       />
     </Route>
   );
