@@ -34,6 +34,11 @@
   (or (get-in modules [module :ns-prefix])
       (default-ns-prefix module)))
 
+(def codeowners-value->trees
+  "Each allowed `:codeowners` value in the module config => the directory trees it owns in `.github/CODEOWNERS`."
+  {true      ["src" "test"]
+   :src-only ["src"]})
+
 (defn module-dir
   "Repo-relative directory holding `module`'s namespaces in `tree`, which is `\"src\"` or `\"test\"`.
   Examples: `src/metabase/lib_be` for `lib-be`, `enterprise/backend/test/metabase_enterprise/sso` for `enterprise/sso`.

@@ -225,6 +225,7 @@ describe("file-paths.yaml", () => {
     "dev/src/dev/module_explorer.clj",
     "dev/src/dev/module_graph.clj",
     "mage/src/mage/be_dev.clj",
+    "mage/src/mage/cli.clj",
     "mage/src/mage/modules.clj",
   ])("checks the generated CODEOWNERS block when %s changes", (path) => {
     expect(matches("project_codeowners_checks", path)).toBe(true);

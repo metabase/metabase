@@ -229,6 +229,7 @@ project_codeowners_checks:
   - "dev/src/dev/module_explorer.clj"
   - "dev/src/dev/module_graph.clj"
   - "mage/src/mage/be_dev.clj"
+  - "mage/src/mage/cli.clj"
   - "mage/src/mage/modules.clj"
 
 project_migration_checks:

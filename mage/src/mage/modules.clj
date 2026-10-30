@@ -272,7 +272,9 @@
 ;;;; The generated block in `.github/CODEOWNERS` sits between BEGIN/END markers, with one stanza per module that opts
 ;;;; in with `:codeowners` in config.edn.
 ;;;; The stanza gives the module's directories and root namespace files to its team's `codeowner` handle in team.json.
-;;;; The block depends only on those two files, so a new directory or file never makes it stale.
+;;;; A nested module of another team that has not opted in gets lines with no owner instead.
+;;;; The block's text depends only on those two files, so a new directory or file never makes it stale.
+;;;; The generator also refuses an opted-in module whose src directory has no code, which reads the disk.
 ;;;; Lines outside the markers are hand-maintained (frontend, e2e, docs, single files).
 
 (def ^:private codeowners-path ".github/CODEOWNERS")
@@ -284,27 +286,13 @@
 (def ^:private codeowners-end-marker
   "# ===== END generated module ownership =====")
 
-;; Keep the keys in step with the `:codeowners` enum in `dev.deps-graph/ModuleConfig`.
-(def ^:private codeowners-value->trees
-  "Directory trees each `:codeowners` value owns."
-  {true      ["src" "test"]
-   :src-only ["src"]})
-
 (def ^:private tree->root-file-suffix
   "Pattern suffix matching a module's root namespace file next to its directory in each tree, such as
   `src/metabase/driver.clj` or `test/metabase/driver_test.clj`."
   {"src"  ".*"
    "test" "_test.*"})
 
-(defn- module->owned-patterns
-  "CODEOWNERS patterns for `module` in `trees`: per tree, the module's directory, then its root namespace file."
-  [modules-config module trees]
-  (for [tree    trees
-        :let    [dir (modules/module-dir modules-config module tree)]
-        pattern [dir (str dir (tree->root-file-suffix tree))]]
-    pattern))
-
-(defn- team-name->codeowner
+(defn- read-team->codeowner
   "Team name => GitHub CODEOWNERS handle, from the `codeowner` field in team.json.
   Teams without a `codeowner` are omitted."
   []
@@ -320,88 +308,72 @@
   (or (.isDirectory (io/file ^String src-dir))
       (some #(.isFile (io/file (str src-dir %))) [".clj" ".cljc"])))
 
-(defn- foreign-children
-  "Modules of another team whose `tree` directory sits inside `module`'s, without owning `tree` themselves.
-  The parent's directory pattern would give their code to the parent's team."
-  [modules-config module tree]
-  (let [dir  (str (modules/module-dir modules-config module tree) "/")
-        team (modules/module-team modules-config module)]
-    (for [child (keys modules-config)
-          :when (and (str/starts-with? (modules/module-dir modules-config child tree) dir)
-                     (not= team (modules/module-team modules-config child))
-                     (not (some #{tree} (codeowners-value->trees (get-in modules-config [child :codeowners])))))]
-      child)))
+(defn- path-within?
+  "Whether `path` is `dir` or sits inside it."
+  [dir path]
+  (or (= dir path)
+      (str/starts-with? path (str dir "/"))))
 
-(defn- module-codeowners-stanza
-  "Stanza data for `module`: `{:module, :team, :handle, :patterns}`.
-  Throws when the module's `:codeowners` value is unknown, its team has no `codeowner`, it has no code at its src
-  directory, or a module of another team sits inside a directory it owns."
-  [modules-config team->codeowner module]
-  (let [value   (get-in modules-config [module :codeowners])
-        trees   (codeowners-value->trees value)
-        team    (modules/module-team modules-config module)
-        handle  (get team->codeowner team)
-        src-dir (modules/module-dir modules-config module "src")]
-    (when-not trees
-      (throw (ex-info (format "Module %s sets :codeowners to %s; use true (src and test) or :src-only"
-                              module (pr-str value))
-                      {:module module, :codeowners value})))
-    (when-not handle
-      (throw (ex-info (format "Module %s sets :codeowners but its team %s has no \"codeowner\" in %s"
-                              module (pr-str team) team-config-path)
-                      {:module module, :team team})))
-    (when-not (has-source? src-dir)
-      (throw (ex-info (format (str "Module %s sets :codeowners but has no code at %s. The generator does not handle"
-                                   " plugin code under modules/<plugin>/src; give that directory an owner by hand.")
-                              module src-dir)
-                      {:module module, :src-dir src-dir})))
-    (doseq [tree  trees
-            :let  [children (foreign-children modules-config module tree)]
-            :when (seq children)]
-      (throw (ex-info (format (str "Module %s sets :codeowners, but %s of another team sit inside its %s directory."
-                                   " Set :codeowners on them so they keep their own team.")
-                              module (str/join ", " (sort children)) tree)
-                      {:module module, :tree tree, :children (vec (sort children))})))
-    {:module   module
-     :team     team
-     :handle   handle
-     :patterns (module->owned-patterns modules-config module trees)}))
-
-(defn- codeowners-stanzas
-  "Stanza data for each module that sets `:codeowners`, a nested child after its parent.
-  Throws as [[module-codeowners-stanza]] does."
+(defn- codeowners-entries
+  "One entry per module and tree the block must name, in block order:
+  `{:module, :tree, :dir, :team, :handle, :opted-in?, :patterns}`.
+  An opted-in module gets its team's handle.
+  Any other module inside an opted-in module's directory gets an entry only where the block would otherwise give its
+  code to the wrong team: the owning module's handle when the teams match, else `nil`, which leaves it unowned.
+  Expects a config without [[codeowners-config-problems]]."
   [modules-config team->codeowner]
-  (->> (for [[module cfg] modules-config
-             :when (contains? cfg :codeowners)]
-         module)
-       ;; CODEOWNERS applies the last matching pattern, so a nested child's stanza must follow its parent's.
-       ;; Sorting by source path does that.
-       (sort-by #(modules/module-dir modules-config % "src"))
-       (mapv #(module-codeowners-stanza modules-config team->codeowner %))))
+  (reduce
+   (fn [entries module]
+     (let [team  (modules/module-team modules-config module)
+           trees (set (modules/codeowners-value->trees (get-in modules-config [module :codeowners])))]
+       (into entries
+             (for [tree   ["src" "test"]
+                   :let   [dir       (modules/module-dir modules-config module tree)
+                           ;; Entries come parent first, so the last one containing `dir` is the nearest.
+                           enclosing (fn [pred]
+                                       (last (filter #(and (= tree (:tree %)) (pred %) (path-within? (:dir %) dir))
+                                                     entries)))
+                           current   (enclosing any?)
+                           owner     (enclosing :opted-in?)
+                           opted-in? (contains? trees tree)
+                           handle    (cond
+                                       opted-in?              (get team->codeowner team)
+                                       (= team (:team owner)) (:handle owner)
+                                       :else                  nil)]
+                   :when  (or opted-in?
+                              (and owner (not= handle (:handle current))))]
+               {:module    module
+                :tree      tree
+                :dir       dir
+                :team      team
+                :handle    handle
+                :opted-in? opted-in?
+                :patterns  [dir (str dir (tree->root-file-suffix tree))]}))))
+   []
+   ;; CODEOWNERS applies the last matching pattern, so a nested module's entries must follow its parent's. Sorting
+   ;; by source path does that, and the test tree mirrors the source tree.
+   (sort-by #(modules/module-dir modules-config % "src") (keys modules-config))))
 
-(defn- codeowners-stanza-lines
-  "Lines for one stanza: a `# module (team)` header then one `pattern handle` line per pattern."
-  [{:keys [module team handle patterns]}]
-  (into [(format "# %s (%s)" module team)]
-        (map #(str % " " handle))
-        patterns))
+(defn- codeowners-config-problems
+  "Problems with the modules that set `:codeowners`, as maps keyed by `:type`:
+  `:unknown-value` (`:module`, `:value`), `:no-codeowner` (`:module`, `:team`) and `:no-source` (`:module`,
+  `:src-dir`).
+  `source?` says whether a module's src directory has code."
+  [modules-config team->codeowner source?]
+  (for [[module cfg] (sort-by key modules-config)
+        :when        (contains? cfg :codeowners)
+        :let         [value   (:codeowners cfg)
+                      team    (modules/module-team modules-config module)
+                      src-dir (modules/module-dir modules-config module "src")]
+        problem      (if-not (contains? modules/codeowners-value->trees value)
+                       [{:type :unknown-value, :module module, :value value}]
+                       (cond-> []
+                         (not (contains? team->codeowner team))
+                         (conj {:type :no-codeowner, :module module, :team team})
 
-(defn- codeowners-block
-  "Generated block as one string, marker to marker, rendering `stanzas` in order."
-  [stanzas]
-  (str/join
-   "\n"
-   (concat
-    [codeowners-begin-marker
-     "#"
-     "# Generated by `./bin/mage update-codeowners`. Do not edit by hand."
-     "# A module opts in with `:codeowners` in .clj-kondo/config/modules/config.edn."
-     "# Its directories and root namespace files go to its team's \"codeowner\" handle in .github/team.json."
-     "# Exceptions inside these paths go below the END marker: lines above this block lose to it."
-     "#"]
-    (mapcat #(cons "" (codeowners-stanza-lines %)) stanzas)
-    [""
-     codeowners-end-marker])))
+                         (not (source? src-dir))
+                         (conj {:type :no-source, :module module, :src-dir src-dir})))]
+    problem))
 
 (defn- pattern-covers?
   "Whether CODEOWNERS `pattern`, a directory or a `<path>.*` root-file glob from the block, matches `path`."
@@ -410,12 +382,13 @@
     (let [stem (subs pattern 0 (dec (count pattern)))]
       (and (str/starts-with? path stem)
            (not (str/includes? (subs path (count stem)) "/"))))
-    (or (= path pattern)
-        (str/starts-with? path (str pattern "/")))))
+    (path-within? pattern path)))
 
+;; The block comes later in the file than these lines, so it overrides them.
 (defn- shadowed-lines
   "Rule lines above the generated block in `existing` (the whole file when it has no block) whose path falls inside
-  one of `patterns`. The block comes later, so it overrides them."
+  one of `patterns`.
+  Lines whose path has wildcards are compared as literal text, so they are only found when the text matches."
   [existing patterns]
   (let [above (subs existing 0 (or (str/index-of existing codeowners-begin-marker) (count existing)))]
     (for [line  (str/split-lines above)
@@ -423,56 +396,115 @@
           :when (and path (some #(pattern-covers? % path) patterns))]
       (str/trim line))))
 
+(defn- markers-problem
+  "A `:broken-markers` problem (`:begin`, `:end`) unless `existing` has no marker, or each marker exactly once with
+  BEGIN first."
+  [existing]
+  (let [begin (str/index-of existing codeowners-begin-marker)
+        end   (str/index-of existing codeowners-end-marker)]
+    (when-not (or (= nil begin end)
+                  (and begin
+                       end
+                       ;; A marker is there once when its first and last positions match.
+                       (= begin (str/last-index-of existing codeowners-begin-marker))
+                       (= end (str/last-index-of existing codeowners-end-marker))
+                       (< begin end)))
+      {:type :broken-markers, :begin begin, :end end})))
+
+(defn- codeowners-problems
+  "Every problem that stops the block from being generated, as maps keyed by `:type`: those of
+  [[codeowners-config-problems]] and [[markers-problem]], and `:shadowed-lines` (`:lines`).
+  Lines are checked only once the config has no problems."
+  [existing modules-config team->codeowner source?]
+  (let [config-problems (vec (codeowners-config-problems modules-config team->codeowner source?))
+        shadowed        (when (empty? config-problems)
+                          (->> (codeowners-entries modules-config team->codeowner)
+                               (mapcat :patterns)
+                               (shadowed-lines existing)
+                               seq))
+        markers         (markers-problem existing)]
+    (cond-> config-problems
+      shadowed (conj {:type :shadowed-lines, :lines (vec shadowed)})
+      markers  (conj markers))))
+
+(defn- codeowners-problem-message
+  "One problem from [[codeowners-problems]] as a sentence saying what to fix."
+  [{:keys [module] :as problem}]
+  (case (:type problem)
+    :unknown-value  (format "Module %s sets :codeowners to %s. Use true (src and test) or :src-only."
+                            module (pr-str (:value problem)))
+    :no-codeowner   (format "Module %s sets :codeowners, but its team %s has no \"codeowner\" in %s."
+                            module (pr-str (:team problem)) team-config-path)
+    :no-source      (format (str "Module %s sets :codeowners, but has no code at %s. The generator does not handle"
+                                 " plugin code under modules/<plugin>/src; give that directory an owner by hand.")
+                            module (:src-dir problem))
+    :shadowed-lines (str "These lines in " codeowners-path " sit above the generated block but inside paths it owns,"
+                         " so the block overrides them. Move them below the END marker:\n  "
+                         (str/join "\n  " (:lines problem)))
+    :broken-markers (str codeowners-path " has a broken generated block. It needs one BEGIN marker and one END"
+                         " marker, in that order. Fix the markers by hand.")))
+
+(defn- codeowners-stanza-lines
+  "Lines for consecutive entries of one module with one handle: a `# module (team)` header, then one line per
+  pattern. Lines without a handle leave their paths unowned."
+  [[{:keys [module team handle opted-in?]} :as entries]]
+  (into [(format "# %s (%s%s)" module team (if opted-in? "" ", not opted in"))]
+        (comp (mapcat :patterns)
+              (map #(cond-> % handle (str " " handle))))
+        entries))
+
+(defn- codeowners-block
+  "Generated block as one string, marker to marker, rendering `entries` in order."
+  [entries]
+  (str/join
+   "\n"
+   (concat
+    [codeowners-begin-marker
+     "#"
+     "# Generated by `./bin/mage update-codeowners`. Do not edit by hand."
+     "# A module opts in with `:codeowners` in .clj-kondo/config/modules/config.edn."
+     "# Its directories and root namespace files go to its team's \"codeowner\" handle in .github/team.json."
+     "# A nested module of another team that has not opted in is left unowned."
+     "# Exceptions inside these paths go below the END marker: lines above this block lose to it."
+     "#"]
+    (mapcat #(cons "" (codeowners-stanza-lines %))
+            (partition-by (juxt :module :handle :opted-in?) entries))
+    [""
+     codeowners-end-marker])))
+
 (defn- splice-codeowners
   "Replace the marked region (inclusive) in `existing` with `block`, or append `block` when no marker is there.
   Returns text ending in one newline.
-  Throws unless each marker is there exactly once with BEGIN first."
+  Expects markers without a [[markers-problem]]."
   [existing block]
-  (let [begin  (str/index-of existing codeowners-begin-marker)
-        end    (str/index-of existing codeowners-end-marker)
-        ;; A marker is there at most once when its first and last positions match.
-        single (fn [marker position]
-                 (= position (str/last-index-of existing marker)))]
-    (cond
-      (= nil begin end)
-      (str (str/trimr existing) "\n\n" block "\n")
-
-      (and begin
-           end
-           (single codeowners-begin-marker begin)
-           (single codeowners-end-marker end)
-           (< begin end))
+  (if-let [begin (str/index-of existing codeowners-begin-marker)]
+    (let [end (str/index-of existing codeowners-end-marker)]
       (str (str/trimr (subs existing 0 begin))
            "\n\n" block
            (str/trimr (subs existing (+ end (count codeowners-end-marker))))
-           "\n")
-
-      :else
-      (throw (ex-info (str codeowners-path " has a broken generated block. It needs one BEGIN marker and one END"
-                           " marker, in that order. Fix the markers by hand, then run ./bin/mage update-codeowners.")
-                      {:begin begin, :end end})))))
-
-(defn- desired-codeowners
-  "`existing` CODEOWNERS text with the generated block brought up to date.
-  Throws when a hand-written line above the block falls inside a path the block owns."
-  [existing modules-config team->codeowner]
-  (let [stanzas  (codeowners-stanzas modules-config team->codeowner)
-        shadowed (shadowed-lines existing (mapcat :patterns stanzas))]
-    (when (seq shadowed)
-      (throw (ex-info (str "These lines in " codeowners-path " sit above the generated block but inside paths it owns,"
-                           " so the block overrides them. Move them below the END marker:\n  "
-                           (str/join "\n  " shadowed))
-                      {:lines (vec shadowed)})))
-    (splice-codeowners existing (codeowners-block stanzas))))
+           "\n"))
+    (str (str/trimr existing) "\n\n" block "\n")))
 
 (defn cli-update-codeowners
   "Regenerate the module-ownership block in `.github/CODEOWNERS`.
-  With `--check`, exit non-zero when the file is stale instead of writing it."
+  With `--check`, exit non-zero when the file is stale instead of writing it.
+  Exits non-zero, printing each problem, when [[codeowners-problems]] finds any."
   [cli-args]
-  (let [check?   (get-in cli-args [:options :check])
-        existing (slurp codeowners-path)
-        desired  (desired-codeowners existing (read-modules-config) (team-name->codeowner))]
+  (let [check?          (get-in cli-args [:options :check])
+        existing        (slurp codeowners-path)
+        modules-config  (read-modules-config)
+        team->codeowner (read-team->codeowner)
+        problems        (codeowners-problems existing modules-config team->codeowner has-source?)
+        desired         (when (empty? problems)
+                          (->> (codeowners-entries modules-config team->codeowner)
+                               codeowners-block
+                               (splice-codeowners existing)))]
     (cond
+      (seq problems)
+      (do (doseq [problem problems]
+            (println (c/red (codeowners-problem-message problem))))
+          (u/exit 1))
+
       (= existing desired)
       (do (println (c/green "CODEOWNERS module ownership is up to date."))
           (u/exit 0))

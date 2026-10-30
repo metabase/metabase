@@ -19,8 +19,8 @@
 ;; in `.github/team.json`, which the team must have. Run `./bin/mage update-codeowners` after changing it. Leave it
 ;; out for modules whose team has not agreed to review them.
 ;;
-;; It is not inherited, but it covers the module's directories, so nested modules inside them come along. A nested
-;; module of another team inside them must set it too; the generator fails until it does. A nested module with an
+;; It is not inherited, but it covers the module's directories, so nested modules of the same team inside them come
+;; along. Nested modules of another team are left unowned there unless they set it too. A nested module with an
 ;; `:ns-prefix` outside its parent's directories needs its own. Plugin code under `modules/<plugin>/src` is not
 ;; supported: give it an owner by hand.
 ;;

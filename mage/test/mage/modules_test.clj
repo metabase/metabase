@@ -5,7 +5,7 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [dev.module-cycle-names :as cycle-names]
    [dev.module-explorer :as module-explorer]
    [hooks.common.modules :as modules]
@@ -553,96 +553,111 @@
   {"Querying Platform" "@metabase/querying-platform"
    "UX West"           "@metabase/ux-west"})
 
-(defn- stanzas
-  "Stanza data the generator builds for `modules-config`."
+(defn- entries
+  "Block entries the generator builds for `modules-config`."
   [modules-config]
-  (#'mage.modules/codeowners-stanzas modules-config test-team->codeowner))
+  (#'mage.modules/codeowners-entries modules-config test-team->codeowner))
 
-(defn- owned-patterns
-  "Every pattern the stanzas for `modules-config` own, in order."
+(defn- owners
+  "`[module tree handle]` for each block entry for `modules-config`, in block order."
   [modules-config]
-  (into [] (mapcat :patterns) (stanzas modules-config)))
+  (mapv (juxt :module :tree :handle) (entries modules-config)))
 
-(deftest codeowners-stanzas-test
-  (testing "only modules that set :codeowners get a stanza, covering their directories and root files"
-    (is (= [{:module   'lib
-             :team     "Querying Platform"
-             :handle   "@metabase/querying-platform"
-             :patterns ["src/metabase/lib" "src/metabase/lib.*" "test/metabase/lib" "test/metabase/lib_test.*"]}]
-           (stanzas '{lib             {:team "Querying Platform", :codeowners true}
+(deftest codeowners-entries-test
+  (testing "only modules that set :codeowners get entries, covering their directories and root files"
+    (is (= [{:module    'lib
+             :tree      "src"
+             :dir       "src/metabase/lib"
+             :team      "Querying Platform"
+             :handle    "@metabase/querying-platform"
+             :opted-in? true
+             :patterns  ["src/metabase/lib" "src/metabase/lib.*"]}
+            {:module    'lib
+             :tree      "test"
+             :dir       "test/metabase/lib"
+             :team      "Querying Platform"
+             :handle    "@metabase/querying-platform"
+             :opted-in? true
+             :patterns  ["test/metabase/lib" "test/metabase/lib_test.*"]}]
+           (entries '{lib             {:team "Querying Platform", :codeowners true}
                       query-processor {:team "Querying Platform"}}))))
   (testing ":src-only owns the src code only"
-    (is (= ["src/metabase/lib" "src/metabase/lib.*"]
-           (owned-patterns '{lib {:team "Querying Platform", :codeowners :src-only}}))))
+    (is (= [['lib "src" "@metabase/querying-platform"]]
+           (owners '{lib {:team "Querying Platform", :codeowners :src-only}}))))
   (testing "enterprise modules own their enterprise/backend code"
     (is (= ["enterprise/backend/src/metabase_enterprise/sso"
             "enterprise/backend/src/metabase_enterprise/sso.*"
             "enterprise/backend/test/metabase_enterprise/sso"
             "enterprise/backend/test/metabase_enterprise/sso_test.*"]
-           (owned-patterns '{enterprise/sso {:team "Querying Platform", :codeowners true}}))))
-  (testing "test paths are listed even when the module has no tests yet"
-    (is (= ["src/metabase/dependencies"
-            "src/metabase/dependencies.*"
-            "test/metabase/dependencies"
-            "test/metabase/dependencies_test.*"]
-           (owned-patterns '{dependencies {:team "Querying Platform", :codeowners true}}))))
+           (mapcat :patterns (entries '{enterprise/sso {:team "Querying Platform", :codeowners true}})))))
   (testing "a nested module without its own :team takes its ancestor's"
-    (is (= [{:team "Querying Platform", :handle "@metabase/querying-platform"}]
-           (map #(select-keys % [:team :handle])
-                (stanzas '{lib        {:team "Querying Platform"}
-                           lib.schema {:codeowners :src-only}})))))
-  (testing "a nested module of another team that owns the same trees keeps its own stanza"
-    (is (= [["lib" "@metabase/querying-platform"]
-            ["lib.schema" "@metabase/ux-west"]]
-           (map (juxt (comp str :module) :handle)
-                (stanzas '{lib        {:team "Querying Platform", :codeowners :src-only}
-                           lib.schema {:team "UX West", :codeowners :src-only}}))))))
+    (is (= [['lib.schema "src" "@metabase/querying-platform"]]
+           (owners '{lib        {:team "Querying Platform"}
+                     lib.schema {:codeowners :src-only}})))))
 
-(deftest codeowners-stanzas-order-test
-  ;; CODEOWNERS applies the last matching pattern, so a parent stanza after its child's would take the child's
-  ;; directories back.
-  (testing "a nested module's stanza follows its parent's"
-    (is (= ["src/metabase/lib"
-            "src/metabase/lib.*"
-            "src/metabase/lib/schema"
-            "src/metabase/lib/schema.*"]
-           (owned-patterns '{lib.schema {:team "Querying Platform", :codeowners :src-only}
-                             lib        {:team "Querying Platform", :codeowners :src-only}})))))
+(deftest codeowners-entries-nested-test
+  ;; CODEOWNERS applies the last matching pattern, so an entry inside another module's directory must follow it.
+  (testing "a nested module of the same team that opts in follows its parent"
+    (is (= [['lib "src" "@metabase/querying-platform"]
+            ['lib.schema "src" "@metabase/querying-platform"]]
+           (owners '{lib.schema {:team "Querying Platform", :codeowners :src-only}
+                     lib        {:team "Querying Platform", :codeowners :src-only}}))))
+  (testing "a nested module of the same team that does not opt in needs no entry"
+    (is (= [['lib "src" "@metabase/querying-platform"]]
+           (owners '{lib        {:team "Querying Platform", :codeowners :src-only}
+                     lib.schema {:team "Querying Platform"}}))))
+  (testing "a nested module of another team that does not opt in is left unowned in each tree its parent owns"
+    (is (= [['lib "src" "@metabase/querying-platform"]
+            ['lib "test" "@metabase/querying-platform"]
+            ['lib.schema "src" nil]
+            ['lib.schema "test" nil]]
+           (owners '{lib        {:team "Querying Platform", :codeowners true}
+                     lib.schema {:team "UX West"}}))))
+  (testing "a nested module of another team keeps its own team where it opts in, and is unowned elsewhere"
+    (is (= [['lib "src" "@metabase/querying-platform"]
+            ['lib "test" "@metabase/querying-platform"]
+            ['lib.schema "src" "@metabase/ux-west"]
+            ['lib.schema "test" nil]]
+           (owners '{lib        {:team "Querying Platform", :codeowners true}
+                     lib.schema {:team "UX West", :codeowners :src-only}}))))
+  (testing "a grandchild that inherits the team of an opted-in nested module needs no entry"
+    (is (= [['lib "src" "@metabase/querying-platform"]
+            ['lib.schema "src" "@metabase/ux-west"]]
+           (owners '{lib             {:team "Querying Platform", :codeowners :src-only}
+                     lib.schema      {:team "UX West", :codeowners :src-only}
+                     lib.schema.util {}}))))
+  (testing "a grandchild of the owning team inside an unowned module gets that team back"
+    (is (= [['lib "src" "@metabase/querying-platform"]
+            ['lib.schema "src" nil]
+            ['lib.schema.util "src" "@metabase/querying-platform"]]
+           (owners '{lib             {:team "Querying Platform", :codeowners :src-only}
+                     lib.schema      {:team "UX West"}
+                     lib.schema.util {:team "Querying Platform"}})))))
 
-(deftest codeowners-stanzas-errors-test
-  (testing "an opted-in module whose team has no codeowner fails instead of losing its owner"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Module lib sets :codeowners but its team \"Gadget\" has no \"codeowner\""
-                          (stanzas '{lib {:team "Gadget", :codeowners true}}))))
-  (testing "an unknown :codeowners value fails"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Module lib sets :codeowners to :test; use true \(src and test\) or :src-only"
-                          (stanzas '{lib {:team "Querying Platform", :codeowners :test}}))))
-  (testing "a module with no code at its src directory fails, as a plugin module's would"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Module no-such-module sets :codeowners but has no code at src/metabase/no_such_module\."
-                          (stanzas '{no-such-module {:team "Querying Platform", :codeowners :src-only}}))))
-  (testing "a nested module of another team inside an owned directory fails until it sets :codeowners"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Module lib sets :codeowners, but lib.schema of another team sit inside its src directory"
-                          (stanzas '{lib        {:team "Querying Platform", :codeowners true}
-                                     lib.schema {:team "UX West"}}))))
-  (testing "a nested module of another team that owns src only fails for the parent's test directory"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"lib.schema of another team sit inside its test directory"
-                          (stanzas '{lib        {:team "Querying Platform", :codeowners true}
-                                     lib.schema {:team "UX West", :codeowners :src-only}})))))
+(deftest codeowners-config-problems-test
+  (let [problems #(vec (#'mage.modules/codeowners-config-problems %1 test-team->codeowner %2))]
+    (testing "a valid config has none"
+      (is (= []
+             (problems '{lib {:team "Querying Platform", :codeowners true}} (constantly true)))))
+    (testing "an unknown :codeowners value is the only problem reported for its module"
+      (is (= [{:type :unknown-value, :module 'lib, :value :test}]
+             (problems '{lib {:team "Gadget", :codeowners :test}} (constantly false)))))
+    (testing "a team without a codeowner and a module without source are both reported"
+      (is (= [{:type :no-codeowner, :module 'lib, :team "Gadget"}
+              {:type :no-source, :module 'lib, :src-dir "src/metabase/lib"}]
+             (problems '{lib {:team "Gadget", :codeowners :src-only}} (constantly false)))))
+    (testing "modules that do not set :codeowners are not checked"
+      (is (= []
+             (problems '{lib {:team "Gadget"}} (constantly false)))))))
 
-(deftest codeowners-stanza-lines-test
-  (testing "a header naming the module and team, then one owner line per pattern"
-    (is (= ["# lib (Querying Platform)"
-            "src/metabase/lib @metabase/qp"
-            "src/metabase/lib.* @metabase/qp"]
-           (#'mage.modules/codeowners-stanza-lines
-            {:module   'lib
-             :team     "Querying Platform"
-             :handle   "@metabase/qp"
-             :patterns ["src/metabase/lib" "src/metabase/lib.*"]})))))
+(deftest codeowners-has-source-test
+  (let [has-source? #'mage.modules/has-source?]
+    (testing "a module directory counts"
+      (is (has-source? "src/metabase/actions")))
+    (testing "a root namespace file without a directory counts"
+      (is (has-source? "src/metabase/actions/args")))
+    (testing "neither does not"
+      (is (not (has-source? "src/metabase/no_such_module"))))))
 
 (deftest codeowners-shadowed-lines-test
   (let [begin    @#'mage.modules/codeowners-begin-marker
@@ -660,13 +675,63 @@
                             "src/metabase/lib.cljc.bak/x @metabase/other\n"
                             "# src/metabase/lib/util.clj @metabase/other\n"
                             begin "\n"
-                            "src/metabase/lib/util.clj @metabase/other\n")))))
-    (testing "the generator refuses to write while a line is shadowed"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?s)Move them below the END marker:\n  src/metabase/lib/x.clj"
-                            (#'mage.modules/desired-codeowners
-                             "src/metabase/lib/x.clj @metabase/other\n"
-                             '{lib {:team "Querying Platform", :codeowners :src-only}}
-                             test-team->codeowner))))))
+                            "src/metabase/lib/util.clj @metabase/other\n")))))))
+
+(deftest codeowners-markers-problem-test
+  (let [begin   @#'mage.modules/codeowners-begin-marker
+        end     @#'mage.modules/codeowners-end-marker
+        problem #'mage.modules/markers-problem]
+    (testing "no markers, or one of each in order, is fine"
+      (is (nil? (problem "docs @writers\n")))
+      (is (nil? (problem (str begin "\n" end "\n")))))
+    (testing "a missing, repeated or misordered marker is a problem"
+      (doseq [existing [(str "# header\n" begin "\nsrc/a.clj @owner\n")
+                        (str "src/a.clj @owner\n" end "\n")
+                        (str end "\nsrc/a.clj @owner\n" begin "\n")
+                        (str begin "\nnew/path @new\n" end "\n" begin "\nold/path @old\n" end "\n")]]
+        (is (= :broken-markers (:type (problem existing))))))))
+
+(deftest codeowners-problems-test
+  (let [begin    @#'mage.modules/codeowners-begin-marker
+        problems #(#'mage.modules/codeowners-problems %1 %2 test-team->codeowner (constantly true))
+        config   '{lib {:team "Querying Platform", :codeowners :src-only}}]
+    (testing "a line above the block inside an owned path is a problem"
+      (is (= [{:type :shadowed-lines, :lines ["src/metabase/lib/x.clj @metabase/other"]}]
+             (problems "src/metabase/lib/x.clj @metabase/other\n" config))))
+    (testing "config and marker problems are reported together"
+      (is (= [:no-codeowner :broken-markers]
+             (map :type (problems (str begin "\n") '{lib {:team "Gadget", :codeowners true}})))))))
+
+(deftest codeowners-problem-message-test
+  (testing "each problem names what is wrong and what to do"
+    (are [problem expected] (str/includes? (#'mage.modules/codeowners-problem-message problem) expected)
+      {:type :unknown-value, :module 'lib, :value :test}            "Module lib sets :codeowners to :test. Use true"
+      {:type :no-codeowner, :module 'lib, :team "Gadget"}           "its team \"Gadget\" has no \"codeowner\""
+      {:type :no-source, :module 'lib, :src-dir "src/metabase/lib"} "has no code at src/metabase/lib."
+      {:type :shadowed-lines, :lines ["a/b.clj @x"]}                "Move them below the END marker:\n  a/b.clj @x"
+      {:type :broken-markers, :begin 0, :end nil}                   "Fix the markers by hand.")))
+
+(deftest codeowners-stanza-lines-test
+  (testing "a header naming the module and team, then one owner line per pattern"
+    (is (= ["# lib (Querying Platform)"
+            "src/metabase/lib @metabase/qp"
+            "src/metabase/lib.* @metabase/qp"]
+           (#'mage.modules/codeowners-stanza-lines
+            [{:module    'lib
+              :team      "Querying Platform"
+              :handle    "@metabase/qp"
+              :opted-in? true
+              :patterns  ["src/metabase/lib" "src/metabase/lib.*"]}]))))
+  (testing "an unowned entry has no handle, and its header says it did not opt in"
+    (is (= ["# lib.schema (UX West, not opted in)"
+            "src/metabase/lib/schema"
+            "src/metabase/lib/schema.*"]
+           (#'mage.modules/codeowners-stanza-lines
+            [{:module    'lib.schema
+              :team      "UX West"
+              :handle    nil
+              :opted-in? false
+              :patterns  ["src/metabase/lib/schema" "src/metabase/lib/schema.*"]}])))))
 
 (deftest codeowners-splice-test
   (let [begin  @#'mage.modules/codeowners-begin-marker
@@ -682,11 +747,4 @@
         (is (= (str "# header\n\n" block "\n\n# exceptions\nsrc/a.clj @owner\n")
                out))
         (is (= out (splice out block))
-            "splicing again changes nothing")))
-    (testing "a file with a missing, repeated or misordered marker fails instead of losing or keeping stale lines"
-      (doseq [existing [(str "# header\n" begin "\nsrc/a.clj @owner\n")
-                        (str "src/a.clj @owner\n" end "\n")
-                        (str end "\nsrc/a.clj @owner\n" begin "\n")
-                        (str begin "\nnew/path @new\n" end "\n" begin "\nold/path @old\n" end "\n")]]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has a broken generated block"
-                              (splice existing block)))))))
+            "splicing again changes nothing")))))
