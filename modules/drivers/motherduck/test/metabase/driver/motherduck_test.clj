@@ -72,19 +72,24 @@
         "(?P<w>Med\\w+)"   "Medicine"     ; RE2 named group
         "^Blue"            nil))))        ; no match: NULL, not ''
 
-(defn- read-timetz
-  "Read `s` as a `timetz` value with the driver's TIME reader, through stand-in JDBC objects. Like pgjdbc, the stand-in
-  can't read a TIMETZ value as a LocalTime, so the reader falls back to the string."
-  [s]
+(defn- read-unparseable
+  "Read `s` with the driver's reader for a column of `jdbc-type` and `type-name`, through stand-in JDBC objects. Like
+  pgjdbc on the endpoint's text, the stand-in can't read the value as an object, so the reader falls back to the string."
+  [jdbc-type type-name s]
   (let [rs     (reify ResultSet
                  (^String getString [_ ^int _i] s)
+                 (^Object getObject [_ ^int _i]
+                   (throw (SQLException. (str "Bad value: " s))))
                  (^Object getObject [_ ^int _i ^Class _class]
-                   (throw (SQLException. "Cannot convert the column of type TIMETZ to requested type LocalTime"))))
+                   (throw (SQLException. (str "Bad value: " s)))))
         rsmeta (reify ResultSetMetaData
-                 (getColumnType [_ _i] Types/TIME)
-                 (getColumnTypeName [_ _i] "timetz")
+                 (getColumnType [_ _i] jdbc-type)
+                 (getColumnTypeName [_ _i] type-name)
                  (getColumnLabel [_ _i] "t"))]
     ((sql-jdbc.execute/read-column-thunk :motherduck rs rsmeta (int 1)))))
+
+(defn- read-timetz [s]
+  (read-unparseable Types/TIME "timetz" s))
 
 ;; `timetz-values-test` in `postgres-test` reads the endpoint's format live; these are the other branches.
 (deftest ^:parallel read-timetz-test
@@ -98,6 +103,26 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Cannot read the TIMETZ value .* in column t\. Cast the column to VARCHAR to read it\."
                             (read-timetz s))
+          s))))
+
+;; `float-special-values-test` in `postgres-test` reads the endpoint's infinities live; these are the other branches.
+(deftest ^:parallel read-endpoint-infinities-test
+  (testing "REAL infinities read as Floats, like Postgres"
+    (is (= [Float "Infinity"] ((juxt class str) (read-unparseable Types/REAL "float4" "+Inf"))))
+    (is (= [Float "-Infinity"] ((juxt class str) (read-unparseable Types/REAL "float4" "-Inf")))))
+  (testing "a one-dimensional float array, with NULLs, reads as a vector of the element type"
+    (is (= [Double/POSITIVE_INFINITY nil 1.5 Double/NEGATIVE_INFINITY]
+           (read-unparseable Types/ARRAY "_float8" "{+Inf,NULL,1.5,-Inf}")))
+    (is (= [Float Float]
+           (map class (read-unparseable Types/ARRAY "_float4" "{+Inf,2.5}")))))
+  (testing "anything else rethrows pgjdbc's error rather than guessing"
+    (doseq [[jdbc-type type-name s] [[Types/DOUBLE "float8" "Inf"]
+                                     [Types/REAL "float4" "+Infinity"]
+                                     [Types/ARRAY "_float8" "{{+Inf,1},{2,3}}"]
+                                     [Types/ARRAY "_float8" "{+Inf,abc}"]
+                                     [Types/ARRAY "_int4" "{1,2}"]]]
+      (is (thrown-with-msg? SQLException #"Bad value"
+                            (read-unparseable jdbc-type type-name s))
           s))))
 
 (deftest ^:parallel connection-spec-verifies-the-server-test

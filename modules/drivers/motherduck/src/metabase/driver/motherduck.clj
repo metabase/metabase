@@ -26,9 +26,10 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.performance :as perf])
   (:import
-   (java.sql Connection ResultSet ResultSetMetaData Types)
+   (java.sql Connection ResultSet ResultSetMetaData SQLException Types)
    (java.time LocalTime OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
@@ -415,6 +416,61 @@
               (throw (ex-info (tru "Cannot read the TIMETZ value {0} in column {1}. Cast the column to VARCHAR to read it."
                                    (pr-str s) (.getColumnLabel rsmeta i))
                               {:value s, :column (.getColumnLabel rsmeta i)})))))))))
+
+;; The endpoint sends floating-point infinities as `+Inf` and `-Inf`, which pgjdbc can't parse, so any result containing
+;; one fails. Postgres sends `Infinity`, which it can. When pgjdbc fails, read exactly these two strings as the
+;; infinities and rethrow on anything else. NaN already reads correctly.
+(defn- endpoint-infinity [s]
+  (case s
+    "+Inf" Double/POSITIVE_INFINITY
+    "-Inf" Double/NEGATIVE_INFINITY
+    nil))
+
+(defn- read-float-thunk
+  "Wrap the `jdbc-type` reader inherited from Postgres to read the endpoint's infinities, made into the right type by
+  `coerce`."
+  [driver ^ResultSet rs rsmeta ^Integer i jdbc-type coerce]
+  (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:postgres jdbc-type]) driver rs rsmeta i)]
+    (fn []
+      (try
+        (parent-thunk)
+        (catch SQLException e
+          (if-let [infinity (endpoint-infinity (.getString rs i))]
+            (coerce infinity)
+            (throw e)))))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:motherduck Types/DOUBLE]
+  [driver rs rsmeta i]
+  (read-float-thunk driver rs rsmeta i Types/DOUBLE double))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:motherduck Types/REAL]
+  [driver rs rsmeta i]
+  (read-float-thunk driver rs rsmeta i Types/REAL unchecked-float))
+
+(defn- parse-float-array
+  "Parse the endpoint's text for a one-dimensional float array, such as `{+Inf,NULL,1.5}`, into a vector of `coerce`d
+  elements. Return nil for anything else, including nested arrays."
+  [s coerce]
+  (when-let [[_ elements] (re-matches #"\{([^{}\"]*)\}" (str s))]
+    (let [parsed (for [element (str/split elements #",")]
+                   (if (= element "NULL")
+                     ::null
+                     (some-> (or (endpoint-infinity element) (parse-double element)) coerce)))]
+      (when (perf/every? some? parsed)
+        (perf/mapv #(when-not (= % ::null) %) parsed)))))
+
+;; A float array containing an infinity fails the same way. Postgres returns it as a vector of floats.
+(defmethod sql-jdbc.execute/read-column-thunk [:motherduck Types/ARRAY]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:postgres Types/ARRAY]) driver rs rsmeta i)]
+    (if-let [coerce ({"_float4" unchecked-float, "_float8" double} (.getColumnTypeName rsmeta i))]
+      (fn []
+        (try
+          (parent-thunk)
+          (catch SQLException e
+            (or (parse-float-array (.getString rs i) coerce)
+                (throw e)))))
+      parent-thunk)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Driver-managed table DDL                                              |

@@ -1532,6 +1532,29 @@
                                                                   :filter       [:= $mytable.id 2]}
                                                      :type       :query}))))))))))))
 
+(deftest ^:parallel float-special-values-test
+  ;; MotherDuck's endpoint sends infinities as `+Inf` and `-Inf`, which pgjdbc can't parse (QUE-1013).
+  (mt/test-drivers #{:postgres :motherduck}
+    (let [values ["Infinity" "-Infinity" "NaN" "1.5"]
+          query  (mt/native-query
+                  {:query (str "SELECT "
+                               (str/join ", " (for [[i v] (map-indexed vector values)
+                                                    [prefix db-type] [["d" "DOUBLE PRECISION"] ["r" "REAL"]]]
+                                                (format "CAST('%s' AS %s) AS %s%d" v db-type prefix i)))
+                               ", ARRAY[CAST('Infinity' AS DOUBLE PRECISION), CAST('-Infinity' AS DOUBLE PRECISION), 1.5]"
+                               " AS a")})
+          row    (first (mt/rows (qp/process-query query)))]
+      ;; Compare classes and strings, since NaN isn't equal to itself.
+      (is (= [[Double "Infinity"]  [Float "Infinity"]
+              [Double "-Infinity"] [Float "-Infinity"]
+              [Double "NaN"]       [Float "NaN"]
+              [Double "1.5"]       [Float "1.5"]]
+             (mapv (juxt class str) (butlast row))))
+      (is (= [Double Double Double]
+             (map class (last row))))
+      (is (= "[##Inf ##-Inf 1.5]"
+             (str (last row)))))))
+
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
 (deftest timezone-test
