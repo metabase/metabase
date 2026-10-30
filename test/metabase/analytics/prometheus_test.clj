@@ -282,10 +282,12 @@
       (is (= 1 @ran))
       (is (empty? @in-flight) "the claim is released, so a later scrape refreshes again")
       (testing "a refresh that cannot be scheduled releases its claim rather than wedging the collector"
-        (mt/with-dynamic-fn-redefs [prometheus/submit-background-refresh!
-                                    (fn [_] (throw (ex-info "no threads" {})))]
-          ((:f collector)))
-        (is (empty? @in-flight))))))
+        (doseq [thrown [(ex-info "no threads" {})
+                        ;; a thread pool at its limit fails with an Error, which is not an Exception
+                        (Error. "unable to create native thread")]]
+          (mt/with-dynamic-fn-redefs [prometheus/submit-background-refresh! (fn [_] (throw thrown))]
+            ((:f collector)))
+          (is (empty? @in-flight) (str "claim released after " (class thrown))))))))
 
 (deftest ^:synchronized remove-series!-test
   (testing "one label combination stops being exported and its siblings carry on"
@@ -314,6 +316,13 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"declared without labels"
                             (prometheus/remove-series! :metabase-search/queue-size nil)))))
+  (testing "a label value that is not a string is removed, as the write path accepts it"
+    (mt/with-prometheus-system! [port _]
+      (let [exported #(filter (fn [l] (str/starts-with? l "metabase_search_engine_active")) (metric-lines port))]
+        (prometheus/set! :metabase-search/engine-active {:engine 7} 1)
+        (is (= 1 (count (exported))))
+        (prometheus/remove-series! :metabase-search/engine-active {:engine 7})
+        (is (empty? (exported))))))
   (testing "labels that do not name the declared set are refused"
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo

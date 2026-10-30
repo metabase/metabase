@@ -1198,7 +1198,9 @@
         (when-not (= (set (keys label->value)) (set declared))
           (throw (ex-info "Labels do not match the metric's declared label names"
                           {:metric metric, :declared declared, :given (sort (keys label->value))})))
-        (let [ordered (into-array String (map label->value declared))]
+        ;; `str` because the write path takes any label value through `qualified-vals`, which leaves
+        ;; numbers and the like alone, and removal has to match what was written.
+        (let [ordered (into-array String (map (comp str label->value) declared))]
           (.remove ^SimpleCollector raw ordered))))))
 
 (def ^:private real-reporter
