@@ -208,6 +208,45 @@ describe("GoalValueInput", () => {
     ).toHaveFocus();
   });
 
+  it("keeps the menu open when navigating back from another question's columns with the keyboard (GDGT-3278)", async () => {
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        result_metadata: [
+          createMockField({ name: "total", base_type: "type/Integer" }),
+          createMockField({
+            name: "avg",
+            display_name: "Average",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setupCardDatasetWithReferencedEntities({});
+    setup({ value: { type: "card", id: 9, column: "total" } });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+    await screen.findByRole("menuitem", { name: /Average/ });
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: /Orders/ })).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /Value from another question/,
+      }),
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toHaveFocus();
+  });
+
   it("selects the sole numeric column directly from the root menu", async () => {
     const { onChange } = setup({
       data: createMockDatasetData({
