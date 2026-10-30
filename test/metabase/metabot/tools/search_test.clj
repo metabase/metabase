@@ -635,20 +635,33 @@
                     (invoke-search [#'search/search-tool] {:keyword_queries ["x"] :limit limit})))))))))
 
 (deftest ^:parallel search-failure-test
-  (testing "a failing search backend lets the agent find the data another way (BOT-2540)"
+  (testing "a failing search backend lets the agent browse what the search was limited to (BOT-2540)"
     (mt/with-test-user :crowberto
       (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search Index not found." {})))]
-        (doseq [[tool-var extra-args] [[#'search/search-tool {}]
-                                       [#'search/sql-search-tool {:database_id (mt/id)}]
-                                       [#'search/nlq-search-tool {}]
-                                       [#'search/transform-search-tool {}]]]
-          (testing (str tool-var)
-            (is (= {:error  {:class :recoverable :code ::search/search-failed}
-                    :output (str "Search failed.\n"
-                                 "Find the data with `read_resource` instead: read `metabase://databases`, "
-                                 "then `metabase://database/{id}/tables` for the tables in one database.")}
-                   (invoke-search [tool-var #'metabot.tools/read-resource-tool]
-                                  (merge extra-args {:keyword_queries ["orders"]}))))))))))
+        (let [instance-step (str "Find the data with `read_resource` instead: read `metabase://collections` for "
+                                 "metrics, models, questions and dashboards, or `metabase://databases`, then "
+                                 "`metabase://database/{id}/tables`, for tables.")
+              confined      {:entity_id metabot.config/embedded-metabot-id :collection_id 42}]
+          (doseq [[scope tool-var extra-args metabot step]
+                  [["the instance" #'search/search-tool {} nil instance-step]
+                   ["the instance" #'search/nlq-search-tool {} nil instance-step]
+                   ["the instance" #'search/transform-search-tool {} nil instance-step]
+                   ["one database" #'search/sql-search-tool {:database_id (mt/id)} nil
+                    (str "Find the data with `read_resource` instead: read `metabase://database/" (mt/id)
+                         "/tables` and `metabase://database/" (mt/id) "/models`.")]
+                   ["a confined collection" #'search/search-tool {} confined
+                    "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
+                   ["a confined collection" #'search/nlq-search-tool {} {:collection_id 42}
+                    "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
+                   ["verified content" #'search/search-tool {} {:use_verified_content true} nil]
+                   ["verified content" #'search/nlq-search-tool {} (assoc confined :use_verified_content true) nil]]]
+            (testing (str tool-var " limited to " scope)
+              (is (= {:error  {:class :recoverable :code ::search/search-failed}
+                      :output (str "Search failed." (some->> step (str "\n")))}
+                     (invoke-search [tool-var #'metabot.tools/read-resource-tool]
+                                    (merge extra-args {:keyword_queries ["orders"]})
+                                    metabot
+                                    "internal"))))))))))
 
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"

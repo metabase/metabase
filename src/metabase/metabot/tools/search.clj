@@ -323,6 +323,14 @@
           result-lists (mapv deref futures)]
       (reciprocal-rank-fusion result-lists))))
 
+(defn- confined-collection-id
+  "The collection that a search for `metabot` must stay inside, or nil. A confined metabot (embedded, or
+  the nlq profile) may only search inside its own collection."
+  [metabot profile-id]
+  (when (or (= (:entity_id metabot) metabot.config/embedded-metabot-id)
+            (= profile-id "nlq"))
+    (:collection_id metabot)))
+
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, measures, segments, transforms) in Metabase.
   Abstracted from the API endpoint logic.
@@ -359,13 +367,10 @@
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
         use-verified?   (:use_verified_content metabot)
-        embedded-metabot? (= (:entity_id metabot) metabot.config/embedded-metabot-id)
-        ;; A confined metabot (embedded, or the nlq profile) may only search inside its own
-        ;; collection. That is a containment boundary, not a default, so a caller-supplied
+        ;; The confined collection is a containment boundary, not a default, so a caller-supplied
         ;; collection-id — which the v2 search tool fills from a request filter — can never
         ;; replace it. Unconfined, the caller's collection-id applies.
-        confined-id     (when (or embedded-metabot? (= profile-id "nlq"))
-                          (:collection_id metabot))
+        confined-id     (confined-collection-id metabot profile-id)
         ;; Measures and segments belong to a table, not a collection, so a search scoped to a collection
         ;; never returns them, even though the search tools list them as entity types.
         collection-id   (or confined-id collection-id)
@@ -619,14 +624,37 @@
                     :table_id (when (#{"measure" "segment"} (:type r)) (:base_table_id r))
                     :collection (some-> (:collection r) (select-keys [:id :name])))))
 
+(defn- browse-instead-step
+  [& uri-text]
+  {:uses #{"read_resource"}
+   :text (apply str "Find the data with `read_resource` instead: " uri-text)})
+
 (tools/defrecoverable search-failed!
-  "The search backend failed, for example because the search index is missing."
-  {:payload [:map {:closed true}]}
-  [_]
-  {:message "Search failed."
-   :recovery [{:uses #{"read_resource"}
-               :text (str "Find the data with `read_resource` instead: read `metabase://databases`, "
-                          "then `metabase://database/{id}/tables` for the tables in one database.")}]})
+  "The search backend failed, for example because the search index is missing.
+
+  The recovery step browses only the content that the failed search was limited to. `read_resource`
+  has no verified-content filter, so a search limited to verified content gets no step."
+  {:payload [:map {:closed true}
+             [:collection-id [:maybe :int]]
+             [:database-id   [:maybe :int]]
+             [:verified-only :boolean]]}
+  [{:keys [collection-id database-id verified-only]}]
+  {:message  "Search failed."
+   :recovery (cond
+               verified-only
+               []
+
+               collection-id
+               [(browse-instead-step "read `metabase://collection/" collection-id "/items`.")]
+
+               database-id
+               [(browse-instead-step "read `metabase://database/" database-id "/tables` and `metabase://database/"
+                                     database-id "/models`.")]
+
+               :else
+               [(browse-instead-step "read `metabase://collections` for metrics, models, questions and "
+                                     "dashboards, or `metabase://databases`, then `metabase://database/{id}/tables`, "
+                                     "for tables.")])})
 
 (defn- do-search
   [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit]}]
@@ -643,7 +671,9 @@
                   (catch Exception e
                     ;; The runtime logs a recoverable error at debug level, without its cause.
                     (log/error e "Metabot search failed")
-                    (search-failed! {})))]
+                    (search-failed! {:collection-id (confined-collection-id (:metabot opts) (:profile-id opts))
+                                     :database-id   (:database-id opts)
+                                     :verified-only (boolean (:use_verified_content (:metabot opts)))})))]
     {:output (format-search-output results)
      :structured-output {:result-type :search
                          :data results
