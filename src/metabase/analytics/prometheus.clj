@@ -511,7 +511,12 @@
                         :labels [:status]})
    (prometheus/counter :metabase-token-check/attempt
                        {:description "Total number of token checks. Includes a status label."
-                        :labels [:status]})])
+                        :labels [:status]})
+
+   ;; metaplow analytics metrics
+   (prometheus/counter :metabase-metaplow/errors
+                       {:description "Metaplow event pipeline errors by stage."
+                        :labels [:stage]})])
 
 (defn- quartz-collectors
   []

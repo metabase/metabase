@@ -10,7 +10,7 @@
    included as a recipient when set."
   (:require
    [metabase-enterprise.security-center.settings :as settings]
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -88,11 +88,11 @@
   "Track a Snowplow event for each channel in the notification's handlers."
   [notification triggered-from result]
   (doseq [{:keys [channel_type]} (:handlers notification)]
-    (snowplow/track-event! :snowplow/simple_event
-                           {:event          "security_advisory_notification_sent"
-                            :event_detail   (channel-type->name channel_type)
-                            :triggered_from triggered-from
-                            :result         result})))
+    (analytics/track-event! :snowplow/simple_event
+                            {:event          "security_advisory_notification_sent"
+                             :event_detail   (channel-type->name channel_type)
+                             :triggered_from triggered-from
+                             :result         result})))
 
 (def ^:private test-advisory
   "A synthetic advisory used for test notifications so admins can verify delivery."
