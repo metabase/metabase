@@ -134,7 +134,8 @@
                  :password "placeholder"
                  :ssl      true}]
     (testing "the connection verifies the server's certificate and hostname against the JVM trust store"
-      (is (=? {:sslmode     "verify-full"
+      (is (=? {:user        "postgres" ; the endpoint ignores the user name, so a saved one is replaced
+               :sslmode     "verify-full"
                :sslfactory  "org.postgresql.ssl.DefaultJavaSSLFactory"
                :classname   "org.postgresql.Driver"
                :subprotocol "postgresql"}
@@ -143,6 +144,48 @@
       (is (=? {:sslmode    "verify-ca"
                :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"}
               (sql-jdbc.conn/connection-details->spec :motherduck (assoc details :tunnel-enabled true)))))))
+
+(deftest ^:parallel connection-form-test
+  (let [field-names (into #{}
+                          (comp (mapcat #(:fields % [%])) ; host and port are in a group
+                                (map :name))
+                          (driver/connection-properties :motherduck))]
+    (testing "the token field and its guidance are on the form"
+      (is (every? field-names ["host" "port" "dbname" "token-info" "password"])))
+    (testing "the ignored user name and the always-on SSL toggle aren't"
+      (is (not-any? field-names ["user" "ssl"]))))
+  (testing "Postgres's hosting providers aren't recognized, but its field groups are kept"
+    (is (=? {:providers    []
+             :field-groups [{:id "host-and-port"}]}
+            (driver/extra-info :motherduck)))))
+
+;; Messages as the live endpoint sends them; `live-connection-errors-test` checks the endpoint still does.
+(deftest ^:parallel humanize-connection-error-message-test
+  (are [message expected] (= expected (driver/humanize-connection-error-message :motherduck [message]))
+    "FATAL: invalid username/password"
+    :password-incorrect
+
+    "FATAL: could not connect to database: Invalid Input Error: Failed to attach 'x': no database/share named \"x\" found"
+    :database-name-incorrect
+
+    ;; anything else goes to the Postgres mapping
+    "FATAL: something else"
+    "Something else."))
+
+(deftest live-connection-errors-test
+  (mt/test-driver :motherduck
+    (let [details (tx/dbdef->connection-details :motherduck :server nil)
+          error   (fn [details]
+                    (try (driver/can-connect? :motherduck details)
+                         nil
+                         (catch Exception e
+                           (driver/humanize-connection-error-message :motherduck [(ex-message e)]))))]
+      (testing "no user name is needed"
+        (is (true? (driver/can-connect? :motherduck (dissoc details :user)))))
+      (testing "a bad token"
+        (is (= :password-incorrect (error (assoc details :password "not-a-token")))))
+      (testing "a database that doesn't exist"
+        (is (= :database-name-incorrect (error (assoc details :dbname "no_such_database_que_1021"))))))))
 
 (deftest live-connection-test
   (mt/test-driver :motherduck

@@ -48,7 +48,8 @@
   ;; tunnel, pgjdbc would check it against localhost, so check only the chain there.
   ;; The startup option enables Metabase compatibility, including Postgres-style array serialization and command tags
   ;; for CREATE TABLE and INSERT.
-  (-> (sql-jdbc.conn/connection-details->spec :postgres (assoc details :ssl true))
+  ;; The endpoint ignores the user name and the form has no field for it; send the one MotherDuck's docs use.
+  (-> (sql-jdbc.conn/connection-details->spec :postgres (assoc details :ssl true, :user "postgres"))
       (assoc :sslmode    (if tunnel-enabled "verify-ca" "verify-full")
              :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"
              :options    "--compatibility-mode=metabase")))
@@ -73,6 +74,24 @@
   (boolean (re-find #"(?i)catalog error.*does not exist"
                     (or (.getMessage ^java.sql.SQLException e)
                         ""))))
+
+;; The endpoint's messages for a bad token or database name don't match Postgres's, so map them here to highlight the
+;; field in the connection form.
+(defmethod driver/humanize-connection-error-message :motherduck
+  [driver messages]
+  (condp re-matches (str (first messages))
+    #"^FATAL: invalid username/password$"
+    :password-incorrect
+
+    #"^FATAL: could not connect to database: .*no database/share named .* found$"
+    :database-name-incorrect
+
+    ((get-method driver/humanize-connection-error-message :postgres) driver messages)))
+
+;; Postgres lists hosting providers to recognize from the host name; none of them host MotherDuck.
+(defmethod driver/extra-info :motherduck
+  [driver]
+  (assoc ((get-method driver/extra-info :postgres) driver) :providers []))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Feature flags                                                      |
