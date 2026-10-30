@@ -303,7 +303,7 @@
     [(assoc details :auth-mode (infer-auth-mode details))]))
 
 (defn- wif-jdbc-properties
-  [{:keys [wif-token wif-token-file-path]}]
+  [{:keys [wif-token wif-token-file-path wif-client-id]}]
   (let [token     (cond
                     (not (str/blank? wif-token-file-path))
                     (str/trim (slurp (driver-api/ensure-readable-path! wif-token-file-path)))
@@ -314,7 +314,8 @@
     (cond-> {:AuthMech         11
              :Auth_Flow        0
              :Auth_AccessToken token}
-      expiry-ms (assoc :password-expiry-timestamp expiry-ms))))
+      (not (str/blank? wif-client-id)) (assoc :Identity_Federation_Client_Id wif-client-id)
+      expiry-ms                        (assoc :password-expiry-timestamp expiry-ms))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :databricks
   [_driver {:keys [catalog host http-path token client-id oauth-secret log-level additional-options]
