@@ -51,9 +51,8 @@
     (is (= (str "op 0 (\"move_tab\"): invalid op: \"index\": \"missing required key\" — "
                 "see the tool description for each op's arguments.")
            (error-text empty-dash [{:op "move_tab" :tab_id 1}])))
-    (is (= (str "op 0: invalid op: \"op\": \"invalid dispatch value\" — "
-                "see the tool description for each op's arguments.")
-           (error-text empty-dash [{:id -1}]))))
+    (is (re-matches #"op 0: invalid op: \"op\": \"should be one of: add_card, .*\" — see the tool description .*"
+                    (error-text empty-dash [{:id -1}]))))
   (testing "an unknown dashcard, tab or parameter id names the op"
     (is (= "op 0 (\"duplicate_card\"): no dashcard with id 999 on this dashboard."
            (error-text empty-dash [{:op "duplicate_card" :id -1 :dashcard_id 999}])))

@@ -1,7 +1,9 @@
 (ns metabase.metabot.toolkit.dashboard-op-schema
   "The schema of one dashboard editor op, shared by every tool that sends ops to
    [[metabase.metabot.toolkit.dashboard-ops/compile-ops]].
-   The descriptions are written for the model, and each tool puts [[op-schema]] in its own argument schema.")
+   The descriptions are written for the model, and each tool puts [[op-schema]] in its own argument schema."
+  (:require
+   [clojure.string :as str]))
 
 (set! *warn-on-reflection* true)
 
@@ -73,8 +75,7 @@
           [:op [:= op-name]]]
          fields)])
 
-(def op-schema
-  "One editor op: a `:multi` on `:op`, with a closed map for each op the compiler applies."
+(def ^:private op-multi
   [:multi {:dispatch :op
            :description "One editor operation; `op` selects which."}
    (op-map "add_card" "Place a saved question, model, or metric on the dashboard."
@@ -247,3 +248,12 @@
            [[:parameter_id parameter-id-schema]
             [:dashcard_id {:optional true}
              [:maybe [:int {:description "Dashcard to disconnect. Omit to disconnect the parameter everywhere."}]]]])])
+
+(def op-schema
+  "One editor op: a `:multi` on `:op`, with a closed map for each op the compiler applies.
+   An op whose `op` is missing or unknown fails with a message listing the valid ones."
+  ;; Malli's default for a bad dispatch value is "invalid dispatch value", which leaves the model guessing. The list
+  ;; comes from the children, so it can't drift from them. Errors inside a known op keep their own messages.
+  (let [[tag props & children] op-multi]
+    (into [tag (assoc props :error/message (str "should be one of: " (str/join ", " (map first children))))]
+          children)))
