@@ -587,17 +587,14 @@ describe("scenarios > embedding > full app", () => {
         // The other half of the 100 metrics goes into the Library, so only
         // the Library's metrics can push the count over
         cy.signInAsAdmin();
-        H.createLibrary().then(({ body: library }) => {
-          const metricsCollection = library.effective_children.find(
-            (collection) => collection.type === "library-metrics",
-          );
+        H.createLibrary().then(({ metricsCollectionId }) => {
           Cypress._.times(50, (index) => {
             H.createQuestion({
               ...metricDetails,
               name: `Library orders count ${index}`,
             }).then(({ body: metric }) => {
               cy.request("PUT", `/api/card/${metric.id}`, {
-                collection_id: metricsCollection.id,
+                collection_id: metricsCollectionId,
               });
             });
           });

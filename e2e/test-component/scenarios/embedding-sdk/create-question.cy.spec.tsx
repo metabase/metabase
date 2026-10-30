@@ -304,14 +304,10 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
   it('should list a table published in a Library subfolder when `entityTypes` = ["semantic-layer"]', () => {
     // Publishes only Orders, into Library > Data > Customer A
-    H.createLibrary().then(({ body: library }) => {
-      const dataCollection = library.effective_children?.find(
-        (collection) => collection.type === "library-data",
-      );
-
+    H.createLibrary().then(({ dataCollectionId }) => {
       H.createCollection({
         name: "Customer A",
-        parent_id: dataCollection?.id,
+        parent_id: dataCollectionId,
       }).then(({ body: subfolder }) => {
         H.publishTables({
           table_ids: [SAMPLE_DATABASE.ORDERS_ID],
