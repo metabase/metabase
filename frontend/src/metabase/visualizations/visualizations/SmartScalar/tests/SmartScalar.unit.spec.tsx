@@ -239,6 +239,61 @@ describe("SmartScalar", () => {
       expect(screen.getByText("81,005")).toBeInTheDocument();
     });
 
+    it("should show the full value in a tooltip when the value is truncated", async () => {
+      mockTextOverflow();
+      const rows = [
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 120],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      setup({ series: series({ rows, insights }), width: 400 });
+
+      await userEvent.hover(screen.getByTestId("scalar-value"));
+
+      expect(
+        within(await screen.findByRole("tooltip")).getByText("120"),
+      ).toBeInTheDocument();
+
+      jest.restoreAllMocks();
+    });
+
+    it("should start a value wider than the centered box after the trend symbol", () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 9007199254740000],
+        ["2019-11-01T00:00:00", Number.MAX_SAFE_INTEGER],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      // 170px is the narrowest size-200 card: 24px padding and a 24px symbol
+      // allowance leave a 122px centered box, which "9007.2T" overflows
+      setup({ series: series({ rows, insights }), width: 170 });
+
+      expect(screen.getByText("9007.2T")).toBeInTheDocument();
+      expect(screen.getByTestId("scalar-value-box")).toHaveStyle({
+        marginLeft: "24px",
+        alignSelf: "flex-start",
+        maxWidth: "98px",
+      });
+    });
+
+    it("should keep a value that fits centered without a symbol offset", () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 120],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      setup({ series: series({ rows, insights }), width: 170 });
+
+      expect(screen.getByTestId("scalar-value-box")).not.toHaveStyle({
+        alignSelf: "flex-start",
+      });
+      expect(screen.getByTestId("scalar-value-box")).toHaveStyle({
+        maxWidth: "122px",
+      });
+    });
+
     it("should render compact if normal formatting is >6 characters and width <250", () => {
       const width = 200;
       const rows = [
