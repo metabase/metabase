@@ -30,8 +30,6 @@ describe("scenarios > models > revision history", () => {
 
     cy.location("pathname").should("match", /^\/question\/\d+/);
     H.echartsContainer();
-
-    H.sidesheet().findByRole("tab", { name: "History" }).click();
     revertTo("You edited this");
 
     cy.location("pathname").should("match", /^\/model\/\d+/);
@@ -41,7 +39,6 @@ describe("scenarios > models > revision history", () => {
 
 function openRevisionHistory() {
   H.questionInfoButton().click();
-  H.sidesheet().findByRole("tab", { name: "History" }).click();
   cy.findByTestId("saved-question-history-list").should("be.visible");
 }
 

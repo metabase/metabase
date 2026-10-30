@@ -1,36 +1,33 @@
-import { useCallback, useState } from "react";
-import { useMount } from "react-use";
+import { useCallback } from "react";
 import { t } from "ttag";
 
-import { EntityIdCard } from "metabase/common/components/EntityIdCard";
+import type { CollectionTypeFilterModel } from "metabase/collections/components/CollectionContent/constants";
 import {
-  Sidesheet,
-  SidesheetCard,
-  SidesheetCardTitle,
-} from "metabase/common/components/Sidesheet";
+  SIDEBAR_WIDTH,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
+import { EntityIdFooter } from "metabase/common/components/EntityIdFooter";
+import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
+import { CollectionContentsSection } from "./CollectionContentsSection";
+
+const DESCRIPTION_MAX_LENGTH = 255;
+
 export const CollectionInfoSidebar = ({
   onClose,
   collection,
   onUpdateCollection,
+  onFilterByType,
 }: {
   onClose: () => void;
   collection: Collection;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
+  onFilterByType?: (model: CollectionTypeFilterModel) => void;
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  useMount(() => {
-    // This component is not rendered until it is "open"
-    // but we want to set isOpen after it mounts to get
-    // pretty animations
-    setIsOpen(true);
-  });
-
   const handleChangeDescription = useCallback(
     (description: string) => {
       onUpdateCollection(collection, {
@@ -45,31 +42,39 @@ export const CollectionInfoSidebar = ({
   return (
     <Sidesheet
       title={t`Info`}
-      isOpen={isOpen}
+      titleSize="h3"
+      isOpen
       data-testid="collection-sidesheet"
-      size="md"
+      size={SIDEBAR_WIDTH}
       onClose={onClose}
+      footer={
+        collection.entity_id ? (
+          <EntityIdFooter
+            items={[
+              { label: t`This collection`, entityId: collection.entity_id },
+            ]}
+          />
+        ) : undefined
+      }
     >
-      <Stack gap="xl">
-        <SidesheetCard pb="lg">
-          <Stack gap="lg">
-            <Stack gap="xxs">
-              <SidesheetCardTitle>{t`Description`}</SidesheetCardTitle>
-              <SidesheetEditableDescription
-                description={description}
-                onChange={handleChangeDescription}
-                canWrite={canWrite}
-                maxLength={255}
-              />
-            </Stack>
+      <Stack gap="xxl">
+        <SidebarSection title={t`Description`} gap={0}>
+          <Stack gap="sm">
+            <SidesheetEditableDescription
+              description={description}
+              onChange={handleChangeDescription}
+              canWrite={canWrite}
+              maxLength={DESCRIPTION_MAX_LENGTH}
+            />
             <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelDisplay
               collection={collection}
             />
           </Stack>
-        </SidesheetCard>
-        {collection.entity_id && (
-          <EntityIdCard entityId={collection.entity_id} />
-        )}
+        </SidebarSection>
+        <CollectionContentsSection
+          collection={collection}
+          onFilterByType={onFilterByType}
+        />
       </Stack>
     </Sidesheet>
   );

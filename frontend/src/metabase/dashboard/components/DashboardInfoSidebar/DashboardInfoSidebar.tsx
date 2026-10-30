@@ -1,24 +1,23 @@
-import { useHotkeys } from "@mantine/hooks";
 import type { FocusEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useListRevisionsQuery } from "metabase/api";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
+import {
+  SIDEBAR_WIDTH,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
+import {
+  EntityIdFooter,
+  type EntityIdFooterItem,
+} from "metabase/common/components/EntityIdFooter";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getActivityTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
-import {
-  SIDESHEET_HORIZONTAL_PADDING,
-  Sidesheet,
-  SidesheetCard,
-  SidesheetTabPanelContainer,
-} from "metabase/common/components/Sidesheet";
+import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
-import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
-import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
-import { InsightsTabOrLink } from "metabase/common/components/upsells/components/InsightsTabOrLink";
+import { InsightsAction } from "metabase/common/components/upsells/components/InsightsAction";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/common/utils/dashboard";
 import { getUser } from "metabase/current-user";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
@@ -28,7 +27,8 @@ import {
 } from "metabase/dashboard/context";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Stack, Tabs, Text } from "metabase/ui";
+import { Box, Stack, Text } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type {
   Dashboard,
   ModerationReview,
@@ -36,14 +36,8 @@ import type {
   User,
 } from "metabase-types/api";
 
+import { DashboardContentsSection } from "./DashboardContentsSection";
 import { DashboardDetails } from "./DashboardDetails";
-import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
-
-enum Tab {
-  Overview = "overview",
-  History = "history",
-  Insights = "insights",
-}
 
 export function DashboardInfoSidebar() {
   const { dashboard, closeSidebar, setDashboardAttributes } =
@@ -70,17 +64,7 @@ export function DashboardInfoSidebarInner({
   DashboardContextReturned,
   "closeSidebar" | "setDashboardAttributes"
 >) {
-  const [isOpen, setIsOpen] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
-
-  useHotkeys([["]", closeSidebar]]);
-
-  useMount(() => {
-    // this component is not rendered until it is "open"
-    // but we want to set isOpen after it mounts to get
-    // pretty animations
-    setIsOpen(true);
-  });
 
   const { data: revisions } = useListRevisionsQuery(
     dashboard ? { id: dashboard.id, entity: "dashboard" } : skipToken,
@@ -133,55 +117,56 @@ export function DashboardInfoSidebarInner({
     <div data-testid="sidebar-right">
       <ErrorBoundary>
         <Sidesheet
-          isOpen={isOpen}
+          isOpen
           title={t`Info`}
+          titleSize="h3"
           onClose={closeSidebar}
-          removeBodyPadding
-          size="md"
+          closeHotkey="]"
+          size={SIDEBAR_WIDTH}
+          actions={
+            <InsightsAction dashboard={dashboard} entityType="dashboard" />
+          }
+          footer={
+            isWithinIframe() ? undefined : (
+              <EntityIdFooter items={getEntityIdItems(dashboard)} />
+            )
+          }
         >
-          <Tabs
-            defaultValue={Tab.Overview}
-            className={SidesheetS.FlexScrollContainer}
-          >
-            <Tabs.List mx={SIDESHEET_HORIZONTAL_PADDING}>
-              <Tabs.Tab value={Tab.Overview}>{t`Overview`}</Tabs.Tab>
-              {!isIADashboard && (
-                <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>
-              )}
-              <InsightsTabOrLink dashboard={dashboard} />
-            </Tabs.List>
-            <SidesheetTabPanelContainer>
-              <Tabs.Panel value={Tab.Overview}>
-                <OverviewTab
-                  dashboard={dashboard}
-                  handleDescriptionChange={handleDescriptionChange}
-                  handleDescriptionBlur={handleDescriptionBlur}
-                  descriptionError={descriptionError}
-                  setDescriptionError={setDescriptionError}
-                  canWrite={canWrite}
-                />
-              </Tabs.Panel>
-              <Tabs.Panel value={Tab.History}>
-                <HistoryTab
+          <Stack gap="xxl">
+            <Overview
+              dashboard={dashboard}
+              handleDescriptionChange={handleDescriptionChange}
+              handleDescriptionBlur={handleDescriptionBlur}
+              descriptionError={descriptionError}
+              setDescriptionError={setDescriptionError}
+              canWrite={canWrite}
+            />
+            {!isIADashboard && (
+              <SidebarSection title={t`History`}>
+                <History
                   dashboard={dashboard}
                   canWrite={canWrite}
                   revisions={revisions}
                   currentUser={currentUser}
                   moderationReviews={dashboard.moderation_reviews}
                 />
-              </Tabs.Panel>
-              <Tabs.Panel value={Tab.Insights}>
-                <InsightsUpsellTab model="dashboard" />
-              </Tabs.Panel>
-            </SidesheetTabPanelContainer>
-          </Tabs>
+              </SidebarSection>
+            )}
+          </Stack>
         </Sidesheet>
       </ErrorBoundary>
     </div>
   );
 }
 
-const OverviewTab = ({
+const getEntityIdItems = (dashboard: Dashboard): EntityIdFooterItem[] => [
+  { label: t`This dashboard`, entityId: dashboard.entity_id },
+  ...(dashboard.tabs ?? []).flatMap(({ name, entity_id }) =>
+    entity_id ? [{ label: name, entityId: entity_id }] : [],
+  ),
+];
+
+const Overview = ({
   dashboard,
   handleDescriptionChange,
   handleDescriptionBlur,
@@ -197,33 +182,33 @@ const OverviewTab = ({
   canWrite: boolean;
 }) => {
   return (
-    <Stack gap="xl">
-      <SidesheetCard title={t`Description`} pb="lg">
-        <SidesheetEditableDescription
-          description={dashboard.description}
-          onChange={handleDescriptionChange}
-          canWrite={canWrite}
-          onFocus={() => setDescriptionError("")}
-          onBlur={handleDescriptionBlur}
-        />
-        {!!descriptionError && (
-          <Text color="feedback-negative" size="xs" mt="xxs">
-            {descriptionError}
-          </Text>
-        )}
-        <PLUGIN_MODERATION.ModerationReviewTextForDashboard
-          dashboard={dashboard}
-        />
-      </SidesheetCard>
-      <SidesheetCard>
-        <DashboardDetails dashboard={dashboard} />
-      </SidesheetCard>
-      <DashboardEntityIdCard dashboard={dashboard} />
+    <Stack gap="xxl">
+      <SidebarSection title={t`Description`} gap={0}>
+        <Stack gap="sm">
+          <SidesheetEditableDescription
+            description={dashboard.description}
+            onChange={handleDescriptionChange}
+            canWrite={canWrite}
+            onFocus={() => setDescriptionError("")}
+            onBlur={handleDescriptionBlur}
+          />
+          {!!descriptionError && (
+            <Text c="feedback-negative" size="xs">
+              {descriptionError}
+            </Text>
+          )}
+          <PLUGIN_MODERATION.ModerationReviewTextForDashboard
+            dashboard={dashboard}
+          />
+        </Stack>
+      </SidebarSection>
+      <DashboardDetails dashboard={dashboard} />
+      <DashboardContentsSection dashboard={dashboard} />
     </Stack>
   );
 };
 
-const HistoryTab = ({
+const History = ({
   dashboard,
   canWrite,
   revisions,
@@ -245,7 +230,7 @@ const HistoryTab = ({
   );
 
   return (
-    <SidesheetCard>
+    <Box bd="1px solid var(--mb-color-border-neutral)" bdrs="lg" p="sm">
       <RevisionHistoryTimeline
         events={events}
         data-testid="dashboard-history-list"
@@ -255,6 +240,6 @@ const HistoryTab = ({
         canWrite={canWrite}
         entity="dashboard"
       />
-    </SidesheetCard>
+    </Box>
   );
 };

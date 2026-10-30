@@ -1,20 +1,28 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
-import type { Collection } from "metabase-types/api";
+import { screen, waitFor } from "__support__/ui";
+import type { Collection, CollectionItem } from "metabase-types/api";
 
 import {
+  type SetupOpts,
   setup as baseSetup,
   officialCollection,
   regularCollection,
 } from "./setup";
 
-const setup = ({ collection }: { collection: Collection }) =>
+const setup = ({
+  collection,
+  ...opts
+}: { collection: Collection } & Partial<SetupOpts>) =>
   baseSetup({
     collection,
     enableEnterprisePlugins: false,
     enableOfficialCollections: false,
+    ...opts,
   });
+
+const describeCountButton = (button: HTMLElement) =>
+  `${button.getAttribute("aria-label")}: ${button.textContent}`;
 
 describe("CollectionInfoSidebar (OSS)", () => {
   it("should render for a regular collection", async () => {
@@ -33,6 +41,56 @@ describe("CollectionInfoSidebar (OSS)", () => {
     expect(
       screen.queryByText("entity_id_of_normal_collection"),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText("Entity ID info")).not.toBeInTheDocument();
+  });
+
+  describe("contents", () => {
+    it("counts the items of each present type, in the type filter's order", async () => {
+      setup({ collection: regularCollection });
+
+      const counts = await screen.findAllByRole("button", {
+        name: /Show only/,
+      });
+      expect(counts.map(describeCountButton)).toEqual([
+        "Show only Collections: 1",
+        "Show only Dashboards: 2",
+        "Show only Questions: 1",
+      ]);
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it("filters the items list to a type and closes when a count is clicked", async () => {
+      const { onFilterByType, onClose } = setup({
+        collection: regularCollection,
+      });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Show only Dashboards" }),
+      );
+
+      expect(onFilterByType).toHaveBeenCalledTimes(1);
+      expect(onFilterByType).toHaveBeenCalledWith("dashboard");
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    });
+
+    it("shows plain counts when the list cannot be filtered", async () => {
+      setup({ collection: regularCollection, withFilterByType: false });
+
+      expect(await screen.findByText("Dashboards")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Show only/ }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("2")).toBeInTheDocument();
+    });
+
+    it("shows an empty state for an empty collection", async () => {
+      const collectionItems: CollectionItem[] = [];
+      setup({ collection: regularCollection, collectionItems });
+
+      expect(
+        await screen.findByText("This collection is empty."),
+      ).toBeInTheDocument();
+    });
   });
 
   it("should render properly for an official collection", async () => {

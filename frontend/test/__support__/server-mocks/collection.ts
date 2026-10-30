@@ -191,7 +191,9 @@ function handleCollectionItemsResponse({
     ? matchedItems.filter(({ name }) => name.toLowerCase().includes(q))
     : matchedItems;
 
-  const limit = Number(url.searchParams.get("limit")) || searchedItems.length;
+  // As in the API, `limit=0` is a count-only request: no rows, just `total`.
+  const limitParam = url.searchParams.get("limit");
+  const limit = limitParam === null ? searchedItems.length : Number(limitParam);
   const offset = Number(url.searchParams.get("offset")) || 0;
 
   return {

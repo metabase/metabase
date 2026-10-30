@@ -443,7 +443,7 @@ class Question {
   }
 
   dashboard(): CardDashboardInfo | null {
-    return this._card.dashboard;
+    return this._card.dashboard ?? null;
   }
 
   dashboardId(): DashboardId | null {

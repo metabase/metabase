@@ -4,7 +4,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import {
   DetailsRow,
   DetailsTable,
-} from "metabase/monitor/components/DetailSidebar";
+} from "metabase/common/components/DetailSidebar";
 import { Text } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 
