@@ -28,7 +28,6 @@ import {
   TimeInput,
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type {
   FormattingSettings,
   IconName,
@@ -37,6 +36,12 @@ import type {
 } from "metabase-types/api";
 
 import FormArchiveButton from "../FormArchiveButton";
+
+import {
+  getTimeInputValue,
+  getTimestampWithDate,
+  getTimestampWithTime,
+} from "./utils";
 
 const EVENT_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required).max(255, Errors.maxLength),
@@ -132,33 +137,33 @@ const EventForm = ({
                 flex={1}
                 valueFormat={dateSettings?.date_style}
                 onChange={(date) => {
-                  if (values.time_matters) {
-                    // if time matters, preserve the time part of the timestamp
-                    // when changing the date part
-                    const timePart = dayjs.tz(values.timestamp);
-                    const newDate = parseTimestamp(date)
-                      .set("hour", timePart.hour())
-                      .set("minute", timePart.minute());
-                    setFieldValue("timestamp", newDate.toISOString());
-                  } else {
-                    setFieldValue("timestamp", dayjs(date).toISOString());
+                  if (date) {
+                    setFieldValue(
+                      "timestamp",
+                      getTimestampWithDate(
+                        values.timestamp,
+                        date,
+                        values.time_matters,
+                      ),
+                    );
                   }
                 }}
               />
               {values.time_matters ? (
                 <Flex gap="xxs" align="end">
                   <TimeInput
-                    value={dayjs.tz(values.timestamp).toDate()}
+                    value={getTimeInputValue(values.timestamp)}
                     name="date"
                     label={t`Time`}
                     fw="bold"
                     flex={1}
                     onChange={(time) => {
-                      const timePart = dayjs.tz(time);
-                      const date = parseTimestamp(values.timestamp)
-                        .set("hour", timePart.hour())
-                        .set("minute", timePart.minute());
-                      setFieldValue("timestamp", date.toISOString());
+                      if (time) {
+                        setFieldValue(
+                          "timestamp",
+                          getTimestampWithTime(values.timestamp, time),
+                        );
+                      }
                     }}
                   />
                   <ActionIcon

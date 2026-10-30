@@ -40,8 +40,10 @@ export const DefaultItemRenderer = ({
   const canSelect = canSelectItems(collection, onToggleSelected);
 
   const icon = getIcon(item);
-  if (item.model === "card" || item.archived) {
+  if (item.archived) {
     icon.color = "text-disabled";
+  } else if (item.model === "card") {
+    icon.color = "text-secondary";
   }
 
   const handleSelectionToggled = useCallback(() => {
