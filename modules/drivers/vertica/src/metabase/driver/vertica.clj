@@ -115,6 +115,10 @@
   [_driver]
   (h2x/with-database-type-info [:current_timestamp [:inline 6]] "timestamptz"))
 
+(defmethod sql.qp/use-ctes-for-stages? :vertica
+  [_driver]
+  true)
+
 ;; Vertica's `GROUPING()` is single-arg only. `GROUPING_ID(a, b, ...)` is its multi-arg counterpart.
 (defmethod sql.pivot/pivot-grouping-hsql :vertica
   [_driver exprs]

@@ -24,7 +24,8 @@
    [metabase.util.pool :as u.pool])
   (:import
    (io.aleph.dirigiste Pool)
-   (org.graalvm.polyglot Context Engine HostAccess Source Value)))
+   (org.graalvm.polyglot Context Engine HostAccess Source Value)
+   (org.graalvm.polyglot.io IOAccess)))
 
 (set! *warn-on-reflection* true)
 
@@ -56,7 +57,7 @@
        (allowHostClassLookup no-host-class-lookup)
        (out System/out)
        (err System/err)
-       (allowIO false)
+       (allowIO IOAccess/NONE)
        (build))))
 
 (defn load-js-string

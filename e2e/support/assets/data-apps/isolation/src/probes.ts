@@ -441,7 +441,7 @@ export const createProbes = (
           u: string,
         ) => Promise<unknown>;
 
-        dynamicImport(`${env.instanceUrl}/api/apps/isolation/bundle`)
+        dynamicImport(`${env.instanceUrl}/api/ee/apps/isolation/bundle`)
           .then(() => report("reached:dynamic-import-evaluated"))
           .catch((err) => report(`isolated:${describeError(err)}`));
       },

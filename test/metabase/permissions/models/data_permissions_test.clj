@@ -533,14 +533,14 @@
         (data-perms/set-table-permission! group-id-1 table-id-1 :perms/view-data :unrestricted)
         (is (= :unrestricted
                (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))
-        (t2/update! :model/Table table-id-1 {:active false})
+        (t2/update! :model/Table :id table-id-1 {:active false})
         (testing "Deactivated table has minimum permissions when reading straight from DB"
           (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))
         (testing "Deactivated table has minimum permissions when reading from cache"
           (data-perms/with-relevant-permissions-for-user user-id
             (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))))
         (testing "Reactivating the table allows the perms to be read again"
-          (t2/update! :model/Table table-id-1 {:active true})
+          (t2/update! :model/Table :id table-id-1 {:active true})
           (is (= :unrestricted
                  (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))))))
 
@@ -569,10 +569,10 @@
           (testing "\na grant on an active table counts"
             (check! true :yes))
           (testing "\nthe same grant does not count once the table is deactivated"
-            (t2/update! :model/Table table-id {:active false})
+            (t2/update! :model/Table :id table-id {:active false})
             (check! false :no))
           (testing "\nreactivating the table restores it"
-            (t2/update! :model/Table table-id {:active true})
+            (t2/update! :model/Table :id table-id {:active true})
             (check! true :yes)))))))
 
 (deftest permissions-for-user-test

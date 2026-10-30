@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -37,16 +38,22 @@
                  {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5})))))
     (testing "A field-id not on the table is an agent error, not a field-metadata result."
       (mt/as-admin
-        (is (=? {:output #"Field -1 not found"}
-                (metabot.tools.field-stats/field-values
-                 {:entity-type "table", :entity-id products-id, :field-id -1, :limit 5})))))
-    (testing "A field-id that no longer resolves to a table (e.g. dropped column, stale result_metadata)
-              is a graceful agent-facing 404, not an uncaught exception."
+        (is (=? {:class :recoverable :code ::metabot.tools.field-stats/unknown-field
+                 :message (re-pattern (str "Field -1 was not found in table " products-id
+                                           "\\. Valid field IDs: .*"))}
+                (tools.error/classify
+                 (is (thrown? clojure.lang.ExceptionInfo
+                              (metabot.tools.field-stats/field-values
+                               {:entity-type "table", :entity-id products-id, :field-id -1, :limit 5}))))))))
+    (testing "A stale field is reported as unavailable on its source."
       (mt/as-admin
         (mt/with-dynamic-fn-redefs [metabot.perms/field-id->table-id (constantly {})]
-          (is (=? {:output #"No field found with ID \d+" :status-code 404}
-                  (metabot.tools.field-stats/field-values
-                   {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5}))))))
+          (is (=? {:class :recoverable :code ::metabot.tools.field-stats/unknown-field
+                   :data {:field-id category-id :available-ids []}}
+                  (tools.error/classify
+                   (is (thrown? clojure.lang.ExceptionInfo
+                                (metabot.tools.field-stats/field-values
+                                 {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5})))))))))
     (testing "Getting statistics and values for table fields works."
       (mt/as-admin
         (are [table-id field-id value-metadata]
@@ -169,16 +176,12 @@
       (mt/as-admin
         (testing "reading a question or model as a metric names the card's type"
           (doseq [[card-type card-id] [["question" question-id] ["model" model-id]]]
-            (is (= {:output (str "Card " card-id " is a " card-type ", not a metric.") :status-code 400}
-                   (metric-values card-id)))))
+            (is (=? {:class :recoverable
+                     :code :metabase.metabot.tools.util/wrong-source-type
+                     :message (str "Card " card-id " is a " card-type ", not a metric.")
+                     :recovery [{:text "Retry using a metric ID." :uses #{}}]}
+                    (tools.error/classify
+                     (is (thrown? clojure.lang.ExceptionInfo (metric-values card-id))))))))
         (testing "a metric that doesn't exist is refused as not found"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
                                 (metric-values Integer/MAX_VALUE))))))))
-
-(deftest field-values-unknown-entity-type-test
-  (testing "an unrecognized entity-type -- e.g. because the schema that constrains it isn't enforced in
-            production -- returns a graceful agent-facing message instead of throwing"
-    (mt/as-admin
-      (is (=? {:output #"Unknown data source type: bogus"}
-              (metabot.tools.field-stats/field-values
-               {:entity-type "bogus", :entity-id 1, :field-id 1, :limit 5}))))))

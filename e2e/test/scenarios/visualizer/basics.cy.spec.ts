@@ -76,7 +76,7 @@ describe("scenarios > visualizer > basics", () => {
       H.verticalWell().findByText("Count").should("exist");
       H.horizontalWell().findByText("Created At: Month").should("exist");
 
-      cy.findByDisplayValue("line").should("be.checked");
+      H.assertCurrentVisualization("line");
 
       cy.button("Add to dashboard").click();
     });

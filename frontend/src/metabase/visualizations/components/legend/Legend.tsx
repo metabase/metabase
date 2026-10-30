@@ -8,12 +8,9 @@ import type { HoveredObject } from "metabase/viz-core";
 import S from "./Legend.module.css";
 import type { LegendItemData } from "./LegendItem";
 import { LegendItem } from "./LegendItem";
-import {
-  LEGEND_PADDING,
-  LEGEND_SIZES,
-  type LegendSize,
-  getOverflowLabel,
-} from "./layout";
+import { LEGEND_PADDING } from "./constants";
+import { getOverflowLabel } from "./measure";
+import { LEGEND_SIZES, type LegendSizeTier } from "./sizes";
 
 const POPOVER_BORDER = 1;
 const POPOVER_PADDING = 8;
@@ -26,7 +23,7 @@ interface LegendProps {
   visibleIndex?: number;
   visibleLength?: number;
   isVertical?: boolean;
-  size?: LegendSize;
+  size?: LegendSizeTier;
   onHoverChange?: (data?: HoveredObject | null) => void;
   onSelectSeries?: (
     event: React.MouseEvent,
@@ -45,7 +42,7 @@ export const Legend = ({
   visibleIndex = 0,
   visibleLength = originalItems.length,
   isVertical,
-  size = "sm",
+  size = "smallCard",
   onHoverChange,
   onSelectSeries,
   getSeriesHref,
@@ -57,6 +54,8 @@ export const Legend = ({
   const overflowIndex = visibleIndex + visibleLength;
   const visibleItems = items.slice(visibleIndex, overflowIndex);
   const overflowLength = items.length - overflowIndex;
+  const shouldPinRowItemWidths = !isVertical && overflowLength > 0;
+  const lastVisibleIndex = visibleItems.length - 1;
   const { itemGap, rowGap, maxVerticalWidth, typography } = LEGEND_SIZES[size];
 
   return (
@@ -79,6 +78,10 @@ export const Legend = ({
         return (
           <LegendItem
             key={item.key}
+            className={cx({
+              [S.pinnedRowItem]:
+                shouldPinRowItemWidths && index < lastVisibleIndex,
+            })}
             item={item}
             index={itemIndex}
             isMuted={hovered != null && itemIndex !== hovered.index}
@@ -119,7 +122,7 @@ export const Legend = ({
                 hovered={hovered}
                 visibleIndex={overflowIndex}
                 visibleLength={overflowLength}
-                isVertical={isVertical}
+                isVertical
                 size={size}
                 onHoverChange={onHoverChange}
                 onSelectSeries={onSelectSeries}

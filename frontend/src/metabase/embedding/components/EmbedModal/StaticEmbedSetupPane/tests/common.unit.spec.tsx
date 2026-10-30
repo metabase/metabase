@@ -100,7 +100,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-overview&source_plan=oss",
+          "https://www.metabase.com/docs/latest/embedding/guest-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-overview&source_plan=oss",
         );
 
         expect(
@@ -397,7 +397,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-look-and-feel&source_plan=oss#customizing-the-appearance-of-static-embeds",
+          "https://www.metabase.com/docs/latest/embedding/guest-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-look-and-feel&source_plan=oss#customizing-appearance-of-guest-embeds",
         );
       });
 

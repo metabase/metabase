@@ -50,6 +50,39 @@
     (testing source
       (is (= #{"null"}
              (set (map second (re-seq #"\"Sample Database\",\s*([^,\s]+)" text))))))))
+(deftest ^:parallel metric-source-guidance-is-carried-by-every-surface-test
+  ;; The MCP prompt, advanced skill, and aggregation catalog must agree on how to choose a metric's source.
+  (let [surfaces {"prompts/tools/construct_notebook_query.md"
+                  (slurp (io/resource "metabot/prompts/tools/construct_notebook_query.md"))
+                  "skills/construct-notebook-query-advanced.md"
+                  (slurp (io/resource "metabot/skills/construct-notebook-query-advanced.md"))}]
+    (doseq [[path doc] surfaces]
+      (testing path
+        (testing "names both source attributes the `<metric>` tag can carry"
+          (is (str/includes? doc "base_table_fully_qualified_name"))
+          (is (str/includes? doc "source_card_portable_entity_id")))
+        (testing "and the marker for a metric whose source cannot be offered"
+          (is (str/includes? doc "source_unavailable")))
+        (testing "and states the rule that makes the choice between them conditional"
+          (is (str/includes? doc "Build the stage on that source")))
+        (testing "and breaks a metric out through an implicit join, the way the query runs"
+          (is (str/includes? doc "on a `source-table` and a `source-card` stage alike"))
+          (is (not (str/includes? doc "cannot resolve an implicit join against a metric aggregation"))))))
+    (testing "the discovery snippet does not send the agent to the base table unconditionally"
+      (let [doc (slurp (io/resource "metabot/prompts/shared/prompt_snippets/semantic-layer-discovery.selmer"))]
+        (is (str/includes? doc "base_table_fully_qualified_name"))
+        (is (str/includes? doc "source_card_portable_entity_id"))
+        (is (str/includes? doc "Use the source specified by its `<metric>` tag"))))
+    (testing "the aggregation catalogs describe the metric clause the same way"
+      (doseq [path ["metabot/prompts/tools/construct_notebook_query.md"
+                    "metabot/skills/construct-notebook-query-operators.md"]]
+        (testing path
+          (let [line (->> (str/split-lines (slurp (io/resource path)))
+                          (filter #(str/starts-with? % "- `[\"metric\", {}, "))
+                          first)]
+            (is (some? line) "the catalog lists a `metric` aggregation clause")
+            (is (str/includes? line "base_table_fully_qualified_name"))
+            (is (str/includes? line "source_card_portable_entity_id"))))))))
 
 (deftest ^:parallel render-system-prompt-test
   (testing "renders template with variables"

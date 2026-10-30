@@ -36,7 +36,7 @@
   "Set the engine of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
    engine      :- :string]
-  (t2/update! :model/Database database-id {:engine engine}))
+  (t2/update! :model/Database :id database-id {:engine engine}))
 
 (mu/defn delete-database!
   "Delete the Database with `database-id`."
@@ -81,6 +81,8 @@
                             ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
                             [:not= :table.name "DATABASECHANGELOG"]
                             [:not= :table.name "DATABASECHANGELOGLOCK"] ;; new instances do not get this file, but existing instances may have it
+                            [:not= :table.name "DATABASECHANGELOG_VERSION"]
+                            [:not= :table.name "DATABASECHANGELOG_FIRST_RUN"]
                             [:not [:like :table.name "QRTZ_%"]]
                             [:not [:exists ^:allow-subquery {:select [1]
                                                              :from   [(warehouse-schema-overlay/table-query {:alias :self_table, :user-settings? false})]
@@ -109,6 +111,8 @@
                                 [:= :table.id :field.table_id]]
                    :where      [:and [:= :table.db_id database-id]
                                 [:not= :table.name "DATABASECHANGELOG"]
+                                [:not= :table.name "DATABASECHANGELOG_VERSION"]
+                                [:not= :table.name "DATABASECHANGELOG_FIRST_RUN"]
                                 [:not [:like :table.name "QRTZ_%"]]
                                 [:not [:exists ^:allow-subquery {:select     [1]
                                                                  :from       [(warehouse-schema-overlay/field-query {:alias :self_field})]
@@ -153,12 +157,12 @@
   "Apply `changes` to the Table with `table-id`."
   [table-id :- ::lib.schema.id/table
    changes  :- (mut/select-keys ::warehouse-schema.schema/table.update [:active :name :schema :is_defective_duplicate])]
-  (t2/update! :model/Table table-id changes))
+  (t2/update! :model/Table :id table-id changes))
 
 (mu/defn delete-table!
   "Delete the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/delete! :model/Table table-id))
+  (t2/delete! :model/Table :id table-id))
 
 (mu/defn field-names-of-table
   "The `:id` and `:name` of the Fields of the Table with `table-id`."
@@ -186,7 +190,7 @@
   "Apply `changes` to the Card with `card-id`."
   [card-id :- ::lib.schema.id/card
    changes :- (mut/select-keys ::queries.schema/card.update [:dataset_query :result_metadata])]
-  (t2/update! :model/Card card-id changes))
+  (t2/update! :model/Card :id card-id changes))
 
 (mu/defn first-superuser
   "The `:id` and `:email` of the oldest superuser, or nil."

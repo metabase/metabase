@@ -62,7 +62,7 @@ const addPointerListeners = (
  */
 export const useBrush = (
   chartRef: MutableRefObject<EChartsType | undefined>,
-  containerRef: RefObject<HTMLDivElement>,
+  containerRef: RefObject<HTMLDivElement | null>,
   canBrushChart: boolean,
   isBrushable: boolean,
   // ECharts option object — used as a signal dep to re-enable brush after
@@ -153,13 +153,13 @@ function useTouchBrush({
   disableBrush,
 }: {
   chartRef: MutableRefObject<EChartsType | undefined>;
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement | null>;
   isTouch: boolean;
   canBrushChart: boolean;
   enableBrush: () => void;
   disableBrush: () => void;
 }) {
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const startRef = useRef<Point | null>(null);
   const activeRef = useRef(false);
 

@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import * as Urls from "metabase/urls";
 import type {
@@ -15,6 +17,7 @@ export interface CollectionBreadcrumbsProps {
   dashboard?: Dashboard;
   onClick?: (collection: CollectionEssentials) => void;
   baseCollectionId: CollectionId | null;
+  truncateLongestFirst?: boolean;
 }
 
 export const CollectionBreadcrumbs = ({
@@ -22,6 +25,7 @@ export const CollectionBreadcrumbs = ({
   dashboard,
   onClick,
   baseCollectionId = null,
+  truncateLongestFirst,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
   const tc = useTranslateContent();
 
@@ -43,6 +47,7 @@ export const CollectionBreadcrumbs = ({
             }
           : undefined
       }
+      truncateLongestFirst={truncateLongestFirst}
     />
   );
 };

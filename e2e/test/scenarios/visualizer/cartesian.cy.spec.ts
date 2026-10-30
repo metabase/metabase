@@ -581,7 +581,7 @@ describe("scenarios > visualizer > cartesian", () => {
         });
         H.horizontalWell().findByText("Product → Category").should("exist");
 
-        cy.findByDisplayValue("bar").should("be.checked");
+        H.assertCurrentVisualization("bar");
 
         H.echartsContainer().within(() => {
           // x-axis labels

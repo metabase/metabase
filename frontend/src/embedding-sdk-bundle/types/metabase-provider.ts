@@ -30,7 +30,7 @@ export interface MetabaseProviderProps {
   authConfig: MetabaseAuthConfig;
 
   /**
-   * See [Appearance](https://www.metabase.com/docs/latest/embedding/sdk/appearance).
+   * See [Appearance](https://www.metabase.com/docs/latest/embedding/appearance).
    */
   theme?: MetabaseEmbeddingTheme;
 

@@ -9,6 +9,7 @@
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [with-library with-library-synced with-library-not-synced]]
+   [metabase.documents.test-util :as doc.tu]
    [metabase.events.core :as events]
    [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
@@ -470,6 +471,29 @@
                                   :collection_id coll2-id
                                   :database_id (mt/id)
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Used by remote synced content"
+           (core/bulk-set-remote-sync {coll1-id false}))))))
+
+(deftest bulk-set-remote-sync-enables-collection-holding-document-test
+  (testing "a collection's own Document does not block enabling remote sync on that collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Docs" :location "/" :is_remote_synced false}
+                   :model/Document   _            {:collection_id coll-id}]
+      (core/bulk-set-remote-sync {coll-id true})
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))
+
+(deftest bulk-set-remote-sync-throws-on-remote-synced-document-dependent-test
+  (testing "bulk-set-remote-sync throws when disabling a collection whose card a remote-synced Document embeds"
+    (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced true}
+                   :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced true}
+                   :model/Card {card-id :id} {:name          "Source Card"
+                                              :collection_id coll1-id
+                                              :database_id   (mt/id)
+                                              :dataset_query (mt/mbql-query venues)}
+                   :model/Document _ {:collection_id coll2-id
+                                      :document      (doc.tu/cards->prose-mirror-ast [card-id])
+                                      :content_type  "application/json+vnd.prose-mirror"}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Used by remote synced content"

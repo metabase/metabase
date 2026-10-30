@@ -18,6 +18,7 @@ export interface AppErrorDescriptor {
     message?: string;
   };
   context?: string;
+  message?: string;
 }
 
 export interface AppBreadCrumbs {

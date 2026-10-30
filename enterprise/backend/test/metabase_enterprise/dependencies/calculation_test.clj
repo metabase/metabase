@@ -715,3 +715,9 @@
                    :model/ImplicitAction _ {:action_id action-id, :kind "row/create"}]
       (is (= {:card #{model-id}}
              (calculation/calculate-deps :action (actions/select-action :id action-id)))))))
+
+(deftest upstream-deps-implicit-action-without-model-test
+  (mt/with-temp [:model/Action {action-id :id} {:type :implicit, :name "Create venue"}
+                 :model/ImplicitAction _ {:action_id action-id, :kind "row/create", :table_id (mt/id :venues)}]
+    (is (= {:table #{(mt/id :venues)}}
+           (calculation/calculate-deps :action (actions/select-action :id action-id))))))

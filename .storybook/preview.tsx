@@ -25,6 +25,7 @@ import "@mantine/dates/styles.css";
 import { Global, css, useTheme } from "@emotion/react";
 import { initialize, mswLoader } from "msw-storybook-addon";
 
+import { loadCodeEditor } from "metabase/common/components/CodeEditor";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import {
@@ -204,7 +205,12 @@ const preview = {
   // registry would otherwise be captured mid-Suspense, showing the skeleton.
   // Wrapped because a loader is called with the story context, which would
   // otherwise be taken for the list of displays to load.
-  loaders: [mswLoader, fontsReady, () => loadVisualizationComponents()],
+  loaders: [
+    mswLoader,
+    fontsReady,
+    () => loadVisualizationComponents(),
+    () => loadCodeEditor(),
+  ],
   argTypes,
 };
 

@@ -12,10 +12,6 @@ function generateSdkPackage() {
     maybeCommitHash = maybeCommitHash.slice(0, 7);
   }
 
-  const mainPackageJsonContent = JSON.parse(
-    fs.readFileSync(path.resolve("./package.json"), "utf-8"),
-  );
-
   const sdkPackageTemplateJson = fs.readFileSync(
     path.resolve(
       "./enterprise/frontend/src/embedding-sdk-package/package.template.json",
@@ -38,15 +34,6 @@ function generateSdkPackage() {
     version: maybeCommitHash
       ? `${sdkPackageTemplateJsonContent.version}-${todayDate}-${maybeCommitHash}`
       : sdkPackageTemplateJsonContent.version,
-
-    // Runtime dependencies of the CLI for data apps, not pre-bundled.
-    dependencies: {
-      // Compiles app definitions and local imports for the CLI to evaluate.
-      esbuild: mainPackageJsonContent.devDependencies.esbuild,
-
-      // Parses and edits TypeScript source files during resource sync.
-      typescript: mainPackageJsonContent.dependencies.typescript,
-    },
   };
 
   const mergedContentString = JSON.stringify(mergedContent, null, 2);

@@ -315,7 +315,7 @@
 
 (defn valid-id?
   "Return true if `session-id` has a UUID correlator (the format `create!` produces).
-  Format check only — authentication is handled separately by cookie or bearer token, not by the session ID itself."
+  Format check only — authentication is handled separately by bearer token, not by the session ID itself."
   [session-id]
   (some? (session-parts session-id)))
 

@@ -8,6 +8,7 @@
    [metabase.plugins.core :as plugins]
    [metabase.sample-data.db :as sample-data.db]
    [metabase.sync.core :as sync]
+   [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -107,7 +108,7 @@
                (sample-data.db/database (first (sample-data.db/set-sample-database-details! details)))
                (sample-data.db/insert-sample-database! sample-database-name details engine))]
       (log/debug "Syncing Sample Database...")
-      (sync/sync-database! db))
+      (sync/sync-database! (u/the-id db)))
     (log/debug "Finished adding Sample Database.")
     (catch Throwable e
       (log/errorf "Failed to load sample database: %s" (ex-message e)))))
@@ -162,7 +163,7 @@
       ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Delete+reinsert would churn
       ;; ids for a rename that doesn't change any permission value.
       (sample-data.db/set-database-table-permissions-schema-name! (:id old-sample-db) (table-schema-for-engine engine)))
-    (sync/sync-database! (sample-data.db/database (:id old-sample-db)))))
+    (sync/sync-database! (:id old-sample-db))))
 
 (defn update-sample-database-if-needed!
   "Reconcile the existing sample database with the bundled one. When the bundled engine changed

@@ -4,7 +4,7 @@ import {
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { createKitchenSinkDataApp } from "./helpers";
 
 const { H } = cy;
 
@@ -19,7 +19,6 @@ describe("scenarios > data apps > sandbox & isolation", () => {
   describe("sandboxing", () => {
     const ALLOWED_ORIGIN = "https://allowed.data-app.test";
     const ALLOWED_URL = `${ALLOWED_ORIGIN}/ping`;
-    const BLOCKED_URL = "https://blocked.data-app.test/ping";
 
     // Method/constructor calls the sandbox distortion replaces with a throwing
     // shim. (Getter-only reads like `localStorage` aren't intercepted, so they
@@ -44,19 +43,7 @@ describe("scenarios > data apps > sandbox & isolation", () => {
         body: "pong",
       });
 
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        allowedHosts: [ALLOWED_ORIGIN],
-        testEnv: {
-          ...TEST_ENV,
-          sandbox: {
-            allowedUrl: ALLOWED_URL,
-            blockedUrl: BLOCKED_URL,
-            xhrAllowedUrl: ALLOWED_URL,
-            xhrBlockedUrl: BLOCKED_URL,
-          },
-        },
-      });
+      createKitchenSinkDataApp({ allowed_hosts: [ALLOWED_ORIGIN] });
 
       visitAppRoute("sandboxing");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -95,10 +82,7 @@ describe("scenarios > data apps > sandbox & isolation", () => {
 
   describe("isolation", () => {
     it("serves the embed document with locked-down headers, renders the app in a sandboxed iframe, and keeps the app's CSS and JS globals inside it", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
+      createKitchenSinkDataApp();
 
       cy.request({
         url: `/embed/apps/${APP_NAME}`,

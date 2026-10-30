@@ -129,7 +129,7 @@ Use **Library > Dashboards** for curated, official dashboards, like your company
 
 **Library > Dashboards** holds only dashboards and their [dashboard questions](../../questions/introduction.md#saving-questions-to-dashboards). To save a question there, you save it to one of its dashboards.
 
-A Library dashboard can also use questions saved in other collections. But if you [sync the Library to Git](#versioning-the-library), everything the dashboard uses must be in a synced collection. See [Items in synced collections must be self-contained](../../installation-and-operation/remote-sync.md#items-in-synced-collections-must-be-self-contained).
+A Library dashboard can also use questions saved in other collections. But if you [sync the Library to Git](#versioning-the-library), everything the dashboard uses must be in a synced collection. See [Library content must be self-contained](./remote-sync.md#library-content-must-be-self-contained).
 
 ![Dashboards section of the semantic layer in Data Studio](./images/library-dashboards-section.png)
 
@@ -154,7 +154,7 @@ If you [duplicate a dashboard](../../dashboards/introduction.md#duplicating-a-da
 
 ## Versioning the Library
 
-You can [sync Library content to version control](../../installation-and-operation/remote-sync.md), giving you change history and the ability to publish content across environments. When you sync the Library, Metabase also syncs your SQL snippets and [glossary](glossary.md) terms.
+You can [sync Library content to version control](./remote-sync.md), giving you change history and the ability to publish content across environments. When you sync the Library, Metabase also syncs your SQL snippets, [data actions](../data-actions.md), and [glossary](glossary.md) terms.
 
 ## Library permissions
 
@@ -249,6 +249,6 @@ People who have View or Curate collection permissions to the **Library** subcoll
 - [Published tables](./published-tables.md)
 - [Glossary](./glossary.md)
 - [Dependency graph](../tools/graph.md)
-- [Remote sync](../../installation-and-operation/remote-sync.md)
+- [Remote sync](./remote-sync.md)
 - [Metrics](./metrics.md)
 - [Snippets](../../questions/native-editor/snippets.md).

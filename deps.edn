@@ -32,10 +32,10 @@
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
                                              :exclusions [com.sun.mail/jakarta.mail]}
-  com.fasterxml.jackson.core/jackson-core       {:mvn/version "2.21.7"}             ; pinned: cheshire pulls 2.21.1 which has resource exhaustion vuln
-  com.fasterxml.jackson.core/jackson-databind   {:mvn/version "2.21.7"}             ; pinned: snowplow pulls 2.13.3 which has DoS vulns
-  com.fasterxml.jackson.dataformat/jackson-dataformat-cbor  {:mvn/version "2.21.7"} ; pinned: cheshire pulls 2.21.1
-  com.fasterxml.jackson.dataformat/jackson-dataformat-smile {:mvn/version "2.21.7"} ; pinned: cheshire pulls 2.21.1
+  com.fasterxml.jackson.core/jackson-core       {:mvn/version "2.21.8"}             ; pinned: cheshire pulls 2.21.1 which has resource exhaustion vuln
+  com.fasterxml.jackson.core/jackson-databind   {:mvn/version "2.21.8"}             ; pinned: snowplow pulls 2.13.3 which has DoS vulns
+  com.fasterxml.jackson.dataformat/jackson-dataformat-cbor  {:mvn/version "2.21.8"} ; pinned: cheshire pulls 2.21.1
+  com.fasterxml.jackson.dataformat/jackson-dataformat-smile {:mvn/version "2.21.8"} ; pinned: cheshire pulls 2.21.1
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "7.1.1"}              ; trans dep of commons-codec
                                                                                 ; Detect the charset in uploaded CSV files
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
@@ -51,7 +51,7 @@
   com.google.auth/google-auth-library-credentials {:mvn/version "1.40.0"}       ; dep for BigQuery, Databricks, and Snowflake. Require here rather than letting different dep versions stomp on each other — see #70908
   com.google.auth/google-auth-library-oauth2-http {:mvn/version "1.40.0"}       ; Token refresh for the Metabot Google provider. Also a dep for BigQuery. Keep the version in step with google-auth-library-credentials
   com.google.code.gson/gson                 {:mvn/version "2.12.1"}             ; dep for BigQuery, Databricks, and Snowflake. Pin here so driver plugin JARs all use the same version — see #73736
-  com.google.guava/guava                    {:mvn/version "33.5.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
+  com.google.guava/guava                    {:mvn/version "33.7.2-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
   {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "78.1"}               ; Used to transliterate Unicode characters into Latin characters
@@ -88,7 +88,23 @@
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.36"}             ; Parse native SQL queries
-  io.opentelemetry/opentelemetry-api        {:mvn/version "1.62.0"}             ; pinned: clj-otel-api 0.2.10 pulls 1.54.1 (W3CBaggagePropagator DoS vuln)
+  ;; OpenTelemetry: every artifact pinned to ONE version. clj-otel 0.2.10 pulls 1.54.1, while drivers pull
+  ;; newer SDKs (Snowflake via google-cloud-storage), and a mixed SDK/exporter set fails with
+  ;; NoClassDefFoundError when tracing starts. Bump these together; see metabase.tracing.otlp-export-test.
+  io.opentelemetry/opentelemetry-api        {:mvn/version "1.62.0"}             ; also fixes W3CBaggagePropagator DoS vuln in 1.54.1
+  io.opentelemetry/opentelemetry-api-incubator {:mvn/version "1.62.0-alpha"}
+  io.opentelemetry/opentelemetry-common     {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-context    {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-exporter-common {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-exporter-otlp {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-exporter-otlp-common {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-exporter-sender-okhttp {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk        {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk-common {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk-extension-autoconfigure-spi {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk-logs   {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk-metrics {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk-trace  {:mvn/version "1.62.0"}
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.9"               ; Various statistic measures implemented as transducers
@@ -134,7 +150,7 @@
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.poi/poi-ooxml-full             {:mvn/version "5.5.1"}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.19.0"              ; ssh tunneling and test server
+  org.apache.sshd/sshd-core                 {:mvn/version "2.20.1"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.tika/tika-core                 {:mvn/version "3.3.3"}
@@ -178,7 +194,8 @@
   org.mariadb.jdbc/mariadb-java-client      ^:antq/exclude                      ; 3.x only support jdbc:mariadb, so using 2.x for now
   {:mvn/version "2.7.15"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.7.12"}            ; Postgres driver
+  org.ow2.asm/asm                           {:mvn/version "9.11.1"}
+  org.postgresql/postgresql                 {:mvn/version "42.7.14"}            ; Postgres driver
   org.semver4j/semver4j                     {:mvn/version "6.0.0"}              ; Semantic versioning parsing & comparison
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -256,10 +273,10 @@
    {cider/cider-nrepl            {:mvn/version "0.58.0"}                    ; nREPL server for CIDER
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2026.07.24"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2026.10.20"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
-    {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
+    {:mvn/version "1.9.0"}                     ; Enables local profiling and heat map generation
     com.clojure-goes-fast/clj-memory-meter
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
@@ -270,7 +287,7 @@
     integrant/integrant          {:mvn/version "1.0.1"}                   ; component lifecycle management
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:mvn/version "1.0.19"}                    ; test runner
-    io.opentelemetry/opentelemetry-sdk-testing {:mvn/version "1.54.1"}      ; InMemorySpanExporter for tracing tests; matches sdk impl (clj-otel-sdk 0.2.10 → 1.54.1); api is separately pinned to 1.62.0
+    io.opentelemetry/opentelemetry-sdk-testing {:mvn/version "1.62.0"}      ; InMemorySpanExporter for tracing tests; keep in sync with the OpenTelemetry pins in :deps
     io.zonky.test/embedded-postgres {:mvn/version "2.2.2"}                  ; In-process postgres for dev and testing
     ;; Native postgres binaries for every OS/arch we're likely to run on in
     ;; dev or CI. Without these Zonky falls back to x86_64 under Rosetta on
@@ -418,6 +435,9 @@
                ;; We use Snowplow micro in e2e tests
                "-Dmb.snowplow.available=true"
                "-Dmb.snowplow.url=http://localhost:9090"
+               ;; ...and the recording sink in `metaplow/` for Metabase Track. `metaplow-url`'s production
+               ;; default is nil outside production run mode, so e2e has to name the collector itself.
+               "-Dmb.metaplow.url=http://localhost:9091/api/send"
                ;; See: https://github.com/metabase/metabase/pull/38280
                "-Dmb.last.analytics.checksum=-1"
                "-Dmb.experimental.search.block.on.queue=true"
@@ -552,7 +572,7 @@
   ;; Use this to only run Kondo against specific files.
   :kondo
   {:replace-deps
-   {clj-kondo/clj-kondo {:mvn/version "2026.07.24"}}
+   {clj-kondo/clj-kondo {:mvn/version "2026.10.20"}}
 
    :main-opts
    ["-m" "clj-kondo.main"]}
@@ -641,8 +661,7 @@
   ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
   :eastwood
   {:exec-fn   metabase.linters.eastwood/eastwood
-   :exec-args {;; manually specify the source paths for the time being (exclude test paths) until we fix Eastwood
-               ;; errors in the test paths (once PR #17193 is merged)
+   :exec-args {;; source paths only; `:eastwood/test` lints the test paths
                :source-paths    ["src"
                                  "enterprise/backend/src"
                                  "modules/drivers/athena/src"
@@ -660,22 +679,11 @@
                                  "modules/drivers/sqlserver/src"
                                  "modules/drivers/starburst/src"
                                  "modules/drivers/vertica/src"]
-               :exclude-linters [;; Turn this off temporarily until we finish removing
-                                 ;; self-deprecated functions & macros
-                                 :deprecations
-                                 ;; this has a fit in libs that use Potemkin `import-vars` such
-                                 ;; as `java-time`
-                                 :implicit-dependencies
-                                 ;; too many false positives for now
-                                 :unused-ret-vals
-                                 :unused-ret-vals-in-try
-                                 ;; hard to clear on for metabase.util.match macros, and disabling the linter just
-                                 ;; there doesn't seem to work
-                                 :unused-meta-on-macro
-                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :wrong-arity
-                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :suspicious-expression]
+               ;; `:wrong-arity` misreads the custom `:arglists` on Toucan and `metabase.test` functions.
+               ;; Kondo checks arity anyway.
+               ;; The `:suspicious-test` kind restates Eastwood's default, which this list replaces.
+               ;; It flags `(is form msg)` whenever it can't tell that `msg` is a string.
+               :exclude-linters [:wrong-arity [:suspicious-test :second-arg-is-not-string]]
                ;; Snowplow has a dynamic dependency on okhttp3.CookieJar that we
                ;; don't use but eastwood detects. This is discussed in Slack here
                ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
@@ -691,13 +699,12 @@
                                     metabase.mq.quartz-affinity-delegate-std
                                     metabase.mq.quartz-affinity-delegate-postgres]}}
 
-  ;; Test counterpart of :eastwood. Starts with :reflection only; add more linters as we fix other eastwood
-  ;; issues in tests.
+  ;; Test counterpart of :eastwood.
   ;;
-  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+  ;; clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
   :eastwood/test
   {:exec-fn   metabase.linters.eastwood/eastwood-tests
-   :exec-args {:linters      [:reflection]
+   :exec-args {:exclude-linters [:wrong-arity [:suspicious-test :second-arg-is-not-string]]
                :exclude-namespaces
                [;; byte/1 dispatch value trips up Eastwood's reader
                 metabase.test.http-client
@@ -925,7 +932,7 @@
    ;; declared here too so the alias stands on its own instead of failing at exec time when `:dev`
    ;; happens to be absent. Keep the version in step with the one in `:dev`.
    :extra-paths ["dev/src"]
-   :extra-deps  {com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.6.2"}}
+   :extra-deps  {com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.9.0"}}
    :exec-fn  dev.profile-tests/run
    :jvm-opts ["-Dclj-async-profiler.output-dir=target"
               ;; without these, inlined frames are attributed to the wrong method
@@ -965,13 +972,14 @@
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.liquibase"]}
 
-  ;; Migrate CLI:
-  ;;    clojure -M:migrate <command>
+  ;; Migrate CLI (combine with :dev -- dev/src/user.clj needs the :dev classpath):
+  ;;    clojure -M:dev:migrate <command>
   ;; E.g.
-  ;;    clojure -M:migrate up                       ;; migrate up to the latest
-  ;;    clojure -M:migrate rollback count 2         ;; rollback 2 migrations
-  ;;    clojure -M:migrate rollback id "v40.00.001" ;; rollback to a specific migration with id
-  ;;    clojure -M:migrate status                   ;; print the latest migration id
+  ;;    clojure -M:dev:migrate up                          ;; migrate up to the latest
+  ;;    clojure -M:dev:migrate rollback last-deployment    ;; roll back the last migrate run
+  ;;    clojure -M:dev:migrate rollback deployment <id>    ;; roll back everything after that deployment_id
+  ;;    clojure -M:dev:migrate rollback count 2            ;; raw Liquibase rollback of 2 changesets
+  ;;    clojure -M:dev:migrate status                      ;; print the latest migration id
   :migrate
   {:extra-deps {io.github.camsaul/humane-are {:mvn/version "1.0.2"}}
    :extra-paths ["dev/src"]

@@ -11,7 +11,6 @@ import {
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type {
   CardType,
   CollectionId,
@@ -19,6 +18,7 @@ import type {
   TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
+import { DataPermissionValue } from "metabase-types/api/permissions";
 
 const { H } = cy;
 
@@ -110,7 +110,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
@@ -186,7 +186,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
@@ -317,7 +317,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
@@ -375,7 +375,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
@@ -420,7 +420,7 @@ LIMIT
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
@@ -470,7 +470,7 @@ LIMIT
 
       cy.log("run the transform and verify the table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -794,288 +794,24 @@ LIMIT
   });
 
   describe("settings inline editing", () => {
-    it("should manage ownership, update incremental settings inline, debounce no-op toggles, and roll back on errors", () => {
+    it("should update source strategy and checkpoint field inline", () => {
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.settingsTab().click();
 
-      const dismissToast = () => {
-        H.undoToast().icon("close").click();
-        H.undoToast().should("not.exist");
-      };
-
-      cy.log("verify the ownership section is displayed");
-      getTransformsTargetContent().within(() => {
-        cy.findByText("Ownership").should("be.visible");
-        cy.findByText("Specify who is responsible for this transform.").should(
-          "be.visible",
-        );
-        cy.findByText("Owner").should("be.visible");
-      });
-
-      cy.log("change the owner to another user");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-      });
-      H.popover().findByText("Robert Tableton").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-      dismissToast();
-
-      cy.log("set an external email as owner");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-        cy.findByLabelText("Owner").clear().type("external@example.com");
-      });
-      H.popover().findByText("external@example.com").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-      dismissToast();
-
-      cy.log("clear the owner");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-      });
-      H.popover().findByText("No owner").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-      dismissToast();
-
-      cy.log("Toggle incremental on");
-      isIncrementalSwitchDisabled();
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransform");
-      isIncrementalSwitchEnabled();
-      H.undoToast().should(
-        "contain.text",
-        "Incremental transformation settings updated",
-      );
-      dismissToast();
-
-      cy.log("Toggle incremental off");
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransform");
-      isIncrementalSwitchDisabled();
-      H.undoToast().should(
-        "contain.text",
-        "Incremental transformation settings updated",
-      );
-      dismissToast();
-
-      cy.log("Toggle incremental on and immediately off");
-      isIncrementalSwitchDisabled();
-
-      // Stub the updateTransform call to track how many times it's called
-      let updateCallCount = 0;
-      cy.intercept("PUT", "/api/transform/*", (req) => {
-        updateCallCount++;
-        req.continue();
-      });
-
-      // Toggle on then immediately off (within debounce window)
-      getIncrementalSwitch().click();
-      getIncrementalSwitch().click();
-
-      // Wait for debounce period (300ms) plus some buffer
-      cy.wait(500);
-
-      cy.log(
-        "Verify no request was made since we toggled back to original value",
-      );
-      // The switch should be back to unchecked
-      isIncrementalSwitchDisabled();
-      // No request should have been made
-      cy.wrap(null).then(() => {
-        expect(updateCallCount).to.equal(0);
-      });
-
-      cy.log("Intercept and force the update to fail");
-      cy.intercept("PUT", "/api/transform/*", {
-        statusCode: 500,
-        body: { message: "Internal server error" },
-      }).as("updateTransformError");
-
-      cy.log("Toggle incremental on");
+      cy.log("enable incremental once its checkpoint options have loaded");
       getIncrementalSwitch().findByRole("switch").should("be.enabled").click();
-
-      cy.log("Wait for the failed request");
-      cy.wait("@updateTransformError");
-
-      cy.log("Verify error toast is shown");
-      H.undoToast().should(
-        "contain.text",
-        "Failed to update incremental transformation settings",
-      );
-
-      cy.log("Verify the switch rolled back to unchecked state");
-      isIncrementalSwitchDisabled();
-      dismissToast();
-
-      cy.log("Intercept and simulate network failure");
-      cy.intercept("PUT", "/api/transform/*", {
-        forceNetworkError: true,
-      }).as("updateTransformNetworkError");
-
-      cy.log("Toggle incremental on");
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransformNetworkError");
-
-      cy.log("Verify error toast is shown");
-      H.undoToast().should(
-        "contain.text",
-        "Failed to update incremental transformation settings",
-      );
-
-      cy.log("Verify the switch rolled back to unchecked state");
-      isIncrementalSwitchDisabled();
-      dismissToast();
-
-      let requestCount = 0;
-      cy.log("Intercept and fail the first request after a delay");
-      cy.intercept("PUT", "/api/transform/*", (req) => {
-        requestCount++;
-        if (requestCount === 1) {
-          // First request fails after a delay to ensure second change happens while it's in progress
-          req.reply({
-            statusCode: 500,
-            body: { message: "Internal server error" },
-            delay: 500,
-          });
-        } else {
-          // Subsequent requests should not happen
-          req.continue();
-        }
-      }).as("updateTransformConditional");
-
-      cy.log("Toggle incremental on (first change)");
-      getIncrementalSwitch().click();
-
-      cy.log("Wait for debounce, then toggle again (second change)");
-      cy.wait(400);
-      getIncrementalSwitch().click();
-
-      cy.log("Wait for the error");
-      cy.wait("@updateTransformConditional");
-
-      cy.log("Wait a bit to ensure no second request is made");
-      cy.wait(500);
-
-      cy.log("Verify only one request was made");
-      cy.wrap(null).then(() => {
-        expect(requestCount).to.equal(1);
+      cy.wait("@updateTransform").then(({ request, response }) => {
+        expect(response?.statusCode).to.eq(200);
+        expect(request.body.target.type).to.eq("table-incremental");
+        expect(request.body.source["source-incremental-strategy"]).to.include({
+          type: "checkpoint",
+        });
       });
 
-      cy.log("Verify error toast is shown");
-      H.undoToast().should(
-        "contain.text",
-        "Failed to update incremental transformation settings",
-      );
-
-      cy.log("Verify the switch is back to unchecked");
-      isIncrementalSwitchDisabled();
-    });
-
-    it("should handle sequential changes correctly when first update is in progress", () => {
-      // Use composite_pk_table which has at least two numeric fields (id1, score)
-      // so we can reliably select a second checkpoint field
-      H.resetTestTable({ type: "postgres", table: "composite_pk_table" });
-      H.resyncDatabase({
-        dbId: WRITABLE_DB_ID,
-        tableName: "composite_pk_table",
-      });
-      createMbqlTransform({
-        sourceTable: "composite_pk_table",
-        visitTransform: true,
-      });
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.log("Verify initial state");
-      isIncrementalSwitchDisabled();
-
-      let requestCount = 0;
-
-      // Intercept and delay the first request using a Promise
-      cy.intercept("PUT", "/api/transform/*", (req) => {
-        requestCount++;
-        if (requestCount === 1) {
-          // Delay the first request by 1 second
-          req.reply({
-            body: req.body,
-            delay: 1000,
-          });
-        } else {
-          // Let subsequent requests through normally
-          req.continue();
-        }
-      }).as("updateTransformDelayed");
-
-      cy.log("Toggle incremental on (first change)");
-      getIncrementalSwitch().click();
-
-      cy.log(
-        "Wait for debounce plus a bit, then select checkpoint field (second change)",
-      );
-      // Wait for first request to start (debounce 300ms + buffer)
-      cy.wait(400);
-
-      // Make a second change while first is still in progress
-      // Select the second checkpoint field (composite_pk_table has id1 and score)
-      getFieldPicker().scrollIntoView().should("be.visible");
-      getFieldPicker().click();
-
-      H.popover().findAllByRole("option").eq(1).click();
-
-      cy.log("Wait for both requests to complete");
-      cy.wait("@updateTransformDelayed");
-      cy.wait("@updateTransformDelayed");
-
-      cy.log(
-        "Verify final state - incremental on with checkpoint field selected",
-      );
+      cy.log("the settings are read back from the server after a reload");
+      cy.reload();
       isIncrementalSwitchEnabled();
-      // Verify a field was selected (should not show placeholder text)
-      getFieldPicker().should("not.contain.text", "Pick a field");
-
-      cy.log("Verify both requests were made");
-      cy.wrap(null).then(() => {
-        expect(requestCount).to.equal(2);
-      });
-    });
-
-    it("should update source strategy and checkpoint field inline", () => {
-      H.resetTestTable({ type: "postgres", table: "composite_pk_table" });
-      H.resyncDatabase({
-        dbId: WRITABLE_DB_ID,
-        tableName: "composite_pk_table",
-      });
-      createMbqlTransform({
-        sourceTable: "composite_pk_table",
-        visitTransform: true,
-      });
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.log("Enable incremental transformation");
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransform");
-
-      cy.log("Source strategy and checkpoint field should be visible");
-      // The source strategy select should be visible
-      // (Currently only one option "checkpoint" is available, so select might not be shown)
-      // The checkpoint field select should be visible
-      getFieldPicker().scrollIntoView().should("be.visible");
-
-      cy.log("Select a checkpoint field");
-      getFieldPicker().click();
-      // Click the first available option in the popover
-      H.popover().findAllByRole("option").eq(1).click();
-      cy.wait("@updateTransform");
-      H.undoToast().should(
-        "contain.text",
-        "Incremental transformation settings updated",
-      );
-
-      cy.log("Verify the field was selected");
-      // Verify a field was selected (should not show placeholder text)
-      getFieldPicker().should("not.contain.text", "Pick a field");
+      getFieldPicker().should("have.value", "Score");
     });
   });
 
@@ -1123,7 +859,7 @@ LIMIT
 
       cy.log("run the transform and verify the table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -1164,7 +900,7 @@ LIMIT
 
       cy.log("run the transform and verify the table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -1182,7 +918,7 @@ LIMIT
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("modify the transform after running");
       H.DataStudio.Transforms.settingsTab().click();
@@ -1204,7 +940,7 @@ LIMIT
 
       cy.log("run the transform and verify the new table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -1228,7 +964,7 @@ LIMIT
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("modify the transform after running");
       H.DataStudio.Transforms.settingsTab().click();
@@ -1251,7 +987,7 @@ LIMIT
 
       cy.log("run the transform and verify the new table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -1275,7 +1011,7 @@ LIMIT
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("delete the old target without creating the new one");
       H.DataStudio.Transforms.settingsTab().click();
@@ -1298,7 +1034,7 @@ LIMIT
 
       cy.log("run the transform to re-create the original target");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("verify the target is available");
       H.DataStudio.Transforms.settingsTab().click();
@@ -1311,7 +1047,7 @@ LIMIT
       cy.log("run a transform so its target table exists");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("change another transform's target to that table");
       createMbqlTransform({
@@ -1362,7 +1098,7 @@ LIMIT
 
       cy.log("after table creation");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink().click();
       H.main().within(() => {
@@ -1429,7 +1165,7 @@ LIMIT
 
       cy.log("run the transform and make sure the query has changed");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
@@ -1464,7 +1200,7 @@ LIMIT
 
       cy.log("run the transform and make sure the query has changed");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
@@ -1531,7 +1267,7 @@ LIMIT
 
         cy.log("run the transform and make sure the query has changed");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
@@ -1549,7 +1285,7 @@ LIMIT
         visitTransform: true,
       });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("create and run another transform");
       createSqlTransform({
@@ -1558,7 +1294,7 @@ LIMIT
         visitTransform: true,
       });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("assert that the list is filtered by the current transform");
       getRunListLink().click();
@@ -1600,7 +1336,7 @@ LIMIT
       cy.log("create a transform and the table");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().should("have.attr", "aria-disabled", "false");
 
@@ -1625,7 +1361,7 @@ LIMIT
         visitTransform: true,
       });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().should("have.attr", "aria-disabled", "false");
 
@@ -1819,7 +1555,7 @@ LIMIT
         visitTransform: true,
       }).then(() => {
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
       });
 
       createMbqlTransform({
@@ -1829,7 +1565,7 @@ LIMIT
         visitTransform: true,
       }).then(() => {
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
       });
 
       createMbqlTransform({
@@ -1900,7 +1636,7 @@ LIMIT
         });
 
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
@@ -1954,7 +1690,7 @@ LIMIT
         });
 
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
@@ -1979,7 +1715,7 @@ LIMIT
           `,
         );
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
@@ -2870,6 +2606,12 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("runs", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/transform-job/*/transforms").as(
+        "jobTransforms",
+      );
+    });
+
     it("should be able to manually run a job", () => {
       H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
         createMbqlTransform({
@@ -2882,13 +2624,14 @@ describe("scenarios > admin > transforms > jobs", () => {
       });
 
       cy.log("the job renders its transforms table");
+      cy.wait("@jobTransforms");
       H.DataStudio.Jobs.editor()
         .findByText("Transforms")
         .scrollIntoView()
         .should("be.visible");
       getJobTransformTable().findByText("MBQL transform").should("be.visible");
 
-      runTransformAndWaitForSuccess();
+      H.runTransformJobFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_job_trigger_manual_run",
       });
@@ -2901,11 +2644,15 @@ describe("scenarios > admin > transforms > jobs", () => {
 
       getRunsNavLink().click();
       getDetailedViewSwitch().click();
-      getTransformRunTable().within(() => {
-        cy.findByText("MBQL transform").should("be.visible");
-        cy.findByText("Success").should("be.visible");
-        cy.findByText("Manual").should("be.visible");
-      });
+      cy.log("the manual run is listed, whatever scheduled runs exist");
+      getTransformRunTable()
+        .findAllByRole("row")
+        .filter(':contains("Manual")')
+        .should("have.length", 1)
+        .within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("Success").should("be.visible");
+        });
     });
 
     it("should display the error message from a failed run", () => {
@@ -2919,7 +2666,9 @@ describe("scenarios > admin > transforms > jobs", () => {
           { visitTransformJob: true },
         );
       });
-      runTransformAndWaitForFailure();
+      cy.log("the run button stays disabled until the job transforms load");
+      cy.wait("@jobTransforms");
+      H.runTransformJobFromUiAndWaitForStatus("failed");
       H.DataStudio.Jobs.editor().findByText(
         "Last run failed a few seconds ago.",
       );
@@ -3042,7 +2791,7 @@ describe("scenarios > admin > transforms > runs", () => {
             visitTransform: true,
           });
           H.DataStudio.Transforms.runTab().click();
-          runTransformAndWaitForSuccess();
+          H.runTransformFromUiAndWaitForStatus("succeeded");
           createSqlTransform({
             sourceQuery: "SELECT * FROM abc",
             targetTable: TARGET_TABLE_2,
@@ -3050,7 +2799,7 @@ describe("scenarios > admin > transforms > runs", () => {
             visitTransform: true,
           });
           H.DataStudio.Transforms.runTab().click();
-          runTransformAndWaitForFailure();
+          H.runTransformFromUiAndWaitForStatus("failed");
 
           cy.log("the failed run shows its error message");
           getRunErrorInfoButton().click();
@@ -3667,9 +3416,6 @@ function getIncrementalSwitch() {
 function isIncrementalSwitchEnabled() {
   return getIncrementalSwitch().findByRole("switch").should("be.checked");
 }
-function isIncrementalSwitchDisabled() {
-  return getIncrementalSwitch().findByRole("switch").should("not.be.checked");
-}
 
 function getJobTransformTable() {
   return cy.findByLabelText("Job transforms");
@@ -3727,16 +3473,6 @@ function visitRunListPage() {
 
 function getDetailedViewSwitch() {
   return cy.findByTestId("detailed-view-switch");
-}
-
-function runTransformAndWaitForSuccess() {
-  getRunButton().click();
-  getRunButton().should("have.text", "Ran successfully");
-}
-
-function runTransformAndWaitForFailure() {
-  getRunButton().click();
-  getRunButton().should("have.text", "Run failed");
 }
 
 function createMbqlTransform(

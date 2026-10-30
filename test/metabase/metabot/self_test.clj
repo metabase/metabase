@@ -39,7 +39,8 @@
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [ring.adapter.jetty :as jetty]))
 
 (set! *warn-on-reflection* true)
 
@@ -426,6 +427,54 @@
                           []
                           (self.core/sse-reducible istream))]
       (is (= ["msg-0" "msg-1" "msg-2"] result)))))
+
+(deftest sse-reducible-stops-response-test
+  (let [total   500
+        sent    (atom 0)
+        stopped (promise)
+        handler (fn [_req]
+                  (let [out (java.io.PipedOutputStream.)
+                        in  (java.io.PipedInputStream. out 65536)]
+                    (future
+                      (try
+                        (dotimes [i total]
+                          (.write out (.getBytes (test-util/make-sse [(str "msg-" i)])))
+                          (.flush out)
+                          (swap! sent inc)
+                          (Thread/sleep 10))
+                        (catch Exception _)
+                        (finally
+                          (try (.close out)
+                               (catch Exception _))
+                          (deliver stopped true))))
+                    {:status  200
+                     :headers {"Content-Type"      "text/event-stream"
+                               "Cache-Control"     "no-cache"}
+                     :body    in}))
+        server  (jetty/run-jetty handler {:port 0
+                                          :join? false
+                                          :output-buffer-size 1})
+        url     (str "http://localhost:" (.. server getURI getPort))
+        opts    {:method :post :url url :as :stream}]
+    (try
+      ;; Held through the checks, so that a garbage-collected socket can't stop the server in sse-reducible's place
+      (with-open [^java.io.Closeable body (self.core/abort-on-close (http/request opts) opts)]
+        (let [reducible (self.core/sse-reducible body)
+              ;; Take only 2 items, which should trigger early termination
+              result    (reduce (fn [acc item]
+                                  (if (< (count acc) 2)
+                                    (conj acc item)
+                                    (reduced acc)))
+                                []
+                                reducible)]
+          (is (= ["msg-0" "msg-1"] result))
+          (is (deref stopped 10000 false)
+              "the server was still writing 10 s after the client stopped reading")
+          (is (< @sent (/ total 2))
+              (str "the server kept writing after the client stopped reading: it wrote "
+                   @sent " of " total " messages"))))
+      (finally
+        (.stop server)))))
 
 (deftest lite-aisdk-xf-test
   (testing "streams text deltas immediately instead of batching"
@@ -1763,11 +1812,10 @@
                                     (let [_acc (rf init {:type :start :messageId "m1"})]
                                       (throw (ex-info "mid-stream boom" {:status 500}))))))]
         (mt/with-log-level [metabase.metabot.self :fatal]
-          (let [seen       (atom [])
-                collect-rf (fn ([acc] acc) ([acc x] (swap! seen conj x) acc))]
+          (let [seen (atom [])]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo #"mid-stream boom"
-                 (reduce collect-rf nil (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))))
+                 (run! #(swap! seen conj %) (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))))
             (is (= 1 (count (filter #(= :start (:type %)) @seen)))
                 "the :start part reaches the consumer exactly once, not once per retry attempt")))))))
 
@@ -1785,8 +1833,7 @@
                                          (reduce rf init (test-util/mock-llm-response [{:type :start :id "m1"}]))))))]
           (mt/with-log-level [metabase.metabot.self :fatal]
             (let [seen (atom [])]
-              (reduce (fn [acc x] (swap! seen conj x) acc) nil
-                      (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))
+              (run! #(swap! seen conj %) (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))
               (is (= 3 @calls) "retries until the pre-emission failures clear")
               (is (= 1 (count (filter #(= :start (:type %)) @seen)))))))))))
 
@@ -2041,7 +2088,9 @@
                                     "event_details" {"tool_name" "get-time"}}}
                          {:data {"event"         "agent_used_tool"
                                  "result"        "error"
-                                 "event_details" {"tool_name" "unknown"}}}]
+                                 "event_details" {"tool_name"   "unknown"
+                                                  "error_class" "validation"
+                                                  "error_code"  "unknown-tool"}}}]
                         tool-events))
                 (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
                 (is (some #(str/includes? (:message %) "call-2") logs))
@@ -2161,7 +2210,7 @@
     (let [adapter-calls (atom 0)]
       (mt/with-dynamic-fn-redefs
         [usage/check-usage-limits!
-         (fn [] "you've used all of your AI tokens")
+         (fn [& _] "you've used all of your AI tokens")
          self.claude/claude
          (fn [& _] (swap! adapter-calls inc) [])]
         (let [ex (try-structured-call {})]
@@ -2247,7 +2296,7 @@
     (let [adapter-calls (atom 0)]
       (mt/with-dynamic-fn-redefs
         [usage/check-usage-limits!
-         (fn [] "you've used all of your AI tokens")
+         (fn [& _] "you've used all of your AI tokens")
          self.claude/claude
          (fn [& _] (swap! adapter-calls inc) [])]
         (let [parts (into [] (self/call-llm "anthropic/claude-haiku-4-5"
@@ -2863,17 +2912,24 @@
   (testing (str "from `invoke` through the part to the SSE writer and persistence. Nothing spanned "
                 "this before, which is how the error moving into `:result` left three consumers "
                 "still reading it off the part and reporting every failure as a success.")
-    (doseq [[label thrower expected-text]
+    (doseq [[label thrower expected-text expected-class expected-code]
             [["recoverable"
               #(tools.error/throw-recoverable! :metabase.metabot.tools.recoverable.common/not-found
                                                {:kind :table :id 7})
-              "Metabot could not complete this step."]
+              "Metabot could not complete this step."
+              "recoverable" "metabase.metabot.tools.recoverable.common/not-found"]
              ["unrecoverable with a :user-message"
               #(tools.error/unrecoverable! ::nope {:user-message "Ask an admin for access."})
-              "Ask an admin for access."]
+              "Ask an admin for access."
+              "unrecoverable" "metabase.metabot.self-test/nope"]
              ["unrecoverable without one"
               #(tools.error/unrecoverable! ::nope {})
-              "Metabot could not complete this step."]]]
+              "Metabot could not complete this step."
+              "unrecoverable" "metabase.metabot.self-test/nope"]
+             ["an exception nothing classified"
+              #(throw (ex-info "connection reset by peer" {}))
+              "Metabot could not complete this step."
+              "unrecoverable" "internal"]]]
       (testing label
         (let [outcome (failed-outcome "failer" thrower)
               part    (tool-output-part outcome)]
@@ -2889,6 +2945,27 @@
               (testing "and never the model's own text, nor the EDN of the error map"
                 (is (not (str/includes? body "Don't retry")) body)
                 (is (not (str/includes? body ":class")) body))))
+          (testing "the Snowplow event carries the class and the code of the error, and no text of it"
+            (snowplow-test/with-fake-snowplow-collector
+              (into [] (#'self/report-tool-usage-xf (assoc snowplow-tracking-opts :profile-id :nlq :iteration 2)
+                                                    #{"failer"})
+                    [part])
+              ;; The collector may also hold a `new_instance_created` from the first read of a setting in
+              ;; this JVM, so filter for the tool events as the other Snowplow tests do.
+              (let [events (filter #(= "agent_used_tool" (get-in % [:data "event"]))
+                                   (snowplow-test/pop-event-data-and-user-id!))]
+                (is (=? [{:data {"event"         "agent_used_tool"
+                                 "profile"       "nlq"
+                                 "result"        "error"
+                                 "event_details" {"tool_name"   "failer"
+                                                  "step"        2
+                                                  "error_class" expected-class
+                                                  "error_code"  expected-code}}}]
+                        events))
+                (is (not (str/includes? (pr-str events) (:output outcome)))
+                    "the text written for the model stays on the instance")
+                (is (not (str/includes? (pr-str events) expected-text))
+                    "so does the text written for the reader"))))
           (testing (str "persistence stores it as a failed step, keeping the MODEL's text: "
                         "`tool-part->llm-messages` replays `:errorText` to the model, so a generic "
                         "sentence here would lose the authored failure on every replay")

@@ -95,6 +95,7 @@ const createTableItem = (
     model: "table",
     database_id: 1,
     collection_id: collectionId,
+    can_write: true,
   });
 
 const ORDERS = createTableItem(10, "Orders");

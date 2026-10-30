@@ -29,7 +29,7 @@
                                                 (partial instance? java.time.temporal.Temporal)]]
                            [:type              [:maybe :string]]]
                           resp))
-              (is (= :official (t2/select-one-fn :authority_level :model/Collection (:id resp))))))
+              (is (= :official (t2/select-one-fn :authority_level :model/Collection :id (:id resp))))))
           (testing "but the type has to be valid"
             (mt/user-http-request :crowberto :post 400 "collection"
                                   {:name "foo" :authority_level "invalid-type"})))
@@ -51,7 +51,7 @@
             [:model/Collection {id :id} {:authority_level nil}]
             (is (= "official"
                    (:authority_level (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official"}))))
-            (is (= :official (t2/select-one-fn :authority_level :model/Collection id)))))
+            (is (= :official (t2/select-one-fn :authority_level :model/Collection :id id)))))
         (testing "Non-admins can patch without the :authority_level"
           (mt/with-temp [:model/Collection collection {:name "whatever" :authority_level "official"}]
             (is (= "official"
@@ -63,7 +63,7 @@
             [:model/Collection {id :id} {:authority_level nil}]
             (is (= "official"
                    (:authority_level (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official"}))))
-            (is (= :official (t2/select-one-fn :authority_level :model/Collection id)))))))
+            (is (= :official (t2/select-one-fn :authority_level :model/Collection :id id)))))))
     (testing "fails to update if doesn't have any premium features"
       (mt/with-premium-features #{}
         (mt/with-temp
@@ -78,12 +78,12 @@
         (mt/with-temp
           [:model/Collection {id :id} {:authority_level "official"}]
           (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official" :name "New name"})
-          (is (= "New name" (t2/select-one-fn :name :model/Collection id)))))
+          (is (= "New name" (t2/select-one-fn :name :model/Collection :id id)))))
       (testing "authority_level is not set and update payload contains the key but does not change"
         (mt/with-temp
           [:model/Collection {id :id} {}]
           (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level nil :name "New name"})
-          (is (= "New name" (t2/select-one-fn :name :model/Collection id))))))))
+          (is (= "New name" (t2/select-one-fn :name :model/Collection :id id))))))))
 
 (deftest moderation-review-test
   (mt/with-temp
@@ -116,7 +116,7 @@
       (mt/with-temp [:model/Collection {id :id} {:authority_level "official"}]
         (is (nil? (:authority_level (mt/user-http-request :crowberto :put 200 (format "collection/%d" id)
                                                           {:authority_level nil}))))
-        (is (nil? (t2/select-one-fn :authority_level :model/Collection id)))))))
+        (is (nil? (t2/select-one-fn :authority_level :model/Collection :id id)))))))
 
 (deftest non-admin-cannot-set-authority-level-test
   (testing "PUT /api/collection/:id with :authority_level is rejected (403) for a non-admin"

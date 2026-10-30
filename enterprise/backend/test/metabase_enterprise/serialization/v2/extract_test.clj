@@ -49,7 +49,7 @@
    Escape warnings are logged before the abort, so callers can still assert on the logged messages."
   [opts]
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"incomplete export"
-                        (into [] (extract/extract opts)))))
+                        (dorun (extract/extract opts)))))
 
 (deftest fundamentals-test
   (mt/with-empty-h2-app-db!
@@ -300,7 +300,8 @@
                        :model/DashboardCard
                        _
                        {:action_id    action-id
-                        :dashboard_id other-dash-id}]
+                        :dashboard_id other-dash-id
+                        :row          1}]
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c1-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c1-eid :label "some_question"}]
@@ -472,6 +473,24 @@
                       (serdes/extract-all "Dashboard")
                       (ids-by-model "Dashboard")))))))))
 
+(deftest dashcard-order-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc
+      [:model/Collection    {coll-id :id}                 {:name "Some Collection"}
+       :model/Card          {card-id :id}                 {:name "Some Question", :collection_id coll-id}
+       :model/Dashboard     {dash-id :id}                 {:name "Some Dashboard", :collection_id coll-id}
+       :model/DashboardTab  {second-tab :id}              {:dashboard_id dash-id :name "Second" :position 1}
+       :model/DashboardTab  {first-tab :id}               {:dashboard_id dash-id :name "First" :position 0}
+       :model/DashboardCard {in-second :entity_id}        {:card_id card-id :dashboard_id dash-id
+                                                           :dashboard_tab_id second-tab}
+       :model/DashboardCard {in-first-b :entity_id}       {:card_id card-id :dashboard_id dash-id
+                                                           :dashboard_tab_id first-tab :entity_id "bbbbbbbbbbbbbbbbbbbbb"}
+       :model/DashboardCard {in-first-a :entity_id}       {:card_id card-id :dashboard_id dash-id
+                                                           :dashboard_tab_id first-tab :entity_id "aaaaaaaaaaaaaaaaaaaaa"}]
+      (testing "dashcards are ordered by their tab's position, not its local id, then by entity_id at the same place"
+        (is (= [in-first-a in-first-b in-second]
+               (map :entity_id (:dashcards (ts/extract-one "Dashboard" dash-id)))))))))
+
 (deftest dashboard-card-series-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
@@ -481,7 +500,7 @@
        :model/Card {c3-id :id, c3-eid :entity_id} {:name "Series Question B", :collection_id coll-id}
        :model/Dashboard {dash-id :id, dash-eid :entity_id} {:name "Shared Dashboard", :collection_id coll-id}
        :model/DashboardCard {dc1-id :id, dc1-eid :entity_id} {:card_id c1-id, :dashboard_id dash-id}
-       :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id}
+       :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id, :row 1}
        :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
        :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
       (testing "Inlined dashcards include their series' card entity IDs"
@@ -987,6 +1006,41 @@
           (testing "collection_id is nil"
             (is (nil? (:collection_id ser)))))))))
 
+(deftest table-owner-serdes-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/User     {user-id :id}  {:email "owner@example.com"}
+                       :model/Database {db-id :id}    {:name "My Database"}
+                       :model/Table    {table-id :id} {:name "Owned Table" :db_id db-id :owner_user_id user-id}]
+      (testing "the owner is exported by email, not by local id"
+        (is (= "owner@example.com" (:owner_user_id (ts/extract-one "Table" table-id))))))))
+
+(deftest sync-state-serdes-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database {db-id :id}    {:name                        "My Database"
+                                                       :engine                      :postgres
+                                                       :dbms_version                {:version "14.0"}
+                                                       :initial_sync_status         "aborted"
+                                                       :initial_sync_error          "Connection refused"
+                                                       :metadata_sync_schedule      "0 10 * * * ? *"
+                                                       :cache_field_values_schedule "0 0 16 * * ? *"}
+                       :model/Table    {table-id :id} {:name "My Table" :db_id db-id :initial_sync_status "incomplete"}]
+      (testing "what sync detects or schedules on the exporting instance is not exported"
+        (is (=? {:name "My Database"} (ts/extract-one "Database" db-id)))
+        (is (= #{} (set (keys (select-keys (ts/extract-one "Database" db-id)
+                                           [:dbms_version :initial_sync_status :initial_sync_error
+                                            :metadata_sync_schedule :cache_field_values_schedule])))))
+        (is (not (contains? (ts/extract-one "Table" table-id) :initial_sync_status)))))))
+
+(deftest setting-from-env-var-test
+  (let [exported-site-name #(some (fn [{k :key v :value}] (when (= :site-name k) [v]))
+                                  (serdes/extract-all "Setting" {}))]
+    (mt/with-temporary-setting-values [site-name "From the app DB"]
+      (testing "a Setting set in the app DB is exported"
+        (is (= ["From the app DB"] (exported-site-name))))
+      (mt/with-temp-env-var-value! [mb-site-name "From an env var"]
+        (testing "a Setting set by an env var is not exported"
+          (is (nil? (exported-site-name))))))))
+
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
@@ -1228,15 +1282,15 @@
                        :model/FieldUserSettings _ {:field_id f2-id :description "curated"}
                        :model/TableUserSettings _ {:table_id table-id :display_name "Renamed"}]
       (testing "targeting the collection exports the Table and its Fields, each beside its user settings"
-        (let [entities (into [] (extract/extract {:targets       [["Collection" coll-id]]
-                                                  :no-data-model true}))
-              by-model (group-by (comp :model last :serdes/meta) entities)]
-          (is (some #(= "T" (:name %)) (by-model "Table")))
+        (let [entities        (into [] (extract/extract {:targets       [["Collection" coll-id]]
+                                                         :no-data-model true}))
+              model->entities (group-by (comp :model last :serdes/meta) entities)]
+          (is (some #(= "T" (:name %)) (model->entities "Table")))
           (is (= #{"F1" "F2"}
-                 (set (map :name (by-model "Field")))))
-          (is (= 1 (count (by-model "TableUserSettings"))))
+                 (set (map :name (model->entities "Field")))))
+          (is (= 1 (count (model->entities "TableUserSettings"))))
           (is (= #{"F2"}
-                 (set (map #(-> % :serdes/meta (nth 2) :id) (by-model "FieldUserSettings"))))
+                 (set (map #(-> % :serdes/meta (nth 2) :id) (model->entities "FieldUserSettings"))))
               "only the field the user edited has settings to export"))))))
 
 (deftest cards-test
@@ -1663,8 +1717,8 @@
                                                                            {:type "link"
                                                                             :linkType "question"
                                                                             :targetId deleted-card-id}}}}}]
-      (t2/delete! :model/Card deleted-card-id)
-      (t2/delete! :model/Dashboard deleted-dash-id)
+      (t2/delete! :model/Card :id deleted-card-id)
+      (t2/delete! :model/Dashboard :id deleted-dash-id)
       (testing "the references to deleted cards and dashboards are ignored"
         (is (= #{[{:model "Dashboard" :id clickdash-eid :label "dashboard"}]
                  [{:model "Collection" :id coll-eid :label "some_collection"}]
@@ -1885,7 +1939,7 @@
                   {:card-id (:id c)}))]
         (when-not (= (:status res) :completed)
           (throw (ex-info "Query failed" res)))
-        (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card (:id c)))]
+        (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card :id (:id c)))]
           (is (=? {:fk_target_field_id [string? "PUBLIC" "CATEGORIES" "ID"]}
                   (->> (:result_metadata ser)
                        (u/seek #(and (= (:name %) "CATEGORY_ID")
@@ -1905,7 +1959,7 @@
         [:model/Card {card-id :id} {:type            :model
                                     :dataset_query   (mt/query venues)
                                     :result_metadata overridden}]
-        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card card-id))
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
               by-name   (u/index-by :name (:result_metadata extracted))]
           (is (every? #(re-matches #"Custom .*" (:display_name %))
                       (:result_metadata extracted)))
@@ -1933,7 +1987,7 @@
                            :base_type      :type/Text
                            :effective_type :type/Text
                            :semantic_type  :type/Title}]}]
-      (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card card-id))
+      (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
             by-name   (u/index-by :name (:result_metadata extracted))]
         (testing "physical passthrough column keeps its types"
           (is (= :type/Integer (:base_type (get by-name "project_id"))))
@@ -2355,7 +2409,7 @@
                                      :schema "public"
                                      :name "orphan_target"}}]
           ;; Delete the database — ON DELETE SET NULL nulls source_database_id and target_db_id.
-          (t2/delete! :model/Database db-id)
+          (t2/delete! :model/Database :id db-id)
           (let [reloaded (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags :indexes)
                 ser (serdes/extract-one "Transform" {} reloaded)]
             (is (nil? (:source_database_id reloaded))
@@ -2792,7 +2846,7 @@
                          :model/Card {card-id :id} {:name "MBQL Card"
                                                     :dataset_query (mbql5-query db-id table-id)
                                                     :display :table}]
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id))]
           (is (not (contains? ser :table_id))
               "table_id should be omitted — derivable from dataset_query")
           (is (not (contains? ser :query_type))
@@ -2810,7 +2864,7 @@
                                                     :database_id db-id
                                                     :dataset_query {}
                                                     :display :table}]
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id))]
           (is (= "Test DB" (:database_id ser))
               "database_id should be kept when query is empty"))))))
 
@@ -2823,7 +2877,7 @@
                          :model/Card {card-id :id} {:name "MBQL Card"
                                                     :dataset_query (mbql5-query db-id table-id)
                                                     :display :table}]
-        (let [ser  (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))
+        (let [ser  (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id))
               deps (serdes/deserialization-dependencies ser)]
           (is (not-any? #(some (fn [step] (#{"Database" "Table" "Field"} (:model step))) %) deps)
               "Database/Table/Field should not be dependencies"))))))

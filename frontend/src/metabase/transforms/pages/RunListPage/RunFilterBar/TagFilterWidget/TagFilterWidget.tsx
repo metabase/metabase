@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { type FormEvent, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { FilterFieldSet } from "metabase/transforms/components/FilterFieldSet";
 import {
   Box,
   Button,
@@ -17,7 +18,6 @@ import {
   FILTER_WIDGET_MAX_HEIGHT,
   FILTER_WIDGET_MIN_WIDTH,
 } from "../../../../constants";
-import { FilterFieldSet } from "../FilterFieldSet";
 
 type TagFilterWidgetProps = {
   label: string;

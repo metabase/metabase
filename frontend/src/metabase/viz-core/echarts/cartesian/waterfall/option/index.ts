@@ -219,6 +219,13 @@ export const getWaterfallChartOption = (
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
+  // A render with no series (an empty-data transient under React 19) would
+  // crash building the single waterfall series and the cartesian axes. Render
+  // an empty chart instead.
+  if (chartModel.seriesModels.length === 0) {
+    return {};
+  }
+
   const dataSeriesOptions = buildEChartsWaterfallSeries(
     chartModel,
     settings,

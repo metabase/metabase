@@ -12,6 +12,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.ui-logic :as ui-logic]))
 
+(set! *warn-on-reflection* true)
+
 (mu/defmethod notification.payload/payload :notification/card
   [{:keys [creator_id payload subscriptions] :as _notification-info} :- ::notification.payload/Notification]
   (log/with-context {:card_id (:card_id payload)}

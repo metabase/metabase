@@ -14,6 +14,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.db :as query-processor.db]
+   [metabase.query-processor.middleware.row-restricted-metadata :as row-restricted-metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    ;; still passes state via the store's miscellaneous-value slot; general-cached-value migration pending
@@ -29,32 +30,38 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn- comparable-metadata
-  "Smooth out any unimportant differences in metadata so we can do an easy equality check."
-  [metadata :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
-  (letfn [(remove-underscore-nil-keys
-            ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
-            ;; dash. Remove the nil value
-            [m]
-            (reduce-kv
-             (fn [acc k v]
-               (let [kebab-cased-key (when (str/includes? (name k) "_")
-                                       (keyword (str/replace (name k) "_" "-")))]
-                 (if (and kebab-cased-key
-                          (nil? v)
-                          (contains? m kebab-cased-key))
-                   acc
-                   (assoc acc k v))))
-             {} m))
-          (standardize-metadata [m]
-            (cond
-              (keyword? m) (u/qualified-name m)
-              (map? m) (-> (update-vals m standardize-metadata)
-                           (dissoc :ident) ; `:ident` is deprecated and should no longer be present, but better safe than sorry.
-                           (remove-underscore-nil-keys))
-              (sequential? m) (mapv standardize-metadata m)
-              (set? m) (into #{} (map standardize-metadata) m)
-              :else m))]
-    (mapv standardize-metadata metadata)))
+  "A comparable representation of `metadata`, normalized so inconsequential differences don't register as a
+  change. With `parameter-independent?` true, two runs over different parameter values compare equal when the
+  column structure matches."
+  ([metadata :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
+   (comparable-metadata metadata false))
+  ([metadata              :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]
+    parameter-independent? :- :boolean]
+   (letfn [(remove-underscore-nil-keys
+             ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
+             ;; dash. Remove the nil value
+             [m]
+             (reduce-kv
+              (fn [acc k v]
+                (let [kebab-cased-key (when (str/includes? (name k) "_")
+                                        (keyword (str/replace (name k) "_" "-")))]
+                  (if (and kebab-cased-key
+                           (nil? v)
+                           (contains? m kebab-cased-key))
+                    acc
+                    (assoc acc k v))))
+              {} m))
+           (standardize-metadata [m]
+             (cond
+               (keyword? m) (u/qualified-name m)
+               (map? m) (cond-> (-> (update-vals m standardize-metadata)
+                                    (dissoc :ident) ; `:ident` is deprecated and should no longer be present, but better safe than sorry.
+                                    (remove-underscore-nil-keys))
+                          parameter-independent? (dissoc :fingerprint))
+               (sequential? m) (mapv standardize-metadata m)
+               (set? m) (into #{} (map standardize-metadata) m)
+               :else m))]
+     (mapv standardize-metadata metadata))))
 
 (mu/defn- record-metadata!
   [{{:keys [card-id]} :info, :as query} :- ::lib.schema/query
@@ -70,21 +77,26 @@
                  driver/*driver*
                  ;; pivot queries can run multiple queries, only record metadata for the main query
                  (not= actual-metadata :none)
-                 ;; Don't persist result_metadata for parameterized queries with non-default values.
-                 ;; MBQL queries with any parameters are skipped because filters change fingerprints.
-                 ;; Native queries are only skipped when parameter values differ from template tag defaults.
-                 ;; See QUE2-502 for details.
-                 (not (:qp/skip-result-metadata-persistence query))
                  (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database query))
                  card-id
                  ;; don't want to update metadata when we use a Card as a source Card.
                  (not (:qp/source-card-id query))
-                 ;; Only update changed metadata
-                 (not= (comparable-metadata actual-metadata)
-                       (comparable-metadata
-                        ;; existing usage -- don't use going forward
-                        #_{:clj-kondo/ignore [:deprecated-var]}
-                        (qp.store/miscellaneous-value [::card-stored-metadata]))))
+                 ;; `:qp/skip-result-metadata-persistence` is an absolute skip set by callers (e.g.
+                 ;; `qp.card/process-query-for-card` when a `card-transform` rewrites the query) to tell us
+                 ;; this run's output is not the Card's canonical shape.
+                 (not (:qp/skip-result-metadata-persistence query))
+                 ;; A row-restricted run (sandbox, impersonation, DB routing) returns metadata without fingerprints.
+                 ;; Persisting it would erase the whole-table fingerprints an unrestricted run stored for every reader.
+                 (not (row-restricted-metadata/row-restricted? query))
+                 ;; Only update changed metadata; a non-default parameterized run writes only on
+                 ;; parameter-independent column changes, not fingerprint drift (#83734, see also #72007).
+                 (let [parameter-independent? (boolean (:qp/non-default-parameterized? query))]
+                   (not= (comparable-metadata actual-metadata parameter-independent?)
+                         (comparable-metadata
+                          ;; existing usage -- don't use going forward
+                          #_{:clj-kondo/ignore [:deprecated-var]}
+                          (qp.store/miscellaneous-value [::card-stored-metadata])
+                          parameter-independent?))))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
         (query-processor.db/set-card-result-metadata! card-id actual-metadata)))
@@ -124,14 +136,16 @@
    insights-col-metadata))
 
 (mu/defn- insights-xform :- fn?
-  [orig-metadata :- [:maybe ::qp.schema/metadata]
-   record!       :- ifn?
-   rf            :- ifn?]
+  [orig-metadata      :- [:maybe ::qp.schema/metadata]
+   record!            :- ifn?
+   keep-fingerprints? :- :boolean
+   rf                 :- ifn?]
   (qp.reducible/combine-additional-reducing-fns
    rf
    [(analyze/insights-rf orig-metadata)]
    (fn combine [result {:keys [metadata insights]}]
-     (let [metadata (merge-final-column-metadata (-> result :data :cols) metadata)]
+     (let [metadata (cond-> (merge-final-column-metadata (-> result :data :cols) metadata)
+                      (not keep-fingerprints?) row-restricted-metadata/remove-fingerprints)]
        (record! metadata)
        (rf (cond-> result
              (map? result)
@@ -152,9 +166,14 @@
     (let [query   (cond-> query
                     skip-result-metadata-persistence?
                     (assoc :qp/skip-result-metadata-persistence true))
-          record! (partial record-metadata! query)]
+          record! (partial record-metadata! query)
+          ;; With no fingerprint on the cols of a row-restricted run (sandbox, impersonation, DB routing), the insights
+          ;; step computes one over the rows the current user sees. The frontend posts `:results_metadata` back as the
+          ;; Card's `result_metadata` when the user saves the question, which would hand that subset's statistics to
+          ;; every reader of the Card, so such a run returns no fingerprint in `:results_metadata` either.
+          keep-fingerprints? (not (row-restricted-metadata/row-restricted? query))]
       (fn record-and-return-metadata!-rff* [metadata]
-        (insights-xform metadata record! (rff metadata))))))
+        (insights-xform metadata record! keep-fingerprints? (rff metadata))))))
 
 (mu/defn store-previous-result-metadata!
   "Store the previous value of a card's result metadata in the qp.store"

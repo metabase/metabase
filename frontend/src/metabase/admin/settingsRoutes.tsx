@@ -135,18 +135,6 @@ const customVisualizationsDevelopment = () =>
     Component: CustomVisualizationsDevelopmentPage,
   }));
 
-const dataAppsManage = () =>
-  import(
-    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
-  ).then(({ DataAppsManagePage }) => ({ Component: DataAppsManagePage }));
-
-const dataAppGroupsManage = () =>
-  import(
-    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
-  ).then(({ DataAppGroupsManagePage }) => ({
-    Component: DataAppGroupsManagePage,
-  }));
-
 const uploadSettings = () =>
   import(
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/UploadSettingsPage"
@@ -241,10 +229,6 @@ export const getSettingsRoutes = (store: Store<State>) => {
           {devModeEnabled && (
             <Route path="development" lazy={customVisualizationsDevelopment} />
           )}
-        </Route>
-        <Route path={Urls.DATA_APP_URL_SEGMENT}>
-          <Route index lazy={dataAppsManage} />
-          <Route path=":slug/groups" lazy={dataAppGroupsManage} />
         </Route>
         <Route path="uploads" lazy={uploadSettings} />
         <Route

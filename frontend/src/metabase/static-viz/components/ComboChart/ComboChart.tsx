@@ -11,10 +11,10 @@ import {
   getChartHeight,
 } from "metabase/static-viz/lib/utils";
 import {
-  foldRowChartModel,
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
+  getChartModelAtHeight,
   getLegendItems,
   getSizeAdjustedSettings,
   isRowChartSeries,
@@ -78,9 +78,11 @@ export const ComboChart = ({
   const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
 
   // Fold before layout, off the chart height, as the interactive path does.
-  const chartModel = baseChartModel.isRowChart
-    ? foldRowChartModel(baseChartModel, chartHeight, settings)
-    : baseChartModel;
+  const chartModel = getChartModelAtHeight(
+    baseChartModel,
+    chartHeight,
+    settings,
+  );
 
   const chart = init(null, null, {
     renderer: "svg",

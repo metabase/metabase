@@ -9,6 +9,8 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
                 "response because of one malformed Card, dump the error to the logs and return nil.")

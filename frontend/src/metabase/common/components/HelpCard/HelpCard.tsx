@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { JSX } from "react";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Flex, Icon } from "metabase/ui";

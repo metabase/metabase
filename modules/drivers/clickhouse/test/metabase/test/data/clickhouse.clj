@@ -53,6 +53,7 @@
    :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
    :jdbc_ignore_unsupported_values "true"
    :jdbc_schema_term               "schema",
+   :jdbc_metadata_use_show_statements false,
    :ignore_unknown_config_key      true
    :max_open_connections           100
    :remember_last_set_roles        true
@@ -83,6 +84,7 @@
      {:user user})
    (when-let [password (mt/db-test-env-var :clickhouse :password)]
      {:password password})
+   {:clickhouse-settings "join_use_nulls=1"}
    (when (= context :db)
      (let [database-name (ddl.i/format-name driver database-name)]
        {:db database-name

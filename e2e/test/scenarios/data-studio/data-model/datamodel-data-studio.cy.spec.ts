@@ -810,7 +810,12 @@ describe("scenarios > data studio > datamodel", () => {
       H.createLibrary();
       H.copySyncedLibraryFixture();
       H.commitToRepo();
-      H.configureGitAndPullChanges("read-write");
+      H.configureGit("read-write");
+      cy.request("POST", "/api/ee/remote-sync/import", {
+        expected_branch: "main",
+        force: true,
+      });
+      H.pollForTask({ taskName: "import" });
       H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
       cy.request("POST", "/api/ee/remote-sync/export", { branch: "main" });
       H.pollForTask({ taskName: "export" });
@@ -825,6 +830,7 @@ describe("scenarios > data studio > datamodel", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
+      TableSection.getNameInput().should("have.attr", "readonly");
       verifyReadOnlyTablePage({ hasTabs: true });
     });
 

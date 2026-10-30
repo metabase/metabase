@@ -3,7 +3,9 @@
   external↔portable conversion, and the post-repair portable-form sanity schema."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.agent-lib.representations :as repr]))
+   [metabase.agent-lib.representations :as repr]
+   [metabase.util.malli.humanize :as mu.humanize]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -157,3 +159,60 @@
     (let [data (validate-query-error (join-query-with-lib-type nil))]
       (is (= :invalid-representations-query (:error data)))
       (is (= 400 (:status-code data))))))
+
+(deftest ^:parallel humanized-paths-test
+  (let [base-query {"lib/type" "mbql/query"
+                    "stages" [{"lib/type" "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]}]}
+        stage-query #(update-in base-query ["stages" 0] merge %)
+        problem     "should be a vector, clause must be [operator-string, options-map, \u2026args]"
+        field       ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+        join-query  (join-query-with-lib-type "mbql/join")]
+    (doseq [[query expected]
+            [[(stage-query {"filters" {"op" ">"}})
+              "stages[0].filters: invalid type"]
+             [(stage-query {"filters" [{"op" ">"}]})
+              (str "stages[0].filters[0]: " problem)]
+             [(stage-query {"filters" [{"op" ">"} {"op" "<"}]})
+              (str "stages[0].filters[0]: " problem "; stages[0].filters[1]: " problem)]
+             [(stage-query {"filters" [[">" {} field 1] {"op" "<"} {"op" "="}]})
+              (str "stages[0].filters[1]: " problem "; stages[0].filters[2]: " problem)]
+             [(update base-query "stages" conj {"lib/type" "mbql.stage/mbql" "filters" [{"op" ">"}]})
+              (str "stages[1].filters[0]: " problem)]
+             [(update (stage-query {"filters" [{"op" ">"}]}) "stages" conj
+                      {"lib/type" "mbql.stage/mbql" "aggregation" [{"op" "sum"}]})
+              (str "stages[0].filters[0]: " problem "; stages[1].aggregation[0]: " problem)]
+             [(assoc-in join-query ["stages" 0 "joins" 0 "fields"] [{"x" 1}])
+              (str "stages[0].joins[0].fields: should be either \"all\" or \"none\"; "
+                   "stages[0].joins[0].fields[0]: " problem)]
+             [(stage-query {"joins" ["P"]})
+              "stages[0].joins[0]: invalid type"]
+             [(-> join-query
+                  (assoc-in ["stages" 0 "joins" 0 "stages"] [])
+                  (assoc-in ["stages" 0 "joins" 0 "conditions"] [{"op" "="}]))
+              (str "stages[0].joins[0].stages: should have at least 1 elements; "
+                   "stages[0].joins[0].conditions[0]: " problem)]]]
+      (testing (pr-str query)
+        (is (= expected (repr/humanized->paths (:humanized (validate-query-error query)))))))
+    (testing "a valid query produces no failing paths"
+      (is (= "" (repr/humanized->paths (:humanized (validate-query-error base-query))))))
+    (testing "errors on the whole query have an explicit location"
+      (is (= "(root): invalid type" (repr/humanized->paths (:humanized (validate-query-error nil)))))))
+  (testing "keyword keys retain their namespace"
+    (is (= "stages[0].lib/type: missing required key"
+           (repr/humanized->paths
+            (mu.humanize/humanize
+             (mr/explain [:map [:stages [:sequential [:map [:lib/type :string]]]]]
+                         {:stages [{}]})))))))
+
+(deftest ^:parallel humanized-paths-length-test
+  (let [humanized (fn [message]
+                    (mu.humanize/humanize
+                     (mr/explain [:map ["filters" [:fn {:error/message message} (constantly false)]]]
+                                 {"filters" nil})))]
+    (testing "short explanations retain all their text"
+      (let [text (apply str (repeat 491 "x"))]
+        (is (= (str "filters: " text) (repr/humanized->paths (humanized text))))))
+    (testing "long explanations end with an ellipsis within the character budget"
+      (is (= (str "filters: " (apply str (repeat 490 "x")) "\u2026")
+             (repr/humanized->paths (humanized (apply str (repeat 1000 "x")))))))))

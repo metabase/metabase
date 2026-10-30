@@ -294,7 +294,7 @@
     (when (contains? #{::installed ::updated} result)
       (when-let [db (audit-app.db/audit-database)]
         (log/info "Syncing Audit DB")
-        (log/with-no-logs (sync/sync-database! db {:scan :schema}))
+        (log/with-no-logs (sync/sync-database! (u/the-id db) {:scan :schema}))
         ;; this sync saw every current view, so `maybe-sync-audit-db!` need not sync again for stale views
         (audit-app.settings/last-analytics-views-checksum! (views-checksum))))
     result))
@@ -321,7 +321,7 @@
       (log/infof "Syncing Audit DB schema (engine-changed? %s, views-stale? %s, sync-pending? %s)"
                  engine-changed? views-stale? sync-pending?)
       (try
-        (log/with-no-logs (sync/sync-database! audit-db {:scan :schema}))
+        (log/with-no-logs (sync/sync-database! (u/the-id audit-db) {:scan :schema}))
         (when current
           (audit-app.settings/last-analytics-views-checksum! current))
         (audit-app.settings/audit-db-dialect-sync-pending! false)

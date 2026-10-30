@@ -891,7 +891,7 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `https://www.metabase.com/help/premium`
+- Default: `https://www.metabase.com/help-premium`
 - [Configuration file name](./config-file.md): `help-link-custom-destination`
 
 Custom URL for the help link.
@@ -1939,7 +1939,7 @@ The display name for Metabot, shown throughout the Metabase UI.
 ### `MB_METABOT_QUERY_EXECUTION_ENABLED`
 
 - Type: boolean
-- Default: `false`
+- Default: `true`
 - [Configuration file name](./config-file.md): `metabot-query-execution-enabled`
 
 Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.
