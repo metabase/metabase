@@ -64,60 +64,63 @@
                   ". Set `database_id` to one of them.")
    :recovery []})
 
-(tools/defrecoverable unknown-database!
-  "The database the call chose does not exist, or the current user can't read it."
+(tools/defrecoverable chosen-database-not-found!
+  "The database the call chose does not exist, or the current user can't read it.
+
+  Not `recoverable.common/unknown-database!`, because that error tells the model to call `document_schema_collect`,
+  which is the tool that failed here."
   {:payload     [:map {:closed true} [:database-id :int]]
    :status-code 404}
   [{:keys [database-id]}]
   {:message  (str "Database " database-id " was not found.")
    :recovery [find-database-id-step]})
 
-(defn- readable-database
-  "Return the database with `database-id`. Call `on-refusal` with the exception when the database doesn't exist or the
-  current user can't read it."
-  [database-id on-refusal]
-  (try
-    (warehouses/get-database database-id)
-    (catch clojure.lang.ExceptionInfo e
-      (if (contains? tools/refusal-status-codes (:status-code (ex-data e)))
-        (on-refusal e)
-        (throw e)))))
-
-(defn- mentioned-database
-  "Return the database with `database-id`, which the user `@`-mentioned. Throw an unrecoverable error, which ends the
-  turn, when the database doesn't exist or the current user can't read it: only the user can mention another one."
-  [database-id]
-  (readable-database database-id
-                     (fn [e]
-                       (tools/unrecoverable!
-                        ::database-unavailable
-                        {:user-message (tru "The database you mentioned wasn''t found, or you don''t have access to it.")
-                         :data         {:database-id database-id}
-                         :cause        e}))))
-
-(defn- chosen-database
-  "Return the database to collect the schema of.
+(defn- chosen-database-id
+  "Return the ID of the database to collect the schema of.
 
   The user can choose the database with an `@` mention. The model chooses it with `database-id` when the user mentioned
   no database, or chooses one of the databases that the user mentioned when there are several."
+  [mentioned-ids database-id]
+  (cond
+    (= 1 (count mentioned-ids))
+    (first mentioned-ids)
+
+    (some #{database-id} mentioned-ids)
+    database-id
+
+    (seq mentioned-ids)
+    (unmentioned-database! {:database-ids mentioned-ids})
+
+    (nil? database-id)
+    (no-database-chosen! {})
+
+    :else
+    database-id))
+
+(defn- chosen-database
+  "Return the database to collect the schema of. When the database doesn't exist or the current user can't read it,
+  throw an unrecoverable error, which ends the turn, if the user mentioned it, because only the user can mention another
+  one. Throw a recoverable error if the model chose it."
   [ctx database-id]
   (let [references    (get-in (some-> (:memory-atom ctx) deref) [:context :references])
-        mentioned-ids (referenced-database-ids references)]
-    (cond
-      (= 1 (count mentioned-ids))
-      (mentioned-database (first mentioned-ids))
+        mentioned-ids (referenced-database-ids references)
+        database-id   (chosen-database-id mentioned-ids database-id)]
+    (try
+      (warehouses/get-database database-id)
+      (catch clojure.lang.ExceptionInfo e
+        (cond
+          (not (contains? tools/refusal-status-codes (:status-code (ex-data e))))
+          (throw e)
 
-      (some #{database-id} mentioned-ids)
-      (mentioned-database database-id)
+          (seq mentioned-ids)
+          (tools/unrecoverable!
+           ::database-unavailable
+           {:user-message (tru "The database you mentioned wasn''t found, or you don''t have access to it.")
+            :data         {:database-id database-id}
+            :cause        e})
 
-      (seq mentioned-ids)
-      (unmentioned-database! {:database-ids mentioned-ids})
-
-      (nil? database-id)
-      (no-database-chosen! {})
-
-      :else
-      (readable-database database-id (fn [_] (unknown-database! {:database-id database-id}))))))
+          :else
+          (chosen-database-not-found! {:database-id database-id}))))))
 
 (def ^:private schema-collect-description
   "Collects the schema of a database in order to construct a SQL query.
@@ -126,13 +129,7 @@
 - Use this tool when the user is explicitly requesting to use SQL
 - Use this tool when an existing model or metric does not answer the user's question.
 - Do NOT use this tool if there is a model or metric that can answer the user's question
-  unless the user is requesting SQL.
-
-  **Choosing the database:**
-- If the user `@`-mentioned one database, that database is used and `database_id` is ignored.
-- If the user `@`-mentioned several databases, set `database_id` to one of them.
-- Otherwise, set `database_id` to the database that holds the data, for example the `database_id` of a model from
-  `list_available_data_sources`.")
+  unless the user is requesting SQL.")
 
 (defrecord DocumentSchemaCollectTool []
   tools/Tool
