@@ -22,6 +22,7 @@ describe("getDynamicGoalSettingKeys", () => {
 
   it("lists nothing for displays without dynamic goals, and for no display", () => {
     expect(getDynamicGoalSettingKeys("table")).toEqual([]);
+    expect(getDynamicGoalSettingKeys("custom:my-viz")).toEqual([]);
     expect(getDynamicGoalSettingKeys(undefined)).toEqual([]);
   });
 

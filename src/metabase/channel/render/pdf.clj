@@ -619,8 +619,7 @@
   (e.g. a smartscalar card shown as a `bar`), so prefer the visualizer display when present. This is the same
   logic as `render.card/visualizer-display-type`."
   [card dashcard]
-  (or (when (render.util/is-visualizer-dashcard? dashcard)
-        (some-> dashcard :visualization_settings :visualization :display keyword))
+  (or (render.util/visualizer-display-type dashcard)
       (keyword (:display card))))
 
 (defn- cards-with-data

@@ -183,15 +183,16 @@
     rff))
 
 (defn- goal-sources
-  "Runnable goal references in `viz-settings`, with toggles read from `effective-settings`."
-  [viz-settings effective-settings]
+  "Runnable goal references a chart with `display` shows in `viz-settings`, with toggles read from
+  `effective-settings`."
+  [display viz-settings effective-settings]
   ;; public/embed runs skip the read check; [[metabase.queries.core/check-new-goal-references!]] gates a goal when a
   ;; user saves or places it (internal writes and copies are exempt)
   (into []
         (comp (keep dynamic-goals/goal-source)
               ;; a goal pointing at something we can't run is dropped rather than failing the request
               (filter (comp entity-types :type)))
-        (dynamic-goals/shown-goal-values viz-settings effective-settings)))
+        (dynamic-goals/shown-goal-values display viz-settings effective-settings)))
 
 (defn- sources->specs
   "One spec per referenced entity, carrying every column any goal asked it for."
@@ -204,22 +205,21 @@
                (group-by (juxt :type :id) sources))))
 
 (defn viz-settings->goal-specs
-  "Referenced-entity specs for the goals in `viz-settings-maps`; nil when there are none. Toggles come from
-  `effective-settings`, defaulting to the single map.
+  "Referenced-entity specs for the goals a chart with `display` shows in `viz-settings-maps`; nil when there are none.
+  Toggles come from `effective-settings`, defaulting to the single map.
 
   Takes every settings map a renderer might read rather than their merge: renderers disagree about which half
   they consult (a gauge reads the card's, a line chart the dashcard's), so a goal on the losing half of the
   merge still has to run or resolving it at render time throws."
-  ([viz-settings]
-   (viz-settings->goal-specs [viz-settings] viz-settings))
-  ([viz-settings-maps effective-settings]
-   (sources->specs (mapcat #(goal-sources % effective-settings) viz-settings-maps))))
+  ([display viz-settings]
+   (viz-settings->goal-specs display [viz-settings] viz-settings))
+  ([display viz-settings-maps effective-settings]
+   (sources->specs (mapcat #(goal-sources display % effective-settings) viz-settings-maps))))
 
 (defn maybe-wrap-qp-for-goals
-  "Derive specs from a card's and its dashcard's viz settings and wrap `qp` to inject their values. `visualizer-viz`
-  are the settings a visualizer dashcard nests under `:visualization`; they toggle their own goals."
-  [qp card-viz dash-viz visualizer-viz]
-  (maybe-wrap-qp qp
-                 (concat (viz-settings->goal-specs [card-viz dash-viz] (merge card-viz dash-viz))
-                         (viz-settings->goal-specs visualizer-viz))
-                 goal-max-rows))
+  "Derive specs from the goals `card` draws on `dashcard` (nil for a card on its own) and wrap `qp` to inject their
+  values."
+  [qp card dashcard]
+  (if-let [{:keys [display viz-settings effective-settings]} (dynamic-goals/goal-scope card dashcard)]
+    (maybe-wrap-qp qp (viz-settings->goal-specs display viz-settings effective-settings) goal-max-rows)
+    qp))
