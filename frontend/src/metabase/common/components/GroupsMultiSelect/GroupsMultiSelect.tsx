@@ -327,7 +327,7 @@ const GroupOption = ({
         active={isSelected}
         disabled={isDisabled}
       >
-        <Flex align="center" justify="space-between" gap="sm">
+        <Flex w="100%" align="center" justify="space-between" gap="sm">
           <Flex align="center" gap="sm">
             <Checkbox
               className={S.checkbox}
