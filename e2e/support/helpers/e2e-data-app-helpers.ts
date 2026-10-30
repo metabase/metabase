@@ -35,7 +35,7 @@ export function createDataApp(
   details: CreateDataAppRequest,
 ): Cypress.Chainable<DataApp> {
   return cy
-    .request<DataApp>("POST", "/api/ee/apps", details)
+    .request<DataApp>("POST", "/api/testing/data-apps", details)
     .then(({ body }) => body);
 }
 
@@ -58,7 +58,7 @@ export function uploadDataAppBundle(
   app: Pick<DataApp, "name">,
 ): Cypress.Chainable<DataApp> {
   return cy
-    .request<string>(`/api/ee/apps/${app.name}/typed-schema`)
+    .request<string>(`/api/testing/data-apps/${app.name}/typed-schema`)
     .then(({ body: typedSchema }) =>
       cy.task("writeDataAppFiles", {
         files: {
@@ -69,7 +69,7 @@ export function uploadDataAppBundle(
     )
     .then(() => cy.task<string>("buildDataApp", { appName: app.name }))
     .then((bundle) =>
-      cy.request<DataApp>("PUT", `/api/ee/apps/${app.name}/bundle`, {
+      cy.request<DataApp>("PUT", `/api/testing/data-apps/${app.name}/bundle`, {
         bundle,
       }),
     )

@@ -13,6 +13,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -21,7 +22,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.task.search-index :as task.search-index]
@@ -286,6 +287,56 @@
   demand. Intended only for E2E tests."
   []
   (run-content-diagnostics-scan!))
+
+(defenterprise-schema create-data-app! :- ::data-apps.schema/data-app
+  "Creates the data app `app` describes, with an empty bundle, on EE, and returns it."
+  metabase-enterprise.data-apps.testing
+  [_app :- ::data-apps.schema/data-app.create-request]
+  (throw (ex-info "Data apps are an Enterprise feature." {:status-code 404})))
+
+(defenterprise-schema replace-data-app-bundle! :- ::data-apps.schema/data-app
+  "Replaces the bundle of the data app named `slug` on EE, and returns the app."
+  metabase-enterprise.data-apps.testing
+  [_slug   :- ::data-apps.schema/slug
+   _bundle :- ::data-apps.schema/bundle-text]
+  (throw (ex-info "Data apps are an Enterprise feature." {:status-code 404})))
+
+(defenterprise-schema delete-data-app! :- :nil
+  "Deletes the data app named `slug` on EE."
+  metabase-enterprise.data-apps.testing
+  [_slug :- ::data-apps.schema/slug]
+  (throw (ex-info "Data apps are an Enterprise feature." {:status-code 404})))
+
+(defenterprise-schema data-app-typed-schema :- :string
+  "The TypeScript module of the questions and actions in the collection of the data app named `slug` on EE."
+  metabase-enterprise.data-apps.testing
+  [_slug :- ::data-apps.schema/slug]
+  (throw (ex-info "Data apps are an Enterprise feature." {:status-code 404})))
+
+(api.macros/defendpoint :post "/data-apps" :- ::data-apps.schema/data-app
+  "Create a data app with an empty bundle. Outside of tests an app is created only by a repository import. Intended
+  only for E2E tests."
+  [_route-params
+   _query-params
+   app :- ::data-apps.schema/data-app.create-request]
+  (create-data-app! app))
+
+(api.macros/defendpoint :put "/data-apps/:slug/bundle" :- ::data-apps.schema/data-app
+  "Replace a data app's bundle. Intended only for E2E tests."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ::data-apps.schema/slug]]
+   _query-params
+   {:keys [bundle]} :- [:map {:closed true} [:bundle ::data-apps.schema/bundle-text]]]
+  (replace-data-app-bundle! slug bundle))
+
+(api.macros/defendpoint :delete "/data-apps/:slug" :- :nil
+  "Delete a data app with its bundle and its collection. Intended only for E2E tests."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ::data-apps.schema/slug]]]
+  (delete-data-app! slug))
+
+(api.macros/defendpoint :get "/data-apps/:slug/typed-schema" :- :string
+  "The TypeScript module of the questions and actions in a data app's collection. Intended only for E2E tests."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ::data-apps.schema/slug]]]
+  (data-app-typed-schema slug))
 
 (defenterprise reset-mfa-throttlers-for-testing!
   "Clears the accumulated MFA management throttle state (enroll/disable/regenerate) on EE.
