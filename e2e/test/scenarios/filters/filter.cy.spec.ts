@@ -1,6 +1,7 @@
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
+  USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -307,7 +308,7 @@ describe("scenarios > filters", () => {
     });
 
     H.visualize((response) => {
-      expect(response.body.error).to.not.exist;
+      expect(response?.body).to.not.have.property("error");
     });
     H.queryBuilderMain().findByText("Something went wrong").should("not.exist");
   });
@@ -940,6 +941,87 @@ describe("scenarios > filters", () => {
         });
     });
   });
+});
+
+describe("scenarios > filters > field filters without create-queries permission", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.updateCollectionGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: { root: "read" },
+    });
+
+    H.createNativeQuestionAndDashboard({
+      questionDetails: {
+        name: "Question",
+        native: {
+          query: "select * from products where {{category}} and {{vendor}}",
+          "template-tags": {
+            category: {
+              id: "6b8b10ef-0104-1047-1e5v-2492d5954555",
+              name: "category",
+              "display-name": "CATEGORY",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "widget-type": "string/=",
+            },
+            vendor: {
+              id: "6b8b10ef-0104-1047-1e5v-2492d5964545",
+              name: "vendor",
+              "display-name": "VENDOR",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.VENDOR, null],
+              "widget-type": "string/=",
+            },
+          },
+        },
+      },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      cy.wrap(card_id).as("questionId");
+      cy.wrap(dashboard_id).as("dashboardId");
+    });
+
+    cy.signIn("nodata");
+  });
+
+  it("should filter a native question by Vendor and Category from the question link and from a dashboard (metabase#12654)", () => {
+    cy.log("from the question link");
+    H.visitQuestion("@questionId");
+    filterByVendorAndCategory();
+
+    cy.log("from a dashboard");
+    H.visitDashboard("@dashboardId");
+    H.getDashboardCard().findByText("Question").click();
+    filterByVendorAndCategory();
+  });
+
+  function filterByVendorAndCategory() {
+    H.queryBuilderMain()
+      .findByText("This question is written in SQL.")
+      .should("be.visible");
+
+    H.filterWidget({ name: "VENDOR" }).click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Search the list").type("Balistreri-Muller");
+      cy.findByText("Balistreri-Muller").click();
+      cy.button("Add filter").click();
+    });
+    H.filterWidget({ name: "CATEGORY" }).click();
+    H.popover().within(() => {
+      cy.findByText("Widget").click();
+      cy.button("Add filter").click();
+    });
+
+    H.queryBuilderHeader().findByTestId("run-button").click();
+
+    H.assertQueryBuilderRowCount(1);
+    H.tableInteractiveBody().within(() => {
+      cy.findByText("Widget").should("be.visible");
+      cy.findByText("Balistreri-Muller").should("be.visible");
+      cy.findByText("Gizmo").should("not.exist");
+      cy.findByText("McClure-Lockman").should("not.exist");
+    });
+  }
 });
 
 describe(
