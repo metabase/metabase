@@ -101,28 +101,32 @@
                                              :collect   #(throw (InterruptedException.))}))))
 
 (deftest ^:synchronized inapplicable-measure-does-not-create-series-test
-  (testing "an inapplicable measure does not create a NaN-only series"
-    (let [calls (atom [])]
-      (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+  (testing "an inapplicable measure neither exports a series nor tries to remove one"
+    (let [calls (atom [])
+          spy   (fn [op] (fn [& args] (swap! calls conj (into [op] args))))]
+      (mt/with-dynamic-fn-redefs [analytics/set-gauge!     (spy :set-gauge!)
+                                  analytics/remove-series! (spy :remove-series!)]
         (#'index-health/run-measure! {:gauge-key :metabase-search/index-coverage-ratio
-                                      :index    :never-emitted-test-engine
+                                      :index     :never-emitted-test-engine
                                       :collect   (constantly nil)}))
       (is (empty? @calls)))))
 
 (deftest ^:synchronized failed-first-write-does-not-mark-series-live-test
-  (testing "a failed first gauge write does not make later clears create a NaN-only series"
+  (testing "a failed first gauge write leaves the series untracked, so nothing later removes it"
     (let [publish!  index-health/publish-gauge!
           live      @#'index-health/live-gauge-series
           gauge-key :metabase-search/index-coverage-ratio
           labels    {:index "failed-write-test-engine"}
           series    [gauge-key labels]
-          calls     (atom [])]
+          calls     (atom [])
+          spy       (fn [op] (fn [& args] (swap! calls conj (into [op] args))))]
       (try
         (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& _]
                                                            (throw (ex-info "prometheus down" {})))]
           (is (thrown? Exception (publish! gauge-key labels 1.0)))
           (is (not (contains? @live series))))
-        (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+        (mt/with-dynamic-fn-redefs [analytics/set-gauge!     (spy :set-gauge!)
+                                    analytics/remove-series! (spy :remove-series!)]
           (publish! gauge-key labels nil)
           (is (empty? @calls))
           (publish! gauge-key labels 0.5)
@@ -156,30 +160,21 @@
 
 (deftest ^:synchronized pull-collector-refreshes-gauges-on-each-instance-test
   (let [measures  @#'index-health/index-measures
-        in-flight @#'index-health/refreshes-in-flight
         before    @measures
         seen      (atom [])
-        submitted (atom [])
         one       {:check-name :one}
         two       {:check-name :two}
         collector (analytics.core/pull-collector :metabase.search.index-health/index-health-gauges)]
     (try
       (reset! measures {:one one, :two two})
-      (reset! in-flight #{})
+      (is (= 600 (:min-interval-s collector))
+          "the cadence stale-gauge-age-ms is derived from")
       (mt/with-dynamic-fn-redefs
-        [index-health/run-measure!          #(swap! seen conj %)
-         index-health/submit-gauge-refresh! #(swap! submitted conj %)
+        [index-health/run-measure!           #(swap! seen conj %)
          health-inspector/save-check-result! #(throw (ex-info "must not persist from a scrape" {}))]
-        ((:f collector))
-        ((:f collector))
-        (is (empty? @seen) "the scrape path does not run index scans")
-        (is (= 1 (count @submitted)) "overlapping scrapes share one refresh")
-        ((first @submitted)))
-      (is (= 600 (:min-interval-s collector)))
-      (is (= #{one two} (set @seen)))
-      (is (empty? @in-flight))
+        (#'index-health/refresh-search-index-gauges!))
+      (is (= #{one two} (set @seen)) "every registered measure refreshes on this instance")
       (finally
-        (reset! in-flight #{})
         (reset! measures before)))))
 
 (deftest ^:synchronized background-gauge-refresh-isolates-write-failures-test
@@ -200,7 +195,7 @@
                                                        :index      :interrupted
                                                        :collect    #(throw (InterruptedException.))})))))
 
-(deftest ^:sequential expire-stale-gauges!-test
+(deftest ^:synchronized expire-stale-gauges!-test
   (let [calls (atom [])
         live  (atom {[:metabase-search/index-coverage-ratio {:index "fresh"}] ::fresh
                      [:metabase-search/index-coverage-ratio {:index "stale"}] ::stale})]

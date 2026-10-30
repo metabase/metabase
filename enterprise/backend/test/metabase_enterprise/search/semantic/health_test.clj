@@ -482,9 +482,9 @@
     (is (thrown? InterruptedException
                  (semantic.health/report-repair-metrics! {:orphan-count 3})))))
 
-(deftest ^:synchronized refresh-clears-garbage-when-inactive-test
-  (testing "refresh NaNs a previously-emitted semantic garbage series when there's no active index, since no
-           repair push will clear it (the collector reads N/A)"
+(deftest ^:synchronized refresh-stops-exporting-garbage-when-inactive-test
+  (testing "refresh stops exporting a previously-emitted semantic garbage series when there's no active
+           index, since no repair push will clear it (the collector reads N/A)"
     (let [calls (atom [])]
       (mt/with-dynamic-fn-redefs [analytics/remove-series! (fn [& args] (swap! calls conj (vec args)))]
         (mt/with-dynamic-fn-redefs [health-inspector/enabled? (constantly false)]
