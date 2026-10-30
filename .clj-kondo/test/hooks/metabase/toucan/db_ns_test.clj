@@ -88,8 +88,12 @@
   (testing "a marked value is not flagged"
     (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale [:auto/param locale]]})
                                  'metabase.foo.db))))
-  (testing "a literal cannot carry a request value and is not flagged"
-    (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale "de"]}) 'metabase.foo.db))))
+  (testing "a string literal is bound as a parameter too, so it is flagged"
+    (is (=? [{:message #"`\"de\"` reaches a SQL value slot unmarked.*"}]
+            (lint-query-call '(t2/select :model/X {:where [:= :locale "de"]}) 'metabase.foo.db))))
+  (testing "a number, a boolean and nil are spliced into the SQL and are not flagged"
+    (is (empty? (lint-query-call '(t2/select :model/X {:where [:and [:= :n 1] [:= :b true] [:= :x nil]]})
+                                 'metabase.foo.db))))
   (testing "a column reference is not a value"
     (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :a.id :b.id]}) 'metabase.foo.db))))
   (testing "values nested under a boolean connective are reached"
@@ -232,11 +236,19 @@
       '(t2/select-one :model/X :id (long id))
       '(t2/select :model/X :id [:in (mapv long ids)])
       '(t2/select :model/X :id [:in [:auto/param ids]])))
-  (testing "a literal kv-arg value is not flagged"
-    (are [form] (empty? (lint-query-call form 'metabase.foo.db))
-      '(t2/select :model/X :archived false)
-      '(t2/select :model/X :status "pending")
-      '(t2/select :model/X :engine :appdb)))
+  (testing "a spliced literal kv-arg value is not flagged"
+    (is (empty? (lint-query-call '(t2/select :model/X :archived false) 'metabase.foo.db))))
+  (testing "a keyword kv-arg value is a value, which the column's transform turns into a bound string"
+    (is (=? [{:message #"`:appdb`.*"}] (lint-query-call '(t2/select :model/X :engine :appdb) 'metabase.foo.db))))
+  (testing "a keyword inside a subquery in a kv-arg is a column"
+    (is (empty? (lint-query-call '(t2/select :model/X :n [:in {:select [[[:max :n]]] :from [:x] :where [:= :k [:auto/param k]]}])
+                                 'metabase.foo.db))))
+  (testing "a keyword in a literal kv-arg collection is a value"
+    (is (=? [{:message #"`:a`.*"} {:message #"`:b`.*"}] (lint-query-call '(t2/select :model/X :type [:in [:a :b]]) 'metabase.foo.db))))
+  (testing "a keyword in a query map is a column"
+    (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :a :b]}) 'metabase.foo.db))))
+  (testing "a string literal kv-arg value is bound, so it is flagged"
+    (is (=? [{:message #"`\"pending\"`.*"}] (lint-query-call '(t2/select :model/X :status "pending") 'metabase.foo.db))))
   (testing "one unmarked value per pair is reported"
     (is (= 2 (count (lint-query-call '(t2/select :model/X :locale locale :msgid msgid)
                                      'metabase.foo.db)))))

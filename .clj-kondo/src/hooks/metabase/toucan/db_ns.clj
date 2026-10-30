@@ -238,7 +238,7 @@
   an attacker can turn into SQL structure, and a `define-before-insert` hook may read it before the
   query compiles, so a marker would break it rather than protect anything."
   '#{insert! insert-returning-instance! insert-returning-instances! insert-returning-pk!
-     insert-returning-pks! save!})
+     insert-returning-pks! save! update-or-insert! select-or-insert!})
 
 (defn- read-call?
   "Whether `node` is a query call whose values are filtered on rather than written."
@@ -380,37 +380,66 @@
   (or (some? (namespace sym))
       (some? (try (hooks/resolve {:name sym}) (catch Exception _ nil)))))
 
+(defn- direct-value-nodes
+  "`v`, a kv-arg or conditions-map value, as the values it holds directly: the arguments of an operator form and the
+  elements of a literal collection among them, without descending into a subquery or a function call."
+  [v]
+  (let [[head & op-args] (when (hooks/vector-node? v) (:children v))
+        op               (some-> head hooks/sexpr)]
+    (if (and (keyword? op) (contains? value-operators (symbol (name op))))
+      (mapcat (fn [arg]
+                (if (and (hooks/vector-node? arg)
+                         (or (contains? #{:in :not-in} op)
+                             (not (keyword? (some-> arg :children first hooks/sexpr)))))
+                  (:children arg)
+                  [arg]))
+              op-args)
+      [v])))
+
+(defn- direct-kv-value-nodes
+  "The values a call passes directly as kv-args or in its conditions map, whose keyword literals are values."
+  [f args]
+  (let [after-model (rest (drop-while (complement model-node?) args))
+        kv-values   (keep (fn [[k v]] (when (and v (hooks/keyword-node? k)) v)) (partition-all 2 after-model))
+        conditions  (when (contains? conditions-map-fns (some-> f name symbol))
+                      (when-let [m (first after-model)]
+                        (when (and (hooks/map-node? m) (not (query-map-node? m)))
+                          (take-nth 2 (rest (:children m))))))]
+    (mapcat direct-value-nodes (concat kv-values conditions))))
+
 (defn- lint-unmarked-values!
-  "Register a finding for each argument of the enclosing function that reaches a value slot unmarked.
+  "Register a finding for each local, string literal or kv-arg keyword literal reaching a value slot unmarked.
 
-  Only a symbol is reported. A literal cannot carry a request value, and a value built inside the
-  function is out of reach of a check that does not follow it across a call."
+  Funnysql binds each of these as `?`; a keyword is a column in a query map but a value in a kv-arg, whose transform
+  turns it into a string. A value built inside the function is out of reach of a check that does not follow it across
+  a call."
   [node]
-  (doseq [value (let [args  (rest (:children node))
-                      f     (some-> (first (:children node)) hooks/sexpr)
-                      verb  (some-> f name symbol)
-                      query (cond->> args
-                              (contains? model-index verb)
-                              (drop (inc (get model-index verb)))
+  (let [args     (rest (:children node))
+        f        (some-> (first (:children node)) hooks/sexpr)
+        verb     (some-> f name symbol)
+        query    (cond->> args
+                   (contains? model-index verb)
+                   (drop (inc (get model-index verb)))
 
-                              (or (contains? trailing-changes-fns verb) (contains? changes-map-fns verb))
-                              butlast)]
-                  ;; The three walkers overlap on some shapes -- a multi-arg operator in a kv-arg
-                  ;; reaches both `value-nodes` and `kv-arg-value-nodes` -- so dedupe by source
-                  ;; position rather than trying to keep them disjoint.
-                  (->> (concat (mapcat value-nodes query)
-                               (kv-arg-value-nodes args)
-                               (conditions-map-value-nodes f args))
-                       (distinct-by #(select-keys (meta %) [:row :col]))))
-          :when (and (hooks/token-node? value)
-                     (symbol? (hooks/sexpr value))
-                     (not (marked? value))
-                     (not (var-symbol? (hooks/sexpr value))))]
-    (hooks/reg-finding!
-     (assoc (meta value)
-            :message (format "`%s` reaches a SQL value slot unmarked. Write it as [:auto/param %s] so it is bound as a parameter."
-                             (hooks/sexpr value) (hooks/sexpr value))
-            :type :metabase/unsafe-app-db-query))))
+                   (or (contains? trailing-changes-fns verb) (contains? changes-map-fns verb))
+                   butlast)
+        kv-nodes (concat (kv-arg-value-nodes args) (conditions-map-value-nodes f args))
+        kv-pos   (into #{} (map #(select-keys (meta %) [:row :col])) (direct-kv-value-nodes f args))]
+    ;; The three walkers overlap on some shapes -- a multi-arg operator in a kv-arg
+    ;; reaches both `value-nodes` and `kv-arg-value-nodes` -- so dedupe by source
+    ;; position rather than trying to keep them disjoint.
+    (doseq [value (distinct-by #(select-keys (meta %) [:row :col]) (concat (mapcat value-nodes query) kv-nodes))
+            :when (and (or (hooks/token-node? value) (hooks/string-node? value) (hooks/keyword-node? value))
+                       (let [x (hooks/sexpr value)]
+                         (or (string? x)
+                             (and (symbol? x) (not (var-symbol? x)))
+                             (and (keyword? x) (contains? kv-pos (select-keys (meta value) [:row :col])))))
+                       (not (marked? value)))]
+      (hooks/reg-finding!
+       (assoc (meta value)
+              :message (format "`%s` reaches a SQL value slot unmarked. Write it as [:auto/param %s] so it is bound as a parameter."
+                               (pr-str (hooks/sexpr value)) (pr-str (hooks/sexpr value)))
+              :type :metabase/unsafe-app-db-query)))))
 
 (def ^:private map-returning-fns
   "Fns whose call returns a map -- or throws, given a string -- so a call to one can never carry a string into
