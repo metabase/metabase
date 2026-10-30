@@ -11,6 +11,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.render.core :as channel.render]
    [metabase.collections.children :as collections.children]
@@ -1018,13 +1019,17 @@
 
 (defn- handle-broken-subscriptions
   "Given a dashboard id and original parameters, determine if any of the subscriptions are broken (we've removed params
-  that subscriptions require). If so, delete the subscriptions and notify the dashboard and pulse creators."
+  that subscriptions require). If so, archive the subscriptions and notify the dashboard and pulse creators.
+  The notification goes out only once the surrounding transaction commits, so an update that rolls back sends none."
   [dashboard-id original-dashboard-params]
-  (doseq [{:keys [pulse-id] :as broken-subscription} (broken-subscription-data dashboard-id original-dashboard-params)]
-    ;; Archive the pulse
-    (pulse/update-pulse! {:id pulse-id :archived true})
-    ;; Let the pulse and subscription creator know about the broken pulse
-    (messages/send-broken-subscription-notification! broken-subscription)))
+  (when-let [broken-subscriptions (seq (broken-subscription-data dashboard-id original-dashboard-params))]
+    (doseq [{:keys [pulse-id]} broken-subscriptions]
+      (pulse/update-pulse! {:id pulse-id :archived true}))
+    ;; One background thread sends them in order. It isn't this one, because an after-commit callback still holds
+    ;; the transaction's connection.
+    (app-db/do-after-commit
+     #(future
+        (run! messages/send-broken-subscription-notification! broken-subscriptions)))))
 
 ;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
 

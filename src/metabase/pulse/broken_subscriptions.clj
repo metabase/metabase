@@ -2,6 +2,7 @@
   "Detection, repair, and notification for dashboard subscriptions whose parameters no longer exist on
   the dashboard they belong to."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as pulse]
@@ -86,11 +87,15 @@
 (defn handle-broken-subscriptions!
   "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard
   and notify their creators. Must run after the update: it compares the dashboard's current
-  resolved params against each pulse's stored params. Returns nil."
+  resolved params against each pulse's stored params.
+  The notification goes out only once the surrounding transaction commits, so an update that rolls back sends none.
+  Returns nil."
   [dashboard-id original-dashboard-params]
-  (doseq [{:keys [pulse-id] :as broken-subscription}
-          (broken-subscription-data dashboard-id original-dashboard-params)]
-    ;; Archive the pulse
-    (pulse/update-pulse! {:id pulse-id :archived true})
-    ;; Let the pulse and subscription creator know about the broken pulse
-    (messages/send-broken-subscription-notification! broken-subscription)))
+  (when-let [broken-subscriptions (seq (broken-subscription-data dashboard-id original-dashboard-params))]
+    (doseq [{:keys [pulse-id]} broken-subscriptions]
+      (pulse/update-pulse! {:id pulse-id :archived true}))
+    ;; One background thread sends them in order. It isn't this one, because an after-commit callback still holds
+    ;; the transaction's connection.
+    (app-db/do-after-commit
+     #(future
+        (run! messages/send-broken-subscription-notification! broken-subscriptions)))))
