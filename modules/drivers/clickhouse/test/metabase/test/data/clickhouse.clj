@@ -57,7 +57,8 @@
    :ignore_unknown_config_key      true
    :max_open_connections           100
    :remember_last_set_roles        true
-   :http_connection_provider       "HTTP_URL_CONNECTION"})
+   :http_connection_provider       "HTTP_URL_CONNECTION"
+   :custom_http_params             "select_sequential_consistency=1"})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]         [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger]      [_ _] "Int64")
@@ -83,6 +84,8 @@
      {:user user})
    (when-let [password (mt/db-test-env-var :clickhouse :password)]
      {:password password})
+   ;; Return NULL, not the type default, for unmatched rows in an outer join, as other drivers do
+   {:clickhouse-settings "join_use_nulls=1"}
    (when (= context :db)
      (let [database-name (ddl.i/format-name driver database-name)]
        {:db database-name
