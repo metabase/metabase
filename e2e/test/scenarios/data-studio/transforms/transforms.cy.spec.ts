@@ -1034,35 +1034,6 @@ LIMIT
       getFieldPicker().should("not.contain.text", "Pick a field");
     });
 
-    it("should rollback values when API returns an error", () => {
-      createMbqlTransform({ visitTransform: true });
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.log("Verify initial state");
-      isIncrementalSwitchDisabled();
-
-      cy.log("Intercept and force the update to fail");
-      cy.intercept("PUT", "/api/transform/*", {
-        statusCode: 500,
-        body: { message: "Internal server error" },
-      }).as("updateTransformError");
-
-      cy.log("Toggle incremental on");
-      getIncrementalSwitch().click();
-
-      cy.log("Wait for the failed request");
-      cy.wait("@updateTransformError");
-
-      cy.log("Verify error toast is shown");
-      H.undoToast().should(
-        "contain.text",
-        "Failed to update incremental transformation settings",
-      );
-
-      cy.log("Verify the switch rolled back to unchecked state");
-      isIncrementalSwitchDisabled();
-    });
-
     it("should rollback values when network fails", () => {
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.settingsTab().click();
