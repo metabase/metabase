@@ -1,10 +1,10 @@
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Outlet } from "metabase/router";
 import { Card } from "metabase/ui";
-import type { WritebackQueryAction } from "metabase-types/api";
+import type { WritebackAction } from "metabase-types/api";
 
 type ActionDependenciesContentProps = {
-  action: WritebackQueryAction;
+  action: WritebackAction;
   baseUrl: string;
 };
 

@@ -13,7 +13,6 @@ import type {
   Collection,
   CollectionId,
   CollectionItem,
-  CollectionNamespace,
   CollectionType,
   DatabaseId,
   GetLibraryCollectionResponse,
@@ -46,13 +45,6 @@ export type UnpublishTablesModalProps = {
   tableIds?: TableId[];
   isOpened: boolean;
   onUnpublish: () => void;
-  onClose: () => void;
-};
-
-export type CollectionPermissionsModalProps = {
-  opened: boolean;
-  collectionId: CollectionId;
-  namespace?: CollectionNamespace | null;
   onClose: () => void;
 };
 
@@ -112,7 +104,6 @@ type LibraryPlugin = {
   }) => OmniPickerItem[] | undefined;
   getEntityPickerSyntheticLibraryItem: GetEntityPickerSyntheticLibraryItemFunction;
   CreateLibraryModal: ComponentType<CreateLibraryModalProps>;
-  CollectionPermissionsModal: ComponentType<CollectionPermissionsModalProps>;
   PublishTablesModal: ComponentType<PublishTablesModalProps>;
   UnpublishTablesModal: ComponentType<UnpublishTablesModalProps>;
   useGetLibraryCollectionQuery: UseQuery<
@@ -149,9 +140,6 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   CreateLibraryModal:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<CreateLibraryModalProps>,
-  CollectionPermissionsModal:
-    // Unjustified type cast. FIXME
-    PluginPlaceholder as ComponentType<CollectionPermissionsModalProps>,
   PublishTablesModal:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<PublishTablesModalProps>,

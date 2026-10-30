@@ -5,33 +5,35 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api-scope.core :as api-scope]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.metabot.agent.links :as links]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.charts :as charts]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
+   [metabase.metabot.tools.charts.fit :as fit]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
-;; create-chart only needs the query present in queries-state; the link builder
-;; json-encodes it and `->frontend-query` passes a non-MBQL 5 value through unchanged,
-;; so a stub query is enough to exercise the emission branch without a database.
-(def ^:private stub-query
-  {:database 1 :type "query" :query {:source-table 1}})
+(def ^:private count-by-category
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+      (lib/aggregate (lib/count))
+      (lib/breakout (meta/field-metadata :products :category))))
 
 (defn- run-create-chart
   ([]
    (run-create-chart "bar"))
   ([chart-type]
-   (let [memory (atom {:state {:queries {"q-1" stub-query}}})]
+   (let [memory (atom {:state {:queries {"q-1" count-by-category}}})]
      (binding [shared/*memory-atom* memory]
        (test-util/call-tool charts/create-chart-tool {:data_source  {:query_id "q-1"}
                                                       :viz_settings {:chart_type chart-type}
@@ -54,7 +56,7 @@
         (is (= "q-1" (get-in entity [:query :id])))
         (is (some? (get-in entity [:query :query]))))
       (testing "keeps the query in structured-output so chart memory stores it for later edits"
-        (is (= stub-query (get-in result [:structured-output :query])))))))
+        (is (= count-by-category (get-in result [:structured-output :query])))))))
 
 (deftest chart-tools-keep-mbql5-temporal-filter-test
   (testing "the generated_entity part carries a during filter through JSON intact (BOT-1972)"
@@ -68,12 +70,12 @@
                                   :visualization_settings {:chart_type :bar}}}}]
       (doseq [[tool-name run-tool] [["create_chart"
                                      #(test-util/call-tool charts/create-chart-tool {:data_source  {:query_id "q-1"}
-                                                                                     :viz_settings {:chart_type "bar"}
+                                                                                     :viz_settings {:chart_type "table"}
                                                                                      :title        "Check-ins in July"
                                                                                      :description  "Check-ins during July 2026."})]
                                     ["edit_chart"
                                      #(test-util/call-tool charts/edit-chart-tool {:chart_id         "c-1"
-                                                                                   :new_viz_settings {:chart_type "line"}
+                                                                                   :new_viz_settings {:chart_type "table"}
                                                                                    :title            "Check-ins in July"
                                                                                    :description      "Check-ins during July 2026."})]]]
         (testing tool-name
@@ -115,7 +117,7 @@
 
 (deftest edit-chart-query-fallback-test
   (testing "edit_chart resolves the query from queries-state when chart memory has no query"
-    (let [memory (atom {:state   {:queries {"q-1" stub-query}
+    (let [memory (atom {:state   {:queries {"q-1" count-by-category}
                                   :charts  {"c-1" {:chart_id "c-1"
                                                    :query_id "q-1"
                                                    :queries  [nil]
@@ -130,14 +132,14 @@
           entity (:data (first parts))]
       (is (= 1 (count parts)))
       (is (= "generated_entity" (:data-type (first parts))))
-      (is (= stub-query (get-in entity [:query :query])))
+      (is (= (links/->frontend-query count-by-category) (get-in entity [:query :query])))
       (is (= "pie" (:display entity)))
       (testing "structured-output also carries the resolved query, not just data-parts"
         ;; Regression: edit-chart-tool's :query var (used for data-parts above) came
         ;; from queries-state, but edit-chart's :result — which becomes
         ;; structured-output and is what extract-charts stores into :charts state —
         ;; only looked at the chart's own (here empty) :queries, landing on nil.
-        (is (= {:query-id "q-1" :query stub-query}
+        (is (= {:query-id "q-1" :query count-by-category}
                (select-keys (:structured-output result) [:query-id :query])))))))
 
 (defn- invoke
@@ -164,10 +166,10 @@
             :error  {:class :recoverable :code ::recoverable.common/unknown-query-id}}
            (invoke "create_chart"
                    (assoc chart-args :data_source {:query_id "q-9"} :viz_settings {:chart_type "bar"})
-                   {:queries {"q-1" stub-query}})))))
+                   {:queries {"q-1" count-by-category}})))))
 
 (deftest edit-chart-unknown-chart-id-test
-  (let [chart (fn [chart-id] {:chart_id chart-id :query_id "q-1" :queries [stub-query]})
+  (let [chart (fn [chart-id] {:chart_id chart-id :query_id "q-1" :queries [count-by-category]})
         args  (assoc chart-args :chart_id "c-9" :new_viz_settings {:chart_type "pie"})
         steps ["To make a new chart, call `construct_notebook_query` and use the chart ID that it returns."
                "To chart a query from this conversation, call `create_chart` with its query ID."]]
@@ -188,7 +190,9 @@
   (let [steps    (str "To make a new chart, call `construct_notebook_query` and use the chart ID that it returns.\n"
                       "To chart a query from this conversation, call `create_chart` with its query ID.")
         charts   (fn [ids]
-                   {:charts (into {} (map (fn [id] [id {:chart_id id :query_id "q-1" :queries [stub-query]}])) ids)})
+                   {:charts (into {}
+                                  (map (fn [id] [id {:chart_id id :query_id "q-1" :queries [count-by-category]}]))
+                                  ids)})
         uuids    (map #(format "%08d-0000-4000-8000-000000000000" %) (range 120))
         long-id  (apply str (repeat 4100 "x"))
         output   (fn [chart-id state]
@@ -225,6 +229,155 @@
                        {}))))
       (is (false? @ran?)))))
 
+(deftest chart-tools-incompatible-chart-type-test
+  (let [orders-count (lib/aggregate (lib/query meta/metadata-provider (meta/table-metadata :orders)) (lib/count))
+        failure      (fn [& message]
+                       {:output (str (apply str message)
+                                     "\nTo keep this chart type, call `construct_notebook_query` with a query that "
+                                     "returns the columns it needs.")
+                        :error  {:class :recoverable :code ::fit/incompatible-chart-type}})
+        line-failure (failure "Chart type \"line\" can't show this query's columns. It needs 1 or 2 columns to group "
+                              "by and at least 1 number to measure. The query returns 1 column: 0 to group by and 1 "
+                              "number to measure. Chart types that fit these columns: table, scalar, gauge, progress, "
+                              "object.")]
+    (testing "create_chart fails on a chart type that can't show the query's columns, and names the ones that can"
+      (is (= line-failure
+             (invoke "create_chart"
+                     (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type "line"})
+                     {:queries {"q-1" orders-count}}))))
+    (testing "edit_chart checks a chart that the user is viewing, whose query arrives as MBQL 4"
+      (is (= line-failure
+             (invoke "edit_chart"
+                     (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type "line"})
+                     {:charts {"c-1" {:chart_id "c-1"
+                                      :query_id "c-1"
+                                      :queries  [{:database (mt/id)
+                                                  :type     "query"
+                                                  :query    {:source-table (mt/id :orders)
+                                                             :aggregation  [["count"]]}}]}}}))))
+    (testing "edit_chart checks the new chart type against the query of the chart that it edits"
+      (is (= (failure "Chart type \"scalar\" can't show this query's columns. It needs a first column that isn't a "
+                      "breakout, since it shows that column's first value. The query returns 2 columns: 1 to group by "
+                      "and 1 number to measure. Chart types that fit these columns: "
+                      "table, bar, line, pie, treemap, boxplot, area, combo, row, pivot, scatter, waterfall, progress, "
+                      "funnel, object.")
+             (invoke "edit_chart"
+                     (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type "scalar"})
+                     {:charts {"c-1" {:chart_id "c-1" :query_id "q-1" :queries [count-by-category]}}}))))
+    (testing "a number chart of categories with more than 100 orders would show a category, the first stage's breakout"
+      (let [by-category (-> (lib/aggregate (lib/query meta/metadata-provider (meta/table-metadata :products)) (lib/count))
+                            (lib/breakout (meta/field-metadata :products :category))
+                            lib/append-stage)
+            query       (lib/filter by-category
+                                    (lib/> (m/find-first #(= "count" (:name %)) (lib/filterable-columns by-category)) 100))]
+        (is (= (failure "Chart type \"scalar\" can't show this query's columns. It needs a first column that isn't "
+                        "a breakout, since it shows that column's first value. The query returns 2 columns: 1 to group "
+                        "by and 1 number to measure. Chart types that fit these columns: table, bar, line, pie, "
+                        "treemap, boxplot, area, combo, row, scatter, waterfall, progress, funnel, object.")
+               (invoke "create_chart"
+                       (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type "scalar"})
+                       {:queries {"q-1" query}})))))
+    (testing "a scatter error counts what the scatter check counts, so the model sees which column is one too many"
+      (is (= (failure "Chart type \"scatter\" can't show this query's columns. It needs 1 number to measure and 1 "
+                      "or 2 columns to plot it against, counting the number itself, or 2 or 3 numbers to measure. The "
+                      "query returns 3 columns: 1 number to measure and 3 columns to plot against, counting the number "
+                      "to measure. Chart types that fit these columns: table, bar, line, pie, treemap, boxplot, area, "
+                      "combo, row, sankey, scalar, progress, object.")
+             (invoke "create_chart"
+                     (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type "scatter"})
+                     {:queries {"q-1" (lib/with-fields (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                        [(meta/field-metadata :products :category)
+                                         (meta/field-metadata :products :vendor)
+                                         (meta/field-metadata :products :price)])}}))))
+    (testing "construct_notebook_query checks its chart type against the query that it builds"
+      (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                  (fn [_ & _]
+                                    {:structured-output {:query-id "q-1" :query orders-count :result-columns []}})]
+        (is (= (failure "Chart type \"pie\" can't show this query's columns. It needs 1 to 3 columns to group by "
+                        "and at least 1 number to measure. The query returns 1 column: 0 to group by and 1 number "
+                        "to measure. Chart types that fit these columns: table, scalar, gauge, progress, object.")
+               (invoke "construct_notebook_query"
+                       (assoc chart-args
+                              :query         {:lib/type "mbql/query" :stages []}
+                              :visualization {:chart_type "pie"})
+                       {})))))))
+
+(deftest single-value-charts-of-several-aggregations-test
+  (testing "scalar and gauge charts show the first column of a one-row result, so several aggregations fit"
+    (let [count-and-sum (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/aggregate (lib/count))
+                            (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))]
+      (doseq [chart-type ["scalar" "gauge"]]
+        (testing chart-type
+          (is (=? {:data-parts [{:data {:display chart-type}}]}
+                  (invoke "create_chart"
+                          (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type chart-type})
+                          {:queries {"q-1" count-and-sum}})))
+          (is (=? {:data-parts [{:data {:display chart-type}}]}
+                  (invoke "edit_chart"
+                          (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type chart-type})
+                          {:charts {"c-1" {:chart_id "c-1" :query_id "q-1" :queries [count-and-sum]}}}))))))))
+
+(deftest month-of-year-sankey-test
+  (testing "a month of the year comes back as a number, so a sankey chart can flow from a category to it"
+    (testing "for a chart that the user is viewing, whose query arrives as MBQL 4"
+      (is (=? {:data-parts [{:data {:display "sankey"}}]}
+              (invoke "edit_chart"
+                      (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type "sankey"})
+                      {:charts {"c-1" {:chart_id "c-1"
+                                       :query_id "c-1"
+                                       :queries  [{:database (mt/id)
+                                                   :type     "query"
+                                                   :query    {:source-table (mt/id :products)
+                                                              :aggregation  [["count"]]
+                                                              :breakout     [["field" (mt/id :products :category) nil]
+                                                                             ["field" (mt/id :products :created_at)
+                                                                              {:temporal-unit "month-of-year"}]]}}]}}}))))
+    (testing "for a query that construct_notebook_query builds"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (:name (mt/db))]
+          (is (=? {:data-parts [{:data {:display "sankey"}}]}
+                  (invoke "construct_notebook_query"
+                          (assoc chart-args
+                                 :query         {:lib/type "mbql/query"
+                                                 :stages   [{:lib/type     "mbql.stage/mbql"
+                                                             :source-table [db-name "PUBLIC" "PRODUCTS"]
+                                                             :aggregation  [["count" {}]]
+                                                             :breakout     [["field" {} [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]
+                                                                            ["field" {"temporal-unit" "month-of-year"}
+                                                                             [db-name "PUBLIC" "PRODUCTS" "CREATED_AT"]]]}]}
+                                 :visualization {:chart_type "sankey"})
+                          {}))))))))
+
+(deftest smartscalar-with-a-date-aggregation-test
+  (testing "a trend groups by its one date, and a date aggregation beside the number to measure isn't a second grouping"
+    (let [created-at (meta/field-metadata :orders :created-at)
+          query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/aggregate (lib/max created-at))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month)))]
+      (is (=? {:data-parts [{:data {:display "smartscalar"}}]}
+              (invoke "create_chart"
+                      (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type "smartscalar"})
+                      {:queries {"q-1" query}})))
+      (is (=? {:data-parts [{:data {:display "smartscalar"}}]}
+              (invoke "edit_chart"
+                      (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type "smartscalar"})
+                      {:charts {"c-1" {:chart_id "c-1" :query_id "q-1" :queries [query]}}})))
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name    (:name (mt/db))
+              created-at [db-name "PUBLIC" "ORDERS" "CREATED_AT"]]
+          (is (=? {:data-parts [{:data {:display "smartscalar"}}]}
+                  (invoke "construct_notebook_query"
+                          (assoc chart-args
+                                 :query         {:lib/type "mbql/query"
+                                                 :stages   [{:lib/type     "mbql.stage/mbql"
+                                                             :source-table [db-name "PUBLIC" "ORDERS"]
+                                                             :aggregation  [["count" {}] ["max" {} ["field" {} created-at]]]
+                                                             :breakout     [["field" {"temporal-unit" "month"} created-at]]}]}
+                                 :visualization {:chart_type "smartscalar"})
+                          {}))))))))
+
 (deftest chart-tools-undeclared-failure-test
   (testing "a failure that no error declares ends the turn instead of reaching the model"
     (mt/with-dynamic-fn-redefs [create-chart-tools/create-chart (fn [_] (throw (ex-info "boom" {})))
@@ -232,7 +385,7 @@
       (is (=? {:error {:class :unrecoverable :code :internal}}
               (invoke "create_chart"
                       (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type "bar"})
-                      {:queries {"q-1" stub-query}})))
+                      {:queries {"q-1" count-by-category}})))
       (is (=? {:error {:class :unrecoverable :code :internal}}
               (invoke "edit_chart"
                       (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type "pie"})

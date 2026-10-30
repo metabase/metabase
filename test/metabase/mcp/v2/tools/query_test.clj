@@ -928,6 +928,20 @@
         (is (str/includes? msg "aggregation"))
         (is (not (str/includes? msg "portable_entity_id")))))))
 
+(deftest ^:parallel ambiguous-database-name-recovery-test
+  (let [db-name "query-test duplicate name"
+        query   {:lib/type "mbql/query"
+                 :stages   [{:lib/type "mbql.stage/mbql" :source-table [db-name "PUBLIC" "ORDERS"]}]}]
+    (mt/with-temp [:model/Database {db-1 :id} {:name db-name}
+                   :model/Database {db-2 :id} {:name db-name}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "the pipeline only states the clash, so v2's numeric-id hint is the one way out"
+          (is (= (str "\"Multiple databases share the name `" db-name "` (ids: " [db-1 db-2] ").\"\n"
+                      "Use a numeric table id in `source-table:` (from \"browse_data\" action \"list_tables\"), "
+                      "which needs no database name at all.")
+                 (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                 {:query query})))))))))
+
 ;;; --------------------------------------- Schema failures and dialect round-trips --------------------------------
 
 ;;; GHY-4313. `:query` stays an open `[:map]` at the registry boundary on purpose: the dialect

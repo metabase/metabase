@@ -3,6 +3,7 @@ import {
   createMockActionDependencyNode,
   createMockActionDependencyNodeData,
   createMockCollection,
+  createMockDataAppDependencyNode,
   createMockSnippetDependencyNode,
 } from "metabase-types/api/mocks";
 
@@ -42,6 +43,12 @@ describe("getEntryPickerItem", () => {
     });
   });
 
+  it("should select a data app", () => {
+    expect(
+      getEntryPickerItem(createMockDataAppDependencyNode({ id: 8 })),
+    ).toEqual({ id: 8, model: "data-app" });
+  });
+
   it("should select an action of a model in the regular namespace", () => {
     const node = createMockActionDependencyNode({
       id: 5,
@@ -59,6 +66,7 @@ describe("getEntryPickerValue", () => {
   it.each<{ item: OmniPickerItem; type: string }>([
     { item: { id: 3, model: "snippet", name: "Snippet" }, type: "snippet" },
     { item: { id: 4, model: "action", name: "Action" }, type: "action" },
+    { item: { id: 8, model: "data-app", name: "Owls" }, type: "data-app" },
   ])("should open the graph for a picked $type", ({ item, type }) => {
     expect(getEntryPickerValue(item)).toEqual({ id: item.id, type });
   });

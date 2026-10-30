@@ -134,6 +134,12 @@ def statements(sql, dialect=None):
     return [ast for ast in sqlglot.parse(sql, read=dialect) if ast is not None]
 
 
+def _nonempty_statements(stmts):
+    """`stmts` from `sqlglot.parse` without the empty ones: a stray semicolon parses as `None`, and a comment after a
+    semicolon as a bare `exp.Semicolon`."""
+    return [s for s in stmts if s is not None and not isinstance(s, exp.Semicolon)]
+
+
 def table_references(ast):
     """Every table the statement `ast` names, as sqlglot Table nodes.
 
@@ -1815,7 +1821,8 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
     Returns:
         JSON string with keys transpiled_sql and status on success.
-        On failure the object contains keys status and error_message.
+        On failure the object contains keys status and error_message, and reason
+        'multiple_statements' when the SQL holds more than one statement.
     """
     result = {}
     if has_metabase_templates(sql):
@@ -1829,10 +1836,11 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     else:
         try:
             write = sqlglot.Dialect.get_or_raise(to_dialect)
-            expressions = sqlglot.parse(sql, read=from_dialect)
+            expressions = _nonempty_statements(sqlglot.parse(sql, read=from_dialect))
 
             if len(expressions) > 1:
                 result['status'] = 'error'
+                result['reason'] = 'multiple_statements'
                 result['error_message'] = 'Multiple SQL statements are not supported. Please provide a single query.'
             else:
                 ast = _quote_reserved_identifiers(expressions[0], write)
@@ -1973,6 +1981,14 @@ def _sql_executing_function(stmt: exp.Expression):
     return None
 
 
+def _dynamic_function_call(stmt: exp.Expression) -> bool:
+    """Whether `stmt` calls a function named by Snowflake's `IDENTIFIER(...)`, as in `IDENTIFIER('f')(1)`."""
+    # Name checks never see this name, a string or a variable, so the call is refused whatever it names.
+    # Only the call form has an `expressions` arg, which holds the call's arguments, possibly none.
+    # A table or column name such as `IDENTIFIER('t')` has no such arg.
+    return any("expressions" in node.args for node in stmt.find_all(exp.DynamicIdentifier))
+
+
 # SQL Server table hints that take update or exclusive locks, or hold shared ones to the end of the transaction.
 # `NOLOCK`, `INDEX(...)` and the rest only steer how a plain read runs.
 _LOCKING_TABLE_HINTS = frozenset(
@@ -2030,7 +2046,7 @@ _TSQL_STATEMENT_WORDS = frozenset(
 _MYSQL_FAMILY_DIALECTS = frozenset({"mysql", "mariadb", "singlestore", "starrocks", "doris", "tidb"})
 
 
-def _hidden_sql(sql: str, dialect: str):
+def _hidden_sql(sql: str, dialect: str, select: bool):
     """`(reason, detail)` when `sql` holds text its database would run and sqlglot would not parse as a statement of
     its own, else None.
 
@@ -2042,10 +2058,13 @@ def _hidden_sql(sql: str, dialect: str):
     A `U&"..."` identifier is refused in every dialect. Postgres reads its escapes, so `U&"pg_\\0073leep"` names
     `pg_sleep`, and sqlglot keeps them, so the function checks above never see the name. Like the MySQL marks, it is
     looked for in the raw text.
+
+    The T-SQL statement words are looked for only when `select` says the statement is a SELECT, since a write
+    statement starts with one.
     """
     if re.search(r"(?<![\w\$])[uU]&\"", sql) is not None:
         return ("unicode-identifier", None)
-    if dialect == "tsql":
+    if dialect == "tsql" and select:
         quoted = (sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING, sqlglot.TokenType.IDENTIFIER)
         for tok in sqlglot.tokenize(sql, read=dialect):
             if tok.token_type not in quoted and tok.text.upper() in _TSQL_STATEMENT_WORDS:
@@ -2067,6 +2086,19 @@ def _unbracketed(stmt: exp.Expression) -> exp.Expression:
     return stmt
 
 
+def _statement_reason(stmt: exp.Expression, sql: str, dialect: str):
+    """`(reason, detail)` for why `stmt`, parsed from `sql`, fails the checks every statement type shares, else None."""
+    function = _session_effect_function(stmt)
+    if function is not None:
+        return ("session-function", function)
+    executor = _sql_executing_function(stmt)
+    if executor is not None:
+        return ("sql-executing-function", executor)
+    if _dynamic_function_call(stmt):
+        return ("dynamic-function-call", None)
+    return _hidden_sql(sql, dialect, isinstance(_unbracketed(stmt), (exp.Select, exp.SetOperation)))
+
+
 def _not_read_only_reason(stmts, sql: str, dialect: str):
     """`(reason, detail)` for why `stmts`, parsed from `sql`, are not one read-only SELECT, else None."""
     if not stmts:
@@ -2077,32 +2109,32 @@ def _not_read_only_reason(stmts, sql: str, dialect: str):
         return ("not-a-select", None)
     if not _read_only(stmts[0]):
         return ("writes-or-locks", None)
-    function = _session_effect_function(stmts[0])
-    if function is not None:
-        return ("session-function", function)
-    executor = _sql_executing_function(stmts[0])
-    if executor is not None:
-        return ("sql-executing-function", executor)
-    return _hidden_sql(sql, dialect)
+    return _statement_reason(stmts[0], sql, dialect)
 
 
 def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None) -> str:
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
 
+    Every mode applies the checks the statement types share.
     `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
-    its tree, and statements holding only a comment after the last semicolon are not counted. When the SQL is not a
-    read-only SELECT, `reason` says why, with `reason_detail` for the reasons that have one.
+    its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
+    refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
         stmts = sqlglot.parse(_split_placeholder_casts(sql, dialect), read=dialect)
         allowed_types = (exp.Select, exp.SetOperation)
         if stmt_type == "read-only":
-            stmts = [s for s in stmts if s is not None and not isinstance(s, exp.Semicolon)]
+            stmts = _nonempty_statements(stmts)
         elif stmt_type != "read":
             allowed_types = (exp.Update, exp.Insert, exp.Delete)
-        problem = _not_read_only_reason(stmts, sql, dialect) if stmt_type == "read-only" else None
+        if stmt_type == "read-only":
+            problem = _not_read_only_reason(stmts, sql, dialect)
+        elif len(stmts) == 1:
+            problem = _statement_reason(stmts[0], sql, dialect)
+        else:
+            problem = None
         if problem is not None:
             result["reason"], result["reason_detail"] = problem
         if len(stmts) == 1:

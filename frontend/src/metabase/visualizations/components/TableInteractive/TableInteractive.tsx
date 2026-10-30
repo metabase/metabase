@@ -86,7 +86,7 @@ import {
   type HeaderCellWithColumnInfoProps,
 } from "./cells/HeaderCellWithColumnInfo";
 import { MiniBarCell } from "./cells/MiniBarCell";
-import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
+import { useSyncColumnWidths } from "./hooks/use-sync-column-widths";
 import { getInfoPopoversDisabled } from "./utils/get-info-popovers-disabled";
 import { tableThemeToDataGridTheme } from "./utils/table-theme-to-data-grid-theme";
 
@@ -455,22 +455,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         }
       });
 
-      const newEnabledColumns = newColumns.filter((col) => col.enabled);
-      const savedWidths = settings["table.column_widths"];
-      const newWidths =
-        Array.isArray(savedWidths) &&
-        savedWidths.length === newEnabledColumns.length
-          ? newEnabledColumns.map((c) => columnSizingMap[c.name])
-          : undefined;
-
-      const settingsUpdate = {
-        "table.columns": newColumns,
-        "table.column_widths": newWidths,
-      };
-
-      onUpdateVisualizationSettings(settingsUpdate);
+      onUpdateVisualizationSettings({ "table.columns": newColumns });
     },
-    [onUpdateVisualizationSettings, settings, columnSizingMap],
+    [onUpdateVisualizationSettings, settings],
   );
 
   const handleAddColumnButtonClick = useMemo(() => {
@@ -828,9 +815,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [infoPopoversDisabled],
   );
 
-  // If the data changes we reset saved column widths as it is no longer relevant
-  // except for the case where question is converted from a model to a question and back.
-  useResetWidthsOnColumnsChange(onUpdateVisualizationSettings, data, question);
+  useSyncColumnWidths(onUpdateVisualizationSettings, data, columnWidths);
 
   const scrolledColumnRef = useRef<number | null>(null);
   useEffect(() => {

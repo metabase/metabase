@@ -71,14 +71,17 @@ export function ActionCreator({
   useBeforeUnload(!isRouted && showUnsavedChangesWarning);
 
   const handleCreate = async (values: CreateActionFormValues) => {
-    if (action.type !== "query") {
+    if (action.type !== "query" || action.dataset_query == null) {
       return; // only query action creation is supported now
     }
+    const { dataset_query } = action;
 
     try {
       const createdAction = await createAction({
         ...action,
         ...values,
+        type: "query",
+        dataset_query,
         visualization_settings: formSettings,
       }).unwrap();
 

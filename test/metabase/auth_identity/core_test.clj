@@ -28,7 +28,7 @@
                    (:metadata auth-identity))))))
       (testing "can update an AuthIdentity"
         (let [auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")]
-          (t2/update! :model/AuthIdentity (:id auth-identity)
+          (t2/update! :model/AuthIdentity :id (:id auth-identity)
                       {:credentials {:password_hash "new_hash"
                                      :password_salt "new_salt"}})
           (let [updated (t2/select-one :model/AuthIdentity :id (:id auth-identity))]

@@ -2,7 +2,10 @@ import type { CSSProperties, ComponentProps, Key, ReactNode } from "react";
 
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
-import { VirtualizedGrid } from "metabase/common/components/VirtualizedGrid";
+import {
+  type GridItemOrder,
+  VirtualizedGrid,
+} from "metabase/common/components/VirtualizedGrid";
 import CS from "metabase/css/core/index.css";
 import { Box, Card, Flex, Group, Icon, Loader, Title } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
@@ -22,6 +25,7 @@ type CollectionListViewProps = {
   crumbs: Crumb;
   loading?: boolean;
   items: CollectionListItem[];
+  itemOrder?: GridItemOrder;
   containerStyle?: CSSProperties;
   containerClassName?: string;
 };
@@ -30,6 +34,7 @@ export const CollectionListView = ({
   crumbs,
   loading = false,
   items,
+  itemOrder,
   containerStyle,
   containerClassName,
 }: CollectionListViewProps) => {
@@ -70,6 +75,7 @@ export const CollectionListView = ({
         ) : (
           <VirtualizedGrid
             items={items}
+            itemOrder={itemOrder}
             keyExtractor={(item) => item.key}
             renderItem={renderItem}
             columnsPerRow={{ xs: 1, sm: 2, md: 3, lg: 4, xl: 4 }}

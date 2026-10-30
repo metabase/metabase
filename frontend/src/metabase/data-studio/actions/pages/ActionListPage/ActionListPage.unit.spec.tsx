@@ -3,8 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupActionsEndpoints,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupCollectionPermissionsGraphEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupGroupsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -15,7 +19,11 @@ import {
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { Database, WritebackAction } from "metabase-types/api";
+import type {
+  Database,
+  EnterpriseSettings,
+  WritebackAction,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -30,7 +38,7 @@ type SetupOpts = {
   databases?: Database[];
   actions?: WritebackAction[];
   isAdmin?: boolean;
-  hasLibrary?: boolean;
+  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 };
 
 const ACTIONS_DATABASE = createMockDatabase({
@@ -42,7 +50,7 @@ function setup({
   databases = [ACTIONS_DATABASE],
   actions = [],
   isAdmin = true,
-  hasLibrary = false,
+  remoteSyncType,
 }: SetupOpts) {
   setupDatabasesEndpoints(databases);
   setupActionsEndpoints(actions);
@@ -56,18 +64,23 @@ function setup({
     ],
   });
 
-  if (hasLibrary) {
-    setupEnterpriseOnlyPlugin("library");
+  const state = createMockState({
+    settings: mockSettings({
+      "remote-sync-type": remoteSyncType,
+      "remote-sync-enabled": remoteSyncType != null,
+      "token-features": createMockTokenFeatures({
+        remote_sync: remoteSyncType != null,
+      }),
+    }),
+    currentUser: createMockUser({ is_superuser: isAdmin }),
+  });
+  if (remoteSyncType != null) {
+    setupEnterpriseOnlyPlugin("remote_sync");
   }
 
   renderWithProviders(<Route path="/" element={<ActionListPage />} />, {
     withRouter: true,
-    storeInitialState: createMockState({
-      currentUser: createMockUser({ is_superuser: isAdmin }),
-      settings: mockSettings({
-        "token-features": createMockTokenFeatures({ library: hasLibrary }),
-      }),
-    }),
+    storeInitialState: state,
   });
 }
 
@@ -100,7 +113,21 @@ describe("ActionListPage", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Action", "Collection"]);
+    ).toEqual(["Table", "SQL query", "Collection"]);
+  });
+
+  it("opens a table picker to create an action from a table", async () => {
+    setup({});
+    const collection = createMockCollection({ id: 1 });
+    setupCollectionByIdEndpoint({ collections: [collection] });
+    setupCollectionItemsEndpoint({ collection, collectionItems: [] });
+
+    await userEvent.click(await screen.findByRole("button", { name: /New/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Table/ }));
+
+    expect(
+      await screen.findByText("Pick a table for the action"),
+    ).toBeInTheDocument();
   });
 
   it("does not offer non-admins to create anything", async () => {
@@ -142,8 +169,30 @@ describe("ActionListPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not offer changing the permissions of data actions", async () => {
-    setup({ hasLibrary: true });
+  it.each([undefined, "read-only"] as const)(
+    "opens the permissions of the data actions root from the page menu with remote sync %s",
+    async (remoteSyncType) => {
+      setupGroupsEndpoint([]);
+      setupCollectionPermissionsGraphEndpoint({ revision: 1, groups: {} });
+      setup({ remoteSyncType });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Data action options" }),
+      );
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: /Change permissions/ }),
+      );
+
+      expect(
+        await within(screen.getByRole("dialog")).findByRole("heading", {
+          name: "Permissions for Root",
+        }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("does not offer non-admins to change the permissions of data actions", async () => {
+    setup({ isAdmin: false });
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Data action options" }),

@@ -8,8 +8,8 @@ import type {
   GroupId,
 } from "metabase-types/api";
 
-export function setupListDataAppsEndpoint(apps: DataApp[]) {
-  fetchMock.get("path:/api/ee/apps", apps);
+export function setupListDataAppsEndpoint(apps: DataApp[], delay?: number) {
+  fetchMock.get("path:/api/ee/apps", apps, { delay });
 }
 
 export function setupListDataAppsEndpointWithError(error: string) {

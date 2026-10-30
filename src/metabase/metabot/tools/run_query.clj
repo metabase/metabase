@@ -8,6 +8,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
@@ -21,6 +23,7 @@
    [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
@@ -72,6 +75,13 @@
   {:payload [:map {:closed true}]}
   [_]
   {:message  "Query execution is turned off for Metabot."
+   :recovery []})
+
+(tools/defrecoverable embedded-metabot!
+  "The embedded Metabot asked to run a query. The rows would be the embedding customer's end users' data."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "Metabot can't run queries in embedded apps."
    :recovery []})
 
 (tools/defrecoverable no-conversation!
@@ -243,6 +253,10 @@
       (when (some-> card mi/can-read?)
         (when (= :metric (:type card))
           (metric-not-runnable! {:query-id query-id, :source (metric-source card)}))
+        ;; The rows go to the model: a curated-only Metabot runs a saved question only when `read_resource` would
+        ;; read it.
+        (when (shared/curated-only?)
+          (curation/check-curated-subject! (str "question " card-id) ["card" card-id]))
         {:saved-card card
          :query      {:lib/type :mbql/query
                       :database (:database_id card)
@@ -369,7 +383,9 @@
   (try
     (:query (qp.compile/compile query))
     (catch Exception e
-      (sql.common/query-failed! {:error-message (ex-message e)}))))
+      (if (query-execution/caller-facing-failure? (qp.catch-exceptions/exception-response e))
+        (sql.common/query-failed! {:error-message (ex-message e)})
+        (throw e)))))
 
 (defn- read-only-problem
   "A sentence saying why `sql` is not a single read-only SELECT statement for `driver`, so the model knows what to
@@ -385,6 +401,8 @@
                                   " the database.")
         :sql-executing-function (str "It calls " detail ", which runs SQL passed to it as text that this check cannot"
                                      " see into.")
+        :dynamic-function-call (str "It calls a function through IDENTIFIER(...), whose name this check cannot read."
+                                    " Call the function by its name.")
         :statement-word      (str "It uses the word " detail " outside quotes, which starts a new statement on"
                                   " SQL Server.")
         :executable-comment  "It holds a /*! or /*M! comment, which MySQL and MariaDB run as SQL."
@@ -500,17 +518,19 @@
 
 (defn- run-page!
   "Run `query` for one page of rows through [[query-execution/execute-page!]].
-   Throw this tool's declared errors for permission failures, query failures, cancellation and timeouts."
+   Throw this tool's declared errors for permission failures, failures of the query or its database, cancellation and
+   timeouts, and rethrow a failure inside Metabase."
   [query-id query row-limit]
   (try
     (query-execution/execute-page! query row-limit :metabot (run-options))
     (catch clojure.lang.ExceptionInfo e
-      (let [{:keys [error query-error permissions-error? timeout-ms]} (ex-data e)]
+      (let [{:keys [error query-error permissions-error? caller-facing? timeout-ms]} (ex-data e)]
         (case error
           ;; The QP's refusal is ours to state plainly. Its text can name a question the user can't read.
-          :query-failed    (if permissions-error?
-                             (no-permission! {:query-id query-id})
-                             (sql.common/query-failed! {:error-message query-error}))
+          :query-failed    (cond
+                             permissions-error? (no-permission! {:query-id query-id})
+                             caller-facing?     (sql.common/query-failed! {:error-message query-error})
+                             :else              (throw e))
           :query-canceled  (query-canceled! {})
           :query-timed-out (query-timed-out! {:seconds (quot timeout-ms 1000)})
           (throw e))))))
@@ -677,9 +697,17 @@
   [{:keys [query_id row_limit]} allow-non-sql?]
   (when-not (metabot.settings/metabot-query-execution-enabled?)
     (query-execution-off! {}))
+  (when (= (:entity_id shared/*metabot*) metabot.config/embedded-metabot-id)
+    (embedded-metabot! {}))
   (check-private-conversation!)
   (let [{:keys [query saved-card]} (stored-query query_id allow-non-sql?)
         runnable                   (runnable-query query_id query allow-non-sql?)]
+    ;; A query the conversation holds came from construct_notebook_query, which judged it, or from the user's
+    ;; viewing context, which nothing judged: the rows go to the model either way. A saved question was judged
+    ;; in [[saved-question]]. SQL the query holds itself is left to the SQL gates above; its structured stages,
+    ;; and a notebook query over a SQL question Metabot saved, are judged like any other.
+    (when (and (shared/curated-only?) (nil? saved-card))
+      (curation/check-curated-query! (str "query " query_id) (:query runnable)))
     (when-not (or allow-non-sql? (:checked-sql runnable))
       (not-sql! {:query-id query_id, :hint (recovery-hint allow-non-sql?)}))
     (let [page                                 (execute-page! query_id runnable (or row_limit default-row-limit)

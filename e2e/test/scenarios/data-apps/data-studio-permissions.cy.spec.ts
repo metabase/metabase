@@ -131,9 +131,9 @@ describe("scenarios > data apps > data studio permissions", () => {
     });
 
     function visitHome() {
-      cy.intercept("GET", "/api/ee/apps?available=true").as("availableApps");
+      cy.intercept("GET", "/api/ee/apps").as("dataApps");
       cy.visit("/");
-      cy.wait("@availableApps");
+      cy.wait("@dataApps");
       H.navigationSidebar()
         .findByRole("listitem", { name: "Home" })
         .should("be.visible");

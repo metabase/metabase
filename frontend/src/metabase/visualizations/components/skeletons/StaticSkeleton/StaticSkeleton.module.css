@@ -1,9 +1,9 @@
 .tooltipIcon {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
 }
 
 .iconContainer:hover .tooltipIcon {
-  color: var(--mb-color-text-secondary);
+  color: var(--mb-color-text-primary);
 }
 
 .tooltipIconContainer {

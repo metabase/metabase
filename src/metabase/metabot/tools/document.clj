@@ -1,6 +1,8 @@
 (ns metabase.metabot.tools.document
   "Document-generation specific tool wrappers."
   (:require
+   [clojure.string :as str]
+   [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
@@ -9,6 +11,7 @@
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.util.i18n :refer [tru]]
    [metabase.warehouses.core :as warehouses]))
 
@@ -127,13 +130,30 @@
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
+(defn- without-stack-frames
+  "`message` up to the first stack frame in it, or `message` when it has none.
+
+    (without-stack-frames \"ERROR processing query\\n\\tat com.example.Client.run(Unknown Source)\")
+    ;; => \"ERROR processing query\""
+  [message]
+  ;; Some JDBC drivers, such as Databricks, put a stack trace in their error text.
+  ;; `qp.catch-exceptions/exception-response` cuts its `:error` at the same place.
+  (some-> message (str/split #"\n\tat " 2) first))
+
 (defn- check-query!
-  "Validate one row of `query`, throwing [[sql.common/query-failed!]] if it fails."
+  "Validate one row of `query`.
+
+  When the caller may see the failure, such as a database rejection, throw [[sql.common/query-failed!]] with its
+  message, less any stack frames a driver put in it. Rethrow any other failure, such as an app DB error, unchanged."
   [query]
   (try
     (qp/process-query (assoc query :constraints {:max-results 1 :max-results-bare-rows 1}))
     (catch Exception e
-      (sql.common/query-failed! {:error-message (ex-message e)}))))
+      ;; The outer message, not `:error`: `:error` swaps in an inner exception's text, which can drop curated text
+      ;; such as the saturated-pool message, or the tag and question that a `{{#123}}` failure names.
+      (if (query-execution/caller-facing-failure? (qp.catch-exceptions/exception-response e))
+        (sql.common/query-failed! {:error-message (without-stack-frames (ex-message e))})
+        (throw e)))))
 
 (defrecord DocumentConstructSqlChartTool []
   tools/Tool
@@ -144,14 +164,10 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      :args                 sql-chart-schema})
   (handle [_ {:keys [database_id name description analysis approach sql viz_settings]} _ctx]
-    (let [{:keys [validation-result action-result]}
-          (create-sql-query-tools/create-sql-query {:database-id database_id
-                                                    :sql sql})
-          {:keys [valid? dialect error-message]} validation-result
-          {:keys [query-id query]} action-result
+    (let [{:keys [query-id query]} (sql.common/validated-sql-action!
+                                    (create-sql-query-tools/create-sql-query {:database-id database_id
+                                                                              :sql sql}))
           chart-type (get viz_settings :chart_type)]
-      (when-not valid?
-        (sql.common/sql-syntax-error! {:dialect dialect :error-message error-message}))
       (check-query! query)
       {:output            "Draft chart payload generated from SQL query."
        :structured-output {:tool          "document_construct_sql_chart"

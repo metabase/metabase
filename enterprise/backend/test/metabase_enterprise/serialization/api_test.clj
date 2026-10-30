@@ -200,6 +200,54 @@
         (is (= known-files
                (set (.list (io/file api.serialization/parent-dir)))))))))
 
+(deftest export-dirname-validation-test
+  (mt/with-premium-features #{:serialization}
+    (testing "dirname outside the whitelist is a 400"
+      (doseq [dirname [""
+                       "../backups"
+                       "a/b"
+                       "a\\b"
+                       "a\"b"
+                       "a\r\nb"
+                       ".."
+                       "."
+                       "-rf"
+                       ".hidden"
+                       (apply str (repeat 256 "a"))]]
+        (testing (pr-str dirname)
+          (is (=? {:errors {:dirname string?}}
+                  (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                        :dirname dirname :all_collections false :data_model false :settings false))))))
+    (testing "the 400 for a bad dirname states the rule"
+      (is (=? {:errors {:dirname #".*: 1-255 characters from A-Z a-z 0-9 _ - \. %, not starting with \. or -"}}
+              (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                    :dirname ".hidden" :all_collections false :data_model false :settings false))))
+    (testing "a plain dirname names both the archive root directory and the download file"
+      (let [{:keys [body headers]} (mt/user-http-request-full-response
+                                    :crowberto :post 200 "ee/serialization/export" {}
+                                    :dirname "my-export_2" :all_collections false :data_model false :settings false)]
+        (is (= "attachment; filename=\"my-export_2.tar.gz\""
+               (get headers "Content-Disposition")))
+        (is (every? #(str/starts-with? % "my-export_2/") (entry-names body)))))
+    (testing "a percent-encoded dirname, as the default name has for a non-ASCII site name, is accepted"
+      (is (= "attachment; filename=\"%E4%B8%AD-2026-10-27_12-00.tar.gz\""
+             (-> (mt/user-http-request-full-response
+                  :crowberto :post 200 "ee/serialization/export" {}
+                  :dirname "%E4%B8%AD-2026-10-27_12-00" :all_collections false :data_model false :settings false)
+                 (get-in [:headers "Content-Disposition"])))))
+    (testing "the default dirname for a long non-ASCII site name passes the dirname rule when sent back"
+      (mt/with-temporary-setting-values [site-name (apply str (repeat 40 "中"))]
+        (let [default-dirname (->> (mt/user-http-request-full-response
+                                    :crowberto :post 200 "ee/serialization/export" {}
+                                    :all_collections false :data_model false :settings false)
+                                   :headers
+                                   (#(get % "Content-Disposition"))
+                                   (re-find #"filename=\"(.*)\.tar\.gz\"")
+                                   second)]
+          (is (<= (count default-dirname) 255))
+          (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                :dirname default-dirname :all_collections false :data_model false :settings false))))))
+
 (defn- search-result-count [model search-string]
   (:total
    (search/search
@@ -295,7 +343,7 @@
         (snowplow-test/pop-event-data-and-user-id!)
         ;; Modify entities in the database
         (t2/update! :model/Dashboard {:id (:id dash)} {:name "urquan"})
-        (t2/delete! :model/Card (:id card))
+        (t2/delete! :model/Card :id (:id card))
         (let [re-indexed? (atom false)
               _res        (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
                             (mt/user-http-request :crowberto :post 200 "ee/serialization/import?reindex=false"
@@ -601,7 +649,8 @@
           (let [db (t2/select-one :model/Database :name db-name)]
             (is (some? db))
             (is (=? {:host "localhost" :port 5432 :dbname "mydb"} (:details db)))
-            (doseq [k [:details :write_data_details :admin_details]]
+            (is (not (contains? db :admin_details)) "an older archive's admin_details is ignored")
+            (doseq [k [:details :write_data_details]]
               (is (= #{} (set (keys (select-keys (get db k) [:subname :classname :connection-uri :INIT]))))
                   (str k " should keep none of the low-level keys"))))
           (finally

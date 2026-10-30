@@ -12,6 +12,8 @@
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (defn- readiness-gauges
   "Every readiness gauge for both storage labels, as `{storage {:available _ :connected _ :last-success _}}`."
   [system]

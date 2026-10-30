@@ -1,12 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import {
+  createMockCollection,
   createMockDatabase,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 
 import { type CommonSetupProps, commonSetup } from "./setup";
@@ -158,6 +160,43 @@ describe("PaletteResults", () => {
     ).toBeInTheDocument();
   });
 
+  it("should link a data app search result to its app", async () => {
+    setup({
+      query: "Link",
+      searchItems: [
+        createMockSearchResult({
+          id: 7,
+          model: "data-app",
+          name: "Link Test",
+          data_app_slug: "link-test",
+        }),
+      ],
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Link Test" }),
+    ).toHaveAttribute("href", "/apps/link-test");
+  });
+
+  it("should label a data app search result as a data app, not by a collection", async () => {
+    setup({
+      query: "Link",
+      searchItems: [
+        createMockSearchResult({
+          id: 7,
+          model: "data-app",
+          name: "Link Test",
+          collection: createMockCollection({ name: "Shorebirds" }),
+          data_app_slug: "link-test",
+        }),
+      ],
+    });
+
+    const option = await screen.findByRole("option", { name: "Link Test" });
+    expect(option).toHaveTextContent("Data app");
+    expect(option).not.toHaveTextContent("Shorebirds");
+  });
+
   it("should display collections that search results are from", async () => {
     setup({
       query: "ques",
@@ -285,6 +324,29 @@ describe("PaletteResults", () => {
       await screen.findByText(`Search Metabase's docs for "new action"`),
     ).toBeInTheDocument();
     expect(screen.queryByText("New action")).not.toBeInTheDocument();
+  });
+
+  it("should start a new research", async () => {
+    const { router } = setup({ query: "new research" });
+
+    await userEvent.click(await screen.findByText("New research"));
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/question/research"),
+    );
+  });
+
+  it("should not offer the New research action without NLQ access", async () => {
+    setup({
+      query: "new research",
+      metabotPermissions: { "metabot-nlq": "no" },
+    });
+
+    expect(
+      await screen.findByText(`Search Metabase's docs for "new research"`),
+    ).toBeInTheDocument();
+    await act(() => fetchMock.callHistory.flush(true));
+    expect(screen.queryByText("New research")).not.toBeInTheDocument();
   });
 
   it("should start a new metric", async () => {

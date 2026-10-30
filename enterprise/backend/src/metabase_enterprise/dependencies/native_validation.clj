@@ -23,7 +23,7 @@
   parameter substitution must happen INSIDE the *compile-with-inline-parameters* binding
   to produce inline literals instead of ? placeholders."
   [query :- ::lib.schema/query]
-  (database-routing/with-database-routing-off
+  (database-routing/with-anonymous-router-access
     (let [with-params (lib/add-parameters-for-template-tags query)
           compiled    (qp.compile/compile-with-inline-parameters with-params)]
       (lib/native-query with-params (:query compiled)))))
@@ -270,10 +270,12 @@
 
    Returns a set of errors, each enriched with source entity information when possible.
    Returns empty set for queries with table-type template tags since the actual
-   table (and therefore columns) is unknown at check time."
+   table (and therefore columns) is unknown at check time, and for non-SQL drivers (e.g. Mongo), whose native queries
+   the SQL parser can't read."
   [driver :- :keyword
    query  :- ::lib.schema/query]
-  (if (has-table-template-tags? query)
+  (if (or (not (isa? driver/hierarchy driver :sql))
+          (has-table-template-tags? query))
     #{}
     (into #{}
           (comp

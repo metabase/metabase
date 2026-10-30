@@ -2,6 +2,7 @@
   "Tool for creating charts from queries."
   (:require
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.tools.charts.fit :as fit]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.util.log :as log]))
 
@@ -36,7 +37,8 @@
   - :query-id - ID of the source query
   - :reactions - Navigation action to show the chart
 
-  Throws [[recoverable.common/unknown-query-id!]] for a query ID that `queries-state` doesn't hold."
+  Throws [[recoverable.common/unknown-query-id!]] for a query ID that `queries-state` doesn't hold, and
+  [[fit/incompatible-chart-type!]] for a chart type that can't show the query's columns."
   [{:keys [query-id chart-type queries-state]}]
   (log/info "Creating chart" {:query-id query-id
                               :chart-type chart-type
@@ -48,6 +50,7 @@
     (when-not query
       (recoverable.common/unknown-query-id! {:query-id  query-id
                                              :available (sort (keys queries-state))}))
+    (fit/check-chart-type! chart-type query)
     ;; Create the chart and generate navigation URL
     (let [chart-id (str (random-uuid))
           results-url (links/query-and-viz-link query chart-type)

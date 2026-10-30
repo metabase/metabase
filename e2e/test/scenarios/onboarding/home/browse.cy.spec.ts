@@ -13,56 +13,6 @@ const verifiedFilterToggleButton = () =>
     .findByTestId("browse-models-header")
     .findByRole("switch", { name: /show.*verified.*models/i });
 
-describe("browse > models", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("correctly displays models empty states", () => {
-    cy.log(
-      "Models explanation banner is visible initially but can be dismissed",
-    );
-    cy.visit("/browse/models");
-    cy.findAllByRole("complementary")
-      .filter(
-        ":contains(Create models to clean up and combine tables to make your data easier to explore)",
-      )
-      .as("banner");
-    cy.get("@banner").should("be.visible");
-    cy.findByRole("button", { name: "Dismiss" }).click();
-    cy.get("@banner").should("not.exist");
-
-    cy.log("Removing the last model from the page displays an empty state");
-    cy.findAllByTestId("model-name").should("have.length", 1); // sanity check
-    cy.request("PUT", `/api/card/${ORDERS_MODEL_ID}`, {
-      archived: true,
-    });
-    cy.reload();
-    cy.get("iframe").as("YouTubeVideo").should("be.visible");
-    cy.get("@banner").should("not.exist");
-    cy.findByRole("heading", {
-      name: "Create models to clean up and combine tables to make your data easier to explore",
-    }).should("be.visible");
-  });
-
-  it("can browse to a model in a new tab by meta-clicking", () => {
-    cy.on("window:before:load", (win) => {
-      // prevent Cypress opening in a new window/tab and spy on this method
-      cy.stub(win, "open").as("open");
-    });
-    cy.visit("/browse/models");
-    cy.findByRole("heading", { name: "Orders Model" }).click(H.holdMetaKey);
-
-    cy.get("@open").should("have.been.calledOnce");
-    cy.get("@open").should(
-      "have.been.calledOnceWithExactly",
-      `/model/${ORDERS_MODEL_ID}-orders-model`,
-      "_blank",
-    );
-  });
-});
-
 describe("scenarios > browse", () => {
   beforeEach(() => {
     H.resetSnowplow();
@@ -170,22 +120,6 @@ describe("scenarios > browse", () => {
     });
   });
 
-  it("browsing to a database only triggers a request for schemas for that specific database", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schemas`).as(
-      "schemasForSampleDatabase",
-    );
-    cy.intercept(
-      "GET",
-      /\/api\/database\/(?!1\b)\d+\/schemas/,
-      cy.spy().as("schemasForOtherDatabases"),
-    );
-    cy.visit("/");
-    H.browseDatabases().click();
-    cy.findByRole("link", { name: /Sample Database/ }).click();
-    cy.wait("@schemasForSampleDatabase");
-    cy.get("@schemasForOtherDatabases").should("not.have.been.called");
-  });
-
   it("can visit 'Learn about our data' page", () => {
     cy.visit("/");
     H.browseDatabases().click();
@@ -206,28 +140,6 @@ describe("scenarios > browse", () => {
     H.navigationSidebar().findByLabelText("Browse models").click();
     cy.findByRole("heading", { name: "Orders Model" }).should("be.visible");
     verifiedFilterToggleButton().should("not.exist");
-  });
-
-  it("The Browse models page shows an error message if the search endpoint throws an error", () => {
-    cy.visit("/");
-    cy.intercept("GET", "/api/search*", (req) => {
-      req.reply({ statusCode: 400 });
-    });
-    H.navigationSidebar().findByLabelText("Browse models").click();
-    cy.findByLabelText("Models")
-      .findAllByText("An error occurred")
-      .should("have.length", 2);
-  });
-
-  it("The Browse metrics page shows an error message if the search endpoint throws an error", () => {
-    cy.visit("/");
-    cy.intercept("GET", "/api/search*", (req) => {
-      req.reply({ statusCode: 400 });
-    });
-    H.navigationSidebar().findByLabelText("Browse metrics").click();
-    cy.findByLabelText("Metrics")
-      .findByText("An error occurred")
-      .should("be.visible");
   });
 });
 

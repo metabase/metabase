@@ -31,7 +31,7 @@
 (mu/defn api-key
   "The ApiKey with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/ApiKey id))
+  (t2/select-one :model/ApiKey :id [:auto/param id]))
 
 (def ^:private ApiKeyWithGroupId
   "An ApiKey instance possibly carrying the `::api-keys/group-id` the before-update hook consumes."
@@ -47,12 +47,12 @@
 (mu/defn api-key-exists?
   "Whether an ApiKey with `id` exists."
   [id :- ms/PositiveInt]
-  (t2/exists? :model/ApiKey id))
+  (t2/exists? :model/ApiKey :id id))
 
 (mu/defn delete-api-key!
   "Delete the ApiKey with `id`."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/ApiKey id))
+  (t2/delete! :model/ApiKey :id id))
 
 (mu/defn api-key-groups
   "The group name, group id, and api key id of the PermissionsGroups of the ApiKeys with `api-key-ids`."

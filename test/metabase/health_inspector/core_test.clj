@@ -9,6 +9,8 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- test-check []
   {:health 100
    :message "test check"})
@@ -34,12 +36,12 @@
                           :entity_id (u/generate-nano-id)
                           :dataset_query (json/encode bad-query)
                           :description "bad query")
-          bad (t2/insert! :report_card bad-card)]
+          bad (t2/insert-returning-pk! :report_card bad-card)]
       (try
         (let [{:keys [health message]} (hi/validate-queries)]
           (is (< 0 health 100))
           (is (= "Some queries are invalid." message)))
-        (finally (t2/delete! :report_card bad))))))
+        (finally (t2/delete! :report_card :id bad))))))
 
 (deftest report-db-test
   (t2/delete! :health_inspector_runs)

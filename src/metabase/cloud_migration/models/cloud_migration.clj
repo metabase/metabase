@@ -137,7 +137,9 @@
   Returns a sub-stream that should be used inside with-open."
   [^InputStream stream start end]
   (.skip stream start)
-  (BoundedInputStream. stream (- end start)))
+  (.get (doto (BoundedInputStream/builder)
+          (.setInputStream stream)
+          (.setMaxCount (- end start)))))
 
 (defn- put-file
   "Put file, whole or from start to end, on url, reporting on-progress. Retries up to 3 times."
