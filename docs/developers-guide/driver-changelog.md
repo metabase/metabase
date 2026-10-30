@@ -6,6 +6,14 @@ title: Driver interface changelog
 
 ## Metabase 0.65.3
 
+- `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
+  values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
+  `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of
+  those keys holds something else, such as a whole connection string (H2) or a file path (SQLite).
+
+- `metabase.driver/disallowed-connection-parameters` names now match ignoring percent-encoding, `_ . - +` and
+  whitespace as well as case.
+
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
   reading rows. The default recognizes SQLState classes `21`, `22`, `23` and `42`. Override it to add vendor query
   error codes or exclude SQLStates that also cover operational failures. Unknown failures remain QP errors;
