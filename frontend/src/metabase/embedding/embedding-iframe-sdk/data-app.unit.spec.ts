@@ -75,19 +75,6 @@ describe("metabase-data-app", () => {
     expect(postMessage).toHaveBeenCalledTimes(1);
   });
 
-  it("remounts the iframe when path changes", () => {
-    const element = setup("/sales/orders");
-    const original = element.querySelector("iframe")!;
-
-    // leading slashes are ignored
-    element.setAttribute("path", "///sales/orders");
-    expect(element.querySelector("iframe")).toBe(original);
-
-    element.setAttribute("path", "sales/customers");
-    expect(element.querySelector("iframe")).not.toBe(original);
-    expect(element.querySelector("iframe")?.src).toContain("/sales/customers?");
-  });
-
   it("loads the path by assigning the path property", () => {
     const element = new MetabaseDataAppElement();
 
@@ -128,6 +115,7 @@ describe("metabase-data-app", () => {
 
   it("rejects an invalid data app path", () => {
     const element = setup("sales/../other");
+
     expect(element.querySelector("iframe")).toBeNull();
 
     expect(consoleError).toHaveBeenCalledWith(
@@ -166,5 +154,38 @@ describe("metabase-data-app", () => {
 
     expect(element.querySelector("iframe")).toBeNull();
     expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("replaces the iframe only when the app name changed", () => {
+    const element = setup("/sales/orders");
+    const original = element.querySelector("iframe")!;
+
+    element.setAttribute("path", "///sales/orders");
+    expect(element.querySelector("iframe")).toBe(original);
+
+    const postMessage = jest.spyOn(original.contentWindow!, "postMessage");
+    ready(original);
+
+    // app name remains the same (sales), so iframe should not be replaced
+    element.setAttribute("path", "sales/customers?active=true");
+    expect(element.querySelector("iframe")).toBe(original);
+
+    expect(postMessage).toHaveBeenLastCalledWith(
+      {
+        type: "metabase.embed.setSettings",
+        data: expect.objectContaining({
+          path: "sales/customers?active=true",
+        }),
+      },
+      new URL(INSTANCE_URL).origin,
+    );
+
+    // app name has changed (sales -> franchises), so iframe should be replaced
+    element.setAttribute("path", "franchises/products");
+    expect(element.querySelector("iframe")).not.toBe(original);
+
+    expect(element.querySelector("iframe")?.src).toContain(
+      "/franchises/products?",
+    );
   });
 });
