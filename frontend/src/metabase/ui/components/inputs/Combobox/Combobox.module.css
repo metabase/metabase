@@ -61,8 +61,7 @@
 
 /* A checkbox in a hovered or highlighted option switches to its inverse colors,
    as in the Figma menu item with a checkbox. Once Menu has that variant
-   (GDGT-2471), the colors can come from Menu; the selectors stay here.
-   FieldPicker opts out, since it keeps its own light hover. */
+   (GDGT-2471), the colors can come from Menu; the selectors stay here. */
 .option:hover input[type="checkbox"]:not(:checked, :disabled),
 .option[data-combobox-selected]
   input[type="checkbox"]:not(:checked, :disabled) {

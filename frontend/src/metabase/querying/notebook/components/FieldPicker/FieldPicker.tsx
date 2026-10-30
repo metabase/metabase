@@ -253,6 +253,7 @@ export const FieldPicker = ({
                       <Combobox.Option
                         key={item.id}
                         value={item.id}
+                        active={item.isSelected}
                         disabled={item.isDisabled}
                         aria-label={item.title}
                         aria-selected={item.isSelected}
