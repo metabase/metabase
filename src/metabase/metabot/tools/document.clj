@@ -45,39 +45,79 @@
               (remove nil?))
         references))
 
-(defn- mentioned-database-id
-  "Return the ID of the one database that the user `@`-mentioned, from the references in `ctx`.
-  Throw an unrecoverable error, which ends the turn, when the user mentioned no database or more than one."
-  [ctx]
-  (let [references   (get-in (some-> (:memory-atom ctx) deref) [:context :references])
-        database-ids (referenced-database-ids references)]
-    (cond
-      (empty? database-ids)
-      (tools/unrecoverable! ::no-database-mentioned
-                            {:user-message (tru "Mention a database with @ to create this chart with SQL.")})
+(def ^:private find-database-id-step
+  {:uses #{"list_available_data_sources"}
+   :text "Call `list_available_data_sources` and retry with the `database_id` of a model that holds the data."})
 
-      (next database-ids)
-      (tools/unrecoverable! ::several-databases-mentioned
-                            {:user-message (tru "Mention only one database with @ to create this chart with SQL.")
-                             :data         {:database-ids database-ids}})
+(tools/defrecoverable no-database-chosen!
+  "The user did not `@`-mention a database, and the call did not set `database_id`."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "No database was `@`-mentioned, so set `database_id` to the database that holds the data."
+   :recovery [find-database-id-step]})
 
-      :else
-      (first database-ids))))
+(tools/defrecoverable unmentioned-database!
+  "The user `@`-mentioned several databases, and the call did not choose one of them."
+  {:payload [:map {:closed true} [:database-ids [:sequential :int]]]}
+  [{:keys [database-ids]}]
+  {:message  (str "The user `@`-mentioned databases " (str/join ", " database-ids)
+                  ". Set `database_id` to one of them.")
+   :recovery []})
 
-(defn- mentioned-database
-  "Return the database with `database-id`. Throw an unrecoverable error, which ends the turn, when the database doesn't
-  exist or the current user can't read it."
-  [database-id]
+(tools/defrecoverable unknown-database!
+  "The database the call chose does not exist, or the current user can't read it."
+  {:payload     [:map {:closed true} [:database-id :int]]
+   :status-code 404}
+  [{:keys [database-id]}]
+  {:message  (str "Database " database-id " was not found.")
+   :recovery [find-database-id-step]})
+
+(defn- readable-database
+  "Return the database with `database-id`. Call `on-refusal` with the exception when the database doesn't exist or the
+  current user can't read it."
+  [database-id on-refusal]
   (try
     (warehouses/get-database database-id)
     (catch clojure.lang.ExceptionInfo e
       (if (contains? tools/refusal-status-codes (:status-code (ex-data e)))
-        (tools/unrecoverable!
-         ::database-unavailable
-         {:user-message (tru "The database you mentioned wasn''t found, or you don''t have access to it.")
-          :data         {:database-id database-id}
-          :cause        e})
+        (on-refusal e)
         (throw e)))))
+
+(defn- mentioned-database
+  "Return the database with `database-id`, which the user `@`-mentioned. Throw an unrecoverable error, which ends the
+  turn, when the database doesn't exist or the current user can't read it: only the user can mention another one."
+  [database-id]
+  (readable-database database-id
+                     (fn [e]
+                       (tools/unrecoverable!
+                        ::database-unavailable
+                        {:user-message (tru "The database you mentioned wasn''t found, or you don''t have access to it.")
+                         :data         {:database-id database-id}
+                         :cause        e}))))
+
+(defn- chosen-database
+  "Return the database to collect the schema of.
+
+  The user can choose the database with an `@` mention. The model chooses it with `database-id` when the user mentioned
+  no database, or chooses one of the databases that the user mentioned when there are several."
+  [ctx database-id]
+  (let [references    (get-in (some-> (:memory-atom ctx) deref) [:context :references])
+        mentioned-ids (referenced-database-ids references)]
+    (cond
+      (= 1 (count mentioned-ids))
+      (mentioned-database (first mentioned-ids))
+
+      (some #{database-id} mentioned-ids)
+      (mentioned-database database-id)
+
+      (seq mentioned-ids)
+      (unmentioned-database! {:database-ids mentioned-ids})
+
+      (nil? database-id)
+      (no-database-chosen! {})
+
+      :else
+      (readable-database database-id (fn [_] (unknown-database! {:database-id database-id}))))))
 
 (def ^:private schema-collect-description
   "Collects the schema of a database in order to construct a SQL query.
@@ -86,7 +126,13 @@
 - Use this tool when the user is explicitly requesting to use SQL
 - Use this tool when an existing model or metric does not answer the user's question.
 - Do NOT use this tool if there is a model or metric that can answer the user's question
-  unless the user is requesting SQL.")
+  unless the user is requesting SQL.
+
+  **Choosing the database:**
+- If the user `@`-mentioned one database, that database is used and `database_id` is ignored.
+- If the user `@`-mentioned several databases, set `database_id` to one of them.
+- Otherwise, set `database_id` to the database that holds the data, for example the `database_id` of a model from
+  `list_available_data_sources`.")
 
 (defrecord DocumentSchemaCollectTool []
   tools/Tool
@@ -95,13 +141,14 @@
      :description          schema-collect-description
      :scope                scope/agent-document-read
      :metabot/capabilities #{:permission-write-sql-queries}
-     :args                 [:map {:closed true}]})
-  (handle [_ _args ctx]
-    (let [database-id (mentioned-database-id ctx)
-          db          (mentioned-database database-id)
+     :args                 [:map {:closed true}
+                            [:database_id {:optional true} [:maybe :int]]]})
+  (handle [_ {:keys [database_id]} ctx]
+    (let [db          (chosen-database ctx database_id)
+          database-id (:id db)
           schema-ddl  (table-utils/schema-full database-id)]
       {:output            (str "<result>\n"
-                               "The database the user selected has this schema:\n"
+                               "The database has this schema:\n"
                                "<database_schema>\n"
                                schema-ddl
                                "\n</database_schema>\n"
