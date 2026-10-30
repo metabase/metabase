@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library.api-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [without-library]]
    [metabase.test :as mt]
@@ -57,6 +58,37 @@
                                                         :dashboard_id  (:id dashboard)
                                                         :type          :question}]
                (is (= ["dashboard"] (:below (mt/user-http-request :crowberto :get 200 "ee/library"))))))))))))
+
+(deftest get-library-below-excludes-trash-test
+  (mt/with-premium-features #{:library}
+    (mt/with-discard-model-updates! [:model/Collection]
+      (without-library
+       (collection/create-library-collection!)
+       (let [data-folder   (t2/select-one :model/Collection :type collection/library-data-collection-type)
+             metrics-id    (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)
+             dashboards-id (t2/select-one-pk :model/Collection :type collection/library-dashboards-collection-type)
+             below         #(:below (mt/user-http-request :crowberto :get 200 "ee/library"))]
+         (testing "A metric in the trash doesn't count"
+           (mt/with-temp [:model/Card _ {:collection_id metrics-id
+                                         :type          :metric
+                                         :archived      true}]
+             (is (= [] (below)))))
+         (testing "A dashboard in the trash doesn't count"
+           (mt/with-temp [:model/Dashboard _ {:collection_id dashboards-id
+                                              :archived      true}]
+             (is (= [] (below)))))
+         (testing "A table published into a subfolder in the trash doesn't count"
+           (mt/with-temp [:model/Collection {subfolder-id :id} {:type     collection/library-data-collection-type
+                                                                :location (collection/children-location data-folder)
+                                                                :archived true}
+                          :model/Table      _                 {:collection_id subfolder-id
+                                                               :is_published  true}]
+             (is (= [] (below)))))
+         (testing "A published table archived by sync doesn't count"
+           (mt/with-temp [:model/Table _ {:collection_id (:id data-folder)
+                                          :is_published  true
+                                          :archived_at   (t/offset-date-time)}]
+             (is (= [] (below))))))))))
 
 (deftest disallow-cross-type-collection-move-via-api-test
   (mt/with-premium-features #{:library}
