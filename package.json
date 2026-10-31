@@ -439,7 +439,7 @@
     "build:js": "bun install && rspack build",
     "chromatic": "bun run build:cljs && NODE_OPTIONS=--max-old-space-size=8192 chromatic",
     "ci": "bun run ci-frontend && bun run ci-backend",
-    "ci-backend": "clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood && clojure -X:dev:test",
+    "ci-backend": "clojure -M:ee:drivers:load-namespaces && clojure -X:dev:test",
     "ci-frontend": "bun run lint && bun run type-check && bun run test",
     "clean-cypress-artifacts": "rm -R -f cypress/",
     "clean-dev:cljs": "rm -rf target/cljs_dev/*",
