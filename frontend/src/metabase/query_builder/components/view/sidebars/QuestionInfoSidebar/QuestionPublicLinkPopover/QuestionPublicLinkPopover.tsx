@@ -28,10 +28,22 @@ export const QuestionPublicLinkPopover = ({
 
   const [extension, setExtension] = useState<ExportFormat | null>(null);
 
+  const parameters = question
+    .parameters()
+    .filter((parameter) => parameter.value != null)
+    .map(({ id, value }) => ({ id, value }));
+  const query =
+    extension && parameters.length > 0
+      ? new URLSearchParams({
+          parameters: JSON.stringify(parameters),
+        }).toString()
+      : undefined;
+
   const url = uuid
     ? getPublicQuestionUrl({
         uuid,
         type: extension,
+        query,
       })
     : null;
 
