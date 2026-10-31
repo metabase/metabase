@@ -100,9 +100,55 @@
       (is (not (cloud-migration.settings/read-only-mode))))))
 
 (deftest read-only-login-test
-  (mt/with-temporary-setting-values [read-only-mode true]
-    (cloud-migration.settings/read-only-mode! true)
-    (mt/client :post 200 "session" (mt/user->credentials :rasta))))
+  (let [identity-id (t2/select-one-pk :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "password")
+        before      (t2/select-one-fn :last_used_at :model/AuthIdentity identity-id)]
+    (mt/with-temporary-setting-values [read-only-mode true]
+      (mt/client :post 200 "session" (mt/user->credentials :rasta))
+      (is (not= before (t2/select-one-fn :last_used_at :model/AuthIdentity identity-id))))))
+
+(deftest read-only-model-writes-test
+  (mt/with-temp [:model/Collection {id :id} {:name "original"}
+                 :model/Collection {archived-id :id} {:archived true}]
+    (let [collection-count (t2/count :model/Collection)]
+      (mt/with-temporary-setting-values [read-only-mode true]
+        (doseq [write! [#(mt/user-http-request :crowberto :put 403 (str "collection/" id) {:name "changed"})
+                        #(mt/user-http-request :crowberto :post 403 "collection" {:name "new"})
+                        #(mt/user-http-request :crowberto :delete 403 (str "collection/" archived-id))]]
+          (is (re-find #"read-only" (write!))))
+        (is (= "original" (t2/select-one-fn :name :model/Collection id)))
+        (is (t2/exists? :model/Collection archived-id))
+        (is (= collection-count (t2/count :model/Collection)))))))
+
+(deftest read-only-user-creation-rolls-back-test
+  (let [email (str (random-uuid) "@example.com")
+        collection-count (t2/count :model/Collection)]
+    (mt/with-temporary-setting-values [read-only-mode true]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read-only"
+                            (t2/insert! :model/User {:email email :first_name "New" :last_name "User"})))
+      (is (not (t2/exists? :model/User :email email)))
+      (is (= collection-count (t2/count :model/Collection))))))
+
+(deftest read-only-column-exceptions-test
+  (testing "Every changed column must be allowed"
+    (is (#'cloud-migration/update-exempted? :report_card {:changes {:last_used_at nil}}))
+    (is (not (#'cloud-migration/update-exempted?
+              :report_card {:changes {:id 1 :last_used_at nil :updated_at nil :name "changed"}}))))
+  (testing "Column exceptions require a nonempty update"
+    (doseq [args [{} {:changes {}} {:rows [{:id 1}]}]]
+      (is (not (#'cloud-migration/update-exempted? :report_card args)))))
+  (testing "A full exception permits inserts and deletes"
+    (is (#'cloud-migration/update-exempted? :login_history {})))
+  (testing "FieldValues allow only the last_used_at touch"
+    (is (#'cloud-migration/update-exempted? :metabase_fieldvalues {:changes {:last_used_at nil :updated_at nil}}))
+    (is (not (#'cloud-migration/update-exempted? :metabase_fieldvalues {:changes {:values []}})))))
+
+(deftest read-only-field-values-test
+  (testing "Reading cached filter values works in read-only mode"
+    (let [url (format "field/%d/values" (mt/id :categories :name))]
+      (mt/user-http-request :crowberto :get 200 url)
+      (mt/with-temporary-setting-values [read-only-mode true]
+        (is (=? {:values seq}
+                (mt/user-http-request :crowberto :get 200 url)))))))
 
 (deftest ^:synchronized store-url-test
   (testing "When not dev"
