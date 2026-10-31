@@ -106,15 +106,15 @@
     .case-list { display: grid; gap: 1px; }
     .case-button { display: grid; grid-template-columns: 9.5em auto; column-gap: 10px; align-items: baseline; width: 100%; padding: 4px 10px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: inherit; }
     .case-button:hover { background: #f4f6f9; }
-    .case-button[aria-current="true"] { background: #eef2f7; box-shadow: inset 3px 0 #2f6fb3; }
+    .case-button[aria-current="true"] { background: #e8eef6; box-shadow: inset 0 0 0 1px #b9cbe2; }
     .case-button .id { grid-column: 1 / -1; min-width: 0; font-size: .86rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .case-button .agree { color: #5b6d83; font-size: .74rem; }
-    /* Both labels stay quiet; the one the list is sorted by stands out, correctness in its verdict color. */
-    .case-button .right { color: #5b6d83; font-size: .74rem; }
-    .case-list.sort-agreement .case-button .agree { color: #172334; }
-    .case-list.sort-conformance .case-button .right.all { color: #176735; }
-    .case-list.sort-conformance .case-button .right.some { color: #9a5b00; }
-    .case-list.sort-conformance .case-button .right.none { color: #b42635; }
+    /* The labels are small chips, so they read apart from the name. Both stay quiet; the one the list is
+       sorted by gets a stronger fill, correctness in its verdict color. */
+    .case-button .agree, .case-button .right { justify-self: start; margin-top: 2px; padding: 0 6px; border-radius: 4px; background: #eef1f5; color: #5b6d83; font-size: .72rem; line-height: 1.55; }
+    .case-list.sort-agreement .case-button .agree { background: #dde5ee; color: #172334; }
+    .case-list.sort-conformance .case-button .right.all { background: #e1f2e5; color: #176735; }
+    .case-list.sort-conformance .case-button .right.some { background: #fdeedb; color: #8a4d00; }
+    .case-list.sort-conformance .case-button .right.none { background: #fbe4e7; color: #b42635; }
     .badge { display: inline-block; border-radius: 999px; padding: 2px 7px; background: #e6f4e8; color: #18632c; font-size: .74rem; font-weight: 650; }
     .badge.divergent { background: #fff0de; color: #8a4d00; }
     .badge.neutral { background: #eef1f5; color: #465a71; }
@@ -245,12 +245,12 @@
       .support-status.no { background: #35465a; color: #c3d0dd; }
       .footnote-marker { color: #ffc26b; }
       .case-button:hover { background: #1f2d40; }
-      .case-button[aria-current="true"] { background: #22324a; box-shadow: inset 3px 0 #6aa8ef; }
-      .case-button .agree, .case-button .right { color: #aabbd0; }
-      .case-list.sort-agreement .case-button .agree { color: #e4edf7; }
-      .case-list.sort-conformance .case-button .right.all { color: #72d999; }
-      .case-list.sort-conformance .case-button .right.some { color: #ffc26b; }
-      .case-list.sort-conformance .case-button .right.none { color: #ff929d; }
+      .case-button[aria-current="true"] { background: #283a52; box-shadow: inset 0 0 0 1px #46607f; }
+      .case-button .agree, .case-button .right { background: #24344a; color: #aabbd0; }
+      .case-list.sort-agreement .case-button .agree { background: #34465e; color: #f0f5fb; }
+      .case-list.sort-conformance .case-button .right.all { background: #204632; color: #a4e2b6; }
+      .case-list.sort-conformance .case-button .right.some { background: #523b1e; color: #ffd08a; }
+      .case-list.sort-conformance .case-button .right.none { background: #4d2228; color: #ffb3bb; }
       .query-table .sub, .query-table .same { color: #aabbd0; }
       .query-table .missing { color: #ff929d; }
       .query-table .extra-hits { color: #ffc26b; }
