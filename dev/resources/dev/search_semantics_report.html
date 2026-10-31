@@ -67,7 +67,7 @@
     tbody tr:last-child td { border-bottom: 0; }
     .note { color: #5b6d83; font-size: .85rem; margin: 12px 0 0; }
     /* At least a screen tall, so a shorter list cannot pull the page up from under the reader. */
-    .explorer { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 14px; align-items: start; min-height: calc(100vh - 32px); }
+    .explorer { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 14px; align-items: start; min-height: calc(100vh - 32px); }
     /* The case stays in view while the list scrolls with the page, so the list needs no scrollbar of its own. */
     #detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
     .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 10px; margin-bottom: 8px; }
@@ -106,15 +106,14 @@
     .label-key dt.current .badge { box-shadow: 0 0 0 2px currentColor; }
     .label-key .key-foot { grid-column: 1 / -1; margin: 0; color: #5b6d83; }
     .case-list { display: grid; gap: 1px; }
-    .case-button { position: relative; display: grid; grid-template-columns: auto; justify-content: start; column-gap: 8px; align-items: baseline; width: 100%; padding: 4px 10px 4px 16px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: inherit; }
+    .case-button { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: baseline; width: 100%; padding: 4px 10px 4px 16px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: inherit; }
     .case-button:hover { background: #f4f6f9; }
     .case-button[aria-current="true"] { background: #e8eef6; box-shadow: inset 0 0 0 1px #b9cbe2; }
-    .case-button .id { grid-column: 1 / -1; min-width: 0; font-size: .86rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .case-button .id { min-width: 0; font-size: .86rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     /* The labels are small chips, so they read apart from the name. Both stay quiet; the one the list is
        sorted by gets a stronger fill, correctness in its verdict color. */
-    .case-list.with-correct .case-button { grid-template-columns: 7.8em auto; }
-    /* A chip shifts left by its own padding, so its text lines up with the name above. */
-    .case-button .agree, .case-button .right { justify-self: start; margin: 2px 0 0 -6px; padding: 0 6px; border-radius: 4px; background: #eef1f5; color: #5b6d83; font-size: .72rem; line-height: 1.55; }
+    /* Only the chip for the current sort shows, at the end of the case's line. */
+    .case-button .agree, .case-button .right { justify-self: end; padding: 0 6px; border-radius: 4px; background: #eef1f5; color: #5b6d83; font-size: .72rem; line-height: 1.55; }
     /* Agreement uses one hue, deeper as more engines agree: more agreement is loosely better, but not a verdict
        like correctness, which keeps green, amber and red. */
     .case-list.sort-agreement .case-button .agree.agree-10 { background: #3f4fa8; color: #ffffff; }
@@ -665,12 +664,12 @@
       $("list-count").textContent = `${cases.length} ${cases.length === 1 ? noun : `${noun}s`}`;
       const caseButton = item => `<button class="case-button" data-id="${escape(item.id)}" aria-current="${item.id === state.selected}" title="${escape(item.focus)}">
           ${grouped() ? "" : `<i class="dot" style="--c: ${themeColor(themeOf(item))}" aria-hidden="true"></i>`}<span class="id">${escape(item.scenario)}</span>
-          ${item.conforming ? `<span class="right ${correctness(item)}" title="${escape(conformanceTitle(item))}">${escape(conformance(item))}</span>` : ""}
-          <span class="agree agree-${item.matchingPairs}" title="${escape(agreementTitle(item))}">${escape(agreement(item))}</span>
+          ${state.sort === "conformance" ? `<span class="right ${correctness(item)}" title="${escape(conformanceTitle(item))}">${escape(conformance(item))}</span>` : ""}
+          ${state.sort === "agreement" ? `<span class="agree agree-${item.matchingPairs}" title="${escape(agreementTitle(item))}">${escape(agreement(item))}</span>` : ""}
         </button>`;
       // Grouped, each case sits in exactly one theme band, and a heading folds its band away. Otherwise a dot keeps
       // each case's theme color.
-      $("case-list").className = `case-list sort-${state.sort}${state.corpus === "translations" ? " with-correct" : ""}`;
+      $("case-list").className = `case-list sort-${state.sort}`;
       $("case-list").innerHTML = !grouped() ? cases.map(caseButton).join("") : themes().map(theme => [theme, cases.filter(item => themeOf(item) === theme.id)]).filter(([, members]) => members.length)
         .map(([theme, members]) => {
           const open = !state.collapsed.has(theme.id);
