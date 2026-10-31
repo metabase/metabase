@@ -208,6 +208,8 @@
           :let [row (or (by-id case-id) (throw (ex-info "Finding names an unknown scenario" {:case case-id})))]]
       (do (doseq [[engine memberships] holds
                   :let [results (get-in row [:results engine])]]
+            (when-not (some #{engine} stats/engines)
+              (throw (ex-info "Finding names an unknown engine" {:case case-id, :engine engine})))
             ;; :none claims the engine returns nothing; a map claims whether each label is among its results.
             (if (= memberships :none)
               (when (seq results)
