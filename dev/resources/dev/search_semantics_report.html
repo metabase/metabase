@@ -75,13 +75,17 @@
     .list-head .note { margin: 0; }
     .sort-label { color: #5b6d83; font-size: .74rem; margin-right: 6px; }
     .sort-toggle { display: inline-flex; align-items: center; }
-    .sort-group, .preset-group { display: inline-flex; border: 1px solid #c8d4e2; border-radius: 7px; overflow: hidden; }
-    .sort-button, .preset-button { border: 0; border-radius: 0; background: transparent; color: #29405c; padding: 3px 8px; font-size: .76rem; }
-    .sort-button + .sort-button, .preset-button + .preset-button { border-left: 1px solid #c8d4e2; }
-    .sort-button:hover, .preset-button:hover { background: #f1f4f8; }
-    .preset-button { padding: 4px 11px; font-size: .8rem; cursor: pointer; }
-    .weight-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 14px; font-size: .85rem; color: #5b6d83; }
-    .weight-presets .preset-label { font-weight: 600; color: #29405c; }
+    .sort-group { display: inline-flex; border: 1px solid #c8d4e2; border-radius: 7px; overflow: hidden; }
+    .sort-button { border: 0; border-radius: 0; background: transparent; color: #29405c; padding: 3px 8px; font-size: .76rem; }
+    .sort-button + .sort-button { border-left: 1px solid #c8d4e2; }
+    .sort-button:hover { background: #f1f4f8; }
+    /* Each preset has its own color: outlined when off, filled when it matches the weights. */
+    .preset-group { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+    .preset-button { border: 1.5px solid var(--c); border-radius: 999px; background: color-mix(in srgb, var(--c) 8%, transparent); color: color-mix(in srgb, var(--c) 85%, black); padding: 5px 14px; font-size: .88rem; font-weight: 600; cursor: pointer; }
+    .preset-button:hover { background: color-mix(in srgb, var(--c) 16%, transparent); }
+    .preset-button[aria-pressed="true"] { background: var(--c); color: white; box-shadow: 0 1px 6px color-mix(in srgb, var(--c) 45%, transparent); }
+    .weight-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 18px; font-size: .85rem; color: #5b6d83; }
+    .weight-presets .preset-label { font-weight: 650; color: #29405c; font-size: .9rem; }
     .weight-presets .preset-custom { font-style: italic; }
     .case-filter { width: 100%; margin: 0 0 10px; border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 6px 9px; font-size: .85rem; }
     .case-group + .case-group { margin-top: 8px; }
@@ -94,7 +98,7 @@
     .group-head[aria-expanded="false"]::after { content: "▸"; }
     .group-head > span:last-child { margin-left: auto; }
     .group-head > span:first-child::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--c, #8a99ab); }
-    .sort-button[aria-pressed="true"], .preset-button[aria-pressed="true"] { background: #e3e9f0; color: #172334; }
+    .sort-button[aria-pressed="true"] { background: #e3e9f0; color: #172334; }
     .head-side { display: grid; justify-items: end; gap: 6px; flex: none; }
     .key-toggle { border: 0; background: transparent; color: #5b6d83; font-size: .8rem; padding: 0; display: inline-flex; align-items: center; gap: 5px; }
     .key-toggle::before { content: "i"; display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid currentColor; font: 700 .66rem/1 Georgia, serif; }
@@ -257,10 +261,13 @@
       .explorer .group-head { background: color-mix(in srgb, var(--c, #8a99ab) 20%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 35%, white); }
       .explorer .group-head:hover { background: color-mix(in srgb, var(--c, #8a99ab) 30%, transparent); }
 
-      .sort-group, .sort-button + .sort-button, .preset-group, .preset-button + .preset-button { border-color: #53677e; }
-      .sort-button, .preset-button { color: #cfdbe8; }
-      .sort-button:hover, .preset-button:hover { background: #22324a; }
-      .sort-button[aria-pressed="true"], .preset-button[aria-pressed="true"] { background: #33465e; color: white; }
+      .sort-group, .sort-button + .sort-button { border-color: #53677e; }
+      .sort-button { color: #cfdbe8; }
+      .sort-button:hover { background: #22324a; }
+      .sort-button[aria-pressed="true"] { background: #33465e; color: white; }
+      .preset-button { color: color-mix(in srgb, var(--c) 40%, white); background: color-mix(in srgb, var(--c) 14%, transparent); }
+      .preset-button:hover { background: color-mix(in srgb, var(--c) 26%, transparent); }
+      .preset-button[aria-pressed="true"] { background: var(--c); color: white; }
       .weight-presets { color: #aabbd0; }
       .weight-presets .preset-label { color: #e4edf7; }
       .sort-label { color: #aabbd0; }
@@ -811,11 +818,11 @@
 
     // One-click weight sets for common readers. A kind left out keeps the default weight of 1.
     const weightPresets = [
-      { id: "equal", label: "Equal", weights: {},
+      { id: "equal", label: "Equal", color: "#64748b", weights: {},
         description: "Every kind of goal counts the same." },
-      { id: "people", label: "People typing", weights: { typing: 3, "word-forms": 2, title: 2, or: 1, and: 1, exclusion: 0 },
+      { id: "people", label: "People typing", color: "#0d9488", weights: { typing: 3, "word-forms": 2, title: 2, or: 1, and: 1, exclusion: 0 },
         description: "People type short, often unfinished queries, rarely use operators, and may not know a card's exact wording." },
-      { id: "agents", label: "Agents", weights: { title: 3, exclusion: 2, and: 2, or: 2, "word-forms": 1, typing: 0 },
+      { id: "agents", label: "Agents", color: "#7c3aed", weights: { title: 3, exclusion: 2, and: 2, or: 2, "word-forms": 1, typing: 0 },
         description: "Agents type complete queries and use quotes and operators freely, so exact titles and exclusions matter and unfinished typing does not." }
     ];
     const presetWeight = (preset, kind) => preset.weights[kind] ?? 1;
@@ -830,7 +837,7 @@
 
     function renderPresets() {
       const active = activePreset();
-      $("weight-presets").innerHTML = `<span class="preset-label">Weights</span><span class="preset-group" role="group" aria-label="Weight presets">${weightPresets.map(preset => `<button type="button" class="preset-button" data-preset="${preset.id}" aria-pressed="${preset === active}" title="${escape(preset.description)}">${escape(preset.label)}</button>`).join("")}</span>${active ? "" : '<span class="preset-custom">Custom</span>'}`;
+      $("weight-presets").innerHTML = `<span class="preset-label">Weight the goals for</span><span class="preset-group" role="group" aria-label="Weight presets">${weightPresets.map(preset => `<button type="button" class="preset-button" style="--c: ${preset.color}" data-preset="${preset.id}" aria-pressed="${preset === active}" title="${escape(preset.description)}">${escape(preset.label)}</button>`).join("")}</span>${active ? "" : '<span class="preset-custom">Custom</span>'}`;
       for (const button of $("weight-presets").querySelectorAll(".preset-button")) {
         button.addEventListener("click", () => {
           const preset = weightPresets.find(entry => entry.id === button.dataset.preset);
