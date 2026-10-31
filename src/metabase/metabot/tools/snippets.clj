@@ -33,11 +33,12 @@
   tools/Tool
   (declaration [_]
     {:name        "list_snippets"
-     :description "List all SQL snippets available in the Metabase instance.
-
-  Use this tool before editing or creating SQL transforms to understand what
-  snippets are available. If any snippets may be relevant to the user's request,
-  fetch their content using the get_snippet_details tool."
+     :description (str "List the SQL snippets the user can read. A snippet is a named piece of SQL, such as a "
+                       "standard filter or a business definition, that queries reuse by name.\n\n"
+                       "Call this tool before writing SQL for a request that relies on a business definition the "
+                       "team may have saved, such as which customers count as active, and when the user mentions "
+                       "a snippet. Also call it when the SQL in the editor references a snippet whose SQL you "
+                       "need. Then call `get_snippet_details` to read the SQL of each snippet that may fit.")
      :scope       scope/agent-snippets-read
      :args        [:map {:closed true}]})
   (handle [_ _args _ctx]
@@ -51,10 +52,12 @@
   tools/Tool
   (declaration [_]
     {:name        "get_snippet_details"
-     :description "Get the full details of a SQL snippet including its content.
-
-  Use this tool to retrieve the actual SQL content of a snippet after identifying
-  it with list_snippets."
+     :description (str "Get a SQL snippet's name, description and SQL, by an ID from `list_snippets`.\n\n"
+                       "To use the snippet in a query, write `{{snippet: <name>}}` with its exact name where its "
+                       "SQL belongs. Metabase puts the snippet's SQL in place of the reference when the query "
+                       "runs, so the query follows later changes to the snippet. Reference the snippet instead of "
+                       "copying its SQL. A snippet is not tied to a database: use it only if its SQL works with "
+                       "the database you are querying.")
      :scope       scope/agent-snippets-read
      :args        [:map {:closed true} [:snippet_id :int]]})
   (handle [_ {snippet-id :snippet_id} _ctx]
