@@ -933,13 +933,19 @@
       // Ties share a rank: an engine's rank is one more than the number of engines strictly ahead of it.
       const ranking = (title, key) => {
         if (!totalWeight) return `<div class="rank-table"><h3>${title}</h3><p class="empty">Every weight is 0.</p></div>`;
-        // Rank on the two-decimal scores shown, so scores that read the same tie and the gaps add up.
-        const scored = data.engines.map(id => ({ id, score: Math.round(100 * mean(id, key)) / 100 })).sort((a, b) => b.score - a.score);
+        // Rank on the two-decimal scores shown, so scores that read the same share a rank and the gaps add up.
+        // Within a shared rank, engines are listed by their unrounded mean.
+        const scored = data.engines.map(id => ({ id, precise: mean(id, key), score: Math.round(100 * mean(id, key)) / 100 }))
+          .sort((a, b) => b.score - a.score || b.precise - a.precise);
         const top = scored[0].score;
-        const rows = scored.map(({ id, score }) => {
+        const rows = scored.map(({ id, precise, score }) => {
           const rank = 1 + scored.filter(other => other.score > score + 1e-9).length;
+          const tied = scored.filter(other => other.id !== id && Math.abs(other.score - score) < 1e-9);
           const leader = score >= top - 1e-9;
-          return `<tr class="${leader ? "leader" : ""}"><td class="rank">${rank}</td><td>${escape(labels[id])}</td><td class="bar-cell"><span class="rank-bar"><i style="width:${(100 * score).toFixed(0)}%; --v:${score.toFixed(3)}"></i></span></td><td class="score">${fixed(score)}</td><td class="behind">${leader ? "" : `−${fixed(top - score)}`}</td></tr>`;
+          const rankTitle = tied.length
+            ? `Shares rank ${rank} with ${tied.map(other => labels[other.id]).join(", ")} at ${fixed(score)}. Within a shared rank, engines are listed by their unrounded mean; this one is ${precise.toFixed(4)}.`
+            : `Unrounded mean ${precise.toFixed(4)}.`;
+          return `<tr class="${leader ? "leader" : ""}"><td class="rank" title="${escape(rankTitle)}">${rank}${tied.length ? "=" : ""}</td><td>${escape(labels[id])}</td><td class="bar-cell"><span class="rank-bar"><i style="width:${(100 * score).toFixed(0)}%; --v:${score.toFixed(3)}"></i></span></td><td class="score">${fixed(score)}</td><td class="behind">${leader ? "" : `−${fixed(top - score)}`}</td></tr>`;
         }).join("");
         return `<div class="rank-table"><h3>${title}</h3><table><tbody>${rows}</tbody></table></div>`;
       };
