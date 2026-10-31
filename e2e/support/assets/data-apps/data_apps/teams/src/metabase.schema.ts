@@ -6,64 +6,58 @@ const tables = {
     name: "Scoreboard Actions",
     fields: {
       createdAt: {
-        /* metadata: { "displayName": "Created At" } */
+        /* metadata: { "displayName": "Created At", "baseType": "type/DateTimeWithLocalTZ" } */
         type: "column",
         name: "created_at",
-        sourceName: "scoreboard_actions",
+        slug: "created_at",
         jsType: "Date",
         fieldId: 2167,
         tableId: 215,
-        baseType: "type/DateTimeWithLocalTZ",
       },
       id: {
-        /* metadata: { "displayName": "ID", "semanticType": "type/PK" } */
+        /* metadata: { "displayName": "ID", "baseType": "type/Integer", "semanticType": "type/PK" } */
         type: "column",
         name: "id",
-        sourceName: "scoreboard_actions",
+        slug: "id",
         jsType: "number",
         fieldId: 2163,
         tableId: 215,
-        baseType: "type/Integer",
       },
       score: {
-        /* metadata: { "displayName": "Score" } */
+        /* metadata: { "displayName": "Score", "baseType": "type/Integer" } */
         type: "column",
         name: "score",
-        sourceName: "scoreboard_actions",
+        slug: "score",
         jsType: "number",
         fieldId: 2165,
         tableId: 215,
-        baseType: "type/Integer",
       },
       status: {
-        /* metadata: { "displayName": "Status" } */
+        /* metadata: { "displayName": "Status", "baseType": "type/Text" } */
         type: "column",
         name: "status",
-        sourceName: "scoreboard_actions",
+        slug: "status",
         jsType: "string",
         fieldId: 2166,
         tableId: 215,
-        baseType: "type/Text",
       },
       teamName: {
-        /* metadata: { "displayName": "Team Name" } */
+        /* metadata: { "displayName": "Team Name", "baseType": "type/Text" } */
         type: "column",
         name: "team_name",
-        sourceName: "scoreboard_actions",
+        slug: "team_name",
         jsType: "string",
         fieldId: 2164,
         tableId: 215,
-        baseType: "type/Text",
       },
       updatedAt: {
-        /* metadata: { "displayName": "Updated At" } */
+        /* metadata: { "displayName": "Updated At", "baseType": "type/DateTimeWithLocalTZ" } */
         type: "column",
         name: "updated_at",
-        sourceName: "scoreboard_actions",
+        slug: "updated_at",
         jsType: "Date",
         fieldId: 2168,
         tableId: 215,
-        baseType: "type/DateTimeWithLocalTZ",
       },
     },
   },

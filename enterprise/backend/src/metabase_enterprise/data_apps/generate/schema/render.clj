@@ -28,19 +28,17 @@
 (def ^:private schema-render-policy
   {:table            {:runtime  [:type :id :name :fields :segments :measures]
                       :metadata [:entityId :description :databaseName :schemaName :tableName]}
-   :field            {:runtime  [:type :name :sourceName :jsType :fieldId :tableId
-                                 :baseType :effectiveType :defaultTemporalBucket]
-                      :metadata [:displayName :description :semanticType :unit]}
+   :field            {:runtime  [:type :name :slug :jsType :fieldId :tableId]
+                      :metadata [:displayName :description :baseType :effectiveType :semanticType :unit]}
    :segment          {:runtime  [:type :id :tableId :name]
                       :metadata [:entityId :description]}
    :measure          {:runtime  [:type :id :tableId :name :columns]
                       :metadata [:entityId :description]}
-   :metric           {:runtime  [:type :id :name :databaseId :sourceTableId :sourceCardId
+   :metric           {:runtime  [:type :id :name :sourceTableId :sourceCardId
                                  :mappedTableIds :columns :dimensions]
                       :metadata [:entityId :description :filters :verified :sourceTable]}
-   :metric-dimension {:runtime  [:type :id :fieldId :metricId :tableId :sourceName :sourceFieldId
-                                 :name :jsType :baseType :effectiveType :defaultTemporalBucket]
-                      :metadata [:displayName :description :semanticType :unit]}
+   :metric-dimension {:runtime  [:type :id :fieldId :tableId :sourceFieldId :name :jsType]
+                      :metadata [:displayName :description :baseType :effectiveType :semanticType :unit]}
    :column           {:runtime  [:type :name :jsType]
                       :metadata [:displayName :description :baseType :effectiveType :semanticType :unit]}})
 
@@ -275,8 +273,7 @@
   Raw dimensions are kept under `\"fields\"`, or `\"metricFields\"` if compacted
   fields already use `\"fields\"` as their output key."
   [dimensions compact-keys compact-fields]
-  (when-let [raw-fields (not-empty (update-vals (apply dissoc dimensions compact-keys)
-                                                #(dissoc % :metricId)))]
+  (when-let [raw-fields (not-empty (apply dissoc dimensions compact-keys))]
     (let [group-key (if (contains? compact-fields "fields")
                       "metricFields"
                       "fields")]

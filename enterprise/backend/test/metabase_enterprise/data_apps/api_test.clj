@@ -336,6 +336,7 @@
           (is (str/includes? contents "const tables = {"))
           (is (str/includes? contents (str "id: " (mt/id :venues))))
           (is (str/includes? contents (str "fieldId: " (mt/id :venues :name))))
+          (is (str/includes? contents "slug: \"category_id\""))
           (is (str/includes? contents "const metrics = {")))
         (testing "and no actions"
           (is (not (str/includes? contents "actions"))))))))
