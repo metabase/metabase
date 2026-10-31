@@ -1601,16 +1601,147 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
     return json.dumps(result)
 
+_SESSION_EFFECT_FUNCTIONS = frozenset(
+    {
+        # Postgres advisory locks
+        "pg_advisory_lock", "pg_advisory_lock_shared", "pg_try_advisory_lock", "pg_try_advisory_lock_shared",
+        "pg_advisory_xact_lock", "pg_advisory_xact_lock_shared", "pg_try_advisory_xact_lock",
+        "pg_try_advisory_xact_lock_shared", "pg_advisory_unlock", "pg_advisory_unlock_shared",
+        "pg_advisory_unlock_all",
+        # MySQL named locks
+        "get_lock", "release_lock", "release_all_locks",
+        # session settings and signals
+        "set_config", "pg_notify", "pg_terminate_backend", "pg_cancel_backend", "pg_reload_conf",
+        # Postgres dblink: a named connection stays open on the session
+        "dblink_connect", "dblink_connect_u",
+        # Snowflake: stop another session's work
+        "system$cancel_query", "system$cancel_all_queries", "system$abort_session", "system$abort_transaction",
+        # waiting
+        "pg_sleep", "pg_sleep_for", "pg_sleep_until", "sleep", "benchmark", "sleepeachrow", "system$wait",
+        "master_pos_wait", "source_pos_wait", "wait_for_executed_gtid_set", "wait_until_sql_thread_after_gtids",
+        # running a program, Java code or a request outside the database
+        "executable", "reflect", "java_method", "http_request", "system$send_email",
+    }
+)
+
+
+def _function_name(node: exp.Expression):
+    """The lower-case name of the function `node` calls, or None when it is not a function call."""
+    if isinstance(node, exp.Anonymous):
+        return node.name.lower()
+    if isinstance(node, exp.Func):
+        return node.sql_name().lower()
+    return None
+
+
+def _session_effect_function(stmt: exp.Expression):
+    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or None."""
+    for node in stmt.walk():
+        name = _function_name(node)
+        if name in _SESSION_EFFECT_FUNCTIONS:
+            return name
+    return None
+
+
+_SQL_EXECUTING_FUNCTIONS = frozenset(
+    {
+        # Postgres query-to-xml family
+        "query_to_xml", "query_to_xmlschema", "query_to_xml_and_xmlschema", "cursor_to_xml", "cursor_to_xmlschema",
+        # Postgres full-text and tablefunc helpers that run a passed query
+        "ts_stat", "ts_rewrite", "crosstab", "crosstab2", "crosstab3", "crosstab4", "connectby",
+        # Postgres dblink
+        "dblink", "dblink_exec", "dblink_send_query", "dblink_fetch", "dblink_open",
+        # SQL Server linked-server and ad hoc access
+        "openquery", "openrowset", "opendatasource",
+        # BigQuery federated query
+        "external_query",
+        # Snowflake: run a SQL string as a table function
+        "to_query",
+    }
+)
+
+
+def _sql_executing_function(stmt: exp.Expression):
+    """The name of the first function in `stmt` that is one of `_SQL_EXECUTING_FUNCTIONS`, or None."""
+    for node in stmt.walk():
+        name = _function_name(node)
+        if name in _SQL_EXECUTING_FUNCTIONS:
+            return name
+        if (
+            isinstance(node, exp.Dot)
+            and node.this.name.lower() == "system"
+            and _function_name(node.expression) == "query"
+        ):
+            return "system.query"
+    return None
+
+
+_TSQL_STATEMENT_WORDS = frozenset(
+    {
+        "ALTER", "BACKUP", "BEGIN", "BULK", "CHECKPOINT", "CLOSE", "COMMIT", "CREATE", "DBCC", "DEALLOCATE",
+        "DECLARE", "DELETE", "DENY", "DROP", "EXEC", "EXECUTE", "GOTO", "GRANT", "INSERT", "KILL", "OPEN", "PRINT",
+        "RAISERROR", "READTEXT", "RECONFIGURE", "RESTORE", "REVERT", "REVOKE", "ROLLBACK", "SAVE", "SET", "SHUTDOWN",
+        "THROW", "TRUNCATE", "UPDATE", "UPDATETEXT", "WAITFOR", "WRITETEXT",
+    }
+)
+
+_MYSQL_FAMILY_DIALECTS = frozenset({"mysql", "mariadb", "singlestore", "starrocks", "doris", "tidb"})
+
+
+def _hidden_sql(sql: str, dialect: str, select: bool):
+    """`(reason, detail)` when `sql` holds text its database would run and sqlglot would not parse as a statement of
+    its own, else None."""
+    if re.search(r"(?<![\w\$])[uU]&\"", sql) is not None:
+        return ("unicode-identifier", None)
+    if dialect == "tsql" and select:
+        quoted = (sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING, sqlglot.TokenType.IDENTIFIER)
+        for tok in sqlglot.tokenize(sql, read=dialect):
+            if tok.token_type not in quoted and tok.text.upper() in _TSQL_STATEMENT_WORDS:
+                return ("statement-word", tok.text.upper())
+    if dialect in _MYSQL_FAMILY_DIALECTS:
+        if "/*!" in sql or "/*M!" in sql:
+            return ("executable-comment", None)
+        if re.search(r"--(?=\S)", sql) is not None:
+            return ("bare-dash-comment", None)
+        if re.search(r"\\['\"`]", sql) is not None:
+            return ("backslash-quote", None)
+    return None
+
+
+def _unbracketed(stmt: exp.Expression) -> exp.Expression:
+    """`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias."""
+    while isinstance(stmt, exp.Subquery) and not stmt.alias:
+        stmt = stmt.this
+    return stmt
+
+
+def _statement_reason(stmt: exp.Expression, sql: str, dialect: str):
+    """`(reason, detail)` for why `stmt`, parsed from `sql`, fails the checks every statement type shares, else None."""
+    function = _session_effect_function(stmt)
+    if function is not None:
+        return ("session-function", function)
+    executor = _sql_executing_function(stmt)
+    if executor is not None:
+        return ("sql-executing-function", executor)
+    return _hidden_sql(sql, dialect, isinstance(_unbracketed(stmt), (exp.Select, exp.SetOperation)))
+
+
 def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None) -> str:
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
+
+    Every mode applies the checks the statement types share. When the statement is refused for what it holds,
+    `reason` says why, with `reason_detail` for the reasons that have one.
     """
     result = {"is_single_stmt?": False}
     try:
         stmts = sqlglot.parse(sql, read=dialect)
         allowed_types = (exp.Select, exp.SetOperation)
         if stmt_type != "read": allowed_types = (exp.Update, exp.Insert, exp.Delete)
-        if len(stmts) == 1 and isinstance(stmts[0], allowed_types):
+        problem = _statement_reason(stmts[0], sql, dialect) if len(stmts) == 1 else None
+        if problem is not None:
+            result["reason"], result["reason_detail"] = problem
+        if len(stmts) == 1 and isinstance(stmts[0], allowed_types) and problem is None:
             result["is_single_stmt?"] = True
             result["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
     except Exception as e:
