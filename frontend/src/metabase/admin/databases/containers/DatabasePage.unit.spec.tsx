@@ -46,12 +46,25 @@ const POSTGRES_ENGINE = createMockEngine({
   ],
 });
 
+const MYSQL_ENGINE = createMockEngine({
+  "driver-name": "MySQL",
+  "details-fields": [
+    createMockEngineField({ name: "host", "display-name": "Host" }),
+  ],
+});
+
 interface SetupOpts {
   createDatabaseErrorBody?: string | Record<string, unknown>;
+  searchParams?: string;
 }
 
-const setup = ({ createDatabaseErrorBody }: SetupOpts = {}) => {
-  setupEnginesEndpoint(createMockEngines({ postgres: POSTGRES_ENGINE }));
+const setup = ({ createDatabaseErrorBody, searchParams }: SetupOpts = {}) => {
+  // The page reads the engine off window.location, which the memory router
+  // used by renderWithProviders never touches.
+  window.history.replaceState({}, "", `/${searchParams ?? ""}`);
+  setupEnginesEndpoint(
+    createMockEngines({ postgres: POSTGRES_ENGINE, mysql: MYSQL_ENGINE }),
+  );
   if (createDatabaseErrorBody !== undefined) {
     setupCreateDatabaseEndpointError({
       status: 400,
@@ -80,6 +93,22 @@ const fillInAndSaveDatabase = async () => {
 };
 
 describe("DatabasePage", () => {
+  afterEach(() => {
+    window.history.replaceState({}, "", "/");
+  });
+
+  describe("choosing the engine", () => {
+    it("should default to PostgreSQL", async () => {
+      setup();
+      expect(await screen.findByDisplayValue("PostgreSQL")).toBeInTheDocument();
+    });
+
+    it("should preselect the engine named in the URL", async () => {
+      setup({ searchParams: "?engine=mysql" });
+      expect(await screen.findByDisplayValue("MySQL")).toBeInTheDocument();
+    });
+  });
+
   describe("Help button", () => {
     it("should render the 'Help is here' button", async () => {
       setup();
