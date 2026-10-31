@@ -1,0 +1,10 @@
+(ns metabase.api.response
+  "The one place an exception becomes response data. Exercises the path exemption of
+  `throwable-map-outside-sanitizer`: the same call as in the middleware, not reported here.")
+
+;; the sanitizer itself: exempt by path
+(defn throwable->response-map
+  "The exception as a map with every ex-data dropped."
+  [e]
+  (let [m (Throwable->map e)]
+    (dissoc m :data)))
