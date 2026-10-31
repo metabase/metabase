@@ -112,20 +112,20 @@
     .case-button .agree, .case-button .right { justify-self: end; padding: 0 6px; border-radius: 4px; background: #eef1f5; color: #5b6d83; font-size: .72rem; line-height: 1.55; }
     /* Agreement uses one hue, deeper as more engines agree: more agreement is loosely better, but not a verdict
        like correctness, which runs red to green. */
-    .case-list.sort-agreement .case-button .agree.agree-10 { background: #3f4fa8; color: #ffffff; }
-    .case-list.sort-agreement .case-button .agree.agree-6 { background: #5a69bd; color: #ffffff; }
-    .case-list.sort-agreement .case-button .agree.agree-4 { background: #8390d1; color: #0f173a; }
-    .case-list.sort-agreement .case-button .agree.agree-3 { background: #a5aee0; color: #1b2450; }
-    .case-list.sort-agreement .case-button .agree.agree-2 { background: #c4caec; color: #252e66; }
-    .case-list.sort-agreement .case-button .agree.agree-1 { background: #dce0f5; color: #2d3675; }
-    .case-list.sort-agreement .case-button .agree.agree-0 { background: #eef0fa; color: #3a4380; }
+    .case-list.sort-agreement .case-button .agree.agree-10, .badge.agree-10 { background: #3f4fa8; color: #ffffff; }
+    .case-list.sort-agreement .case-button .agree.agree-6, .badge.agree-6 { background: #5a69bd; color: #ffffff; }
+    .case-list.sort-agreement .case-button .agree.agree-4, .badge.agree-4 { background: #8390d1; color: #0f173a; }
+    .case-list.sort-agreement .case-button .agree.agree-3, .badge.agree-3 { background: #a5aee0; color: #1b2450; }
+    .case-list.sort-agreement .case-button .agree.agree-2, .badge.agree-2 { background: #c4caec; color: #252e66; }
+    .case-list.sort-agreement .case-button .agree.agree-1, .badge.agree-1 { background: #dce0f5; color: #2d3675; }
+    .case-list.sort-agreement .case-button .agree.agree-0, .badge.agree-0 { background: #eef0fa; color: #3a4380; }
     /* Correctness runs red to green, one step per engine that gets it right. */
-    .case-list.sort-conformance .case-button .right.right-5 { background: #dcf1e2; color: #146c33; }
-    .case-list.sort-conformance .case-button .right.right-4 { background: #e6f3d6; color: #3f6b12; }
-    .case-list.sort-conformance .case-button .right.right-3 { background: #f2f1cf; color: #6b6210; }
-    .case-list.sort-conformance .case-button .right.right-2 { background: #fbe9cf; color: #8a5300; }
-    .case-list.sort-conformance .case-button .right.right-1 { background: #fbdcd0; color: #9a3a12; }
-    .case-list.sort-conformance .case-button .right.right-0 { background: #fbe0e3; color: #b42635; }
+    .case-list.sort-conformance .case-button .right.right-5, .badge.right-5 { background: #dcf1e2; color: #146c33; }
+    .case-list.sort-conformance .case-button .right.right-4, .badge.right-4 { background: #e6f3d6; color: #3f6b12; }
+    .case-list.sort-conformance .case-button .right.right-3, .badge.right-3 { background: #f2f1cf; color: #6b6210; }
+    .case-list.sort-conformance .case-button .right.right-2, .badge.right-2 { background: #fbe9cf; color: #8a5300; }
+    .case-list.sort-conformance .case-button .right.right-1, .badge.right-1 { background: #fbdcd0; color: #9a3a12; }
+    .case-list.sort-conformance .case-button .right.right-0, .badge.right-0 { background: #fbe0e3; color: #b42635; }
     .badge { display: inline-block; border-radius: 999px; padding: 2px 7px; background: #e6f4e8; color: #18632c; font-size: .74rem; font-weight: 650; }
     .badge.divergent { background: #fff0de; color: #8a4d00; }
     .badge.neutral { background: #eef1f5; color: #465a71; }
@@ -260,19 +260,19 @@
       .case-button:hover { background: #1f2d40; }
       .case-button[aria-current="true"] { background: #283a52; box-shadow: inset 0 0 0 1px #46607f; }
       .case-button .agree, .case-button .right { background: #24344a; color: #aabbd0; }
-      .case-list.sort-agreement .case-button .agree.agree-10 { background: #9aa6f2; color: #0f173a; }
-      .case-list.sort-agreement .case-button .agree.agree-6 { background: #7d8be0; color: #0f173a; }
-      .case-list.sort-agreement .case-button .agree.agree-4 { background: #5d6bc4; color: #ffffff; }
-      .case-list.sort-agreement .case-button .agree.agree-3 { background: #4a57a6; color: #ffffff; }
-      .case-list.sort-agreement .case-button .agree.agree-2 { background: #3b4686; color: #e6e9fb; }
-      .case-list.sort-agreement .case-button .agree.agree-1 { background: #2f386a; color: #d6dbf7; }
-      .case-list.sort-agreement .case-button .agree.agree-0 { background: #262c4f; color: #c3c9ef; }
-      .case-list.sort-conformance .case-button .right.right-5 { background: #1f4a33; color: #a4e2b6; }
-      .case-list.sort-conformance .case-button .right.right-4 { background: #2f4a22; color: #c6e59b; }
-      .case-list.sort-conformance .case-button .right.right-3 { background: #45441d; color: #e8df8f; }
-      .case-list.sort-conformance .case-button .right.right-2 { background: #503a1c; color: #ffd08a; }
-      .case-list.sort-conformance .case-button .right.right-1 { background: #522c20; color: #ffb39a; }
-      .case-list.sort-conformance .case-button .right.right-0 { background: #4d2228; color: #ffb3bb; }
+      .case-list.sort-agreement .case-button .agree.agree-10, .badge.agree-10 { background: #9aa6f2; color: #0f173a; }
+      .case-list.sort-agreement .case-button .agree.agree-6, .badge.agree-6 { background: #7d8be0; color: #0f173a; }
+      .case-list.sort-agreement .case-button .agree.agree-4, .badge.agree-4 { background: #5d6bc4; color: #ffffff; }
+      .case-list.sort-agreement .case-button .agree.agree-3, .badge.agree-3 { background: #4a57a6; color: #ffffff; }
+      .case-list.sort-agreement .case-button .agree.agree-2, .badge.agree-2 { background: #3b4686; color: #e6e9fb; }
+      .case-list.sort-agreement .case-button .agree.agree-1, .badge.agree-1 { background: #2f386a; color: #d6dbf7; }
+      .case-list.sort-agreement .case-button .agree.agree-0, .badge.agree-0 { background: #262c4f; color: #c3c9ef; }
+      .case-list.sort-conformance .case-button .right.right-5, .badge.right-5 { background: #1f4a33; color: #a4e2b6; }
+      .case-list.sort-conformance .case-button .right.right-4, .badge.right-4 { background: #2f4a22; color: #c6e59b; }
+      .case-list.sort-conformance .case-button .right.right-3, .badge.right-3 { background: #45441d; color: #e8df8f; }
+      .case-list.sort-conformance .case-button .right.right-2, .badge.right-2 { background: #503a1c; color: #ffd08a; }
+      .case-list.sort-conformance .case-button .right.right-1, .badge.right-1 { background: #522c20; color: #ffb39a; }
+      .case-list.sort-conformance .case-button .right.right-0, .badge.right-0 { background: #4d2228; color: #ffb3bb; }
       .query-table .sub, .query-table .same { color: #aabbd0; }
       .query-table .missing { color: #ff929d; }
       .query-table .extra-hits { color: #ffc26b; }
@@ -498,7 +498,8 @@
     const conformanceTitle = item => `${item.conforming.length} of ${data.engines.length} engines return the correct results; mean F1 ${percent(item.meanF1)}`;
     const badge = (text, title, className) => `<span class="badge ${className}" title="${escape(title)}">${escape(text)}</span>`;
     // Agreement describes how results relate, not whether they are right, so its badge stays neutral.
-    const badges = item => `<div class="badges">${badge(agreement(item), agreementTitle(item), "neutral")}${item.conforming ? badge(conformance(item), conformanceTitle(item), item.conforming.length === data.engines.length ? "" : "divergent") : ""}</div>`;
+    // Badges use the same scales as the case list's chips.
+    const badges = item => `<div class="badges">${badge(agreement(item), agreementTitle(item), `agree-${item.matchingPairs}`)}${item.conforming ? badge(conformance(item), conformanceTitle(item), `right-${item.conforming.length}`) : ""}</div>`;
     const current = () => data[state.corpus];
 
     const kindNames = { or: "Either term", and: "Both terms", exclusion: "Exclusion", title: "Exact title", "word-forms": "Word forms", typing: "Typing in progress" };
@@ -702,9 +703,9 @@
     function labelKey(item) {
       const row = (text, meaning, current, className = "neutral") => `<dt class="${current ? "current" : ""}">${badge(text, meaning, className)}</dt><dd>${escape(meaning)}</dd>`;
       const same = Object.keys(agreementLabels).map(Number).sort((a, b) => b - a)
-        .map(pairs => row(agreementLabels[pairs], agreementMeanings[pairs], pairs === item.matchingPairs)).join("");
+        .map(pairs => row(agreementLabels[pairs], agreementMeanings[pairs], pairs === item.matchingPairs, `agree-${pairs}`)).join("");
       const correct = item.conforming
-        ? `<section><h4>How many engines get it right?</h4><dl>${row(conformance(item), "engines that return exactly the cards the user wants; their rows are highlighted below", true, item.conforming.length === data.engines.length ? "" : "divergent")}</dl></section>`
+        ? `<section><h4>How many engines get it right?</h4><dl>${row(conformance(item), "engines that return exactly the cards the user wants; their rows are highlighted below", true, `right-${item.conforming.length}`)}</dl></section>`
         : "";
       return `<div class="label-key" id="label-key"><section><h4>Do the engines return the same cards?</h4><dl>${same}</dl></section>${correct}<p class="key-foot">${item.conforming ? "Both measures ignore result order, and agreement says nothing about which engine is right. Sorting by Correct breaks ties by mean F1, which gives partial credit for near misses." : "Agreement ignores result order and says nothing about which engine is right."}</p></div>`;
     }
