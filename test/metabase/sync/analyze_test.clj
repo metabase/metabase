@@ -9,6 +9,7 @@
     :as classifiers.text-fingerprint]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.models.interface :as mi]
+   [metabase.search.test-util :as search.tu]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -187,37 +188,38 @@
   (analyze/analyze-db! (t2/select-one :model/Database :id (:db_id table))))
 
 (deftest dont-analyze-hidden-tables-test
-  (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
-    (letfn [(tests [sync!*]
-              (mt/with-temp [:model/Table table (assoc (fake-table) :visibility_type "hidden")
-                             :model/Field field (fake-field table)]
-                (letfn [(set-visibility! [visibility]
-                          (set-table-visibility-type-via-api! table visibility)
-                          (testing "after updating visibility type"
-                            (is (= false
-                                   (fake-field-was-analyzed? field)))))
-                        (sync! []
-                          (sync!* table)
-                          (testing "after sync"
-                            (is (= false
-                                   (fake-field-was-analyzed? field)))))]
-                  (testing "visibility -> hidden"
-                    (set-visibility! "hidden")
-                    (sync!))
-                  (testing "visibility -> cruft"
-                    (set-visibility! "cruft")
-                    (set-visibility! "cruft")
-                    (sync!))
-                  (testing "visibility -> technical"
-                    (set-visibility! "technical")
-                    (sync!))
-                  (testing "visibility -> technical (again)"
-                    (set-visibility! "technical")
-                    (sync!)
-                    (sync!)))))]
-      (tests api-sync!)
-      (testing "\nsame test but with sync triggered programatically rather than via the API"
-        (tests analyze-table!)))))
+  (search.tu/with-index-disabled
+    (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
+      (letfn [(tests [sync!*]
+                (mt/with-temp [:model/Table table (assoc (fake-table) :visibility_type "hidden")
+                               :model/Field field (fake-field table)]
+                  (letfn [(set-visibility! [visibility]
+                            (set-table-visibility-type-via-api! table visibility)
+                            (testing "after updating visibility type"
+                              (is (= false
+                                     (fake-field-was-analyzed? field)))))
+                          (sync! []
+                            (sync!* table)
+                            (testing "after sync"
+                              (is (= false
+                                     (fake-field-was-analyzed? field)))))]
+                    (testing "visibility -> hidden"
+                      (set-visibility! "hidden")
+                      (sync!))
+                    (testing "visibility -> cruft"
+                      (set-visibility! "cruft")
+                      (set-visibility! "cruft")
+                      (sync!))
+                    (testing "visibility -> technical"
+                      (set-visibility! "technical")
+                      (sync!))
+                    (testing "visibility -> technical (again)"
+                      (set-visibility! "technical")
+                      (sync!)
+                      (sync!)))))]
+        (tests api-sync!)
+        (testing "\nsame test but with sync triggered programatically rather than via the API"
+          (tests analyze-table!))))))
 
 (deftest analyze-db!-return-value-test
   (testing "Returns values"
