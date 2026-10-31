@@ -92,9 +92,6 @@
     .group-head > span:last-child { margin-left: auto; }
     .group-head > span:first-child::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--c, #8a99ab); }
     .sort-button[aria-pressed="true"] { background: #e3e9f0; color: #172334; }
-    .sort-button[aria-pressed="true"]::after { margin-left: 6px; font-size: .68rem; }
-    .sort-button[aria-pressed="true"][data-direction="asc"]::after { content: "▲"; }
-    .sort-button[aria-pressed="true"][data-direction="desc"]::after { content: "▼"; }
     .head-side { display: grid; justify-items: end; gap: 6px; flex: none; }
     .key-toggle { border: 0; background: transparent; color: #5b6d83; font-size: .8rem; padding: 0; display: inline-flex; align-items: center; gap: 5px; }
     .key-toggle::before { content: "i"; display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid currentColor; font: 700 .66rem/1 Georgia, serif; }
@@ -452,11 +449,11 @@
     <div class="card">
       <div class="list-head">
         <p class="note" id="list-count"></p>
-        <div class="sort-toggle" role="group" aria-label="Sort cases; click the selected sort to reverse direction"><span class="sort-label" aria-hidden="true">Sort</span><span class="sort-group">
-          <button class="sort-button" type="button" data-sort="name" data-direction="asc" aria-pressed="true" aria-label="Sort by name ascending">Name</button>
-          <button class="sort-button" type="button" data-sort="conformance" data-direction="desc" aria-pressed="false" aria-label="Sort by conformance descending" title="Sort by how many engines return the correct cards" hidden>Correct</button>
-          <button class="sort-button" type="button" data-sort="agreement" data-direction="desc" aria-pressed="false" aria-label="Sort by agreement descending" title="Sort by how many engines return the same cards">Same results</button>
-          <button class="sort-button" type="button" data-sort="theme" data-direction="asc" aria-pressed="false" aria-label="Sort by theme ascending" title="Group cases by theme">Theme</button></span>
+        <div class="sort-toggle" role="group" aria-label="Sort cases"><span class="sort-label" aria-hidden="true">Sort</span><span class="sort-group">
+          <button class="sort-button" type="button" data-sort="name" aria-pressed="true">Name</button>
+          <button class="sort-button" type="button" data-sort="conformance" aria-pressed="false" title="Sort by how many engines return the correct cards" hidden>Correct</button>
+          <button class="sort-button" type="button" data-sort="agreement" aria-pressed="false" title="Sort by how many engines return the same cards">Same results</button>
+          <button class="sort-button" type="button" data-sort="theme" aria-pressed="false" title="Group cases by theme">Theme</button></span>
         </div>
       </div>
       <div class="case-list" id="case-list"></div>
@@ -469,7 +466,7 @@
   <script>
     const data = JSON.parse(document.getElementById("report-data").textContent);
     const labels = { "in-place": "In-place", "appdb-h2": "appdb/H2", "appdb-postgres": "appdb/PostgreSQL", "semantic-only": "Semantic only", "semantic-with-fallback": "Semantic with fallback" };
-    const state = { corpus: "sameQuery", collapsed: new Set(), keyOpen: false, selected: null, sort: "name", directions: { name: "asc", theme: "asc", agreement: "desc", conformance: "desc" } };
+    const state = { corpus: "sameQuery", collapsed: new Set(), keyOpen: false, selected: null, sort: "name" };
     const $ = id => document.getElementById(id);
     const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
     const inline = text => escape(text).replace(/`([^`]+)`/g, "<code>$1</code>");
@@ -645,10 +642,10 @@
     function visibleCases() {
       const needle = $("filter").value.trim().toLowerCase();
       const cases = current().cases.filter(item => !needle || JSON.stringify(item).toLowerCase().includes(needle));
-      const direction = state.directions[state.sort] === "asc" ? 1 : -1;
+      // Each sort has one order: names A to Z, the counts highest first, ties by name.
       return cases.sort((left, right) => state.sort === "name"
-        ? direction * left.id.localeCompare(right.id)
-        : direction * sortKeys[state.sort](left, right) || left.id.localeCompare(right.id));
+        ? left.id.localeCompare(right.id)
+        : sortKeys[state.sort](right, left) || left.id.localeCompare(right.id));
     }
 
     // Sorting by theme groups the list into theme bands; every other sort runs across all cases.
@@ -845,11 +842,9 @@
 
     function syncSortButtons() {
       for (const button of document.querySelectorAll(".sort-button")) {
-        const direction = state.directions[button.dataset.sort];
         button.hidden = button.dataset.sort === "conformance" && state.corpus !== "translations";
         button.setAttribute("aria-pressed", String(button.dataset.sort === state.sort));
-        button.setAttribute("data-direction", direction);
-        button.setAttribute("aria-label", `Sort by ${button.textContent.toLowerCase()}, ${direction === "asc" ? "ascending" : "descending"}`);
+        button.setAttribute("aria-label", `Sort by ${button.textContent.toLowerCase()}`);
       }
     }
 
@@ -874,7 +869,6 @@
     for (const button of document.querySelectorAll(".sort-button")) {
       button.addEventListener("click", () => {
         const sort = button.dataset.sort;
-        if (state.sort === sort) state.directions[sort] = state.directions[sort] === "asc" ? "desc" : "asc";
         state.sort = sort;
         syncSortButtons();
         renderList();
