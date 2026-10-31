@@ -2,7 +2,7 @@
   "Contract tests for the `dashboard_write` v2 MCP tool, driven through
    [[metabase.mcp.v2.registry/call-tool]] — the same seam the JSON-RPC route uses — so scope
    gating, nil-arg stripping, Malli validation, and teaching-error conversion are exercised for
-   free. The op grammar itself is covered by `metabase.mcp.v2.dashboard-ops-test`; this suite
+   free. The op grammar itself is covered by `metabase.metabot.toolkit.dashboard-ops-test`; this suite
    pins the tool's contract, permission inheritance, and dry-run behavior on top of it."
   (:require
    [clojure.string :as str]
