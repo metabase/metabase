@@ -29,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
@@ -663,7 +664,7 @@
                                        users-rest.db/mfa-auth-identity-id-from-hashed-key
                                        :mfa_auth_identity_id)]
       ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
-      (auth-identity/set-password! id password {:ended-by api/*current-user-id*})
+      (auth-identity/set-password! id (u.secret/expose password) {:ended-by api/*current-user-id*})
       (events/publish-event! :event/password-changed {:object user :user-id api/*current-user-id*})
       ;; after a successful password update go ahead and offer the client a new session that they can use
       (when (= id api/*current-user-id*)

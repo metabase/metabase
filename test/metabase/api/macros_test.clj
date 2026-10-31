@@ -3,7 +3,9 @@
    [clojure.test :refer :all]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]))
 
 (set! *warn-on-reflection* true)
 
@@ -226,3 +228,46 @@
       ""          "/:id"                      "/:id"
       nil         "/"                         "/"
       ""          "/"                         "/")))
+
+(defn- specific-errors [schema params]
+  (try
+    (api.macros/decode-and-validate-params :body schema params)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:specific-errors (ex-data e)))))
+
+(deftest ^:parallel valid-password-decodes-to-secret-test
+  (testing "request decoding wraps a `ms/ValidPassword` in a secret"
+    (let [{:keys [password]} (api.macros/decode-and-validate-params :body
+                                                                    [:map [:password ms/ValidPassword]]
+                                                                    {:password "Xq7-unique-Zeb9-2026"})]
+      (is (u.secret/secret? password))
+      (is (= "Xq7-unique-Zeb9-2026" (u.secret/expose password))))))
+
+(deftest ^:parallel valid-password-specific-errors-redact-value-test
+  (testing "`:specific-errors` for a `ms/ValidPassword` show a rejected password redacted"
+    (are [schema params expected] (= expected (specific-errors schema params))
+      [:map {:closed true} [:password ms/ValidPassword]]
+      {:password "password9"}
+      {:password ["valid password that is not too common, received: \"<< REDACTED SECRET >>\""]}
+
+      ;; only a string is wrapped, and anything else is not a password
+      [:map {:closed true} [:password ms/ValidPassword]]
+      {:password 12345}
+      {:password ["valid password that is not too common, received: 12345"]}
+
+      [:map {:closed true} [:password ms/ValidPassword]]
+      {}
+      {:password ["missing required key, received: nil"]}
+
+      ;; nested in a sequence
+      [:map [:users [:sequential [:map [:password ms/ValidPassword]]]]]
+      {:users [{:password "password9"}]}
+      {:users [{:password ["valid password that is not too common, received: \"<< REDACTED SECRET >>\""]}]}
+
+      ;; an enclosing schema's error echoes the whole value
+      [:and
+       [:map [:password ms/ValidPassword] [:confirm :string]]
+       [:fn {:error/message "passwords must match"} (constantly false)]]
+      {:password "Xq7-unique-Zeb9-2026", :confirm "x"}
+      ["passwords must match, received: {:password \"<< REDACTED SECRET >>\", :confirm \"x\"}"])))

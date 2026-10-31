@@ -28,6 +28,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
+   [metabase.util.secret :as u.secret]
    [throttle.core :as throttle]))
 
 (set! *warn-on-reflection* true)
@@ -414,7 +415,9 @@
    request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
-  (let [credentials  (select-keys request-body [:token :password])
+  (let [credentials  (-> request-body
+                         (select-keys [:token :password])
+                         (update :password u.secret/expose))
         grant-result (auth-identity/with-fallback auth-identity/login!
                        [:provider/support-access-grant]
                        credentials)
