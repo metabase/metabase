@@ -75,6 +75,22 @@ describe("DataAppMoreMenu", () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([
+    { name: "draft", enabled: false, outdated: false },
+    { name: "outdated", enabled: true, outdated: true },
+  ])(
+    "does not offer to embed an app that is $name",
+    async ({ enabled, outdated }) => {
+      setup({ app: createMockDataApp({ enabled, outdated }) });
+
+      await openMenu();
+
+      expect(
+        screen.queryByRole("menuitem", { name: /Embed/ }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it("makes a live app a draft only after confirmation", async () => {
     setup({
       app: createMockDataApp({

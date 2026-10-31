@@ -1,8 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { Alert, Button, Card, Select, Stack, Text } from "metabase/ui";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
+
+import { isDataAppOpenable } from "../utils";
 
 export const DataAppEmbedResourceCard = ({
   value,
@@ -11,13 +13,10 @@ export const DataAppEmbedResourceCard = ({
   value: string | null;
   onChange: (path: string) => void;
 }) => {
-  const {
-    data: apps = [],
-    isLoading,
-    isError,
-    refetch,
-    isFetching,
-  } = useListDataAppsQuery();
+  const { data, isLoading, isError, refetch, isFetching } =
+    useListDataAppsQuery();
+
+  const apps = useMemo(() => data?.filter(isDataAppOpenable) ?? [], [data]);
 
   useEffect(() => {
     if (isFetching || isError) {

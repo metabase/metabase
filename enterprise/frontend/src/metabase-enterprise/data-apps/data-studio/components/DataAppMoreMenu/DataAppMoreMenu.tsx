@@ -87,12 +87,14 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
               {t`Open app`}
             </Menu.Item>
           )}
-          <Menu.Item
-            leftSection={<Icon name="embed" />}
-            onClick={() => openEmbedWizard({})}
-          >
-            {t`Embed`}
-          </Menu.Item>
+          {isDataAppOpenable(app) && (
+            <Menu.Item
+              leftSection={<Icon name="embed" />}
+              onClick={() => openEmbedWizard({})}
+            >
+              {t`Embed`}
+            </Menu.Item>
+          )}
 
           <Menu.Item
             leftSection={

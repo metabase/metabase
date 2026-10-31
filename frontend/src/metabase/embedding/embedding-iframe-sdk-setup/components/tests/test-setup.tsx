@@ -96,7 +96,7 @@ export const setup = (options?: {
   );
   fetchMock.get("path:/api/embed-theme", []);
 
-  renderWithProviders(
+  return renderWithProviders(
     <SdkIframeEmbedSetupModal
       opened
       initialState={{

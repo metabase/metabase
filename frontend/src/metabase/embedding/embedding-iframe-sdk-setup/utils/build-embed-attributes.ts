@@ -86,7 +86,7 @@ export const buildEmbedAttributes = ({
     .otherwise(() => settings);
 
   const keysToProcess = match(experience)
-    .with("app", () => ALLOWED_EMBED_SETTING_KEYS_MAP.app)
+    .with("app", () => ALLOWED_EMBED_SETTING_KEYS_MAP.dataApp)
     .otherwise((experience) =>
       isGuestEmbed
         ? ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP[experience]
