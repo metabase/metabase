@@ -209,6 +209,7 @@
     .goal-scores { margin: 28px 0 0; }
     .goal-scores h2 { margin-bottom: 6px; }
     .goal-scores .lede { margin: 0 0 12px; }
+    .goal-scores .caveat { max-width: 46rem; margin: 0 0 12px; padding: 10px 14px; border-left: 3px solid #d9a441; background: #fbf6ea; border-radius: 0 8px 8px 0; color: #4a3d1f; font-size: .9rem; }
     /* The guide is its own panel, in columns, so its lines stay short and it reads apart from the table. */
     .reading-guide { margin: 0 0 18px; padding: 10px 16px 12px; border-radius: 10px; background: #f5f7fb; color: #5b6d83; font-size: .86rem; }
     .reading-guide h3 { margin: 0 0 6px; color: #29405c; font-size: .82rem; }
@@ -252,9 +253,9 @@
     details.weights-panel > summary { cursor: pointer; color: #29405c; font-size: .88rem; font-weight: 600; }
     details.weights-panel > summary .weights-state { color: #5b6d83; font-weight: 400; margin-left: 4px; }
     .weights { display: grid; grid-template-columns: max-content; gap: 6px; margin: 12px 0 8px; }
-    .weights label { display: grid; grid-template-columns: 12em 80px 1.2em; align-items: center; gap: 8px; font-size: .85rem; color: color-mix(in srgb, var(--c) 80%, black); cursor: help; }
+    .weights label { display: grid; grid-template-columns: 12em 120px 2em; align-items: center; gap: 8px; font-size: .85rem; color: color-mix(in srgb, var(--c) 80%, black); cursor: help; }
     .weights label > span:first-child::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--c); }
-    .weights input { width: 80px; accent-color: var(--c); cursor: pointer; }
+    .weights input { width: 120px; accent-color: var(--c); cursor: pointer; }
     .weights output { font-variant-numeric: tabular-nums; color: #5b6d83; text-align: right; }
     details.weights-panel .note { max-width: 72ch; }
     @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } #detail { position: static; max-height: none; } }
@@ -290,6 +291,7 @@
       .preset-button:hover { background: color-mix(in srgb, var(--c) 26%, transparent); }
       .preset-button[aria-pressed="true"] { background: var(--c); color: white; }
       .weight-presets { color: #aabbd0; }
+      .goal-scores .caveat { background: #2b2618; border-left-color: #b8892f; color: #eadcb8; }
       .rank-table { border-color: #354963; }
       .rank-table h3 { color: #e4edf7; }
       .rank-bar { background: #2a3b50; }
@@ -505,6 +507,7 @@
 
   <section class="card goal-scores" id="goal-scores" aria-labelledby="goal-scores-title" hidden>
     <h2 id="goal-scores-title">Scores by goal</h2>
+    <p class="caveat">These rankings do not predict how satisfied users would be. The goals were picked because they are tricky, so the ordinary searches that hit no edge case, likely most of them, are missing. Real traffic would have far more variety within each kind of goal and a different mix between kinds, and that mix differs from customer to customer. Semantic search is also likely to do worse as a catalog grows, since its vector arm struggles to tell similar cards apart, and this catalog is tiny. The rankings are still useful for comparing how each engine handles these particular cases.</p>
     <p class="lede">Each score is the F1 score against the goal's correct cards, from 0 (none right) to 1 (exactly right).</p>
     <div class="weight-presets" id="weight-presets"></div>
     <div class="rankings" id="rankings"></div>
@@ -522,7 +525,7 @@
     <details class="weights-panel" id="weights-panel">
       <summary>Adjust weights by kind of goal<span class="weights-state" id="weights-state"></span></summary>
       <div class="weights" id="weights" role="group" aria-label="Weight per kind of goal"></div>
-      <p class="note">The means are exploratory. The goals were picked to expose differences between the engines, so the means say little about production traffic. Each kind's goals are averaged first, so a weight sets how much a kind counts regardless of how many goals it has.</p>
+      <p class="note">Weights run from 0 to 2 in steps of 0.1. Each kind's goals are averaged first, so a weight sets how much a kind counts regardless of how many goals it has.</p>
     </details>
   </section>
 
@@ -557,7 +560,9 @@
     const kindLabel = kind => kindNames[kind] ?? kind;
     // Weights are a per-viewer preference; the page works the same without storage.
     let weights = (() => { try { return JSON.parse(localStorage.getItem("goalWeights")) || {}; } catch { return {}; } })();
-    const weightOf = kind => weights[kind] ?? 1;
+    // Weights run 0 to 2 in steps of 0.1; older saved weights above 2 are clamped.
+    const clampWeight = value => Math.min(2, Math.max(0, Math.round(10 * value) / 10));
+    const weightOf = kind => clampWeight(weights[kind] ?? 1);
 
     // Themes give a first-time reader a way into the list without knowing what to search for.
     // The build checks that they place every scenario exactly once.
@@ -616,7 +621,7 @@
         weights = {};
         for (const pair of (params.get("weights") || "").split(",").filter(Boolean)) {
           const [kind, value] = pair.split(":");
-          if (data.goalKinds.includes(kind) && /^[0-3]$/.test(value)) weights[kind] = Number(value);
+          if (data.goalKinds.includes(kind) && /^\d(\.\d)?$/.test(value)) weights[kind] = clampWeight(Number(value));
         }
       }
       return true;
@@ -850,13 +855,13 @@
     const weightPresets = [
       { id: "equal", label: "Equal", color: "#64748b", weights: {},
         description: "Every kind of goal counts the same." },
-      { id: "people", label: "People typing", color: "#0d9488", weights: { typing: 3, "word-forms": 2, title: 2, or: 1, and: 1, exclusion: 0 },
+      { id: "people", label: "People typing", color: "#0d9488", weights: { typing: 2, "word-forms": 1.6, title: 1.3, or: 1, and: 1, exclusion: 0.2 },
         description: "People type short, often unfinished queries, rarely use operators, and may not know a card's exact wording." },
-      { id: "agents", label: "Agents", color: "#7c3aed", weights: { title: 3, exclusion: 2, and: 2, or: 2, "word-forms": 1, typing: 0 },
+      { id: "agents", label: "Agents", color: "#7c3aed", weights: { title: 1.8, exclusion: 1.5, and: 1.4, or: 1.4, "word-forms": 0.8, typing: 0.1 },
         description: "Agents type complete queries and use quotes and operators freely, so exact titles and exclusions matter and unfinished typing does not." }
     ];
     const presetWeight = (preset, kind) => preset.weights[kind] ?? 1;
-    const activePreset = () => weightPresets.find(preset => data.goalKinds.every(kind => presetWeight(preset, kind) === weightOf(kind)));
+    const activePreset = () => weightPresets.find(preset => data.goalKinds.every(kind => Math.abs(presetWeight(preset, kind) - weightOf(kind)) < 1e-9));
 
     function applyWeights() {
       try { localStorage.setItem("goalWeights", JSON.stringify(weights)); } catch {}
@@ -883,13 +888,13 @@
       $("weights").innerHTML = data.goalKinds.filter(kind => goalsOf(kind).length).map(kind => {
         const count = goalsOf(kind).length;
         return `<label style="--c: ${kindColor(kind)}" title="${escape(kindDescriptions[kind] ?? "")}"><span>${escape(kindLabel(kind))} <span class="muted">(${count})</span></span>
-          <input type="range" min="0" max="3" step="1" value="${weightOf(kind)}" data-kind="${escape(kind)}" aria-label="Weight for ${escape(kindLabel(kind))}">
-          <output>${weightOf(kind)}</output></label>`;
+          <input type="range" min="0" max="2" step="0.1" value="${weightOf(kind)}" data-kind="${escape(kind)}" aria-label="Weight for ${escape(kindLabel(kind))}">
+          <output>${weightOf(kind).toFixed(1)}</output></label>`;
       }).join("");
       for (const input of $("weights").querySelectorAll("input")) {
         input.addEventListener("input", () => {
-          weights[input.dataset.kind] = Number(input.value);
-          input.nextElementSibling.textContent = input.value;
+          weights[input.dataset.kind] = clampWeight(Number(input.value));
+          input.nextElementSibling.textContent = weightOf(input.dataset.kind).toFixed(1);
           $("weights-state").textContent = weightsState();
           try { localStorage.setItem("goalWeights", JSON.stringify(weights)); } catch {}
           renderPresets();
