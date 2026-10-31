@@ -856,12 +856,16 @@
       renderList();
     }
 
+    // The score section above the explorer exists only in one view, so switching would move everything below it.
+    // Keep the clicked switch where it was on screen instead.
     for (const tab of document.querySelectorAll(".tab")) {
       tab.addEventListener("click", () => {
+        const before = tab.getBoundingClientRect().top;
         state.corpus = tab.dataset.corpus;
         state.collapsed = new Set();
         state.selected = null;
         render();
+        window.scrollBy(0, tab.getBoundingClientRect().top - before);
       });
     }
     $("filter").addEventListener("input", renderList);
