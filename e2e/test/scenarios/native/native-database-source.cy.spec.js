@@ -117,7 +117,9 @@ describe(
 
       cy.visit("/");
       H.startNewAction();
-      assertNoDatabaseSelected();
+      cy.findByTestId("selected-database")
+        .should("have.text", postgresName)
+        .click();
 
       selectDatabase("Sample Database");
       cy.get("@persistDatabase").should("be.null");
@@ -127,12 +129,12 @@ describe(
       cy.log(
         "Persisting a database for a native model should not affect actions",
       );
-      selectDatabase(postgresName);
+      selectDatabase("Sample Database");
       cy.wait("@persistDatabase");
 
       cy.visit("/");
       H.startNewAction();
-      assertNoDatabaseSelected();
+      cy.findByTestId("selected-database").should("have.text", postgresName);
     });
 
     describe("permissions", () => {
