@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Search engine comparison · corpus explorer</title>
+  <title>Search engine comparison</title>
   <style>
     :root { --tint: 47 111 179; color-scheme: light; font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f7fb; color: #172334; }
     * { box-sizing: border-box; }
@@ -355,7 +355,7 @@
     </div>
     <ul class="support-notes">
       <li><span class="footnote-marker">*</span> appdb/H2 matches conjunctive substrings rather than lexemes and lacks support for OR, negation, and phrases. We haven’t established how much of that gap could be closed.</li>
-      <li><span class="footnote-marker">†</span> <a href="https://github.com/metabase/metabase/pull/52384" target="_blank" rel="noopener noreferrer">PR #52384</a> implemented appdb/MySQL, but was never merged. We could probably revive it, but it can't achieve parity with Postgres.</li>
+      <li><span class="footnote-marker">†</span> <a href="https://github.com/metabase/metabase/pull/52384" target="_blank" rel="noopener noreferrer">PR #52384</a> implemented appdb/MySQL, but was never merged. We could probably revive it, but it can't match PostgreSQL.</li>
       <li><span class="footnote-marker">‡</span> Semantic requires feature access, an embedder, and a PostgreSQL/pgvector store. A PostgreSQL appdb can host that store itself; with H2 or MySQL/MariaDB it must be a separate database.</li>
       <li>Deployment: for which Cloud instances can and do serve semantic search, see the internal <a href="https://stats.metabase.com/dashboard/9850" target="_blank" rel="noopener noreferrer">semantic search availability dashboard</a>. Self-hosted semantic use is not expected: setup is undocumented and not yet recommended.</li>
     </ul>
@@ -407,7 +407,7 @@
         </tbody>
       </table>
     </div>
-    <p class="note">Semantic search unions these vector hits with keyword hits, then ranks the combined results. For every scenario here, the keyword hits are the appdb/PostgreSQL hits. Below its results threshold (100 by default), which a small catalogue always is, it also appends appdb's results, as long as its own arms found something. The pages score semantic search twice: <em>Semantic only</em> is the vector arm alone, and <em>Semantic with fallback</em> is what it returns, modelling appdb as PostgreSQL.</p>
+    <p class="note">Semantic search unions these vector hits with keyword hits, then ranks the combined results. For every case here, the keyword hits are the appdb/PostgreSQL hits. When it finds fewer results than its threshold (100 by default), as it always does in a small catalog, it also appends appdb's results, as long as its own arms found something. This page scores semantic search twice: <em>Semantic only</em> is the vector arm alone, and <em>Semantic with fallback</em> is what it returns, modeling appdb as PostgreSQL.</p>
   </section>
   </details>
 
@@ -420,12 +420,12 @@
   <section class="summary-grid" id="metrics" aria-label="Corpus summary"></section>
   <section class="tables">
     <div class="card">
-      <h2>Pairwise result-set relationships</h2>
+      <h2>How each pair of engines' results relate</h2>
       <div class="table-wrap" id="pairwise"></div>
-      <p class="note">Each bar splits the scenarios for one pair of engines by how their result sets relate, ignoring order. “More” and “fewer” describe the first engine named. Hover a segment for its count.</p>
+      <p class="note">Each bar splits the cases for one pair of engines by how their result sets relate, ignoring order. “More” and “fewer” describe the first engine named. Hover a segment for its count.</p>
     </div>
     <div class="card">
-      <h2 id="second-table-title">Average results per query</h2>
+      <h2 id="second-table-title">Average cards returned per query</h2>
       <div class="table-wrap" id="second-table"></div>
       <p class="note" id="second-table-note"></p>
     </div>
@@ -576,10 +576,10 @@
 
     function renderSummary() {
       const summary = current().summary;
-      $("view-sub-sameQuery").textContent = `${data.sameQuery.cases.length} scenarios. Every engine gets the same query, so differences show how each reads it.`;
-      $("view-sub-translations").textContent = `${data.translations.cases.length} goals. Each engine gets the query a user would type for it, scored against the cards the user wants.`;
+      $("view-sub-sameQuery").textContent = `${data.sameQuery.cases.length} cases. Every engine gets the same query, so differences show how each reads it.`;
+      $("view-sub-translations").textContent = `${data.translations.cases.length} goals. Each engine gets the best query a user could type for it, scored against the cards the user wants.`;
       $("metrics").innerHTML = [
-        [summary.count, state.corpus === "sameQuery" ? "Scenarios" : "Goals"],
+        [summary.count, state.corpus === "sameQuery" ? "Cases" : "Goals"],
         [summary.allEqual, "All engines agree"],
         [data.engines.length, "Engines compared"]
       ].map(([value, label]) => `<div class="card metric"><div class="value">${escape(value)}</div><div class="label">${escape(label)}</div></div>`).join("");
@@ -590,13 +590,13 @@
       document.querySelector(".explorer").classList.toggle("ends-page", state.corpus !== "translations");
       if (state.corpus === "translations") {
         renderScoreTable();
-        $("second-table-title").textContent = "Fidelity to correct result sets";
+        $("second-table-title").textContent = "Accuracy against the correct cards";
         $("second-table").innerHTML = fidelityTable(summary);
         $("second-table-note").textContent = "F1 combines precision and recall; Scores by goal below explains it. Darker cells are better within their column; bold is the best. Unweighted: each goal counts once, whatever the weights in Scores by goal. Exact counts goals where the engine returns the correct results. Original query scores the goal's query unchanged, for every engine.";
       } else {
-        $("second-table-title").textContent = "Average results per query";
+        $("second-table-title").textContent = "Average cards returned per query";
         $("second-table").innerHTML = table(["Engine", "Mean hits"], data.engines.map(engine => [escape(labels[engine]), number(summary.meanHits[engine])]));
-        $("second-table-note").textContent = "Means describe fixture membership only. A larger set is not automatically better.";
+        $("second-table-note").textContent = "Each count is the cards an engine returns per query. More is not better.";
       }
     }
 
@@ -758,7 +758,7 @@
       const resultTitle = `Result membership${translated ? ` · correct results ${escape(item.correct.join(", ") || "none")}` : ""}`;
       const distanceNote = `Semantic only shows each card's cosine distance from the query: lower is closer, cards within ${fixed(cutoff)} are hits, and orange marks those within 0.05 of that cutoff.`;
       const resultNote = translated
-        ? `Highlighted engines return exactly the correct results. In the membership table, orange ✓ is an extra hit and red · a missed correct hit. ${distanceNote}`
+        ? `Highlighted engines return exactly the correct cards. Orange ✓ is an extra card; red · is a correct card the engine missed. ${distanceNote}`
         : `✓ is a hit; · is not. ${distanceNote} Semantic with fallback adds the keyword arm and appdb's PostgreSQL hits.`;
       $("detail").innerHTML = `
         <div class="detail-head">

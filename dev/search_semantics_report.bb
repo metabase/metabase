@@ -44,7 +44,7 @@
     :text  "`sales pipeline` gets \"Sales team headcount\" from the vector arm, but not \"Deals closed\"."
     :holds {:semantic-only {:E true, :C false}}}
    {:case  "vector-paraphrase"
-    :text  "`how much did we sell` finds nothing on semantic search, though \"Monthly sales\" is in the catalogue."
+    :text  "`how much did we sell` finds nothing on semantic search, though \"Monthly sales\" is in the catalog."
     :holds {:semantic-with-fallback :none}}])
 
 ;;; Themes
@@ -54,12 +54,12 @@
   build checks, so a new or renamed scenario fails the build until it is placed."
   [{:id          "partial"
     :label       "Partial words"
-    :description "Prefixes and substrings: what matches before a word is finished."
+    :description "What matches while a word is only partly typed, as a prefix or a substring."
     :scenarios   ["infix-substring" "two-substrings-one-word" "last-word-prefix" "nonfinal-prefix" "or-branch-prefix"
                   "negated-prefix" "prefix-agreement"]}
    {:id          "operators"
     :label       "Operators"
-    :description "Typing or, and, not, or a leading minus: an operator for some engines, plain text for others."
+    :description "Typing or, and, not or a leading minus, which some engines read as operators and others as plain text."
     :scenarios   ["or-operator" "or-only-operator" "or-word-control" "english-or-word" "and-literal" "and-word-control"
                   "english-and-word" "not-literal" "negation" "negation-only" "operator-empty-agreement"]}
    {:id          "language"
@@ -73,15 +73,15 @@
     :scenarios   ["phrase-boundary" "english-phrase-stopword" "simple-phrase-and" "unfinished-quote" "closed-quote"]}
    {:id          "punctuation"
     :label       "Punctuation"
-    :description "Percent signs and underscores: literal text for substring engines, separators for PostgreSQL."
+    :description "Percent signs and underscores, which substring engines match literally and PostgreSQL treats as separators."
     :scenarios   ["percent-punctuation" "underscore-punctuation" "percent-only" "like-escape-percent"]}
    {:id          "meaning"
     :label       "Meaning"
-    :description "Semantic search's vector arm: matches by meaning, with no word in common, and its misses."
+    :description "Semantic search's vector arm, which matches by meaning even with no word in common, and what it misses."
     :scenarios   ["vector-only-match" "vector-noise" "vector-paraphrase" "vector-negation" "lexical-and-vector-union"]}
    {:id          "baselines"
     :label       "Plain words"
-    :description "Ordinary words, mostly where every engine agrees: the baseline the other themes depart from."
+    :description "Ordinary words, mostly where every engine agrees. The other themes depart from this baseline."
     :scenarios   ["field-term-agreement" "multiword-agreement" "multiword-defaults" "unmatched-term"]}])
 
 (defn- theme-data
