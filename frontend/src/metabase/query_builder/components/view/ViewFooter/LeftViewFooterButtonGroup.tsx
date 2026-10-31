@@ -2,51 +2,22 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { QueryBuilderUIControls } from "metabase/redux/store";
+import { useSelector } from "metabase/redux";
 import { Button, Group, Icon } from "metabase/ui";
 
-import {
-  onCloseChartSettings,
-  onCloseChartType,
-  onOpenChartSettings,
-  onOpenChartType,
-} from "../../../store/actions";
-import { getQuestion, getUiControls } from "../../../store/selectors";
+import { getQuestion } from "../../../store/selectors";
 
 import S from "./LeftViewFooterButtonGroup.module.css";
+import { useVisualizationSidebarToggles } from "./use-visualization-sidebar-toggles";
 
 export const LeftViewFooterButtonGroup = () => {
-  const {
-    isShowingChartSettingsSidebar,
-    isShowingChartTypeSidebar,
-  }: QueryBuilderUIControls = useSelector(getUiControls);
   const question = useSelector(getQuestion);
-
-  const dispatch = useDispatch();
-
-  const handleVizTypeClick = isShowingChartTypeSidebar
-    ? () => dispatch(onCloseChartType())
-    : () => dispatch(onOpenChartType());
-
-  const handleVizSettingClick = isShowingChartSettingsSidebar
-    ? () => dispatch(onCloseChartSettings())
-    : () => dispatch(onOpenChartSettings());
-
-  useRegisterShortcut(
-    [
-      {
-        id: "query-builder-toggle-viz-types",
-        perform: handleVizTypeClick,
-      },
-      {
-        id: "query-builder-toggle-viz-settings",
-        perform: handleVizSettingClick,
-      },
-    ],
-    [isShowingChartTypeSidebar, isShowingChartSettingsSidebar],
-  );
+  const {
+    isShowingChartTypeSidebar,
+    isShowingChartSettingsSidebar,
+    toggleChartType,
+    toggleChartSettings,
+  } = useVisualizationSidebarToggles();
 
   return (
     <Group className={cx(CS.flex1, S.Root)}>
@@ -55,7 +26,7 @@ export const LeftViewFooterButtonGroup = () => {
           variant="light"
           data-testid="viz-type-button"
           aria-pressed={isShowingChartTypeSidebar}
-          onClick={handleVizTypeClick}
+          onClick={toggleChartType}
         >
           {t`Visualization`}
         </Button>
@@ -65,7 +36,7 @@ export const LeftViewFooterButtonGroup = () => {
           data-testid="viz-settings-button"
           aria-pressed={isShowingChartSettingsSidebar}
           leftSection={<Icon name="gear" />}
-          onClick={handleVizSettingClick}
+          onClick={toggleChartSettings}
         />
       </Button.Group>
     </Group>
