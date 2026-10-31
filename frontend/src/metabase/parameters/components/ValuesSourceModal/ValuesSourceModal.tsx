@@ -46,25 +46,32 @@ const ValuesSourceModal = ({
     onClose();
   }, [sourceType, sourceConfig, onSubmit, onClose]);
 
-  return step === "main" ? (
-    <ValuesSourceTypeModal
-      parameter={parameter}
-      sourceType={sourceType}
-      sourceConfig={sourceConfig}
-      onChangeSourceType={setSourceType}
-      onChangeSourceConfig={setSourceConfig}
-      onChangeCard={handlePickerOpen}
-      onSubmit={handleSubmit}
-      onClose={onClose}
-    />
-  ) : (
-    <ValuesSourceCardModal
-      parameter={parameter}
-      sourceConfig={sourceConfig}
-      onChangeSourceConfig={setSourceConfig}
-      onSubmit={handlePickerClose}
-      onClose={handlePickerClose}
-    />
+  // The picker opens on top of the main step rather than replacing it, so the
+  // main step's modal isn't torn down and re-animated between steps. Its panel
+  // is hidden meanwhile, as it's wider than the picker on wide screens
+  return (
+    <>
+      <ValuesSourceTypeModal
+        parameter={parameter}
+        isContentHidden={step === "card"}
+        sourceType={sourceType}
+        sourceConfig={sourceConfig}
+        onChangeSourceType={setSourceType}
+        onChangeSourceConfig={setSourceConfig}
+        onChangeCard={handlePickerOpen}
+        onSubmit={handleSubmit}
+        onClose={onClose}
+      />
+      {step === "card" && (
+        <ValuesSourceCardModal
+          parameter={parameter}
+          sourceConfig={sourceConfig}
+          onChangeSourceConfig={setSourceConfig}
+          onSubmit={handlePickerClose}
+          onClose={handlePickerClose}
+        />
+      )}
+    </>
   );
 };
 

@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
@@ -20,18 +21,22 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Card, ParameterValues } from "metabase-types/api";
+import type { Card, CollectionItem, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
+  createMockCollectionItem,
   createMockDatabase,
   createMockField,
   createMockParameterValues,
@@ -429,6 +434,48 @@ describe("ValuesSourceModal", () => {
         );
       });
 
+      it("should show a loader instead of the previous card while the next card loads", async () => {
+        mockGetBoundingClientRect();
+        const nextCard = createMockCard({ id: 2, name: "Reviews" });
+        await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+            values_source_config: { card_id: 1 },
+          }),
+          cards: [createMockCard({ id: 1, name: "Products" }), nextCard],
+          rootCollectionItems: [
+            createMockCollectionItem({
+              id: nextCard.id,
+              name: nextCard.name,
+              model: "card",
+            }),
+          ],
+        });
+        const nextCardResponse = defer<Card>();
+        fetchMock.removeRoute("card-2-get");
+        fetchMock.get("path:/api/card/2", nextCardResponse.promise);
+
+        await userEvent.click(screen.getByRole("button", { name: /Products/ }));
+        await userEvent.click(await screen.findByText("Reviews"));
+        await userEvent.click(
+          await screen.findByTestId("entity-picker-select-button"),
+        );
+
+        expect(
+          await screen.findByTestId("loading-indicator"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: /Products/ }),
+        ).not.toBeInTheDocument();
+
+        nextCardResponse.resolve(nextCard);
+        await waitForLoaderToBeRemoved();
+
+        expect(
+          screen.getByRole("button", { name: /Reviews/ }),
+        ).toBeInTheDocument();
+      });
+
       it("should display a message when the user has no access to the card", async () => {
         await setup({
           parameter: createMockUiParameter({
@@ -446,8 +493,13 @@ describe("ValuesSourceModal", () => {
           hasCollectionAccess: false,
         });
 
+        // The error stays inside the modal, so it keeps its title and close button
+        const modal = screen.getByRole("dialog");
         expect(
-          screen.getByText("You don't have permissions to do that."),
+          within(modal).getByText("You don't have permissions to do that."),
+        ).toBeInTheDocument();
+        expect(
+          within(modal).getByRole("button", { name: "Close" }),
         ).toBeInTheDocument();
       });
 
@@ -990,6 +1042,7 @@ interface SetupOpts {
   parameter?: UiParameter;
   parameterValues?: ParameterValues;
   cards?: Card[];
+  rootCollectionItems?: CollectionItem[];
   hasCollectionAccess?: boolean;
   hasParameterValuesError?: boolean;
   showMetabaseLinks?: boolean;
@@ -999,6 +1052,7 @@ const setup = async ({
   parameter = createMockUiParameter(),
   parameterValues = createMockParameterValues(),
   cards = [],
+  rootCollectionItems = [],
   hasCollectionAccess = true,
   hasParameterValuesError = false,
   showMetabaseLinks = true,
@@ -1016,7 +1070,7 @@ const setup = async ({
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
   setupCollectionByIdEndpoint({
-    collections: [personalCollection],
+    collections: [rootCollection, personalCollection],
   });
   setupCollectionItemsEndpoint({
     collection: personalCollection,
@@ -1025,6 +1079,10 @@ const setup = async ({
 
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections: [rootCollection] });
+    setupCollectionItemsEndpoint({
+      collection: rootCollection,
+      collectionItems: rootCollectionItems,
+    });
     setupCardsEndpoints(cards);
     cards.forEach((card) =>
       setupTableQueryMetadataEndpoint(

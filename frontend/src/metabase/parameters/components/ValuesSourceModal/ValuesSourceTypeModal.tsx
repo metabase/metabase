@@ -9,13 +9,21 @@ import {
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { ModalContent } from "metabase/common/components/ModalContent";
 import { SelectButton } from "metabase/common/components/SelectButton";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import { connect, useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Button, Flex, Icon, Radio, Select, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Modal,
+  Radio,
+  Select,
+  Stack,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -80,6 +88,11 @@ interface ModalDispatchProps {
 
 type ModalProps = ModalOwnProps & ModalQuestionProps & ModalDispatchProps;
 
+type ModalLoaderProps = ModalOwnProps & {
+  /** Hides the modal's panel but keeps it open, along with its backdrop. */
+  isContentHidden?: boolean;
+};
+
 const ValuesSourceTypeModal = ({
   parameter,
   question,
@@ -90,21 +103,9 @@ const ValuesSourceTypeModal = ({
   onChangeSourceConfig,
   onChangeCard,
   onSubmit,
-  onClose,
 }: ModalProps): JSX.Element => {
   return (
-    <ModalContent
-      title={t`Selectable values for ${parameter.name}`}
-      footer={[
-        <Button
-          key="submit"
-          variant="filled"
-          disabled={!isValidSourceConfig(sourceType, sourceConfig)}
-          onClick={onSubmit}
-        >{t`Done`}</Button>,
-      ]}
-      onClose={onClose}
-    >
+    <>
       {sourceType === null ? (
         <FieldSourceModal
           // if sourceType === null the parameter must have fields
@@ -135,7 +136,14 @@ const ValuesSourceTypeModal = ({
           onChangeSourceConfig={onChangeSourceConfig}
         />
       ) : null}
-    </ModalContent>
+      <Modal.Footer>
+        <Button
+          variant="filled"
+          disabled={!isValidSourceConfig(sourceType, sourceConfig)}
+          onClick={onSubmit}
+        >{t`Done`}</Button>
+      </Modal.Footer>
+    </>
   );
 };
 
@@ -710,29 +718,41 @@ const ValuesSourceTypeModalConnected = connect(
 // Loads the source card and its virtual-table query metadata into the store (so
 // the question and its connected fields are available) before rendering,
 // replacing the former Questions.load / Tables.load HOCs.
-function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
+function ValuesSourceTypeModalLoader({
+  isContentHidden = false,
+  ...props
+}: ModalLoaderProps) {
   const { card_id } = props.sourceConfig;
   const virtualTableId =
     card_id != null ? getQuestionVirtualTableId(card_id) : undefined;
-  const { isLoading: isMetadataLoading, error: metadataError } =
+  const { isFetching: isMetadataFetching, error: metadataError } =
     useGetTableQueryMetadataQuery(
       virtualTableId != null ? { id: virtualTableId } : skipToken,
     );
   const {
     data: card,
-    isLoading: isCardLoading,
+    isFetching: isCardFetching,
     error: cardError,
   } = useGetCardQuery(card_id != null ? { id: card_id } : skipToken);
   const question = useQuestionFromCard(card);
 
   return (
-    <ModalLoadingAndErrorWrapper
-      loading={isMetadataLoading || isCardLoading}
-      error={metadataError ?? cardError}
-      noWrapper
+    <Modal
+      opened
+      size="65%"
+      density="relaxed"
+      title={t`Selectable values for ${props.parameter.name}`}
+      classNames={{ content: isContentHidden ? S.hiddenContent : undefined }}
+      onClose={props.onClose}
     >
-      <ValuesSourceTypeModalConnected {...props} question={question} />
-    </ModalLoadingAndErrorWrapper>
+      <ModalLoadingAndErrorWrapper
+        loading={isMetadataFetching || isCardFetching}
+        error={metadataError ?? cardError}
+        noWrapper
+      >
+        <ValuesSourceTypeModalConnected {...props} question={question} />
+      </ModalLoadingAndErrorWrapper>
+    </Modal>
   );
 }
 
