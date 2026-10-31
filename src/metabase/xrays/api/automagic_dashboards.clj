@@ -1,6 +1,7 @@
 (ns metabase.xrays.api.automagic-dashboards
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -60,8 +61,13 @@
             ["table" "metric" "field"]))]
    (deferred-tru "invalid value for dashboard template name")))
 
+(defn- base64-standard-alphabet
+  "Translate the RFC 4648 URL-safe base64 alphabet to the standard one."
+  ^String [^String s]
+  (-> s (str/replace "-" "+") (str/replace "_" "/")))
+
 (def ^:private ^{:arglists '([s])} decode-base64-json
-  (comp json/decode codecs/bytes->str codec/base64-decode))
+  (comp json/decode codecs/bytes->str codec/base64-decode base64-standard-alphabet))
 
 (mr/def ::cell-query
   "A base64-encoded JSON cell query (a filter clause) taken on the query string. The `:decode/api` step
