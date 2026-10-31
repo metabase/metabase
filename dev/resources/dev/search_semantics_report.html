@@ -183,10 +183,12 @@
     .case-note { border-left: 3px solid #c8d4e2; padding: 2px 0 2px 10px; margin: 0 0 14px; }
     .goal-scores { margin: 28px 0 0; }
     .goal-scores h2 { margin-bottom: 6px; }
-    .goal-scores .lede { margin: 0 0 6px; max-width: 72ch; }
-    .reading-guide { margin: 0 0 16px; padding-left: 18px; max-width: 72ch; color: #5b6d83; font-size: .88rem; }
-    .reading-guide li + li { margin-top: 2px; }
-    .goal-scores > .note { max-width: 72ch; }
+    .goal-scores .lede { margin: 0 0 12px; }
+    /* The guide is its own panel, in columns, so its lines stay short and it reads apart from the table. */
+    .reading-guide { margin: 0 0 18px; padding: 10px 16px 12px; border-radius: 10px; background: #f5f7fb; color: #5b6d83; font-size: .86rem; }
+    .reading-guide h3 { margin: 0 0 6px; color: #29405c; font-size: .82rem; }
+    .reading-guide ul { columns: 2 340px; column-gap: 36px; margin: 0; padding-left: 18px; }
+    .reading-guide li { break-inside: avoid; margin-bottom: 4px; }
     .score-table td, .score-table th { padding: 6px 10px; }
     .score-table td.score-cell { text-align: right; width: 15%; }
     .sc { display: inline-grid; justify-items: end; gap: 3px; min-width: 84px; }
@@ -291,6 +293,8 @@
       .findings a { color: #91c1ff; }
       details.reference > summary { color: #e4edf7; }
       .case-note { border-left-color: #53677e; }
+      .reading-guide { background: #172335; }
+      .reading-guide h3 { color: #e4edf7; }
       .reading-guide, .score-table tr.kind-row th, details.weights-panel > summary .weights-state { color: #aabbd0; }
       .score-table tr.kind-row th { border-bottom-color: #53677e; }
       .score-table tr.goal-row:hover { background: #22334a; }
@@ -453,13 +457,16 @@
   <section class="card goal-scores" id="goal-scores" aria-labelledby="goal-scores-title" hidden>
     <h2 id="goal-scores-title">Scores by goal</h2>
     <p class="lede">Each cell is the F1 score against the goal's correct cards, from 0 (none right) to 1 (exactly right).</p>
-    <ul class="reading-guide">
+    <div class="reading-guide">
+      <h3>How to read the table</h3>
+      <ul>
       <li>F1 combines precision, the share of returned cards that are correct, and recall, the share of correct cards that come back. It is their harmonic mean, so it is high only when both are: returning one of three correct cards and nothing else scores 0.5.</li>
       <li><span class="sc-legend">0.40 → <strong>1.00</strong></span> means 0.40 for the goal's original query and 1.00 for the engine's best query. One number means the best query scores the same.</li>
       <li>A best query uses words a user could think of for the goal without knowing which cards exist, and any syntax the engine supports.</li>
       <li>A bold score with a blue bar is the best, or tied best, for that goal.</li>
-      <li>Hover a cell for precision and recall. Click a goal to open it below.</li>
-    </ul>
+      <li>Hover a cell for precision and recall. Click a goal to open its case.</li>
+      </ul>
+    </div>
     <div class="table-wrap" id="score-table"></div>
     <details class="weights-panel" id="weights-panel">
       <summary>Weights by kind of goal<span class="weights-state" id="weights-state"></span></summary>
