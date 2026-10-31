@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [clojurewerkz.quartzite.scheduler :as qs]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
@@ -43,6 +42,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
@@ -330,20 +330,8 @@
 (defn- find-in-clauses
   "Walk a HoneySQL map and return any [:in ...] clauses where the value is a collection."
   [hsql]
-  (let [results (volatile! [])]
-    (walk/postwalk
-     (fn [form]
-       (when (and (vector? form)
-                  (let [[op _ coll] form]
-                    (and
-                     (= :in op)
-                     (= 3 (count form))
-                     (coll? coll)
-                     (not (map? coll)))))
-         (vswap! results conj form))
-       form)
-     hsql)
-    @results))
+  (match/match-all hsql
+    [:in _ (val :guard (and (coll? val) (not (map?))))] &match))
 
 (deftest get-database-usage-info-no-large-in-test
   (testing "usage_info query should not use IN clauses with more than 100 items (GHY-2413)"
