@@ -85,7 +85,7 @@
     /* Each theme heading is a band across the whole panel, tinted in the theme's color. */
     .explorer .group-head { width: calc(100% + 40px); margin: 0 -20px 3px; padding: 6px 20px; background: color-mix(in srgb, var(--c, #8a99ab) 11%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 75%, black); border-top: 1px solid color-mix(in srgb, var(--c, #8a99ab) 22%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--c, #8a99ab) 22%, transparent); }
     .explorer .group-head:hover { background: color-mix(in srgb, var(--c, #8a99ab) 18%, transparent); }
-    .group-head { display: flex; justify-content: space-between; width: 100%; border: 0; background: transparent; padding: 4px 8px; color: #5b6d83; font-size: .72rem; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; text-align: left; }
+    .group-head { display: flex; justify-content: space-between; width: 100%; border: 0; background: transparent; padding: 4px 8px; color: #5b6d83; font-size: .72rem; font-weight: 550; text-transform: uppercase; letter-spacing: .05em; text-align: left; }
     .group-head:hover { color: #173c71; }
     .group-head::after { content: "▾"; margin-left: 6px; }
     .group-head[aria-expanded="false"]::after { content: "▸"; }
@@ -106,7 +106,7 @@
     .case-button { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: baseline; width: 100%; padding: 4px 10px 4px 16px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: inherit; }
     .case-button:hover { background: #f4f6f9; }
     .case-button[aria-current="true"] { background: #e8eef6; box-shadow: inset 0 0 0 1px #b9cbe2; }
-    .case-button .id { min-width: 0; font-size: .86rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .case-button .id { min-width: 0; font-size: .86rem; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     /* The labels are small chips, so they read apart from the name. Both stay quiet; the one the list is
        sorted by gets a stronger fill, correctness in its verdict color. */
     /* Only the chip for the current sort shows, at the end of the case's line. */
