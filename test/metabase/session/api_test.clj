@@ -609,6 +609,18 @@
           (is (nil? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
               "the consumed reset identity is still deleted"))))))
 
+(deftest reset-password-refuses-current-password-test
+  (testing "POST /api/session/reset_password refuses, and changes nothing, when the new password is the current one"
+    (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "whateverUP12!!")
+      (let [token (auth-identity/create-password-reset! (:id user))]
+        (is (= {:errors {:password "New password must be different from your current password."}}
+               (mt/client :post 400 "session/reset_password" {:token token :password "whateverUP12!!"})))
+        (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+            "the reset token is not consumed, so the user can retry with a different password")
+        (is (=? {:success true}
+                (mt/client :post 200 "session/reset_password" {:token token :password "somethingElseUP12!!"})))))))
+
 (deftest reset-password-refused-when-password-login-disabled-test
   (testing "POST /api/session/reset_password refuses, and changes nothing, when password login is disabled"
     (ldap.test/with-ldap-server!
