@@ -791,6 +791,26 @@
   [{:type :tool-input :id "call-1" :function "search" :arguments {:term_queries ["orders"]}}
    {:type :tool-output :id "call-1" :result {:output "No results."}}])
 
+(deftest ^:synchronized slackbot-dm-tool-outcome-status-test
+  (doseq [[outcome status] [[{:output "OK"} "complete"]
+                            [{:output "OK" :error nil} "complete"]
+                            [{:output "Invalid arguments: private detail"
+                              :error  {:class :validation :code :invalid-arguments}} "error"]
+                            [{:output "Card 123 not found: private detail"
+                              :error  {:class :recoverable :code :test/not-found}} "error"]
+                            [{:output "This call failed (:internal)"
+                              :error  {:class :unrecoverable :code :internal
+                                       :user-message "Private detail"}} "error"]]]
+    (testing (pr-str outcome)
+      (let [{:keys [appended task-updates]}
+            (dm-turn-with-parts! [{:type :tool-input :id "call-1" :function "static_viz"
+                                   :arguments {:entity_id 123}}
+                                  {:type :tool-output :id "call-1" :result outcome}])]
+        (is (= [{:type "task_update" :id "call-1" :title "Running query" :status "in_progress"}
+                {:type "task_update" :id "call-1" :title "Running query" :status status}]
+               task-updates))
+        (is (= "\n\n" appended))))))
+
 (deftest ^:synchronized slackbot-dm-textless-reply-with-tool-progress-has-no-fallback-test
   (testing "a reply that showed tool progress is not an empty reply -- no fallback copy"
     (let [{:keys [appended blocks task-updates deleted]} (dm-turn-with-parts! search-tool-parts)]
