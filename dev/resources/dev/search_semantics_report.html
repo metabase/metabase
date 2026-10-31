@@ -79,7 +79,10 @@
     .sort-button + .sort-button { border-left: 1px solid #c8d4e2; }
     .sort-button:hover { background: #f1f4f8; }
     .case-filter { width: 100%; margin-top: 12px; border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 6px 9px; font-size: .85rem; }
-    .case-group + .case-group { margin-top: 10px; }
+    .case-group + .case-group { margin-top: 8px; }
+    /* Each theme heading is a band across the whole panel, tinted in the theme's color. */
+    .explorer .group-head { width: calc(100% + 40px); margin: 0 -20px 3px; padding: 6px 20px; background: color-mix(in srgb, var(--c, #8a99ab) 11%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 75%, black); border-top: 1px solid color-mix(in srgb, var(--c, #8a99ab) 22%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--c, #8a99ab) 22%, transparent); }
+    .explorer .group-head:hover { background: color-mix(in srgb, var(--c, #8a99ab) 18%, transparent); }
     .group-head { display: flex; justify-content: space-between; width: 100%; border: 0; background: transparent; padding: 4px 8px; color: #5b6d83; font-size: .72rem; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; text-align: left; }
     .group-head:hover { color: #173c71; }
     .group-head::after { content: "▾"; margin-left: 6px; }
@@ -224,8 +227,9 @@
       .label-key { background: #172335; }
       .label-key dd, .label-key .key-foot { color: #aabbd0; }
       .group-head > span:first-child::before { background: color-mix(in srgb, var(--c, #8a99ab) 65%, white); }
-      .sort-button, .group-head { color: #aabbd0; }
-      .group-head:hover { color: #e4edf7; }
+      .sort-button { color: #aabbd0; }
+      .explorer .group-head { background: color-mix(in srgb, var(--c, #8a99ab) 20%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 35%, white); }
+      .explorer .group-head:hover { background: color-mix(in srgb, var(--c, #8a99ab) 30%, transparent); }
 
       .sort-group, .sort-button + .sort-button { border-color: #53677e; }
       .sort-button { color: #cfdbe8; }
