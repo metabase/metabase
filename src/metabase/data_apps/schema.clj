@@ -12,7 +12,7 @@
 
 (def ^:private reserved-slugs
   "Slugs that collide with literal `/api/ee/apps/*` sub-routes, so an app with one would be unreachable."
-  #{"repo-status" "sandbox-host"})
+  #{"repo-status" "sandbox-host" "generate"})
 
 (defn- decoders
   "Schema properties decoding a value with `f` both in [[metabase.lib.core/normalize]] and at the API boundary."
@@ -85,10 +85,6 @@
   [:and
    bytes?
    [:fn {:error/message "must be less than 10 MiB"} #(<= (alength ^bytes %) max-bundle-bytes)]])
-
-(mr/def ::bundle-text
-  "The text of a data app's bundle file."
-  [:string {:max max-bundle-bytes}])
 
 (mr/def ::data-app
   "A DataApp as selected from the app DB: every column of `:data_app`."

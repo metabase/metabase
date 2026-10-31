@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase-enterprise.data-apps.apps :as data-apps.apps]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.dump :as serialization.dump]
@@ -65,7 +65,7 @@
         :as   options}]
   (let [entity-id       (or entity_id (app-entity-id dir))
         collection      (if (contains? options :collection) collection (collection-entity-id dir))
-        collection-name (data-apps.apps/collection-name slug)
+        collection-name (data-apps.db/resource-collection-name slug)
         resources       (if (contains? options :resources)
                           resources
                           (when collection {(collection-path collection-name) (collection-file collection collection-name)}))]

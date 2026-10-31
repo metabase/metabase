@@ -867,7 +867,7 @@
 
   data-apps
   {:team "Embedding"
-   :api #{metabase.data-apps.core}
+   :api #{metabase.data-apps.core metabase.data-apps.schema}
    :uses #{actions
            analytics
            api
@@ -3848,6 +3848,7 @@
    :uses #{actions
            api
            api-scope
+           audit-app
            collections
            data-apps
            events
@@ -3855,16 +3856,20 @@
            lib.be
            lib.schema
            lib.types
+           metabot
+           metrics
            models
            permissions
            premium-features
-           remote-sync
+           queries
            search
            settings
+           system
            util
            util.graph
            warehouse-schema-overlay
-           enterprise/dependencies}
+           enterprise/dependencies
+           enterprise/serialization}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
