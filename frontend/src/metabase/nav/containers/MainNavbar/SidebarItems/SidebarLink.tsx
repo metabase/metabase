@@ -11,7 +11,7 @@ import CS from "metabase/css/core/index.css";
 import { Flex, Icon, type IconProps } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import { SidebarItemName } from "./SidebarItemName";
+import { SidebarItemName, SidebarItemTooltip } from "./SidebarItemName";
 import S from "./SidebarItems.module.css";
 
 export interface SidebarLinkProps {
@@ -101,35 +101,37 @@ export function SidebarLink({
       {...props}
     >
       {isValidElement(left) && <div>{left}</div>}
-      {url ? (
-        <Flex
-          component={ForwardRefLink}
-          className={S.link}
-          align="center"
-          w="100%"
-          miw={0}
-          to={url}
-          target={target}
-          rel={rel}
-          onClick={onClick}
-        >
-          {content}
-        </Flex>
-      ) : (
-        <Flex
-          component="button"
-          className={cx(S.button, CS.cursorPointer)}
-          align="center"
-          w="100%"
-          miw={0}
-          c="inherit"
-          fw={700}
-          ta="start"
-          onClick={onClick}
-        >
-          {content}
-        </Flex>
-      )}
+      <SidebarItemTooltip itemName={children}>
+        {url ? (
+          <Flex
+            component={ForwardRefLink}
+            className={S.link}
+            align="center"
+            w="100%"
+            miw={0}
+            to={url}
+            target={target}
+            rel={rel}
+            onClick={onClick}
+          >
+            {content}
+          </Flex>
+        ) : (
+          <Flex
+            component="button"
+            className={cx(S.button, CS.cursorPointer)}
+            align="center"
+            w="100%"
+            miw={0}
+            c="inherit"
+            fw={700}
+            ta="start"
+            onClick={onClick}
+          >
+            {content}
+          </Flex>
+        )}
+      </SidebarItemTooltip>
       {isValidElement(right) && <div>{right}</div>}
     </TreeNode.Root>
   );
