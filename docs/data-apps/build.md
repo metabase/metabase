@@ -49,15 +49,15 @@ An app can read only:
 
 - [Published tables](../data-modeling/semantic-layer/published-tables.md), with their [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md). The app can query these tables directly, without a saved question, but not with SQL.
 - The metrics in your [Library](../data-modeling/semantic-layer/library.md).
-- The questions and metrics in its own collection.
+- The questions in its own collection.
 
 An app can write data only through the actions in its own collection.
 
-Your agent defines the questions and actions that the app needs in the app's code, and generates the app's collection from them. The collection can hold only questions, metrics, and actions. Metabase refuses an item that breaks a rule when it pulls the item, and the CLI refuses it when it generates the item. The main rules are:
+Your agent defines the questions and actions that the app needs in the app's code, and generates the app's collection from them. The collection can hold only questions and actions. Metabase refuses an item that breaks a rule when it pulls the item, and the CLI refuses it when it generates the item. The main rules are:
 
 - Questions must be built with the query builder, not SQL. Questions can read only [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics from your semantic layer, and the [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md) of published tables. So questions can't start from or join another saved question or model. Questions also can't join tables or add custom columns, and they have only one stage.
 - Actions must be table actions, which insert, update, or delete one row of a published table. Apps can't use SQL actions.
-- Items in the collection can't be archived or made public. Questions and metrics in the collection can't be embedded.
+- Items in the collection can't be archived or made public. Questions in the collection can't be embedded.
 
 The app's collection changes only when Metabase pulls it from your repository. You can't move the app's collection, move it to the trash, or make it official.
 
