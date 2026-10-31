@@ -23,11 +23,14 @@
   (t2/delete! :model/Collection :id id))
 
 (mu/defn unarchived-card-collection-types-reducible
-  "A reducible of the distinct Collection id and type of the unarchived Cards."
+  "A reducible of the distinct Collection id and type of the unarchived Cards, leaving out Cards that live in a
+  Document."
   []
   (t2/reducible-query {:select-distinct [:collection_id :type]
                        :from            [:report_card]
-                       :where           [:= :archived false]}))
+                       :where           [:and
+                                         [:= :archived false]
+                                         [:= :document_id nil]]}))
 
 (mu/defn unarchived-action-collection-ids
   "The distinct `:collection_id`s of the unarchived Actions."
