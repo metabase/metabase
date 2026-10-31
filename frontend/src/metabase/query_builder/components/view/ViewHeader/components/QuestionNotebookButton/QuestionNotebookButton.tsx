@@ -23,16 +23,13 @@ export function QuestionNotebookButton({
   isShowingNotebook,
   setQueryBuilderMode,
 }: QuestionNotebookButtonProps) {
-  useRegisterShortcut(
-    [
-      {
-        id: "query-builder-toggle-notebook-editor",
-        perform: () =>
-          setQueryBuilderMode(isShowingNotebook ? "view" : "notebook"),
-      },
-    ],
-    [isShowingNotebook],
-  );
+  useRegisterShortcut([
+    {
+      id: "query-builder-toggle-notebook-editor",
+      perform: () =>
+        setQueryBuilderMode(isShowingNotebook ? "view" : "notebook"),
+    },
+  ]);
   return (
     <Button
       data-testid="notebook-button"

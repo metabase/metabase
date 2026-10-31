@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 import _ from "underscore";
 
+import { renderWithRegisterActionsSpy } from "__support__/kbar";
 import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupListDatabaseSchemasEndpoint,
@@ -132,6 +133,8 @@ function mockSettings({ enableNestedQueries = true } = {}) {
   });
 }
 
+type CancelQuery = ComponentProps<typeof ViewTitleHeader>["cancelQuery"];
+
 interface SetupOpts extends Partial<ComponentProps<typeof ViewTitleHeader>> {
   card: Card | UnsavedCard;
   database?: Database | null;
@@ -139,7 +142,7 @@ interface SetupOpts extends Partial<ComponentProps<typeof ViewTitleHeader>> {
   hideOrdersTable?: boolean;
 }
 
-function setup({
+function buildSetup({
   card,
   database = createSampleDatabase(),
   settings,
@@ -217,6 +220,13 @@ function setup({
     isRunnable,
   };
 
+  return { question, callbacks, storeInitialState, viewTitleHeaderProps };
+}
+
+function setup(opts: SetupOpts) {
+  const { question, callbacks, storeInitialState, viewTitleHeaderProps } =
+    buildSetup(opts);
+
   renderWithProviders(
     <Route path="/" element={<ViewTitleHeader {...viewTitleHeaderProps} />} />,
     {
@@ -226,6 +236,24 @@ function setup({
   );
 
   return { question, ...callbacks };
+}
+
+function setupWithKBar(opts: SetupOpts) {
+  const { question, callbacks, storeInitialState, viewTitleHeaderProps } =
+    buildSetup(opts);
+
+  const { rerender, getRegistrationsOf } = renderWithRegisterActionsSpy(
+    <ViewTitleHeader {...viewTitleHeaderProps} />,
+    { withRouter: true, storeInitialState },
+  );
+
+  return {
+    question,
+    props: viewTitleHeaderProps,
+    rerender,
+    getRegistrationsOf,
+    ...callbacks,
+  };
 }
 
 function setupAdHoc(props: Partial<SetupOpts> = {}) {
@@ -466,6 +494,84 @@ describe("ViewTitleHeader", () => {
           ).toBeInTheDocument();
         });
       });
+    });
+  });
+
+  describe("refresh shortcut", () => {
+    // `r` is the key of the "query-builder-data-refresh" shortcut.
+    const pressRefreshKey = () => userEvent.keyboard("r");
+
+    const mockCancelQuery = () =>
+      jest.fn<ReturnType<CancelQuery>, Parameters<CancelQuery>>();
+
+    it('cancels a running query when "r" is pressed', async () => {
+      const cancelQuery = mockCancelQuery();
+      const { runQuestionQuery } = setupWithKBar({
+        card: getAdHocQuestionCard(),
+        queryBuilderMode: "view",
+        isRunning: true,
+        cancelQuery,
+      });
+
+      await pressRefreshKey();
+
+      expect(cancelQuery).toHaveBeenCalledTimes(1);
+      expect(runQuestionQuery).not.toHaveBeenCalled();
+    });
+
+    it('runs the query without cache when "r" is pressed and no query runs', async () => {
+      const cancelQuery = mockCancelQuery();
+      const { runQuestionQuery } = setupWithKBar({
+        card: getAdHocQuestionCard(),
+        queryBuilderMode: "view",
+        isRunning: false,
+        cancelQuery,
+      });
+
+      await pressRefreshKey();
+
+      expect(runQuestionQuery).toHaveBeenCalledTimes(1);
+      expect(runQuestionQuery).toHaveBeenCalledWith({ ignoreCache: true });
+      expect(cancelQuery).not.toHaveBeenCalled();
+    });
+
+    it("uses the latest isRunning without re-registering", async () => {
+      const cancelQuery = mockCancelQuery();
+      const { props, rerender, getRegistrationsOf, runQuestionQuery } =
+        setupWithKBar({
+          card: getAdHocQuestionCard(),
+          queryBuilderMode: "view",
+          isRunning: false,
+          cancelQuery,
+        });
+      const getRefreshRegistrations = () =>
+        getRegistrationsOf("query-builder-data-refresh");
+      expect(getRefreshRegistrations()).toHaveLength(1);
+
+      rerender(<ViewTitleHeader {...props} isRunning />);
+      await pressRefreshKey();
+
+      expect(getRefreshRegistrations()).toHaveLength(1);
+      expect(cancelQuery).toHaveBeenCalledTimes(1);
+      expect(runQuestionQuery).not.toHaveBeenCalled();
+    });
+
+    it("has no refresh shortcut in the notebook", async () => {
+      const cancelQuery = mockCancelQuery();
+      const { props, rerender, getRegistrationsOf, runQuestionQuery } =
+        setupWithKBar({
+          card: getAdHocQuestionCard(),
+          queryBuilderMode: "view",
+          isRunning: false,
+          cancelQuery,
+        });
+      expect(getRegistrationsOf("query-builder-data-refresh")).toHaveLength(1);
+
+      rerender(<ViewTitleHeader {...props} queryBuilderMode="notebook" />);
+      await pressRefreshKey();
+
+      expect(runQuestionQuery).not.toHaveBeenCalled();
+      expect(cancelQuery).not.toHaveBeenCalled();
     });
   });
 });
