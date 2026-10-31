@@ -70,7 +70,12 @@
     .explorer { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 14px; align-items: start; min-height: calc(100vh - 32px); }
     /* The case stays in view while the list scrolls with the page, so the list needs no scrollbar of its own. */
     #detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
-    .list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 10px; margin-bottom: 8px; }
+    .list-head .sort-toggle { flex-basis: 100%; }
+    .group-toggle { display: inline-flex; align-items: center; gap: 5px; color: #5b6d83; font-size: .78rem; cursor: pointer; }
+    .group-toggle input { margin: 0; accent-color: #2f6fb3; }
+    /* Ungrouped, the theme dot hangs in the row's left padding so names and chips keep one text edge. */
+    .case-button .dot { position: absolute; left: 6px; top: .7em; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
     .list-head .note { margin: 0; }
     .sort-label { color: #5b6d83; font-size: .74rem; margin-right: 6px; }
     .sort-toggle { display: inline-flex; align-items: center; }
@@ -104,14 +109,24 @@
     .label-key dt.current .badge { box-shadow: 0 0 0 2px currentColor; }
     .label-key .key-foot { grid-column: 1 / -1; margin: 0; color: #5b6d83; }
     .case-list { display: grid; gap: 1px; }
-    .case-button { display: grid; grid-template-columns: 9.5em auto; column-gap: 10px; align-items: baseline; width: 100%; padding: 4px 10px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: inherit; }
+    .case-button { position: relative; display: grid; grid-template-columns: auto; justify-content: start; column-gap: 8px; align-items: baseline; width: 100%; padding: 4px 10px 4px 16px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: inherit; }
     .case-button:hover { background: #f4f6f9; }
     .case-button[aria-current="true"] { background: #e8eef6; box-shadow: inset 0 0 0 1px #b9cbe2; }
     .case-button .id { grid-column: 1 / -1; min-width: 0; font-size: .86rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     /* The labels are small chips, so they read apart from the name. Both stay quiet; the one the list is
        sorted by gets a stronger fill, correctness in its verdict color. */
-    .case-button .agree, .case-button .right { justify-self: start; margin-top: 2px; padding: 0 6px; border-radius: 4px; background: #eef1f5; color: #5b6d83; font-size: .72rem; line-height: 1.55; }
-    .case-list.sort-agreement .case-button .agree { background: #dde5ee; color: #172334; }
+    .case-list.with-correct .case-button { grid-template-columns: 7.8em auto; }
+    /* A chip shifts left by its own padding, so its text lines up with the name above. */
+    .case-button .agree, .case-button .right { justify-self: start; margin: 2px 0 0 -6px; padding: 0 6px; border-radius: 4px; background: #eef1f5; color: #5b6d83; font-size: .72rem; line-height: 1.55; }
+    /* Agreement uses one hue, deeper as more engines agree: more agreement is loosely better, but not a verdict
+       like correctness, which keeps green, amber and red. */
+    .case-list.sort-agreement .case-button .agree.agree-10 { background: #3f4fa8; color: #ffffff; }
+    .case-list.sort-agreement .case-button .agree.agree-6 { background: #5a69bd; color: #ffffff; }
+    .case-list.sort-agreement .case-button .agree.agree-4 { background: #8390d1; color: #0f173a; }
+    .case-list.sort-agreement .case-button .agree.agree-3 { background: #a5aee0; color: #1b2450; }
+    .case-list.sort-agreement .case-button .agree.agree-2 { background: #c4caec; color: #252e66; }
+    .case-list.sort-agreement .case-button .agree.agree-1 { background: #dce0f5; color: #2d3675; }
+    .case-list.sort-agreement .case-button .agree.agree-0 { background: #eef0fa; color: #3a4380; }
     .case-list.sort-conformance .case-button .right.all { background: #e1f2e5; color: #176735; }
     .case-list.sort-conformance .case-button .right.some { background: #fdeedb; color: #8a4d00; }
     .case-list.sort-conformance .case-button .right.none { background: #fbe4e7; color: #b42635; }
@@ -236,7 +251,7 @@
       .sort-button { color: #cfdbe8; }
       .sort-button:hover { background: #22324a; }
       .sort-button[aria-pressed="true"] { background: #33465e; color: white; }
-      .sort-label { color: #aabbd0; }
+      .sort-label, .group-toggle { color: #aabbd0; }
       th, td { border-color: #34465c; }
       th, .support-table tbody th, .engine-table tbody th { color: #b7c9de; }
       .support-table thead th, .engine-table thead th { background: #263a52; color: #e4edf7; }
@@ -247,7 +262,13 @@
       .case-button:hover { background: #1f2d40; }
       .case-button[aria-current="true"] { background: #283a52; box-shadow: inset 0 0 0 1px #46607f; }
       .case-button .agree, .case-button .right { background: #24344a; color: #aabbd0; }
-      .case-list.sort-agreement .case-button .agree { background: #34465e; color: #f0f5fb; }
+      .case-list.sort-agreement .case-button .agree.agree-10 { background: #9aa6f2; color: #0f173a; }
+      .case-list.sort-agreement .case-button .agree.agree-6 { background: #7d8be0; color: #0f173a; }
+      .case-list.sort-agreement .case-button .agree.agree-4 { background: #5d6bc4; color: #ffffff; }
+      .case-list.sort-agreement .case-button .agree.agree-3 { background: #4a57a6; color: #ffffff; }
+      .case-list.sort-agreement .case-button .agree.agree-2 { background: #3b4686; color: #e6e9fb; }
+      .case-list.sort-agreement .case-button .agree.agree-1 { background: #2f386a; color: #d6dbf7; }
+      .case-list.sort-agreement .case-button .agree.agree-0 { background: #262c4f; color: #c3c9ef; }
       .case-list.sort-conformance .case-button .right.all { background: #204632; color: #a4e2b6; }
       .case-list.sort-conformance .case-button .right.some { background: #523b1e; color: #ffd08a; }
       .case-list.sort-conformance .case-button .right.none { background: #4d2228; color: #ffb3bb; }
@@ -435,10 +456,11 @@
     <div class="card">
       <div class="list-head">
         <p class="note" id="list-count"></p>
+        <label class="group-toggle"><input type="checkbox" id="group-toggle" checked> Group by theme</label>
         <div class="sort-toggle" role="group" aria-label="Sort cases; click the selected sort to reverse direction"><span class="sort-label" aria-hidden="true">Sort</span><span class="sort-group">
           <button class="sort-button" type="button" data-sort="name" data-direction="asc" aria-pressed="true" aria-label="Sort by name ascending">Name</button>
-          <button class="sort-button" type="button" data-sort="agreement" data-direction="desc" aria-pressed="false" aria-label="Sort by agreement descending" title="Sort by how many engines return the same cards">Same results</button>
-          <button class="sort-button" type="button" data-sort="conformance" data-direction="desc" aria-pressed="false" aria-label="Sort by conformance descending" title="Sort by how many engines return the correct cards" hidden>Correct</button></span>
+          <button class="sort-button" type="button" data-sort="conformance" data-direction="desc" aria-pressed="false" aria-label="Sort by conformance descending" title="Sort by how many engines return the correct cards" hidden>Correct</button>
+          <button class="sort-button" type="button" data-sort="agreement" data-direction="desc" aria-pressed="false" aria-label="Sort by agreement descending" title="Sort by how many engines return the same cards">Same results</button></span>
         </div>
       </div>
       <div class="case-list" id="case-list"></div>
@@ -451,7 +473,7 @@
   <script>
     const data = JSON.parse(document.getElementById("report-data").textContent);
     const labels = { "in-place": "In-place", "appdb-h2": "appdb/H2", "appdb-postgres": "appdb/PostgreSQL", "semantic-only": "Semantic only", "semantic-with-fallback": "Semantic with fallback" };
-    const state = { corpus: "sameQuery", collapsed: new Set(), keyOpen: false, selected: null, sort: "name", directions: { name: "asc", agreement: "desc", conformance: "desc" } };
+    const state = { corpus: "sameQuery", grouped: true, collapsed: new Set(), keyOpen: false, selected: null, sort: "name", directions: { name: "asc", agreement: "desc", conformance: "desc" } };
     const $ = id => document.getElementById(id);
     const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
     const inline = text => escape(text).replace(/`([^`]+)`/g, "<code>$1</code>");
@@ -634,18 +656,21 @@
 
     function renderList() {
       const cases = visibleCases();
-      const order = themes().filter(theme => !state.collapsed.has(theme.id)).flatMap(theme => cases.filter(item => themeOf(item) === theme.id));
+      const order = state.grouped
+        ? themes().filter(theme => !state.collapsed.has(theme.id)).flatMap(theme => cases.filter(item => themeOf(item) === theme.id))
+        : cases;
       if (!order.some(item => item.id === state.selected)) state.selected = order[0]?.id ?? null;
       const noun = state.corpus === "translations" ? "goal" : "case";
       $("list-count").textContent = `${cases.length} ${cases.length === 1 ? noun : `${noun}s`}`;
       const caseButton = item => `<button class="case-button" data-id="${escape(item.id)}" aria-current="${item.id === state.selected}" title="${escape(item.focus)}">
-          <span class="id">${escape(item.scenario)}</span>
-          <span class="agree" title="${escape(agreementTitle(item))}">${escape(agreement(item))}</span>
+          ${state.grouped ? "" : `<i class="dot" style="--c: ${themeColor(themeOf(item))}" aria-hidden="true"></i>`}<span class="id">${escape(item.scenario)}</span>
           ${item.conforming ? `<span class="right ${correctness(item)}" title="${escape(conformanceTitle(item))}">${escape(conformance(item))}</span>` : ""}
+          <span class="agree agree-${item.matchingPairs}" title="${escape(agreementTitle(item))}">${escape(agreement(item))}</span>
         </button>`;
-      // The list is grouped by theme, each case in exactly one group; a heading folds its group away.
-      $("case-list").className = `case-list sort-${state.sort}`;
-      $("case-list").innerHTML = themes().map(theme => [theme, cases.filter(item => themeOf(item) === theme.id)]).filter(([, members]) => members.length)
+      // Grouped, each case sits in exactly one theme group, and a heading folds its group away. Ungrouped, the
+      // sort runs across every case, and a dot keeps each case's theme color.
+      $("case-list").className = `case-list sort-${state.sort}${state.corpus === "translations" ? " with-correct" : ""}`;
+      $("case-list").innerHTML = !state.grouped ? cases.map(caseButton).join("") : themes().map(theme => [theme, cases.filter(item => themeOf(item) === theme.id)]).filter(([, members]) => members.length)
         .map(([theme, members]) => {
           const open = !state.collapsed.has(theme.id);
           return `<div class="case-group"><button type="button" class="group-head" style="--c: ${themeColor(theme.id)}" data-theme="${escape(theme.id)}" aria-expanded="${open}" title="${escape(theme.description)}"><span>${escape(theme.label)}</span><span>${members.length}</span></button>${open ? members.map(caseButton).join("") : ""}</div>`;
@@ -661,7 +686,7 @@
           $("case-list").querySelector(`.group-head[data-theme="${id}"]`).focus();
         });
       }
-      renderDetail(cases.find(item => item.id === state.selected), cases.length > 0);
+      renderDetail(cases.find(item => item.id === state.selected), state.grouped && cases.length > 0);
       writeHash();
     }
 
@@ -846,6 +871,7 @@
       });
     }
     $("filter").addEventListener("input", renderList);
+    $("group-toggle").addEventListener("change", event => { state.grouped = event.target.checked; renderList(); });
     for (const button of document.querySelectorAll(".sort-button")) {
       button.addEventListener("click", () => {
         const sort = button.dataset.sort;
