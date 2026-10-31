@@ -2,6 +2,10 @@
   "Malli schemas for the data-apps module."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
+   [metabase.actions.schema :as actions.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -12,7 +16,7 @@
 
 (def ^:private reserved-slugs
   "Slugs that collide with literal `/api/ee/apps/*` sub-routes, so an app with one would be unreachable."
-  #{"repo-status" "sandbox-host"})
+  #{"repo-status" "sandbox-host" "generate"})
 
 (defn- decoders
   "Schema properties decoding a value with `f` both in [[metabase.lib.core/normalize]] and at the API boundary."
@@ -86,10 +90,6 @@
    bytes?
    [:fn {:error/message "must be less than 10 MiB"} #(<= (alength ^bytes %) max-bundle-bytes)]])
 
-(mr/def ::bundle-text
-  "The text of a data app's bundle file."
-  [:string {:max max-bundle-bytes}])
-
 (mr/def ::data-app
   "A DataApp as selected from the app DB: every column of `:data_app`."
   [:merge
@@ -97,6 +97,17 @@
    [:map {:closed true}
     [:id              ms/PositiveInt]
     [:bundle_hash     {:optional true} [:maybe :string]]]])
+
+(mr/def ::data-app-preview
+  "A data app's dev preview: the slug its manifest declares, whether or not the app exists on the instance."
+  [:map {:closed true}
+   [:slug :string]])
+
+(mr/def ::data-app-info
+  "What a data app's request is checked as: the app it names, or a dev preview of one, which has no ID."
+  [:multi {:dispatch #(if (contains? % :id) :app :preview)}
+   [:app     ::data-app]
+   [:preview ::data-app-preview]])
 
 (mr/def ::data-app.update
   "What an update (or insert) of a DataApp accepts: every column of `:data_app` except `id` and the `bundle_hash` the
@@ -123,3 +134,23 @@
     [:name         ::slug]
     [:display_name ::display-name]
     [:bundle_path  ::bundle-path]]])
+
+(mr/def ::query-stage-spec
+  "A stage of a Lib test query spec with only what a data app's question may hold, as the card hooks check it: a table
+  source, and no joins or custom expressions."
+  [:merge
+   (mut/select-keys ::lib.schema.test-spec/test-stage-spec [:fields :filters :aggregations :breakouts :order-bys :limit])
+   [:map {:closed true}
+    [:source [:ref ::lib.schema.test-spec/test-table-source-spec]]]])
+
+(mr/def ::query-spec
+  "A Lib test query spec of a data app's question: one stage."
+  [:map {:closed true}
+   [:stages [:tuple [:ref ::query-stage-spec]]]])
+
+(mr/def ::action-spec
+  "An action of a data app: an implicit action of `kind` on a table."
+  [:map {:closed true}
+   [:kind  ::actions.schema/implicit-action.kind]
+   [:table [:map {:closed true}
+            [:id ::lib.schema.id/table]]]])

@@ -1,0 +1,6 @@
+name: 'Data App: teams'
+entity_id: teamsAppCollection001
+slug: data_app__teams
+namespace: data-apps
+serdes/meta:
+- model: Collection

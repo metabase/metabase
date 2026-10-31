@@ -7,7 +7,8 @@
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest get-profile-test
   ;; The declaration, not the var's metadata: a converted tool is a record and carries none.
@@ -267,3 +268,13 @@
         (is (contains? tools "read_resource")
             "precondition: read_resource is active (would otherwise match a skill)")
         (is (not (contains? tools "load_skill")))))))
+
+(deftest ^:parallel every-tool-is-in-a-profile-test
+  (testing "every tool is in a profile, except the snippet tools, which no profile offers yet"
+    ;; `profile->tools` adds load_skill to every profile that has skills
+    (let [offered (into #{#'tools/load-skill-tool} (mapcat :tools) (vals @@#'profiles/*profiles))]
+      (is (= #{#'tools/list-snippets-tool #'tools/get-snippet-details-tool}
+             (into #{}
+                   (comp (filter #(mr/validate @#'profiles/tool-var-schema %))
+                         (remove offered))
+                   (vals (ns-publics 'metabase.metabot.tools))))))))

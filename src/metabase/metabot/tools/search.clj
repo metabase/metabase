@@ -348,7 +348,7 @@
   multi-query search is coherent. The result carries the size of the fused, deduped match set as
   `:total` metadata, and the queries whose search failed as `:failed-queries`."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot profile-id search-native-query weights
+           entity-types limit metabot profile-id weights
            created-by archived collection-id offset filters-only? partial-results?]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-query-count     (count term-queries)
@@ -358,7 +358,6 @@
               :limit                limit
               :metabot-id           (:entity_id metabot)
               :profile-id           profile-id
-              :search-native-query  search-native-query
               :weights              weights
               :created-by           created-by
               :archived             archived
@@ -397,10 +396,6 @@
                                                           :filter-items-in-personal-collection "exclude-others"
                                                           :context                             :metabot
                                                           :archived                            (boolean archived)})
-                                                  ;; Don't include search-native-query key if nil so that we don't
-                                                  ;; inadvertently filter out search models that don't support it
-                                                  search-native-query
-                                                  (assoc :search-native-query (boolean search-native-query))
                                                   use-verified?
                                                   (assoc :curated true)
                                                   weights

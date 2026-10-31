@@ -64,4 +64,4 @@ dashboard_write {"method": "create", "name": "Revenue overview",
 
 ## To confirm
 
-`get_content {"type": "dashboard", "id": 40, "include": ["layout"]}` returns every dashcard's tab, position, and size — check bands fill to 24 and every card has a tab. `validate_only: true` previews the same without saving.
+`get_content {"items": [{"type": "dashboard", "id": 40}], "include": ["layout"]}` returns every dashcard's tab, position, and size — check bands fill to 24 and every card has a tab. `validate_only: true` previews the same without saving.

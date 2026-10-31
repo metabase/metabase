@@ -13,7 +13,7 @@
 
 (defn merge-states
   "Merge two partial states. Map entries (e.g. :queries) merge entry-wise;
-  scalar/vector entries (e.g. :todos) take the later value."
+  other entries (e.g. :client-ids) take the later value."
   [a b]
   (merge-with (fn [x y] (if (every? map? [x y]) (merge x y) y)) a b))
 
@@ -27,7 +27,7 @@
     :steps-taken    []
     :context        context
     :state          (metabot.schema/normalize-state
-                     (or state {:queries {} :charts {} :todos [] :link-registry {}}))
+                     (or state {:queries {} :charts {} :link-registry {}}))
     :turn-state     {}}))
 
 (defn add-step
@@ -123,11 +123,6 @@
                       {:agent-error? true
                        :chart-id chart-id
                        :available-charts (keys charts)})))))
-
-(defn set-todos
-  "Set the todo list (a vector of todo item maps)."
-  [memory todos]
-  (record memory [:todos] (vec todos)))
 
 (defn add-client-ids
   "Mark `ids` as the queries and charts the client supplied this turn.

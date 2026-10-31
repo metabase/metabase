@@ -14,7 +14,6 @@
 ;; These match the Python AI Service's AISDKDataTypes enum
 
 (def state-type "AI-SDK data type for state updates." "state")
-(def todo-list-type "AI-SDK data type for todo lists." "todo_list")
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
 (def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
@@ -74,17 +73,6 @@
   {:type :data
    :data-type state-type
    :data state-map})
-
-(defn todo-list-part
-  "Create a TODO_LIST data part for streaming.
-  Todos should be a vector of todo item maps with :id, :content, :status, :priority keys.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.TODO_LIST, version=1, value=todos)"
-  [todos]
-  {:type :data
-   :data-type todo-list-type
-   :data todos})
 
 (defn code-edit-part
   "Create a CODE_EDIT data part for streaming.
