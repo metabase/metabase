@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+if [ -n "${1:-}" ]; then
+  output_directory=$(cd "$1" && pwd)
+fi
+
 # gettext installed via homebrew is "keg-only", add it to the PATH
 if [ -d "/usr/local/opt/gettext/bin" ]; then
   export PATH="/usr/local/opt/gettext/bin:$PATH"
@@ -20,7 +24,10 @@ cd "$script_directory/../.."
 source "./bin/check-clojure-cli.sh"
 check_clojure_cli
 
-POT_NAME="locales/metabase.po"
+output_directory="${output_directory:-$PWD/target/i18n}"
+mkdir -p "$output_directory"
+
+POT_NAME="$output_directory/metabase.po"
 POT_BACKEND_NAME="locales/metabase-backend.pot"
 # NOTE: hardcoded in .babelrc
 POT_FRONTEND_NAME="locales/metabase-frontend.pot"

@@ -2,13 +2,13 @@
   "Generates the `en-ZZ` pseudo-locale `.po` file used by E2E tests.
 
   This file is the build-time companion to the pseudo-locale strategy described in UXW-3460. Every English source
-  string from `locales/metabase.po` is transformed into `[zz] {English}`, and the resulting `locales/en-ZZ.po` is
-  picked up by the normal i18n build pipeline (same as every other real locale).
+  string from the pinned `metabase.po` is transformed into `[zz] {English}`, and the resulting `target/i18n/en-ZZ.po`
+  is picked up by the normal i18n build pipeline (same as every other real locale).
 
   E2E tests can then switch the UI to `en-ZZ` and assert on the predictable `[zz] ...` prefix, without depending on
   fragile real-language strings that Crowdin may update at any time.
 
-  The file is `.gitignore`d — it is regenerated on every build from the current `locales/metabase.po`, so it never
+  The file is never committed — it is regenerated on every build from the pinned `metabase.po`, so it never
   drifts. Crowdin does not know about `en-ZZ` (it's not in `locales/crowdin.yml`) so the translation-update workflow
   leaves it alone.
 
@@ -80,28 +80,26 @@
       (.addExtractedComment dst comment))
     dst))
 
-(defn- source-catalog ^Catalog []
+(defn- source-catalog ^Catalog [source-directory]
   (let [parser (PoParser.)
-        source-file (io/file (u/filename u/project-root-directory "locales" "metabase.po"))]
+        source-file (io/file source-directory "metabase.po")]
     (.parseCatalog parser source-file)))
 
-(defn- target-file ^java.io.File []
-  (io/file (u/filename u/project-root-directory "locales" (str pseudo-locale-code ".po"))))
-
 (defn generate-pseudo-locale-po!
-  "Read `locales/metabase.po` and write `locales/en-ZZ.po` with every msgstr prefixed with `[zz] `. Idempotent: running
-  this repeatedly produces the same output (modulo jgettext's internal ordering)."
-  []
+  "Read `metabase.po` from `source-directory` and write `en-ZZ.po` to `target-directory` with every msgstr prefixed
+  with `[zz] `. Idempotent: running this repeatedly produces the same output (modulo jgettext's internal ordering)."
+  [source-directory target-directory]
   (u/step (format "Generate pseudo-locale %s.po" pseudo-locale-code)
-    (let [src        (source-catalog)
+    (let [src        (source-catalog source-directory)
           dst        (Catalog.)
-          target     (target-file)
+          target     (io/file target-directory (str pseudo-locale-code ".po"))
           msg-count  (volatile! 0)]
       (.addMessage dst (build-pseudo-header))
       (doseq [^Message msg (iterator-seq (.iterator src))
               :when        (not (.isHeader msg))]
         (.addMessage dst (build-pseudo-message msg))
         (vswap! msg-count inc))
+      (u/create-directory-unless-exists! (str target-directory))
       (u/delete-file-if-exists! (.getAbsolutePath target))
       (.write (PoWriter.) dst target)
       (u/announce "Wrote %d pseudo-locale messages to %s." @msg-count (.getAbsolutePath target)))))

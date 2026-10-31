@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+
+checkout="${1:?Usage: publish-translations <checkout>}"
+base=$(cat "$checkout/base")
+if [ "$(i18n_pin)" != "$base" ]; then
+  echo "The translation pin changed while this update was being prepared. Start a new update." >&2
+  exit 1
+fi
+
+catalogs() {
+  (cd "$1" && ls -- *.po)
+}
+
+unchanged() {
+  [ "$(catalogs "$1")" = "$(catalogs "$2")" ] || return 1
+  for po in "$1/"*.po; do
+    cmp -s "$po" "$2/$(basename "$po")" || return 1
+  done
+}
+
+if unchanged "$("$I18N_ROOT/bin/i18n/fetch-translations" "$base")" "$checkout/locales"; then
+  echo "Translations are unchanged." >&2
+  exit 0
+fi
+
+pin="${base%%/*}/$(git -C "$I18N_ROOT" rev-parse HEAD)"
+tarball="$checkout/translations.tar.gz"
+(cd "$checkout/locales" && COPYFILE_DISABLE=1 tar -czf "$tarball" -- *.po)
+aws s3api put-object \
+  --bucket "$I18N_BUCKET" \
+  --key "$I18N_PREFIX/$pin.tar.gz" \
+  --body "$tarball" \
+  --content-type application/gzip \
+  --if-none-match '*' > /dev/null
+printf '%s\n' "$pin" > "$I18N_PIN"
+printf '%s\n' "$pin"

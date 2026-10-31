@@ -4,7 +4,6 @@ all_changed:
   - "**"
 
 default: &default
-  - "locales/**"
   - "bin/**/!(*.md)"
 
 workflows: &workflows
@@ -354,6 +353,7 @@ codeql:
 
 i18n:
   - *default
+  - "locales/**"
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
   - ".github/workflows/lint.yml"
