@@ -44,7 +44,7 @@ Database routing **can't be used** on databases with:
 
 - [Writable connections](../databases/writable-connection.md)
 - [Editable tables](../data-modeling/editable-tables.md)
-- [Actions](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database)
+- [Actions](../data-modeling/data-actions.md#databases-that-support-data-actions)
 - [CSV uploads](../databases/uploads.md)
 - [Model persistence](../data-modeling/models/model-persistence.md)
 

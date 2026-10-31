@@ -78,6 +78,6 @@ If you have basic actions enabled for a model, you can click on an individual re
 
 ## Further reading
 
-- [Introduction to actions](./introduction.md)
+- [Introduction to model actions](./introduction.md)
 - [Custom actions](./custom.md)
 - [Actions in dashboards](../../../dashboards/actions.md)

@@ -127,6 +127,7 @@ Metabase's reference documentation.
 ### Data apps
 
 - [Data apps overview](./data-apps/start.md)
+- [Getting started with data apps](./data-apps/getting-started.md)
 - [Build a data app](./data-apps/build.md)
 - [Manage data apps](./data-apps/manage.md)
 
@@ -150,7 +151,7 @@ Metabase's reference documentation.
 
 - [Data actions](./data-modeling/data-actions.md)
 - [Model actions](./data-modeling/models/actions/start.md)
-- [Introduction to actions](./data-modeling/models/actions/introduction.md)
+- [Introduction to model actions](./data-modeling/models/actions/introduction.md)
 - [Basic actions](./data-modeling/models/actions/basic.md)
 - [Custom actions](./data-modeling/models/actions/custom.md)
 

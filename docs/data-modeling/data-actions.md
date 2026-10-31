@@ -19,9 +19,20 @@ You can run data actions in two ways:
 - **In Data Studio**, to test an action or make a one-off change. See [Run a data action](#run-a-data-action).
 - **As a public form**, to collect data from people outside Metabase, like event sign-ups or feedback. See [Share a data action as a public form](#share-a-data-action-as-a-public-form).
 
-Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md). You don't need to create a model first, and data actions stay put when someone moves a model to the trash. But you can't add data actions to [dashboard buttons](../dashboards/actions.md). So use data actions for new actions, and use a model action only when you need a dashboard button.
+Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md). You don't need to create a model first, and data actions stay put when someone moves a model to the trash. So we recommend data actions over model actions. But you can't add data actions to [dashboard buttons](../dashboards/actions.md). For a dashboard button, create a model action.
 
 If you [sync the Library](./semantic-layer/library.md#versioning-the-library) with [Remote Sync](semantic-layer/remote-sync.md), your data actions sync with it.
+
+## Databases that support data actions
+
+Data actions are available for the following databases:
+
+- [PostgreSQL](../databases/connections/postgresql.md)
+- [MySQL](../databases/connections/mysql.md)
+
+The same databases support [model actions](./models/actions/introduction.md) and actions in [data apps](../data-apps/build.md#what-a-data-app-can-read-and-write).
+
+You can't turn on data actions for a database that uses [database routing](../permissions/database-routing.md).
 
 ## Turn on data actions for a database
 
@@ -29,7 +40,7 @@ _Admin > Databases > Data actions_
 
 Before you can create or run actions on a database, an admin has to turn on data actions for that database. The setting covers every kind of action on the database: data actions, actions in [data apps](../data-apps/build.md#what-a-data-app-can-read-and-write), and [model actions](./models/actions/introduction.md).
 
-Data actions only work on PostgreSQL and MySQL databases, and you can't turn them on for a database that uses [database routing](../permissions/database-routing.md).
+You can turn on data actions only for [databases that support them](#databases-that-support-data-actions).
 
 1. Click the **grid** icon in the upper right, and go to **Admin** > **Databases**.
 2. Click the database.
@@ -123,6 +134,6 @@ Only admins can create, edit, move, archive, or unarchive data actions and their
 
 - [Data Studio](./data-studio.md)
 - [Data apps](../data-apps/start.md)
-- [Introduction to actions](./models/actions/introduction.md)
+- [Introduction to model actions](./models/actions/introduction.md)
 - [Basic actions](./models/actions/basic.md)
 - [Custom actions](./models/actions/custom.md)

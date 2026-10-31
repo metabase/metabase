@@ -8,11 +8,11 @@ redirect_from:
 
 ![An action updating a plan on a dashboard](./images/dashboard-action.gif)
 
-Model actions are actions that belong to a [model](../models.md). Use a model action when you need an action button on a dashboard. For new actions, use [data actions](../../data-actions.md).
+Model actions are actions that belong to a [model](../models.md). We recommend [data actions](../../data-actions.md) over model actions, since data actions don't need a model. Create a model action only when you need an action button on a dashboard.
 
-## [Introduction to actions ](./introduction.md)
+## [Introduction to model actions](./introduction.md)
 
-Use actions to update your data based on user input or values on the page.
+Use model actions to update your data based on user input or values on the page.
 
 ## [Basic actions](./basic.md)
 
