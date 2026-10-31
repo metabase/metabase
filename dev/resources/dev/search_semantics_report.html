@@ -216,14 +216,19 @@
     .score-table tr.goal-row:hover td:first-child { text-decoration: underline; }
     .score-table tr.goal-row.muted-row { opacity: .4; }
     .score-table tfoot td { font-weight: 650; border-top: 2px solid #c8d4e2; }
-    /* The means are the table's answer, so they get the strongest band and larger numbers. */
-    .score-table tfoot tr.mean-row td { background: #e9eff7; padding-top: 12px; padding-bottom: 12px; font-size: 1.02rem; }
-    .score-table tfoot tr.mean-row td:first-child { color: #173c71; border-radius: 8px 0 0 8px; }
+    /* The footer reads as a sum: the mean with original queries, the gain, then the mean with best queries, which
+       is the table's answer and gets the strongest band. Each mean row boxes its winner. */
+    .score-table tfoot tr.mean-row td { background: #f1f5fa; padding-top: 10px; padding-bottom: 10px; }
+    .score-table tfoot tr.mean-row td:first-child { color: #29405c; border-radius: 8px 0 0 8px; }
     .score-table tfoot tr.mean-row td:last-child { border-radius: 0 8px 8px 0; }
-    .score-table tfoot tr.mean-row .sc .bar { height: 6px; }
-    .score-table tfoot tr.mean-row .sc .typed { font-size: .86rem; }
-    .score-table tfoot tr.gain-row td { border-top: 0; background: transparent; padding-top: 10px; padding-bottom: 10px; }
-    .score-table tfoot tr.gain-row td:first-child { color: #29405c; }
+    .score-table tfoot tr.mean-row.final td { background: #e2eaf5; padding-top: 14px; padding-bottom: 14px; font-size: 1.12rem; }
+    .score-table tfoot tr.mean-row.final td:first-child { color: #173c71; font-weight: 750; }
+    .score-table tfoot tr.mean-row .sc .bar { height: 5px; }
+    .score-table tfoot tr.mean-row.final .sc .bar { height: 7px; }
+    .score-table tfoot tr.mean-row .sc.winner .best { padding: 1px 8px; border-radius: 6px; background: #d3efdc; color: #0f5a2c; }
+    .score-table tfoot tr.gain-row td { border-top: 0; background: transparent; padding-top: 6px; padding-bottom: 6px; font-size: .88rem; font-weight: 500; }
+    .score-table tfoot tr.gain-row td:first-child { color: #5b6d83; }
+    .score-table tfoot tr.gain-row .gain { font-size: .82rem; }
     /* A gain's green deepens with its size relative to the largest gain (--g, 0 to 1). */
     .gain { --g: 0; display: inline-block; min-width: 4.2em; text-align: center; border-radius: 999px; padding: 2px 10px; background: color-mix(in srgb, #1f9a55 calc(12% + 70% * var(--g)), #eef1f5); color: #0f3d22; font-weight: 750; font-size: .95rem; }
     .gain.none { background: transparent; color: #8a99ab; font-weight: 500; }
@@ -325,9 +330,12 @@
       .sc .bar { background: #2a3b50; }
       .sc .bar i { background: hsl(calc(4deg + 128deg * var(--v)) 55% 55%); }
       .score-table tr.kind-row th { background: color-mix(in srgb, var(--c, #8a99ab) 20%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 35%, white); }
-      .score-table tfoot tr.mean-row td { background: #22344d; }
-      .score-table tfoot tr.mean-row td:first-child { color: #cfe2fa; }
-      .score-table tfoot tr.gain-row td:first-child { color: #c3d0dd; }
+      .score-table tfoot tr.mean-row td { background: #1d2c40; }
+      .score-table tfoot tr.mean-row td:first-child { color: #c3d0dd; }
+      .score-table tfoot tr.mean-row.final td { background: #26395a; }
+      .score-table tfoot tr.mean-row.final td:first-child { color: #e4edf7; }
+      .score-table tfoot tr.mean-row .sc.winner .best { background: #1f5636; color: #c8f3d6; }
+      .score-table tfoot tr.gain-row td:first-child { color: #aabbd0; }
       .weights label { color: color-mix(in srgb, var(--c) 40%, white); }
       .score-table tfoot td { border-top-color: #53677e; }
       .gain { background: color-mix(in srgb, #2fbf6e calc(15% + 60% * var(--g)), #24344a); color: #eafbf0; }
@@ -876,7 +884,11 @@
       // Each kind is averaged first, so a weight sets how much a kind counts, whatever its number of goals.
       // Only called when some kind has weight; with none, the totals show n/a rather than a misleading zero.
       const mean = (id, key) => kinds.reduce((sum, kind) => sum + weightOf(kind) * kindMean(kind, id, key), 0) / totalWeight;
-      const topMean = totalWeight ? Math.max(...data.engines.map(id => mean(id, "bestScore"))) : 0;
+      const meanTitle = "Each kind's goals are averaged first, then the kinds are averaged by their weights.";
+      const meanRow = (label, key, extra) => {
+        const top = totalWeight ? Math.max(...data.engines.map(id => mean(id, key))) : 0;
+        return `<tr class="mean-row${extra}"><td title="${meanTitle}">${label}</td>${data.engines.map(id => `<td class="score-cell">${totalWeight ? scorePair(mean(id, key), mean(id, key), mean(id, key) >= top - 1e-9) : "n/a"}</td>`).join("")}</tr>`;
+      };
       const topGain = totalWeight ? Math.max(...data.engines.map(id => mean(id, "bestScore") - mean(id, "typedScore"))) : 0;
       const header = `<thead><tr><th>Goal</th>${data.engines.map(id => `<th>${escape(labels[id])}</th>`).join("")}</tr></thead>`;
       const body = kinds.map(kind => {
@@ -887,12 +899,13 @@
         return `<tr class="kind-row" style="--c: ${kindColor(kind)}"><th colspan="${data.engines.length + 1}" title="${escape(kindDescriptions[kind] ?? "")}">${escape(kindLabel(kind))}${weightOf(kind) === 1 ? "" : `<span class="kind-weight">weight ${weightOf(kind)}</span>`}</th></tr>${goalRows}`;
       }).join("");
       const footer = `<tfoot>
-          <tr class="mean-row"><td>Mean of kinds</td>${data.engines.map(id => `<td class="score-cell">${totalWeight ? scorePair(mean(id, "typedScore"), mean(id, "bestScore"), mean(id, "bestScore") >= topMean - 1e-9) : "n/a"}</td>`).join("")}</tr>
+          ${meanRow("Mean, original query", "typedScore", "")}
           <tr class="gain-row"><td>Gain from the best query</td>${data.engines.map(id => {
             if (!totalWeight) return `<td class="score-cell">n/a</td>`;
             const gain = mean(id, "bestScore") - mean(id, "typedScore");
             return `<td class="score-cell"><span class="gain${gain < 0.005 ? " none" : ""}" style="--g: ${(topGain > 0 ? gain / topGain : 0).toFixed(3)}">+${fixed(gain)}</span></td>`;
           }).join("")}</tr>
+          ${meanRow("Mean, best query", "bestScore", " final")}
         </tfoot>`;
       $("score-table").innerHTML = `<table class="score-table">${header}<tbody>${body}</tbody>${footer}</table>`;
       for (const row of $("score-table").querySelectorAll("tr.goal-row")) {
