@@ -75,10 +75,14 @@
     .list-head .note { margin: 0; }
     .sort-label { color: #5b6d83; font-size: .74rem; margin-right: 6px; }
     .sort-toggle { display: inline-flex; align-items: center; }
-    .sort-group { display: inline-flex; border: 1px solid #c8d4e2; border-radius: 7px; overflow: hidden; }
-    .sort-button { border: 0; border-radius: 0; background: transparent; color: #29405c; padding: 3px 8px; font-size: .76rem; }
-    .sort-button + .sort-button { border-left: 1px solid #c8d4e2; }
-    .sort-button:hover { background: #f1f4f8; }
+    .sort-group, .preset-group { display: inline-flex; border: 1px solid #c8d4e2; border-radius: 7px; overflow: hidden; }
+    .sort-button, .preset-button { border: 0; border-radius: 0; background: transparent; color: #29405c; padding: 3px 8px; font-size: .76rem; }
+    .sort-button + .sort-button, .preset-button + .preset-button { border-left: 1px solid #c8d4e2; }
+    .sort-button:hover, .preset-button:hover { background: #f1f4f8; }
+    .preset-button { padding: 4px 11px; font-size: .8rem; cursor: pointer; }
+    .weight-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 14px; font-size: .85rem; color: #5b6d83; }
+    .weight-presets .preset-label { font-weight: 600; color: #29405c; }
+    .weight-presets .preset-custom { font-style: italic; }
     .case-filter { width: 100%; margin: 0 0 10px; border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 6px 9px; font-size: .85rem; }
     .case-group + .case-group { margin-top: 8px; }
     /* Each theme heading is a band across the whole panel, tinted in the theme's color. */
@@ -90,7 +94,7 @@
     .group-head[aria-expanded="false"]::after { content: "▸"; }
     .group-head > span:last-child { margin-left: auto; }
     .group-head > span:first-child::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--c, #8a99ab); }
-    .sort-button[aria-pressed="true"] { background: #e3e9f0; color: #172334; }
+    .sort-button[aria-pressed="true"], .preset-button[aria-pressed="true"] { background: #e3e9f0; color: #172334; }
     .head-side { display: grid; justify-items: end; gap: 6px; flex: none; }
     .key-toggle { border: 0; background: transparent; color: #5b6d83; font-size: .8rem; padding: 0; display: inline-flex; align-items: center; gap: 5px; }
     .key-toggle::before { content: "i"; display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid currentColor; font: 700 .66rem/1 Georgia, serif; }
@@ -219,7 +223,7 @@
     /* A gain's green deepens with its size relative to the largest gain (--g, 0 to 1). */
     .gain { --g: 0; display: inline-block; min-width: 4.2em; text-align: center; border-radius: 999px; padding: 2px 10px; background: color-mix(in srgb, #1f9a55 calc(12% + 70% * var(--g)), #eef1f5); color: #0f3d22; font-weight: 750; font-size: .95rem; }
     .gain.none { background: transparent; color: #8a99ab; font-weight: 500; }
-    details.weights-panel { margin-top: 14px; border-top: 1px solid #e8edf3; padding-top: 10px; }
+    details.weights-panel { margin-top: 10px; border-top: 1px solid #e8edf3; padding-top: 10px; }
     details.weights-panel > summary { cursor: pointer; color: #29405c; font-size: .88rem; font-weight: 600; }
     details.weights-panel > summary .weights-state { color: #5b6d83; font-weight: 400; margin-left: 4px; }
     .weights { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, max-content)); gap: 8px 32px; margin: 12px 0 8px; }
@@ -253,10 +257,12 @@
       .explorer .group-head { background: color-mix(in srgb, var(--c, #8a99ab) 20%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 35%, white); }
       .explorer .group-head:hover { background: color-mix(in srgb, var(--c, #8a99ab) 30%, transparent); }
 
-      .sort-group, .sort-button + .sort-button { border-color: #53677e; }
-      .sort-button { color: #cfdbe8; }
-      .sort-button:hover { background: #22324a; }
-      .sort-button[aria-pressed="true"] { background: #33465e; color: white; }
+      .sort-group, .sort-button + .sort-button, .preset-group, .preset-button + .preset-button { border-color: #53677e; }
+      .sort-button, .preset-button { color: #cfdbe8; }
+      .sort-button:hover, .preset-button:hover { background: #22324a; }
+      .sort-button[aria-pressed="true"], .preset-button[aria-pressed="true"] { background: #33465e; color: white; }
+      .weight-presets { color: #aabbd0; }
+      .weight-presets .preset-label { color: #e4edf7; }
       .sort-label { color: #aabbd0; }
       th, td { border-color: #34465c; }
       th, .support-table tbody th, .engine-table tbody th { color: #b7c9de; }
@@ -475,8 +481,9 @@
       </ul>
     </div>
     <div class="table-wrap" id="score-table"></div>
+    <div class="weight-presets" id="weight-presets"></div>
     <details class="weights-panel" id="weights-panel">
-      <summary>Weights by kind of goal<span class="weights-state" id="weights-state"></span></summary>
+      <summary>Adjust weights by kind of goal<span class="weights-state" id="weights-state"></span></summary>
       <div class="weights" id="weights" role="group" aria-label="Weight per kind of goal"></div>
       <p class="note">The means are exploratory. The goals were picked to expose differences between the engines, so the means say little about production traffic. Each kind's goals are averaged first, so a weight sets how much a kind counts regardless of how many goals it has.</p>
     </details>
@@ -802,7 +809,39 @@
     };
     const goalsOf = kind => data.translations.cases.filter(item => item.kind === kind);
 
+    // One-click weight sets for common readers. A kind left out keeps the default weight of 1.
+    const weightPresets = [
+      { id: "equal", label: "Equal", weights: {},
+        description: "Every kind of goal counts the same." },
+      { id: "people", label: "People typing", weights: { typing: 3, "word-forms": 2, title: 2, or: 1, and: 1, exclusion: 0 },
+        description: "People type short, often unfinished queries, rarely use operators, and may not know a card's exact wording." },
+      { id: "agents", label: "Agents", weights: { title: 3, exclusion: 2, and: 2, or: 2, "word-forms": 1, typing: 0 },
+        description: "Agents type complete queries and use quotes and operators freely, so exact titles and exclusions matter and unfinished typing does not." }
+    ];
+    const presetWeight = (preset, kind) => preset.weights[kind] ?? 1;
+    const activePreset = () => weightPresets.find(preset => data.goalKinds.every(kind => presetWeight(preset, kind) === weightOf(kind)));
+
+    function applyWeights() {
+      try { localStorage.setItem("goalWeights", JSON.stringify(weights)); } catch {}
+      renderWeights();
+      renderScoreTable();
+      writeHash();
+    }
+
+    function renderPresets() {
+      const active = activePreset();
+      $("weight-presets").innerHTML = `<span class="preset-label">Weights</span><span class="preset-group" role="group" aria-label="Weight presets">${weightPresets.map(preset => `<button type="button" class="preset-button" data-preset="${preset.id}" aria-pressed="${preset === active}" title="${escape(preset.description)}">${escape(preset.label)}</button>`).join("")}</span>${active ? "" : '<span class="preset-custom">Custom</span>'}`;
+      for (const button of $("weight-presets").querySelectorAll(".preset-button")) {
+        button.addEventListener("click", () => {
+          const preset = weightPresets.find(entry => entry.id === button.dataset.preset);
+          weights = Object.fromEntries(data.goalKinds.filter(kind => presetWeight(preset, kind) !== 1).map(kind => [kind, presetWeight(preset, kind)]));
+          applyWeights();
+        });
+      }
+    }
+
     function renderWeights() {
+      renderPresets();
       $("weights-state").textContent = weightsState();
       $("weights").innerHTML = data.goalKinds.filter(kind => goalsOf(kind).length).map(kind => {
         const count = goalsOf(kind).length;
@@ -816,6 +855,7 @@
           input.nextElementSibling.textContent = input.value;
           $("weights-state").textContent = weightsState();
           try { localStorage.setItem("goalWeights", JSON.stringify(weights)); } catch {}
+          renderPresets();
           renderScoreTable();
           writeHash();
         });
