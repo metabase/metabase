@@ -17,13 +17,13 @@ A data app runs with the permissions of the person who opens it, so people see o
 
 ## How data apps work
 
-You build and change data apps on your computer, with an AI coding agent, in a clone of your Remote Sync repository. Then you commit the app to a branch, review and merge it, pull the app into your Metabase, and choose who can open the app.
+You build and change data apps on your computer, with an AI coding agent and a clone of your Remote Sync repository. Then you commit the app to a branch, review and merge it, pull the app into your Metabase, and choose who can open the app.
 
 Your agent does most of the work, but here's an overview of the end-to-end process:
 
 1. Clone your [Remote Sync](../data-modeling/semantic-layer/remote-sync.md) repository to your computer, and create a branch for the app.
 2. Describe the app to an AI coding agent, like Claude Code or Codex, on your computer. For example: "Create a Metabase data app to add, update, and delete products from the products table."
-3. The agent uses the [Metabase CLI](../installation-and-operation/metabase-cli.md) to scaffold the app in your clone, and to fetch the published tables and metrics that the app can read from your Metabase.
+3. The agent uses the [Metabase CLI](../installation-and-operation/metabase-cli.md) to create the app in your clone, and to get the published tables and metrics that the app can read from your Metabase.
 4. The agent writes the app's code, including the questions and actions that the app runs. While the agent works, you [preview the app](#preview-the-app-on-your-computer) in your browser.
 5. The agent generates the files of the [app's collection](#what-a-data-app-can-read-and-write) from the app's questions and actions, and builds the app.
 6. Commit the app, push the branch, and review the changes, for example in a pull request. Then merge the branch into the branch that your Metabase pulls from.
@@ -53,9 +53,9 @@ An app can read only:
 
 An app can write data only through the actions in its own collection.
 
-Your agent defines the questions and actions that the app needs in the app's code, and generates the app's collection from them. The collection can hold only questions and actions. Metabase refuses an item that breaks a rule when it pulls the item, and the CLI refuses it when it generates the item. The main rules are:
+Your agent writes the questions and actions that the app needs in the app's code, and generates the app's collection from them. The collection can hold only questions and actions. The CLI refuses an item that breaks a rule when it generates the collection, and so does Metabase when it pulls the collection. The main rules are:
 
-- Questions must be built with the query builder, not SQL. Questions can read only [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics from your semantic layer, and the [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md) of published tables. So questions can't start from or join another saved question or model. Questions also can't join tables or add custom columns, and they have only one stage.
+- Questions must be built with the query builder, not SQL. Questions can read only [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics from your semantic layer, and the [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md) of published tables. So questions can't start from another saved question or model. Questions also can't join tables, add custom columns, or have more than one stage.
 - Actions must be table actions, which insert, update, or delete one row of a published table. Apps can't use SQL actions.
 - Items in the collection can't be archived or made public. Questions in the collection can't be embedded.
 
@@ -72,7 +72,7 @@ The app's collection changes only when Metabase pulls it from your repository. Y
    Create a Metabase data app that lets people look up product info, and add, edit, or remove products. Make it look cool.
    ```
 
-The agent scaffolds the app in `data_apps/<slug>/`, and writes the app's code there, with the questions and actions that the app needs. Then the agent generates the app's collection in `collections/data_apps/`, and builds the app's bundle (the built app, up to 10 MiB). After you merge the app and pull it into your Metabase, it opens at `/apps/<slug>`.
+The agent creates the app in `data_apps/<slug>/`, and writes the app's code there, with the questions and actions that the app needs. Then the agent generates the app's collection in `collections/data_apps/`, and builds the app's bundle (the built app, up to 10 MiB). After you merge the app and pull it into your Metabase, it opens at `/apps/<slug>`.
 
 To build and preview the app, the agent runs commands on your computer, like `mb` (the Metabase CLI), `npm run build`, and `npm run dev`. Your agent might ask for your permission before it runs these commands.
 
