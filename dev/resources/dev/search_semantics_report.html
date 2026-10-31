@@ -421,23 +421,26 @@
       history.replaceState(null, "", `#${params}`);
     }
 
-    function readHash() {
+    function readHash(initial) {
       const params = new URLSearchParams(location.hash.slice(1));
       if (!params.has("tab")) return false;
       if (params.get("tab") in data && data[params.get("tab")].cases) state.corpus = params.get("tab");
       state.selected = params.get("case");
-      // A shared link carries its sender's weights, or none when they were the defaults.
-      weights = {};
-      for (const pair of (params.get("weights") || "").split(",").filter(Boolean)) {
-        const [kind, value] = pair.split(":");
-        if (data.goalKinds.includes(kind) && /^[0-3]$/.test(value)) weights[kind] = Number(value);
+      // A shared link carries its sender's weights, or none when they were the defaults. A link followed within
+      // the page, such as a finding, keeps the reader's weights unless it carries its own.
+      if (initial || params.has("weights")) {
+        weights = {};
+        for (const pair of (params.get("weights") || "").split(",").filter(Boolean)) {
+          const [kind, value] = pair.split(":");
+          if (data.goalKinds.includes(kind) && /^[0-3]$/.test(value)) weights[kind] = Number(value);
+        }
       }
       return true;
     }
 
     function renderFindings() {
-      const { commit, generated, model, cutoff } = data.provenance;
-      $("provenance").textContent = `Built from commit ${commit} on ${generated}. Vectors from ${model}; the vector arm keeps cards within cosine distance ${fixed(cutoff)}.`;
+      const { commit, dirty, generated, model, cutoff } = data.provenance;
+      $("provenance").textContent = `Built from commit ${commit}${dirty ? " with uncommitted changes" : ""} on ${generated}. Vectors from ${model}; the vector arm keeps cards within cosine distance ${fixed(cutoff)}.`;
       $("findings").innerHTML = data.findings.map(finding => `<li><a href="#${new URLSearchParams({ tab: "sameQuery", case: finding.case })}">${escape(finding.case)}</a>: ${inline(finding.text)}</li>`).join("");
     }
 
@@ -720,13 +723,13 @@
     }
     // Following a link, from a finding or another page, opens its case.
     window.addEventListener("hashchange", () => {
-      if (readHash()) {
+      if (readHash(false)) {
         $("filter").value = "";
         render();
         $("detail").scrollIntoView({ behavior: "smooth", block: "start" });
       }
     });
-    if (readHash()) $("filter").value = "";
+    if (readHash(true)) $("filter").value = "";
     renderFindings();
     render();
   </script>

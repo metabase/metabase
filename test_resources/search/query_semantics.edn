@@ -20,7 +20,8 @@
 ;; The keyword arm gives the appdb/PostgreSQL results for every scenario here, but not for every query.
 ;; With a language other than simple, appdb also indexes an unstemmed copy of the text and the semantic index
 ;; does not, so a half-typed word such as "shippi" finds "Shipping costs" on appdb but not in the keyword arm.
-;; Both arms are recorded, but comparisons and statistics count only the vector arm.
+;; Both arms are recorded. Statistics score semantic search twice: its vector arm alone, and with its keyword arm
+;; and app-db's fallback hits.
 [{:id     "multiword-defaults"
   :focus  "default multiword Boolean and cross-field matches"
   :note   ["In-place's OR favors recall; app-db's AND favors precision. Neither default is universally"
@@ -634,7 +635,7 @@
            :semantic       {:keyword [], :vector []}}}
  {:id     "field-term-agreement"
   :focus  "ordinary term matches either indexed text field"
-  :note   ["All four engines agree on an exact ordinary term in either field."]
+  :note   ["Every engine agrees on an exact ordinary term in either field."]
   :config "simple"
   :query  "churn"
   :docs   {:A {:name "Monthly churn"}

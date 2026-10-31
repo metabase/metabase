@@ -33,7 +33,7 @@
     :holds {:appdb-postgres {:A true}}}
    {:case  "or-only-operator"
     :text  "Typing `or` on the way to \"orders\" finds nothing on PostgreSQL, while in-place and H2 also match \"Store locations\"."
-    :holds {:appdb-postgres {:B false}, :in-place {:C true}}}
+    :holds {:appdb-postgres :none, :in-place {:C true}, :appdb-h2 {:C true}}}
    {:case  "or-branch-prefix"
     :text  "`cust or rev` misses \"Customers\" on PostgreSQL, which completes only the last word as a prefix."
     :holds {:appdb-postgres {:A false}}}
@@ -45,7 +45,7 @@
     :holds {:semantic-only {:E true, :C false}}}
    {:case  "vector-paraphrase"
     :text  "`how much did we sell` finds nothing on semantic search, though \"Monthly sales\" is in the catalogue."
-    :holds {:semantic-with-fallback {:A false}}}])
+    :holds {:semantic-with-fallback :none}}])
 
 ;;; Frozen vectors
 
@@ -157,10 +157,15 @@
     (for [{case-id :case, :keys [text holds]} findings
           :let [row (or (by-id case-id) (throw (ex-info "Finding names an unknown scenario" {:case case-id})))]]
       (do (doseq [[engine memberships] holds
-                  [label included?]    memberships
-                  :let [actual (contains? (get-in row [:results engine]) label)]]
-            (when-not (= included? actual)
-              (throw (ex-info "Finding no longer holds" {:case case-id, :engine engine, :label label, :expected included?}))))
+                  :let [results (get-in row [:results engine])]]
+            ;; :none claims the engine returns nothing; a map claims whether each label is among its results.
+            (if (= memberships :none)
+              (when (seq results)
+                (throw (ex-info "Finding no longer holds" {:case case-id, :engine engine, :expected :none})))
+              (doseq [[label included?] memberships]
+                (when-not (= included? (contains? results label))
+                  (throw (ex-info "Finding no longer holds"
+                                  {:case case-id, :engine engine, :label label, :expected included?}))))))
           {:case case-id, :text text}))))
 
 ;;; Summaries
@@ -190,6 +195,7 @@
 (defn- provenance
   []
   {:commit    (str/trim (:out (p/shell {:out :string} "git" "rev-parse" "--short" "HEAD")))
+   :dirty     (boolean (seq (str/trim (:out (p/shell {:out :string} "git" "status" "--porcelain" "--" "test" "test_resources" "dev")))))
    :model     (:model frozen)
    :generated (str (java.time.LocalDate/now))
    :cutoff    max-cosine-distance})
