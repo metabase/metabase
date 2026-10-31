@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,10 +6,6 @@ import {
   type Section,
 } from "metabase/common/components/AccordionList";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import {
-  HoverParent,
-  TableInfoIcon,
-} from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
@@ -19,7 +14,7 @@ import type {
   DataSelectorSchema,
   DataSelectorTable,
 } from "metabase/querying/common/components/DataSelector";
-import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
+import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
@@ -112,11 +107,7 @@ export const DataSelectorTablePicker = ({
       table && selectedTable ? table.id === selectedTable.id : false;
 
     const renderItemIcon = ({ table }: { table: DataSelectorTable }) =>
-      table ? <TableInfoIcon table={table} position="top-start" /> : null;
-
-    const renderItemWrapper = (content: ReactNode) => (
-      <HoverParent>{content}</HoverParent>
-    );
+      table ? <Icon name="table" /> : null;
 
     const showSpinner = (itemOrSection: Item | Section<Item>) =>
       "table" in itemOrSection && !isSyncCompleted(itemOrSection.table);
@@ -127,31 +118,28 @@ export const DataSelectorTablePicker = ({
     const isSearchable = hasFiltering && tables.length >= minTablesToShowSearch;
 
     return (
-      <DelayGroup>
-        <Box w={rem(300)} style={{ overflowY: "auto" }}>
-          <AccordionList<Item>
-            id="TablePicker"
-            key="tablePicker"
-            className={CS.textBrand}
-            hasInitialFocus={hasInitialFocus}
-            sections={sections}
-            maxHeight={Infinity}
-            width="100%"
-            searchable={isSearchable}
-            onChange={handleChange}
-            showSpinner={showSpinner}
-            itemIsSelected={checkIfItemIsSelected}
-            itemIsClickable={checkIfItemIsClickable}
-            renderItemIcon={renderItemIcon}
-            renderItemWrapper={renderItemWrapper}
-            showItemArrows={hasNextStep}
-          />
+      <Box w={rem(300)} style={{ overflowY: "auto" }}>
+        <AccordionList<Item>
+          id="TablePicker"
+          key="tablePicker"
+          className={CS.textBrand}
+          hasInitialFocus={hasInitialFocus}
+          sections={sections}
+          maxHeight={Infinity}
+          width="100%"
+          searchable={isSearchable}
+          onChange={handleChange}
+          showSpinner={showSpinner}
+          itemIsSelected={checkIfItemIsSelected}
+          itemIsClickable={checkIfItemIsClickable}
+          renderItemIcon={renderItemIcon}
+          showItemArrows={hasNextStep}
+        />
 
-          {isSavedQuestionList && (
-            <LinkToDocsOnReferencingSavedQuestionsInQueries />
-          )}
-        </Box>
-      </DelayGroup>
+        {isSavedQuestionList && (
+          <LinkToDocsOnReferencingSavedQuestionsInQueries />
+        )}
+      </Box>
     );
   } else {
     return (
@@ -199,16 +187,23 @@ const Header = ({
 
   return (
     <Flex align="center" wrap="wrap">
-      <Flex
-        align="center"
-        style={{ cursor: "pointer" }}
+      <UnstyledButton
+        display="flex"
+        fz="inherit"
+        disabled={!onBack}
+        style={{ alignItems: "center" }}
         onClick={onBack ?? undefined}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.stopPropagation();
+          }
+        }}
       >
         {onBack && <Icon name="chevronleft" size={18} />}
         <Box component="span" ml="sm" data-testid="source-database">
           {tc(selectedDatabase.name)}
         </Box>
-      </Flex>
+      </UnstyledButton>
 
       {selectedSchema?.name && schemas.length > 1 && (
         <>

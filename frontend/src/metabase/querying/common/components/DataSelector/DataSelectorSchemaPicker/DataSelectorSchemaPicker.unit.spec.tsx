@@ -14,7 +14,6 @@ describe("DataSelectorSchemaPicker", () => {
     render(
       <DataSelectorSchemaPicker
         schemas={schemas}
-        hasFiltering
         hasInitialFocus
         hasNextStep={false}
         isLoading={false}

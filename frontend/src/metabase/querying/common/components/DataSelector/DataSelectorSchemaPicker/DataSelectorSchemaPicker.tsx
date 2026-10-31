@@ -8,7 +8,6 @@ import { CONTAINER_WIDTH } from "../constants";
 import type { DataSelectorSchema } from "../types";
 
 type DataSelectorSchemaPickerProps = {
-  hasFiltering: boolean;
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   isLoading: boolean;
@@ -22,7 +21,6 @@ export const DataSelectorSchemaPicker = ({
   selectedSchemaId,
   onChangeSchema,
   hasNextStep,
-  hasFiltering,
   hasInitialFocus,
 }: DataSelectorSchemaPickerProps) => {
   const sections = [
@@ -42,7 +40,6 @@ export const DataSelectorSchemaPicker = ({
         className={CS.textBrand}
         hasInitialFocus={hasInitialFocus}
         sections={sections}
-        searchable={hasFiltering}
         onChange={({ schema }: any) => onChangeSchema(schema)}
         itemIsSelected={(item: { schema: DataSelectorSchema }) =>
           item?.schema.id === selectedSchemaId

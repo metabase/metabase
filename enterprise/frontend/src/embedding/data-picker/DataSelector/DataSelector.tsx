@@ -190,7 +190,6 @@ export function DataSourceSelector(props: DataSourceSelectorProps) {
   return (
     <DataSelector
       steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
-      combineDatabaseSchemaSteps
       triggerContentComponent={TableTrigger}
       {...props}
     />

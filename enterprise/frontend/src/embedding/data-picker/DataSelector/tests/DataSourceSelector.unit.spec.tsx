@@ -220,6 +220,51 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
     });
 
+    it("drills down from Raw Data to the databases, Warehouse's schemas and Finance's tables, then back up one step at a time", async () => {
+      setup({
+        ...setupOpts,
+        databases: [createSampleDatabase(), createWarehouseDatabase()],
+      });
+
+      await userEvent.click(await screen.findByText("Raw Data"));
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("Warehouse")).toBeInTheDocument();
+      expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Warehouse"));
+      expect(await screen.findByText("Accounting")).toBeInTheDocument();
+      expect(screen.getByText("Finance")).toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Finance"));
+      expect(await screen.findByText("Invoices")).toBeInTheDocument();
+      expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByTestId("source-database"));
+      expect(await screen.findByText("Accounting")).toBeInTheDocument();
+      expect(screen.getByText("Finance")).toBeInTheDocument();
+      expect(screen.queryByText("Invoices")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Warehouse"));
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
+    });
+
+    it("does not show a search box on the schema step of a database with 2 schemas", async () => {
+      setup({
+        ...setupOpts,
+        databases: [createSampleDatabase(), createWarehouseDatabase()],
+      });
+
+      await userEvent.click(await screen.findByText("Raw Data"));
+      await userEvent.click(await screen.findByText("Warehouse"));
+
+      expect(await screen.findByText("Accounting")).toBeInTheDocument();
+      expect(screen.getByText("Finance")).toBeInTheDocument();
+      expect(screen.queryByPlaceholderText("Find...")).not.toBeInTheDocument();
+    });
+
     it("should skip the bucket step and show the SavedEntityPicker right away if there is only models in the bucket step", async () => {
       setup({
         ...setupOpts,
@@ -379,4 +424,26 @@ function createNNumberOfTables(numberOfTables: number, dbId: number): Table[] {
       display_name: `Table ${index + 1}`,
     }),
   );
+}
+
+function createWarehouseDatabase(): Database {
+  const WAREHOUSE_ID = 100;
+  return createMockDatabase({
+    id: WAREHOUSE_ID,
+    name: "Warehouse",
+    tables: [
+      createMockTable({
+        id: 1000,
+        db_id: WAREHOUSE_ID,
+        schema: "Accounting",
+        display_name: "Payments",
+      }),
+      createMockTable({
+        id: 1001,
+        db_id: WAREHOUSE_ID,
+        schema: "Finance",
+        display_name: "Invoices",
+      }),
+    ],
+  });
 }
