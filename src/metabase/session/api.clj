@@ -432,7 +432,7 @@
                          (when (and (:success? reset-auth)
                                     (:success? (auth-identity/authenticate
                                                 :provider/password
-                                                {:email    (-> reset-auth :auth-identity :provider_id)
+                                                {:email    (:email (session.db/user (:user-id reset-auth)))
                                                  :password (:password credentials)})))
                            (api/throw-invalid-param-exception
                             :password (tru "New password must be different from your current password.")))))
