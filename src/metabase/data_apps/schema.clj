@@ -86,10 +86,6 @@
    bytes?
    [:fn {:error/message "must be less than 10 MiB"} #(<= (alength ^bytes %) max-bundle-bytes)]])
 
-(mr/def ::bundle-text
-  "The text of a data app's bundle file."
-  [:string {:max max-bundle-bytes}])
-
 (mr/def ::data-app
   "A DataApp as selected from the app DB: every column of `:data_app`."
   [:merge

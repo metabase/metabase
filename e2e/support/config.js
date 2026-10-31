@@ -31,7 +31,7 @@ import {
   stopCustomVizDevServer,
 } from "./helpers/e2e-custom-viz-dev-server-tasks";
 import {
-  buildDataApp,
+  copyDataAppsFixture,
   removeDataAppPaths,
   writeDataAppFiles,
 } from "./helpers/e2e-data-app-tasks";
@@ -311,7 +311,7 @@ const defaultConfig = {
       stopMockOidcServer,
       startCustomVizDevServer,
       stopCustomVizDevServer,
-      buildDataApp,
+      copyDataAppsFixture,
       writeDataAppFiles,
       removeDataAppPaths,
       ...perTestCaptureTasks,

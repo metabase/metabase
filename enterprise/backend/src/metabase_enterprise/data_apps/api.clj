@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-apps.api
-  "Data-app endpoints, mounted at `/api/ee/apps`: manage data apps and the groups that can read their collections, serve
-  their bundles, and generate their typed schema and the files of their repository."
+  "Data-app endpoints, mounted at `/api/ee/apps`: list data apps, enable or disable them, manage the groups that can read
+  their collections, serve their bundles, and generate the files of their repository."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -11,16 +11,11 @@
    [metabase-enterprise.data-apps.generate.queries :as generate.queries]
    [metabase-enterprise.data-apps.generate.schema :as generate.schema]
    [metabase-enterprise.data-apps.group-access :as data-app.group-access]
-   [metabase-enterprise.data-apps.models.data-app :as data-app]
-   [metabase-enterprise.data-apps.typed-schema :as data-apps.typed-schema]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.data-apps.schema :as data-apps.schema]
-   [metabase.events.core :as events]
    [metabase.lib.schema.test-spec]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -77,30 +72,9 @@
    [:created_at      :any]
    [:updated_at      :any]])
 
-(def ^:private CreateDataAppRequest
-  [:map {:closed true}
-   [:name          ::data-apps.schema/slug]
-   [:display_name  {:optional true} ::data-apps.schema/display-name]
-   [:description   {:optional true} ::data-apps.schema/description]
-   [:version       {:optional true} ::data-apps.schema/version]
-   [:bundle_path   {:optional true} ::data-apps.schema/bundle-path]
-   [:allowed_hosts {:optional true} ::data-apps.schema/allowed-hosts]
-   [:enabled       {:optional true} :boolean]])
-
-(def ^:private create-defaults
-  "What a new app starts with: an empty bundle, and unless its request says otherwise, the bundle path the app
-  template builds to; it is enabled, like an app an import creates."
-  {:bundle_path "dist/index.js"
-   :bundle      ""})
-
 (def ^:private UpdateDataAppRequest
   [:map {:closed true}
-   [:enabled       {:optional true} :boolean]
-   [:display_name  {:optional true} ::data-apps.schema/display-name]
-   [:description   {:optional true} ::data-apps.schema/description]
-   [:version       {:optional true} ::data-apps.schema/version]
-   [:bundle_path   {:optional true} ::data-apps.schema/bundle-path]
-   [:allowed_hosts {:optional true} ::data-apps.schema/allowed-hosts]])
+   [:enabled :boolean]])
 
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
@@ -220,90 +194,19 @@
        (remove #(and (not api/*is-superuser?*) (data-app.config/outdated? %)))
        (mapv data-app-response)))
 
-(defn- with-bundle
-  "The DataApp `changes` with their `bundle` text as the bytes the app is served."
-  [changes]
-  (cond-> changes
-    (contains? changes :bundle) (update :bundle data-app/file->bundle)))
-
-(defn- write-check-data-app
-  "The DataApp named `slug` without its bundle, checked for existence and write permissions."
-  [slug]
-  (api/write-check (api/check-404 (data-apps.db/data-app-by-slug slug))))
-
-(defn- check-editable!
-  "Throws a 403 when `app` is read-only under remote sync."
-  [app]
-  (api/check-403 (remote-sync/model-editable? :model/DataApp app)))
-
-(api.macros/defendpoint :post "/" :- DataAppResponse
-  "Create a data app with its resource collection and an empty bundle. It is enabled unless the request says
-  otherwise."
-  [_route-params
-   _query-params
-   body :- CreateDataAppRequest]
-  (api/create-check :model/DataApp body)
-  (check-editable! body)
-  (let [row (merge create-defaults {:display_name (:name body)} body)
-        app (data-apps.db/data-app (data-apps.apps/create-app! (with-bundle row)))]
-    (events/publish-event! :event/data-app-create {:object app :user-id api/*current-user-id*})
-    (data-app-response app)))
-
-(defn- update-app!
-  "Apply `changes` to the data app named `slug` and return the updated app."
-  [slug changes]
-  (let [app            (write-check-data-app slug)
-        synced-changes (dissoc changes :enabled)]
-    (when (seq synced-changes)
-      (check-editable! app))
-    (when (seq changes)
-      (data-apps.db/update-data-app! (:id app) (with-bundle changes)))
-    (let [app (data-apps.db/data-app (:id app))]
-      (when (seq synced-changes)
-        (events/publish-event! :event/data-app-update {:object app :user-id api/*current-user-id*}))
-      (data-app-response app))))
-
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows slashes inside a segment, so `/:slug`
-;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status` and `sandbox-host` routes.
+;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status`, `sandbox-host` and
+;; `generate` routes.
 (api.macros/defendpoint :put ["/:slug" :slug slug-regex] :- DataAppResponse
-  "Update a data app's manifest fields, or enable or disable it. A disabled app is served to superusers only."
+  "Enable or disable a data app. A disabled app is served to superusers only. Superusers only; anything else about an
+  app changes only through a repository import."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
-   changes :- UpdateDataAppRequest]
-  (update-app! slug changes))
-
-(api.macros/defendpoint :put ["/:slug/bundle" :slug slug-regex] :- DataAppResponse
-  "Replace a data app's bundle."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
-   _query-params
-   {:keys [bundle]} :- [:map {:closed true} [:bundle ::data-apps.schema/bundle-text]]]
-  (update-app! slug {:bundle bundle}))
-
-(api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
-  "Delete a data app, its bundle, and its collection with the grants on it."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (let [app (write-check-data-app slug)]
-    (check-editable! app)
-    (data-apps.db/delete-data-app! (:id app))
-    (events/publish-event! :event/data-app-delete {:object app :user-id api/*current-user-id*}))
-  ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
-  ;; above (returning `generic-204-no-content` would fail that validation).
-  nil)
-
-(def ^:private typescript-response-headers
-  {"Content-Type"                 "text/typescript; charset=utf-8"
-   "X-Content-Type-Options"       "nosniff"
-   "Cross-Origin-Resource-Policy" "same-origin"
-   "Referrer-Policy"              "no-referrer"
-   "Cache-Control"                "no-store"})
-
-(api.macros/defendpoint :get ["/:slug/typed-schema" :slug slug-regex] :- :any
-  "Return the TypeScript module of the data app's queries and actions: a `defineQuery` call for each question and metric
-  and a `defineAction` call for each action in the app's collection, addressed by entity ID. Superusers only."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  {:status  200
-   :headers typescript-response-headers
-   :body    (data-apps.typed-schema/generate (write-check-data-app slug))})
+   {:keys [enabled]} :- UpdateDataAppRequest]
+  (api/check-superuser)
+  (let [app (api/check-404 (data-apps.db/data-app-by-slug slug))]
+    (data-apps.db/update-data-app! (:id app) {:enabled enabled})
+    (data-app-response (data-apps.db/data-app (:id app)))))
 
 (api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles
   "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and

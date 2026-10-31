@@ -223,6 +223,11 @@ export interface ExecuteActionRequest {
   parameters: ParametersForActionExecution;
 }
 
+export interface ExecuteUnsavedActionRequest {
+  action: CreateActionRequest;
+  parameters: ParametersForActionExecution;
+}
+
 export interface PrefetchActionValuesRequest {
   id: WritebackActionId;
   parameters: ParametersForActionExecution;
