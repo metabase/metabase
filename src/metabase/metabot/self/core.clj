@@ -1093,8 +1093,7 @@
                                   ;; log and report the same shape a server fault reports.
                                   (log/error e "Tool invocation escaped the runtime"
                                              {:tool-name safe-name})
-                                  {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-                                   :error  {:class :unrecoverable :code :internal}}))))))
+                                  (tools.runtime/render {:class :unrecoverable :code :internal} (keys tools))))))))
               results  (collect-tool-result tool-call-id tool-name outcome)]
           (when (ait/capture-active?)
             (ait/record! {:ai/tool-output results}))

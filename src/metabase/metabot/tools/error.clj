@@ -10,10 +10,11 @@
   | `:unrecoverable` | everything else                  | the user   | `:user-message`? |
 
   Recoverable is opt-in and unrecoverable is the default, so the safe path is the one you get by
-  doing nothing: an exception nobody declared recoverable ends the turn rather than handing the
-  model text that nobody wrote for it. An unrecoverable error has no `:message` key at all, which
-  makes forwarding a foreign exception message to the agent impossible rather than merely
-  discouraged.
+  doing nothing: an exception nobody declared is unrecoverable with the code `:internal`, and the
+  model never reads text that nobody wrote for it. An unrecoverable error has no `:message` key at
+  all, which makes forwarding a foreign exception message to the agent impossible rather than merely
+  discouraged. The agent still hears about the first `:internal` failure of a turn, in a fixed
+  sentence, so that it can try another way; the second ends the turn.
 
   Each recoverable error is declared once with [[defrecoverable]], which records it in the catalog
   here. The catalog is what lets one test cover every declared error, and what lets a converter
@@ -322,8 +323,8 @@
 
   A third audience, decided the way the other two are — by the class. The model's `:output` is not
   it: that text is written to be acted on (\"`uris` must be an array of 1 to 5 URI strings\", \"the
-  user was shown the error (:internal)\"), and someone reading their own conversation is not the one
-  acting on it.
+  user was shown the error (:scope-denied)\"), and someone reading their own conversation is not the
+  one acting on it.
 
   - `:unrecoverable` gets the `:user-message` the tool chose, because this is the failure the user
     has to act on, and the generic sentence when the tool chose none.

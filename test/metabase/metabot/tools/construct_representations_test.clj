@@ -260,7 +260,7 @@
                :source-table ["Sample" "PUBLIC" "ORDERS"]
                :fields       [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}]})
 
-(deftest export-validation-failures-end-metabot-turn-test
+(deftest export-validation-failures-are-internal-errors-test
   (with-mp-and-stubs!
     (fn []
       (let [export-query (mt/original-fn #'repr.resolve/export-query)]
@@ -281,11 +281,7 @@
                                                :title "Order IDs" :description "IDs of orders."})]
             (is (nil? (:error (ex-data caught))))
             (is (= :unrecoverable (:class (tools.error/classify caught))))
-            (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-                    :error {:class :unrecoverable :code :internal}}
-                   outcome))
-            (is (= "Something went wrong."
-                   (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
+            (is (= test-util/internal-failure outcome))))))))
 
 (deftest metadata-lookup-failures-propagate-test
   (with-mp-and-stubs!
@@ -363,9 +359,9 @@
                     :error {:class :recoverable
                             :code :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query}}
                    outcome))
-            (is (nil? (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
+            (is (nil? (#'agent/terminal-error-message [{:type :tool-output :result outcome}] 0)))))))))
 
-(deftest metadata-lookup-failures-end-metabot-turn-test
+(deftest metadata-lookup-failures-are-internal-errors-test
   (with-mp-and-stubs!
     (fn []
       (doseq [[label failure] (metadata-lookup-failures)]
@@ -379,11 +375,7 @@
                                                 "construct_notebook_query"
                                                 {:query orders-id-query
                                                  :title "Order IDs" :description "IDs of orders."})]
-              (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-                      :error  {:class :unrecoverable :code :internal}}
-                     outcome))
-              (is (= "Something went wrong."
-                     (#'agent/terminal-error-message [{:type :tool-output :result outcome}]))))))))))
+              (is (= test-util/internal-failure outcome)))))))))
 
 (deftest implicit-join-happy-path-test
   (testing "cross-table breakout gets auto-wired with a :source-field after repair"

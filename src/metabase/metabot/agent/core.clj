@@ -219,19 +219,35 @@
   [parts]
   (some #(= (:type %) :error) parts))
 
-(defn- terminal-error-message
-  "The user-facing message from a tool failure no retry can fix, or nil if there was none.
+(def ^:private max-undeclared-failures
+  "How many tool failures that no tool declared a turn survives. The next one ends it, which stops a retry loop."
+  1)
 
-  An unrecoverable failure is one only the user can act on — a permission denial, a server fault —
-  so the turn ends. The message is the `:user-message` the tool chose; a tool that set none gets the
-  generic one, because `:output` is written for the model and says only that the call failed."
-  [parts]
-  (some (fn [part]
-          (when (and (= (:type part) :tool-output)
-                     (= :unrecoverable (get-in part [:result :error :class])))
-            (or (not-empty (get-in part [:result :error :user-message]))
-                (tru "Something went wrong."))))
-        parts))
+(defn- undeclared-failure?
+  "Whether `part` is a tool call that failed in a way no tool declared, which the runtime reports as `:internal`."
+  [part]
+  (and (= (:type part) :tool-output)
+       (= :internal (get-in part [:result :error :code]))))
+
+(defn- terminal-error-message
+  "The user-facing message that ends the turn after this iteration's tool calls, or nil if the turn goes on.
+
+  A declared unrecoverable failure is one only the user can act on, such as a permission denial, so
+  the turn ends. The message is the `:user-message` the tool chose; a tool that set none gets the
+  generic one, because `:output` is written for the model and says only that the call failed.
+
+  A failure no tool declared ends the turn only when `undeclared-failures`, the turn's count of them
+  with this iteration's included, passes [[max-undeclared-failures]]. The message is then the generic one."
+  [parts undeclared-failures]
+  (let [declared (some (fn [part]
+                         (when (and (= (:type part) :tool-output)
+                                    (= :unrecoverable (get-in part [:result :error :class]))
+                                    (not (undeclared-failure? part)))
+                           (get-in part [:result :error])))
+                       parts)]
+    (when (or declared (< max-undeclared-failures undeclared-failures))
+      (or (not-empty (:user-message declared))
+          (tru "Something went wrong.")))))
 
 (defn- should-continue?
   "Determine if agent should continue iterating."
@@ -564,13 +580,14 @@
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
   [agent rf init usage-atom]
-  {:agent      agent
-   :rf         rf
-   :result     init
-   :iteration  1
-   :status     :continue
-   :usage-atom usage-atom
-   :sent-parts []})
+  {:agent               agent
+   :rf                  rf
+   :result              init
+   :iteration           1
+   :status              :continue
+   :usage-atom          usage-atom
+   :sent-parts          []
+   :undeclared-failures 0})
 
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
@@ -612,7 +629,7 @@
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom sent-parts] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom sent-parts undeclared-failures] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
@@ -659,11 +676,12 @@
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
-          ;; Every profile, not just the `:required-tool-call?` ones. An unrecoverable failure is
-          ;; defined as one only the user can act on, so the class is the decision and the profile
+          ;; Every profile, not just the `:required-tool-call?` ones. A declared unrecoverable failure
+          ;; is defined as one only the user can act on, so the error is the decision and the profile
           ;; is not part of it. A tool that wants the agent to carry on past a failure declares it
           ;; recoverable, which is a choice made at the error, where the reason for it is visible.
-          (let [terminal-error (terminal-error-message parts)]
+          (let [undeclared-failures (+ undeclared-failures (count (filter undeclared-failure? parts)))
+                terminal-error      (terminal-error-message parts undeclared-failures)]
             (cond
               (reduced? result')
               ;; consumer signalled early termination (e.g. client disconnect / cancellation)
@@ -680,7 +698,11 @@
                              :result (rf result'' (final-state-part @memory-atom))))))
 
               (should-continue? iteration max-iter terminal-tools parts)
-              (assoc loop-state :result result' :iteration (inc iteration) :sent-parts input-parts)
+              (assoc loop-state
+                     :result result'
+                     :iteration (inc iteration)
+                     :sent-parts input-parts
+                     :undeclared-failures undeclared-failures)
 
               :else
               (let [reason (finish-reason iteration max-iter terminal-tools parts)]

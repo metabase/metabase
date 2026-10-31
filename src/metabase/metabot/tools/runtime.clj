@@ -153,16 +153,19 @@
 ;;; ------------------------------------------------ Rendering -----------------------------------------------------
 
 (defn- unrecoverable-output
-  "What the model is told about an unrecoverable failure: the code, and not to retry.
+  "What the model is told about an unrecoverable failure, which never includes the failure's own text.
 
-  Nothing else. The user is being shown the real error on another channel, so the model's job here
-  is to stop rather than to explain. The code is safe to include because it is ours — a closed
-  vocabulary we wrote — and it gives the model something stable to refer to if it says anything at
-  all. Note that the model only ever sees this *within the turn*, to pair the remaining tool calls
-  of the iteration with results; a turn that ends in an error event is dropped from history whole,
-  so later turns never read it."
+  `:internal` is a failure no tool declared. The agent loop carries on after the first one in a turn,
+  so the model is told to try another way rather than make the same call again.
+
+  For any other code the user is shown the real error on another channel, so the model's job is to
+  stop rather than to explain. The code is safe to include because it is ours, a closed vocabulary
+  we wrote, and it gives the model something stable to refer to if it says anything at all."
   [code]
-  (str "This call failed and the user was shown the error (" code "). Don't retry it."))
+  (if (= :internal code)
+    (str "This call failed with an unexpected error. Don't retry the same call. "
+         "Try another approach, or tell the user it failed.")
+    (str "This call failed and the user was shown the error (" code "). Don't retry it.")))
 
 (def ^:private leak-patterns
   "Shapes that mean a raw exception or EDN dump reached agent-bound text: a stack-trace frame,
@@ -189,7 +192,7 @@
   | ---------------- | --------------------------------------------------------- |
   | `:validation`    | the message                                               |
   | `:recoverable`   | the message, then each kept recovery step on its own line  |
-  | `:unrecoverable` | a fixed sentence carrying only the code                    |
+  | `:unrecoverable` | a fixed sentence, with the code unless it is `:internal`  |
 
   Failure text is capped at [[max-output-length]] characters.
 

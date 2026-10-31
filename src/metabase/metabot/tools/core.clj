@@ -15,12 +15,13 @@
   to …\"}` convention: a failure is thrown, so forgetting to handle one cannot silently hand the
   model a sentence nobody wrote.
 
-  Everything a tool does about a failure is written at the call site, and the default — doing
-  nothing — is that the failure ends the turn:
+  Everything a tool does about a failure is written at the call site. A failure it does nothing
+  about is undeclared: the model learns only that the call failed, and a second such failure ends
+  the turn. What a tool can do instead:
 
   - *relay a foreign error*: a converter ([[with-entity]], [[with-pipeline-errors]]) turns one known
     shape into a declared recoverable error. A shape a converter does not recognise passes through
-    unchanged and is therefore unrecoverable.
+    unchanged and is therefore undeclared.
   - *do one thing per item*: implement [[BatchedTool]] as well, and let [[handle]] delegate to
     [[handle-each]]. A declared recoverable error then becomes that item's contribution instead of
     ending the turn.
