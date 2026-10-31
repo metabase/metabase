@@ -7,7 +7,8 @@
    [metabase.audit-app.core :as audit]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.core :as metabot]
-   [metabase.premium-features.core :as premium-features]))
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,21 +21,18 @@
 (defn field-schema
   "Returns the schema for a table field."
   ([field]
-   (field-schema field nil nil))
-  ([field source-name]
-   (field-schema field source-name nil))
-  ([{:keys [id field_id] :as field} source-name table-id]
+   (field-schema field nil))
+  ([{:keys [id field_id] :as field} table-id]
    (let [field-id (or id field_id)
          table-id (or table-id (:table_id field) (:table-id field) (table-by-field-id field-id))]
      (m/assoc-some
       (assoc (schemas.common/column-schema field)
              :type "column"
              :key (schemas.common/generated-key (:name field) field-id)
-             :id field-id)
-      :sourceName source-name
+             :id field-id
+             :slug (u/slugify (:name field)))
       :fieldId (when (integer? field-id) field-id)
-      :tableId (when (integer? table-id) table-id)
-      :defaultTemporalBucket (:unit field)))))
+      :tableId (when (integer? table-id) table-id)))))
 
 (defn- without-unavailable-tables
   "`tables` without any backed by a routing destination database, and without the audit database's while the audit
@@ -140,7 +138,7 @@
       :name         (or display_name name)
       :databaseName database_name
       :tableName    name
-      :fields       (schemas.common/keyed-map (map #(field-schema % name id) fields))}
+      :fields       (schemas.common/keyed-map (map #(field-schema % id) fields))}
      :entityId portable_entity_id
      :description description
      :schemaName database_schema

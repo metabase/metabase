@@ -8,7 +8,7 @@ const column = <
   TName extends string,
   TDisplayName extends string,
   TJsType extends string,
-  TOptions extends object = object,
+  const TOptions extends object = object,
 >(
   fieldId: TFieldId,
   tableId: TTableId,
@@ -90,12 +90,16 @@ export const TEST_SCHEMA = {
       type: "table" as const,
       id: 1,
       fields: {
-        id: column(100, 1, "ID", "ID", "number"),
+        id: column(100, 1, "ID", "ID", "number", { slug: "id" }),
         createdAt: column(103, 1, "CREATED_AT", "Created At", "Date", {
-          baseType: "type/DateTime",
+          slug: "created_at",
         }),
-        amount: column(102, 1, "AMOUNT", "Amount", "number"),
-        status: column(101, 1, "STATUS", "Status", "string"),
+        amount: column(102, 1, "AMOUNT", "Amount", "number", {
+          slug: "amount",
+        }),
+        status: column(101, 1, "STATUS", "Status", "string", {
+          slug: "status",
+        }),
       },
       segments: {
         completed: { type: "segment" as const, id: 11, tableId: 1 },
@@ -114,7 +118,7 @@ export const TEST_SCHEMA = {
       type: "table" as const,
       id: 2,
       fields: {
-        price: column(201, 2, "PRICE", "Price", "number"),
+        price: column(201, 2, "PRICE", "Price", "number", { slug: "price" }),
       },
       segments: {
         active: { type: "segment" as const, id: 12, tableId: 2 },

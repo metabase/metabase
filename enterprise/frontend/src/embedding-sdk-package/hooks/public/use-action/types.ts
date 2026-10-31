@@ -12,9 +12,9 @@
 import type { SdkActionId } from "embedding-sdk-bundle/types/action";
 
 import type {
-  FieldSchema,
   RowValue,
   SchemaJavaScriptType,
+  TableFieldSchema,
   TableSchema,
 } from "../data-schema";
 
@@ -172,19 +172,20 @@ type ActionParamValue<TParam extends { jsType?: SchemaJavaScriptType }> =
           : RowValue | null;
 
 /**
- * An implicit action's parameters: its table's columns, by name, each typed
- * by its `jsType` and optional, since the database decides what a row needs.
+ * An implicit action's parameters: its table's columns, by their `slug`, each
+ * typed by its `jsType` and optional, since the database decides what a row
+ * needs.
  *
  * @category useAction
  * @notExported ActionParamValue
  */
 export type TableActionParameters<TTable> = TTable extends {
-  fields: infer TFields extends Record<string, FieldSchema>;
+  fields: infer TFields extends Record<string, TableFieldSchema>;
 }
   ? {
-      [TKey in keyof TFields as Lowercase<
-        TFields[TKey]["name"]
-      >]?: ActionParamValue<TFields[TKey]>;
+      [TKey in keyof TFields as TFields[TKey]["slug"]]?: ActionParamValue<
+        TFields[TKey]
+      >;
     }
   : Record<string, unknown>;
 

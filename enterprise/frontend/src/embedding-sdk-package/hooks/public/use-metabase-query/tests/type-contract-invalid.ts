@@ -71,6 +71,27 @@ const CreateOrder = defineAction({
   table: TEST_SCHEMA.tables.orders,
 });
 
+const REVIEWS_TABLE = {
+  type: "table",
+  id: 3,
+  fields: {
+    reviewId: {
+      type: "column",
+      fieldId: 300,
+      tableId: 3,
+      name: "Review ID",
+      slug: "review_id",
+      jsType: "number",
+    },
+  },
+} as const;
+
+const CreateReview = defineAction({
+  entityId: "createReviewEntity",
+  kind: "row/create",
+  table: REVIEWS_TABLE,
+});
+
 // --------
 // Compile-time contracts that must **fail** type-checking.
 //
@@ -270,6 +291,9 @@ function InvalidTypeFixtures() {
 
   // @ts-expect-error a parameter value is typed by its `jsType`
   useAction(CreateOrder).execute({ status: 1 });
+
+  // @ts-expect-error a parameter is keyed by its column's slug, not its lowercased name
+  useAction(CreateReview).execute({ "review id": 1 });
 
   // @ts-expect-error `result` is discriminated by the action's kind
   void useAction(CreateOrder).result?.["rows-updated"];
