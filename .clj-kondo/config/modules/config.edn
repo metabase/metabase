@@ -1712,10 +1712,11 @@
 
   metabot.toolkit
   {:team "Metabot"
-   :api  #{metabase.metabot.toolkit.dashboard-ops}
+   :api  #{metabase.metabot.toolkit.dashboard-op-schema metabase.metabot.toolkit.dashboard-ops}
    :uses #{dashboards
            lib
            parameters
+           parameters.schema
            util}}
 
   metrics
