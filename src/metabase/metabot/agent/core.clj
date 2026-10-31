@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.ai-tracing.core :as ait]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
@@ -693,6 +694,26 @@
                        :finish-reason reason
                        :result (rf result' (final-state-part @memory-atom)))))))))))
 
+(defn- report-turn-finished!
+  "Fires one agent_turn_finished :snowplow/ai_service_event per turn, with the request id of the turn's
+  agent_used_tool events, so the fleet view can join a turn to its tool calls. Fires only when :source and
+  :request-id are present in tracking-opts, like the tool event. The details carry the finish reason and the
+  number of steps (LLM calls) the turn took; `steps` is absent when the turn died before its first step."
+  [{:keys [request-id session-id source profile-id]} finish-reason steps duration-ms]
+  (when (and (some? source)
+             (some? request-id))
+    (analytics.core/track-event! :snowplow/ai_service_event
+                                 {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
+                                  :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
+                                  :source                        source
+                                  :event                         "agent_turn_finished"
+                                  :user-id                       api/*current-user-id*
+                                  :session-id                    session-id
+                                  :profile                       (some-> profile-id name)
+                                  :duration-ms                   (long duration-ms)
+                                  :event-details                 (cond-> {"finish_reason" (name finish-reason)}
+                                                                   (some? steps) (assoc "steps" steps))})))
+
 ;;; Public API
 
 (def ^:private debug-log-file
@@ -779,7 +800,9 @@
                           :profile-id profile-id
                           :msg-count  (count (:messages opts))}
           (analytics/inc! :metabase-metabot/agent-requests labels)
-          (let [start-ms (u/start-timer)]
+          (let [start-ms      (u/start-timer)
+                ;; set once the agent exists, so a turn that dies on an exception still reports its finish
+                turn-tracking (atom nil)]
             (binding [*debug-log*                              (when debug? (atom []))
                       scope/*current-user-scope*               scopes
                       scope/*current-user-metabot-permissions* perms
@@ -803,6 +826,7 @@
                                               :ai/context    (:context opts)
                                               :ai/state      (:state opts)}
                           (let [agent      (init-agent opts)
+                                _          (reset! turn-tracking (:tracking-opts agent))
                                 usage-atom (atom {})
                                 {result        :result
                                  iteration     :iteration
@@ -811,6 +835,7 @@
                                                                     (drop-while #(= :continue (:status %)))
                                                                     first)]
                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
+                            (report-turn-finished! @turn-tracking finish-reason iteration (u/since-ms start-ms))
                             ;; Materialized turn-level outputs for evals: token usage, why the loop
                             ;; stopped, and the final agent state (link registry / generated entities).
                             (when (ait/capture-active?)
@@ -837,6 +862,7 @@
                     turn-result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)
+                  (report-turn-finished! @turn-tracking :error nil (u/since-ms start-ms))
                   (let [{:keys [api-error status provider]} (ex-data e)
                         msg (ex-message e)]
                     (cond
