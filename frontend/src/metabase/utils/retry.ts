@@ -1,5 +1,21 @@
 import { delay } from "metabase/utils/promise";
 
+/**
+ * Feature-detected fallback for AbortSignal.throwIfAborted, which is
+ * unavailable in Chrome < 100, Firefox < 97, and Safari < 15.4.
+ * Also guards against absent `signal.reason` (Chrome < 98).
+ */
+export function throwIfSignalAborted(signal: AbortSignal): void {
+  if (typeof signal.throwIfAborted === "function") {
+    signal.throwIfAborted();
+  } else if (signal.aborted) {
+    const reason =
+      signal.reason ??
+      new DOMException("The operation was aborted.", "AbortError");
+    throw reason;
+  }
+}
+
 export type RetryOptions = {
   /**
    * Maximum number of retries after the initial attempt.
@@ -51,7 +67,9 @@ export async function retry<T>(
   for (let attempt = 0; ; attempt++) {
     // Bail before each attempt if aborted — including right after an
     // interrupted backoff — rather than making another call to `fn`.
-    signal?.throwIfAborted();
+    if (signal) {
+      throwIfSignalAborted(signal);
+    }
     try {
       return await fn();
     } catch (error) {
