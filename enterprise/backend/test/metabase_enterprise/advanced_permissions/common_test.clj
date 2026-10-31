@@ -13,6 +13,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.upload.impl :as upload]
    [metabase.upload.impl-test :as upload-test]
+   [metabase.upload.settings :as upload.settings]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -1050,7 +1051,18 @@
           (mt/user-http-request :rasta :put 204 "setting/" {:uploads-settings {:db_id (mt/id) :schema_name nil :table_prefix nil}})))
       (testing "Upload DB cannot be set without the right permission"
         (mt/with-all-users-data-perms-graph! {(mt/id) {:details :no}}
-          (mt/user-http-request :rasta :put 403 "setting/" {:uploads-settings {:db_id (mt/id) :schema_name nil :table_prefix nil}}))))))
+          (mt/user-http-request :rasta :put 403 "setting/" {:uploads-settings {:db_id (mt/id) :schema_name nil :table_prefix nil}})))
+      (testing "Upload DB must be set by integer id"
+        (doseq [db-id [(str (mt/id)) "SELECT TRUE AS is_attached_dwh" 0 -1 1.5]]
+          (testing (pr-str db-id)
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:details :no}}
+              ;; the settings API masks errors as a generic 403 for non-admins
+              (mt/user-http-request :rasta :put 403 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}})
+              (mt/with-current-user (mt/user->id :rasta)
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"db_id must be a positive integer"
+                                      (upload.settings/uploads-settings! {:db_id db-id :schema_name nil :table_prefix nil})))))
+            (is (= "db_id must be a positive integer."
+                   (mt/user-http-request :crowberto :put 400 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}})))))))))
 
 (deftest settings-managers-can-enable-and-disable-uploads-on-dwh
   (mt/with-premium-features #{:advanced-permissions}
