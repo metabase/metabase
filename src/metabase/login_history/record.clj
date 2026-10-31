@@ -1,6 +1,6 @@
 (ns metabase.login-history.record
   (:require
-   [metabase.analytics.snowplow :as snowplow]
+   [metabase.analytics.core :as analytics]
    [metabase.channel.email.messages :as messages]
    [metabase.login-history.models.login-history :as login-history]
    [metabase.login-history.settings :as login-history.settings]
@@ -40,4 +40,4 @@
     (when-not (:embedded device-info)
       (maybe-send-login-from-new-device-email history-entry))
     (when-not (:last_login user)
-      (snowplow/track-event! :snowplow/account {:event :new-user-created} (u/the-id user)))))
+      (analytics/track-event! :snowplow/account {:event :new-user-created} (u/the-id user)))))

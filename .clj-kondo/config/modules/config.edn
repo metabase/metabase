@@ -122,8 +122,7 @@
    :api  #{metabase.analytics.api
            metabase.analytics.core
            metabase.analytics.init
-           metabase.analytics.prometheus
-           metabase.analytics.snowplow}
+           metabase.analytics.prometheus}
    :uses #{api
            app-db
            appearance

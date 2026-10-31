@@ -1,5 +1,6 @@
 (ns metabase.analytics.core
   (:require
+   [metabase.analytics.event]
    [metabase.analytics.prometheus]
    [metabase.analytics.quartz]
    [metabase.analytics.sdk]
@@ -9,6 +10,7 @@
    [potemkin :as p]))
 
 (comment
+  metabase.analytics.event/keep-me
   metabase.analytics.prometheus/keep-me
   metabase.analytics.quartz/keep-me
   metabase.analytics.sdk/keep-me
@@ -45,9 +47,10 @@
 
   anon-tracking-enabled
   anon-tracking-enabled!
-  instance-creation]
+  instance-creation
+  metaplow-url]
 
- [metabase.analytics.snowplow
+ [metabase.analytics.event
 
   track-event!]
 

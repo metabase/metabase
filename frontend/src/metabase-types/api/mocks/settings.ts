@@ -366,6 +366,8 @@ export const createMockSettings = (
   "session-cookie-samesite": "lax",
   "session-timeout": null,
   "slack-bug-report-channel": null,
+  "metaplow-tracking-enabled": false,
+  "metaplow-url": null,
   "snowplow-enabled": false,
   "show-database-syncing-modal": false,
   "show-google-sheets-integration": false,

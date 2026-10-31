@@ -574,6 +574,8 @@ interface PublicSettings {
   "show-google-sheets-integration": boolean;
   "site-locale": string;
   "site-url": string;
+  "metaplow-tracking-enabled": boolean;
+  "metaplow-url": string | null;
   "snowplow-enabled": boolean;
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
