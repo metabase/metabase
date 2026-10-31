@@ -7,6 +7,7 @@
   there the success is the thing being rate-limited."
   (:require
    [metabase.config.core :as config]
+   [metabase.util.throttle :as u.throttle]
    [throttle.core :as throttle]))
 
 (set! *warn-on-reflection* true)
@@ -22,18 +23,19 @@
     (throttle/check throttler throttle-key)))
 
 (defn call-with-failure-throttling
-  "Run `f` guarded by `pairs` of `[throttler throttle-key]`. Only a thrown exception counts as an
-  attempt; successful calls are free. No-op when `MB_DISABLE_SESSION_THROTTLE` is set."
+  "Run `f` guarded by `pairs` of `[throttler throttle-key]`. Only a call that fails counts as an
+  attempt, a refused call does not count, and a successful call counts only while it runs. No-op when
+  `MB_DISABLE_SESSION_THROTTLE` is set."
   [pairs f]
   (if throttling-disabled?
     (f)
     (try
       ((reduce (fn [g [throttler throttle-key]]
-                 (fn [] (throttle/do-with-throttling throttler throttle-key g)))
+                 (fn [] (u.throttle/do-with-failure-throttling throttler throttle-key g)))
                f
                pairs))
       (catch clojure.lang.ExceptionInfo e
-        ;; `throttle/do-with-throttling`'s over-the-limit exception carries `:errors` but no
+        ;; `u.throttle/do-with-failure-throttling`'s over-the-limit exception carries `:errors` but no
         ;; `:status-code` (unlike `throttle/check`'s), which would surface as a 500
         (let [data (ex-data e)]
           (if (and (:errors data) (nil? (:status-code data)))

@@ -28,6 +28,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
+   [metabase.util.throttle :as u.throttle]
    [throttle.core :as throttle]))
 
 (set! *warn-on-reflection* true)
@@ -53,8 +54,9 @@
    :ip-address (throttle/make-throttler :ip-address, :attempts-threshold 20)})
 
 (defn- call-with-failure-throttling
-  "Run `f` guarded by `pairs` of `[throttler throttle-key]`. Only a thrown exception counts as an
-  attempt; successful calls are free. No-op when `MB_DISABLE_SESSION_THROTTLE` is set.
+  "Run `f` guarded by `pairs` of `[throttler throttle-key]`. Only a call that fails counts as an
+  attempt, a refused call does not count, and a successful call counts only while it runs. No-op when
+  `MB_DISABLE_SESSION_THROTTLE` is set.
   The MFA management endpoints have their own throttling helpers (`mfa.throttling`); the two are
   kept separate deliberately — this one lives in OSS session code, that one in the EE module."
   [pairs f]
@@ -62,11 +64,11 @@
     (f)
     (try
       ((reduce (fn [g [thr key]]
-                 (fn [] (throttle/do-with-throttling thr key g)))
+                 (fn [] (u.throttle/do-with-failure-throttling thr key g)))
                f
                pairs))
       (catch clojure.lang.ExceptionInfo e
-        ;; `throttle/do-with-throttling`'s over-the-limit exception carries `:errors` but no
+        ;; `u.throttle/do-with-failure-throttling`'s over-the-limit exception carries `:errors` but no
         ;; `:status-code` (unlike `throttle/check`'s), which would surface as a 500
         (let [data (ex-data e)]
           (if (and (:errors data) (nil? (:status-code data)))
