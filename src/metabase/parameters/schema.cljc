@@ -119,6 +119,21 @@
 (mr/def ::parameters-with-optional-types
   [:sequential ::parameter-with-optional-type])
 
+(def ^:private run-time-keys
+  "Keys only the server sets, on a parameter of a query it runs. A saved Card or Dashboard parameter cannot have them."
+  [:map
+   ;; set on a locked embedding filter, so the query processor throws rather than skip it; see
+   ;; `::lib.schema.parameter/parameter`
+   [:lib/must-apply? {:optional true} :boolean]])
+
+(mr/def ::run-time-parameters
+  "Card or Dashboard `::parameters` as passed to run a query, which may also carry [[run-time-keys]]."
+  [:sequential [:merge [:ref ::parameter] run-time-keys]])
+
+(mr/def ::run-time-parameters-with-optional-types
+  "`::parameters-with-optional-types` as passed to run a query, which may also carry [[run-time-keys]]."
+  [:sequential [:merge [:ref ::parameter-with-optional-type] run-time-keys]])
+
 #?(:clj
    (defn json-encoded
      "Wrap a parameters `schema` so that it also accepts the JSON-encoded string form. The public sharing, embedding and
@@ -153,7 +168,9 @@
    [:value   {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
    [:default {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
    [:target  {:optional true} [:maybe [:ref ::lib.schema.parameter/target]]]
-   [:options {:optional true} [:maybe [:ref ::lib.schema.parameter/parameter.options]]]])
+   [:options {:optional true} [:maybe [:ref ::lib.schema.parameter/parameter.options]]]
+   ;; set by the server on a locked embedding filter; see `::lib.schema.parameter/parameter`
+   [:lib/must-apply? {:optional true} :boolean]])
 
 ;; The `:parameters` a client sends when *running* something: values for parameter slots the Card or Dashboard
 ;; already declares. Contrast `::parameters`, which is the declaration of the slots themselves and belongs on the

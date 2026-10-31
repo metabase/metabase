@@ -25,6 +25,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache-test :as cache-test]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -47,6 +48,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
@@ -426,6 +428,76 @@
                clojure.lang.ExceptionInfo
                #"User attribute `cat` value `a` cannot be coerced"
                (run-venues-count-query))))))))
+
+(def ^:private venues-category-sandbox-defs
+  "The three kinds of sandbox on `venues`, each filtering on `category_id = {{cat}}`. Each is a function, because
+  [[met/with-gtaps!]] builds them inside a temporary copy of the database."
+  {"table sandbox"     (fn [] {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}})
+   "MBQL card sandbox" venues-category-mbql-gtap-def
+   "SQL card sandbox"  venues-category-native-sandbox-def})
+
+(deftest e2e-non-scalar-attribute-fails-closed-test
+  (mt/test-drivers (e2e-test-drivers)
+    (testing "a list- or map-valued attribute never returns unfiltered rows"
+      (doseq [[sandbox-name sandbox-def] venues-category-sandbox-defs]
+        (testing sandbox-name
+          (doseq [attr-value ["50" ["50"] [50]]
+                  enforce?   [true false]]
+            (testing (str "a single value, or a list of one value, filters: " (pr-str attr-value)
+                          (when-not enforce? " (schema checks off, as in production)"))
+              (let [run (fn []
+                          (met/with-gtaps! {:gtaps {:venues (sandbox-def)}, :attributes {"cat" attr-value}}
+                            (run-venues-count-query)))]
+                (is (= [[10]] (if enforce? (run) (mu/disable-enforcement (run))))))))
+          (doseq [attr-value [["50" "1"] [["50"]] [nil] [] {"a" "50"}]
+                  enforce?   [true false]]
+            (testing (str (pr-str attr-value) (when-not enforce? " (schema checks off, as in production)"))
+              (let [run (fn []
+                          (met/with-gtaps! {:gtaps {:venues (sandbox-def)}, :attributes {"cat" attr-value}}
+                            (run-venues-count-query)))]
+                (is (thrown?
+                     clojure.lang.ExceptionInfo
+                     (if enforce? (run) (mu/disable-enforcement (run)))))))))))))
+
+(deftest e2e-attribute-error-log-context-test
+  (mt/test-drivers (e2e-test-drivers)
+    (testing "an attribute a sandbox cannot use gives the error log line the attribute name, user and sandbox, but not the value"
+      (doseq [attr-value [["50" "1"] "a"]]
+        (testing (pr-str attr-value)
+          (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" attr-value}}
+            (let [sandbox (t2/select-one :model/Sandbox :group_id (:id &group) :table_id (mt/id :venues))
+                  e       (try (run-venues-count-query) nil (catch clojure.lang.ExceptionInfo e e))]
+              (is (=? {:attribute-name   "cat"
+                       :user-id          (mt/user->id :rasta)
+                       :sandbox-id       (:id sandbox)
+                       :sandbox-table-id (mt/id :venues)}
+                      (#'qp.catch-exceptions/log-context e)))
+              (is (not (re-find #"\"50\"|\"a\"" (pr-str (#'qp.catch-exceptions/log-context e))))))))))))
+
+(deftest e2e-enforced-sandbox-filter-is-defense-in-depth-test
+  (mt/test-drivers (e2e-test-drivers)
+    (testing "with the attribute check switched off, the query processor still refuses to drop the filter"
+      (mt/with-dynamic-fn-redefs [sandboxing/check-single-value! (constantly nil)]
+        (doseq [[sandbox-name sandbox-def] (dissoc venues-category-sandbox-defs "SQL card sandbox")]
+          (testing sandbox-name
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Filter `cat` must be applied, but it could not be"
+                 (mu/disable-enforcement
+                   (met/with-gtaps! {:gtaps {:venues (sandbox-def)}, :attributes {"cat" ["50" "1"]}}
+                     (run-venues-count-query)))))))))))
+
+(deftest e2e-user-supplied-parameter-flag-does-not-weaken-sandbox-test
+  (testing "a user cannot turn off a sandbox filter by sending `lib/must-apply?` in their own parameters"
+    (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" "50"}}
+      (is (= [[10]]
+             (mt/rows
+              (mt/user-http-request :rasta :post 202 "dataset"
+                                    (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                                           :parameters [{:type         "category"
+                                                         :target       [:dimension [:field (mt/id :venues :category_id) nil]]
+                                                         :value        nil
+                                                         "lib/must-apply?" false}]))))))))
 
 (deftest e2e-test-6
   (mt/test-drivers (e2e-test-drivers)
@@ -2178,21 +2250,51 @@
           mp                        (mt/metadata-provider)]
       (testing "numeric field → :number/="
         (is (= :number/=
-               (:type (attr-remapping->parameter mp {"cat" "50"} ["cat" [:variable [:field (mt/id :venues :price) nil]]])))))
+               (:type (attr-remapping->parameter mp nil {"cat" "50"} ["cat" [:variable [:field (mt/id :venues :price) nil]]])))))
       (testing "text field → :string/="
         (is (= :string/=
-               (:type (attr-remapping->parameter mp {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]])))))
+               (:type (attr-remapping->parameter mp nil {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]])))))
       (testing "uncoerceable attribute against numeric field throws instead of dropping the filter (#81821)"
         (testing "integer column"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"User attribute `cat` value `a` cannot be coerced"
-               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :price) nil]]]))))
+               (attr-remapping->parameter mp nil {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :price) nil]]]))))
         (testing "float column"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"User attribute `cat` value `a` cannot be coerced"
-               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :latitude) nil]]]))))))))
+               (attr-remapping->parameter mp nil {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :latitude) nil]]]))))))))
+
+(deftest ^:parallel attr-remapping-non-scalar-attribute-test
+  (let [attr-remapping->parameter #'sandboxing/attr-remapping->parameter
+        mp                        (mt/metadata-provider)
+        remapping                 (fn [field-name] ["cat" [:variable [:field (mt/id :venues field-name) nil]]])]
+    (testing "a list of one value is used as that value"
+      (doseq [[field-name attr-value expected] [[:price ["1"] [1]]
+                                                [:price [3] [3]]
+                                                [:latitude ["2.5"] [2.5]]
+                                                [:name ["foo"] ["foo"]]]]
+        (testing (str field-name " " (pr-str attr-value))
+          (is (=? {:value expected, :name "cat", :lib/must-apply? true}
+                  (attr-remapping->parameter mp nil {"cat" attr-value} (remapping field-name)))))))
+    (testing "other list- or map-valued attributes throw instead of dropping the filter"
+      (doseq [[field-name attr-value] [[:price ["1" "2"]]
+                                       [:price [["1"]]]
+                                       [:price []]
+                                       [:price {"a" "1"}]
+                                       [:name ["foo" "bar"]]
+                                       [:name {"a" "foo"}]]]
+        (testing (str field-name " " (pr-str attr-value))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` must be a single value"
+               (attr-remapping->parameter mp nil {"cat" attr-value} (remapping field-name)))))))
+    (testing "a list of one nil is a missing attribute"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Query requires user attribute `cat`"
+           (attr-remapping->parameter mp nil {"cat" [nil]} (remapping :price)))))))
 
 (deftest unix-timestamp-coercion-with-mbql-sandbox-test
   (testing "UNIX timestamp coercion should be applied when querying through an MBQL sandbox (#69867)"
