@@ -8,7 +8,8 @@
    [metabase.mcp.v2.dashboard-errors :as dashboard-errors]
    [metabase.mcp.v2.message :as message]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,13 +17,16 @@
   {:id 1 :dashcards [] :tabs [] :parameters []})
 
 (defn- error-text
-  "The teaching error text MCP returns for `ops` against `current`, or nil when they compile."
-  [current ops]
-  (try
-    (dashboard-errors/compile-ops current ops {})
-    nil
-    (catch clojure.lang.ExceptionInfo e
-      (ex-message e))))
+  "The teaching error text MCP returns for `ops` against `current` and `cards`, or nil when they compile.
+   It defaults `cards` to a stub row for every card `ops` name."
+  ([current ops]
+   (error-text current ops (u/for-map [id (mapcat dashboard-ops/card-refs ops)] [id {:id id}])))
+  ([current ops cards]
+   (try
+     (dashboard-errors/compile-ops current ops cards)
+     nil
+     (catch clojure.lang.ExceptionInfo e
+       (ex-message e)))))
 
 (defn- rendered
   "The teaching message text for compiler error `data`."
@@ -49,28 +53,31 @@
   (testing "GHY-4544: an op sent without its `op` or a referenced id says so rather than naming null"
     (is (= "op 0: missing `op` — see the tool description for the supported list."
            (error-text empty-dash [{:id -1}])))
-    (is (= "op 0 (\"dashcard_id\"): missing `dashcard_id`."
+    (is (= "op 0 (\"remove\"): missing `dashcard_id`."
            (error-text empty-dash [{:op "remove"}])))
-    (is (= "op 0 (\"tab_id\"): missing `tab_id`."
+    (is (= "op 0 (\"remove_tab\"): missing `tab_id`."
            (error-text empty-dash [{:op "remove_tab"}])))
-    (is (= "op 0 (\"parameter_id\"): missing `parameter_id`."
+    (is (= "op 0 (\"remove_parameter\"): missing `parameter_id`."
            (error-text empty-dash [{:op "remove_parameter"}]))))
-  (testing "an unknown dashcard, tab or parameter id names the key rather than the op"
-    (is (= "op 0 (\"dashcard_id\"): no dashcard with id 999 on this dashboard."
+  (testing "an unknown dashcard, tab or parameter id names the op"
+    (is (= "op 0 (\"duplicate_card\"): no dashcard with id 999 on this dashboard."
            (error-text empty-dash [{:op "duplicate_card" :id -1 :dashcard_id 999}])))
-    (is (= "op 0 (\"tab_id\"): no tab with id 99 on this dashboard."
+    (is (= "op 0 (\"rename_tab\"): no tab with id 99 on this dashboard."
            (error-text empty-dash [{:op "rename_tab" :tab_id 99 :name "Q3"}])))
-    (is (= "op 0 (\"parameter_id\"): no parameter with id \"nope\" on this dashboard."
+    (is (= "op 0 (\"remove_parameter\"): no parameter with id \"nope\" on this dashboard."
            (error-text empty-dash [{:op "remove_parameter" :parameter_id "nope"}]))))
-  (testing "a card placed on an unknown tab names the op"
+  (testing "a card placed on an unknown tab names the op too"
     (is (= "op 0 (\"add_text\"): no tab with id 77 on this dashboard."
            (error-text empty-dash [{:op "add_text" :id -1 :markdown "hi" :tab 77}]))))
-  (testing "add_parameter names itself unquoted when the parameter exists"
-    (is (= "op 0 (add_parameter): parameter \"p1\" already exists — use \"update_parameter\"."
+  (testing "add_parameter names itself quoted, like every op, when the parameter exists"
+    (is (= "op 0 (\"add_parameter\"): parameter \"p1\" already exists — use \"update_parameter\"."
            (error-text (assoc empty-dash :parameters [{:id "p1"}])
                        [{:op "add_parameter" :parameter_id "p1"}]))))
-  (testing "a tab with no free space has no op prefix"
-    (is (= "No free space on this tab for another card — remove or resize something first."
+  (testing "a card the caller could not resolve reads as one the user cannot read"
+    (is (= "op 0 (\"add_card\"): no card with id 42 that you can read."
+           (error-text empty-dash [{:op "add_card" :id -1 :card_id 42}] {}))))
+  (testing "a tab with no free space names the op that ran out of room"
+    (is (= "op 0 (\"add_card\"): no free space on this tab for another card — remove or resize something first."
            (error-text (assoc empty-dash :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 24 :size_y 1100}])
                        [{:op "add_card" :id -1 :card_id 42}]))))
   (testing "an error found after the last op has no op prefix"

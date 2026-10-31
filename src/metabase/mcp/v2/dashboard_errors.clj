@@ -33,6 +33,9 @@
    :unknown-dashcard
    (fn [{:keys [dashcard-id]}] (message/msg ["no dashcard with id %s on this dashboard."] dashcard-id))
 
+   :unknown-card
+   (fn [{:keys [card-id]}] (message/msg ["no card with id %s that you can read."] card-id))
+
    :missing-tab-id
    (fn [_] (message/raw "missing `tab_id`."))
 
@@ -40,7 +43,7 @@
    (fn [{:keys [tab-id]}] (message/msg ["no tab with id %s on this dashboard."] tab-id))
 
    :no-free-space
-   (fn [_] (message/raw "No free space on this tab for another card — remove or resize something first."))
+   (fn [_] (message/raw "no free space on this tab for another card — remove or resize something first."))
 
    :link-needs-url-or-entity
    (fn [_] (message/raw "pass exactly one of `url` or `entity`."))
@@ -141,47 +144,21 @@
 (defn- op-message
   "The message `detail` attributed to the op at `idx` (0-based, as sent): `op <idx> (<op-name>): <detail>`.
    Without an `op-name` it is `op <idx>: <detail>`.
-   A string `op-name` came from the caller, so it renders quoted; a raw message renders as it is."
+   The op name came from the caller, so it renders quoted."
   [idx op-name detail]
   (if (nil? op-name)
     (message/msg ["op %d: %s"] idx detail)
     (message/msg ["op %d (%s): %s"] idx op-name detail)))
 
-(defn op-error!
-  "Throw a teaching error attributing `detail`, a message, to the op at `idx` named `op-name`."
-  [idx op-name detail]
-  (common/throw-teaching-error (op-message idx op-name detail)))
-
-(def ^:private tab-ops
-  "The ops whose `tab_id` names the tab they act on."
-  #{"duplicate_tab"
-    "move_tab"
-    "remove_tab"
-    "rename_tab"})
-
-(defn- op-label
-  "What the op prefix names for error `code` from the op called `op-name`.
-   That is the op name, except that a missing or unknown `dashcard_id`, `tab_id` or `parameter_id` names the key.
-   An existing parameter reports `add_parameter` unquoted.
-   MCP's errors read that way before the compiler moved, and this keeps them unchanged."
-  [code op-name]
-  (case code
-    (:missing-dashcard-id :unknown-dashcard)   "dashcard_id"
-    (:missing-parameter-id :unknown-parameter) "parameter_id"
-    :missing-tab-id                            "tab_id"
-    :unknown-tab                               (if (contains? tab-ops op-name) "tab_id" op-name)
-    :parameter-exists                          (message/raw "add_parameter")
-    op-name))
-
 (defn error-message
   "The teaching message for compiler error `data`, as read by [[dashboard-ops/error-data]].
-   An error with no `:op-index`, or a `:no-free-space` error, has no op prefix."
+   An error with no `:op-index` has no op prefix."
   [{code ::dashboard-ops/error :keys [op-index op-name] :as data}]
   (let [detail-fn (or (get details code)
                       (throw (ex-info (str "No MCP wording for dashboard op error " code) {:code code})))
         detail    (detail-fn data)]
-    (if (and op-index (not= :no-free-space code))
-      (op-message op-index (op-label code op-name) detail)
+    (if op-index
+      (op-message op-index op-name detail)
       ;; A bare raw message renders quoted, so wrap it to keep it as text.
       (message/msg ["%s"] detail))))
 
