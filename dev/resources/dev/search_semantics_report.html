@@ -390,8 +390,8 @@
     <h2 id="goal-scores-title">Scores by goal</h2>
     <p class="lede">Each cell is F1 against the goal's correct results, from 0 (none right) to 1 (exactly right).</p>
     <ul class="reading-guide">
-      <li><span class="sc-legend">0.40 → <strong>1.00</strong></span> means 0.40 for the query as typed and 1.00 for the engine's adapted query. One number means adapting changed nothing.</li>
-      <li>An adapted query uses words a user could think of for the goal without knowing which cards exist, and any syntax the engine supports.</li>
+      <li><span class="sc-legend">0.40 → <strong>1.00</strong></span> means 0.40 for the goal's original query and 1.00 for the engine's best query. One number means the best query scores the same.</li>
+      <li>A best query uses words a user could think of for the goal without knowing which cards exist, and any syntax the engine supports.</li>
       <li>A bold score with a blue bar is the best, or tied best, for that goal.</li>
       <li>Hover a cell for precision and recall. Click a goal to open it below.</li>
     </ul>
@@ -542,7 +542,7 @@
         renderScoreTable();
         $("second-table-title").textContent = "Fidelity to correct result sets";
         $("second-table").innerHTML = fidelityTable(summary);
-        $("second-table-note").textContent = "Darker cells are better within their column; bold is the best. Unweighted: each goal counts once, whatever the weights below. Exact counts goals where the engine returns the correct results. As typed scores the goal's query unchanged.";
+        $("second-table-note").textContent = "Darker cells are better within their column; bold is the best. Unweighted: each goal counts once, whatever the weights below. Exact counts goals where the engine returns the correct results. Original query scores the goal's query unchanged, for every engine.";
       } else {
         $("second-table-title").textContent = "Average results per query";
         $("second-table").innerHTML = table(["Engine", "Mean hits"], data.engines.map(engine => [escape(labels[engine]), number(summary.meanHits[engine])]));
@@ -580,8 +580,8 @@
         ["Recall", engine => summary.scores[engine].recall, percent],
         ["F1", engine => summary.scores[engine].f1, percent],
         ["Exact", engine => summary.scores[engine].exact / summary.count, (_, engine) => `${summary.scores[engine].exact}/${summary.count}`],
-        ["F1 as typed", engine => summary.typedScores[engine].f1, percent, true],
-        ["Exact as typed", engine => summary.typedScores[engine].exact / summary.count, (_, engine) => `${summary.typedScores[engine].exact}/${summary.count}`]
+        ["F1, original query", engine => summary.typedScores[engine].f1, percent, true],
+        ["Exact, original query", engine => summary.typedScores[engine].exact / summary.count, (_, engine) => `${summary.typedScores[engine].exact}/${summary.count}`]
       ];
       const header = `<thead><tr><th>Engine</th>${columns.map(([text, , , groupStart]) => `<th class="${groupStart ? "group-start" : ""}">${escape(text)}</th>`).join("")}</tr></thead>`;
       const rows = data.engines.map(engine => `<tr><td>${escape(labels[engine])}</td>${columns.map(([, value, show, groupStart]) => {
@@ -678,10 +678,10 @@
       const queryRows = !translated ? "" : item.engines.map(engine => {
         const name = `${escape(labels[engine.id])}${conforms(engine) ? '<span class="check" aria-label="correct">✓</span>' : ""}`;
         const adapted = engine.query !== item.query;
-        return `<tr class="${conforms(engine) ? "correct-row" : ""}"><td>${name}</td><td>${adapted ? `<code>${escape(engine.query)}</code>` : '<span class="same">as typed</span>'}</td><td>${verdict(engine.hits)}${keywordArm(engine)}</td><td>${adapted ? verdict(engine.typedHits) : ""}</td></tr>`;
+        return `<tr class="${conforms(engine) ? "correct-row" : ""}"><td>${name}</td><td>${adapted ? `<code>${escape(engine.query)}</code>` : '<span class="same">unchanged</span>'}</td><td>${verdict(engine.hits)}${keywordArm(engine)}</td><td>${adapted ? verdict(engine.typedHits) : ""}</td></tr>`;
       }).join("");
       const queries = translated
-        ? `<p class="single-query muted">Typed: <code>${escape(item.query)}</code></p><div class="table-wrap"><table class="query-table"><thead><tr><th>Engine</th><th>Adapted query</th><th>Wrong cards</th><th>Wrong cards as typed</th></tr></thead><tbody>${queryRows}</tbody></table></div>`
+        ? `<p class="single-query muted">Original query: <code>${escape(item.query)}</code></p><div class="table-wrap"><table class="query-table"><thead><tr><th>Engine</th><th>Best query</th><th>Wrong cards</th><th>Wrong cards, original query</th></tr></thead><tbody>${queryRows}</tbody></table></div>`
         // With one query, the membership table already shows every engine's hits; only the keyword arm is extra.
         : `<p class="single-query muted">Query: <code>${escape(item.query)}</code></p>${item.engines.filter(engine => engine.keywordHits).map(engine => `<p class="single-query muted">${escape(labels[engine.id])} keyword arm: ${hitList(engine.keywordHits)}</p>`).join("")}`;
       const headers = ["Document", "Searchable fields", ...(translated ? ["Correct"] : []), ...item.engines.map(engine => {
@@ -725,8 +725,8 @@
     const engineIn = (item, id) => item.engines.find(engine => engine.id === id);
     const topScore = item => Math.max(...item.engines.map(engine => engine.bestScore.f1));
     const wins = (item, id) => engineIn(item, id).bestScore.f1 >= topScore(item) - 1e-9;
-    const scoreTitle = engine => `As typed: precision ${percent(engine.typedScore.precision)}, recall ${percent(engine.typedScore.recall)}. `
-      + `Adapted query: precision ${percent(engine.bestScore.precision)}, recall ${percent(engine.bestScore.recall)}.`;
+    const scoreTitle = engine => `Original query: precision ${percent(engine.typedScore.precision)}, recall ${percent(engine.typedScore.recall)}. `
+      + `Best query: precision ${percent(engine.bestScore.precision)}, recall ${percent(engine.bestScore.recall)}.`;
     // The typed score shows only when adapting changed it, so unchanged cells read as one number.
     const scorePair = (typed, best, winner = false, title = "") => {
       const classes = ["sc", winner ? "winner" : "", best < 1e-9 ? "zero" : ""].filter(Boolean).join(" ");
@@ -776,7 +776,7 @@
       }).join("");
       const footer = `<tfoot>
           <tr><td>Mean of kinds</td>${data.engines.map(id => `<td class="score-cell">${totalWeight ? scorePair(mean(id, "typedScore"), mean(id, "bestScore")) : "n/a"}</td>`).join("")}</tr>
-          <tr class="gain-row"><td>Gain from adapting</td>${data.engines.map(id => {
+          <tr class="gain-row"><td>Gain from the best query</td>${data.engines.map(id => {
             if (!totalWeight) return `<td class="score-cell">n/a</td>`;
             const gain = mean(id, "bestScore") - mean(id, "typedScore");
             return `<td class="score-cell"><span class="gain${gain < 0.005 ? " none" : ""}">+${fixed(gain)}</span></td>`;
