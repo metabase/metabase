@@ -235,6 +235,32 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
   });
 
+  it("should open the staged picker's Models list on Our analytics when the root collection loads late", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+    cy.intercept(
+      { method: "GET", pathname: "/api/collection/root" },
+      (request) => request.continue((response) => response.setDelay(1000)),
+    );
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion
+          questionId="new"
+          dataPicker="staged"
+          entityTypes={["model"]}
+        />
+      </div>,
+    );
+
+    getSdkRoot().contains("Pick your starting data");
+
+    H.popover().within(() => {
+      cy.findByText("Our analytics").should("be.visible");
+      cy.findByText("Orders Model").should("be.visible");
+    });
+  });
+
   [
     {
       targetCollectionId: "personal",

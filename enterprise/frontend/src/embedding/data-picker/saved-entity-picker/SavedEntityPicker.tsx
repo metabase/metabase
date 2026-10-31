@@ -66,10 +66,11 @@ export function SavedEntityPicker(props: SavedEntityPickerProps) {
     "exclude-archived": true,
     namespaces: ["", "shared-tenant-collection", "tenant-specific"],
   });
-  const { data: rootCollection } = useGetCollectionQuery({ id: "root" });
+  const { data: rootCollection, isLoading: isRootCollectionLoading } =
+    useGetCollectionQuery({ id: "root" });
   const currentUser = useSelector(getUser);
 
-  if (!collections || !currentUser) {
+  if (!collections || isRootCollectionLoading || !currentUser) {
     return null;
   }
 
