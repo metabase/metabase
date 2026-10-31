@@ -455,10 +455,9 @@
       <div class="list-head">
         <p class="note" id="list-count"></p>
         <div class="sort-toggle" role="group" aria-label="Sort cases"><span class="sort-label" aria-hidden="true">Sort</span><span class="sort-group">
-          <button class="sort-button" type="button" data-sort="name" aria-pressed="true">Name</button>
+          <button class="sort-button" type="button" data-sort="theme" aria-pressed="true" title="Group cases by theme">Theme</button>
           <button class="sort-button" type="button" data-sort="conformance" aria-pressed="false" title="Sort by how many engines return the correct cards" hidden>Correct</button>
-          <button class="sort-button" type="button" data-sort="agreement" aria-pressed="false" title="Sort by how many engines return the same cards">Same results</button>
-          <button class="sort-button" type="button" data-sort="theme" aria-pressed="false" title="Group cases by theme">Theme</button></span>
+          <button class="sort-button" type="button" data-sort="agreement" aria-pressed="false" title="Sort by how many engines return the same cards">Same results</button></span>
         </div>
       </div>
       <div class="case-list" id="case-list"></div>
@@ -471,7 +470,7 @@
   <script>
     const data = JSON.parse(document.getElementById("report-data").textContent);
     const labels = { "in-place": "In-place", "appdb-h2": "appdb/H2", "appdb-postgres": "appdb/PostgreSQL", "semantic-only": "Semantic only", "semantic-with-fallback": "Semantic with fallback" };
-    const state = { corpus: "sameQuery", collapsed: new Set(), keyOpen: false, selected: null, sort: "name" };
+    const state = { corpus: "sameQuery", collapsed: new Set(), keyOpen: false, selected: null, sort: "theme" };
     const $ = id => document.getElementById(id);
     const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
     const inline = text => escape(text).replace(/`([^`]+)`/g, "<code>$1</code>");
@@ -637,7 +636,6 @@
     }
 
     const sortKeys = {
-      name: () => 0,
       theme: () => 0,
       agreement: (left, right) => left.matchingPairs - right.matchingPairs,
       conformance: (left, right) => left.conforming.length - right.conforming.length || left.meanF1 - right.meanF1
@@ -646,10 +644,8 @@
     function visibleCases() {
       const needle = $("filter").value.trim().toLowerCase();
       const cases = current().cases.filter(item => !needle || JSON.stringify(item).toLowerCase().includes(needle));
-      // Each sort has one order: names A to Z, the counts highest first, ties by name.
-      return cases.sort((left, right) => state.sort === "name"
-        ? left.id.localeCompare(right.id)
-        : sortKeys[state.sort](right, left) || left.id.localeCompare(right.id));
+      // Each sort has one order: counts highest first, then names A to Z, which is the whole order within a theme.
+      return cases.sort((left, right) => sortKeys[state.sort](right, left) || left.id.localeCompare(right.id));
     }
 
     // Sorting by theme groups the list into theme bands; every other sort runs across all cases.
@@ -852,7 +848,7 @@
     }
 
     function render() {
-      if (state.sort === "conformance" && state.corpus !== "translations") state.sort = "name";
+      if (state.sort === "conformance" && state.corpus !== "translations") state.sort = "theme";
       for (const tab of document.querySelectorAll(".tab")) tab.setAttribute("aria-pressed", String(tab.dataset.corpus === state.corpus));
       syncSortButtons();
       renderWeights();
