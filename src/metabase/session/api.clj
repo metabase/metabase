@@ -38,9 +38,10 @@
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
 (def ^:private login-throttlers
-  {:username   (throttle/make-throttler :username)
+  {:username     (throttle/make-throttler :username)
    ;; IP Address doesn't have an actual UI field so just show error by username
-   :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
+   :ip-address   (throttle/make-throttler :username, :attempts-threshold 50)
+   :ldap-account (throttle/make-throttler :username)})
 
 (def ^:private verify-throttlers
   ;; Codes are 6 digits, so brute-force limits are load-bearing. Only failures count (see
@@ -79,32 +80,35 @@
 (def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
 (mu/defn- ldap-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
-  "If LDAP is enabled and a matching user exists return a new Session for them (or an MFA-pending
-  result map when a second factor is required), or `nil` if they couldn't be authenticated."
+  "Return a new Session (or an MFA-pending result map) for a directory user, `nil` when local login should be tried, or
+  throw when the directory login is refused."
   [username    :- ms/NonBlankString
    password    :- ms/NonBlankString
    device-info :- request/DeviceInfo]
-  (when (sso/ldap-enabled)
-    (let [result (auth-identity/login! :provider/ldap
-                                       {:username username
-                                        :password password
-                                        :device-info device-info})]
-      (cond
-        ;; Fallback when the ldap operation fails
-        (contains? #{:ldap-error :server-error} (:error result))
-        nil
+  (when-let [{:keys [dn]} (and (sso/ldap-enabled) (u/ignore-exceptions (sso/find-user username)))]
+    (call-with-failure-throttling
+     [[(login-throttlers :ldap-account) (u/lower-case-en dn)]]
+     (fn []
+       (let [result (auth-identity/login! :provider/ldap
+                                          {:username username
+                                           :password password
+                                           :device-info device-info})]
+         (cond
+           ;; Fallback when the ldap operation fails
+           (contains? #{:ldap-error :server-error} (:error result))
+           nil
 
-        (= (:error result) :invalid-credentials)
-        (throw (ex-info (str password-fail-message)
-                        {:status-code 401
-                         :errors {:password password-fail-snippet}}))
+           (= (:error result) :invalid-credentials)
+           (throw (ex-info (str password-fail-message)
+                           {:status-code 401
+                            :errors {:password password-fail-snippet}}))
 
-        (:success? result)
-        (if (:mfa/pending? result) result (:session result))
+           (:success? result)
+           (if (:mfa/pending? result) result (:session result))
 
-        :else
-        (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
-                                                 :status-code 401}))))))
+           :else
+           (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
+                                                    :status-code 401}))))))))
 
 (mu/defn- email-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
   "Find a matching `User` if one exists and return a new Session for them (or an MFA-pending result
