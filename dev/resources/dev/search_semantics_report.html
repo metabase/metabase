@@ -13,7 +13,7 @@
     h2 { font-size: 1.15rem; margin-bottom: 16px; }
     h3 { font-size: 1rem; margin-bottom: 10px; }
     .muted { color: #5b6d83; }
-    .intro { margin-bottom: 22px; }
+    .intro { margin-bottom: 22px; max-width: 86ch; }
     .view-label { margin: 26px 0 8px; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #5b6d83; }
     .view-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 22px; }
     .view-card { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; text-align: left; border: 2px solid #c8d4e2; background: white; color: #172334; border-radius: 12px; padding: 14px 16px; }
@@ -54,10 +54,6 @@
     .engine-table thead th { color: #29405c; background: #f1f5fa; font-size: .88rem; }
     .engine-table tbody th { color: #465a71; font-size: .85rem; }
     .engine-table tbody tr:nth-child(even) { background: #f9fbfd; }
-    .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
-    .metric { padding: 16px 18px; }
-    .metric .value { font-size: 1.7rem; font-weight: 700; letter-spacing: -.035em; }
-    .metric .label { color: #5b6d83; font-size: .88rem; }
     .tables { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-bottom: 28px; }
     .table-wrap { overflow-x: auto; }
     table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
@@ -151,7 +147,7 @@
     .miss { color: #a5afba; }
     .extra { color: #a44d00; font-weight: 750; }
     .absent { color: #b42635; font-weight: 750; }
-    .doc-text { white-space: pre-wrap; min-width: 140px; max-width: 360px; overflow-wrap: anywhere; }
+    .doc-text { white-space: pre-wrap; min-width: 190px; max-width: 360px; overflow-wrap: anywhere; }
     #detail th:nth-child(2), #detail td:nth-child(2) { text-align: left; }
     .pair-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0 0 12px; padding: 0; list-style: none; font-size: .8rem; color: #5b6d83; }
     .pair-legend li { display: flex; align-items: center; gap: 6px; }
@@ -221,10 +217,10 @@
     .weights output { font-variant-numeric: tabular-nums; color: #5b6d83; text-align: right; }
     details.weights-panel .note { max-width: 72ch; }
     @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } #detail { position: static; max-height: none; } }
-    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid, .view-switch { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .view-switch { grid-template-columns: 1fr; } }
     @media (prefers-color-scheme: dark) {
       :root { color-scheme: dark; background: #101722; color: #e4edf7; }
-      .muted, .note, .support-notes, .metric .label, .empty { color: #aabbd0; }
+      .muted, .note, .support-notes, .empty { color: #aabbd0; }
       .support-notes a { color: #91c1ff; }
       .card { background: #1b2839; border-color: #354963; box-shadow: none; }
       .case-filter { background: #1b2839; color: #e4edf7; border-color: #53677e; }
@@ -326,8 +322,7 @@
   <header>
     <h1>Search engine comparison</h1>
     <p class="intro muted">
-      Where Metabase's search engines return different cards for the same query, and what each needs typed to find what a user wants.<br>
-      The examples are hand-picked to show how the engines behave, so they say little about production traffic. They compare which cards come back and ignore their order, which leaves ranking out entirely.
+      Where Metabase's search engines return different cards for the same query, and what each needs typed to find what a user wants. The examples are hand-picked to show how the engines behave, so they say little about production traffic. They compare which cards come back and ignore their order, which leaves ranking out entirely.
     </p>
     <p class="provenance muted" id="provenance"></p>
   </header>
@@ -417,7 +412,6 @@
     <button class="tab view-card" data-corpus="translations" aria-pressed="false"><span class="view-dot" aria-hidden="true"></span><span><strong>Best query for each engine</strong><span class="view-sub" id="view-sub-translations"></span></span></button>
   </nav>
 
-  <section class="summary-grid" id="metrics" aria-label="Corpus summary"></section>
   <section class="tables">
     <div class="card">
       <h2>How each pair of engines' results relate</h2>
@@ -577,13 +571,9 @@
 
     function renderSummary() {
       const summary = current().summary;
-      $("view-sub-sameQuery").textContent = `${data.sameQuery.cases.length} cases. Every engine gets the same query, so differences show how each reads it.`;
-      $("view-sub-translations").textContent = `${data.translations.cases.length} goals. Each engine gets the best query a user could type for it, scored against the cards the user wants.`;
-      $("metrics").innerHTML = [
-        [summary.count, state.corpus === "sameQuery" ? "Cases" : "Goals"],
-        [summary.allEqual, "All engines agree"],
-        [data.engines.length, "Engines compared"]
-      ].map(([value, label]) => `<div class="card metric"><div class="value">${escape(value)}</div><div class="label">${escape(label)}</div></div>`).join("");
+      const agreeing = view => `${data[view].summary.allEqual} where all ${data.engines.length} engines agree`;
+      $("view-sub-sameQuery").textContent = `${data.sameQuery.cases.length} cases, ${agreeing("sameQuery")}. Every engine gets the same query, so differences show how each reads it.`;
+      $("view-sub-translations").textContent = `${data.translations.cases.length} goals, ${agreeing("translations")}. Each engine gets the best query a user could type for it, scored against the cards the user wants.`;
 
       $("pairwise").innerHTML = pairwiseChart(summary.pairs);
 
