@@ -7,6 +7,7 @@ import type {
   SchemaColumn,
   SchemaJavaScriptType,
   SegmentSchema,
+  TableFieldSchema,
   TableSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
@@ -19,6 +20,7 @@ export type {
   SchemaColumn,
   SchemaJavaScriptType,
   SegmentSchema,
+  TableFieldSchema,
   TableSchema,
 };
 

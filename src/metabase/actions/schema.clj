@@ -93,10 +93,7 @@
     :description      (deferred-tru "Unsupported implicit action kind")}
    :row/create
    :row/update
-   :row/delete
-   :bulk/create
-   :bulk/update
-   :bulk/delete])
+   :row/delete])
 
 (def ^:private implicit-action-entries
   [[:kind     {:optional true} [:maybe ::implicit-action.kind]]

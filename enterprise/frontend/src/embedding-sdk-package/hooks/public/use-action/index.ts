@@ -5,7 +5,6 @@ export type {
   ActionDefinition,
   ActionKindFromDefinition,
   ActionParametersFromDefinition,
-  ActionResultForBulk,
   ActionResultForCreate,
   ActionResultForDelete,
   ActionResultForKind,

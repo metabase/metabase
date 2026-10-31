@@ -45,6 +45,27 @@ const CreateOrder = defineAction({
 
 const _actionEntityId: "createOrderEntity" = CreateOrder.entityId;
 
+const REVIEWS_TABLE = {
+  type: "table",
+  id: 3,
+  fields: {
+    reviewId: {
+      type: "column",
+      fieldId: 300,
+      tableId: 3,
+      name: "Review ID",
+      slug: "review_id",
+      jsType: "number",
+    },
+  },
+} as const;
+
+const CreateReview = defineAction({
+  entityId: "createReviewEntity",
+  kind: "row/create",
+  table: REVIEWS_TABLE,
+});
+
 const UpdateOrder = defineAction({
   entityId: "updateOrderEntity",
   kind: "row/update",
@@ -180,6 +201,9 @@ function ValidTypeFixtures() {
   const updateOrder = useDataAppAction(UpdateOrder);
 
   void updateOrder.execute({ id: 1 });
+
+  // A parameter is keyed by its column's slug, not its name.
+  void useDataAppAction(CreateReview).execute({ review_id: 1 });
 
   // The SDK hook takes a plain definition object, and a `defineAction` export too.
   const sdkCreateOrder = useAction({
