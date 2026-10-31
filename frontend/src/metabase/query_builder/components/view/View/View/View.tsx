@@ -37,6 +37,7 @@ import { SIDEBAR_SIZES } from "../../../../constants";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
+import { FilterAutoApplyProvider } from "../../FilterAutoApply/FilterAutoApply";
 import { ViewSidebar } from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
@@ -263,81 +264,86 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
       .otherwise(() => SIDEBAR_SIZES.NORMAL);
     return (
-      <div className={CS.fullHeight} ref={ref}>
-        <Flex
-          className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
-          data-testid="query-builder-root"
-        >
-          {isHeaderVisible && <ViewHeaderContainer {...props} />}
+      <FilterAutoApplyProvider
+        question={question}
+        queryBuilderMode={queryBuilderMode}
+      >
+        <div className={CS.fullHeight} ref={ref}>
+          <Flex
+            className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
+            data-testid="query-builder-root"
+          >
+            {isHeaderVisible && <ViewHeaderContainer {...props} />}
 
-          <Flex className={S.QueryBuilderContentContainer}>
-            {!isNative && (
-              <NotebookContainer
-                isOpen={isNotebookContainerOpen}
-                updateQuestion={updateQuestion}
-                reportTimezone={reportTimezone}
-                readOnly={readOnly}
-                question={question}
-                isDirty={isDirty}
-                isRunnable={isRunnable}
-                isResultDirty={isResultDirty}
-                hasVisualizeButton={hasVisualizeButton}
-                runQuestionQuery={runQuestionQuery}
-                setQueryBuilderMode={setQueryBuilderMode}
+            <Flex className={S.QueryBuilderContentContainer}>
+              {!isNative && (
+                <NotebookContainer
+                  isOpen={isNotebookContainerOpen}
+                  updateQuestion={updateQuestion}
+                  reportTimezone={reportTimezone}
+                  readOnly={readOnly}
+                  question={question}
+                  isDirty={isDirty}
+                  isRunnable={isRunnable}
+                  isResultDirty={isResultDirty}
+                  hasVisualizeButton={hasVisualizeButton}
+                  runQuestionQuery={runQuestionQuery}
+                  setQueryBuilderMode={setQueryBuilderMode}
+                />
+              )}
+              <ViewSidebar side="left" isOpen={showLeftSidebar}>
+                <ViewLeftSidebarContainer
+                  question={question}
+                  result={result}
+                  isShowingChartSettingsSidebar={isShowingChartSettingsSidebar}
+                  isShowingChartTypeSidebar={isShowingChartTypeSidebar}
+                />
+              </ViewSidebar>
+              <ViewMainContainer
+                {...props}
+                showLeftSidebar={showLeftSidebar}
+                showRightSidebar={showRightSidebar}
               />
-            )}
-            <ViewSidebar side="left" isOpen={showLeftSidebar}>
-              <ViewLeftSidebarContainer
-                question={question}
-                result={result}
-                isShowingChartSettingsSidebar={isShowingChartSettingsSidebar}
-                isShowingChartTypeSidebar={isShowingChartTypeSidebar}
-              />
-            </ViewSidebar>
-            <ViewMainContainer
-              {...props}
-              showLeftSidebar={showLeftSidebar}
-              showRightSidebar={showRightSidebar}
-            />
-            <ViewSidebar
-              side="right"
-              isOpen={showRightSidebar}
-              width={rightSidebarWidth}
-            >
-              <ViewRightSidebarContainer {...props} />
-            </ViewSidebar>
+              <ViewSidebar
+                side="right"
+                isOpen={showRightSidebar}
+                width={rightSidebarWidth}
+              >
+                <ViewRightSidebarContainer {...props} />
+              </ViewSidebar>
+            </Flex>
           </Flex>
-        </Flex>
 
-        {isShowingNewbModal && (
-          <SavedQuestionIntroModal
+          {isShowingNewbModal && (
+            <SavedQuestionIntroModal
+              question={question}
+              isShowingNewbModal={isShowingNewbModal}
+              onClose={() => closeQbNewbModal()}
+            />
+          )}
+
+          <QueryModals
+            onSave={onSave}
+            onCreate={onCreate}
+            modal={modal}
+            card={card}
             question={question}
-            isShowingNewbModal={isShowingNewbModal}
-            onClose={() => closeQbNewbModal()}
+            onCloseModal={onCloseModal}
+            onOpenModal={onOpenModal}
+            setQueryBuilderMode={setQueryBuilderMode}
+            originalQuestion={originalQuestion}
+            onChangeLocation={onChangeLocation}
           />
-        )}
 
-        <QueryModals
-          onSave={onSave}
-          onCreate={onCreate}
-          modal={modal}
-          card={card}
-          question={question}
-          onCloseModal={onCloseModal}
-          onOpenModal={onOpenModal}
-          setQueryBuilderMode={setQueryBuilderMode}
-          originalQuestion={originalQuestion}
-          onChangeLocation={onChangeLocation}
-        />
-
-        <Toaster
-          message={t`Would you like to be notified when this question is done loading?`}
-          isShown={isShowingToaster}
-          onDismiss={onDismissToast}
-          onConfirm={onConfirmToast}
-          fixed
-        />
-      </div>
+          <Toaster
+            message={t`Would you like to be notified when this question is done loading?`}
+            isShown={isShowingToaster}
+            onDismiss={onDismissToast}
+            onConfirm={onConfirmToast}
+            fixed
+          />
+        </div>
+      </FilterAutoApplyProvider>
     );
   },
 );

@@ -9,6 +9,8 @@
    {:decode/normalize lib.schema.common/normalize-map
     :decode/api       lib.schema.common/remove-internal-keys
     :encode/serialize lib.schema.common/remove-internal-keys :closed true}
+   ;; Prototype: run the query on the samples of the slow prototype tables. See `metabase.prototype.samples`.
+   [:prototype-sample? {:optional true} :boolean]
    [:skip-results-metadata?
     {:optional true
      :description
