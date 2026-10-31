@@ -1214,10 +1214,8 @@
                         {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                         :model/Collection {other-collection-id :id} {}
                         :model/Card {card-id :id} {:dataset_query venues-query :collection_id collection-id}
-                        :model/Action {action-id :id} {:type :query :name "Delete venue" :collection_id collection-id}
-                        :model/QueryAction _ {:action_id     action-id
-                                              :database_id   (mt/id)
-                                              :dataset_query (lib/native-query mp "DELETE FROM venues WHERE id = 1")}]
+                        :model/Action {action-id :id} {:type :implicit :name "Update venue" :collection_id collection-id}
+                        :model/ImplicitAction _ {:action_id action-id :kind "row/update" :table_id (mt/id :venues)}]
            (testing "an app depends on the cards and actions in its resource collection"
              (assert-pending :data-app app-id)
              (deps.test/synchronously-run-dependency-job!)
