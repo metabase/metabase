@@ -4,6 +4,7 @@ import {
   ALL_USERS_GROUP_ID,
   COLLECTION_GROUP_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { JWT_SHARED_SECRET } from "e2e/support/helpers/e2e-jwt-helpers";
 import type { GroupInfo } from "metabase-types/api";
 
 const { H } = cy;
@@ -129,6 +130,81 @@ describe("scenarios > data apps > data studio permissions", () => {
       assertAppIsHidden();
       assertAppAccessDenied();
     });
+
+    it("grants and revokes a tenant group's access to the published app (DAT-17)", () => {
+      H.enableJwtAuth();
+      cy.request("PUT", "/api/setting", {
+        "use-tenants": true,
+        "jwt-user-provisioning-enabled?": true,
+      });
+      cy.request("POST", "/api/ee/tenant", {
+        name: "Finches",
+        slug: "finches",
+      });
+      cy.task<string>("signJwt", {
+        payload: {
+          email: "finch@example.com",
+          first_name: "Finch",
+          last_name: "Viewer",
+          "@tenant": "finches",
+        },
+        secret: JWT_SHARED_SECRET,
+      }).as("tenantToken");
+
+      cy.log("tenant users cannot open an unassigned app");
+      signInToAppAsTenant();
+      H.main()
+        .findByText("You don’t have access to this data app")
+        .should("be.visible");
+
+      cy.log("assign the tenant group through Data Studio");
+      cy.signInAsAdmin();
+      cy.visit(`/data-studio/apps/${APP_NAME}/permissions`);
+      H.main().findByRole("button", { name: "Add groups" }).click();
+      H.modal().findByRole("textbox", { name: "Groups" }).click();
+      cy.findByRole("option", {
+        name: "All tenant users (tenant group)",
+      }).click();
+      H.modal().findByRole("button", { name: "Add" }).click();
+      H.main()
+        .findByRole("row", { name: /All tenant users/ })
+        .findByText("Tenant group")
+        .should("be.visible");
+
+      cy.log("the assigned tenant user can render the real app");
+      signInToAppAsTenant();
+      assertAppIsRendered();
+
+      cy.log("remove access and verify revocation without affecting admins");
+      cy.signInAsAdmin();
+      cy.visit(`/data-studio/apps/${APP_NAME}/permissions`);
+      H.main()
+        .findByRole("button", { name: "All tenant users options" })
+        .click();
+      H.popover()
+        .findByRole("menuitem", { name: /Remove access/ })
+        .click();
+      H.modal().findByRole("button", { name: "Remove access" }).click();
+      H.main().findByText(EMPTY_STATE_TEXT).should("be.visible");
+
+      H.openDataApp(APP_NAME);
+      assertAppIsRendered();
+
+      signInToAppAsTenant();
+      H.main()
+        .findByText("You don’t have access to this data app")
+        .should("be.visible");
+    });
+
+    function signInToAppAsTenant() {
+      return cy
+        .get<string>("@tenantToken")
+        .then((token) =>
+          cy.visit(
+            `/auth/sso?jwt=${token}&return_to=${encodeURIComponent(`/apps/${APP_NAME}`)}`,
+          ),
+        );
+    }
 
     function visitHome() {
       cy.intercept("GET", "/api/ee/apps").as("dataApps");

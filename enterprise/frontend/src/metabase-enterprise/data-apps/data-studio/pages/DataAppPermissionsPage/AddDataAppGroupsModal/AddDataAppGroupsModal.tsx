@@ -2,11 +2,12 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListPermissionsGroupsQuery } from "metabase/api";
-import { useMetadataToasts } from "metabase/common/hooks";
+import { useHasTokenFeature, useMetadataToasts } from "metabase/common/hooks";
 import {
   getGroupNameLocalized,
   isAdminGroup,
 } from "metabase/common/utils/groups";
+import { useSetting } from "metabase/settings";
 import { Button, Group, Modal, MultiSelect, Stack, Text } from "metabase/ui";
 import {
   useAddDataAppGroupsMutation,
@@ -29,9 +30,12 @@ export function AddDataAppGroupsModal({
 }: AddDataAppGroupsModalProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const { data: assignedGroups = [] } = useGetDataAppGroupsQuery(app.name);
-  const { data: groups, isLoading } = useListPermissionsGroupsQuery({
-    tenancy: "internal",
-  });
+  const isTenantsEnabled = useSetting("use-tenants");
+  const hasTenantsFeature = useHasTokenFeature("tenants");
+  const canAssignTenantGroups = isTenantsEnabled && hasTenantsFeature;
+  const { data: groups, isLoading } = useListPermissionsGroupsQuery(
+    canAssignTenantGroups ? undefined : { tenancy: "internal" },
+  );
   const [addGroups, { isLoading: isAdding }] = useAddDataAppGroupsMutation();
   const { sendErrorToast } = useMetadataToasts();
 
@@ -40,15 +44,17 @@ export function AddDataAppGroupsModal({
       groups
         ?.filter(
           (group) =>
-            !group.is_tenant_group &&
+            (!group.is_tenant_group || canAssignTenantGroups) &&
             !isAdminGroup(group) &&
             !assignedGroups.some((assigned) => assigned.id === group.id),
         )
         .map((group) => ({
           value: String(group.id),
-          label: getGroupNameLocalized(group),
+          label: group.is_tenant_group
+            ? t`${getGroupNameLocalized(group)} (tenant group)`
+            : getGroupNameLocalized(group),
         })),
-    [groups, assignedGroups],
+    [groups, assignedGroups, canAssignTenantGroups],
   );
 
   const handleAdd = async () => {
