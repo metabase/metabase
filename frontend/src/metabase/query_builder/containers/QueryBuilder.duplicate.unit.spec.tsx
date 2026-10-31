@@ -11,6 +11,7 @@ import {
   TEST_STRUCTURED_CARD,
   setup,
   triggerVisualizationQueryChange,
+  waitForQueryToStart,
   waitForSaveToBeEnabled,
 } from "./test-utils";
 
@@ -40,6 +41,7 @@ const duplicateQuestion = async () => {
     within(modal).getByRole("button", { name: "Duplicate" }),
   );
   await waitFor(() => expect(modal).not.toBeInTheDocument());
+  await waitForQueryToStart();
 };
 
 const saveAsNewQuestion = async () => {
@@ -50,6 +52,7 @@ const saveAsNewQuestion = async () => {
   await userEvent.click(within(modal).getByText("Save as new question"));
   await userEvent.click(within(modal).getByText("Save"));
   await waitFor(() => expect(modal).not.toBeInTheDocument());
+  await waitForQueryToStart();
 };
 
 describe("QueryBuilder > saving a question based on another one", () => {

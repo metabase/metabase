@@ -110,6 +110,9 @@ const baseConfig = {
     "<rootDir>/.*/__mocks__",
     "<rootDir>/enterprise/frontend/src/custom-viz",
   ],
+  // The node:test runner keeps its caches and each worker's files there, and
+  // in watch mode a change there would start the next run.
+  watchPathIgnorePatterns: ["<rootDir>/node_modules/\\.cache/"],
   setupFiles: [
     "<rootDir>/frontend/test/jest-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js",
