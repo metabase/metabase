@@ -577,17 +577,30 @@
                                                      :permission/metabot)}
                            tracking-opts)}))
 
+(defn- stop-recording-rf
+  "Wrap `rf` so that `stopped?` turns true once `rf` returns `reduced`.
+
+  The loop can't learn that its consumer stopped from what an iteration returns: the eductions an iteration reduces
+  unwrap a `reduced` before they return."
+  [rf stopped?]
+  (fn [acc part]
+    (u/prog1 (rf acc part)
+      (when (reduced? <>)
+        (vreset! stopped? true)))))
+
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
   [agent rf init usage-atom]
-  {:agent               agent
-   :rf                  rf
-   :result              init
-   :iteration           1
-   :status              :continue
-   :usage-atom          usage-atom
-   :sent-parts          []
-   :undeclared-failures 0})
+  (let [consumer-stopped? (volatile! false)]
+    {:agent               agent
+     :rf                  (stop-recording-rf rf consumer-stopped?)
+     :consumer-stopped?   consumer-stopped?
+     :result              init
+     :iteration           1
+     :status              :continue
+     :usage-atom          usage-atom
+     :sent-parts          []
+     :undeclared-failures 0}))
 
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
@@ -629,7 +642,7 @@
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom sent-parts undeclared-failures] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom sent-parts undeclared-failures consumer-stopped?] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
@@ -683,9 +696,9 @@
           (let [undeclared-failures (+ undeclared-failures (count (filter undeclared-failure? parts)))
                 terminal-error      (terminal-error-message parts undeclared-failures)]
             (cond
-              (reduced? result')
+              @consumer-stopped?
               ;; consumer signalled early termination (e.g. client disconnect / cancellation)
-              (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
+              (assoc loop-state :status :reduced :finish-reason :reduced :result (unreduced result'))
 
               terminal-error
               (let [result'' (rf result' (terminal-error-text-part terminal-error))]
@@ -826,12 +839,11 @@
                                               :ai/state      (:state opts)}
                           (let [agent      (init-agent opts)
                                 usage-atom (atom {})
-                                {result        :result
-                                 iteration     :iteration
-                                 finish-reason :finish-reason} (->> (initial-loop-state agent rf init usage-atom)
-                                                                    (iterate loop-step)
-                                                                    (drop-while #(= :continue (:status %)))
-                                                                    first)]
+                                {:keys [result iteration finish-reason consumer-stopped?]}
+                                (->> (initial-loop-state agent rf init usage-atom)
+                                     (iterate loop-step)
+                                     (drop-while #(= :continue (:status %)))
+                                     first)]
                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
                             ;; Materialized turn-level outputs for evals: token usage, why the loop
                             ;; stopped, and the final agent state (link registry / generated entities).
@@ -839,8 +851,9 @@
                               (ait/record! {:ai/finish-reason finish-reason
                                             :ai/usage         @usage-atom
                                             :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
-                            ;; A :reduced stop (client disconnect / cancellation) has already terminated
-                            ;; the reducing fn — stepping it again would violate the transducer contract.
+                            ;; A consumer that stopped (client disconnect / cancellation) has terminated the
+                            ;; reducing fn, at whichever write it stopped, and stepping it again would violate
+                            ;; the transducer contract.
                             ;; Append trailing parts only on a normal finish: the debug log, the
                             ;; loop's finish reason, and the eval-session pointer that lets the
                             ;; harness locate the per-session `<session-id>.jsonl` (it reads that
@@ -849,8 +862,8 @@
                             ;; in-process `capture-reducible`/`capturing` path is capture-active but
                             ;; deliberately file-less (session id nil, read `:trace`), so emitting a
                             ;; pointer there would name a `<nil>.jsonl` that never exists.
-                            (if (= :reduced finish-reason)
-                              result
+                            (if @consumer-stopped?
+                              (unreduced result)
                               (-> result
                                   (cond->
                                    (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))

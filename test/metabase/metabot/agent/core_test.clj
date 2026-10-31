@@ -1,6 +1,7 @@
 (ns metabase.metabot.agent.core-test
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.ai-tracing.core :as ait]
@@ -14,6 +15,7 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.api :as metabot.api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
@@ -31,6 +33,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -337,8 +340,9 @@
 (defn- run-sql-turn!
   "Run one turn whose LLM responses call `create_sql_query` against `database-id` and then answer in text, while the
   user views `viewing`, by default a SQL editor. `calls` holds the call IDs of each response, by default one response
-  with one call. Return the LLM requests and the turn's parts."
-  [profile-id database-id & {:keys [viewing calls] :or {viewing sql-editor-viewing, calls [["t1"]]}}]
+  with one call. `writer`, when given, receives the turn as SSE lines, the way the chat endpoint streams it. Return the
+  LLM requests and the turn's parts."
+  [profile-id database-id & {:keys [viewing calls writer] :or {viewing sql-editor-viewing, calls [["t1"]]}}]
   (let [requests  (atom [])
         responses (mapv (fn [ids]
                           (mapv (fn [id]
@@ -357,12 +361,17 @@
                                                           (mut/mock-llm-response
                                                            (get responses (dec (count (swap! requests conj request)))
                                                                 [{:type :text :text "Sorry."}])))]
-        (let [parts (into [] (run-agent-loop
-                              {:messages   [{:role :user :content "Query that database"}]
-                               :state      {}
-                               :profile-id profile-id
-                               :context    {:capabilities    ["permission:write_sql_queries"]
-                                            :user_is_viewing viewing}}))]
+        (let [turn  (run-agent-loop
+                     {:messages   [{:role :user :content "Query that database"}]
+                      :state      {}
+                      :profile-id profile-id
+                      :context    {:capabilities    ["permission:write_sql_queries"]
+                                   :user_is_viewing viewing}})
+              parts (if writer
+                      (let [streamed (atom [])]
+                        (transduce (comp (u/tee-xf streamed) (self.core/parts->aisdk-sse-xf)) writer turn)
+                        @streamed)
+                      (into [] turn))]
           {:llm-calls (count @requests) :requests @requests :parts parts})))))
 
 (deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
@@ -442,6 +451,26 @@
               (is (= (count calls) llm-calls))
               (is (= :terminal-error (:finish-reason (last parts))))
               (is (some #(= "Something went wrong." (:text %)) parts)))))))))
+
+(deftest the-turn-stops-when-the-client-leaves-during-a-tool-call-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [create-sql-query (mt/original-fn #'create-sql-query-tools/create-sql-query)]
+      (doseq [[outcome call] {"succeeds"                           create-sql-query
+                              "fails with an undeclared exception" (fn [_] (throw (ex-info "Connection reset" {})))}]
+        (testing (str "the client leaves while a tool call runs, and the call " outcome)
+          (let [canceled-chan (a/promise-chan)
+                canceled?     (volatile! false)]
+            (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query (fn [args]
+                                                                                  (a/>!! canceled-chan :canceled)
+                                                                                  (call args))]
+              (let [{:keys [llm-calls parts]}
+                    (run-sql-turn! :internal (mt/id)
+                                   :writer (#'metabot.api/streaming-writer-rf
+                                            (java.io.ByteArrayOutputStream.) canceled-chan canceled?))]
+                (is @canceled?)
+                (is (= 1 llm-calls))
+                (is (not-any? #(= :finish (:type %)) parts)
+                    "the turn stops where the client left, without finishing")))))))))
 
 (deftest blank-replacement-after-edit-test
   ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
