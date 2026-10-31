@@ -65,7 +65,8 @@
            user-group-memberships
            source
            tenant-id
-           invite-target]
+           invite-target
+           send-invitation]
     :as   attributes} :- [:map {:closed true}
                           [:first-name              {:optional true} [:maybe ms/NonBlankString]]
                           [:last-name               {:optional true} [:maybe ms/NonBlankString]]
@@ -75,7 +76,8 @@
                           [:login-attributes        {:optional true} [:maybe users.schema/LoginAttributes]]
                           [:source                  {:optional true, :default :admin} [:enum :setup :admin]]
                           [:tenant-id               {:optional true} [:maybe ms/PositiveInt]]
-                          [:invite-target           {:optional true} [:maybe users.schema/InviteTarget]]]]
+                          [:invite-target           {:optional true} [:maybe users.schema/InviteTarget]]
+                          [:send-invitation         {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (api/check-400 (not (users.db/user-email-exists? (u/lower-case-en email)))
                  {:errors     {:email (tru "Email address already in use.")}
@@ -86,7 +88,7 @@
               (tru "Cannot create a Tenant User as Tenants are not enabled for this instance."))
   (t2/with-transaction [_conn]
     (let [new-user-id (u/the-id
-                       (notification/with-skip-sending-notification (boolean tenant-id)
+                       (notification/with-skip-sending-notification (or (boolean tenant-id) (false? send-invitation))
                          (user/create-and-invite-user!
                           (-> attributes
                               (u/select-non-nil-keys [:first-name :last-name :email :password :login-attributes :tenant-id])
