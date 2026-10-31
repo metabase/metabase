@@ -211,7 +211,15 @@
             joins)
       (when-let [previous-path (lib.walk/previous-path path)]
         (let [previous-stage (get-in query previous-path)]
-          (recur query previous-path previous-stage join)))))
+          ;; after aggregations or breakouts, join again in this stage if the previous stage returns the FK
+          (when-not (and (or (:aggregation previous-stage) (:breakout previous-stage))
+                         (some #(= (:id %) (:fk-field-id join))
+                               (lib.walk/apply-f-for-stage-at-path
+                                (fn [query stage-number]
+                                  (lib/returned-columns query stage-number previous-stage))
+                                query
+                                previous-path)))
+            (recur query previous-path previous-stage join))))))
 
 (mu/defn- add-condition-fields-from-next-stage :- ::lib.schema/stage
   "Add any fields that are needed for newly-added join conditions in the next stage if they're not already present in
