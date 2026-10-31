@@ -83,7 +83,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
       }),
     )
     .with(
-      "app",
+      "data-app",
       (): DataAppEmbedOptions => ({
         componentName: "metabase-data-app",
         path: String(resourceId ?? ""),
@@ -130,5 +130,5 @@ export const getExperienceFromSettings = (
     .with({ componentName: "metabase-browser" }, () => "browser")
     .with({ componentName: "metabase-dashboard" }, () => "dashboard")
     .with({ componentName: "metabase-metabot" }, () => "metabot")
-    .with({ componentName: "metabase-data-app" }, () => "app")
+    .with({ componentName: "metabase-data-app" }, () => "data-app")
     .exhaustive();

@@ -101,7 +101,7 @@ export const useSdkIframeEmbedSettings = ({
         { resourceType: "data-app", resourceId: P.nonNullable },
         (initialState) =>
           getDefaultSdkIframeEmbedSettings({
-            experience: "app",
+            experience: "data-app",
             resourceId: initialState.resourceId,
             isSimpleEmbedFeatureAvailable,
             isGuestEmbedsEnabled,

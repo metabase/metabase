@@ -42,10 +42,9 @@ export function useSdkIframeEmbedNavigation({
 > & {
   defaultStep: SdkIframeEmbedSetupStep;
 }) {
-  const steps =
-    experience === "app"
-      ? EMBED_STEPS.filter((step) => step.id !== "select-embed-options")
-      : EMBED_STEPS;
+  const steps = EMBED_STEPS.filter(
+    (step) => !step.excludedExperiences?.includes(experience),
+  );
 
   const handleNext = () => {
     const currentIndex = steps.findIndex((step) => step.id === currentStep);

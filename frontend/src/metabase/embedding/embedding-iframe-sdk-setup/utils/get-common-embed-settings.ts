@@ -97,7 +97,7 @@ export const getCommonEmbedSettings = ({
   const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
 
-  if (experience === "app") {
+  if (experience === "data-app") {
     return { isGuest: false, isSso: true, useExistingUserSession: false };
   }
 

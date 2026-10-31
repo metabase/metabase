@@ -9,7 +9,7 @@ export type DataAppsPlugin = {
   isEnabled: boolean;
   getRoutes: () => ReactNode | null;
   getDataStudioRoutes: (IsAdmin: ComponentType) => ReactNode | null;
-  EmbedResourceCard: ComponentType<{
+  EmbedDataAppPicker: ComponentType<{
     value: string | null;
     onChange: (path: string) => void;
   }>;
@@ -30,7 +30,7 @@ const getDefaultPluginDataApps = (): DataAppsPlugin => ({
   getRoutes: () => null,
   getDataStudioRoutes: () => null,
   MainNavbarSection: PluginPlaceholder,
-  EmbedResourceCard: PluginPlaceholder,
+  EmbedDataAppPicker: PluginPlaceholder,
   useDataApps: () => ({ data: undefined, isLoading: false }),
 });
 

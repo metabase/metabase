@@ -1,23 +1,21 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { Alert, Button, Card, Select, Stack, Text } from "metabase/ui";
+import { Card, Select, Stack, Text } from "metabase/ui";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 
-export const DataAppEmbedResourceCard = ({
+import { isDataAppOpenable } from "../utils";
+
+export const EmbedDataAppPicker = ({
   value,
   onChange,
 }: {
   value: string | null;
   onChange: (path: string) => void;
 }) => {
-  const {
-    data: apps = [],
-    isLoading,
-    isError,
-    refetch,
-    isFetching,
-  } = useListDataAppsQuery();
+  const { data, isLoading, isError, isFetching } = useListDataAppsQuery();
+
+  const apps = useMemo(() => data?.filter(isDataAppOpenable) ?? [], [data]);
 
   useEffect(() => {
     if (isFetching || isError) {
@@ -36,6 +34,7 @@ export const DataAppEmbedResourceCard = ({
     <Card p="lg">
       <Stack gap="lg">
         <Text size="lg" fw="bold">{t`Select a data app to embed`}</Text>
+
         <Select
           aria-label={t`Data app`}
           placeholder={t`Select a data app`}
@@ -52,17 +51,8 @@ export const DataAppEmbedResourceCard = ({
             }
           }}
           nothingFoundMessage={t`No data apps found`}
+          error={isError ? t`Could not load the list of data apps.` : undefined}
         />
-        {isError && (
-          <Alert color="error">
-            {t`Could not load data apps`}{" "}
-            <Button
-              variant="subtle"
-              onClick={() => refetch()}
-              disabled={isFetching}
-            >{t`Retry`}</Button>
-          </Alert>
-        )}
       </Stack>
     </Card>
   );

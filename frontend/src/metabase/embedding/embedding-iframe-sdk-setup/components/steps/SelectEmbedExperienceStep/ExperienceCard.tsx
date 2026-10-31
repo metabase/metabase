@@ -66,7 +66,7 @@ export const ExperienceCard = () => {
                   (!experience.supportsOss && !isSimpleEmbedFeatureAvailable) ||
                   (!experience.supportsGuestEmbed &&
                     isGuestEmbed &&
-                    experience.value !== "app")
+                    experience.value !== "data-app")
                 }
               />
             ))}
@@ -74,7 +74,7 @@ export const ExperienceCard = () => {
         </Radio.Group>
 
         {showSsoNotConfiguredWarning &&
-          (experience === "app" ? (
+          (experience === "data-app" ? (
             <Alert color="warning">{t`Configure JWT or SAML single sign-on to embed a data app.`}</Alert>
           ) : (
             <SetupSsoAlert />

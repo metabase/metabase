@@ -45,7 +45,7 @@ export const useHandleExperienceChange = () => {
             exampleDashboardId,
           }),
         )
-        .with("app", () => "")
+        .with("data-app", () => "")
         .with(P.union("exploration", "browser", "metabot"), () => 0) // resource id does not apply
         .exhaustive();
 

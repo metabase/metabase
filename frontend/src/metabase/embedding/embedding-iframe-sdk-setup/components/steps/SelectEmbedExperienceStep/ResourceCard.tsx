@@ -52,19 +52,19 @@ export const ResourceCard = () => {
       : skipToken,
   );
 
-  if (experience === "app") {
+  if (!hasResourceSelectionStep(experience)) {
+    return null;
+  }
+
+  if (experience === "data-app") {
     return (
-      <PLUGIN_DATA_APPS.EmbedResourceCard
+      <PLUGIN_DATA_APPS.EmbedDataAppPicker
         value={
           settings.componentName === "metabase-data-app" ? settings.path : null
         }
         onChange={(path) => updateSettings({ path })}
       />
     );
-  }
-
-  if (!hasResourceSelectionStep(experience)) {
-    return null;
   }
 
   const recentItems = match(experience)
@@ -226,12 +226,12 @@ export const ResourceCard = () => {
 
 type ResourceExperience = Exclude<
   SdkIframeEmbedSetupExperience,
-  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number] | "app"
+  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
 >;
 
-const getResourceCopy = (experience: ResourceExperience) =>
+const getResourceCopy = (experience: Exclude<ResourceExperience, "data-app">) =>
   match<
-    ResourceExperience,
+    Exclude<ResourceExperience, "data-app">,
     { title: string; icon: IconName; placeholder: string; label: string }
   >(experience)
     .with("dashboard", () => ({
@@ -271,4 +271,5 @@ const hasResourceSelectionStep = (
 ): experience is ResourceExperience =>
   experience === "dashboard" ||
   experience === "chart" ||
-  experience === "browser";
+  experience === "browser" ||
+  experience === "data-app";

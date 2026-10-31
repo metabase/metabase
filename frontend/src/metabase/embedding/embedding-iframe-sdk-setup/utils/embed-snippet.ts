@@ -64,7 +64,7 @@ export function getEmbedCustomElementSnippet({
     .with("exploration", () => "metabase-question")
     .with("browser", () => "metabase-browser")
     .with("metabot", () => "metabase-metabot")
-    .with("app", () => "metabase-data-app")
+    .with("data-app", () => "metabase-data-app")
     .exhaustive();
 
   const attributes = buildEmbedAttributes({
@@ -106,6 +106,10 @@ export function getMetabaseConfigSnippet({
 
   const cleanedConfig = {
     ..._.omit(config, ["isGuest", "useExistingUserSession"]),
+
+    // data apps does not support theme overrides.
+    // each data app already define its theme.
+    ...(settings.componentName === "metabase-data-app" && { theme: undefined }),
 
     // Only include settings below when they are true.
     ...(config.useExistingUserSession ? { useExistingUserSession: true } : {}),

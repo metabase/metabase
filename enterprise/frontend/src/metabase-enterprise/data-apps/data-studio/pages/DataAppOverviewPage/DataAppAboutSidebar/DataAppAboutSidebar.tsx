@@ -12,7 +12,7 @@ import * as Urls from "metabase/urls";
 import { useGetDataAppGroupsQuery } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
-import { isDataAppOpenable } from "../../../utils";
+import { isDataAppOpenable } from "../../../../utils";
 
 type DataAppAboutSidebarProps = {
   app: DataApp;

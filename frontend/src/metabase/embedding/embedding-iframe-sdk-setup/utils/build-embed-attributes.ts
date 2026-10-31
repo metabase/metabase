@@ -85,17 +85,11 @@ export const buildEmbedAttributes = ({
     })
     .otherwise(() => settings);
 
-  const keysToProcess = match(experience)
-    .with("app", () => ALLOWED_EMBED_SETTING_KEYS_MAP.app)
-    .otherwise((experience) =>
-      isGuestEmbed
-        ? ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP[experience]
-        : ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
-    );
-
   return transformEmbedSettingsToAttributes({
     settings: settingsWithOverrides,
-    keysToProcess,
+    keysToProcess: isGuestEmbed
+      ? ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP[experience]
+      : ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
     wrapWithQuotes,
   });
 };

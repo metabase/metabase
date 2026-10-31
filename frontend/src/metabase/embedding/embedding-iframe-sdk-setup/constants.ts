@@ -60,7 +60,7 @@ export const getEmbedExperiences = ({
     ...(isDataAppsAvailable
       ? [
           {
-            value: "app" as const,
+            value: "data-app" as const,
             title: t`Data Apps`,
             description: t`Embed an existing data app`,
             supportsOss: false,
@@ -79,6 +79,7 @@ export const getEmbedExperiences = ({
 type EmbedStepConfig = {
   id: SdkIframeEmbedSetupStep;
   component: React.ComponentType;
+  excludedExperiences?: SdkIframeEmbedSetupExperience[];
 };
 
 export const EXPERIENCES_WITHOUT_RESOURCE_SELECTION = [
@@ -94,6 +95,7 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
   {
     id: "select-embed-options",
     component: AppearanceStep,
+    excludedExperiences: ["data-app"],
   },
   {
     id: "get-code",

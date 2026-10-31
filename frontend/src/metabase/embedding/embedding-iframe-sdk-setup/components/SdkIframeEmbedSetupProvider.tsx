@@ -11,6 +11,7 @@ import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/ty
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 
+import { EMBED_STEPS } from "../constants";
 import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
@@ -75,23 +76,6 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const modelCount = searchData?.total ?? 0;
 
-  // Default to the embed options step if both resource type and id are provided.
-  // This is to skip the experience and resource selection steps as we know both.
-  const defaultStep: SdkIframeEmbedSetupStep = useMemo(() => {
-    if (initialState?.resourceType === "data-app") {
-      return "select-embed-experience";
-    }
-
-    if (!!initialState?.resourceType && !!initialState?.resourceId) {
-      return "select-embed-options";
-    }
-
-    return "select-embed-experience";
-  }, [initialState]);
-
-  const [currentStep, setCurrentStep] =
-    useState<SdkIframeEmbedSetupStep>(defaultStep);
-
   const {
     settings,
     defaultSettings,
@@ -107,6 +91,27 @@ export const SdkIframeEmbedSetupProvider = ({
     isGuestEmbedsEnabled,
     isSsoEnabledAndConfigured,
   });
+
+  const defaultStep: SdkIframeEmbedSetupStep = useMemo(() => {
+    if (initialState?.resourceType && initialState.resourceId) {
+      // When the resources are already pre-selected,
+      // start at the options step when the experience supports it.
+      const selectOptionsStep = EMBED_STEPS.find(
+        (step) =>
+          step.id === "select-embed-options" &&
+          !step.excludedExperiences?.includes(defaultSettings.experience),
+      );
+
+      if (selectOptionsStep) {
+        return selectOptionsStep.id;
+      }
+    }
+
+    return "select-embed-experience";
+  }, [initialState, defaultSettings.experience]);
+
+  const [currentStep, setCurrentStep] =
+    useState<SdkIframeEmbedSetupStep>(defaultStep);
 
   // Which embed experience are we setting up?
   const experience = useMemo(

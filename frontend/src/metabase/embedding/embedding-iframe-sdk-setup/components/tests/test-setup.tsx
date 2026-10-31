@@ -27,6 +27,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
+import type { SdkIframeEmbedSetupSettings } from "../../types";
 import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 
 export const setup = (options?: {
@@ -41,6 +42,7 @@ export const setup = (options?: {
   metabotEnabled?: boolean;
   siteUrl?: string;
   dashboard?: Dashboard;
+  savedTheme?: SdkIframeEmbedSetupSettings["theme"];
 }) => {
   const { enterprisePlugins } = options ?? {};
 
@@ -74,6 +76,7 @@ export const setup = (options?: {
     // Default to the jsdom test origin so the embed wizard preview renders
     // (mismatched origins surface a Site URL configuration error).
     "site-url": options?.siteUrl ?? window.location.origin,
+    "sdk-iframe-embed-setup-settings": { theme: options?.savedTheme },
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
@@ -96,7 +99,7 @@ export const setup = (options?: {
   );
   fetchMock.get("path:/api/embed-theme", []);
 
-  renderWithProviders(
+  return renderWithProviders(
     <SdkIframeEmbedSetupModal
       opened
       initialState={{

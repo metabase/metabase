@@ -9,8 +9,8 @@ import * as Urls from "metabase/urls";
 import { useSetDataAppEnabledMutation } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
+import { isDataAppOpenable } from "../../../utils";
 import { trackDataAppMadeDraft, trackDataAppMadeLive } from "../../analytics";
-import { isDataAppOpenable } from "../../utils";
 
 type DataAppMoreMenuProps = {
   app: DataApp;
@@ -87,12 +87,14 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
               {t`Open app`}
             </Menu.Item>
           )}
-          <Menu.Item
-            leftSection={<Icon name="embed" />}
-            onClick={() => openEmbedWizard({})}
-          >
-            {t`Embed`}
-          </Menu.Item>
+          {isDataAppOpenable(app) && (
+            <Menu.Item
+              leftSection={<Icon name="embed" />}
+              onClick={() => openEmbedWizard({})}
+            >
+              {t`Embed`}
+            </Menu.Item>
+          )}
 
           <Menu.Item
             leftSection={
