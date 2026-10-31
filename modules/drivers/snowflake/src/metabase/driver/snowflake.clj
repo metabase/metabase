@@ -226,16 +226,6 @@
   [details keep-mode]
   (transduce cat dissoc details (vals (dissoc auth-mode->credential-keys keep-mode))))
 
-(defn- jwt-expiry-ms
-  "Parse the `exp` claim from the payload of `jwt`, in ms since epoch. Returns nil when the token
-  has no `exp` or isn't a parseable JWT."
-  [^String jwt]
-  (try
-    (let [[_ payload _] (str/split jwt #"\.")
-          json-str      (String. (.decode (java.util.Base64/getUrlDecoder) ^String payload) "UTF-8")]
-      (some-> (json/decode+kw json-str) :exp long (* 1000)))
-    (catch Throwable _ nil)))
-
 (def ^:private hosted-allowed-wif-providers
   ;; OIDC is the only WIF mode on Metabase Cloud where the identity is admin-supplied (a token or a
   ;; token file). Every other provider — AWS/AZURE/GCP today, and anything the Snowflake JDBC
@@ -267,7 +257,7 @@
 
                       (not (str/blank? wif-token))
                       wif-token))
-        expiry-ms (some-> token jwt-expiry-ms)]
+        expiry-ms (u/ignore-exceptions (some-> token driver.u/jwt-expiry-ms))]
     (cond-> {:authenticator            "WORKLOAD_IDENTITY"
              :workloadIdentityProvider provider}
       token     (assoc :token token)

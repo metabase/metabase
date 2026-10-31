@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.databricks-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.databricks-test]}}}}}}
   (:require
+   [clj-http.client :as http]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -21,7 +22,10 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:dynamic *multi-level?* false)
 
@@ -561,6 +565,211 @@
                       (assoc :use-m2m true
                              :client-id (tx/db-test-env-var-or-throw :databricks :client-id)
                              :oauth-secret (tx/db-test-env-var-or-throw :databricks :oauth-secret)))))))))
+
+(def ^:private wif-base-details
+  {:host "x.cloud.databricks.com"
+   :http-path "/sql/1.0/warehouses/abc"
+   :catalog "main"
+   :auth-mode "wif"})
+
+(deftest ^:parallel connection-details->spec-wif-inline-token-test
+  (testing "WIF with an inline pasted JWT sets Auth_AccessToken via pass-through (AuthMech=11, Auth_Flow=0)"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                (assoc wif-base-details :wif-token "eyJhbGciOi.the-jwt.sig"))]
+      (is (= 11 (:AuthMech spec)))
+      (is (= 0 (:Auth_Flow spec)))
+      (is (= "eyJhbGciOi.the-jwt.sig" (:Auth_AccessToken spec)))
+      (testing "no PAT or M2M credentials leak into the spec"
+        (is (not (contains? spec :uid)))
+        (is (not (contains? spec :pwd)))
+        (is (not (contains? spec :OAuth2ClientId)))
+        (is (not (contains? spec :OAuth2Secret)))))))
+
+(deftest connection-details->spec-wif-file-path-wins-test
+  (testing "file path wins over inline token; trailing newline is stripped"
+    (mt/with-temp-file [tok-path "wif-token"]
+      (spit tok-path "from-file\n")
+      (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :databricks
+                    (assoc wif-base-details
+                           :wif-token           "from-inline"
+                           :wif-token-file-path tok-path))]
+          (is (= "from-file" (:Auth_AccessToken spec))))))))
+
+(deftest connection-details->spec-wif-readable-paths-test
+  (testing "the token file is read only from a directory `readable-paths` allows"
+    (mt/with-temp-file [tok-path "wif-token"]
+      (spit tok-path "from-file")
+      (let [spec (fn [] (sql-jdbc.conn/connection-details->spec
+                         :databricks
+                         (assoc wif-base-details :wif-token-file-path tok-path)))]
+        (mt/with-temp-env-var-value! [mb-readable-paths "NONE"]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed" (spec))))
+        (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
+          (is (= "from-file" (:Auth_AccessToken (spec)))))))))
+
+(defn- fake-jwt
+  "A parseable (but not verifiable) JWT with `claims` as the payload."
+  [claims]
+  (let [encoder (java.util.Base64/getUrlEncoder)
+        encode  (fn [m] (String. (.encode encoder (.getBytes (json/encode m) "UTF-8")) "UTF-8"))]
+    (str (encode {:alg "none"}) "." (encode claims) ".sig")))
+
+(deftest ^:parallel connection-details->spec-wif-exp-sets-password-expiry-test
+  (testing "when the WIF token carries `exp`, the spec gets :password-expiry-timestamp for pool auto-invalidation"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                (assoc wif-base-details :wif-token (fake-jwt {:exp 1700000000 :sub "s"})))]
+      (is (= 1700000000000 (:password-expiry-timestamp spec)))))
+  (testing "no `exp` claim → no :password-expiry-timestamp on the spec"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                (assoc wif-base-details :wif-token (fake-jwt {:sub "s"})))]
+      (is (not (contains? spec :password-expiry-timestamp))))))
+
+(deftest ^:parallel normalize-db-details-test
+  (testing "legacy :use-m2m true (no :auth-mode) → :auth-mode \"m2m\" injected"
+    (is (= {:details {:use-m2m true :client-id "cid" :oauth-secret "osec" :auth-mode "m2m"}}
+           (driver/normalize-db-details
+            :databricks
+            {:details {:use-m2m true :client-id "cid" :oauth-secret "osec"}}))))
+  (testing "legacy :use-m2m false (no :auth-mode) → :auth-mode \"pat\" injected"
+    (is (= {:details {:use-m2m false :token "dapi" :auth-mode "pat"}}
+           (driver/normalize-db-details
+            :databricks
+            {:details {:use-m2m false :token "dapi"}}))))
+  (testing "explicit :auth-mode is preserved"
+    (is (= {:details {:use-m2m true :auth-mode "wif" :wif-token "jwt"}}
+           (driver/normalize-db-details
+            :databricks
+            {:details {:use-m2m true :auth-mode "wif" :wif-token "jwt"}}))))
+  (testing ":write_data_details is normalized the same way as :details"
+    (is (= {:details {:use-m2m true :auth-mode "m2m"}
+            :write_data_details {:use-m2m false :auth-mode "pat"}}
+           (driver/normalize-db-details
+            :databricks
+            {:details {:use-m2m true}
+             :write_data_details {:use-m2m false}}))))
+  (testing "database without :details is returned unchanged"
+    (is (= {:engine :databricks}
+           (driver/normalize-db-details :databricks {:engine :databricks})))))
+
+(deftest ^:parallel db-details-to-test-and-migrate-test
+  (testing "returns a single candidate with :auth-mode injected from :use-m2m"
+    (is (= [{:use-m2m true :client-id "cid" :oauth-secret "osec" :auth-mode "m2m"}]
+           (driver/db-details-to-test-and-migrate
+            :databricks
+            {:use-m2m true :client-id "cid" :oauth-secret "osec"})))
+    (is (= [{:use-m2m false :token "dapi" :auth-mode "pat"}]
+           (driver/db-details-to-test-and-migrate
+            :databricks
+            {:use-m2m false :token "dapi"}))))
+  (testing "returns nil when :auth-mode is already present (nothing to migrate)"
+    (is (nil? (driver/db-details-to-test-and-migrate
+               :databricks
+               {:auth-mode "wif" :wif-token "jwt"})))))
+
+(deftest ^:parallel connection-details->spec-backward-compat-use-m2m-test
+  (testing "legacy :use-m2m true produces an M2M OAuth spec"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                {:host "x.cloud.databricks.com"
+                 :http-path "/sql/1.0/warehouses/abc"
+                 :catalog "main"
+                 :use-m2m true
+                 :client-id "cid"
+                 :oauth-secret "osec"})]
+      (is (= 11 (:AuthMech spec)))
+      (is (= 1 (:Auth_Flow spec)))
+      (is (= "cid" (:OAuth2ClientId spec)))
+      (is (= "osec" (:OAuth2Secret spec)))))
+  (testing "legacy :use-m2m false produces a PAT spec"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                {:host "x.cloud.databricks.com"
+                 :http-path "/sql/1.0/warehouses/abc"
+                 :catalog "main"
+                 :use-m2m false
+                 :token "dapiXXXX"})]
+      (is (= 3 (:AuthMech spec)))
+      (is (= "token" (:uid spec)))
+      (is (= "dapiXXXX" (:pwd spec)))))
+  (testing "explicit :auth-mode wins over :use-m2m"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                (assoc wif-base-details
+                       :use-m2m    true
+                       :client-id  "cid"
+                       :wif-token  "eyJhbGciOi.jwt.sig"))]
+      (is (= 11 (:AuthMech spec)))
+      (is (= 0 (:Auth_Flow spec)) "WIF pass-through flow, not M2M")
+      (is (= "eyJhbGciOi.jwt.sig" (:Auth_AccessToken spec))))))
+
+(defn- mint-github-actions-oidc-token
+  "Returns a JWT for `audience` from the GitHub Actions OIDC endpoint, or nil when not running
+  under a GH Actions job with `id-token: write`."
+  [audience]
+  (let [req-token (System/getenv "ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+        req-url   (System/getenv "ACTIONS_ID_TOKEN_REQUEST_URL")]
+    (when (and (not (str/blank? req-token)) (not (str/blank? req-url)))
+      (let [{:keys [status body]} (http/get (str req-url "&audience=" audience) ; naive, but expected to work
+                                            {:headers          {"Authorization" (str "Bearer " req-token)}
+                                             :throw-exceptions false})]
+        (when (= 200 status)
+          (:value (json/decode+kw body)))))))
+
+(defn- wif-user-or-skip
+  "Returns the WIF service principal's Application ID (what `current_user()` returns for an SP
+  session), or nil to signal skip. Fails loudly when `MB_DATABRICKS_TEST_WIF_USER` is unset; set
+  to 'skip' to opt out explicitly (REPL, forks without a configured federation policy)."
+  []
+  (let [u (tx/db-test-env-var :databricks :wif-user)]
+    (cond
+      (= "skip" u)   nil
+      (str/blank? u) (do (is false
+                             (str "MB_DATABRICKS_TEST_WIF_USER isn't set. Set it to the Databricks "
+                                  "WIF service principal's Application ID (UUID), or to 'skip' to "
+                                  "opt out."))
+                         nil)
+      :else          u)))
+
+(defn- wif-live-details-with-token
+  "WIF details for the live tests, `token-source` merged in (`:wif-token` or `:wif-token-file-path`)."
+  [token-source]
+  (merge {:host          (tx/db-test-env-var-or-throw :databricks :host)
+          :http-path     (tx/db-test-env-var-or-throw :databricks :http-path)
+          :catalog       (tx/db-test-env-var-or-throw :databricks :catalog)
+          :auth-mode     "wif"
+          :wif-client-id (tx/db-test-env-var-or-throw :databricks :wif-user)}
+         token-source))
+
+(deftest ^:synchronized databricks-wif-live-test
+  ;; End-to-end against a real Databricks workspace with a federation policy trusting GH Actions.
+  ;; In CI (be-tests-databricks-ee with environment: ci) we mint a fresh OIDC token here — GH tokens
+  ;; last ~15 min and the full suite can exceed that, so a token minted at job start would be stale.
+  ;; Locally, MB_DATABRICKS_TEST_WIF_TOKEN_FILE can point to a JWT on disk as a fallback.
+  (mt/test-driver
+    :databricks
+    (when-let [wif-user (wif-user-or-skip)]
+      (let [audience (tx/db-test-env-var-or-throw :databricks :wif-audience)]
+        (when-let [token (or (mint-github-actions-oidc-token audience)
+                             (some-> (tx/db-test-env-var :databricks :wif-token-file)
+                                     slurp
+                                     str/trim))]
+          (testing "token claims match the federation policy"
+            (is (= {:iss        "https://token.actions.githubusercontent.com"
+                    :aud        audience
+                    :repository "metabase/metabase"}
+                   (select-keys (driver.u/jwt-claims token) [:iss :aud :repository]))))
+          (let [details (wif-live-details-with-token {:wif-token token})]
+            (testing "can-connect? via WIF"
+              (is (true? (driver/can-connect? :databricks details))))
+            (testing "session identifies as the WIF service principal"
+              (let [spec (sql-jdbc.conn/connection-details->spec :databricks details)
+                    rows (jdbc/query spec ["SELECT current_user() AS user"])]
+                (is (= [{:user wif-user}] rows))))))))))
 
 (deftest ^:parallel mulit-line-comment-test
   (mt/test-driver :databricks

@@ -303,6 +303,9 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
+    permissions:
+      id-token: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -312,6 +315,8 @@ jobs:
       DRIVERS: databricks
       MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
+      MB_DATABRICKS_TEST_WIF_AUDIENCE: '568fc646-4a47-4762-b7d8-703c6969d396'
+      MB_DATABRICKS_TEST_WIF_USER: '477845b9-ae9e-4e5c-822c-ad1475419119'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     name: Databricks Driver Tests ${{ matrix.runner-index }}

@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
@@ -17,6 +18,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -279,8 +281,45 @@
   (when (string? (not-empty additional-options))
     (str/replace-first additional-options #"^(?!;)" ";")))
 
+(defn- infer-auth-mode
+  [{:keys [auth-mode use-m2m]}]
+  (or auth-mode
+      (if use-m2m "m2m" "pat")))
+
+(defn- normalize-details [details]
+  (cond-> details
+    (not (contains? details :auth-mode))
+    (assoc :auth-mode (infer-auth-mode details))))
+
+(defmethod driver/normalize-db-details :databricks
+  [_driver database]
+  (-> database
+      (m/update-existing :details normalize-details)
+      (m/update-existing :write_data_details normalize-details)))
+
+(defmethod driver/db-details-to-test-and-migrate :databricks
+  [_driver {:keys [auth-mode] :as details}]
+  (when (nil? auth-mode)
+    [(assoc details :auth-mode (infer-auth-mode details))]))
+
+(defn- wif-jdbc-properties
+  [{:keys [wif-token wif-token-file-path wif-client-id]}]
+  (let [token     (cond
+                    (not (str/blank? wif-token-file-path))
+                    (str/trim (slurp (driver-api/ensure-readable-path! wif-token-file-path)))
+
+                    (not (str/blank? wif-token))
+                    wif-token)
+        expiry-ms (u/ignore-exceptions (some-> token driver.u/jwt-expiry-ms))]
+    (cond-> {:AuthMech         11
+             :Auth_Flow        0
+             :Auth_AccessToken token}
+      (not (str/blank? wif-client-id)) (assoc :Identity_Federation_Client_Id wif-client-id)
+      expiry-ms                        (assoc :password-expiry-timestamp expiry-ms))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :databricks
-  [_driver {:keys [catalog host http-path use-m2m token client-id oauth-secret log-level additional-options] :as _details}]
+  [_driver {:keys [catalog host http-path token client-id oauth-secret log-level additional-options]
+            :as details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
   (let [base-spec
         {:classname      "com.databricks.client.jdbc.Driver"
@@ -301,16 +340,15 @@
     (merge base-spec
            (when log-level
              {:LogLevel log-level})
-           (if use-m2m
-             ;; M2M OAuth
-             {:AuthMech 11
-              :Auth_Flow 1
-              :OAuth2ClientId client-id
-              :OAuth2Secret oauth-secret}
-             ;; PAT authentication
-             {:AuthMech 3
-              :uid "token"
-              :pwd token}))))
+           (case (infer-auth-mode details)
+             "wif" (wif-jdbc-properties details)
+             "m2m" {:AuthMech        11
+                    :Auth_Flow       1
+                    :OAuth2ClientId  client-id
+                    :OAuth2Secret    oauth-secret}
+             "pat" {:AuthMech 3
+                    :uid      "token"
+                    :pwd      token}))))
 
 (defmethod sql.qp/quote-style :databricks
   [_driver]

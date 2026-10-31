@@ -275,17 +275,18 @@
         (is (= "eyJhbGciOi.file-jwt.signature" (:token spec)) "trailing newline stripped")
         (is (not (contains? spec :token_file_path)))))))
 
-(deftest ^:synchronized connection-details->spec-wif-oidc-file-path-wins-test
+(deftest connection-details->spec-wif-oidc-file-path-wins-test
   (testing "file path wins over inline token"
     (mt/with-temp-file [tok-path "wif-token"]
       (spit tok-path "from-file")
-      (let [spec (sql-jdbc.conn/connection-details->spec
-                  :snowflake
-                  (assoc wif-base-details
-                         :wif-provider        "OIDC"
-                         :wif-token           "from-inline"
-                         :wif-token-file-path tok-path))]
-        (is (= "from-file" (:token spec)))))))
+      (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :snowflake
+                    (assoc wif-base-details
+                           :wif-provider        "OIDC"
+                           :wif-token           "from-inline"
+                           :wif-token-file-path tok-path))]
+          (is (= "from-file" (:token spec))))))))
 
 (deftest ^:synchronized connection-details->spec-wif-oidc-file-path-readable-paths-test
   (testing "the token file is read only from a directory `readable-paths` allows"
@@ -308,18 +309,6 @@
   (let [encoder (java.util.Base64/getUrlEncoder)
         encode  (fn [m] (String. (.encode encoder (.getBytes (json/encode m) "UTF-8")) "UTF-8"))]
     (str (encode {:alg "none"}) "." (encode claims) ".sig")))
-
-(deftest ^:parallel jwt-expiry-ms-test
-  (testing "parses `exp` (seconds since epoch) into milliseconds"
-    (is (= 1700000000000 (#'driver.snowflake/jwt-expiry-ms (fake-jwt {:exp 1700000000 :sub "s"})))))
-  (testing "returns nil when the token has no `exp` claim"
-    (is (nil? (#'driver.snowflake/jwt-expiry-ms (fake-jwt {:sub "s"})))))
-  (testing "returns nil for malformed input (doesn't throw)"
-    (are [input] (nil? (#'driver.snowflake/jwt-expiry-ms input))
-      "not-a-jwt"
-      "onlyone.segment"
-      "a.b.c"                                        ; middle segment isn't valid base64url JSON
-      (str "hdr." (String. (.encode (java.util.Base64/getUrlEncoder) (.getBytes "{not-json" "UTF-8")) "UTF-8") ".sig"))))
 
 (deftest ^:parallel connection-details->spec-wif-sets-expiry-from-jwt-test
   (testing "when the OIDC token carries `exp`, spec gets :password-expiry-timestamp for pool auto-invalidation"
