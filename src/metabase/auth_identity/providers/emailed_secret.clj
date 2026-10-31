@@ -6,6 +6,7 @@
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.auth-identity.provider :as provider]
+   [metabase.auth-identity.providers.password :as providers.password]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
@@ -186,10 +187,21 @@
   - Publishes a password reset event or sends admin notification (for new users)
   - Updates the user's password, which also removes the now-used reset token (see
     [[metabase.auth-identity.core/set-password!]])
-  - Points the session the login is about to create at the user's `password` AuthIdentity."
+  - Points the session the login is about to create at the user's `password` AuthIdentity.
+
+  Refuses, before any of that, a new password that equals the user's current one, leaving the token unused."
   [_provider {:keys [user password] :as result}]
-  (if-not (:success? result)
+  (cond
+    (not (:success? result))
     result
+
+    (providers.password/current-password? (:id user) password)
+    (assoc result
+           :success? false
+           :error    :password-unchanged
+           :message  "New password must be different from the current password.")
+
+    :else
     (do
       (if (:last_login user)
         (events/publish-event! :event/password-reset-successful {:object (assoc user :token (auth-identity/reset-token-hash (:id user)))})

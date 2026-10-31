@@ -621,6 +621,20 @@
         (is (=? {:success true}
                 (mt/client :post 200 "session/reset_password" {:token token :password "somethingElseUP12!!"})))))))
 
+(deftest reset-password-compares-against-token-user-after-email-change-test
+  (testing "POST /api/session/reset_password compares with the password of the token's user, not of whoever now has the email the token was sent to"
+    (mt/with-temp [:model/User user  {:email "reset-owner@metabase.com"}
+                   :model/User other {:email "reset-other@metabase.com"}]
+      (auth-identity/set-password! (:id user) "ownerPassUP12!!")
+      (auth-identity/set-password! (:id other) "otherPassUP12!!")
+      (let [token (auth-identity/create-password-reset! (:id user))]
+        (t2/update! :model/User :id (:id user) {:email "reset-owner-moved@metabase.com"})
+        (t2/update! :model/User :id (:id other) {:email "reset-owner@metabase.com"})
+        (is (= {:errors {:password "New password must be different from your current password."}}
+               (mt/client :post 400 "session/reset_password" {:token token :password "ownerPassUP12!!"})))
+        (is (=? {:success true}
+                (mt/client :post 200 "session/reset_password" {:token token :password "otherPassUP12!!"})))))))
+
 (deftest reset-password-refused-when-password-login-disabled-test
   (testing "POST /api/session/reset_password refuses, and changes nothing, when password login is disabled"
     (ldap.test/with-ldap-server!

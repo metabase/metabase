@@ -44,6 +44,15 @@
   (when-let [user (auth-identity.db/user-by-email email)]
     (auth-identity.db/auth-identity (:id user) "password")))
 
+(mu/defn current-password? :- :boolean
+  "Whether `password` is the current password of the user with `user-id`, spending one bcrypt check either way."
+  [user-id  :- ms/PositiveInt
+   password :- :string]
+  (if-let [{{:keys [password_hash password_salt]} :credentials} (auth-identity.db/auth-identity user-id "password")]
+    (boolean (u.password/verify-password password password_salt password_hash))
+    (do (u.password/verify-password password fake-salt fake-hashed-password)
+        false)))
+
 (methodical/defmethod provider/authenticate :provider/password
   "Authenticate a user with email and password.
 

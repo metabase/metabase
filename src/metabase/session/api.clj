@@ -425,23 +425,16 @@
         ;; /auth/login to use their SSO provider.
         _            (when-not (or (:success? grant-result) (session.settings/enable-password-login))
                        (throw (ex-info (tru "Password login is disabled for this instance.") {:status-code 400})))
-        _            (when-not (:success? grant-result)
-                       (let [reset-auth (auth-identity/with-fallback auth-identity/authenticate
-                                          [:provider/emailed-secret-password-reset]
-                                          credentials)]
-                         (when (and (:success? reset-auth)
-                                    (:success? (auth-identity/authenticate
-                                                :provider/password
-                                                {:email    (-> reset-auth :auth-identity :provider_id)
-                                                 :password (:password credentials)})))
-                           (api/throw-invalid-param-exception
-                            :password (tru "New password must be different from your current password.")))))
         auth-result  (if (:success? grant-result)
                        grant-result
                        (auth-identity/with-fallback auth-identity/login!
                          [:provider/emailed-secret-password-reset]
                          credentials))]
     (cond
+      (= :password-unchanged (:error auth-result))
+      (api/throw-invalid-param-exception
+       :password (tru "New password must be different from your current password."))
+
       (not (:success? auth-result))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))
 
