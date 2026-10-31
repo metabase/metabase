@@ -6,8 +6,10 @@
 ;; No engine need achieve them.
 ;; Each engine's query is the best one a user could plausibly type for that goal, so no alternative may score
 ;; worse than the scenario query.
-;; Adapted queries use only words from the goal and the scenario query, never words a user would only know
-;; from a card's name.
+;; Adapted queries use words a user could plausibly think of for the goal without knowing which cards exist:
+;; the goal's own words, or common names for the thing, not words only the target card's text would suggest.
+;; The user may also be an agent, which uses quotes and operators freely, so adapted queries may use any syntax
+;; the engine supports.
 ;; The vector arm keeps cards within cosine distance 0.7 of the query; with this model that admits unrelated
 ;; cards and drops related ones, since both sit around 0.6 to 0.75.
 ;; Semantic search returns the union of a keyword arm and a vector arm.
