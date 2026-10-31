@@ -1122,6 +1122,29 @@
         (is (= (re-find #"(?s)\| Field Name \|.*?\n\n" table-xml)
                (re-find #"(?s)\| Field Name \|.*?\n\n" card-xml)))))))
 
+(deftest ^:parallel metric->xml-dimension-prefers-reference-test
+  (testing "A dimension row renders its own Reference and Source table when it carries them"
+    (let [clause ["field"
+                  {"source-field"      ["Sample" "PUBLIC" "VENUES" "CATEGORY_ID"]
+                   "source-field-name" "Peer__CATEGORY_ID"}
+                  ["Sample" "PUBLIC" "CATEGORIES" "NAME"]]
+          xml    (llm-shape/metric->xml
+                  {:id 1 :name "Metric" :database_name "Sample"
+                   :source_card_portable_entity_id "T4wA_GPFwGb6R4FxIDGTo"
+                   :queryable-dimensions [{:name "NAME" :field_id 2 :type "string"
+                                           :table_reference "Peer → Category"
+                                           :portable_fk ["Sample" "PUBLIC" "CATEGORIES" "NAME"]
+                                           :reference clause}
+                                          {:name "NAME_2" :field_id "NAME_2" :type "string"
+                                           :source_table ["Sample" "PUBLIC" "VENUES"]}]})]
+      (testing "`:reference` wins over the portable FK"
+        (is (str/includes? xml (str "| " (json/encode clause) " |")))
+        (is (not (str/includes? xml "| [\"Sample\",\"PUBLIC\",\"CATEGORIES\",\"NAME\"] |"))))
+      (testing "the FK label names the FK column the row comes through"
+        (is (str/includes? xml "| PUBLIC.CATEGORIES (via Peer → Category) |")))
+      (testing "`:source_table` fills Source table for a row without a portable FK"
+        (is (str/includes? xml "| PUBLIC.VENUES | \"NAME_2\" |"))))))
+
 (deftest ^:parallel metric->xml-dimension-reference-omitted-without-portable-fk-test
   (testing "A database field without a portable FK is listed without a reference"
     (let [xml (llm-shape/metric->xml

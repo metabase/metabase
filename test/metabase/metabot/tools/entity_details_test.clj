@@ -3,11 +3,15 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.test-util :as tools.tu]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -519,6 +523,34 @@
             (is (not-any? #(contains? output %)
                           [:base_table_id :base_table_name :base_table_portable_fk]))))))))
 
+(defn- rendered-dimension-row
+  "The metric dimensions table row for `dim`, as a map from column header to cell text.
+
+    (rendered-dimension-row dim) ;=> {\"Field ID\" \"NAME_2\", \"Source table\" \"PUBLIC.VENUES\", ...}"
+  [dim]
+  (let [cells          #(mapv str/trim (rest (str/split % #"\|")))
+        [header _ row] (str/split-lines (llm-shape/format-metric-dimensions-table [dim]))]
+    (zipmap (cells header) (cells row))))
+
+(deftest get-metric-details-joined-copy-row-test
+  (testing "the renamed joined copy on a card metric gets its own row with a usable Reference"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:name "Venues with peer" :type :question :dataset_query (tools.tu/venues-self-join-query)}
+                   :model/Card {metric-id :id}
+                   {:name          "Venue count"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" card-id)
+                                                       :aggregation  [[:count]]})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [dims (:queryable-dimensions (:structured-output (entity-details/get-metric-details
+                                                               {:metric-id          metric-id
+                                                                :with-field-values? false})))
+              row  (rendered-dimension-row (m/find-first #(= "Peer → Name" (:display_name %)) dims))]
+          (is (=? {"Field ID"                             "NAME_2"
+                   "Source table"                         "PUBLIC.VENUES"
+                   "Reference (copy into a field clause)" "\"NAME_2\""}
+                  row)))))))
+
 (deftest get-metric-details-hides-unreadable-source-card-test
   (testing "metric details do not reveal a source card the user cannot read"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Private"}
@@ -550,6 +582,47 @@
             (is (not-any? #(contains? output %)
                           [:queryable-dimensions :default_time_dimension_field_id :segments]))))))))
 
+(defn- card-column
+  "The column named `column-name` that a query on `query` can break out by."
+  [query column-name]
+  (m/find-first #(= column-name (:name %)) (lib/breakoutable-columns query)))
+
+(defn- two-stage-metric-query
+  "A metric query over the card `card-id`: stage 0 counts rows by the columns named `breakouts`, stage 1 averages it.
+
+  With no `breakouts`, stage 1 counts the rows of stage 0."
+  [card-id & breakouts]
+  (let [mp     (mt/metadata-provider)
+        stage0 (lib/query mp (lib.metadata/card mp card-id))]
+    (if (empty? breakouts)
+      (-> stage0 lib/append-stage (lib/aggregate (lib/count)))
+      (let [query (-> (reduce (fn [query [column-name unit]]
+                                (lib/breakout query (cond-> (card-column query column-name)
+                                                      unit (lib/with-temporal-bucket unit))))
+                              stage0
+                              breakouts)
+                      (lib/aggregate (lib/count))
+                      lib/append-stage)]
+        (lib/aggregate query (lib/avg (m/find-first #(= "count" (:name %)) (lib/visible-columns query))))))))
+
+(defn- dimension-keys
+  "The display name and portable FK of each dimension, as a frequency map."
+  [dims]
+  (frequencies (map (juxt :display_name :portable_fk) dims)))
+
+(defn- orders-dimensions
+  "[[dimension-keys]] of the filterable columns of a query on ORDERS."
+  []
+  (let [mp    (mt/metadata-provider)
+        query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+    (dimension-keys (map #(metabot.tools.u/->result-column query %) (lib/filterable-columns query)))))
+
+(defn- metric-output
+  "The structured output of `get-metric-details` for `metric-id` with `options`."
+  [metric-id & {:as options}]
+  (:structured-output (entity-details/get-metric-details (merge {:metric-id metric-id :with-field-values? false}
+                                                                options))))
+
 (deftest get-metric-details-multi-stage-card-based-metric-surfaces-base-table-test
   (testing "Metric details offer the base table for a multi-stage card metric"
     (mt/with-temp [:model/Card {question-id :id}
@@ -575,8 +648,98 @@
                           [:source_card_id :source_card_name :source_card_portable_entity_id])))
           (testing "the metric is available on its base table"
             (is (not (contains? output :source_unavailable))))
-          (testing "and it still describes its dimensions, so the LLM can filter and group on that source"
-            (is (seq (:queryable-dimensions output)))))))))
+          (testing "and it describes the dimensions of that source, so the LLM can filter and group on it"
+            (is (= (orders-dimensions) (dimension-keys (:queryable-dimensions output))))))))))
+
+(deftest multi-stage-metric-over-model-dimensions-test
+  (testing "A multi-stage metric over a model lists the dimensions of the model's base table, not the model's columns"
+    (mt/with-temp [:model/Card {model-id :id}  {:name "Orders model" :type :model
+                                                :dataset_query (tools.tu/orders-model-query)}
+                   :model/Card {metric-id :id} {:name "Order count" :type :metric
+                                                :dataset_query (two-stage-metric-query model-id)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [dims (:queryable-dimensions (metric-output metric-id))]
+          (is (not-any? #(= "Doubled Total" (:display_name %)) dims))
+          (is (= (orders-dimensions) (dimension-keys dims))))))))
+
+(deftest multi-stage-metric-over-model-segments-test
+  (testing "A multi-stage metric over a model offers the segments of the model's base table"
+    (mt/with-temp [:model/Card {model-id :id}    {:name "Orders model" :type :model
+                                                  :dataset_query (tools.tu/orders-model-query)}
+                   :model/Card {metric-id :id}   {:name "Order count" :type :metric
+                                                  :dataset_query (two-stage-metric-query model-id)}
+                   :model/Segment {segment-id :id} {:name       "Large Orders"
+                                                    :table_id   (mt/id :orders)
+                                                    :definition (segment-definition (mt/id :orders)
+                                                                                    (mt/id :orders :total)
+                                                                                    50)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (= [segment-id] (map :id (:segments (metric-output metric-id :with-segments? true)))))))))
+
+(deftest multi-stage-metric-over-model-keeps-created-at-default-time-dimension-test
+  (testing "A stage 0 breakout on a base table column stays the default time dimension"
+    (mt/with-temp [:model/Card {model-id :id}  {:name "Orders model" :type :model
+                                                :dataset_query (tools.tu/orders-model-query)}
+                   :model/Card {metric-id :id} {:name "Average daily orders" :type :metric
+                                                :dataset_query (two-stage-metric-query model-id ["CREATED_AT" :day])}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (= (mt/id :orders :created_at)
+               (:default_time_dimension_field_id (metric-output metric-id))))))))
+
+(defn- people-created-at-metric-query
+  "A metric query over the card `card-id`: stage 0 counts rows by month of the `PEOPLE.CREATED_AT` column that
+  `pick?` selects, stage 1 averages it."
+  [card-id pick?]
+  (let [mp     (mt/metadata-provider)
+        stage0 (lib/query mp (lib.metadata/card mp card-id))
+        column (m/find-first #(and (= (mt/id :people :created_at) (:id %)) (pick? %))
+                             (lib/breakoutable-columns stage0))
+        query  (-> stage0
+                   (lib/breakout (lib/with-temporal-bucket column :month))
+                   (lib/aggregate (lib/count))
+                   lib/append-stage)]
+    (lib/aggregate query (lib/avg (m/find-first #(= "count" (:name %)) (lib/visible-columns query))))))
+
+(deftest multi-stage-metric-over-model-keeps-implicit-fk-default-time-dimension-test
+  (testing "A stage 0 breakout on PEOPLE.CREATED_AT through USER_ID stays the default time dimension"
+    (mt/with-temp [:model/Card {model-id :id}  {:name "Orders model" :type :model
+                                                :dataset_query (tools.tu/orders-model-query)}
+                   :model/Card {metric-id :id} {:name          "Average orders by signup month" :type :metric
+                                                :dataset_query (people-created-at-metric-query
+                                                                model-id
+                                                                #(= (mt/id :orders :user_id) (:fk-field-id %)))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (= (mt/id :people :created_at)
+               (:default_time_dimension_field_id (metric-output metric-id))))))))
+
+(deftest multi-stage-metric-over-model-keeps-joined-model-column-default-time-dimension-test
+  (testing "A stage 0 breakout on a model column from PEOPLE through USER_ID stays the default time dimension"
+    (let [model-query (let [query (tools.tu/orders-model-query)]
+                        (lib/add-field query -1 (m/find-first #(and (= (mt/id :people :created_at) (:id %))
+                                                                    (= (mt/id :orders :user_id) (:fk-field-id %)))
+                                                              (lib/visible-columns query))))]
+      (mt/with-temp [:model/Card {model-id :id}  {:name "Orders model with signup date" :type :model
+                                                  :dataset_query model-query}
+                     :model/Card {metric-id :id} {:name          "Average orders by signup month" :type :metric
+                                                  :dataset_query (people-created-at-metric-query
+                                                                  model-id
+                                                                  #(= :source/card (:lib/source %)))}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= (mt/id :people :created_at)
+                 (:default_time_dimension_field_id (metric-output metric-id)))))))))
+
+(deftest multi-stage-metric-over-model-drops-model-only-default-time-dimension-test
+  (testing "A stage 0 breakout on a model-only column is not a default time dimension on the base table"
+    (mt/with-temp [:model/Card {model-id :id}  {:name "Orders model" :type :model
+                                                :dataset_query (tools.tu/orders-model-query)}
+                   :model/Card {metric-id :id} {:name "Average daily shipments" :type :metric
+                                                :dataset_query (two-stage-metric-query model-id
+                                                                                       ["Ship Date" :day]
+                                                                                       ["Doubled Total"])}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [output (metric-output metric-id)]
+          (is (= metric-id (:id output)))
+          (is (nil? (:default_time_dimension_field_id output))))))))
 
 (deftest get-metric-details-marks-unreadable-base-table-unavailable-test
   (testing "A table metric with no queryable source is marked unavailable"

@@ -414,31 +414,40 @@
         :related_tables_total              total}))))
 
 (defn- dimension-source-table
-  "Human-readable `schema.table` for a queryable dimension, derived from its portable FK, plus
-  the join label when the dimension is reached through an FK from the base table."
-  [{:keys [portable_fk table_reference]}]
-  (when (and (vector? portable_fk) (>= (count portable_fk) 3))
-    (let [[_db schema table] portable_fk
-          fqn (fully-qualified-name schema table)]
-      (if (not-empty table_reference)
-        (str fqn " (via " table_reference ")")
-        fqn))))
+  "Return the human-readable `schema.table` label of a queryable dimension.
+
+    (dimension-source-table {:portable_fk [db \"PUBLIC\" \"CATEGORIES\" \"NAME\"] :table_reference \"Category\"})
+    ;=> \"PUBLIC.CATEGORIES (via Category)\"
+
+  The table comes from the portable FK or the `:source_table` of the dimension. A dimension that is reached through
+  an FK from the base table also gets its join label."
+  [{:keys [portable_fk source_table table_reference]}]
+  (let [path (or portable_fk source_table)]
+    (when (and (vector? path) (>= (count path) 3))
+      (let [[_db schema table] path
+            fqn (fully-qualified-name schema table)]
+        (if (not-empty table_reference)
+          (str fqn " (via " table_reference ")")
+          fqn)))))
 
 (defn format-metric-dimensions-table
   "Render a metric's dimensions with their source tables and field references.
 
   A portable FK works on table and card stages and distinguishes columns with the same name on different tables.
-  Computed card columns have no portable FK and use their output machine name. Real database fields without a
-  portable FK get no reference; their bare names could resolve to the wrong column."
+  Computed card columns and renamed field copies have no portable FK and use their output machine name. A column
+  that a card reaches through more than one FK column carries its own `:reference` field clause. Real database
+  fields without a portable FK get no reference; their bare names could resolve to the wrong column."
   [dims]
   (te/markdown-table
    (map (fn [d]
           (assoc d
                  :source    (dimension-source-table d)
                  :reference (cond
+                              (:reference d)             (json/encode (:reference d))
                               (vector? (:portable_fk d)) (json/encode (:portable_fk d))
-                              ;; A string `:field_id` from `->result-column` is the computed column's output name.
-                              (string? (:field_id d)) (json/encode (:field_id d)))))
+                              ;; A string `:field_id` from `->result-column` is an output name: a computed column
+                              ;; or a renamed field copy.
+                              (string? (:field_id d))    (json/encode (:field_id d)))))
         dims)
    {:name "Field Name" :field_id "Field ID" :type "Type"
     :source "Source table" :reference "Reference (copy into a field clause)"}
@@ -957,8 +966,9 @@
   "Format field metadata for LLM consumption.
    Matches Python GetFieldMetadataResultSchema.llm_representation exactly, plus an optional
    `source table` + `reference` (portable FK) when the caller supplies them — so a drilled-into
-   field/dimension detail tells the LLM exactly how to reference the column."
-  [{:keys [field_id value_metadata portable_fk table_reference]}]
+   field/dimension detail tells the LLM exactly how to reference the column. Without a portable FK, the
+   reference is `reference_name`, the column's output name (like `\"NAME_2\"`)."
+  [{:keys [field_id value_metadata portable_fk reference_name table_reference]}]
   (render-llm-template
    :field_metadata
    {:field_metadata_field_id field_id
@@ -966,7 +976,11 @@
                                                        :table_reference table_reference})
     ;; rendered with |safe — escape XML structural chars but keep the JSON's quotes readable,
     ;; like the `:reference` column in [[format-metric-dimensions-table]]
-    :field_metadata_reference (when (vector? portable_fk) (escape-xml-content (json/encode portable_fk)))
+    :field_metadata_reference (some-> (cond
+                                        (vector? portable_fk)    portable_fk
+                                        (string? reference_name) reference_name)
+                                      json/encode
+                                      escape-xml-content)
     :field_metadata_value_xml (when value_metadata
                                 (field-values-metadata->xml value_metadata))}))
 

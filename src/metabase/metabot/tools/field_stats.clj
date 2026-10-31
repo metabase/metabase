@@ -98,13 +98,21 @@
 (defn- field-metadata-output
   "Build the `:field-metadata` tool result for `col` of `query`. Surfaces the column's portable
   FK + join label (via `->result-column`) so a drilled-into field/dimension detail tells the LLM
-  exactly how to reference the column."
+  exactly how to reference the column.
+
+  A column without a portable FK, like the renamed copy `NAME_2` or a computed column, carries its emitted string
+  `field_id` as `:reference_name`. The reference always comes from the column, never from the requested
+  `field-id`. A request for the numeric string `\"48\"` (the field ID of VENUES.NAME) still renders the
+  portable FK of VENUES.NAME, not `\"48\"`."
   [query col field-id limit]
-  {:structured-output (merge {:result-type    :field-metadata
-                              :field_id       field-id
-                              :value_metadata (field-statistics query col limit)}
-                             (select-keys (metabot.tools.u/->result-column query col)
-                                          [:portable_fk :table_reference]))})
+  (let [result-col (metabot.tools.u/->result-column query col)]
+    {:structured-output (merge {:result-type    :field-metadata
+                                :field_id       field-id
+                                :value_metadata (field-statistics query col limit)}
+                               (select-keys result-col [:portable_fk :table_reference])
+                               (when (and (nil? (:portable_fk result-col))
+                                          (string? (:field_id result-col)))
+                                 {:reference_name (:field_id result-col)}))}))
 
 (def ^:private max-suggested-field-ids 100)
 
@@ -128,9 +136,9 @@
                :uses #{}}]})
 
 (defn- field-column
-  [entity-type entity-id field-id columns]
+  [query entity-type entity-id field-id columns]
   (let [columns (entity-details/permission-filter-columns columns)]
-    (or (metabot.tools.u/find-column-by-field-id field-id columns)
+    (or (metabot.tools.u/find-column-by-field-id query field-id columns)
         (let [available-ids (into [] (comp (map metabot.tools.u/column-field-id) (distinct)) columns)]
           (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
                            :available-ids (vec (take max-suggested-field-ids available-ids))
@@ -151,7 +159,7 @@
 (defn- table-field-stats
   [table-id field-id limit]
   (let [query (metabot.tools.u/table-query table-id)
-        col (field-column "table" table-id field-id (lib/visible-columns query))]
+        col (field-column query "table" table-id field-id (lib/visible-columns query))]
     (field-metadata-output query col field-id limit)))
 
 (defn- card-field-stats
@@ -166,14 +174,14 @@
         columns (if (= entity-type "question")
                   (lib/returned-columns query)
                   (distinct (concat (lib/returned-columns query) (lib/visible-columns query))))
-        col     (field-column entity-type card-id field-id columns)]
+        col     (field-column query entity-type card-id field-id columns)]
     (check-curated-field-owner! card-id col)
     (field-metadata-output query col field-id limit)))
 
 (defn- metric-field-stats
   [metric-id field-id limit]
   (let [query (metabot.tools.u/metric-query metric-id)
-        col (field-column "metric" metric-id field-id (lib/filterable-columns query))]
+        col (field-column query "metric" metric-id field-id (lib/filterable-columns query))]
     (check-curated-field-owner! metric-id col)
     (field-metadata-output query col field-id limit)))
 

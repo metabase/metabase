@@ -6,6 +6,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.tools.test-util :as tools.tu]
    [metabase.metabot.tools.util :as metabot.tools.util]
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]
@@ -305,6 +306,63 @@
       "301"        5)
     (are [field-id] (nil? (metabot.tools.util/find-column-by-field-id field-id columns))
       999 nil "missing")))
+
+(defn- venues-name-columns
+  "The columns of `card-query` that come from the VENUES `NAME` field: the first copy, then the joined copy."
+  [card-query]
+  (filter #(= (mt/id :venues :name) (:id %)) (lib/returned-columns card-query)))
+
+(deftest result-column-renamed-card-column-test
+  (testing "a renamed copy of a joined column gets its output name as field_id and no portable FK"
+    (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query (tools.tu/venues-self-join-query)}]
+      (let [mp         (mt/metadata-provider)
+            card-query (lib/query mp (lib.metadata/card mp card-id))
+            db-name    (t2/select-one-fn :name :model/Database :id (mt/id))
+            [first-copy joined-copy] (map #(metabot.tools.util/->result-column card-query %)
+                                          (venues-name-columns card-query))]
+        (testing "the first copy keeps its field id and the physical path"
+          (is (=? {:field_id    (mt/id :venues :name)
+                   :portable_fk [db-name "PUBLIC" "VENUES" "NAME"]}
+                  first-copy)))
+        (testing "the joined copy is referenced by its output name"
+          (is (= "NAME_2" (:field_id joined-copy)))
+          (is (nil? (:portable_fk joined-copy))))))))
+
+(deftest find-column-by-field-id-output-alias-test
+  (testing "the output name of a renamed copy finds that copy, and the field id still finds the first copy"
+    (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query (tools.tu/venues-self-join-query)}]
+      (let [mp         (mt/metadata-provider)
+            card-query (lib/query mp (lib.metadata/card mp card-id))
+            columns    (lib/returned-columns card-query)
+            name-of    #(:name (metabot.tools.util/find-column-by-field-id card-query % columns))]
+        (is (= "NAME_2" (name-of "NAME_2")))
+        (is (= "NAME" (name-of (mt/id :venues :name))))
+        (is (= "NAME" (name-of (str (mt/id :venues :name)))))
+        (testing "the name of a field that is not renamed is not an id"
+          (is (nil? (name-of "NAME"))))))))
+
+(deftest metric-dimensions-duplicate-fk-row-without-clause-test
+  (testing "a duplicate-FK row whose field clause cannot be built keeps its Source table but gets no Reference"
+    ;; Check that a duplicate-FK row without a field clause drops its portable FK and keeps its Source table.
+    ;; The vars resolve at run time, so a renamed or removed var fails this test, not the namespace load.
+    (let [clause-var (resolve 'metabase.metabot.tools.util/multi-fk-field-clause)
+          dimensions (resolve 'metabase.metabot.tools.util/metric-dimensions)]
+      (is (and clause-var dimensions) "metric-dimensions and multi-fk-field-clause exist")
+      (when (and clause-var dimensions)
+        (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query (tools.tu/venues-self-join-query)}]
+          (let [mp         (mt/metadata-provider)
+                card-query (lib/query mp (lib.metadata/card mp card-id))
+                db-name    (t2/select-one-fn :name :model/Database :id (mt/id))
+                categories #(filter (fn [row] (= (mt/id :categories :name) (:field_id row))) %)]
+            (doseq [[failure clause-fn] {"nil clause"       (constantly nil)
+                                         "throwing clause" (fn [& _] (throw (ex-info "no path" {})))}]
+              (testing failure
+                (with-redefs-fn {clause-var clause-fn}
+                  (fn []
+                    (let [rows (categories (dimensions card-query (lib/filterable-columns card-query)))]
+                      (is (= 2 (count rows)))
+                      (is (every? #(and (nil? (:reference %)) (nil? (:portable_fk %))) rows))
+                      (is (every? #(= [db-name "PUBLIC" "CATEGORIES"] (:source_table %)) rows)))))))))))))
 
 ;;; ---------------------------------------- metric sources ----------------------------------------
 

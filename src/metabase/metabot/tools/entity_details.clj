@@ -384,7 +384,7 @@
          metric-card (when query-needed?
                        (lib.metadata/card metadata-provider id))
          metric-query (when query-needed?
-                        (lib/query metadata-provider metric-card))
+                        (metabot.tools.u/metric-dimension-query metadata-provider metric-card required))
          breakouts (when query-needed?
                      (lib/breakouts metric-query))
          base-query (when query-needed?
@@ -444,7 +444,7 @@
                  :default_time_dimension_field_name (:name col)}))
 
        (and query-needed? with-queryable-dimensions?)
-       (assoc :queryable-dimensions (mapv #(metabot.tools.u/->result-column metric-query %) queryable-columns))
+       (assoc :queryable-dimensions (metabot.tools.u/metric-dimensions metric-query queryable-columns))
 
        (seq join-required-dims)
        (assoc :join-required-dimensions join-required-dims)
