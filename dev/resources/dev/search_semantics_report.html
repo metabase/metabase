@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Search engine comparison · corpus explorer</title>
   <style>
-    :root { color-scheme: light; font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f7fb; color: #172334; }
+    :root { --tint: 47 111 179; color-scheme: light; font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f7fb; color: #172334; }
     * { box-sizing: border-box; }
     body { max-width: 1460px; margin: 0 auto; padding: 32px 28px 80px; }
     h1, h2, h3, p { margin-top: 0; }
@@ -97,7 +97,23 @@
     .extra { color: #a44d00; font-weight: 750; }
     .absent { color: #b42635; font-weight: 750; }
     .doc-text { white-space: pre-wrap; min-width: 140px; max-width: 360px; overflow-wrap: anywhere; }
-    #detail th:nth-child(2), #detail td:nth-child(2), #pairwise th:nth-child(2), #pairwise td:nth-child(2) { text-align: left; }
+    #detail th:nth-child(2), #detail td:nth-child(2) { text-align: left; }
+    .pair-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0 0 12px; padding: 0; list-style: none; font-size: .8rem; color: #5b6d83; }
+    .pair-legend li { display: flex; align-items: center; gap: 6px; }
+    .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+    .pair-table td { padding: 5px 8px; white-space: normal; }
+    .pair-table td:first-child { width: 42%; font-size: .85rem; }
+    .pair-table .vs { color: #8a99ab; margin: 0 4px; }
+    .pair-bar { display: flex; height: 20px; border-radius: 5px; overflow: hidden; gap: 2px; }
+    .pair-bar span { display: flex; align-items: center; justify-content: center; min-width: 18px; font-size: .74rem; font-weight: 700; }
+    .rel-equal { background: #d4dce6; color: #29405c; }
+    .rel-left-superset { background: #2f6fb3; color: white; }
+    .rel-left-subset { background: #9fc4ea; color: #173c71; }
+    .rel-incomparable { background: #e7a85a; color: #4d2a00; }
+    .fidelity-table th { white-space: normal; vertical-align: bottom; }
+    .fidelity-table th, .fidelity-table td { padding: 6px 8px; }
+    .fidelity-table td.metric-cell.best { font-weight: 750; }
+    .fidelity-table th.group-start, .fidelity-table td.group-start { border-left: 2px solid #e8edf3; }
     .empty { color: #5b6d83; padding: 18px 0; }
     .provenance { font-size: .82rem; margin: -12px 0 18px; }
     .findings { margin-bottom: 18px; }
@@ -198,6 +214,13 @@
       .score-table tfoot tr.gain-row td:first-child { color: #cfe2fa; }
       .gain { background: #2e4d74; color: #e4edf7; }
       .gain.none { background: transparent; color: #8295aa; }
+      :root { --tint: 106 168 239; }
+      .pair-legend, .pair-table .vs { color: #aabbd0; }
+      .rel-equal { background: #3b4d63; color: #e4edf7; }
+      .rel-left-superset { background: #4f8fd6; color: white; }
+      .rel-left-subset { background: #8cbcef; color: #0d2340; }
+      .rel-incomparable { background: #b9782c; color: #1a1205; }
+      .fidelity-table th.group-start, .fidelity-table td.group-start { border-left-color: #34465c; }
       details.weights-panel { border-top-color: #34465c; }
       details.weights-panel > summary { color: #e4edf7; }
       .weights input { accent-color: #aabbd0; }
@@ -304,7 +327,7 @@
     <div class="card">
       <h2>Pairwise result-set relationships</h2>
       <div class="table-wrap" id="pairwise"></div>
-      <p class="note">⊃ and ⊂ describe the left engine relative to the right. “Mixed” means neither result set contains the other.</p>
+      <p class="note">Each bar splits the scenarios for one pair of engines by how their result sets relate, ignoring order. “More” and “fewer” describe the first engine named. Hover a segment for its count.</p>
     </div>
     <div class="card">
       <h2 id="second-table-title">Average results per query</h2>
@@ -423,26 +446,64 @@
         [data.engines.length, "Engines compared"]
       ].map(([value, label]) => `<div class="card metric"><div class="value">${escape(value)}</div><div class="label">${escape(label)}</div></div>`).join("");
 
-      $("pairwise").innerHTML = table(["Left engine", "Right engine", "=", "⊃", "⊂", "Mixed"], summary.pairs.map(pair => [
-        escape(labels[pair.left]), escape(labels[pair.right]),
-        pair.counts.equal, pair.counts["left-superset"], pair.counts["left-subset"], pair.counts.incomparable
-      ]));
+      $("pairwise").innerHTML = pairwiseChart(summary.pairs);
 
       $("goal-scores").hidden = state.corpus !== "translations";
       if (state.corpus === "translations") {
         renderScoreTable();
         $("second-table-title").textContent = "Fidelity to correct result sets";
-        $("second-table").innerHTML = table(["Engine", "Precision", "Recall", "F1", "Exact", "F1 as typed", "Exact as typed"], data.engines.map(engine => {
-          const score = summary.scores[engine];
-          const typed = summary.typedScores[engine];
-          return [escape(labels[engine]), percent(score.precision), percent(score.recall), percent(score.f1), `${score.exact}/${summary.count}`, percent(typed.f1), `${typed.exact}/${summary.count}`];
-        }));
-        $("second-table-note").textContent = "Unweighted: each goal counts once, whatever the weights below. Exact counts goals where the engine returns the correct results. As typed scores the goal's query unchanged.";
+        $("second-table").innerHTML = fidelityTable(summary);
+        $("second-table-note").textContent = "Darker cells are better within their column; bold is the best. Unweighted: each goal counts once, whatever the weights below. Exact counts goals where the engine returns the correct results. As typed scores the goal's query unchanged.";
       } else {
         $("second-table-title").textContent = "Average results per query";
         $("second-table").innerHTML = table(["Engine", "Mean hits"], data.engines.map(engine => [escape(labels[engine]), number(summary.meanHits[engine])]));
         $("second-table-note").textContent = "Means describe fixture membership only. A larger set is not automatically better.";
       }
+    }
+
+    // Mirror-image relations read left to right: same, first engine finds more, finds fewer, neither contains the other.
+    const pairRelations = [
+      ["equal", "Same cards", (l, r) => `${l} and ${r} return the same cards`],
+      ["left-superset", "First finds more", (l, r) => `${l} returns everything ${r} does, and more`],
+      ["left-subset", "First finds fewer", (l, r) => `${l} returns only some of what ${r} does`],
+      ["incomparable", "Each finds cards the other misses", (l, r) => `${l} and ${r} each return cards the other misses`]
+    ];
+
+    function pairwiseChart(pairs) {
+      const legend = `<ul class="pair-legend">${pairRelations.map(([key, text]) => `<li><span class="swatch rel-${key}"></span>${escape(text)}</li>`).join("")}</ul>`;
+      const rows = pairs.map(pair => {
+        const total = pairRelations.reduce((sum, [key]) => sum + pair.counts[key], 0);
+        const [left, right] = [labels[pair.left], labels[pair.right]];
+        const segments = pairRelations.filter(([key]) => pair.counts[key]).map(([key, , sentence]) => {
+          const count = pair.counts[key];
+          return `<span class="rel-${key}" style="flex: ${count}" title="${escape(`${count} of ${total}: ${sentence(left, right)}`)}">${count}</span>`;
+        }).join("");
+        return `<tr><td>${escape(left)}<span class="vs">vs</span>${escape(right)}</td><td><div class="pair-bar" role="img" aria-label="${escape(pairRelations.filter(([key]) => pair.counts[key]).map(([key, text]) => `${text}: ${pair.counts[key]}`).join(", "))}">${segments}</div></td></tr>`;
+      }).join("");
+      return `${legend}<table class="pair-table"><tbody>${rows}</tbody></table>`;
+    }
+
+    // Tint runs from each column's lowest value to its highest, so the spread between engines shows even when
+    // every score is high. The best in each column is bold.
+    function fidelityTable(summary) {
+      const columns = [
+        ["Precision", engine => summary.scores[engine].precision, percent],
+        ["Recall", engine => summary.scores[engine].recall, percent],
+        ["F1", engine => summary.scores[engine].f1, percent],
+        ["Exact", engine => summary.scores[engine].exact / summary.count, (_, engine) => `${summary.scores[engine].exact}/${summary.count}`],
+        ["F1 as typed", engine => summary.typedScores[engine].f1, percent, true],
+        ["Exact as typed", engine => summary.typedScores[engine].exact / summary.count, (_, engine) => `${summary.typedScores[engine].exact}/${summary.count}`]
+      ];
+      const header = `<thead><tr><th>Engine</th>${columns.map(([text, , , groupStart]) => `<th class="${groupStart ? "group-start" : ""}">${escape(text)}</th>`).join("")}</tr></thead>`;
+      const rows = data.engines.map(engine => `<tr><td>${escape(labels[engine])}</td>${columns.map(([, value, show, groupStart]) => {
+        const v = value(engine);
+        const all = data.engines.map(value);
+        const [low, high] = [Math.min(...all), Math.max(...all)];
+        const best = v >= high - 1e-9;
+        const relative = high - low < 1e-9 ? 1 : (v - low) / (high - low);
+        return `<td class="metric-cell${best ? " best" : ""}${groupStart ? " group-start" : ""}" style="background: rgb(var(--tint) / ${(0.03 + 0.42 * relative).toFixed(2)})">${show(v, engine)}</td>`;
+      }).join("")}</tr>`).join("");
+      return `<table class="fidelity-table">${header}<tbody>${rows}</tbody></table>`;
     }
 
     const sortKeys = {
