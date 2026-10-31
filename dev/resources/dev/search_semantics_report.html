@@ -99,13 +99,17 @@
     .sort-button[aria-pressed="true"]::after { margin-left: 6px; font-size: .68rem; }
     .sort-button[aria-pressed="true"][data-direction="asc"]::after { content: "▲"; }
     .sort-button[aria-pressed="true"][data-direction="desc"]::after { content: "▼"; }
-    details.score-guide { margin: 0 0 14px; font-size: .88rem; }
-    details.score-guide > summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; color: #245ea3; font-weight: 650; border: 1px solid #a9c7ec; background: #eef4fb; border-radius: 999px; padding: 4px 12px 4px 8px; }
-    details.score-guide > summary::-webkit-details-marker { display: none; }
-    details.score-guide > summary::before { content: "i"; display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: #2f6fb3; color: white; font: 700 .72rem/1 Georgia, serif; }
-    details.score-guide[open] > summary { background: #2f6fb3; border-color: #2f6fb3; color: white; }
-    details.score-guide[open] > summary::before { background: white; color: #2f6fb3; }
-    details.score-guide p { margin: 6px 0 0; max-width: 90ch; }
+    .head-side { display: grid; justify-items: end; gap: 6px; flex: none; }
+    .key-toggle { border: 0; background: transparent; color: #5b6d83; font-size: .8rem; padding: 0; display: inline-flex; align-items: center; gap: 5px; }
+    .key-toggle::before { content: "i"; display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid currentColor; font: 700 .66rem/1 Georgia, serif; }
+    .key-toggle:hover, .key-toggle[aria-expanded="true"] { color: #172334; text-decoration: underline; }
+    .label-key { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 24px; margin: 4px 0 16px; padding: 12px 14px; border-radius: 10px; background: #f5f7fb; font-size: .84rem; }
+    .label-key h4 { margin: 0 0 6px; font-size: .84rem; }
+    .label-key dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; margin: 0; align-items: baseline; }
+    .label-key dd { margin: 0; color: #5b6d83; }
+    .label-key dt .badge { opacity: .55; }
+    .label-key dt.current .badge { opacity: 1; box-shadow: 0 0 0 2px currentColor; }
+    .label-key .key-foot { grid-column: 1 / -1; margin: 0; color: #5b6d83; }
     .case-list { display: grid; gap: 1px; }
     .case-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; width: 100%; padding: 5px 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; color: inherit; }
     .case-button:hover { background: #f2f6fb; }
@@ -223,8 +227,10 @@
       .mini-switch { border-color: #6aa8ef; }
       .mini-switch .tab { background: #1b2839; color: #cfe2fa; }
       .mini-switch .tab[aria-selected="true"] { background: #4f8fd6; color: white; }
-      details.score-guide > summary { background: #1f3550; border-color: #3d5f88; color: #cfe2fa; }
-      details.score-guide[open] > summary { background: #4f8fd6; border-color: #4f8fd6; color: white; }
+      .key-toggle { color: #aabbd0; }
+      .key-toggle:hover, .key-toggle[aria-expanded="true"] { color: #e4edf7; }
+      .label-key { background: #172335; }
+      .label-key dd, .label-key .key-foot { color: #aabbd0; }
       .theme-chip { background: color-mix(in srgb, var(--c) 20%, #1b2839); color: color-mix(in srgb, var(--c) 40%, white); border-color: color-mix(in srgb, var(--c) 50%, transparent); }
       .theme-chip::before { background: color-mix(in srgb, var(--c) 65%, white); }
       .theme-chip:hover { background: color-mix(in srgb, var(--c) 32%, #1b2839); }
@@ -425,11 +431,6 @@
       <button class="tab" type="button" data-corpus="translations" aria-selected="false">Best query</button>
     </div>
   </div>
-  <details class="score-guide muted">
-    <summary>What the labels on each case mean</summary>
-    <p><strong>Do the engines return the same cards?</strong> Each case is labelled by how the five engines' results group, ignoring order. “All 5 agree” means identical results. “4 of 5 agree” means one engine differs. “Split 3 and 2” means two groups. “3 agree, 2 differ” means a group of three, plus two engines that each return something else. “Two pairs agree” and “Only one pair agrees” count engines with identical results. “All 5 differ” means no two match. None of this says which engine is right.</p>
-    <p id="conformance-guide" hidden><strong>How many engines get it right?</strong> Each goal names the cards the user most likely wants. “2 of 5 correct” counts the engines that return exactly those cards, and the case highlights them. It can be none, since no engine has to manage it. Sorting by this breaks ties by mean F1, which gives partial credit for near misses.</p>
-  </details>
   <div class="themes" id="themes" role="group" aria-label="Focus on a theme"></div>
   <p class="theme-description muted" id="theme-description" aria-live="polite"></p>
   <section class="explorer">
@@ -452,7 +453,7 @@
   <script>
     const data = JSON.parse(document.getElementById("report-data").textContent);
     const labels = { "in-place": "In-place", "appdb-h2": "appdb/H2", "appdb-postgres": "appdb/PostgreSQL", "semantic-only": "Semantic only", "semantic-with-fallback": "Semantic with fallback" };
-    const state = { corpus: "sameQuery", theme: "all", selected: null, sort: "name", directions: { name: "asc", agreement: "desc", conformance: "desc" } };
+    const state = { corpus: "sameQuery", theme: "all", keyOpen: false, selected: null, sort: "name", directions: { name: "asc", agreement: "desc", conformance: "desc" } };
     const $ = id => document.getElementById(id);
     const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
     const inline = text => escape(text).replace(/`([^`]+)`/g, "<code>$1</code>");
@@ -705,6 +706,18 @@
       });
     }, { passive: true });
 
+    // The key sits beside the labels it explains and marks the current case's own labels.
+    const agreementMeanings = { 10: "identical results", 6: "one engine differs", 4: "two groups", 3: "a group of three; the other two each differ", 2: "two pairs, each with identical results", 1: "only two engines match", 0: "no two engines match" };
+    function labelKey(item) {
+      const row = (text, meaning, current, className = "neutral") => `<dt class="${current ? "current" : ""}">${badge(text, meaning, className)}</dt><dd>${escape(meaning)}</dd>`;
+      const same = Object.keys(agreementLabels).map(Number).sort((a, b) => b - a)
+        .map(pairs => row(agreementLabels[pairs], agreementMeanings[pairs], pairs === item.matchingPairs)).join("");
+      const correct = item.conforming
+        ? `<section><h4>How many engines get it right?</h4><dl>${row(conformance(item), "engines that return exactly the cards the user wants; their rows are highlighted below", true, item.conforming.length === data.engines.length ? "" : "divergent")}</dl></section>`
+        : "";
+      return `<div class="label-key" id="label-key"><section><h4>Do the engines return the same cards?</h4><dl>${same}</dl></section>${correct}<p class="key-foot">Both ignore result order, and agreement says nothing about which engine is right.${item.conforming ? " Sorting by Correct breaks ties by mean F1, which gives partial credit for near misses." : ""}</p></div>`;
+    }
+
     function hitList(hits) {
       return hits.length ? escape(hits.join(", ")) : "none";
     }
@@ -760,14 +773,16 @@
             <h2>${escape(item.scenario)}</h2>
             <p class="muted">${escape(item.focus)} · text search language: ${escape(item.config)}</p>
           </div>
-          ${badges(item)}
+          <div class="head-side">${badges(item)}<button type="button" class="key-toggle" id="key-toggle" aria-expanded="${state.keyOpen}" aria-controls="label-key">What do these labels mean?</button></div>
         </div>
+        ${state.keyOpen ? labelKey(item) : ""}
         ${notes}
         ${translated ? "<h3>Queries and hits by engine</h3>" : ""}
         ${queries}
         <h3>${resultTitle}</h3>
         <div class="table-wrap">${table(headers, rows)}</div>
         <p class="note">${resultNote}</p>`;
+      $("key-toggle").addEventListener("click", () => { state.keyOpen = !state.keyOpen; renderDetail(item); });
     }
 
     const engineIn = (item, id) => item.engines.find(engine => engine.id === id);
@@ -843,7 +858,6 @@
     }
 
     function syncSortButtons() {
-      $("conformance-guide").hidden = state.corpus !== "translations";
       for (const button of document.querySelectorAll(".sort-button")) {
         const direction = state.directions[button.dataset.sort];
         button.hidden = button.dataset.sort === "conformance" && state.corpus !== "translations";
