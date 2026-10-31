@@ -10,12 +10,13 @@
    [metabase-enterprise.data-apps.generate.actions :as generate.actions]
    [metabase-enterprise.data-apps.generate.queries :as generate.queries]
    [metabase-enterprise.data-apps.generate.schema :as generate.schema]
+   [metabase-enterprise.data-apps.generate.util :as generate.util]
    [metabase-enterprise.data-apps.group-access :as data-app.group-access]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.lib.schema.test-spec]
+   [metabase.data-apps.schema :as data-apps.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -99,21 +100,35 @@
   [x]
   (walk/postwalk #(cond-> % (map? %) (update-keys (comp keyword u/->kebab-case-en name))) x))
 
+(defn- definitions-schema
+  "Request schema for definitions by export name."
+  [definition-schema]
+  [:and
+   {:decode/normalize (fn [definitions]
+                        (cond-> definitions
+                          (map? definitions)
+                          (update-vals #(api.macros/decode-and-validate-params :body definition-schema %))))}
+   (ms/string-keyed-map definition-schema)
+   [:fn {:error/message "export names whose files have distinct paths"}
+    (fn [definitions]
+      (apply distinct? nil (map generate.util/resource-path (keys definitions))))]])
+
 (def ^:private QueryDefinitions
   "The `defineQuery` exports of a data app's `metabase.queries.ts`, by export name: each one's entity ID, and its
   definition as a one-stage test query."
-  [:map-of :string [:map {:closed true}
-                    [:entityId ms/NanoIdString]
-                    [:query    [:and {:decode/api kebab-case-keys} :metabase.lib.schema.test-spec/test-query-spec]]]])
+  (definitions-schema
+    [:map {:closed true}
+     [:entityId ms/NanoIdString]
+     [:query    [:and {:decode/api kebab-case-keys} ::data-apps.schema/query-spec]]]))
 
 (def ^:private ActionDefinitions
   "The `defineAction` exports of a data app's `metabase.actions.ts`, by export name: implicit actions of `kind` on a
   table."
-  [:map-of :string [:map {:closed true}
-                    [:entityId ms/NanoIdString]
-                    [:kind     [:enum "row/create" "row/update" "row/delete"]]
-                    [:table    [:map {:closed true}
-                                [:id ms/PositiveInt]]]]])
+  (definitions-schema
+    [:merge
+     [:map {:closed true}
+      [:entityId ms/NanoIdString]]
+     ::data-apps.schema/action-spec]))
 
 (def ^:private AddGroupsRequest
   [:map {:closed true}
