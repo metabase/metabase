@@ -108,32 +108,23 @@
 
 (defn- dimension-schema
   "Returns the schema for a metric dimension."
-  ([dimension metric-id]
-   (dimension-schema dimension metric-id (dimension-table-id dimension) {} {}))
-  ([dimension
-    metric-id
-    table-id
-    table-key-by-id
-    table-source-name-by-id]
-   (let [field-id     (dimension-field-id dimension)
-         dimension-id (or (:id dimension) field-id)
-         column       (if (:sources dimension)
-                        (persisted-dimension->column dimension)
-                        dimension)]
-     (m/assoc-some
-      (assoc (schemas.common/column-schema column)
-             :type "column"
-             :key (schemas.common/generated-key (:name column) dimension-id)
-             :id (str dimension-id))
-      :sourceName (when (integer? table-id)
-                    (get table-source-name-by-id table-id))
-      :fieldId (when (integer? field-id) field-id)
-      :tableId (when (integer? table-id) table-id)
-      :sourceFieldId (when (integer? (:source-field-id dimension))
-                       (:source-field-id dimension))
-      :metricId metric-id
-      :keyDisambiguator (when (integer? table-id)
-                          (get table-key-by-id table-id))))))
+  [dimension table-id table-key-by-id]
+  (let [field-id     (dimension-field-id dimension)
+        dimension-id (or (:id dimension) field-id)
+        column       (if (:sources dimension)
+                       (persisted-dimension->column dimension)
+                       dimension)]
+    (m/assoc-some
+     (assoc (schemas.common/column-schema column)
+            :type "column"
+            :key (schemas.common/generated-key (:name column) dimension-id)
+            :id (str dimension-id))
+     :fieldId (when (integer? field-id) field-id)
+     :tableId (when (integer? table-id) table-id)
+     :sourceFieldId (when (integer? (:source-field-id dimension))
+                      (:source-field-id dimension))
+     :keyDisambiguator (when (integer? table-id)
+                         (get table-key-by-id table-id)))))
 
 (defn- mapping-source-field-id
   "Returns the mapped source field id for a metric dimension mapping."
@@ -175,14 +166,6 @@
     (->> table-rows
          (map (fn [{:keys [id name display_name]}]
                 [id (schemas.common/pascal-case (schemas.common/generated-key (or display_name name) id))]))
-         (into {}))))
-
-(defn- table-source-names
-  "Returns table names emitted as metric dimension source names."
-  [table-rows]
-  (when (seq table-rows)
-    (->> table-rows
-         (map (juxt :id :name))
          (into {}))))
 
 (defn- source-table-schema
@@ -228,18 +211,13 @@
 
 (defn- metric-dimension-schemas
   "Returns dimension schemas and mapped table ids for a metric."
-  [metric-id details source-card-id-value]
+  [details source-card-id-value]
   (let [dimension-table-id-pairs (metric-dimensions-with-table-ids details source-card-id-value)
         table-ids                (->> dimension-table-id-pairs (keep second) (filter integer?) distinct)
         table-rows               (table-source-rows table-ids)
         table-key-by-id          (table-key-disambiguators table-rows)
-        table-source-name-by-id  (table-source-names table-rows)
         dimension-schemas        (mapv (fn [[dimension table-id]]
-                                         (dimension-schema dimension
-                                                           metric-id
-                                                           table-id
-                                                           table-key-by-id
-                                                           table-source-name-by-id))
+                                         (dimension-schema dimension table-id table-key-by-id))
                                        dimension-table-id-pairs)]
     {:dimension-schemas dimension-schemas
      :mapped-table-ids  (->> dimension-schemas (keep :tableId) distinct sort vec)}))
@@ -251,14 +229,13 @@
   (let [result-column (or (some-> (metric-result-column card) schemas.common/column-schema)
                           (fallback-metric-column details))
         source-card-id-value (source-card-id card)
-        {:keys [dimension-schemas mapped-table-ids]} (metric-dimension-schemas id details source-card-id-value)]
+        {:keys [dimension-schemas mapped-table-ids]} (metric-dimension-schemas details source-card-id-value)]
     (m/assoc-some
      {:type    "metric"
       :key     (schemas.common/generated-key name id)
       :id      id
       :name    name
       :columns [result-column]}
-     :databaseId (:database_id card)
      :sourceTableId (source-table-id card)
      :sourceCardId source-card-id-value
      :entityId portable_entity_id

@@ -2,6 +2,10 @@
   "Malli schemas for the data-apps module."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
+   [metabase.actions.schema :as actions.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -130,3 +134,23 @@
     [:name         ::slug]
     [:display_name ::display-name]
     [:bundle_path  ::bundle-path]]])
+
+(mr/def ::query-stage-spec
+  "A stage of a Lib test query spec with only what a data app's question may hold, as the card hooks check it: a table
+  source, and no joins or custom expressions."
+  [:merge
+   (mut/select-keys ::lib.schema.test-spec/test-stage-spec [:fields :filters :aggregations :breakouts :order-bys :limit])
+   [:map {:closed true}
+    [:source [:ref ::lib.schema.test-spec/test-table-source-spec]]]])
+
+(mr/def ::query-spec
+  "A Lib test query spec of a data app's question: one stage."
+  [:map {:closed true}
+   [:stages [:tuple [:ref ::query-stage-spec]]]])
+
+(mr/def ::action-spec
+  "An action of a data app: an implicit action of `kind` on a table."
+  [:map {:closed true}
+   [:kind  ::actions.schema/implicit-action.kind]
+   [:table [:map {:closed true}
+            [:id ::lib.schema.id/table]]]])
