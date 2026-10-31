@@ -66,8 +66,9 @@
     th { font-size: .78rem; color: #5b6d83; font-weight: 600; }
     tbody tr:last-child td { border-bottom: 0; }
     .note { color: #5b6d83; font-size: .85rem; margin: 12px 0 0; }
-    /* At least a screen tall, so a shorter list cannot pull the page up from under the reader. */
-    .explorer { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 14px; align-items: start; min-height: calc(100vh - 32px); }
+    .explorer { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 14px; align-items: start; }
+    /* When the explorer ends the page, it is at least a screen tall, so a shorter list cannot pull the page up. */
+    .explorer.ends-page { min-height: calc(100vh - 32px); }
     /* The case stays in view while the list scrolls with the page, so the list needs no scrollbar of its own. */
     #detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
     .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 10px; margin-bottom: 8px; }
@@ -180,7 +181,7 @@
     .distance { color: #5b6d83; font-size: .78rem; margin-left: 4px; font-weight: 400; }
     .distance.near { color: #9a4d0a; font-weight: 650; }
     .case-note { border-left: 3px solid #c8d4e2; padding: 2px 0 2px 10px; margin: 0 0 14px; }
-    .goal-scores { margin-bottom: 28px; }
+    .goal-scores { margin: 28px 0 0; }
     .goal-scores h2 { margin-bottom: 6px; }
     .goal-scores .lede { margin: 0 0 6px; max-width: 72ch; }
     .reading-guide { margin: 0 0 16px; padding-left: 18px; max-width: 72ch; color: #5b6d83; font-size: .88rem; }
@@ -426,23 +427,6 @@
     </div>
   </section>
 
-  <section class="card goal-scores" id="goal-scores" aria-labelledby="goal-scores-title" hidden>
-    <h2 id="goal-scores-title">Scores by goal</h2>
-    <p class="lede">Each cell is F1 against the goal's correct results, from 0 (none right) to 1 (exactly right).</p>
-    <ul class="reading-guide">
-      <li><span class="sc-legend">0.40 → <strong>1.00</strong></span> means 0.40 for the goal's original query and 1.00 for the engine's best query. One number means the best query scores the same.</li>
-      <li>A best query uses words a user could think of for the goal without knowing which cards exist, and any syntax the engine supports.</li>
-      <li>A bold score with a blue bar is the best, or tied best, for that goal.</li>
-      <li>Hover a cell for precision and recall. Click a goal to open it below.</li>
-    </ul>
-    <div class="table-wrap" id="score-table"></div>
-    <details class="weights-panel" id="weights-panel">
-      <summary>Weights by kind of goal<span class="weights-state" id="weights-state"></span></summary>
-      <div class="weights" id="weights" role="group" aria-label="Weight per kind of goal"></div>
-      <p class="note">The means are exploratory. The goals were picked to expose differences between the engines, so they reflect that mix, not production traffic. Each kind's goals are averaged first, so a weight says how much that kind matters, not how many examples it has.</p>
-    </details>
-  </section>
-
   <div class="explore-head">
     <h2>Explore cases</h2>
     <div class="mini-switch" role="group" aria-label="View">
@@ -464,6 +448,24 @@
       <input id="filter" class="case-filter" type="search" placeholder="Filter by word…" aria-label="Filter cases by any word in them">
     </div>
     <article class="card" id="detail" aria-live="polite"></article>
+  </section>
+
+  <section class="card goal-scores" id="goal-scores" aria-labelledby="goal-scores-title" hidden>
+    <h2 id="goal-scores-title">Scores by goal</h2>
+    <p class="lede">Each cell is the F1 score against the goal's correct cards, from 0 (none right) to 1 (exactly right).</p>
+    <ul class="reading-guide">
+      <li>F1 combines precision, the share of returned cards that are correct, and recall, the share of correct cards that come back. It is their harmonic mean, so it is high only when both are: returning one of three correct cards and nothing else scores 0.5.</li>
+      <li><span class="sc-legend">0.40 → <strong>1.00</strong></span> means 0.40 for the goal's original query and 1.00 for the engine's best query. One number means the best query scores the same.</li>
+      <li>A best query uses words a user could think of for the goal without knowing which cards exist, and any syntax the engine supports.</li>
+      <li>A bold score with a blue bar is the best, or tied best, for that goal.</li>
+      <li>Hover a cell for precision and recall. Click a goal to open it below.</li>
+    </ul>
+    <div class="table-wrap" id="score-table"></div>
+    <details class="weights-panel" id="weights-panel">
+      <summary>Weights by kind of goal<span class="weights-state" id="weights-state"></span></summary>
+      <div class="weights" id="weights" role="group" aria-label="Weight per kind of goal"></div>
+      <p class="note">The means are exploratory. The goals were picked to expose differences between the engines, so they reflect that mix, not production traffic. Each kind's goals are averaged first, so a weight says how much that kind matters, not how many examples it has.</p>
+    </details>
   </section>
 
   <script type="application/json" id="report-data">__REPORT_DATA__</script>
@@ -578,11 +580,12 @@
       $("pairwise").innerHTML = pairwiseChart(summary.pairs);
 
       $("goal-scores").hidden = state.corpus !== "translations";
+      document.querySelector(".explorer").classList.toggle("ends-page", state.corpus !== "translations");
       if (state.corpus === "translations") {
         renderScoreTable();
         $("second-table-title").textContent = "Fidelity to correct result sets";
         $("second-table").innerHTML = fidelityTable(summary);
-        $("second-table-note").textContent = "Darker cells are better within their column; bold is the best. Unweighted: each goal counts once, whatever the weights below. Exact counts goals where the engine returns the correct results. Original query scores the goal's query unchanged, for every engine.";
+        $("second-table-note").textContent = "F1 combines precision and recall; Scores by goal below explains it. Darker cells are better within their column; bold is the best. Unweighted: each goal counts once, whatever the weights in Scores by goal. Exact counts goals where the engine returns the correct results. Original query scores the goal's query unchanged, for every engine.";
       } else {
         $("second-table-title").textContent = "Average results per query";
         $("second-table").innerHTML = table(["Engine", "Mean hits"], data.engines.map(engine => [escape(labels[engine]), number(summary.meanHits[engine])]));
