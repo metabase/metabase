@@ -4,12 +4,27 @@ import type { SdkEntityId } from "embedding-sdk-bundle/types/entity";
 export type SdkActionId = number | SdkEntityId;
 
 /**
- * How a data app names an action: a `defineAction` definition from the app's
- * typed schema, whose `action.id` is the entity ID of an action in the app's
- * collection.
+ * How a data app names an action: a `defineAction` definition of an implicit
+ * action on a table. The dev preview runs it without saving it, and a
+ * production build runs the action `entityId` names.
  */
 export type SdkActionDefinition = {
+  entityId: SdkEntityId;
+  kind: "row/create" | "row/update" | "row/delete";
+  table: { id: number };
+};
+
+/**
+ * How a data app built against an older SDK names an action: the saved action
+ * `action.id` names, by its entity ID or numeric id.
+ *
+ * @deprecated A data app passes a `defineAction` definition with `entityId`.
+ */
+export type SdkLegacyActionDefinition = {
   action: { id: SdkActionId };
 };
 
-export type SdkActionInput = SdkActionId | SdkActionDefinition;
+export type SdkActionInput =
+  | SdkActionId
+  | SdkActionDefinition
+  | SdkLegacyActionDefinition;

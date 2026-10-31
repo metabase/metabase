@@ -1,0 +1,17 @@
+collection_id: teamsAppCollection001
+creator_id: admin@metabase.test
+entity_id: teamsAppAddTeam000001
+implicit:
+- kind: row/create
+  table_id:
+  - Writable Postgres12
+  - public
+  - scoreboard_actions
+name: addTeam
+parameter_mappings: []
+parameters: []
+query: []
+type: implicit
+visualization_settings: {}
+serdes/meta:
+- model: Action

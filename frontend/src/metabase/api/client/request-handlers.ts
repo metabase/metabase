@@ -75,6 +75,9 @@ const getDefaultPluginApi = () => ({
     // Send the host page URL as the embed referrer header. Installed by the
     // iframe SDK's embed route, which receives the URL via postMessage.
     embedReferrer: noop,
+    // Mark requests from a data app's dev preview. Installed by the data app
+    // runtime.
+    setDataAppDevHeader: noop,
   },
 });
 

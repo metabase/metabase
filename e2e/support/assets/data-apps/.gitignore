@@ -1,8 +1,3 @@
-# Each test app under this directory commits its `src/` and its `data_app.yaml`
-# manifest. Everything else — the SDK/template base pulled in at test setup and
-# the built `dist/` bundle (Vite API) — is generated, so it's ignored here.
-/*/*
-!/*/src
-!/*/data_app.yaml
-# The app's typed schema, fetched from Metabase before each build.
-/*/src/metabase.ts
+# Built by the specs before each copy into the sync repository.
+/data_apps/*/dist
+/.build
