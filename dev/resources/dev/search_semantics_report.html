@@ -71,8 +71,6 @@
     /* The case stays in view while the list scrolls with the page, so the list needs no scrollbar of its own. */
     #detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
     .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 10px; margin-bottom: 8px; }
-    /* Ungrouped, the theme dot hangs in the row's left padding so names and chips keep one text edge. */
-    .case-button .dot { position: absolute; left: 6px; top: .7em; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
     .list-head .note { margin: 0; }
     .sort-label { color: #5b6d83; font-size: .74rem; margin-right: 6px; }
     .sort-toggle { display: inline-flex; align-items: center; }
@@ -102,8 +100,8 @@
     .label-key dd { margin: 0; color: #5b6d83; }
     .label-key dt.current .badge { box-shadow: 0 0 0 2px currentColor; }
     .label-key .key-foot { grid-column: 1 / -1; margin: 0; color: #5b6d83; }
-    .case-list { display: grid; gap: 1px; }
-    .case-button { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: baseline; width: 100%; padding: 4px 10px 4px 16px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: inherit; }
+    .case-list { display: grid; gap: 2px; }
+    .case-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: baseline; width: 100%; padding: 7px 10px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: inherit; }
     .case-button:hover { background: #f4f6f9; }
     .case-button[aria-current="true"] { background: #e8eef6; box-shadow: inset 0 0 0 1px #b9cbe2; }
     .case-button .id { min-width: 0; font-size: .86rem; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -660,12 +658,11 @@
       const noun = state.corpus === "translations" ? "goal" : "case";
       $("list-count").textContent = `${cases.length} ${cases.length === 1 ? noun : `${noun}s`}`;
       const caseButton = item => `<button class="case-button" data-id="${escape(item.id)}" aria-current="${item.id === state.selected}" title="${escape(item.focus)}">
-          ${grouped() ? "" : `<i class="dot" style="--c: ${themeColor(themeOf(item))}" aria-hidden="true"></i>`}<span class="id">${escape(item.scenario)}</span>
+          <span class="id">${escape(item.scenario)}</span>
           ${state.sort === "conformance" ? `<span class="right ${correctness(item)}" title="${escape(conformanceTitle(item))}">${escape(conformance(item))}</span>` : ""}
           ${state.sort === "agreement" ? `<span class="agree agree-${item.matchingPairs}" title="${escape(agreementTitle(item))}">${escape(agreement(item))}</span>` : ""}
         </button>`;
-      // Grouped, each case sits in exactly one theme band, and a heading folds its band away. Otherwise a dot keeps
-      // each case's theme color.
+      // Sorted by theme, each case sits in exactly one theme band, and a heading folds its band away.
       $("case-list").className = `case-list sort-${state.sort}`;
       $("case-list").innerHTML = !grouped() ? cases.map(caseButton).join("") : themes().map(theme => [theme, cases.filter(item => themeOf(item) === theme.id)]).filter(([, members]) => members.length)
         .map(([theme, members]) => {
