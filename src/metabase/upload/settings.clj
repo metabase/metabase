@@ -3,7 +3,7 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -14,9 +14,12 @@
 (defn- check-required-perms!
   "Checks that we have the required permissions to change upload settings for this database."
   [db-id]
+  ;; `uploads-settings` is a `:json` setting, so nothing upstream guarantees `db_id` is an integer
+  (when-not (pos-int? db-id)
+    (throw (ex-info (tru "db_id must be a positive integer.") {:status-code 400})))
   (or (not-handling-api-request?)
       (mi/can-write? :model/Database db-id)
-      (t2/select-one-fn :is_attached_dwh :model/Database db-id)
+      (t2/select-one-fn :is_attached_dwh :model/Database :id db-id)
       (api/throw-403)))
 
 (defsetting uploads-settings
