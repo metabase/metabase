@@ -35,7 +35,7 @@ export type SchemaValue<TColumn extends SchemaColumn> =
       : TColumn["jsType"] extends "boolean"
         ? boolean | null
         : TColumn["jsType"] extends "Date"
-          ? string | Date | null
+          ? string | null
           : RowValue | null;
 
 /** @notExported SchemaValue */

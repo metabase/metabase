@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 import cx from "classnames";
 
 import S from "../DevToolbar.module.css";
@@ -15,6 +14,6 @@ export const DiagnosticsToggle = ({ count, onOpen }: Props) => (
     onClick={onOpen}
     title="Data app diagnostics"
   >
-    ⚠ Diagnostics{count > 0 ? ` (${count})` : ""}
+    {count > 0 ? `⚠ Diagnostics (${count})` : "Diagnostics"}
   </button>
 );

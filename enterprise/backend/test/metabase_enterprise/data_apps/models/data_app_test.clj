@@ -34,11 +34,11 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bundle hash is computed from its bundle"
                               (t2/update! :model/DataApp :id id {:bundle_hash "stale"})))))))
 
-(deftest insert-requires-resource-collection-test
-  (testing "the API creates an app's collection, so an insert without one is refused"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"needs a collection of its own"
-                          (mt/with-temp [:model/DataApp _ {:name "m" :resource_collection_id nil}])))
-    (is (not (t2/exists? :model/DataApp :name "m")))))
+(deftest insert-creates-resource-collection-test
+  (testing "an app inserted without a collection gets a top-level collection of data apps of its own"
+    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:name "m"}]
+      (is (=? {:name "Data App: m" :namespace :data-apps :location "/"}
+              (t2/select-one :model/Collection :id collection-id))))))
 
 (deftest the-resource-collection-cannot-change-test
   (mt/with-temp [:model/Collection {other-id :id} {:name "Other" :namespace :data-apps}

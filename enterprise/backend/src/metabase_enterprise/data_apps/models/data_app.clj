@@ -92,11 +92,10 @@
 (t2/define-before-insert :model/DataApp
   [data-app]
   (let [row (prepare ::data-apps.schema/data-app.insert data-app)]
-    (when-not (:resource_collection_id row)
-      (throw (ex-info (tru "A data app needs a collection of its own.")
-                      {:status-code 400})))
-    (check-resource-collection (:resource_collection_id row) nil)
-    row))
+    (if-let [collection-id (:resource_collection_id row)]
+      (do (check-resource-collection collection-id nil)
+          row)
+      (assoc row :resource_collection_id (data-apps.db/insert-resource-collection! (:name row))))))
 
 (t2/define-before-update :model/DataApp
   [data-app]
