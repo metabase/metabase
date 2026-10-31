@@ -82,6 +82,7 @@
                               :schemas                          true
                               :set-timezone                     true
                               :split-part                       true
+                              :stage-ctes                       true
                               :standard-deviation-aggregations  true
                               :test/date-time-type              false
                               :test/jvm-timezone-setting        false

@@ -205,7 +205,7 @@
    :metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases              #{"Cat"}
    :metabase.query-processor.util.add-alias-info/desired-alias->escaped                     {"ID" "ID_2"}
    :metabase.query-processor.util.add-alias-info/join-alias->escaped                        {"Cat" "Cat_2"}
-   :metabase.driver.sql.query-processor/cte-level                                           1})
+   :metabase.driver.sql.query-processor/cte-name                                            "__mb_stage_0"})
 
 (def ^:private join-internal-keys
   "Every internal key middleware adds to a join."
