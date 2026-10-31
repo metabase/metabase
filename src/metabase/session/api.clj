@@ -311,10 +311,13 @@
 (defn- sso-password-reset-disabled?
   "Disable password reset for users whose SSO provider is still active — they should use SSO.
    When a provider is no longer available (e.g., after license downgrade), allow password reset
-   so users aren't locked out."
-  [sso-source]
+   so users aren't locked out.
+
+   Users that have an existing password are always allowed to reset their password."
+  [user-id sso-source]
   (and (some? sso-source)
-       (sso/sso-source-enabled? sso-source)))
+       (sso/sso-source-enabled? sso-source)
+       (not (session.db/auth-identity-exists? user-id "password"))))
 
 (defn- refresh-support-access-token!
   "Refresh the reset token on an existing support-access-grant AuthIdentity, preserving the grant
@@ -339,8 +342,8 @@
                 is-active?   :is_active :as user}
                (session.db/user-by-email email)]
       (cond
-        ;; SSO users should use their SSO provider, not password reset.
-        (sso-password-reset-disabled? sso-source)
+        ;; SSO users with no password should use their SSO provider, not password reset.
+        (sso-password-reset-disabled? user-id sso-source)
         (messages/send-password-reset-email! email sso-source nil is-active?)
 
         ;; Support-access users get a refreshed token bound to the grant.
