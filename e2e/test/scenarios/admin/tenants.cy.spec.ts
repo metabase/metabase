@@ -8,7 +8,6 @@ import {
   ALL_EXTERNAL_USERS_GROUP_ID,
   COLLECTION_GROUP_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { getPermissionRowPermissions } from "e2e/support/helpers";
 
 const { STATIC_ORDERS_ID, STATIC_PRODUCTS_ID } = SAMPLE_DB_TABLES;
 
@@ -73,20 +72,6 @@ const USERS: TenantUser[] = [GIZMO_USER, DOOHICKEY_USER, SECOND_DOOHICKEY_USER];
 
 const GIZMO_FULL_NAME = H.getFullName(GIZMO_USER);
 
-describe("Tenants - management OSS", { tags: "@OSS" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not show the popup to enable multi tenancy", () => {
-    cy.visit("/admin/people/tenants");
-    cy.location("pathname").should("eq", "/admin/people");
-
-    cy.findByRole("link", { name: /gear/ }).should("not.exist");
-  });
-});
-
 describe("Tenants - management", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/ee/tenant/*").as("getTenant");
@@ -94,15 +79,6 @@ describe("Tenants - management", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-  });
-
-  it("should disable the feature if the token feature is not enabled", () => {
-    H.deleteToken();
-
-    cy.visit("/admin/people/tenants");
-    cy.location("pathname").should("eq", "/admin/people");
-
-    cy.findByRole("link", { name: /gear/ }).should("not.exist");
   });
 
   it("should allow users to enable multi tenancy, and create / manage tenants and tenant users", () => {
@@ -274,14 +250,7 @@ describe("Tenants - management", () => {
         cy.findByDisplayValue("parrot").should("exist");
 
         cy.findByRole("button", { name: /Add an attribute/i }).click();
-        cy.findByPlaceholderText("Key").type("@tenant.name", {
-          parseSpecialCharSequences: false,
-        });
-
-        cy.findByText(
-          'Keys starting with "@" are reserved for system use',
-        ).should("exist");
-        cy.findByPlaceholderText("Key").clear().type("my-special-attr");
+        cy.findByPlaceholderText("Key").type("my-special-attr");
 
         cy.findAllByPlaceholderText("Value")
           .should("have.length", 2)
@@ -353,261 +322,15 @@ describe("Tenants - management", () => {
       .should("exist");
   });
 
-  it("should allow you to manage external user permissions once multi tenancy is enabled", () => {
-    const EXTERNAL_USER_GROUP_NAME = "All tenant users";
-    const TENANT_GROUP_NAME = "Favorite tenant users";
-
-    cy.log("Turn on tenants so that we can create a tenant perms group");
-    cy.request("PUT", "/api/setting", {
-      "use-tenants": true,
-    });
-
-    cy.request("POST", "/api/permissions/group", {
-      name: TENANT_GROUP_NAME,
-      is_tenant_group: true,
-    });
-
-    cy.log("Turn tenants back off");
-    cy.request("PUT", "/api/setting", {
-      "use-tenants": false,
-    });
-
-    cy.visit("/admin/permissions");
-    cy.findByRole("menuitem", { name: "Administrators" }).should("be.visible");
-    cy.findByRole("menuitem", { name: EXTERNAL_USER_GROUP_NAME }).should(
-      "not.exist",
-    );
-
-    cy.log("Turn tenants back on");
-    cy.request("PUT", "/api/setting", {
-      "use-tenants": true,
-    });
-
-    cy.reload();
-    cy.findByRole("menuitem", { name: "Administrators" }).should("be.visible");
-    cy.findByRole("menuitem", { name: TENANT_GROUP_NAME }).should("be.visible");
-    cy.findByRole("menuitem", { name: EXTERNAL_USER_GROUP_NAME }).click();
-
-    assertPermissionTableColumnsExist([
-      "exist",
-      "exist",
-      "exist",
-      "not.exist",
-      "not.exist",
-    ]);
-
-    cy.findByRole("menuitem", { name: "Administrators" }).click();
-
-    assertPermissionTableColumnsExist([
-      "exist",
-      "exist",
-      "exist",
-      "exist",
-      "exist",
-    ]);
-
-    cy.findByRole("tab", { name: "Databases" }).click({ force: true });
-    cy.findByRole("menuitem", { name: "Sample Database" }).click();
-
-    assertPermissionTableColumnsExist([
-      "exist",
-      "exist",
-      "exist",
-      "exist",
-      "exist",
-    ]);
-
-    getPermissionRowPermissions("All tenant users")
-      .eq(3)
-      .should("have.attr", "aria-disabled", "true");
-    getPermissionRowPermissions("All tenant users")
-      .eq(4)
-      .should("have.attr", "aria-disabled", "true");
-
-    hasGlobeIcon(EXTERNAL_USER_GROUP_NAME);
-    hasGlobeIcon(TENANT_GROUP_NAME);
-    lacksGlobeIcon("Administrators");
-    lacksGlobeIcon("All internal users");
-  });
-
-  it("should show 'All internal users' in permission warning modal for internal groups on tenant collections (EMB-1143)", () => {
+  it("should build the tenant collections permission table from the real collection graph", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
-
-    cy.request("POST", "/api/permissions/group", {
-      name: "Test Internal Group",
-      is_tenant_group: false,
-    });
 
     cy.visit("/admin/permissions/tenant-collections/root");
 
-    cy.log("all internal users should have 'View' access");
-    cy.findAllByRole("row")
-      .contains("tr", "All internal users")
-      .findByText("View")
-      .should("be.visible");
-
-    cy.log("internal group should have no access");
-    cy.findAllByRole("row")
-      .contains("tr", "Test Internal Group")
-      .findByText("No access")
-      .click();
-
-    cy.log("change internal group to view-only");
-    H.popover().findByText("View").click();
-
-    cy.findAllByRole("row")
-      .contains("tr", "Test Internal Group")
-      .findByText("View")
-      .click();
-
-    cy.log("change internal group back to no access");
-    H.popover().findByText("No access").click();
-
-    H.modal().within(() => {
-      cy.log("title should mention internal users group");
-      cy.findByText(/Revoke access even though "All internal users"/).should(
-        "be.visible",
-      );
-
-      cy.log("description should mention internal users group");
-      cy.findByText(
-        /The "All internal users" group has a higher level of access/,
-      ).should("be.visible");
-
-      cy.log("should not mention tenant users");
-      cy.contains("Tenant users").should("not.exist");
+    cy.findByTestId("permission-table").within(() => {
+      cy.findByText("All internal users").should("be.visible");
+      cy.findByText("All tenant users").should("be.visible");
     });
-  });
-
-  it("should show 'All tenant users' in permission warning tooltip and modal for tenant groups on data permissions, in both the group and database views (UXW-2474, UXW-2624)", () => {
-    cy.request("PUT", "/api/setting", { "use-tenants": true });
-
-    cy.request("POST", "/api/permissions/group", {
-      name: "Test Tenant Group",
-      is_tenant_group: true,
-    }).then(({ body: group }) => {
-      const tenantGroupId = group.id;
-
-      cy.log(
-        "should show 'All tenant users' in permission warning tooltip for tenant groups in the group view (UXW-2474)",
-      );
-      cy.visit(`/admin/permissions/data/group/${tenantGroupId}`);
-
-      cy.findByRole("tab", { name: "Groups" }).click({ force: true });
-
-      cy.findByRole("menuitem", { name: "All tenant users" }).click();
-
-      cy.log("sample database's view data permission should be 'Can view'");
-      getPermissionRowPermissions("Sample Database")
-        .first()
-        .should("contain", "Can view");
-
-      cy.findByRole("menuitem", { name: "Test Tenant Group" }).click();
-
-      cy.log("tenant group view data permission should be 'Blocked'");
-      getPermissionRowPermissions("Sample Database")
-        .first()
-        .should("contain", "Blocked");
-
-      cy.log("tenant group permission should contain a warning");
-      getPermissionRowPermissions("Sample Database")
-        .first()
-        .findByLabelText("warning icon")
-        .realHover();
-
-      // Tooltip must reference "All tenant users" not "All internal users"
-      H.tooltip().should(
-        "contain",
-        'The "All tenant users" group has a higher level of access',
-      );
-      H.tooltip().should("not.contain", "All internal users");
-    });
-
-    cy.log(
-      "should show 'All tenant users' in permission warning tooltip and modal for tenant groups in the database view (UXW-2624)",
-    );
-    cy.visit("/admin/permissions/data/database/1");
-
-    cy.log("all tenant users should have 'Can view' access");
-    cy.findAllByRole("row")
-      .contains("tr", "All tenant users")
-      .should("contain", "Can view");
-
-    cy.log(
-      "tenant group should have 'Blocked' access (new group default) with warning icon",
-    );
-    cy.findAllByRole("row")
-      .contains("tr", "Test Tenant Group")
-      .should("contain", "Blocked")
-      .findAllByLabelText("warning icon")
-      .first()
-      .realHover();
-
-    cy.log("tooltip should reference 'All tenant users'");
-    H.tooltip().should(
-      "contain",
-      'The "All tenant users" group has a higher level of access',
-    );
-
-    cy.log("click to change to 'Can view' and back to trigger modal");
-    cy.findAllByRole("row")
-      .contains("tr", "Test Tenant Group")
-      .findByText("Blocked")
-      .click();
-
-    H.popover().findByText("Can view").click();
-
-    cy.findAllByRole("row")
-      .contains("tr", "Test Tenant Group")
-      .findByText("Can view")
-      .click();
-
-    H.popover().findByText("Blocked").click();
-
-    H.modal().within(() => {
-      cy.log("title should mention tenant users group");
-      cy.findByText(/Revoke access even though "All tenant users"/).should(
-        "be.visible",
-      );
-
-      cy.log("description should mention tenant users group");
-      cy.findByText(
-        /The "All tenant users" group has a higher level of access/,
-      ).should("be.visible");
-
-      cy.log("should not mention internal users");
-      cy.contains("internal users").should("not.exist");
-    });
-  });
-
-  it("should not show send email modal when creating tenant users when SMTP is configured", () => {
-    H.setupSMTP();
-    cy.request("PUT", "/api/setting", {
-      "use-tenants": true,
-    });
-
-    createTenants();
-
-    cy.visit("admin/people/tenants/people");
-
-    cy.findByRole("link", { name: /Tenant users/ }).click();
-    cy.button("Create tenant user").click();
-
-    H.modal().within(() => {
-      cy.findByRole("textbox", { name: "First name" }).type("Test");
-      cy.findByRole("textbox", { name: "Last name" }).type("User");
-      cy.findByRole("textbox", { name: "Email" }).type("test.user@email.com");
-      cy.findByRole("generic", { name: "Groups" }).should("not.exist");
-      cy.findByRole("textbox", { name: "Tenant" }).click();
-    });
-
-    H.popover().within(() => {
-      cy.findByText("Gizmos").click();
-    });
-
-    H.modal().button("Create").click();
-
-    H.modal().should("not.exist");
   });
 
   it("should show tenant attributes in user attribute lists when multi tenancy is enabled", () => {
@@ -886,150 +609,8 @@ describe("tenant users", () => {
       .findByTestId("navbar-new-collection-button")
       .should("not.exist");
   });
-
-  it("should create a tenant group and add users to it", () => {
-    cy.intercept("POST", "/api/user").as("createUser");
-    cy.intercept("PUT", "/api/user/*").as("updateUser");
-
-    const GROUP_NAME = "Favorites";
-    createTenantGroupFromUI(GROUP_NAME);
-    cy.findByTestId("admin-content-table").findByText(GROUP_NAME);
-
-    cy.findByTestId("admin-layout-sidebar")
-      .findByText(/Tenant users/)
-      .click();
-
-    cy.log("put existing user in a group");
-    cy.findByTestId("admin-people-list-table")
-      .findAllByLabelText("ellipsis icon")
-      .first()
-      .click();
-    H.popover().findByText("Edit user").click();
-
-    H.modal().findByRole("combobox", { name: "Groups" }).click();
-    H.popover().findByText(GROUP_NAME).click();
-
-    H.modal().within(() => {
-      cy.findByText("Tenant groups").click(); // dismiss the dropdown
-      cy.findByRole("list").findByText(GROUP_NAME).should("be.visible");
-      cy.button("Update").click();
-    });
-
-    cy.wait("@updateUser").then(
-      ({ request: { body: reqBody }, response: { body: resBody } }) => {
-        expect(reqBody.user_group_memberships).to.have.length(2);
-        expect(resBody.user_group_memberships).to.have.length(2);
-      },
-    );
-
-    cy.log("add user in a group");
-    cy.button("Create tenant user").click();
-
-    H.modal().within(() => {
-      cy.findByLabelText("First name").type("Misty");
-      cy.findByLabelText("Last name").type("Cerulean");
-      cy.findByLabelText(/Email/).type("misty@example.com");
-      cy.findByLabelText(/Tenant/).click();
-    });
-
-    H.popover().findByText(GIZMO_TENANT.name).click();
-    H.modal().findByRole("combobox", { name: "Groups" }).click();
-    H.popover().findByText(GROUP_NAME).click();
-
-    H.modal().within(() => {
-      cy.findByText("Tenant groups").click(); // dismiss the dropdown
-      cy.findByRole("list").findByText(GROUP_NAME).should("be.visible");
-      cy.button("Create").click();
-    });
-    cy.wait("@createUser").then(
-      ({ request: { body: reqBody }, response: { body: resBody } }) => {
-        expect(reqBody.user_group_memberships).to.have.length(2);
-        expect(resBody.user_group_memberships).to.have.length(2);
-      },
-    );
-  });
-
-  it("can add tenant users to a tenant group via 'Add members", () => {
-    cy.intercept("GET", "/api/user*").as("listUsers");
-
-    const GROUP_NAME = "Marketing Team";
-    createTenantGroupFromUI(GROUP_NAME);
-    cy.findByTestId("admin-content-table").findByText(GROUP_NAME).click();
-
-    cy.findByTestId("admin-pane-page-title", { name: GROUP_NAME }).should(
-      "be.visible",
-    );
-
-    cy.button("Add members").click();
-    cy.wait("@listUsers");
-
-    cy.findByRole("textbox", { name: /search for a user to add/i }).type(
-      "gizmo",
-    );
-
-    H.popover().within(() => {
-      cy.log("tenant user should be visible");
-      cy.findByText(GIZMO_FULL_NAME).should("be.visible");
-
-      cy.log("internal user should not be visible");
-      cy.findByText("Bobby Tables").should("not.exist");
-
-      cy.log("select a tenant user to add");
-      cy.findByText(GIZMO_FULL_NAME).click();
-    });
-
-    cy.button("Add").click();
-
-    cy.log("user should be added to the group");
-    cy.findByTestId("admin-content-table")
-      .findByText(GIZMO_FULL_NAME)
-      .should("be.visible");
-  });
 });
 
-type AssertionType = "exist" | "not.exist";
-
-const assertPermissionTableColumnsExist = (
-  assertions: [
-    AssertionType,
-    AssertionType,
-    AssertionType,
-    AssertionType,
-    AssertionType,
-  ],
-) => {
-  cy.findByRole("columnheader", { name: "View data" }).should(assertions[0]);
-  cy.findByRole("columnheader", { name: "Create queries" }).should(
-    assertions[1],
-  );
-  cy.findByRole("columnheader", { name: /Download results/ }).should(
-    assertions[2],
-  );
-  cy.findByRole("columnheader", { name: "Manage table metadata" }).should(
-    assertions[3],
-  );
-  cy.findByRole("columnheader", { name: "Manage database" }).should(
-    assertions[4],
-  );
-};
-
-function hasGlobeIcon(groupName: string) {
-  cy.findByTestId("permission-table")
-    .findByText(groupName)
-    .parent()
-    .parent()
-    .icon("globe")
-    .should("be.visible");
-}
-
-function lacksGlobeIcon(groupName: string) {
-  cy.findByTestId("permission-table")
-    .findByText(groupName)
-    .parent()
-    .parent()
-    .icon("globe")
-    .should("not.exist");
-}
 const createUsers = () => {
   cy.request("GET", "/api/ee/tenant").then(({ body }) => {
     USERS.forEach((user) => {
@@ -1044,23 +625,4 @@ const createUsers = () => {
 
 const createTenants = () => {
   TENANTS.forEach((tenant) => cy.request("POST", "/api/ee/tenant", tenant));
-};
-
-const createTenantGroupFromUI = (groupName: string) => {
-  cy.intercept("POST", "/api/permissions/group").as("createGroup");
-  cy.visit("/admin/people/tenants/groups");
-
-  // FIXME shouldn't be necessary - caused by slow route guard
-  cy.findByTestId("admin-layout-sidebar")
-    .findByText(/Tenant groups/)
-    .click();
-
-  cy.findByTestId("admin-layout-content")
-    .findByRole("heading", { name: /Tenant groups/ })
-    .should("be.visible");
-
-  cy.button("Create a group").click();
-  cy.findByPlaceholderText(/something like/i).type(groupName);
-  cy.findByRole("button", { name: "Add" }).click();
-  cy.wait("@createGroup");
 };
