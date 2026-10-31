@@ -56,28 +56,42 @@
     th { font-size: .78rem; color: #5b6d83; font-weight: 600; }
     tbody tr:last-child td { border-bottom: 0; }
     .note { color: #5b6d83; font-size: .85rem; margin: 12px 0 0; }
-    .explorer { display: grid; grid-template-columns: minmax(280px, 350px) minmax(0, 1fr); gap: 14px; align-items: start; }
-    .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
-    .toolbar input { border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 8px 10px; min-width: 0; }
-    .toolbar input { flex: 1; }
-    .sort-toggle { display: flex; gap: 4px; }
-    .sort-button { border: 1px solid #c8d4e2; background: white; color: #29405c; border-radius: 7px; padding: 8px 12px; }
+    .explorer { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 14px; align-items: start; }
+    /* The case stays in view while the list scrolls with the page, so the list needs no scrollbar of its own. */
+    #detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+    .themes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+    .theme-chip { border: 1px solid #c8d4e2; background: white; color: #29405c; border-radius: 999px; padding: 5px 12px; font-size: .88rem; }
+    .theme-chip .count { color: #8a99ab; margin-left: 5px; font-variant-numeric: tabular-nums; }
+    .theme-chip[aria-pressed="true"] { background: #173c71; border-color: #173c71; color: white; }
+    .theme-chip[aria-pressed="true"] .count { color: #c9d8ec; }
+    .theme-description { margin: 0 0 14px; font-size: .9rem; min-height: 1.4em; }
+    .list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .list-head .note { margin: 0; }
+    .sort-toggle { display: flex; gap: 2px; }
+    .sort-button { border: 1px solid transparent; background: transparent; color: #5b6d83; border-radius: 6px; padding: 2px 7px; font-size: .78rem; }
+    .case-filter { width: 100%; margin-top: 12px; border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 6px 9px; font-size: .85rem; }
+    .case-group + .case-group { margin-top: 10px; }
+    /* Browsing every case, rows drop to one line; the goal shows on hover. */
+    .case-list.grouped .case-button { padding: 3px 8px; }
+    .case-list.grouped .case-button .focus { display: none; }
+    .case-list.grouped .case-button .scores { grid-row: 1; display: flex; gap: 8px; }
+    .group-head { display: flex; justify-content: space-between; width: 100%; border: 0; background: transparent; padding: 4px 8px; color: #5b6d83; font-size: .72rem; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; text-align: left; }
+    .group-head:hover { color: #173c71; text-decoration: underline; }
     .sort-button[aria-pressed="true"] { background: #173c71; border-color: #173c71; color: white; }
     .sort-button[aria-pressed="true"]::after { margin-left: 6px; font-size: .68rem; }
     .sort-button[aria-pressed="true"][data-direction="asc"]::after { content: "▲"; }
     .sort-button[aria-pressed="true"][data-direction="desc"]::after { content: "▼"; }
-    #list-count { margin: 0 0 10px; }
     details.score-guide { margin: -8px 0 12px; font-size: .88rem; }
     details.score-guide > summary { cursor: pointer; color: #29405c; font-weight: 600; }
     details.score-guide p { margin: 6px 0 0; max-width: 90ch; }
-    .case-list { max-height: 640px; overflow-y: auto; display: grid; gap: 2px; }
-    .case-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; width: 100%; padding: 6px 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; color: inherit; }
+    .case-list { display: grid; gap: 1px; }
+    .case-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; width: 100%; padding: 5px 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; color: inherit; }
     .case-button:hover { background: #f2f6fb; }
     .case-button[aria-current="true"] { background: #eaf2ff; border-color: #a9c7ec; }
     .case-button .id { grid-column: 1; min-width: 0; font-weight: 650; overflow-wrap: anywhere; }
     .case-button .scores { grid-column: 2; grid-row: 1 / span 2; align-self: start; display: grid; justify-items: end; }
     .case-button .score { flex: none; color: #245ea3; font-size: .78rem; font-weight: 700; }
-    .case-button .focus { grid-column: 1; color: #5b6d83; font-size: .85rem; }
+    .case-button .focus { grid-column: 1; color: #5b6d83; font-size: .8rem; line-height: 1.3; }
     .badge { display: inline-block; border-radius: 999px; padding: 2px 7px; background: #e6f4e8; color: #18632c; font-size: .74rem; font-weight: 650; }
     .badge.divergent { background: #fff0de; color: #8a4d00; }
     .badge.neutral { background: #eef1f5; color: #465a71; }
@@ -89,10 +103,14 @@
     .query-table td:first-child { white-space: nowrap; font-weight: 600; }
     .query-table code { background: transparent; padding: 0; }
     .query-table .sub { display: block; color: #5b6d83; font-size: .8rem; margin-top: 2px; }
-    .query-table .letters span + span { margin-left: 6px; }
-    .query-table .missing { color: #b42635; font-size: .8rem; margin-left: 8px; }
+    .query-table .missing { color: #b42635; font-weight: 650; }
+    .query-table .extra-hits { color: #a44d00; font-weight: 650; }
+    .query-table .missing + .extra-hits { margin-left: 10px; }
+    .query-table .ok { color: #176735; }
+    .query-table tr.correct-row td { background: #eef8f1; }
+    .query-table tr.correct-row td:first-child { box-shadow: inset 3px 0 #3f8a5a; }
+    .query-table .check { color: #176735; margin-left: 6px; }
     .query-table .same { color: #8a99ab; }
-    .correct-pill { display: inline-block; margin-left: 6px; border-radius: 999px; padding: 0 7px; background: #e6f4e8; color: #18632c; font-size: .72rem; font-weight: 700; }
     .single-query { margin: 0 0 6px; }
     th.conforms { background: #e6f4e8; color: #18632c; }
     code { padding: 2px 4px; border-radius: 4px; background: #edf1f6; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -167,14 +185,17 @@
     .weights input { width: 80px; accent-color: #5b6d83; }
     .weights output { font-variant-numeric: tabular-nums; color: #5b6d83; text-align: right; }
     details.weights-panel .note { max-width: 72ch; }
-    @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } .case-list { max-height: 280px; } }
-    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid { grid-template-columns: 1fr; } .toolbar { flex-wrap: wrap; } .toolbar input { flex-basis: 100%; } }
+    @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } #detail { position: static; max-height: none; } }
+    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid { grid-template-columns: 1fr; } }
     @media (prefers-color-scheme: dark) {
       :root { color-scheme: dark; background: #101722; color: #e4edf7; }
       .muted, .note, .support-notes, .metric .label, .case-button .focus, .empty { color: #aabbd0; }
       .support-notes a { color: #91c1ff; }
       .card { background: #1b2839; border-color: #354963; box-shadow: none; }
-      .tab, .toolbar input, .sort-button { background: #1b2839; color: #e4edf7; border-color: #53677e; }
+      .tab, .case-filter, .theme-chip { background: #1b2839; color: #e4edf7; border-color: #53677e; }
+      .sort-button, .group-head, .theme-chip .count { color: #aabbd0; }
+      .group-head:hover { color: #e4edf7; }
+      .theme-chip[aria-pressed="true"] { background: #2e67a8; border-color: #2e67a8; color: white; }
       .tab[aria-selected="true"] { background: #2e67a8; border-color: #2e67a8; color: white; }
       .sort-button[aria-pressed="true"] { background: #2e67a8; border-color: #2e67a8; color: white; }
       th, td { border-color: #34465c; }
@@ -190,7 +211,10 @@
       details.score-guide > summary { color: #e4edf7; }
       .query-table .sub, .query-table .same { color: #aabbd0; }
       .query-table .missing { color: #ff929d; }
-      .correct-pill { background: #204632; color: #a4e2b6; }
+      .query-table .extra-hits { color: #ffc26b; }
+      .query-table .ok, .query-table .check { color: #72d999; }
+      .query-table tr.correct-row td { background: #183326; }
+      .query-table tr.correct-row td:first-child { box-shadow: inset 3px 0 #3f8a5a; }
       th.conforms { background: #204632; color: #a4e2b6; }
       code { background: #293c52; }
       .badge { background: #204632; color: #a4e2b6; }
@@ -364,18 +388,20 @@
     <p><strong>Agreement</strong> describes how the engines' result sets relate, ignoring order; it says nothing about which is right. “All agree” means all five return the same cards; “Four agree” means one engine differs; “Three and two agree” means two groups; “Three agree” means a group of three and two outliers; “Two pairs agree” and “One pair agrees” count matching pairs; “All differ” means no two engines match.</p>
     <p id="conformance-guide" hidden><strong>Conformance</strong> compares each engine with the intended results declared for the comparison: how many return exactly those results? Those engines are highlighted in the case detail. The intended results describe what the user most likely meant, so it is possible for no engine to achieve them. Sorting by conformance breaks ties by mean F1, which gives partial credit for near misses.</p>
   </details>
-  <div class="toolbar">
-    <input id="filter" type="search" placeholder="Filter cases, queries, documents…" aria-label="Filter cases">
-    <div class="sort-toggle" role="group" aria-label="Sort cases; click the selected sort to reverse direction">
-      <button class="sort-button" type="button" data-sort="name" data-direction="asc" aria-pressed="true" aria-label="Sort by name ascending">Name</button>
-      <button class="sort-button" type="button" data-sort="agreement" data-direction="desc" aria-pressed="false" aria-label="Sort by agreement descending">Agreement</button>
-      <button class="sort-button" type="button" data-sort="conformance" data-direction="desc" aria-pressed="false" aria-label="Sort by conformance descending" hidden>Conformance</button>
-    </div>
-  </div>
+  <div class="themes" id="themes" role="group" aria-label="Focus on a theme"></div>
+  <p class="theme-description muted" id="theme-description" aria-live="polite"></p>
   <section class="explorer">
     <div class="card">
-      <p class="note" id="list-count"></p>
+      <div class="list-head">
+        <p class="note" id="list-count"></p>
+        <div class="sort-toggle" role="group" aria-label="Sort cases; click the selected sort to reverse direction">
+          <button class="sort-button" type="button" data-sort="name" data-direction="asc" aria-pressed="true" aria-label="Sort by name ascending">Name</button>
+          <button class="sort-button" type="button" data-sort="agreement" data-direction="desc" aria-pressed="false" aria-label="Sort by agreement descending">Agreement</button>
+          <button class="sort-button" type="button" data-sort="conformance" data-direction="desc" aria-pressed="false" aria-label="Sort by conformance descending" hidden>Conformance</button>
+        </div>
+      </div>
       <div class="case-list" id="case-list"></div>
+      <input id="filter" class="case-filter" type="search" placeholder="Filter by word…" aria-label="Filter cases by any word in them">
     </div>
     <article class="card" id="detail" aria-live="polite"></article>
   </section>
@@ -384,7 +410,7 @@
   <script>
     const data = JSON.parse(document.getElementById("report-data").textContent);
     const labels = { "in-place": "In-place", "appdb-h2": "appdb/H2", "appdb-postgres": "appdb/PostgreSQL", "semantic-only": "Semantic only", "semantic-with-fallback": "Semantic with fallback" };
-    const state = { corpus: "sameQuery", selected: null, sort: "name", directions: { name: "asc", agreement: "desc", conformance: "desc" } };
+    const state = { corpus: "sameQuery", theme: "all", selected: null, sort: "name", directions: { name: "asc", agreement: "desc", conformance: "desc" } };
     const $ = id => document.getElementById(id);
     const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
     const inline = text => escape(text).replace(/`([^`]+)`/g, "<code>$1</code>");
@@ -412,9 +438,65 @@
     let weights = (() => { try { return JSON.parse(localStorage.getItem("goalWeights")) || {}; } catch { return {}; } })();
     const weightOf = kind => weights[kind] ?? 1;
 
-    // The hash holds the tab, the case, and any weights changed from the default, so a link reproduces the view.
+    // Themes give a first-time reader a way into the list without knowing what to search for.
+    // A scenario added to the fixture without a theme still shows, under "Other".
+    const scenarioThemes = [
+      { id: "partial", label: "Partial words", description: "Prefixes and substrings: what matches before a word is finished.",
+        scenarios: ["infix-substring", "two-substrings-one-word", "last-word-prefix", "nonfinal-prefix", "or-branch-prefix", "negated-prefix", "prefix-agreement"] },
+      { id: "operators", label: "Operators", description: "Typing or, and, not, or a leading minus: an operator for some engines, plain text for others.",
+        scenarios: ["or-operator", "or-only-operator", "or-word-control", "english-or-word", "and-literal", "and-word-control", "english-and-word", "not-literal", "negation", "negation-only", "operator-empty-agreement"] },
+      { id: "language", label: "Stopwords and stemming", description: "PostgreSQL's English config drops common words and reduces words to stems; the others match text as typed.",
+        scenarios: ["english-stopword", "simple-stopword", "english-stopword-only", "simple-stopword-only", "english-not-stopword", "english-stemming", "simple-no-stemming"] },
+      { id: "phrases", label: "Quotes and phrases", description: "Quoted phrases, including unfinished quotes while typing.",
+        scenarios: ["phrase-boundary", "english-phrase-stopword", "simple-phrase-and", "unfinished-quote", "closed-quote"] },
+      { id: "punctuation", label: "Punctuation", description: "Percent signs and underscores: literal text for substring engines, separators for PostgreSQL.",
+        scenarios: ["percent-punctuation", "underscore-punctuation", "percent-only", "like-escape-percent"] },
+      { id: "meaning", label: "Meaning", description: "Semantic search's vector arm: matches by meaning, with no word in common, and its misses.",
+        scenarios: ["vector-only-match", "vector-noise", "vector-paraphrase", "vector-negation", "lexical-and-vector-union"] },
+      { id: "baselines", label: "Plain words", description: "Ordinary words, mostly where every engine agrees: the baseline the other themes depart from.",
+        scenarios: ["field-term-agreement", "multiword-agreement", "multiword-defaults", "unmatched-term"] }
+    ];
+    const kindDescriptions = {
+      or: "The user wants cards about either of two things.",
+      and: "The user wants cards about both things at once.",
+      exclusion: "The user wants to leave some cards out.",
+      title: "The user wants one card by its exact name.",
+      "word-forms": "The user doesn't know which form of a word the card uses.",
+      typing: "The user hasn't finished typing."
+    };
+    const other = { id: "other", label: "Other", description: "Cases not yet given a theme." };
+    const themeOf = item => state.corpus === "translations"
+      ? item.kind
+      : (scenarioThemes.find(theme => theme.scenarios.includes(item.scenario)) ?? other).id;
+    function themes() {
+      const list = state.corpus === "translations"
+        ? data.goalKinds.map(kind => ({ id: kind, label: kindLabel(kind), description: kindDescriptions[kind] ?? "" }))
+        : [...scenarioThemes, other];
+      return list.map(theme => ({ ...theme, cases: current().cases.filter(item => themeOf(item) === theme.id) })).filter(theme => theme.cases.length);
+    }
+    // Opening a case from elsewhere on the page widens the theme if the case is outside it.
+    function openCase(id) {
+      state.selected = id;
+      const item = current().cases.find(entry => entry.id === id);
+      if (item && state.theme !== "all" && themeOf(item) !== state.theme) state.theme = "all";
+    }
+
+    function renderThemes() {
+      const all = themes();
+      if (state.theme !== "all" && !all.some(theme => theme.id === state.theme)) state.theme = "all";
+      const chip = (id, label, count) => `<button type="button" class="theme-chip" data-theme="${escape(id)}" aria-pressed="${state.theme === id}">${escape(label)}<span class="count">${count}</span></button>`;
+      $("themes").innerHTML = chip("all", "All", current().cases.length) + all.map(theme => chip(theme.id, theme.label, theme.cases.length)).join("");
+      const chosen = all.find(theme => theme.id === state.theme);
+      $("theme-description").textContent = chosen ? chosen.description : `Pick a theme to narrow the list, or browse every ${state.corpus === "translations" ? "goal" : "case"} grouped by theme.`;
+      for (const button of $("themes").querySelectorAll("button")) {
+        button.addEventListener("click", () => { state.theme = button.dataset.theme; state.selected = null; renderThemes(); renderList(); });
+      }
+    }
+
+    // The hash holds the tab, the theme, the case, and any weights changed from the default, so a link reproduces the view.
     function writeHash() {
       const params = new URLSearchParams({ tab: state.corpus });
+      if (state.theme !== "all") params.set("theme", state.theme);
       if (state.selected) params.set("case", state.selected);
       const changed = data.goalKinds.filter(kind => weightOf(kind) !== 1).map(kind => `${kind}:${weightOf(kind)}`);
       if (changed.length) params.set("weights", changed.join(","));
@@ -425,7 +507,9 @@
       const params = new URLSearchParams(location.hash.slice(1));
       if (!params.has("tab")) return false;
       if (params.get("tab") in data && data[params.get("tab")].cases) state.corpus = params.get("tab");
+      state.theme = params.get("theme") || "all";
       state.selected = params.get("case");
+      if (state.selected) openCase(state.selected);
       // A shared link carries its sender's weights, or none when they were the defaults. A link followed within
       // the page, such as a finding, keeps the reader's weights unless it carries its own.
       if (initial || params.has("weights")) {
@@ -523,7 +607,8 @@
 
     function visibleCases() {
       const needle = $("filter").value.trim().toLowerCase();
-      const cases = current().cases.filter(item => !needle || JSON.stringify(item).toLowerCase().includes(needle));
+      const cases = current().cases.filter(item => (state.theme === "all" || themeOf(item) === state.theme)
+        && (!needle || JSON.stringify(item).toLowerCase().includes(needle)));
       const direction = state.directions[state.sort] === "asc" ? 1 : -1;
       return cases.sort((left, right) => state.sort === "name"
         ? direction * left.id.localeCompare(right.id)
@@ -532,18 +617,29 @@
 
     function renderList() {
       const cases = visibleCases();
-      if (!cases.some(item => item.id === state.selected)) state.selected = cases[0]?.id ?? null;
-      $("list-count").textContent = `${cases.length} of ${current().cases.length} cases`;
-      $("case-list").innerHTML = cases.map(item => `<button class="case-button" data-id="${escape(item.id)}" aria-current="${item.id === state.selected}">
+      const order = state.theme !== "all" ? cases : themes().flatMap(theme => cases.filter(item => themeOf(item) === theme.id));
+      if (!cases.some(item => item.id === state.selected)) state.selected = order[0]?.id ?? null;
+      const noun = state.corpus === "translations" ? "goal" : "case";
+      $("list-count").textContent = `${cases.length} ${cases.length === 1 ? noun : `${noun}s`}`;
+      const caseButton = item => `<button class="case-button" data-id="${escape(item.id)}" aria-current="${item.id === state.selected}" title="${escape(item.focus)}">
           <span class="id">${escape(item.scenario)}</span>
           <span class="scores">
             <span class="score" aria-label="${escape(agreement(item))}" title="${escape(agreementTitle(item))}">${escape(agreement(item))}</span>
             ${item.conforming ? `<span class="score" title="${escape(conformanceTitle(item))}">${escape(conformance(item))}</span>` : ""}
           </span>
           <span class="focus">${escape(item.focus)}</span>
-        </button>`).join("");
-      for (const button of $("case-list").querySelectorAll("button")) {
+        </button>`;
+      // Browsing everything, the list is grouped by theme, and a group heading narrows to that theme.
+      $("case-list").classList.toggle("grouped", state.theme === "all");
+      $("case-list").innerHTML = state.theme !== "all"
+        ? cases.map(caseButton).join("")
+        : themes().map(theme => [theme, cases.filter(item => themeOf(item) === theme.id)]).filter(([, members]) => members.length)
+            .map(([theme, members]) => `<div class="case-group"><button type="button" class="group-head" data-theme="${escape(theme.id)}" title="Show only ${escape(theme.label)}"><span>${escape(theme.label)}</span><span>${members.length}</span></button>${members.map(caseButton).join("")}</div>`).join("");
+      for (const button of $("case-list").querySelectorAll(".case-button")) {
         button.addEventListener("click", () => { state.selected = button.dataset.id; renderList(); });
+      }
+      for (const button of $("case-list").querySelectorAll(".group-head")) {
+        button.addEventListener("click", () => { state.theme = button.dataset.theme; renderThemes(); renderList(); });
       }
       renderDetail(cases.find(item => item.id === state.selected));
       writeHash();
@@ -560,21 +656,22 @@
       const correct = new Set(item.correct || []);
       const conforms = engine => translated && item.conforming.includes(engine.id);
       const notes = [item.scenarioNote, item.note].filter(Boolean).map(note => `<p class="case-note muted">${inline(note)}</p>`).join("");
-      // Hits are colored against the correct results, so a row shows at a glance what an engine got right.
-      const letters = hits => {
-        if (!hits.length) return '<span class="same">none</span>';
-        const shown = hits.map(label => `<span class="${!translated ? "" : correct.has(label) ? "hit" : "extra"}">${escape(label)}</span>`).join("");
-        const missing = translated ? [...correct].filter(label => !hits.includes(label)) : [];
-        return `<span class="letters">${shown}</span>${missing.length ? `<span class="missing">missing ${escape(missing.join(", "))}</span>` : ""}`;
+      // Each result says only what differs from the correct cards; the membership table below lists every hit.
+      const verdict = hits => {
+        const missing = [...correct].filter(label => !hits.includes(label));
+        const extra = hits.filter(label => !correct.has(label));
+        if (!missing.length && !extra.length) return '<span class="ok">✓ correct</span>';
+        return (missing.length ? `<span class="missing">missing ${escape(missing.join(", "))}</span>` : "")
+          + (extra.length ? `<span class="extra-hits">extra ${escape(extra.join(", "))}</span>` : "");
       };
       const keywordArm = engine => engine.keywordHits ? `<span class="sub">Keyword arm: ${hitList(engine.keywordHits)}</span>` : "";
       const queryRows = !translated ? "" : item.engines.map(engine => {
-        const name = `${escape(labels[engine.id])}${conforms(engine) ? '<span class="correct-pill">✓ correct</span>' : ""}`;
+        const name = `${escape(labels[engine.id])}${conforms(engine) ? '<span class="check" aria-label="correct">✓</span>' : ""}`;
         const adapted = engine.query !== item.query;
-        return `<tr><td>${name}</td><td>${adapted ? `<code>${escape(engine.query)}</code>` : '<span class="same">as typed</span>'}</td><td>${letters(engine.hits)}${keywordArm(engine)}</td><td>${adapted ? letters(engine.typedHits) : '<span class="same">same</span>'}</td></tr>`;
+        return `<tr class="${conforms(engine) ? "correct-row" : ""}"><td>${name}</td><td>${adapted ? `<code>${escape(engine.query)}</code>` : '<span class="same">as typed</span>'}</td><td>${verdict(engine.hits)}${keywordArm(engine)}</td><td>${adapted ? verdict(engine.typedHits) : '<span class="same">same</span>'}</td></tr>`;
       }).join("");
       const queries = translated
-        ? `<p class="single-query muted">Typed: <code>${escape(item.query)}</code></p><div class="table-wrap"><table class="query-table"><thead><tr><th>Engine</th><th>Adapted query</th><th>Hits</th><th>Hits as typed</th></tr></thead><tbody>${queryRows}</tbody></table></div>`
+        ? `<p class="single-query muted">Typed: <code>${escape(item.query)}</code></p><div class="table-wrap"><table class="query-table"><thead><tr><th>Engine</th><th>Adapted query</th><th>Result</th><th>Result as typed</th></tr></thead><tbody>${queryRows}</tbody></table></div>`
         // With one query, the membership table already shows every engine's hits; only the keyword arm is extra.
         : `<p class="single-query muted">Query: <code>${escape(item.query)}</code></p>${item.engines.filter(engine => engine.keywordHits).map(engine => `<p class="single-query muted">${escape(labels[engine.id])} keyword arm: ${hitList(engine.keywordHits)}</p>`).join("")}`;
       const headers = ["Document", "Searchable fields", ...(translated ? ["Correct"] : []), ...item.engines.map(engine => {
@@ -595,7 +692,7 @@
       const resultTitle = `Result membership${translated ? ` · correct results ${escape(item.correct.join(", ") || "none")}` : ""}`;
       const distanceNote = `Semantic only shows each card's cosine distance from the query: lower is closer, cards within ${fixed(cutoff)} are hits, and orange marks those within 0.05 of that cutoff.`;
       const resultNote = translated
-        ? `In both tables, green is a correct hit, orange an extra hit, and red a missed correct hit. Highlighted engines return exactly the correct results. ${distanceNote}`
+        ? `Highlighted engines return exactly the correct results. In the membership table, orange ✓ is an extra hit and red · a missed correct hit. ${distanceNote}`
         : `✓ is a hit; · is not. ${distanceNote} Semantic with fallback adds the keyword arm and appdb's PostgreSQL hits.`;
       $("detail").innerHTML = `
         <div class="detail-head">
@@ -677,7 +774,8 @@
       for (const row of $("score-table").querySelectorAll("tr.goal-row")) {
         row.addEventListener("click", () => {
           $("filter").value = "";
-          state.selected = row.dataset.id;
+          openCase(row.dataset.id);
+          renderThemes();
           renderList();
           $("detail").scrollIntoView({ behavior: "smooth", block: "start" });
         });
@@ -701,12 +799,14 @@
       syncSortButtons();
       renderWeights();
       renderSummary();
+      renderThemes();
       renderList();
     }
 
     for (const tab of document.querySelectorAll(".tab")) {
       tab.addEventListener("click", () => {
         state.corpus = tab.dataset.corpus;
+        state.theme = "all";
         state.selected = null;
         render();
       });
