@@ -178,6 +178,7 @@ export type {
   SdkActionId,
   SdkActionDefinition,
   SdkActionInput,
+  SdkLegacyActionDefinition,
 } from "embedding-sdk-bundle/types";
 export type {
   FieldSchema,

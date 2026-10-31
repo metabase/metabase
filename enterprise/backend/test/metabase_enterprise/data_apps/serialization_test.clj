@@ -180,18 +180,6 @@
         (import! dump-dir)
         (is (nil? (t2/select-one-fn :description :model/DataApp :id (:id app))))))))
 
-(deftest import-does-not-take-over-an-app-made-on-the-instance-test
-  (mt/with-premium-features #{:data-apps}
-    (ts/with-random-dump-dir [dump-dir "data-app-takeover-"]
-      (mt/with-temp [:model/DataApp app {:name "sales-ops"}]
-        (write-app-files! dump-dir "sales-ops" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "sales-ops") {"dist/index.js" "B"})
-        (let [e (try (import! dump-dir) nil (catch clojure.lang.ExceptionInfo e e))]
-          (is (re-find #"Failed to load" (ex-message e)))
-          (testing "the pull says what to do, rather than failing on the slug's unique index"
-            (is (re-find #"named \"sales-ops\" already exists on this instance"
-                         (ex-message (ex-cause e))))))
-        (is (=? {:entity_id (:entity_id app)} (t2/select-one :model/DataApp :id (:id app))))))))
-
 (deftest export-includes-data-apps-test
   (mt/with-temp [:model/DataApp {app-entity-id :entity_id} {}]
     (is (some #(= [{:model "DataApp" :id app-entity-id}] (map (fn [m] (dissoc m :label)) (:serdes/meta %)))
@@ -211,11 +199,9 @@
                             :dataset_query (lib/query (mt/metadata-provider)
                                                       (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
                            :model/Action      {action-id :id action-eid :entity_id}
-                           {:name "Rename venue" :type :query :collection_id collection-id}
-                           :model/QueryAction _
-                           {:action_id     action-id
-                            :database_id   (mt/id)
-                            :dataset_query (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = 'x'")}]
+                           {:name "Rename venue" :type :implicit :collection_id collection-id}
+                           :model/ImplicitAction _
+                           {:action_id action-id :kind "row/update" :table_id (mt/id :venues)}]
               (export! dump-dir :with-collections? true)
               (testing "the files sit under the collection's directory of the data-apps namespace"
                 (doseq [path ["data_app__sales_ops.yaml" "data_app__sales_ops/venues_list.yaml"

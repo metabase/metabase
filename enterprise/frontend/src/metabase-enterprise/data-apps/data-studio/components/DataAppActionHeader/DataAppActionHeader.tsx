@@ -4,13 +4,17 @@ import type { PillTab } from "metabase/common/components/PillTabNavigation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import type { StackProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { DataApp, WritebackQueryAction } from "metabase-types/api";
+import type {
+  DataApp,
+  WritebackImplicitQueryAction,
+  WritebackQueryAction,
+} from "metabase-types/api";
 
 import { DataAppItemHeader } from "../DataAppItemHeader";
 
 type DataAppActionHeaderProps = {
   app: DataApp;
-  action: WritebackQueryAction;
+  action: WritebackQueryAction | WritebackImplicitQueryAction;
 } & Omit<StackProps, "title">;
 
 export function DataAppActionHeader({
