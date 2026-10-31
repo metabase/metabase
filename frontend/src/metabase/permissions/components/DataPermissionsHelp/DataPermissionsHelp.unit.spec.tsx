@@ -25,8 +25,8 @@ async function setup({ hasAdvancedPermissions = false } = {}) {
 }
 
 describe("DataPermissionsHelp", () => {
-  it("shows all the sections to users with advanced permissions", () => {
-    setup({ hasAdvancedPermissions: true });
+  it("shows all the sections to users with advanced permissions", async () => {
+    await setup({ hasAdvancedPermissions: true });
 
     [
       "Database ‘View data’ levels",
@@ -38,8 +38,8 @@ describe("DataPermissionsHelp", () => {
     });
   });
 
-  it("hides sections to users without advanced permissions", () => {
-    setup({ hasAdvancedPermissions: false });
+  it("hides sections to users without advanced permissions", async () => {
+    await setup({ hasAdvancedPermissions: false });
     expect(screen.getByText("‘Create queries’ levels")).toBeInTheDocument();
 
     [
