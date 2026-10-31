@@ -7,7 +7,6 @@
    [clojure.tools.namespace.file :as ns.file]
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.namespace.parse :as ns.parse]
-   [clojure.walk :as walk]
    [dev.module-graph :as module-graph]
    [dev.module-source :as module-source]
    [hooks.common.modules :as modules]
@@ -15,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
    [rewrite-clj.zip :as z]))
@@ -107,17 +107,10 @@
   ;; We want to know what namespace defendpoint 'requires': so do not need to parse anything in the enterprise dir.
   (if (str/includes? file "/metabase_enterprise/")
     []
-    (let [defentz (atom #{})]
-      (walk/postwalk
-       (fn [x]
-         (when-let [target-ns (and (= (:tag x) :list)
-                                   (= (:string-value (first (:children x))) "defenterprise")
-                                   ;; grabbing it naeivly should be OK, since the linter enforces there's a docstring
-                                   (some->> x z/of-node z/down z/right z/right z/right z/sexpr))]
-           (swap! defentz conj target-ns))
-         x)
-       (z/of-node (parse-file-all file)))
-      @defentz)))
+    (set (match/match-all (z/of-node (parse-file-all file))
+           {:tag :list, :children [{:string-value "defenterprise"} & _]}
+           ;; grabbing it naeivly should be OK, since the linter enforces there's a docstring
+           (some->> &match z/of-node z/down z/right z/right z/right z/sexpr)))))
 
 (mu/defn find-defenterprise-schemas
   "using rewrite-clj, find and return all the namespaces 'required' by defenterprise-schema forms in a file."
@@ -125,17 +118,10 @@
   ;; We want to know what namespace defendpoint 'requires': so do not need to parse anything in the enterprise dir.
   (if (str/includes? file "/metabase_enterprise/")
     []
-    (let [defentz (atom #{})]
-      (walk/postwalk
-       (fn [x]
-         (when-let [target-ns (and (= (:tag x) :list)
-                                   (= (:string-value (first (:children x))) "defenterprise-schema")
-                                   ;; grabbing it naeivly should be OK, since the linter enforces there's a docstring
-                                   (some->> x z/of-node z/down z/right z/right z/right z/right z/right z/sexpr))]
-           (swap! defentz conj target-ns))
-         x)
-       (z/of-node (parse-file-all file)))
-      @defentz)))
+    (set (match/match-all (z/of-node (parse-file-all file))
+           {:tag :list, :children [{:string-value "defenterprise-schema"} & _]}
+           ;; grabbing it naeivly should be OK, since the linter enforces there's a docstring
+           (some->> &match z/of-node z/down z/right z/right z/right z/right z/right z/sexpr)))))
 
 (comment
   ;; has 2 defenterprises
@@ -430,14 +416,10 @@
 (defn- kondo-config-diff-ignore-any
   "Ignore entries in the config that use `:any`."
   [diff]
-  (walk/postwalk
-   (fn [x]
-     (when-not (and (instance? lambdaisland.deep_diff2.diff_impl.Mismatch x)
-                    (= (:- x) :any)
-                    (set? (:+ x))
-                    (seq (:+ x)))
-       x))
-   diff))
+  (match/replace-all diff
+    (:and (m :guard (instance? lambdaisland.deep_diff2.diff_impl.Mismatch m))
+          {:- :any, :+ (added :guard (and (set? added) (seq added)))})
+    nil))
 
 (defn kondo-config-diff
   ([]
