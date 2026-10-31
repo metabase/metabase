@@ -481,23 +481,8 @@
     const weightOf = kind => weights[kind] ?? 1;
 
     // Themes give a first-time reader a way into the list without knowing what to search for.
-    // A scenario added to the fixture without a theme still shows, under "Other".
-    const scenarioThemes = [
-      { id: "partial", label: "Partial words", description: "Prefixes and substrings: what matches before a word is finished.",
-        scenarios: ["infix-substring", "two-substrings-one-word", "last-word-prefix", "nonfinal-prefix", "or-branch-prefix", "negated-prefix", "prefix-agreement"] },
-      { id: "operators", label: "Operators", description: "Typing or, and, not, or a leading minus: an operator for some engines, plain text for others.",
-        scenarios: ["or-operator", "or-only-operator", "or-word-control", "english-or-word", "and-literal", "and-word-control", "english-and-word", "not-literal", "negation", "negation-only", "operator-empty-agreement"] },
-      { id: "language", label: "Stopwords and stemming", description: "PostgreSQL's English config drops common words and reduces words to stems; the others match text as typed.",
-        scenarios: ["english-stopword", "simple-stopword", "english-stopword-only", "simple-stopword-only", "english-not-stopword", "english-stemming", "simple-no-stemming"] },
-      { id: "phrases", label: "Quotes and phrases", description: "Quoted phrases, including unfinished quotes while typing.",
-        scenarios: ["phrase-boundary", "english-phrase-stopword", "simple-phrase-and", "unfinished-quote", "closed-quote"] },
-      { id: "punctuation", label: "Punctuation", description: "Percent signs and underscores: literal text for substring engines, separators for PostgreSQL.",
-        scenarios: ["percent-punctuation", "underscore-punctuation", "percent-only", "like-escape-percent"] },
-      { id: "meaning", label: "Meaning", description: "Semantic search's vector arm: matches by meaning, with no word in common, and its misses.",
-        scenarios: ["vector-only-match", "vector-noise", "vector-paraphrase", "vector-negation", "lexical-and-vector-union"] },
-      { id: "baselines", label: "Plain words", description: "Ordinary words, mostly where every engine agrees: the baseline the other themes depart from.",
-        scenarios: ["field-term-agreement", "multiword-agreement", "multiword-defaults", "unmatched-term"] }
-    ];
+    // The build checks that they place every scenario exactly once.
+    const scenarioThemes = data.themes;
     const kindDescriptions = {
       or: "The user wants cards about either of two things.",
       and: "The user wants cards about both things at once.",
@@ -506,7 +491,6 @@
       "word-forms": "The user doesn't know which form of a word the card uses.",
       typing: "The user hasn't finished typing."
     };
-    const other = { id: "other", label: "Other", description: "Cases not yet given a theme." };
     // One color per theme, kept away from the page's blue and from the green, orange and red that mark right and wrong.
     const themePalette = ["#6a4fc4", "#0f766e", "#a8327a", "#8a6a00", "#2b6f8a", "#8a5230", "#7e3f98"];
     function themeColor(id) {
@@ -516,11 +500,11 @@
     }
     const themeOf = item => state.corpus === "translations"
       ? item.kind
-      : (scenarioThemes.find(theme => theme.scenarios.includes(item.scenario)) ?? other).id;
+      : scenarioThemes.find(theme => theme.scenarios.includes(item.scenario)).id;
     function themes() {
       const list = state.corpus === "translations"
         ? data.goalKinds.map(kind => ({ id: kind, label: kindLabel(kind), description: kindDescriptions[kind] ?? "" }))
-        : [...scenarioThemes, other];
+        : scenarioThemes;
       return list.map(theme => ({ ...theme, cases: current().cases.filter(item => themeOf(item) === theme.id) })).filter(theme => theme.cases.length);
     }
     // Opening a case from elsewhere on the page widens the theme if the case is outside it.
@@ -699,12 +683,27 @@
     // The explorer ends the page, so a shorter list would shorten the page and jolt the scroll position.
     // It keeps the tallest height it has shown instead, leaving space below a short list.
     let explorerHeight = 0;
+    const explorerNatural = () => Math.max(...[...document.querySelector(".explorer").children].map(child => child.offsetHeight));
     function holdExplorerHeight() {
-      const explorer = document.querySelector(".explorer");
-      const natural = Math.max(...[...explorer.children].map(child => child.offsetHeight));
-      explorerHeight = Math.max(explorerHeight, natural);
-      explorer.style.minHeight = `${explorerHeight}px`;
+      explorerHeight = Math.max(explorerHeight, explorerNatural());
+      document.querySelector(".explorer").style.minHeight = `${explorerHeight}px`;
     }
+    // Scrolling by hand gives the held space back, but only the part already below the viewport,
+    // so the page never moves under the reader.
+    let trimQueued = false;
+    window.addEventListener("scroll", () => {
+      if (trimQueued) return;
+      trimQueued = true;
+      requestAnimationFrame(() => {
+        trimQueued = false;
+        const below = document.documentElement.scrollHeight - (scrollY + innerHeight);
+        const trimmed = Math.max(explorerNatural(), explorerHeight - below);
+        if (trimmed < explorerHeight) {
+          explorerHeight = trimmed;
+          document.querySelector(".explorer").style.minHeight = `${explorerHeight}px`;
+        }
+      });
+    }, { passive: true });
 
     function hitList(hits) {
       return hits.length ? escape(hits.join(", ")) : "none";

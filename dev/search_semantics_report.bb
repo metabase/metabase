@@ -47,6 +47,56 @@
     :text  "`how much did we sell` finds nothing on semantic search, though \"Monthly sales\" is in the catalogue."
     :holds {:semantic-with-fallback :none}}])
 
+;;; Themes
+
+(def ^:private themes
+  "The themes a reader can browse identical-query scenarios by. Every scenario belongs to exactly one, which the
+  build checks, so a new or renamed scenario fails the build until it is placed."
+  [{:id          "partial"
+    :label       "Partial words"
+    :description "Prefixes and substrings: what matches before a word is finished."
+    :scenarios   ["infix-substring" "two-substrings-one-word" "last-word-prefix" "nonfinal-prefix" "or-branch-prefix"
+                  "negated-prefix" "prefix-agreement"]}
+   {:id          "operators"
+    :label       "Operators"
+    :description "Typing or, and, not, or a leading minus: an operator for some engines, plain text for others."
+    :scenarios   ["or-operator" "or-only-operator" "or-word-control" "english-or-word" "and-literal" "and-word-control"
+                  "english-and-word" "not-literal" "negation" "negation-only" "operator-empty-agreement"]}
+   {:id          "language"
+    :label       "Stopwords and stemming"
+    :description "PostgreSQL's English config drops common words and reduces words to stems; the others match text as typed."
+    :scenarios   ["english-stopword" "simple-stopword" "english-stopword-only" "simple-stopword-only"
+                  "english-not-stopword" "english-stemming" "simple-no-stemming"]}
+   {:id          "phrases"
+    :label       "Quotes and phrases"
+    :description "Quoted phrases, including unfinished quotes while typing."
+    :scenarios   ["phrase-boundary" "english-phrase-stopword" "simple-phrase-and" "unfinished-quote" "closed-quote"]}
+   {:id          "punctuation"
+    :label       "Punctuation"
+    :description "Percent signs and underscores: literal text for substring engines, separators for PostgreSQL."
+    :scenarios   ["percent-punctuation" "underscore-punctuation" "percent-only" "like-escape-percent"]}
+   {:id          "meaning"
+    :label       "Meaning"
+    :description "Semantic search's vector arm: matches by meaning, with no word in common, and its misses."
+    :scenarios   ["vector-only-match" "vector-noise" "vector-paraphrase" "vector-negation" "lexical-and-vector-union"]}
+   {:id          "baselines"
+    :label       "Plain words"
+    :description "Ordinary words, mostly where every engine agrees: the baseline the other themes depart from."
+    :scenarios   ["field-term-agreement" "multiword-agreement" "multiword-defaults" "unmatched-term"]}])
+
+(defn- theme-data
+  "The themes, after checking that they place every scenario exactly once and name no unknown scenario."
+  [scenario-rows]
+  (let [placed   (mapcat :scenarios themes)
+        repeated (for [[id n] (frequencies placed) :when (< 1 n)] id)
+        known    (set (map :id scenario-rows))
+        unknown  (remove known placed)
+        missing  (remove (set placed) known)]
+    (when (or (seq repeated) (seq unknown) (seq missing))
+      (throw (ex-info "Themes must place every scenario exactly once"
+                      {:repeated (vec repeated), :unknown (vec unknown), :missing (vec (sort missing))})))
+    themes))
+
 ;;; Frozen vectors
 
 (def ^:private frozen
@@ -209,6 +259,7 @@
      :pairCount    (count stats/engine-pairs)
      :provenance   (provenance)
      :findings     (vec (finding-data scenario-rows))
+     :themes       (theme-data scenario-rows)
      :sameQuery    {:summary (summary-data (:same-query summary))
                     :cases   (mapv (partial row-data :same-query) scenario-rows)}
      :translations {:summary (summary-data (:translations summary))
