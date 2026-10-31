@@ -71,7 +71,7 @@ To fix the group's access:
 
 ## Delete a data app
 
-Data Studio doesn't have an option to delete apps. To delete an app, ask your agent, or delete these from your Remote Sync repository, push the change, and [pull it](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git) into your Metabase:
+Data Studio doesn't have an option to delete apps. To delete an app, ask your agent, or delete these from your Remote Sync repository, merge the change into the branch that your Metabase pulls from, and [pull it](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git) into your Metabase:
 
 - `data_apps/<slug>/`
 - `collections/data_apps/data_app__<slug>.yaml`

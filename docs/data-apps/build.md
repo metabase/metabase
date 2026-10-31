@@ -17,16 +17,16 @@ A data app runs with the permissions of the person who opens it, so people see o
 
 ## How data apps work
 
-You build and change data apps on your computer, with an AI coding agent, in a clone of your Remote Sync repository. Then you commit the app to the repository, pull the app into your Metabase, and choose who can open the app.
+You build and change data apps on your computer, with an AI coding agent, in a clone of your Remote Sync repository. Then you commit the app to a branch, review and merge it, pull the app into your Metabase, and choose who can open the app.
 
 Your agent does most of the work, but here's an overview of the end-to-end process:
 
-1. Clone your [Remote Sync](../data-modeling/semantic-layer/remote-sync.md) repository to your computer.
+1. Clone your [Remote Sync](../data-modeling/semantic-layer/remote-sync.md) repository to your computer, and create a branch for the app.
 2. Describe the app to an AI coding agent, like Claude Code or Codex, on your computer. For example: "Create a Metabase data app to add, update, and delete products from the products table."
 3. The agent uses the [Metabase CLI](../installation-and-operation/metabase-cli.md) to scaffold the app in your clone, and to fetch the published tables and metrics that the app can read from your Metabase.
 4. The agent writes the app's code, including the questions and actions that the app runs. While the agent works, you [preview the app](#preview-the-app-on-your-computer) in your browser.
 5. The agent generates the files of the [app's collection](#what-a-data-app-can-read-and-write) from the app's questions and actions, and builds the app.
-6. Commit the app and push it to your repository.
+6. Commit the app, push the branch, and review the changes, for example in a pull request. Then merge the branch into the branch that your Metabase pulls from.
 7. Pull the changes into your Metabase. Admins can open the app at `/apps/<slug>`.
 8. [Choose which groups can open the app](./manage.md#choose-who-can-open-an-app).
 
@@ -65,14 +65,14 @@ The app's collection changes only when Metabase pulls it from your repository. Y
 
 1. [Install the Metabase CLI](../installation-and-operation/metabase-cli.md#install-the-cli), and [log the CLI in](../installation-and-operation/metabase-cli.md#authenticate-the-cli) as an admin to your Metabase.
 2. Install the [metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill) for your agent. The CLI comes with its own skills for building data apps, and the metabase-cli skill tells your agent to load them.
-3. Start your agent in a local clone of your Remote Sync repository, on the branch that your Metabase pulls from. See [what syncs with a data app](#what-syncs-with-a-data-app).
+3. In a local clone of your Remote Sync repository, create a branch from the branch that your Metabase pulls from, and start your agent there. See [what syncs with a data app](#what-syncs-with-a-data-app).
 4. Ask your agent to create a Metabase data app, and follow its instructions. For example:
 
    ```text
    Create a Metabase data app that lets people look up product info, and add, edit, or remove products. Make it look cool.
    ```
 
-The agent scaffolds the app in `data_apps/<slug>/`, and writes the app's code there, with the questions and actions that the app needs. Then the agent generates the app's collection in `collections/data_apps/`, and builds the app's bundle (the built app, up to 10 MiB). After you commit, push, and pull the app into your Metabase, it opens at `/apps/<slug>`.
+The agent scaffolds the app in `data_apps/<slug>/`, and writes the app's code there, with the questions and actions that the app needs. Then the agent generates the app's collection in `collections/data_apps/`, and builds the app's bundle (the built app, up to 10 MiB). After you merge the app and pull it into your Metabase, it opens at `/apps/<slug>`.
 
 To build and preview the app, the agent runs commands on your computer, like `mb` (the Metabase CLI), `npm run build`, and `npm run dev`. Your agent might ask for your permission before it runs these commands.
 
@@ -99,12 +99,13 @@ Delete the key when you no longer need the preview.
 
 When [Remote Sync](../data-modeling/semantic-layer/remote-sync.md) is on, it always syncs your data apps, and an app reaches Metabase only through a pull. Use the same steps for a new app and for each change to an app:
 
-1. If your Metabase is in Read-write mode and has changes to synced content that the app reads, like a table you just published, [push your changes](../data-modeling/semantic-layer/remote-sync.md#pushing-changes-to-git) first. Then pull them into your local clone.
-2. Commit the app's directory, `data_apps/<slug>/`, and its collection, `collections/data_apps/`, together, and push the commit.
-3. On your Metabase, [pull the changes](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git). If your Metabase uses [auto-sync](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-automatically), it pulls the changes on its own within five minutes.
-4. The first time that you ship an app, [add the groups](./manage.md#choose-who-can-open-an-app) that can open the app.
+1. If your Metabase is in Read-write mode and has changes to synced content that the app reads, like a table you just published, [push your changes](../data-modeling/semantic-layer/remote-sync.md#pushing-changes-to-git) first. Then pull them into your branch.
+2. Commit the app's directory, `data_apps/<slug>/`, and its collection, `collections/data_apps/`, together, and push your branch.
+3. Review the changes, for example in a [pull request](../data-modeling/semantic-layer/remote-sync.md#step-4-create-a-pull-request), and merge your branch into the branch that your Metabase pulls from.
+4. On your Metabase, [pull the changes](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git). If your Metabase uses [auto-sync](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-automatically), it pulls the changes on its own within five minutes.
+5. The first time that you ship an app, [add the groups](./manage.md#choose-who-can-open-an-app) that can open the app.
 
-If you check changes on a staging Metabase first, push the commit to a branch that your staging Metabase pulls from, then merge the branch into the branch that your production Metabase pulls from, for example with a [pull request](../data-modeling/semantic-layer/remote-sync.md#step-4-create-a-pull-request).
+If you check changes on a staging Metabase first, merge your branch into the branch that your staging Metabase pulls from, and then into the branch that your production Metabase pulls from.
 
 If you let your agent use Git, the agent can do these steps for you.
 
@@ -125,11 +126,11 @@ When your agent builds the app, it writes the bundle to `dist/index.js`. Commit 
 
 ## Change a data app
 
-1. In your local clone of your Remote Sync repository, pull the latest changes, so that you start from the latest version of the app.
+1. In your local clone of your Remote Sync repository, pull the latest changes, so that you start from the latest version of the app, and create a branch for the change.
 2. Start your agent in the clone, and ask for the change. The agent updates the code, generates the app's collection, and builds the app again.
 3. [Ship the change](#ship-the-app-to-production-with-remote-sync).
 
-Your repository keeps the app's version history. If two people change the same app at the same time, Git shows the conflict. To go back to an earlier version, revert the change in your repository, push, and pull the changes into your Metabase.
+Your repository keeps the app's version history. If two people change the same app at the same time, Git shows the conflict. To go back to an earlier version, revert the change in your repository, merge the revert, and pull the changes into your Metabase.
 
 Any admin can change an app from their own computer. Clone your Remote Sync repository, do steps 1 and 2 of [Build the app with your agent](#build-the-app-with-your-agent), and start your agent in the clone. Git doesn't keep the app's packages (`node_modules/`) or the preview's API key (`.env.local`), so the agent installs the packages and creates a new API key on each computer.
 
