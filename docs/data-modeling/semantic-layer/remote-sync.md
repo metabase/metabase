@@ -90,12 +90,14 @@ Create a personal access token with read and write repository access. Copy the t
 - **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read and write** and **Metadata: Read-only** permissions.
 - **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** and **write_repository** scopes. Tokens have an expiration date (your admin may set a maximum lifetime).
 - **Bitbucket**: In your Bitbucket repository, go to **Repository settings** > **Security** > **Access tokens** and click **Create access token**. Give it a name and, under **Scopes**, select:
+
   - **Repositories**: **Read** and **Write**
   - **Pull requests**: **Read** and **Write**
 
   Click **Create** and copy the token immediately, you can't view the token again after closing the dialog.
 
   The created token must have these scopes (visible in the **View access token** dialog after creation):
+
   - `repository`
   - `repository:write`
   - `pullrequest`
@@ -112,14 +114,17 @@ In the Metabase that you use for development:
 1. Go to **Admin** > **Settings** > **Remote sync**. You can also click **Set up remote sync** at the bottom of the Data Studio sidebar.
 
 2. Enter your repository URL:
+
    - For example, `https://github.com/your-org/your-repo` or `https://bitbucket.org/your-workspace/your-repo` (note the `https`). The repository must already exist and be initialized with at least one commit.
 
 3. Select **Read-write mode**.
 
 4. Add your access token:
+
    - Paste the personal access token (PAT) you created earlier. Make sure the token has [read and write permissions](#2-create-a-token-for-your-development-metabase). Metabase encrypts your token before storing it.
 
 5. Test the connection:
+
    - Click **Test connection** to check whether Metabase can reach your repository. If the connection fails, make sure your token has the appropriate permissions and hasn't expired. If you copied the token incorrectly, generate a new one.
    - Metabase also checks the connection when you save your settings.
 
@@ -148,12 +153,14 @@ Create a personal access token with read-only repository access. Copy the token 
 - **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read-only** and **Metadata: Read-only** permissions.
 - **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** scope only.
 - **Bitbucket**: In your Bitbucket repository, go to **Repository settings** > **Security** > **Access tokens** and click **Create access token**. Under **Scopes**, select:
+
   - **Repositories**: **Read**
   - **Pull requests**: **Read**
 
   Leave Write and all other scope groups unchecked. Click **Create** and copy the token immediately.
 
   The created token must have these scopes (visible in the **View access token** dialog after creation):
+
   - `repository`
   - `pullrequest`
 
@@ -166,14 +173,17 @@ In your production Metabase:
 1. Go to **Admin** > **Settings** > **Remote sync**.
 
 2. Enter your repository URL:
+
    - Use the same repository as your development Metabase, for example, `https://github.com/your-org/your-repo` (note the `https`).
 
 3. Select **Read-only mode**.
 
 4. Add your access token:
+
    - Paste the read-only personal access token you created for this production Metabase.
 
 5. Test the connection:
+
    - Click **Test connection** to check whether Metabase can reach your repository. If the connection fails, verify your token has the appropriate permissions and hasn't expired.
    - Metabase also checks the connection when you save your settings.
 
@@ -313,7 +323,7 @@ Remote sync uses the same serialization format as the [Metabase CLI serializatio
 - Metrics
 - Dashboards and their cards
 - Documents
-- [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase syncs the app's bundle and the Metabase items the app needs to run, not the app's source code. Keep the source code in your own repository so you can edit the app.
+- [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase syncs the app's manifest, bundle, and collection, not the app's source code. You (or your agent) must commit the source code to the same repository, so that you can change the app later.
 - SQL snippets
 - [Data actions](../data-actions.md)
 - The glossary
@@ -501,7 +511,7 @@ To disable Remote sync:
 ## Migrating existing content to Remote sync
 
 If you already have content in your Metabase, you can adopt Remote sync gradually. Content that lives outside the Library remains unaffected. You can keep working with it normally while you move content into the Library over time.
- 
+
 Make sure you move any dependencies (like models referenced by questions) into the Library, since [Library content must be self-contained](#library-content-must-be-self-contained).
 
 ### If you already have a repo with serialized Metabase data

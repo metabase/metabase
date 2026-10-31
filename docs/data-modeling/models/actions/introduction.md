@@ -6,7 +6,7 @@ redirect_from:
 
 # Introduction to actions
 
-> For now, actions are only available for PostgreSQL and MySQL.
+> For new actions, use [data actions](../../data-actions.md). You need a model action only for a [button on a dashboard](../../../dashboards/actions.md). Actions only work on PostgreSQL and MySQL.
 
 ![Example action](./images/example-action.png)
 
@@ -22,16 +22,15 @@ Here are a few ideas for what you can do with actions:
 - Let team members remove redundant data.
 - Create a customer feedback form and embed it on your website.
 
-Actions can belong to a [model](../../../data-modeling/models/models.md), or stand on their own as [data actions](../../data-actions.md). Either way, actions only run on the raw tables in your database (so actions will never edit your [model definition](../../../data-modeling/models/models.md#edit-a-models-query)).
+Actions can stand on their own as [data actions](../../data-actions.md), or belong to a [model](../../../data-modeling/models/models.md). Either way, actions only run on the raw tables in your database (so actions will never edit your [model definition](../../../data-modeling/models/models.md#edit-a-models-query)).
 
 If you're an admin who just wants to edit data in your tables, check out [Editable table data](../../../data-modeling/editable-tables.md).
 
 ## Enabling actions for a database
 
-For actions to work, you'll first need to do the following two things:
+To use actions on a database, an admin has to turn on data actions for it. See [Turn on data actions for a database](../../data-actions.md#turn-on-data-actions-for-a-database).
 
-1. **Enable data actions for the database connection**. To enable actions for a database connection, admins should click on the **grid** icon in the upper right and navigate to **Admin** > **Databases**, then click on the database you want to create actions for. In the **Data actions** section, turn on the **Data actions** toggle. For actions to work, the database user account (the account you're using to connect to the database) must have [write permissions](../../../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). And for now, actions are only supported on PostgreSQL and MySQL databases. This toggle covers both model actions and [data actions](../../data-actions.md).
-2. **For actions on models, create at least one model from that database.** Model actions are associated with models, so you'll need to have created (or have access to) at least one model before you can start creating them. [Data actions](../../data-actions.md) don't need a model.
+Model actions also need a model. Create at least one model on the database before you create model actions. Data actions don't need a model.
 
 ## Who can use actions
 

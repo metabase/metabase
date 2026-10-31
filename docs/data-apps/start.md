@@ -4,6 +4,10 @@ title: Data apps overview
 
 # Data apps overview
 
+> **Beta:** Data apps are in beta.
+
+{% include plans-blockquote.html feature="Data apps" is_plural=true %}
+
 Data apps are custom apps that you build on your Metabase data with an AI coding agent. Like dashboards, data apps show your data from your semantic layer. But an app can have any layout and its own pages, and people can add, edit, and delete data from the app. A data app runs with the permissions of the person who opens it, so people see only the data that they're allowed to see.
 
 ## [Build a data app](./build.md)

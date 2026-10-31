@@ -1,6 +1,9 @@
 ---
 title: Data actions
 summary: Data actions insert, update, or delete rows in your database. You can run them in Data Studio or share them as public forms.
+redirect_from:
+  - /docs/latest/actions
+  - /docs/latest/actions/start
 ---
 
 # Data actions
@@ -16,13 +19,27 @@ You can run data actions in two ways:
 - **In Data Studio**, to test an action or make a one-off change. See [Run a data action](#run-a-data-action).
 - **As a public form**, to collect data from people outside Metabase, like event sign-ups or feedback. See [Share a data action as a public form](#share-a-data-action-as-a-public-form).
 
-Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md). You don't need to create a model first, and data actions stay put when someone moves a model to the trash. But you can't add data actions to [dashboard buttons](../dashboards/actions.md). For a dashboard button, use a model action.
+Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md). You don't need to create a model first, and data actions stay put when someone moves a model to the trash. But you can't add data actions to [dashboard buttons](../dashboards/actions.md). So use data actions for new actions, and use a model action only when you need a dashboard button.
 
 If you [sync the Library](./semantic-layer/library.md#versioning-the-library) with [Remote Sync](semantic-layer/remote-sync.md), your data actions sync with it.
 
+## Turn on data actions for a database
+
+_Admin > Databases > Data actions_
+
+Before you can create or run actions on a database, an admin has to turn on data actions for that database. The setting covers every kind of action on the database: data actions, actions in [data apps](../data-apps/build.md#what-a-data-app-can-read-and-write), and [model actions](./models/actions/introduction.md).
+
+Data actions only work on PostgreSQL and MySQL databases, and you can't turn them on for a database that uses [database routing](../permissions/database-routing.md).
+
+1. Click the **grid** icon in the upper right, and go to **Admin** > **Databases**.
+2. Click the database.
+3. In the **Data actions** section, turn on **Data actions**.
+
+Actions write to your database, so the database user needs [write privileges](../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). If the database has a [writable connection](../databases/writable-connection.md), actions use it.
+
 ## Create a data action
 
-Only admins can create data actions. Data actions only work on PostgreSQL and MySQL databases. The **New** button only shows up if an admin has [turned on data actions](./models/actions/introduction.md#enabling-actions-for-a-database) for at least one of these databases.
+Only admins can create data actions. The **New** button only shows up if an admin has [turned on data actions](#turn-on-data-actions-for-a-database) for at least one database.
 
 You can create a data action in two ways:
 
@@ -53,7 +70,7 @@ Pick a table and an operation, and Metabase builds the form from the table's col
 2. Go to the **Run** tab and click the **Run** button.
 3. Fill out the form and submit it. Metabase makes the change in your database.
 
-If the **Run** button is grayed out, data actions are turned off for the action's database, or you don't have access to that database.
+If the **Run** button is grayed out, [data actions are turned off](#turn-on-data-actions-for-a-database) for the action's database, or you don't have access to that database.
 
 ![The form for the Add product action](./images/data-action-form.png)
 
@@ -104,7 +121,8 @@ Only admins can create, edit, move, archive, or unarchive data actions and their
 
 ## Further reading
 
+- [Data Studio](./data-studio.md)
+- [Data apps](../data-apps/start.md)
 - [Introduction to actions](./models/actions/introduction.md)
 - [Basic actions](./models/actions/basic.md)
 - [Custom actions](./models/actions/custom.md)
-- [Data Studio](./data-studio.md)

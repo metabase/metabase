@@ -96,7 +96,7 @@ This is a good option if you're connecting to a local database for development o
 
 ## Privileges to enable actions and editable table data
 
-Both [actions](../data-modeling/models/actions/introduction.md) and the [editable table data](../data-modeling/editable-tables.md) let Metabase write back to specific tables in your database.
+Both [actions](../data-modeling/data-actions.md) and the [editable table data](../data-modeling/editable-tables.md) let Metabase write back to specific tables in your database.
 
 If you're using actions or editable tables, then in addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables you want to be able to write to.
 
