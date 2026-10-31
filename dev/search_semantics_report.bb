@@ -35,16 +35,16 @@
     :text  "Typing `or` on the way to \"orders\" finds nothing on PostgreSQL, while in-place and H2 also match \"Store locations\"."
     :holds {:appdb-postgres :none, :in-place {:C true}, :appdb-h2 {:C true}}}
    {:case  "or-branch-prefix"
-    :text  "`cust or rev` misses \"Customers\" on PostgreSQL, which completes only the last word as a prefix."
+    :text  "The query `cust or rev` misses \"Customers\" on PostgreSQL, which completes only the last word as a prefix."
     :holds {:appdb-postgres {:A false}}}
    {:case  "negation"
-    :text  "Semantic search returns \"Test orders\" for `orders -test`: the keyword arm's exclusion cannot veto the vector arm."
+    :text  "Semantic search returns \"Test orders\" for `orders -test`, because the keyword arm's exclusion can't stop the vector arm returning it."
     :holds {:appdb-postgres {:B false}, :semantic-with-fallback {:B true}}}
    {:case  "vector-noise"
-    :text  "`sales pipeline` gets \"Sales team headcount\" from the vector arm, but not \"Deals closed\"."
+    :text  "The query `sales pipeline` gets \"Sales team headcount\" from the vector arm, but not \"Deals closed\"."
     :holds {:semantic-only {:E true, :C false}}}
    {:case  "vector-paraphrase"
-    :text  "`how much did we sell` finds nothing on semantic search, though \"Monthly sales\" is in the catalog."
+    :text  "The query `how much did we sell` finds nothing on semantic search, though \"Monthly sales\" is in the catalog."
     :holds {:semantic-with-fallback :none}}])
 
 ;;; Themes
@@ -64,7 +64,7 @@
                   "english-and-word" "not-literal" "negation" "negation-only" "operator-empty-agreement"]}
    {:id          "language"
     :label       "Stopwords and stemming"
-    :description "PostgreSQL's English config drops common words and reduces words to stems; the others match text as typed."
+    :description "PostgreSQL's English config drops common words and reduces words to stems. The other engines match text as typed."
     :scenarios   ["english-stopword" "simple-stopword" "english-stopword-only" "simple-stopword-only"
                   "english-not-stopword" "english-stemming" "simple-no-stemming"]}
    {:id          "phrases"
@@ -81,7 +81,7 @@
     :scenarios   ["vector-only-match" "vector-noise" "vector-paraphrase" "vector-negation" "lexical-and-vector-union"]}
    {:id          "baselines"
     :label       "Plain words"
-    :description "Ordinary words, mostly where every engine agrees. The other themes depart from this baseline."
+    :description "Ordinary words, where the engines mostly agree. They are the baseline for the other themes."
     :scenarios   ["field-term-agreement" "multiword-agreement" "multiword-defaults" "unmatched-term"]}])
 
 (defn- theme-data

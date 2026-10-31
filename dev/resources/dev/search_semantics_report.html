@@ -327,7 +327,7 @@
     <h1>Search engine comparison</h1>
     <p class="intro muted">
       Where Metabase's search engines return different cards for the same query, and what each needs typed to find what a user wants.<br>
-      These are hand-picked examples to explain the engines' behavior, not a sample of production traffic. They compare which cards come back, not their order, so they say nothing about ranking.
+      The examples are hand-picked to show how the engines behave, so they say little about production traffic. They compare which cards come back and ignore their order, which leaves ranking out entirely.
     </p>
     <p class="provenance muted" id="provenance"></p>
   </header>
@@ -338,7 +338,7 @@
   </section>
 
   <details class="reference">
-    <summary>How the engines work: availability and matching rules</summary>
+    <summary>Where each engine is available and how it matches queries</summary>
   <section class="support-guide" aria-labelledby="support-guide-title">
     <h2 id="support-guide-title">Availability by appdb</h2>
     <div class="card table-wrap" role="region" aria-label="Engine availability by appdb dialect" tabindex="0">
@@ -357,7 +357,7 @@
       <li><span class="footnote-marker">*</span> appdb/H2 matches conjunctive substrings rather than lexemes and lacks support for OR, negation, and phrases. We haven’t established how much of that gap could be closed.</li>
       <li><span class="footnote-marker">†</span> <a href="https://github.com/metabase/metabase/pull/52384" target="_blank" rel="noopener noreferrer">PR #52384</a> implemented appdb/MySQL, but was never merged. We could probably revive it, but it can't match PostgreSQL.</li>
       <li><span class="footnote-marker">‡</span> Semantic requires feature access, an embedder, and a PostgreSQL/pgvector store. A PostgreSQL appdb can host that store itself; with H2 or MySQL/MariaDB it must be a separate database.</li>
-      <li>Deployment: for which Cloud instances can and do serve semantic search, see the internal <a href="https://stats.metabase.com/dashboard/9850" target="_blank" rel="noopener noreferrer">semantic search availability dashboard</a>. Self-hosted semantic use is not expected: setup is undocumented and not yet recommended.</li>
+      <li>The internal <a href="https://stats.metabase.com/dashboard/9850" target="_blank" rel="noopener noreferrer">semantic search availability dashboard</a> shows which Cloud instances can and do serve semantic search. We don't expect self-hosted instances to use it, since setup is undocumented and not yet recommended.</li>
     </ul>
   </section>
 
@@ -380,12 +380,12 @@
             <th scope="row">Multiple words</th>
             <td>Any query word can suffice.</td>
             <td>Every query word must match.</td>
-            <td>Every processed term must match, unless using operators.</td>
+            <td>Every processed term must match, unless the query uses operators.</td>
             <td>Compares the query's overall meaning; individual words need not match.</td>
           </tr>
           <tr>
             <th scope="row">Partial words</th>
-            <td>Any substring: <code>rate</code> matches <em>Moderated</em>.</td>
+            <td>Any substring, so <code>rate</code> matches <em>Moderated</em>.</td>
             <td>Any substring, including inside longer words.</td>
             <td>Prefix of the final eligible word only; no inner substring.</td>
             <td>No defined prefix or substring rule.</td>
@@ -395,7 +395,7 @@
             <td>Implicit OR across words; <code>or</code>, <code>-</code>, and quotes are literal text.</td>
             <td>Implicit AND across words; <code>or</code>, <code>-</code>, and quotes are literal text.</td>
             <td>Conjunction, disjunction, negation, and phrase matching.</td>
-            <td>Contextual interpretation; no guaranteed Boolean or phrase operations.</td>
+            <td>Reads the query in context, with no guaranteed Boolean or phrase operations.</td>
           </tr>
           <tr>
             <th scope="row">Language</th>
@@ -460,7 +460,7 @@
     <div class="reading-guide">
       <h3>How to read the table</h3>
       <ul>
-      <li>F1 combines precision, the share of returned cards that are correct, and recall, the share of correct cards that come back. It is their harmonic mean, so it is high only when both are: returning one of three correct cards and nothing else scores 0.5.</li>
+      <li>F1 combines precision, the share of returned cards that are correct, and recall, the share of correct cards that come back. It is their harmonic mean, so it is high only when both are high. Returning one of three correct cards and nothing else scores 0.5.</li>
       <li><span class="sc-legend">0.40 → <strong>1.00</strong></span> means 0.40 for the goal's original query and 1.00 for the engine's best query. One number means the best query scores the same.</li>
       <li>A best query uses words a user could think of for the goal without knowing which cards exist, and any syntax the engine supports.</li>
       <li>A bold score with a blue bar is the best, or tied best, for that goal.</li>
@@ -471,7 +471,7 @@
     <details class="weights-panel" id="weights-panel">
       <summary>Weights by kind of goal<span class="weights-state" id="weights-state"></span></summary>
       <div class="weights" id="weights" role="group" aria-label="Weight per kind of goal"></div>
-      <p class="note">The means are exploratory. The goals were picked to expose differences between the engines, so they reflect that mix, not production traffic. Each kind's goals are averaged first, so a weight says how much that kind matters, not how many examples it has.</p>
+      <p class="note">The means are exploratory. The goals were picked to expose differences between the engines, so the means say little about production traffic. Each kind's goals are averaged first, so a weight sets how much a kind counts regardless of how many goals it has.</p>
     </details>
   </section>
 
@@ -592,7 +592,7 @@
         renderScoreTable();
         $("second-table-title").textContent = "Accuracy against the correct cards";
         $("second-table").innerHTML = fidelityTable(summary);
-        $("second-table-note").textContent = "F1 combines precision and recall; Scores by goal below explains it. Darker cells are better within their column; bold is the best. Unweighted: each goal counts once, whatever the weights in Scores by goal. Exact counts goals where the engine returns the correct results. Original query scores the goal's query unchanged, for every engine.";
+        $("second-table-note").textContent = "F1 combines precision and recall, as Scores by goal explains. Within each column, darker cells are better and the best is bold. Each goal counts once here, whatever the weights in Scores by goal. Exact counts the goals where an engine returns exactly the correct cards. The original-query columns score each goal's query unchanged.";
       } else {
         $("second-table-title").textContent = "Average cards returned per query";
         $("second-table").innerHTML = table(["Engine", "Mean hits"], data.engines.map(engine => [escape(labels[engine]), number(summary.meanHits[engine])]));
