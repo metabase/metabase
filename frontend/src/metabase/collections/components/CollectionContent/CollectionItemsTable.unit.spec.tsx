@@ -19,6 +19,7 @@ import type {
   Collection,
   CollectionId,
   CollectionItem,
+  CollectionItemModel,
   ListCollectionItemsResponse,
 } from "metabase-types/api";
 import {
@@ -213,6 +214,28 @@ function CollectionNavigationTest({
         collection={currentCollection}
         collectionId={currentCollection.id}
         showFilterBar
+      />
+    </>
+  );
+}
+
+function ControlledTypeFilterTest({ pageSize }: { pageSize?: number }) {
+  const [typeFilter, setTypeFilter] = useState<CollectionItemModel[] | null>(
+    null,
+  );
+
+  return (
+    <>
+      <button onClick={() => setTypeFilter(["card"])}>
+        Show only questions
+      </button>
+      <CollectionItemsTable
+        collection={collection}
+        collectionId={collection.id}
+        pageSize={pageSize}
+        showFilterBar
+        typeFilter={typeFilter}
+        onTypeFilterChange={setTypeFilter}
       />
     </>
   );
@@ -1163,5 +1186,77 @@ describe("CollectionItemsTable", () => {
     expect(
       screen.queryByTestId("items-table-skeleton"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("controlled type filter", () => {
+    it("applies a filter set from outside and resets pagination", async () => {
+      setupCollectionItemsEndpoint({ collection, collectionItems });
+      renderWithProviders(<ControlledTypeFilterTest pageSize={1} />, {
+        withRouter: true,
+        withDND: true,
+      });
+
+      expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+      expect(await screen.findByText("Customer 360")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Show only questions" }),
+      );
+
+      await waitFor(() => {
+        expect(findItemsSearchParamsByModels(["card"])?.get("offset")).toBe(
+          "0",
+        );
+      });
+      expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Filter, filters applied" }),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByTestId("collection-type-filter-button"),
+      );
+      expect(screen.getByLabelText("Question")).toBeChecked();
+    });
+
+    it("keeps the toolbar visible in a small collection while a type filter is applied", async () => {
+      setupCollectionItemsEndpoint({
+        collection,
+        collectionItems: collectionItems.slice(0, 3),
+      });
+      renderWithProviders(<ControlledTypeFilterTest />, {
+        withRouter: true,
+        withDND: true,
+      });
+
+      expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("collection-items-toolbar"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Show only questions" }),
+      );
+
+      expect(
+        await screen.findByTestId("collection-items-toolbar"),
+      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+      });
+      expect(screen.getByText("Customer 360")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByTestId("collection-type-filter-button"),
+      );
+      await userEvent.click(screen.getByLabelText("Question"));
+
+      expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("collection-items-toolbar"),
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 });

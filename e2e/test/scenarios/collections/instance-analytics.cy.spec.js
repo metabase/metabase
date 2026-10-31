@@ -339,13 +339,13 @@ describe("question and dashboard links", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
       H.openQuestionInfoSidesheet().within(() => {
-        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByText("Details").should("be.visible");
         cy.findByRole("link", { name: /Insights/i }).should("not.exist");
       });
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.openDashboardInfoSidebar().within(() => {
-        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByText("Details").should("be.visible");
         cy.findByRole("link", { name: /Insights/i }).should("not.exist");
       });
     });
@@ -361,14 +361,14 @@ describe("question and dashboard links", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
       H.openQuestionInfoSidesheet().within(() => {
-        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByText("Details").should("be.visible");
         cy.findByRole("link", { name: /Insights/i }).should("not.exist");
       });
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
 
       H.openDashboardInfoSidebar().within(() => {
-        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByText("Details").should("be.visible");
         cy.findByRole("link", { name: /Insights/i }).should("not.exist");
       });
     });

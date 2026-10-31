@@ -85,7 +85,6 @@ describe("revision history", () => {
 
               openRevisionHistory();
               H.sidesheet().within(() => {
-                cy.findByRole("tab", { name: "History" }).click();
                 cy.findAllByTestId("revision-history-event").should(
                   "have.length",
                   2,
@@ -137,7 +136,6 @@ describe("revision history", () => {
               cy.log("open revision history via the header button");
               cy.findByTestId("revision-history-button").click();
               H.sidesheet().within(() => {
-                cy.findByRole("tab", { name: "History" }).click();
                 // The revert button only becomes visible on hover
                 cy.findByTestId("question-revert-button").should("exist");
               });
@@ -147,7 +145,6 @@ describe("revision history", () => {
               cy.log("open revision history via the question info sidesheet");
               H.questionInfoButton().click();
               H.sidesheet().within(() => {
-                cy.findByRole("tab", { name: "History" }).click();
                 cy.findByTestId("question-revert-button").click();
               });
 
@@ -186,7 +183,6 @@ describe("revision history", () => {
               H.visitQuestion(ORDERS_QUESTION_ID);
               H.questionInfoButton().click();
               H.sidesheet().within(() => {
-                cy.findByRole("tab", { name: "History" }).click();
                 cy.findAllByTestId("revision-history-event").should(
                   "have.length.gte",
                   2,
@@ -215,14 +211,7 @@ function openRevisionHistory() {
     .click();
 
   H.sidesheet().within(() => {
-    cy.findByRole("tab", { name: "History" }).click();
     cy.wait("@revisionHistory");
-
-    cy.findByRole("tab", { name: "History" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
     cy.findByTestId("dashboard-history-list").should("be.visible");
   });
 }

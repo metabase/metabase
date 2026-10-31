@@ -1,3 +1,4 @@
+import { useUncontrolled } from "@mantine/hooks";
 import cx from "classnames";
 import {
   type ComponentType,
@@ -37,7 +38,6 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
@@ -53,6 +53,7 @@ import type {
 } from "metabase-types/api";
 
 import { CollectionItemsToolbar } from "./CollectionItemsToolbar";
+import { getCollectionItemsScope } from "./utils";
 
 const shouldDebounceSearchText = (
   _lastSearchText: string,
@@ -105,6 +106,9 @@ export type CollectionItemsTableProps = {
   selectOnlyTheseItems: (items: CollectionItem[]) => void;
   showFilterBar: boolean;
   toggleItem: (item: CollectionItem) => void;
+  /** Pass to control the type filter from outside; otherwise it is internal */
+  typeFilter: CollectionItemModel[] | null;
+  onTypeFilterChange: (filters: CollectionItemModel[] | null) => void;
   visibleColumns?: CollectionContentTableColumn[];
   onClick: (item: CollectionItem) => void;
 }>;
@@ -135,7 +139,13 @@ const CollectionNoResults = ({ hasSearchText }: { hasSearchText: boolean }) => (
   </Box>
 );
 
-export const CollectionItemsTable = ({
+export const CollectionItemsTable = (props: CollectionItemsTableProps) => (
+  // Remounting per collection starts search, type filter, sorting, and page
+  // over for the new collection before its first request, with no effects.
+  <CollectionItemsTableForCollection key={props.collectionId} {...props} />
+);
+
+const CollectionItemsTableForCollection = ({
   bookmarks,
   collection,
   collectionId,
@@ -154,19 +164,20 @@ export const CollectionItemsTable = ({
   selected,
   selectOnlyTheseItems,
   toggleItem,
+  typeFilter,
+  onTypeFilterChange,
   visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
   onClick,
 }: CollectionItemsTableProps) => {
-  const [search, setSearch] = useState({ collectionId, value: "" });
-  const searchText = search.collectionId === collectionId ? search.value : "";
-  const [filterSelection, setFilterSelection] = useState<{
-    collectionId?: CollectionId;
-    value: CollectionItemModel[] | null;
-  }>({ collectionId, value: null });
-  const selectedFilters =
-    filterSelection.collectionId === collectionId
-      ? filterSelection.value
-      : null;
+  const [searchText, setSearchText] = useState("");
+  const [selectedFilters, setSelectedFilters] = useUncontrolled<
+    CollectionItemModel[] | null
+  >({
+    value: typeFilter,
+    defaultValue: null,
+    finalValue: null,
+    onChange: onTypeFilterChange,
+  });
   const debouncedSearchText = useDebouncedValue(
     searchText,
     SEARCH_DEBOUNCE_DURATION,
@@ -180,14 +191,15 @@ export const CollectionItemsTable = ({
     SortingOptions<ListCollectionItemsSortColumn>
   >(() => getDefaultSortingOptions(collection));
 
-  const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
-    usePagination();
+  const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
 
-  useEffect(() => {
-    resetPage();
-    setSearch({ collectionId, value: "" });
-    setFilterSelection({ collectionId, value: null });
-  }, [collectionId, resetPage]);
+  // The filter can also change from outside (the info panel's Contents counts),
+  // so the page restarts wherever the value changes, adjusted during render.
+  const [pagedFilters, setPagedFilters] = useState(selectedFilters);
+  if (pagedFilters !== selectedFilters) {
+    setPagedFilters(selectedFilters);
+    setPage(0);
+  }
 
   useEffect(() => {
     if (previousTrimmedSearchText === "" && trimmedSearchText.length > 0) {
@@ -197,10 +209,10 @@ export const CollectionItemsTable = ({
 
   const handleSearchTextChange = useCallback(
     (value: string) => {
-      setSearch({ collectionId, value });
+      setSearchText(value);
       setPage(0);
     },
-    [collectionId, setPage],
+    [setPage],
   );
 
   const handleSelectedFiltersChange = useCallback(
@@ -208,10 +220,9 @@ export const CollectionItemsTable = ({
       if (selectedFilters == null && nextFilters != null) {
         trackCollectionItemsFiltered({ collectionId, filter: "type" });
       }
-      setFilterSelection({ collectionId, value: nextFilters });
-      setPage(0);
+      setSelectedFilters(nextFilters);
     },
-    [collectionId, selectedFilters, setPage],
+    [collectionId, selectedFilters, setSelectedFilters],
   );
 
   const handleItemsSortingChange = useCallback(
@@ -222,28 +233,27 @@ export const CollectionItemsTable = ({
     [setPage],
   );
 
-  // Dashboard questions are only ever listed in the SDK and in the trash.
-  const showDashboardQuestionsInList =
-    (isEmbeddingSdk() || isRootTrashCollection(collection)) &&
-    showDashboardQuestions;
+  const scope = getCollectionItemsScope(collection, {
+    models,
+    showDashboardQuestions,
+  });
 
   // `currentData` is per collection, so a previous collection's metadata never drives this one's toolbar.
   const { currentData: itemsMetadata } = useGetCollectionItemsMetadataQuery(
     collectionId === undefined || !showFilterBar
       ? skipToken
-      : {
-          id: collectionId,
-          models,
-          "show-dashboard-questions": showDashboardQuestionsInList,
-        },
+      : { id: collectionId, ...scope },
   );
   const availableModels = itemsMetadata?.available_models ?? [];
   const totalItems = itemsMetadata?.total_items ?? 0;
 
+  // An applied type filter keeps the toolbar visible in small collections and
+  // after archiving items, so it can always be seen and cleared.
   const showToolbar =
-    Boolean(showFilterBar) && totalItems > FILTERS_VISIBILITY_THRESHOLD;
-  // The toolbar can disappear while a search or type filter is active, e.g. after
-  // archiving items; ignore the leftover selection rather than filtering a bare list.
+    Boolean(showFilterBar) &&
+    (totalItems > FILTERS_VISIBILITY_THRESHOLD || selectedFilters != null);
+  // The toolbar can disappear while a search is active, e.g. after archiving
+  // items; ignore the leftover search rather than filtering a bare list.
   const appliedSearchText = showToolbar ? trimmedSearchText : "";
   const appliedFilters = showToolbar ? selectedFilters : null;
 
@@ -274,10 +284,10 @@ export const CollectionItemsTable = ({
           ? skipToken
           : {
               id: collectionId,
-              models: appliedFilters ?? models,
+              ...scope,
+              models: appliedFilters ?? scope.models,
               limit: pageSize,
               offset: pageSize * page,
-              "show-dashboard-questions": showDashboardQuestionsInList,
               ...toItemsSortingParams(itemsSorting),
               ...(appliedSearchText.length > 0 ? { q: appliedSearchText } : {}),
             }

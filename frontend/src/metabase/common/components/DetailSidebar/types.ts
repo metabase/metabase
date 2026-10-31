@@ -1,9 +1,12 @@
 import type { ReactNode } from "react";
 
+import type { StackProps } from "metabase/ui";
+
 export type SidebarSectionProps = {
   title: string;
   titleAside?: ReactNode;
   children: ReactNode;
+  gap?: StackProps["gap"];
 };
 
 export type DetailsRowProps = {

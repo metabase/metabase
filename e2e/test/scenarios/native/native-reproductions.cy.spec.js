@@ -644,12 +644,9 @@ describe("issue 38176", () => {
 
       cy.wait("@updateQuestion");
       cy.wait("@cardQuery");
-      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/added a description/i);
       cy.findByTestId("question-revert-button").click();
       cy.wait("@cardQuery");
-
-      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i, {
         timeout: 10000,
       }).should("be.visible");

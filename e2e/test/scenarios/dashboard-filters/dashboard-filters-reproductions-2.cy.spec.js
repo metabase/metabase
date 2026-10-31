@@ -1856,7 +1856,6 @@ describe("issue #66670", () => {
             cy.intercept("POST", "/api/revision/revert").as("revertDashboard");
             H.openDashboardInfoSidebar();
             H.sidesheet().within(() => {
-              cy.findByRole("tab", { name: "History" }).click();
               cy.wait("@revisionHistory");
               // Click revert on the version that added the filter with Question B source
               cy.findByTestId("dashboard-history-list")

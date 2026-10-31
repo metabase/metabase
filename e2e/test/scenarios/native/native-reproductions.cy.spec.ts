@@ -1014,7 +1014,6 @@ describe("issue 51717", () => {
       .and("contain", "Info");
 
     cy.log("Make sure info sidebar is interactive (on top of the stack)");
-    cy.get("@infoSidebar").findByRole("tab", { name: "History" }).click();
     cy.get("@infoSidebar").should("contain", "You created this");
   });
 });

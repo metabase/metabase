@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { screen } from "__support__/ui";
 import type { Card } from "metabase-types/api";
 import {
@@ -40,7 +42,7 @@ describe("QuestionInfoSidebar > premium", () => {
         ],
       });
       await setupEnterprise({ card });
-      expect(screen.getByText(/verified this/)).toBeInTheDocument();
+      expect(screen.getByText("You verified this")).toBeInTheDocument();
     });
 
     it("should not show the verification badge for unverified content", async () => {
@@ -70,7 +72,11 @@ describe("QuestionInfoSidebar > premium", () => {
       });
       await setupEnterprise({ card });
 
-      expect(screen.getByText("Entity ID")).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Entity ID info" }),
+      );
+
+      expect(await screen.findByText("This question")).toBeInTheDocument();
       expect(screen.getByText("jenny8675309")).toBeInTheDocument();
     });
   });
@@ -85,45 +91,23 @@ describe("QuestionInfoSidebar > premium", () => {
     expect(screen.queryByText("History")).not.toBeInTheDocument();
   });
 
-  describe("tabs", () => {
-    describe("for non-admins", () => {
-      it("should show tabs for Overview, History, and Relationships, and no Insights link", async () => {
-        setupEnterprise({});
-        const tabs = await screen.findAllByRole("tab");
-        expect(tabs).toHaveLength(3);
-        expect(tabs.map((tab) => tab.textContent)).toEqual([
-          "Overview",
-          "History",
-          "Relationships",
-        ]);
-        expect(
-          screen.queryByRole("link", { name: "Insights" }),
-        ).not.toBeInTheDocument();
-      });
+  describe("insights action", () => {
+    it("links non-admins with usage analytics access", async () => {
+      await setupEnterprise({});
+
+      expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("link", { name: "Insights" }),
+      ).toBeInTheDocument();
     });
 
-    describe("for admins", () => {
-      beforeEach(() => {
-        jest.useFakeTimers();
-      });
+    it("links admins to usage analytics", async () => {
+      await setupEnterprise({ user: { is_superuser: true } });
 
-      afterEach(() => {
-        jest.useRealTimers();
-      });
-
-      it("should show tabs for Overview, History, and Relationships, and a link for Insights", async () => {
-        setupEnterprise({ user: { is_superuser: true } });
-        const tabs = await screen.findAllByRole("tab");
-        expect(tabs).toHaveLength(3);
-        expect(tabs.map((tab) => tab.textContent)).toEqual([
-          "Overview",
-          "History",
-          "Relationships",
-        ]);
-        expect(
-          await screen.findByRole("link", { name: /Insights/ }),
-        ).toBeInTheDocument();
-      });
+      expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("link", { name: "Insights" }),
+      ).toBeInTheDocument();
     });
   });
 });

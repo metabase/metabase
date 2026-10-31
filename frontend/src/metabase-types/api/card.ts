@@ -82,7 +82,8 @@ export interface Card<
   collection?: Collection | null;
   collection_id: CollectionId | null;
   collection_position: number | null;
-  dashboard: CardDashboardInfo | null;
+  /** Hydrated by the card endpoints only; a dashcard's card has no such key */
+  dashboard?: CardDashboardInfo | null;
   dashboard_id: DashboardId | null;
   document_id?: DocumentId | null;
   document?: CardDocumentInfo | null;

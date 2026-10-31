@@ -201,20 +201,17 @@ describe("issue 12581", () => {
 
     cy.findByTestId("revision-history-button").click();
     H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
       // Make sure sidebar opened and the history loaded
       cy.findByText(/You created this/i);
 
       cy.findByTestId("question-revert-button").click(); // Revert to the first revision
     });
 
-    // Reverting reloads the question, which re-runs its query and resets the
-    // info sidesheet to the Overview tab. Wait for that reload to settle before
-    // re-reading the History tab, otherwise the tab switch races the reset.
+    // Reverting reloads the question, which re-runs its query. Wait for that
+    // reload to settle before re-reading the history.
     cy.wait("@cardQuery");
 
     H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/You reverted to an earlier version/i);
     });
 

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui";
 
 import { SidesheetSubPage } from "./SidesheetSubPage";
 
@@ -83,7 +83,7 @@ describe("Sidesheet", () => {
 
     const closeButton = screen.getByLabelText("Close");
     await userEvent.click(closeButton);
-    expect(closeSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
   });
 
   it("should fire onClose when modal backdrop is clicked", async () => {
@@ -103,7 +103,7 @@ describe("Sidesheet", () => {
 
     const backdrop = screen.getByTestId("modal-overlay");
     await userEvent.click(backdrop);
-    expect(closeSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
   });
 
   it("should fire onBack when back button is clicked", async () => {
