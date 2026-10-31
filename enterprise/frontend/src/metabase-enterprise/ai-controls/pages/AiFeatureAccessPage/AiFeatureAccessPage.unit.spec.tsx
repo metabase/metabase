@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { findRequests } from "__support__/server-mocks";
 import { setupGroupsEndpoint } from "__support__/server-mocks/group";
 import {
   setupMetabotGroupPermissionsEndpoint,
@@ -96,6 +97,13 @@ function getPermissionRow(groupName: string) {
   return screen.getByRole("row", {
     name: new RegExp(`${groupName} permissions`),
   });
+}
+
+async function getPermissionUpdateBodies(): Promise<unknown[]> {
+  const requests = await findRequests("PUT");
+  return requests
+    .filter(({ url }) => url.endsWith("/api/ee/ai-controls/permissions"))
+    .map(({ body }): unknown => body);
 }
 
 function getSwitchModeButton() {
@@ -277,6 +285,43 @@ describe("AiFeatureAccessPage", () => {
         expect(checkbox).toBeEnabled();
         expect(checkbox).not.toBeChecked();
       });
+    });
+
+    it("saves the All Users permissions when metabot is toggled off and on in simple mode", async () => {
+      setup();
+      await screen.findByTestId("ai-feature-access-table");
+
+      const allUsersRow = getPermissionRow("All Users");
+      const metabotSwitch = within(allUsersRow).getByRole("switch");
+      await waitFor(() => expect(metabotSwitch).toBeChecked());
+
+      await userEvent.click(metabotSwitch);
+      await waitFor(async () =>
+        expect(await getPermissionUpdateBodies()).toHaveLength(1),
+      );
+      expect((await getPermissionUpdateBodies())[0]).toEqual({
+        permissions: expect.arrayContaining(
+          createMockMetabotGroupPermissions(allUsersGroup.id, {
+            [AIToolKey.Metabot]: "no",
+            [AIToolKey.ChatAndNLQ]: "no",
+            [AIToolKey.SQLGeneration]: "no",
+            [AIToolKey.OtherTools]: "no",
+          }),
+        ),
+      });
+
+      await userEvent.click(metabotSwitch);
+      await waitFor(async () =>
+        expect(await getPermissionUpdateBodies()).toHaveLength(2),
+      );
+      expect((await getPermissionUpdateBodies())[1]).toEqual({
+        permissions: expect.arrayContaining(
+          createMockMetabotGroupPermissions(allUsersGroup.id),
+        ),
+      });
+      within(allUsersRow)
+        .getAllByRole("checkbox")
+        .forEach((checkbox) => expect(checkbox).toBeChecked());
     });
 
     it("auto-enables metabot when a tool is checked while metabot is off", async () => {
