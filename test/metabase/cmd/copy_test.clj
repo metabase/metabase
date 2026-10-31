@@ -42,6 +42,7 @@
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
     :model/MetabotMessage
+    :model/ImpersonationQueryCache
     :model/MetabotPermissions
     :model/PythonLibrary
     :model/PremiumFeaturesCache
