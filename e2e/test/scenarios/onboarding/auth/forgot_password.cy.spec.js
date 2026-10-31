@@ -3,7 +3,6 @@ import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 
-// The reset must use a password the user does not already have.
 const NEW_PASSWORD = `new-${admin.password}`;
 
 describe("scenarios > auth > password", { tags: "@external" }, () => {
