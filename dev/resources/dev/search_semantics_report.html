@@ -14,12 +14,22 @@
     h3 { font-size: 1rem; margin-bottom: 10px; }
     .muted { color: #5b6d83; }
     .intro { margin-bottom: 22px; }
-    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+    .view-label { margin: 26px 0 8px; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #5b6d83; }
+    .view-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 22px; }
+    .view-card { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; text-align: left; border: 2px solid #c8d4e2; background: white; color: #172334; border-radius: 12px; padding: 14px 16px; }
+    .view-card:hover { border-color: #7fa3cf; }
+    .view-card strong { display: block; font-size: 1.02rem; }
+    .view-card .view-sub { display: block; color: #5b6d83; font-size: .88rem; margin-top: 3px; }
+    .view-dot { width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 2px solid #8a99ab; }
+    .view-card[aria-selected="true"] { border-color: #2f6fb3; background: #eef4fb; box-shadow: 0 0 0 3px #2f6fb326; }
+    .view-card[aria-selected="true"] .view-dot { border-color: #2f6fb3; background: radial-gradient(circle, #2f6fb3 45%, transparent 50%); }
+    .explore-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin: 8px 0 12px; }
+    .explore-head h2 { margin: 0; }
+    .mini-switch { display: inline-flex; border: 2px solid #2f6fb3; border-radius: 10px; overflow: hidden; }
+    .mini-switch .tab { border: 0; border-radius: 0; background: white; color: #173c71; padding: 6px 14px; font-weight: 600; font-size: .9rem; }
+    .mini-switch .tab[aria-selected="true"] { background: #2f6fb3; color: white; }
     button, input, select { font: inherit; }
     button { cursor: pointer; }
-    .tab { border: 1px solid #c8d4e2; background: white; color: #29405c; border-radius: 9px; padding: 9px 15px; }
-    .tab[aria-selected="true"] { background: #173c71; border-color: #173c71; color: white; }
-    .corpus-description { margin: -8px 0 20px; }
     .card { background: white; border: 1px solid #dce5ef; border-radius: 14px; box-shadow: 0 2px 9px #213f6610; padding: 20px; }
     .support-guide { margin: 18px 0 26px; }
     .support-table { min-width: 680px; table-layout: fixed; }
@@ -59,11 +69,15 @@
     .explorer { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 14px; align-items: start; }
     /* The case stays in view while the list scrolls with the page, so the list needs no scrollbar of its own. */
     #detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
-    .themes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
-    .theme-chip { border: 1px solid #c8d4e2; background: white; color: #29405c; border-radius: 999px; padding: 5px 12px; font-size: .88rem; }
-    .theme-chip .count { color: #8a99ab; margin-left: 5px; font-variant-numeric: tabular-nums; }
-    .theme-chip[aria-pressed="true"] { background: #173c71; border-color: #173c71; color: white; }
-    .theme-chip[aria-pressed="true"] .count { color: #c9d8ec; }
+    .themes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; }
+    .themes .themes-label { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #5b6d83; margin-right: 4px; }
+    .theme-chip { border: 1px solid transparent; background: #e9eef4; color: #29405c; border-radius: 999px; padding: 4px 12px; font-size: .86rem; }
+    .theme-chip:hover { background: #dce5ef; }
+    .theme-chip .count { color: #7a8a9d; margin-left: 6px; font-size: .8rem; font-variant-numeric: tabular-nums; }
+    .theme-chip[aria-pressed="true"] { background: #2f6fb3; color: white; font-weight: 650; box-shadow: 0 1px 4px #2f6fb366; }
+    .theme-chip[aria-pressed="true"]::before { content: "✓ "; }
+    .theme-chip[aria-pressed="true"] .count { color: #d6e5f6; }
+    .themes .partition-note { color: #7a8a9d; font-size: .8rem; margin-left: 6px; }
     .theme-description { margin: 0 0 14px; font-size: .9rem; min-height: 1.4em; }
     .list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
     .list-head .note { margin: 0; }
@@ -81,8 +95,12 @@
     .sort-button[aria-pressed="true"]::after { margin-left: 6px; font-size: .68rem; }
     .sort-button[aria-pressed="true"][data-direction="asc"]::after { content: "▲"; }
     .sort-button[aria-pressed="true"][data-direction="desc"]::after { content: "▼"; }
-    details.score-guide { margin: -8px 0 12px; font-size: .88rem; }
-    details.score-guide > summary { cursor: pointer; color: #29405c; font-weight: 600; }
+    details.score-guide { margin: 0 0 14px; font-size: .88rem; }
+    details.score-guide > summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; color: #245ea3; font-weight: 650; border: 1px solid #a9c7ec; background: #eef4fb; border-radius: 999px; padding: 4px 12px 4px 8px; }
+    details.score-guide > summary::-webkit-details-marker { display: none; }
+    details.score-guide > summary::before { content: "i"; display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: #2f6fb3; color: white; font: 700 .72rem/1 Georgia, serif; }
+    details.score-guide[open] > summary { background: #2f6fb3; border-color: #2f6fb3; color: white; }
+    details.score-guide[open] > summary::before { background: white; color: #2f6fb3; }
     details.score-guide p { margin: 6px 0 0; max-width: 90ch; }
     .case-list { display: grid; gap: 1px; }
     .case-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; width: 100%; padding: 5px 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; color: inherit; }
@@ -186,17 +204,29 @@
     .weights output { font-variant-numeric: tabular-nums; color: #5b6d83; text-align: right; }
     details.weights-panel .note { max-width: 72ch; }
     @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } #detail { position: static; max-height: none; } }
-    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid, .view-switch { grid-template-columns: 1fr; } }
     @media (prefers-color-scheme: dark) {
       :root { color-scheme: dark; background: #101722; color: #e4edf7; }
       .muted, .note, .support-notes, .metric .label, .case-button .focus, .empty { color: #aabbd0; }
       .support-notes a { color: #91c1ff; }
       .card { background: #1b2839; border-color: #354963; box-shadow: none; }
-      .tab, .case-filter, .theme-chip { background: #1b2839; color: #e4edf7; border-color: #53677e; }
+      .case-filter { background: #1b2839; color: #e4edf7; border-color: #53677e; }
+      .view-label, .themes .themes-label, .themes .partition-note { color: #aabbd0; }
+      .view-card { background: #1b2839; color: #e4edf7; border-color: #3d5068; }
+      .view-card .view-sub { color: #aabbd0; }
+      .view-card[aria-selected="true"] { background: #1f3550; border-color: #6aa8ef; box-shadow: 0 0 0 3px #6aa8ef33; }
+      .view-card[aria-selected="true"] .view-dot { border-color: #6aa8ef; background: radial-gradient(circle, #6aa8ef 45%, transparent 50%); }
+      .mini-switch { border-color: #6aa8ef; }
+      .mini-switch .tab { background: #1b2839; color: #cfe2fa; }
+      .mini-switch .tab[aria-selected="true"] { background: #4f8fd6; color: white; }
+      details.score-guide > summary { background: #1f3550; border-color: #3d5f88; color: #cfe2fa; }
+      details.score-guide[open] > summary { background: #4f8fd6; border-color: #4f8fd6; color: white; }
+      .theme-chip { background: #263a52; color: #e4edf7; }
+      .theme-chip:hover { background: #2f4763; }
+      .theme-chip[aria-pressed="true"] { background: #4f8fd6; color: white; box-shadow: 0 1px 6px #0008; }
       .sort-button, .group-head, .theme-chip .count { color: #aabbd0; }
       .group-head:hover { color: #e4edf7; }
-      .theme-chip[aria-pressed="true"] { background: #2e67a8; border-color: #2e67a8; color: white; }
-      .tab[aria-selected="true"] { background: #2e67a8; border-color: #2e67a8; color: white; }
+
       .sort-button[aria-pressed="true"] { background: #2e67a8; border-color: #2e67a8; color: white; }
       th, td { border-color: #34465c; }
       th, .support-table tbody th, .engine-table tbody th { color: #b7c9de; }
@@ -208,7 +238,6 @@
       .case-button:hover { background: #263b52; }
       .case-button[aria-current="true"] { background: #25476c; border-color: #6d9cd4; }
       .case-button .score { color: #91c1ff; }
-      details.score-guide > summary { color: #e4edf7; }
       .query-table .sub, .query-table .same { color: #aabbd0; }
       .query-table .missing { color: #ff929d; }
       .query-table .extra-hits { color: #ffc26b; }
@@ -345,11 +374,11 @@
   </section>
   </details>
 
-  <nav class="tabs" aria-label="Corpus">
-    <button class="tab" data-corpus="sameQuery" aria-selected="true">Same query for every engine</button>
-    <button class="tab" data-corpus="translations" aria-selected="false">Same goal, adapted queries</button>
+  <p class="view-label" id="view-label">Choose a view</p>
+  <nav class="view-switch" aria-labelledby="view-label">
+    <button class="tab view-card" data-corpus="sameQuery" aria-selected="true"><span class="view-dot" aria-hidden="true"></span><span><strong>Same query for every engine</strong><span class="view-sub" id="view-sub-sameQuery"></span></span></button>
+    <button class="tab view-card" data-corpus="translations" aria-selected="false"><span class="view-dot" aria-hidden="true"></span><span><strong>Same goal, adapted queries</strong><span class="view-sub" id="view-sub-translations"></span></span></button>
   </nav>
-  <p class="corpus-description muted" id="corpus-description" aria-live="polite">Every engine receives the same query. Differences show how each interprets it.</p>
 
   <section class="summary-grid" id="metrics" aria-label="Corpus summary"></section>
   <section class="tables">
@@ -382,11 +411,17 @@
     </details>
   </section>
 
-  <h2>Explore cases</h2>
+  <div class="explore-head">
+    <h2>Explore cases</h2>
+    <div class="mini-switch" role="group" aria-label="View">
+      <button class="tab" type="button" data-corpus="sameQuery" aria-selected="true">Same query</button>
+      <button class="tab" type="button" data-corpus="translations" aria-selected="false">Adapted goals</button>
+    </div>
+  </div>
   <details class="score-guide muted">
-    <summary>What agreement and conformance mean</summary>
-    <p><strong>Agreement</strong> describes how the engines' result sets relate, ignoring order; it says nothing about which is right. “All agree” means all five return the same cards; “Four agree” means one engine differs; “Three and two agree” means two groups; “Three agree” means a group of three and two outliers; “Two pairs agree” and “One pair agrees” count matching pairs; “All differ” means no two engines match.</p>
-    <p id="conformance-guide" hidden><strong>Conformance</strong> compares each engine with the intended results declared for the comparison: how many return exactly those results? Those engines are highlighted in the case detail. The intended results describe what the user most likely meant, so it is possible for no engine to achieve them. Sorting by conformance breaks ties by mean F1, which gives partial credit for near misses.</p>
+    <summary>What the labels on each case mean</summary>
+    <p><strong>Do the engines return the same cards?</strong> Each case is labelled by how the five engines' results group, ignoring order. “All 5 agree” means identical results. “4 of 5 agree” means one engine differs. “Split 3 and 2” means two groups. “3 agree, 2 differ” means a group of three, plus two engines that each return something else. “Two pairs agree” and “Only one pair agrees” count engines with identical results. “All 5 differ” means no two match. None of this says which engine is right.</p>
+    <p id="conformance-guide" hidden><strong>How many engines get it right?</strong> Each goal names the cards the user most likely wants. “2 of 5 correct” counts the engines that return exactly those cards, and the case highlights them. It can be none, since no engine has to manage it. Sorting by this breaks ties by mean F1, which gives partial credit for near misses.</p>
   </details>
   <div class="themes" id="themes" role="group" aria-label="Focus on a theme"></div>
   <p class="theme-description muted" id="theme-description" aria-live="polite"></p>
@@ -396,8 +431,8 @@
         <p class="note" id="list-count"></p>
         <div class="sort-toggle" role="group" aria-label="Sort cases; click the selected sort to reverse direction">
           <button class="sort-button" type="button" data-sort="name" data-direction="asc" aria-pressed="true" aria-label="Sort by name ascending">Name</button>
-          <button class="sort-button" type="button" data-sort="agreement" data-direction="desc" aria-pressed="false" aria-label="Sort by agreement descending">Agreement</button>
-          <button class="sort-button" type="button" data-sort="conformance" data-direction="desc" aria-pressed="false" aria-label="Sort by conformance descending" hidden>Conformance</button>
+          <button class="sort-button" type="button" data-sort="agreement" data-direction="desc" aria-pressed="false" aria-label="Sort by agreement descending" title="Sort by how many engines return the same cards">Same results</button>
+          <button class="sort-button" type="button" data-sort="conformance" data-direction="desc" aria-pressed="false" aria-label="Sort by conformance descending" title="Sort by how many engines return the correct cards" hidden>Correct</button>
         </div>
       </div>
       <div class="case-list" id="case-list"></div>
@@ -419,11 +454,11 @@
     const percent = value => `${(100 * value).toFixed(1)}%`;
     const table = (headers, rows) => `<table><thead><tr>${headers.map(h => typeof h === "string" ? `<th>${escape(h)}</th>` : `<th class="${h.className}">${escape(h.text)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     // Keyed by matching engine pairs; with five engines only these groupings are possible.
-    const agreementLabels = { 10: "All agree", 6: "Four agree", 4: "Three and two agree", 3: "Three agree", 2: "Two pairs agree", 1: "One pair agrees", 0: "All differ" };
+    const agreementLabels = { 10: "All 5 agree", 6: "4 of 5 agree", 4: "Split 3 and 2", 3: "3 agree, 2 differ", 2: "Two pairs agree", 1: "Only one pair agrees", 0: "All 5 differ" };
     const agreement = item => agreementLabels[item.matchingPairs];
     const conformance = item => {
       const count = item.conforming.length;
-      return count === data.engines.length ? "All conform" : count === 0 ? "None conform" : `${count} conform`;
+      return count === 0 ? "None correct" : `${count} of ${data.engines.length} correct`;
     };
     const agreementTitle = item => `${item.matchingPairs} of ${data.pairCount} engine pairs return identical results`;
     const conformanceTitle = item => `${item.conforming.length} of ${data.engines.length} engines return the correct results; mean F1 ${percent(item.meanF1)}`;
@@ -485,7 +520,9 @@
       const all = themes();
       if (state.theme !== "all" && !all.some(theme => theme.id === state.theme)) state.theme = "all";
       const chip = (id, label, count) => `<button type="button" class="theme-chip" data-theme="${escape(id)}" aria-pressed="${state.theme === id}">${escape(label)}<span class="count">${count}</span></button>`;
-      $("themes").innerHTML = chip("all", "All", current().cases.length) + all.map(theme => chip(theme.id, theme.label, theme.cases.length)).join("");
+      // Every case has exactly one theme, so the counts add up to All; the note says so rather than leaving readers to guess.
+      const noun = state.corpus === "translations" ? "goal" : "case";
+      $("themes").innerHTML = `<span class="themes-label">Focus on</span>${chip("all", "All", current().cases.length)}${all.map(theme => chip(theme.id, theme.label, theme.cases.length)).join("")}<span class="partition-note">Each ${noun} is in exactly one theme.</span>`;
       const chosen = all.find(theme => theme.id === state.theme);
       $("theme-description").textContent = chosen ? chosen.description : `Pick a theme to narrow the list, or browse every ${state.corpus === "translations" ? "goal" : "case"} grouped by theme.`;
       for (const button of $("themes").querySelectorAll("button")) {
@@ -530,9 +567,8 @@
 
     function renderSummary() {
       const summary = current().summary;
-      $("corpus-description").textContent = state.corpus === "sameQuery"
-        ? "Every engine receives the same query. Differences show how each interprets it."
-        : "Each goal names the cards a user wants. Engines may get an adapted query, using words a user could think of without knowing which cards exist, and are scored against those cards.";
+      $("view-sub-sameQuery").textContent = `${data.sameQuery.cases.length} scenarios. Every engine gets the same query, so differences show how each reads it.`;
+      $("view-sub-translations").textContent = `${data.translations.cases.length} goals. Each engine gets the query a user would type for it, scored against the cards the user wants.`;
       $("metrics").innerHTML = [
         [summary.count, state.corpus === "sameQuery" ? "Scenarios" : "Goals"],
         [summary.allEqual, "All engines agree"],
