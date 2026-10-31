@@ -3,8 +3,10 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.providers.emailed-secret :as emailed-secret]
    [metabase.test :as mt]
+   [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -57,3 +59,27 @@
               expires-at (get-in auth-identity [:credentials :expires_at])]
           (is (inst? expires-at))
           (is (t/after? expires-at before-create)))))))
+
+(deftest authenticate-runs-one-bcrypt-check-for-every-token-test
+  (testing "authenticate checks bcrypt once for every token, so timing does not show which users have a pending reset"
+    (mt/with-temp [:model/User {pending-id :id} {}
+                   :model/User {expired-id :id} {}
+                   :model/User {idle-id :id} {}]
+      (let [valid-token (emailed-secret/create-password-reset! pending-id)
+            _           (emailed-secret/create-password-reset! expired-id)
+            expired-ai  (t2/select-one :model/AuthIdentity :user_id expired-id :provider "emailed-secret-password-reset")
+            _           (t2/update! :model/AuthIdentity :id (:id expired-ai)
+                                    {:credentials (assoc (:credentials expired-ai) :expires_at (t/minus (t/instant) (t/days 1)))})
+            checks      (atom 0)
+            bcrypt      u.password/bcrypt-verify]
+        (mt/with-dynamic-fn-redefs [u.password/bcrypt-verify (fn [token hash] (swap! checks inc) (bcrypt token hash))]
+          (doseq [[label token success?] [["malformed"          "not-a-token"                      false]
+                                          ["no pending reset"   (str idle-id "_" (random-uuid))    false]
+                                          ["wrong secret"       (str pending-id "_" (random-uuid)) false]
+                                          ["expired"            (str expired-id "_" (random-uuid)) false]
+                                          ["valid"              valid-token                        true]]]
+            (testing label
+              (reset! checks 0)
+              (is (= success?
+                     (:success? (auth-identity/authenticate :provider/emailed-secret-password-reset {:token token}))))
+              (is (= 1 @checks)))))))))

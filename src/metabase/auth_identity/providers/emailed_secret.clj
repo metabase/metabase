@@ -59,15 +59,16 @@
   - `:invalid` if the token doesn't match the stored hash"
   [token :- :string
    credentials :- ::auth-identity.schema/auth-identity.credentials.token]
-  (cond
-    (:consumed_at credentials)
-    :consumed
-    (t/after? (t/instant) (:expires_at credentials))
-    :expired
-    (u.password/bcrypt-verify token (:token_hash credentials))
-    :valid
-    :else
-    :invalid))
+  (let [matches? (u.password/bcrypt-verify token (:token_hash credentials))]
+    (cond
+      (:consumed_at credentials)
+      :consumed
+      (t/after? (t/instant) (:expires_at credentials))
+      :expired
+      matches?
+      :valid
+      :else
+      :invalid)))
 
 (mu/defn mark-token-consumed :- ::auth-identity.schema/auth-identity
   "Marks a token as consumed by setting the `:consumed_at` timestamp in the auth-identity's credentials.
@@ -168,12 +169,14 @@
               {:success? false
                :error :invalid-token
                :message "Reset token is invalid"}))
-          {:success? false
-           :error :no-auth-identity
-           :message "No reset token found for this user"})
-        {:success? false
-         :error :invalid-token
-         :message "Invalid token format"})
+          (do (u.password/do-useless-hash)
+              {:success? false
+               :error :no-auth-identity
+               :message "No reset token found for this user"}))
+        (do (u.password/do-useless-hash)
+            {:success? false
+             :error :invalid-token
+             :message "Invalid token format"}))
       (catch Exception e
         (log/errorf "Unexpected error during reset token verification: %s" (ex-message e))
         {:success? false
