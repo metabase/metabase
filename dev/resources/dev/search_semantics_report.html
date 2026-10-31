@@ -71,12 +71,15 @@
     #detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
     .themes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; }
     .themes .themes-label { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #5b6d83; margin-right: 4px; }
-    .theme-chip { border: 1px solid transparent; background: #e9eef4; color: #29405c; border-radius: 999px; padding: 4px 12px; font-size: .86rem; }
-    .theme-chip:hover { background: #dce5ef; }
-    .theme-chip .count { color: #7a8a9d; margin-left: 6px; font-size: .8rem; font-variant-numeric: tabular-nums; }
-    .theme-chip[aria-pressed="true"] { background: #2f6fb3; color: white; font-weight: 650; box-shadow: 0 1px 4px #2f6fb366; }
-    .theme-chip[aria-pressed="true"]::before { content: "✓ "; }
-    .theme-chip[aria-pressed="true"] .count { color: #d6e5f6; }
+    /* Each theme has its own color (--c). The marker sits in a fixed slot, a dot when off and a check when on,
+       so selecting a chip never changes its width. */
+    .theme-chip { --c: #4b5b70; position: relative; border: 1px solid color-mix(in srgb, var(--c) 32%, transparent); background: color-mix(in srgb, var(--c) 10%, white); color: color-mix(in srgb, var(--c) 80%, black); border-radius: 999px; padding: 4px 12px 4px 25px; font-size: .86rem; }
+    .theme-chip::before { content: ""; position: absolute; left: 10px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--c); }
+    .theme-chip:hover { background: color-mix(in srgb, var(--c) 18%, white); }
+    .theme-chip .count { opacity: .7; margin-left: 6px; font-size: .8rem; font-variant-numeric: tabular-nums; }
+    .theme-chip[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: white; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 28%, transparent); }
+    .theme-chip[aria-pressed="true"]::before { content: "✓"; width: auto; height: auto; margin-top: -.55em; background: none; color: white; font-size: .78rem; line-height: 1.1; left: 9px; }
+    .group-head > span:first-child::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--c, #8a99ab); }
     .themes .partition-note { color: #7a8a9d; font-size: .8rem; margin-left: 6px; }
     .theme-description { margin: 0 0 14px; font-size: .9rem; min-height: 1.4em; }
     .list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
@@ -221,10 +224,13 @@
       .mini-switch .tab[aria-selected="true"] { background: #4f8fd6; color: white; }
       details.score-guide > summary { background: #1f3550; border-color: #3d5f88; color: #cfe2fa; }
       details.score-guide[open] > summary { background: #4f8fd6; border-color: #4f8fd6; color: white; }
-      .theme-chip { background: #263a52; color: #e4edf7; }
-      .theme-chip:hover { background: #2f4763; }
-      .theme-chip[aria-pressed="true"] { background: #4f8fd6; color: white; box-shadow: 0 1px 6px #0008; }
-      .sort-button, .group-head, .theme-chip .count { color: #aabbd0; }
+      .theme-chip { background: color-mix(in srgb, var(--c) 20%, #1b2839); color: color-mix(in srgb, var(--c) 40%, white); border-color: color-mix(in srgb, var(--c) 50%, transparent); }
+      .theme-chip::before { background: color-mix(in srgb, var(--c) 65%, white); }
+      .theme-chip:hover { background: color-mix(in srgb, var(--c) 32%, #1b2839); }
+      .theme-chip[aria-pressed="true"] { background: var(--c); border-color: color-mix(in srgb, var(--c) 70%, white); color: white; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 40%, transparent); }
+      .theme-chip[aria-pressed="true"]::before { background: none; }
+      .group-head > span:first-child::before { background: color-mix(in srgb, var(--c, #8a99ab) 65%, white); }
+      .sort-button, .group-head { color: #aabbd0; }
       .group-head:hover { color: #e4edf7; }
 
       .sort-button[aria-pressed="true"] { background: #2e67a8; border-color: #2e67a8; color: white; }
@@ -377,7 +383,7 @@
   <p class="view-label" id="view-label">Choose a view</p>
   <nav class="view-switch" aria-labelledby="view-label">
     <button class="tab view-card" data-corpus="sameQuery" aria-selected="true"><span class="view-dot" aria-hidden="true"></span><span><strong>Same query for every engine</strong><span class="view-sub" id="view-sub-sameQuery"></span></span></button>
-    <button class="tab view-card" data-corpus="translations" aria-selected="false"><span class="view-dot" aria-hidden="true"></span><span><strong>Adapted to engine semantics</strong><span class="view-sub" id="view-sub-translations"></span></span></button>
+    <button class="tab view-card" data-corpus="translations" aria-selected="false"><span class="view-dot" aria-hidden="true"></span><span><strong>Best query for each engine</strong><span class="view-sub" id="view-sub-translations"></span></span></button>
   </nav>
 
   <section class="summary-grid" id="metrics" aria-label="Corpus summary"></section>
@@ -415,7 +421,7 @@
     <h2>Explore cases</h2>
     <div class="mini-switch" role="group" aria-label="View">
       <button class="tab" type="button" data-corpus="sameQuery" aria-selected="true">Same query</button>
-      <button class="tab" type="button" data-corpus="translations" aria-selected="false">Adapted to engine semantics</button>
+      <button class="tab" type="button" data-corpus="translations" aria-selected="false">Best query</button>
     </div>
   </div>
   <details class="score-guide muted">
@@ -500,6 +506,13 @@
       typing: "The user hasn't finished typing."
     };
     const other = { id: "other", label: "Other", description: "Cases not yet given a theme." };
+    // One color per theme, kept away from the page's blue and from the green, orange and red that mark right and wrong.
+    const themePalette = ["#6a4fc4", "#0f766e", "#a8327a", "#8a6a00", "#2b6f8a", "#8a5230", "#7e3f98"];
+    function themeColor(id) {
+      const order = state.corpus === "translations" ? data.goalKinds : scenarioThemes.map(theme => theme.id);
+      const index = order.indexOf(id);
+      return index < 0 ? "#4b5b70" : themePalette[index % themePalette.length];
+    }
     const themeOf = item => state.corpus === "translations"
       ? item.kind
       : (scenarioThemes.find(theme => theme.scenarios.includes(item.scenario)) ?? other).id;
@@ -519,7 +532,7 @@
     function renderThemes() {
       const all = themes();
       if (state.theme !== "all" && !all.some(theme => theme.id === state.theme)) state.theme = "all";
-      const chip = (id, label, count) => `<button type="button" class="theme-chip" data-theme="${escape(id)}" aria-pressed="${state.theme === id}">${escape(label)}<span class="count">${count}</span></button>`;
+      const chip = (id, label, count) => `<button type="button" class="theme-chip" style="--c: ${themeColor(id)}" data-theme="${escape(id)}" aria-pressed="${state.theme === id}">${escape(label)}<span class="count">${count}</span></button>`;
       // Every case has exactly one theme, so the counts add up to All; the note says so rather than leaving readers to guess.
       const noun = state.corpus === "translations" ? "goal" : "case";
       $("themes").innerHTML = `<span class="themes-label">Focus on</span>${chip("all", "All", current().cases.length)}${all.map(theme => chip(theme.id, theme.label, theme.cases.length)).join("")}<span class="partition-note">Each ${noun} is in exactly one theme.</span>`;
@@ -670,7 +683,7 @@
       $("case-list").innerHTML = state.theme !== "all"
         ? cases.map(caseButton).join("")
         : themes().map(theme => [theme, cases.filter(item => themeOf(item) === theme.id)]).filter(([, members]) => members.length)
-            .map(([theme, members]) => `<div class="case-group"><button type="button" class="group-head" data-theme="${escape(theme.id)}" title="Show only ${escape(theme.label)}"><span>${escape(theme.label)}</span><span>${members.length}</span></button>${members.map(caseButton).join("")}</div>`).join("");
+            .map(([theme, members]) => `<div class="case-group"><button type="button" class="group-head" style="--c: ${themeColor(theme.id)}" data-theme="${escape(theme.id)}" title="Show only ${escape(theme.label)}"><span>${escape(theme.label)}</span><span>${members.length}</span></button>${members.map(caseButton).join("")}</div>`).join("");
       for (const button of $("case-list").querySelectorAll(".case-button")) {
         button.addEventListener("click", () => { state.selected = button.dataset.id; renderList(); });
       }
