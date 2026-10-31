@@ -325,9 +325,9 @@ People in groups with row and column security can't create Slack [alerts](../que
 
 ### People with row and column security can't run actions
 
-If row and column security applies to a person on any table in a database, that person can't run [actions](../data-modeling/models/actions/introduction.md) on that database. Actions write to tables directly, so they would get around the row and column security. For basic actions and data actions made from a table, Metabase shows the error **You can't run actions on this database because row and column security applies to your data access.** For actions written in SQL, Metabase shows a generic permissions error.
+If row and column security applies to a person on any table in a database, that person can't run [actions](../data-modeling/data-actions.md) on that database. Actions write to tables directly, so they would get around the row and column security. For basic actions and data actions made from a table, Metabase shows the error **You can't run actions on this database because row and column security applies to your data access.** For actions written in SQL, Metabase shows a generic permissions error.
 
-[Public action forms](../data-modeling/models/actions/custom.md#make-public) don't check row and column security. An admin can make any action public, even on a database where row and column security applies to some groups, and anyone with the link can then run the action. Before you make an action public, make sure that it's OK for anyone to make that change to your data.
+[Public action forms](../data-modeling/data-actions.md#share-a-data-action-as-a-public-form) don't check row and column security. An admin can make any action public, even on a database where row and column security applies to some groups, and anyone with the link can then run the action. Before you make an action public, make sure that it's OK for anyone to make that change to your data.
 
 ## Further reading
 
