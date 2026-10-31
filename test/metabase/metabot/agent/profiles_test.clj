@@ -210,6 +210,15 @@
           (is (=? {"create_sql_query" some?, "run_query" some?}
                   (profiles/get-tools-for-profile :internal-sql ["permission:write_sql_queries"]))))))))
 
+(deftest sql-profile-offers-snippet-tools-with-sql-generation-test
+  (testing "the :sql profile offers the snippet tools only to a user with Metabot's SQL generation permission"
+    (let [snippet-tools #{"list_snippets" "get_snippet_details"}
+          offered       (fn [perms]
+                          (binding [scope/*current-user-scope* (scope/user-metabot-perms->scopes perms)]
+                            (into #{} (filter snippet-tools) (keys (profiles/get-tools-for-profile :sql [])))))]
+      (is (= snippet-tools (offered scope/all-yes-permissions)))
+      (is (= #{} (offered (assoc scope/all-yes-permissions :permission/metabot-sql-generation :no)))))))
+
 (deftest nlq-data-discovery-fallback-test
   (testing "the :nlq profile always keeps a data-discovery tool, swapping by index availability"
     (binding [scope/*current-user-scope* api-scope/unrestricted]
@@ -270,10 +279,10 @@
         (is (not (contains? tools "load_skill")))))))
 
 (deftest ^:parallel every-tool-is-in-a-profile-test
-  (testing "every tool is in a profile, except the snippet tools, which no profile offers yet"
+  (testing "every tool is in a profile"
     ;; `profile->tools` adds load_skill to every profile that has skills
     (let [offered (into #{#'tools/load-skill-tool} (mapcat :tools) (vals @@#'profiles/*profiles))]
-      (is (= #{#'tools/list-snippets-tool #'tools/get-snippet-details-tool}
+      (is (= #{}
              (into #{}
                    (comp (filter #(mr/validate @#'profiles/tool-var-schema %))
                          (remove offered))
