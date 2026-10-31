@@ -109,11 +109,12 @@
     .case-button[aria-current="true"] { background: #eef2f7; box-shadow: inset 3px 0 #2f6fb3; }
     .case-button .id { grid-column: 1 / -1; min-width: 0; font-size: .86rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .case-button .agree { color: #5b6d83; font-size: .74rem; }
-    /* Correctness judges the engines, so it carries color; agreement only describes them and stays grey. */
-    .case-button .right { font-size: .74rem; font-weight: 600; }
-    .case-button .right.all { color: #176735; }
-    .case-button .right.some { color: #9a5b00; }
-    .case-button .right.none { color: #b42635; }
+    /* Both labels stay quiet; the one the list is sorted by stands out, correctness in its verdict color. */
+    .case-button .right { color: #5b6d83; font-size: .74rem; }
+    .case-list.sort-agreement .case-button .agree { color: #172334; }
+    .case-list.sort-conformance .case-button .right.all { color: #176735; }
+    .case-list.sort-conformance .case-button .right.some { color: #9a5b00; }
+    .case-list.sort-conformance .case-button .right.none { color: #b42635; }
     .badge { display: inline-block; border-radius: 999px; padding: 2px 7px; background: #e6f4e8; color: #18632c; font-size: .74rem; font-weight: 650; }
     .badge.divergent { background: #fff0de; color: #8a4d00; }
     .badge.neutral { background: #eef1f5; color: #465a71; }
@@ -245,10 +246,11 @@
       .footnote-marker { color: #ffc26b; }
       .case-button:hover { background: #1f2d40; }
       .case-button[aria-current="true"] { background: #22324a; box-shadow: inset 3px 0 #6aa8ef; }
-      .case-button .agree { color: #aabbd0; }
-      .case-button .right.all { color: #72d999; }
-      .case-button .right.some { color: #ffc26b; }
-      .case-button .right.none { color: #ff929d; }
+      .case-button .agree, .case-button .right { color: #aabbd0; }
+      .case-list.sort-agreement .case-button .agree { color: #e4edf7; }
+      .case-list.sort-conformance .case-button .right.all { color: #72d999; }
+      .case-list.sort-conformance .case-button .right.some { color: #ffc26b; }
+      .case-list.sort-conformance .case-button .right.none { color: #ff929d; }
       .query-table .sub, .query-table .same { color: #aabbd0; }
       .query-table .missing { color: #ff929d; }
       .query-table .extra-hits { color: #ffc26b; }
@@ -642,6 +644,7 @@
           ${item.conforming ? `<span class="right ${correctness(item)}" title="${escape(conformanceTitle(item))}">${escape(conformance(item))}</span>` : ""}
         </button>`;
       // The list is grouped by theme, each case in exactly one group; a heading folds its group away.
+      $("case-list").className = `case-list sort-${state.sort}`;
       $("case-list").innerHTML = themes().map(theme => [theme, cases.filter(item => themeOf(item) === theme.id)]).filter(([, members]) => members.length)
         .map(([theme, members]) => {
           const open = !state.collapsed.has(theme.id);
