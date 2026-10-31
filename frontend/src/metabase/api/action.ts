@@ -5,6 +5,7 @@ import type {
   CreateActionRequest,
   ExecuteActionRequest,
   ExecuteDashcardActionRequest,
+  ExecuteUnsavedActionRequest,
   GetActionRequest,
   ListActionsRequest,
   ParametersForActionExecution,
@@ -149,6 +150,16 @@ export const actionApi = Api.injectEndpoints({
         body: { parameters },
       }),
     }),
+    executeUnsavedAction: builder.mutation<
+      ActionExecutionResult,
+      ExecuteUnsavedActionRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/action/execute",
+        body,
+      }),
+    }),
     prefetchActionValues: builder.query<
       ParametersForActionExecution,
       PrefetchActionValuesRequest
@@ -203,6 +214,7 @@ export const {
     deleteActionPublicLink,
     createActionPublicLink,
     executeAction,
+    executeUnsavedAction,
     prefetchActionValues,
     executeDashcardAction,
     prefetchDashcardValues,

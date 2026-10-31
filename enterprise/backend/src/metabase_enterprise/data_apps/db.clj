@@ -78,21 +78,11 @@
   (t2/insert-returning-pk! :model/Collection {:name      (resource-collection-name slug)
                                               :namespace "data-apps"}))
 
-(mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
-  "Insert the DataApp `row`, returning its ID."
-  [row :- ::data-apps.schema/data-app.update]
-  (t2/insert-returning-pk! :model/DataApp row))
-
 (mu/defn update-data-app!
   "Apply `changes` to the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt
    changes     :- ::data-apps.schema/data-app.update]
   (t2/update! :model/DataApp :id data-app-id changes))
-
-(mu/defn delete-data-app!
-  "Delete the DataApp with `data-app-id`."
-  [data-app-id :- ms/PositiveInt]
-  (t2/delete! :model/DataApp :id data-app-id))
 
 (defn resource-collection-ids
   "The IDs of the resource collections owned by data apps."
