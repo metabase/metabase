@@ -7,6 +7,7 @@
   <style>
     :root { --tint: 47 111 179; color-scheme: light; font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f7fb; color: #172334; }
     * { box-sizing: border-box; }
+    html { scrollbar-gutter: stable; }
     body { max-width: 1460px; margin: 0 auto; padding: 32px 28px 80px; }
     h1, h2, h3, p { margin-top: 0; }
     h1 { font-size: 2rem; letter-spacing: -.04em; margin-bottom: 4px; }
@@ -691,7 +692,18 @@
         button.addEventListener("click", () => { state.theme = button.dataset.theme; renderThemes(); renderList(); });
       }
       renderDetail(cases.find(item => item.id === state.selected));
+      holdExplorerHeight();
       writeHash();
+    }
+
+    // The explorer ends the page, so a shorter list would shorten the page and jolt the scroll position.
+    // It keeps the tallest height it has shown instead, leaving space below a short list.
+    let explorerHeight = 0;
+    function holdExplorerHeight() {
+      const explorer = document.querySelector(".explorer");
+      const natural = Math.max(...[...explorer.children].map(child => child.offsetHeight));
+      explorerHeight = Math.max(explorerHeight, natural);
+      explorer.style.minHeight = `${explorerHeight}px`;
     }
 
     function hitList(hits) {
