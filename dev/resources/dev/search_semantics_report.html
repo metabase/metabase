@@ -117,7 +117,6 @@
     .query-table .missing { color: #b42635; font-weight: 650; }
     .query-table .extra-hits { color: #a44d00; font-weight: 650; }
     .query-table .missing + .extra-hits { margin-left: 10px; }
-    .query-table .ok { color: #176735; }
     .query-table tr.correct-row td { background: #eef8f1; }
     .query-table tr.correct-row td:first-child { box-shadow: inset 3px 0 #3f8a5a; }
     .query-table .check { color: #176735; margin-left: 6px; }
@@ -234,7 +233,7 @@
       .query-table .sub, .query-table .same { color: #aabbd0; }
       .query-table .missing { color: #ff929d; }
       .query-table .extra-hits { color: #ffc26b; }
-      .query-table .ok, .query-table .check { color: #72d999; }
+      .query-table .check { color: #72d999; }
       .query-table tr.correct-row td { background: #183326; }
       .query-table tr.correct-row td:first-child { box-shadow: inset 3px 0 #3f8a5a; }
       th.conforms { background: #204632; color: #a4e2b6; }
@@ -668,11 +667,10 @@
       const correct = new Set(item.correct || []);
       const conforms = engine => translated && item.conforming.includes(engine.id);
       const notes = [item.scenarioNote, item.note].filter(Boolean).map(note => `<p class="case-note muted">${inline(note)}</p>`).join("");
-      // Each result says only what differs from the correct cards; the membership table below lists every hit.
+      // A cell names only the wrong cards, and stays empty when there are none; the membership table lists every hit.
       const verdict = hits => {
         const missing = [...correct].filter(label => !hits.includes(label));
         const extra = hits.filter(label => !correct.has(label));
-        if (!missing.length && !extra.length) return '<span class="ok">✓ correct</span>';
         return (missing.length ? `<span class="missing">missing ${escape(missing.join(", "))}</span>` : "")
           + (extra.length ? `<span class="extra-hits">extra ${escape(extra.join(", "))}</span>` : "");
       };
@@ -680,10 +678,10 @@
       const queryRows = !translated ? "" : item.engines.map(engine => {
         const name = `${escape(labels[engine.id])}${conforms(engine) ? '<span class="check" aria-label="correct">✓</span>' : ""}`;
         const adapted = engine.query !== item.query;
-        return `<tr class="${conforms(engine) ? "correct-row" : ""}"><td>${name}</td><td>${adapted ? `<code>${escape(engine.query)}</code>` : '<span class="same">as typed</span>'}</td><td>${verdict(engine.hits)}${keywordArm(engine)}</td><td>${adapted ? verdict(engine.typedHits) : '<span class="same">same</span>'}</td></tr>`;
+        return `<tr class="${conforms(engine) ? "correct-row" : ""}"><td>${name}</td><td>${adapted ? `<code>${escape(engine.query)}</code>` : '<span class="same">as typed</span>'}</td><td>${verdict(engine.hits)}${keywordArm(engine)}</td><td>${adapted ? verdict(engine.typedHits) : ""}</td></tr>`;
       }).join("");
       const queries = translated
-        ? `<p class="single-query muted">Typed: <code>${escape(item.query)}</code></p><div class="table-wrap"><table class="query-table"><thead><tr><th>Engine</th><th>Adapted query</th><th>Result</th><th>Result as typed</th></tr></thead><tbody>${queryRows}</tbody></table></div>`
+        ? `<p class="single-query muted">Typed: <code>${escape(item.query)}</code></p><div class="table-wrap"><table class="query-table"><thead><tr><th>Engine</th><th>Adapted query</th><th>Wrong cards</th><th>Wrong cards as typed</th></tr></thead><tbody>${queryRows}</tbody></table></div>`
         // With one query, the membership table already shows every engine's hits; only the keyword arm is extra.
         : `<p class="single-query muted">Query: <code>${escape(item.query)}</code></p>${item.engines.filter(engine => engine.keywordHits).map(engine => `<p class="single-query muted">${escape(labels[engine.id])} keyword arm: ${hitList(engine.keywordHits)}</p>`).join("")}`;
       const headers = ["Document", "Searchable fields", ...(translated ? ["Correct"] : []), ...item.engines.map(engine => {
