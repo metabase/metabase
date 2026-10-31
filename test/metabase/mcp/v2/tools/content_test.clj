@@ -16,6 +16,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [toucan2.core :as t2]))
