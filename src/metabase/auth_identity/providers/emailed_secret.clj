@@ -49,24 +49,20 @@
                      :timestamp (t/instant)}})
 
 (mu/defn- verify-reset-token :- [:enum :valid :expired :consumed :invalid]
-  "Verifies a password reset token against stored credentials.
-
-  Checks the `token` against the provided `credentials` map and returns one of:
-  - `:valid` if the token matches and hasn't expired or been consumed
-  - `:expired` if the token matches but has passed its expiration time
-  - `:consumed` if the token has already been used
-  - `:invalid` if the token doesn't match the stored hash"
+  "Checks `token` against stored reset `credentials` with one bcrypt check, returning `:consumed`, `:expired`, `:valid`,
+  or `:invalid`, in that order of precedence."
   [token :- :string
    credentials :- ::auth-identity.schema/auth-identity.credentials.token]
-  (cond
-    (:consumed_at credentials)
-    :consumed
-    (t/after? (t/instant) (:expires_at credentials))
-    :expired
-    (u.password/bcrypt-verify token (:token_hash credentials))
-    :valid
-    :else
-    :invalid))
+  (let [matches? (u.password/bcrypt-verify token (:token_hash credentials))]
+    (cond
+      (:consumed_at credentials)
+      :consumed
+      (t/after? (t/instant) (:expires_at credentials))
+      :expired
+      matches?
+      :valid
+      :else
+      :invalid)))
 
 (mu/defn mark-token-consumed :- ::auth-identity.schema/auth-identity
   "Marks a token as consumed by setting the `:consumed_at` timestamp in the auth-identity's credentials.
@@ -77,12 +73,9 @@
   (assoc-in auth-identity [:credentials :consumed_at] (t/instant)))
 
 (mu/defn- parse-token-user-id :- [:maybe ms/PositiveInt]
-  "Extracts the user ID from a password reset token.
-
-  Password reset tokens follow the format `USER-ID_RANDOM-UUID` (e.g., `123_abc-def-ghi`). Returns the user ID as an
-  integer if the token matches this format, or nil if the token format is invalid."
+  "The positive user ID that starts a `USER-ID_RANDOM-UUID` reset token, or nil for any other token."
   [token :- :string]
-  (when-let [[_ user-id-str] (re-matches #"(^\d+)_.+$" token)]
+  (when-let [[_ user-id-str] (re-matches #"^([1-9]\d*)_.+$" token)]
     (try
       (Integer/parseInt user-id-str)
       (catch NumberFormatException _
@@ -127,15 +120,9 @@
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 
 (methodical/defmethod provider/authenticate :provider/emailed-secret
-  "Authenticates a user using a password reset token.
-
-  The request map should contain a `:token` key with a password reset token in the format `USER-ID_RANDOM-UUID`.
-  Validates the token by checking it against the stored [[AuthIdentity]] credentials, verifying it hasn't expired or
-  been consumed.
-
-  Returns a map with `:success?` true and `:user-id` and `:auth-identity` on success, or `:success?` false with an
-  `:error` keyword (`:invalid-token`, `:expired-token`, `:consumed-token`, `:no-auth-identity`, or `:server-error`)
-  and human-readable `:message` on failure."
+  "Authenticates `:token` for an active user against their stored reset token, spending one bcrypt check on every
+  token, and fails with `:invalid-request`, `:invalid-token`, `:expired-token`, `:consumed-token`,
+  `:no-auth-identity`, `:inactive-user`, or `:server-error`."
   [provider {:keys [token]}]
   (log/debug "Authenticating with emailed_secret provider for token")
   (cond
@@ -150,11 +137,15 @@
           (let [verification-result (verify-reset-token token (:credentials auth-identity))]
             (case verification-result
               :valid
-              (do
-                (log/debugf "Valid reset token for user %s" user-id)
-                {:success? true
-                 :user-id user-id
-                 :auth-identity auth-identity})
+              (if (auth-identity.db/user-active? user-id)
+                (do
+                  (log/debugf "Valid reset token for user %s" user-id)
+                  {:success? true
+                   :user-id user-id
+                   :auth-identity auth-identity})
+                {:success? false
+                 :error :inactive-user
+                 :message "Reset token belongs to an inactive user"})
               :expired
               {:success? false
                :error :expired-token
@@ -167,12 +158,14 @@
               {:success? false
                :error :invalid-token
                :message "Reset token is invalid"}))
-          {:success? false
-           :error :no-auth-identity
-           :message "No reset token found for this user"})
-        {:success? false
-         :error :invalid-token
-         :message "Invalid token format"})
+          (do (u.password/do-useless-hash)
+              {:success? false
+               :error :no-auth-identity
+               :message "No reset token found for this user"}))
+        (do (u.password/do-useless-hash)
+            {:success? false
+             :error :invalid-token
+             :message "Invalid token format"}))
       (catch Exception e
         (log/errorf "Unexpected error during reset token verification: %s" (ex-message e))
         {:success? false
@@ -180,16 +173,20 @@
          :message "An unexpected error occurred during token verification"}))))
 
 (methodical/defmethod provider/login! :after :provider/emailed-secret-password-reset
-  "Completes the password reset process after successful authentication.
-
-  After a successful password reset authentication, this method:
-  - Publishes a password reset event or sends admin notification (for new users)
-  - Updates the user's password, which also removes the now-used reset token (see
-    [[metabase.auth-identity.core/set-password!]])
-  - Points the session the login is about to create at the user's `password` AuthIdentity."
+  "Refuses a new password equal to the current one with `:password-unchanged`, changing nothing; otherwise records the
+  reset, sets the password (which deletes the reset token), and points the new session at the `password` identity."
   [_provider {:keys [user password] :as result}]
-  (if-not (:success? result)
+  (cond
+    (not (:success? result))
     result
+
+    (auth-identity/current-password? (:id user) password)
+    (assoc result
+           :success? false
+           :error    :password-unchanged
+           :message  "New password must be different from your current password.")
+
+    :else
     (do
       (if (:last_login user)
         (events/publish-event! :event/password-reset-successful {:object (assoc user :token (auth-identity/reset-token-hash (:id user)))})

@@ -3,6 +3,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
@@ -27,6 +28,7 @@
    [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.password :as u.password]
    [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
@@ -608,6 +610,81 @@
               "completing the reset counts as a use of the password identity")
           (is (nil? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
               "the consumed reset identity is still deleted"))))))
+
+(deftest reset-password-refuses-current-password-test
+  (testing "POST /api/session/reset_password refuses, and changes nothing, when the new password is the current one"
+    (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "whateverUP12!!")
+      (let [token (auth-identity/create-password-reset! (:id user))]
+        (is (= {:errors {:password "New password must be different from your current password."}}
+               (mt/client :post 400 "session/reset_password" {:token token :password "whateverUP12!!"})))
+        (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+            "the reset token is not consumed, so the user can retry with a different password")
+        (is (=? {:success true}
+                (mt/client :post 200 "session/reset_password" {:token token :password "somethingElseUP12!!"})))))))
+
+(deftest reset-password-bad-tokens-cost-same-bcrypt-work-test
+  (testing "POST /api/session/reset_password and GET /api/session/password_reset_token_valid run the same number of bcrypt checks for every token that gets the same answer"
+    (mt/with-temp [:model/User {idle-id :id} {}
+                   :model/User {pending-id :id} {}
+                   :model/User {expired-id :id} {}
+                   :model/User {inactive-id :id} {}]
+      (auth-identity/create-password-reset! pending-id)
+      (let [expired-token  (auth-identity/create-password-reset! expired-id)
+            inactive-token (auth-identity/create-password-reset! inactive-id)
+            expired-ai     (t2/select-one :model/AuthIdentity :user_id expired-id :provider "emailed-secret-password-reset")
+            checks         (atom 0)
+            bcrypt         (mt/original-fn #'u.password/bcrypt-verify)
+            invalid-token  {"malformed"           "not-a-token"
+                            "zero user id"        "0_abc"
+                            "no pending reset"    (str idle-id "_" (random-uuid))
+                            "wrong secret"        (str pending-id "_" (random-uuid))
+                            "expired"             expired-token}
+            cost           (fn [f] (reset! checks 0) (f) @checks)]
+        (t2/update! :model/AuthIdentity :id (:id expired-ai)
+                    {:credentials (assoc (:credentials expired-ai) :expires_at (t/minus (t/instant) (t/days 1)))})
+        (t2/update! :model/User :id inactive-id {:is_active false})
+        (mt/with-dynamic-fn-redefs [u.password/bcrypt-verify (fn [token hash] (swap! checks inc) (bcrypt token hash))]
+          (testing "reset_password answering Invalid reset token"
+            (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated user" inactive-token)]
+                                   [label (cost #(is (= {:errors {:password "Invalid reset token"}}
+                                                        (mt/client :post 400 "session/reset_password"
+                                                                   {:token token :password "SomePassword12!!"}))))]))]
+              (is (apply = (vals costs)) (pr-str costs))))
+          (testing "password_reset_token_valid answering false"
+            (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated user" inactive-token)]
+                                   [label (cost #(is (= {:valid false}
+                                                        (mt/client :get 200 "session/password_reset_token_valid" :token token))))]))]
+              (is (apply = (vals costs)) (pr-str costs)))))))))
+
+(deftest reset-password-changes-nothing-for-deactivated-user-test
+  (testing "POST /api/session/reset_password answers like an invalid token, and changes nothing, for a user deactivated after the token was sent"
+    (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "currentPassUP12!!")
+      (let [token (auth-identity/create-password-reset! (:id user))]
+        (t2/update! :model/User :id (:id user) {:is_active false})
+        (doseq [password ["currentPassUP12!!" "somethingElseUP12!!"]]
+          (testing password
+            (is (= {:errors {:password "Invalid reset token"}}
+                   (mt/client :post 400 "session/reset_password" {:token token :password password})))))
+        (is (:success? (auth-identity/authenticate :provider/password {:email (:email user) :password "currentPassUP12!!"}))
+            "the current password still works")
+        (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+            "the reset token is not consumed")))))
+
+(deftest reset-password-compares-against-token-user-after-email-change-test
+  (testing "POST /api/session/reset_password compares with the password of the token's user, not of whoever now has the email the token was sent to"
+    (mt/with-temp [:model/User user  {:email "reset-owner@metabase.com"}
+                   :model/User other {:email "reset-other@metabase.com"}]
+      (auth-identity/set-password! (:id user) "ownerPassUP12!!")
+      (auth-identity/set-password! (:id other) "otherPassUP12!!")
+      (let [token (auth-identity/create-password-reset! (:id user))]
+        (t2/update! :model/User :id (:id user) {:email "reset-owner-moved@metabase.com"})
+        (t2/update! :model/User :id (:id other) {:email "reset-owner@metabase.com"})
+        (is (= {:errors {:password "New password must be different from your current password."}}
+               (mt/client :post 400 "session/reset_password" {:token token :password "ownerPassUP12!!"})))
+        (is (=? {:success true}
+                (mt/client :post 200 "session/reset_password" {:token token :password "otherPassUP12!!"})))))))
 
 (deftest reset-password-refused-when-password-login-disabled-test
   (testing "POST /api/session/reset_password refuses, and changes nothing, when password login is disabled"
