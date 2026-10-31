@@ -58,11 +58,12 @@
    :viz_settings {:chart_type "bar"}})
 
 (deftest document-schema-collect-tool-test
-  (testing "returns schema/instructions when one database reference is present"
-    (mt/with-dynamic-fn-redefs [warehouses/get-database (fn [_] {:id 1 :engine "h2"})
+  (testing "returns schema/instructions for the one mentioned database, whatever `database_id` the model sets"
+    (mt/with-dynamic-fn-redefs [warehouses/get-database (fn [id] {:id id :engine "h2"})
                                 table-utils/schema-full (fn [_]
                                                           "CREATE TABLE TestTable (\n  TestColumn varchar\n);")]
-      (let [result (invoke-document-tool "document_schema_collect" {} (mentions {"database:1" "Test Database"}))]
+      (let [result (invoke-document-tool "document_schema_collect" {:database_id 2}
+                                         (mentions {"database:1" "Test Database"}))]
         (is (nil? (:error result)))
         (is (re-find #"CREATE TABLE TestTable" (:output result)))
         (is (re-find #"TestColumn varchar" (:output result)))
@@ -71,35 +72,47 @@
                 :sql_engine  "h2"}
                (:structured-output result)))))))
 
-(deftest document-schema-collect-needs-one-mentioned-database-test
-  (testing "only the user can mention a database, so a call without exactly one ends the turn with a message for them"
-    (doseq [[references code user-message]
-            [[{}
-              ::document-tools/no-database-mentioned
-              "Mention a database with @ to create this chart with SQL."]
-             [{"database:1" "Test DB 1" "database:2" "Test DB 2"}
-              ::document-tools/several-databases-mentioned
-              "Mention only one database with @ to create this chart with SQL."]]]
-      (testing (pr-str references)
-        (let [result (invoke-document-tool "document_schema_collect" {} (mentions references))]
-          (is (= {:class :unrecoverable :code code :user-message user-message}
+(deftest document-schema-collect-chosen-database-test
+  (testing "the model chooses the database when the user mentioned none, or one of several that the user mentioned"
+    (mt/with-dynamic-fn-redefs [warehouses/get-database (fn [id] {:id id :engine "h2"})
+                                table-utils/schema-full (constantly "CREATE TABLE TestTable (\n  TestColumn varchar\n);")]
+      (doseq [references [{} {"database:1" "Test DB 1" "database:2" "Test DB 2"}]]
+        (testing (pr-str references)
+          (let [result (invoke-document-tool "document_schema_collect" {:database_id 2} (mentions references))]
+            (is (nil? (:error result)))
+            (is (= {:database_id 2 :sql_engine "h2"}
+                   (:structured-output result)))))))))
+
+(deftest document-schema-collect-database-not-chosen-test
+  (testing "the model is told to choose a database when it set none, or none of the several that the user mentioned"
+    (doseq [[references args code text]
+            [[{} {} ::document-tools/no-database-chosen "`list_available_data_sources`"]
+             [{"database:1" "Test DB 1" "database:2" "Test DB 2"} {} ::document-tools/unmentioned-database "databases 1, 2"]
+             [{"database:1" "Test DB 1" "database:2" "Test DB 2"} {:database_id 3} ::document-tools/unmentioned-database
+              "databases 1, 2"]]]
+      (testing (pr-str references args)
+        (let [result (invoke-document-tool "document_schema_collect" args (mentions references))]
+          (is (= {:class :recoverable :code code}
                  (:error result)))
-          (is (str/includes? (:output result) "Don't retry")))))))
+          (is (str/includes? (:output result) text)))))))
 
 (deftest document-schema-collect-unavailable-database-test
-  (testing "a mentioned database that doesn't exist or that the user can't read ends the turn with one message for both"
+  (testing "a database that doesn't exist or that the user can't read"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
       (mt/with-no-data-perms-for-all-users!
         (doseq [[user database-id] [[:crowberto Integer/MAX_VALUE]
                                     [:rasta db-id]]]
-          (testing user
-            (mt/with-current-user (mt/user->id user)
-              (let [result (invoke-document-tool "document_schema_collect" {}
-                                                 (mentions {(str "database:" database-id) "Gone"}))]
-                (is (= {:class        :unrecoverable
-                        :code         ::document-tools/database-unavailable
-                        :user-message "The database you mentioned wasn't found, or you don't have access to it."}
-                       (:error result)))))))))))
+          (mt/with-current-user (mt/user->id user)
+            (testing (str user " mentioned it, so the turn ends with one message for both")
+              (is (= {:class        :unrecoverable
+                      :code         ::document-tools/database-unavailable
+                      :user-message "The database you mentioned wasn't found, or you don't have access to it."}
+                     (:error (invoke-document-tool "document_schema_collect" {}
+                                                   (mentions {(str "database:" database-id) "Gone"}))))))
+            (testing (str "the model chose it for " user ", so the model is sent to choose another")
+              (is (= {:class :recoverable :code ::document-tools/chosen-database-not-found}
+                     (:error (invoke-document-tool "document_schema_collect" {:database_id database-id}
+                                                   (mentions {}))))))))))))
 
 (deftest document-construct-sql-chart-tool-test
   (testing "builds chart draft payload from SQL query"
