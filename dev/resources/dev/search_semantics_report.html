@@ -7,7 +7,6 @@
   <style>
     :root { --tint: 47 111 179; color-scheme: light; font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f7fb; color: #172334; }
     * { box-sizing: border-box; }
-    html { scrollbar-gutter: stable; }
     body { max-width: 1460px; margin: 0 auto; padding: 32px 28px 80px; }
     h1, h2, h3, p { margin-top: 0; }
     h1 { font-size: 2rem; letter-spacing: -.04em; margin-bottom: 4px; }
@@ -67,34 +66,21 @@
     th { font-size: .78rem; color: #5b6d83; font-weight: 600; }
     tbody tr:last-child td { border-bottom: 0; }
     .note { color: #5b6d83; font-size: .85rem; margin: 12px 0 0; }
-    .explorer { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 14px; align-items: start; }
+    /* At least a screen tall, so a shorter list cannot pull the page up from under the reader. */
+    .explorer { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 14px; align-items: start; min-height: calc(100vh - 32px); }
     /* The case stays in view while the list scrolls with the page, so the list needs no scrollbar of its own. */
     #detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
-    .themes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; }
-    .themes .themes-label { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #5b6d83; margin-right: 4px; }
-    /* Each theme has its own color (--c). The marker sits in a fixed slot, a dot when off and a check when on,
-       so selecting a chip never changes its width. */
-    .theme-chip { --c: #4b5b70; position: relative; border: 1px solid color-mix(in srgb, var(--c) 32%, transparent); background: color-mix(in srgb, var(--c) 10%, white); color: color-mix(in srgb, var(--c) 80%, black); border-radius: 999px; padding: 4px 12px 4px 25px; font-size: .86rem; }
-    .theme-chip::before { content: ""; position: absolute; left: 10px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--c); }
-    .theme-chip:hover { background: color-mix(in srgb, var(--c) 18%, white); }
-    .theme-chip .count { opacity: .7; margin-left: 6px; font-size: .8rem; font-variant-numeric: tabular-nums; }
-    .theme-chip[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: white; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 28%, transparent); }
-    .theme-chip[aria-pressed="true"]::before { content: "✓"; width: auto; height: auto; margin-top: -.55em; background: none; color: white; font-size: .78rem; line-height: 1.1; left: 9px; }
-    .group-head > span:first-child::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--c, #8a99ab); }
-    .themes .partition-note { color: #7a8a9d; font-size: .8rem; margin-left: 6px; }
-    .theme-description { margin: 0 0 14px; font-size: .9rem; min-height: 1.4em; }
     .list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
     .list-head .note { margin: 0; }
     .sort-toggle { display: flex; gap: 2px; }
     .sort-button { border: 1px solid transparent; background: transparent; color: #5b6d83; border-radius: 6px; padding: 2px 7px; font-size: .78rem; }
     .case-filter { width: 100%; margin-top: 12px; border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 6px 9px; font-size: .85rem; }
     .case-group + .case-group { margin-top: 10px; }
-    /* Browsing every case, rows drop to one line; the goal shows on hover. */
-    .case-list.grouped .case-button { padding: 3px 8px; }
-    .case-list.grouped .case-button .focus { display: none; }
-    .case-list.grouped .case-button .scores { grid-row: 1; display: flex; gap: 8px; }
     .group-head { display: flex; justify-content: space-between; width: 100%; border: 0; background: transparent; padding: 4px 8px; color: #5b6d83; font-size: .72rem; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; text-align: left; }
-    .group-head:hover { color: #173c71; text-decoration: underline; }
+    .group-head:hover { color: #173c71; }
+    .group-head::after { content: "▾"; margin-left: 6px; }
+    .group-head[aria-expanded="false"]::after { content: "▸"; }
+    .group-head > span:last-child { margin-left: auto; }
     .sort-button[aria-pressed="true"] { background: #173c71; border-color: #173c71; color: white; }
     .sort-button[aria-pressed="true"]::after { margin-left: 6px; font-size: .68rem; }
     .sort-button[aria-pressed="true"][data-direction="asc"]::after { content: "▲"; }
@@ -111,13 +97,12 @@
     .label-key dt.current .badge { opacity: 1; box-shadow: 0 0 0 2px currentColor; }
     .label-key .key-foot { grid-column: 1 / -1; margin: 0; color: #5b6d83; }
     .case-list { display: grid; gap: 1px; }
-    .case-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; width: 100%; padding: 5px 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; color: inherit; }
+    .case-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; width: 100%; padding: 3px 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; color: inherit; }
     .case-button:hover { background: #f2f6fb; }
     .case-button[aria-current="true"] { background: #eaf2ff; border-color: #a9c7ec; }
-    .case-button .id { grid-column: 1; min-width: 0; font-weight: 650; overflow-wrap: anywhere; }
-    .case-button .scores { grid-column: 2; grid-row: 1 / span 2; align-self: start; display: grid; justify-items: end; }
+    .case-button .id { min-width: 0; font-weight: 650; overflow-wrap: anywhere; }
+    .case-button .scores { display: flex; gap: 8px; }
     .case-button .score { flex: none; color: #245ea3; font-size: .78rem; font-weight: 700; }
-    .case-button .focus { grid-column: 1; color: #5b6d83; font-size: .8rem; line-height: 1.3; }
     .badge { display: inline-block; border-radius: 999px; padding: 2px 7px; background: #e6f4e8; color: #18632c; font-size: .74rem; font-weight: 650; }
     .badge.divergent { background: #fff0de; color: #8a4d00; }
     .badge.neutral { background: #eef1f5; color: #465a71; }
@@ -215,11 +200,11 @@
     @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid, .view-switch { grid-template-columns: 1fr; } }
     @media (prefers-color-scheme: dark) {
       :root { color-scheme: dark; background: #101722; color: #e4edf7; }
-      .muted, .note, .support-notes, .metric .label, .case-button .focus, .empty { color: #aabbd0; }
+      .muted, .note, .support-notes, .metric .label, .empty { color: #aabbd0; }
       .support-notes a { color: #91c1ff; }
       .card { background: #1b2839; border-color: #354963; box-shadow: none; }
       .case-filter { background: #1b2839; color: #e4edf7; border-color: #53677e; }
-      .view-label, .themes .themes-label, .themes .partition-note { color: #aabbd0; }
+      .view-label { color: #aabbd0; }
       .view-card { background: #1b2839; color: #e4edf7; border-color: #3d5068; }
       .view-card .view-sub { color: #aabbd0; }
       .view-card[aria-selected="true"] { background: #1f3550; border-color: #6aa8ef; box-shadow: 0 0 0 3px #6aa8ef33; }
@@ -231,11 +216,6 @@
       .key-toggle:hover, .key-toggle[aria-expanded="true"] { color: #e4edf7; }
       .label-key { background: #172335; }
       .label-key dd, .label-key .key-foot { color: #aabbd0; }
-      .theme-chip { background: color-mix(in srgb, var(--c) 20%, #1b2839); color: color-mix(in srgb, var(--c) 40%, white); border-color: color-mix(in srgb, var(--c) 50%, transparent); }
-      .theme-chip::before { background: color-mix(in srgb, var(--c) 65%, white); }
-      .theme-chip:hover { background: color-mix(in srgb, var(--c) 32%, #1b2839); }
-      .theme-chip[aria-pressed="true"] { background: var(--c); border-color: color-mix(in srgb, var(--c) 70%, white); color: white; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 40%, transparent); }
-      .theme-chip[aria-pressed="true"]::before { background: none; }
       .group-head > span:first-child::before { background: color-mix(in srgb, var(--c, #8a99ab) 65%, white); }
       .sort-button, .group-head { color: #aabbd0; }
       .group-head:hover { color: #e4edf7; }
@@ -431,8 +411,6 @@
       <button class="tab" type="button" data-corpus="translations" aria-selected="false">Best query</button>
     </div>
   </div>
-  <div class="themes" id="themes" role="group" aria-label="Focus on a theme"></div>
-  <p class="theme-description muted" id="theme-description" aria-live="polite"></p>
   <section class="explorer">
     <div class="card">
       <div class="list-head">
@@ -453,7 +431,7 @@
   <script>
     const data = JSON.parse(document.getElementById("report-data").textContent);
     const labels = { "in-place": "In-place", "appdb-h2": "appdb/H2", "appdb-postgres": "appdb/PostgreSQL", "semantic-only": "Semantic only", "semantic-with-fallback": "Semantic with fallback" };
-    const state = { corpus: "sameQuery", theme: "all", keyOpen: false, selected: null, sort: "name", directions: { name: "asc", agreement: "desc", conformance: "desc" } };
+    const state = { corpus: "sameQuery", collapsed: new Set(), keyOpen: false, selected: null, sort: "name", directions: { name: "asc", agreement: "desc", conformance: "desc" } };
     const $ = id => document.getElementById(id);
     const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
     const inline = text => escape(text).replace(/`([^`]+)`/g, "<code>$1</code>");
@@ -508,31 +486,16 @@
         : scenarioThemes;
       return list.map(theme => ({ ...theme, cases: current().cases.filter(item => themeOf(item) === theme.id) })).filter(theme => theme.cases.length);
     }
-    // Opening a case from elsewhere on the page widens the theme if the case is outside it.
+    // Opening a case from elsewhere on the page unfolds its group.
     function openCase(id) {
       state.selected = id;
       const item = current().cases.find(entry => entry.id === id);
-      if (item && state.theme !== "all" && themeOf(item) !== state.theme) state.theme = "all";
+      if (item) state.collapsed.delete(themeOf(item));
     }
 
-    function renderThemes() {
-      const all = themes();
-      if (state.theme !== "all" && !all.some(theme => theme.id === state.theme)) state.theme = "all";
-      const chip = (id, label, count) => `<button type="button" class="theme-chip" style="--c: ${themeColor(id)}" data-theme="${escape(id)}" aria-pressed="${state.theme === id}">${escape(label)}<span class="count">${count}</span></button>`;
-      // Every case has exactly one theme, so the counts add up to All; the note says so rather than leaving readers to guess.
-      const noun = state.corpus === "translations" ? "goal" : "case";
-      $("themes").innerHTML = `<span class="themes-label">Focus on</span>${chip("all", "All", current().cases.length)}${all.map(theme => chip(theme.id, theme.label, theme.cases.length)).join("")}<span class="partition-note">Each ${noun} is in exactly one theme.</span>`;
-      const chosen = all.find(theme => theme.id === state.theme);
-      $("theme-description").textContent = chosen ? chosen.description : `Pick a theme to narrow the list, or browse every ${state.corpus === "translations" ? "goal" : "case"} grouped by theme.`;
-      for (const button of $("themes").querySelectorAll("button")) {
-        button.addEventListener("click", () => { state.theme = button.dataset.theme; state.selected = null; renderThemes(); renderList(); });
-      }
-    }
-
-    // The hash holds the tab, the theme, the case, and any weights changed from the default, so a link reproduces the view.
+    // The hash holds the tab, the case, and any weights changed from the default, so a link reproduces the view.
     function writeHash() {
       const params = new URLSearchParams({ tab: state.corpus });
-      if (state.theme !== "all") params.set("theme", state.theme);
       if (state.selected) params.set("case", state.selected);
       const changed = data.goalKinds.filter(kind => weightOf(kind) !== 1).map(kind => `${kind}:${weightOf(kind)}`);
       if (changed.length) params.set("weights", changed.join(","));
@@ -543,7 +506,6 @@
       const params = new URLSearchParams(location.hash.slice(1));
       if (!params.has("tab")) return false;
       if (params.get("tab") in data && data[params.get("tab")].cases) state.corpus = params.get("tab");
-      state.theme = params.get("theme") || "all";
       state.selected = params.get("case");
       if (state.selected) openCase(state.selected);
       // A shared link carries its sender's weights, or none when they were the defaults. A link followed within
@@ -642,8 +604,7 @@
 
     function visibleCases() {
       const needle = $("filter").value.trim().toLowerCase();
-      const cases = current().cases.filter(item => (state.theme === "all" || themeOf(item) === state.theme)
-        && (!needle || JSON.stringify(item).toLowerCase().includes(needle)));
+      const cases = current().cases.filter(item => !needle || JSON.stringify(item).toLowerCase().includes(needle));
       const direction = state.directions[state.sort] === "asc" ? 1 : -1;
       return cases.sort((left, right) => state.sort === "name"
         ? direction * left.id.localeCompare(right.id)
@@ -652,8 +613,8 @@
 
     function renderList() {
       const cases = visibleCases();
-      const order = state.theme !== "all" ? cases : themes().flatMap(theme => cases.filter(item => themeOf(item) === theme.id));
-      if (!cases.some(item => item.id === state.selected)) state.selected = order[0]?.id ?? null;
+      const order = themes().filter(theme => !state.collapsed.has(theme.id)).flatMap(theme => cases.filter(item => themeOf(item) === theme.id));
+      if (!order.some(item => item.id === state.selected)) state.selected = order[0]?.id ?? null;
       const noun = state.corpus === "translations" ? "goal" : "case";
       $("list-count").textContent = `${cases.length} ${cases.length === 1 ? noun : `${noun}s`}`;
       const caseButton = item => `<button class="case-button" data-id="${escape(item.id)}" aria-current="${item.id === state.selected}" title="${escape(item.focus)}">
@@ -662,49 +623,27 @@
             <span class="score" aria-label="${escape(agreement(item))}" title="${escape(agreementTitle(item))}">${escape(agreement(item))}</span>
             ${item.conforming ? `<span class="score" title="${escape(conformanceTitle(item))}">${escape(conformance(item))}</span>` : ""}
           </span>
-          <span class="focus">${escape(item.focus)}</span>
         </button>`;
-      // Browsing everything, the list is grouped by theme, and a group heading narrows to that theme.
-      $("case-list").classList.toggle("grouped", state.theme === "all");
-      $("case-list").innerHTML = state.theme !== "all"
-        ? cases.map(caseButton).join("")
-        : themes().map(theme => [theme, cases.filter(item => themeOf(item) === theme.id)]).filter(([, members]) => members.length)
-            .map(([theme, members]) => `<div class="case-group"><button type="button" class="group-head" style="--c: ${themeColor(theme.id)}" data-theme="${escape(theme.id)}" title="Show only ${escape(theme.label)}"><span>${escape(theme.label)}</span><span>${members.length}</span></button>${members.map(caseButton).join("")}</div>`).join("");
+      // The list is grouped by theme, each case in exactly one group; a heading folds its group away.
+      $("case-list").innerHTML = themes().map(theme => [theme, cases.filter(item => themeOf(item) === theme.id)]).filter(([, members]) => members.length)
+        .map(([theme, members]) => {
+          const open = !state.collapsed.has(theme.id);
+          return `<div class="case-group"><button type="button" class="group-head" style="--c: ${themeColor(theme.id)}" data-theme="${escape(theme.id)}" aria-expanded="${open}" title="${escape(theme.description)}"><span>${escape(theme.label)}</span><span>${members.length}</span></button>${open ? members.map(caseButton).join("") : ""}</div>`;
+        }).join("");
       for (const button of $("case-list").querySelectorAll(".case-button")) {
         button.addEventListener("click", () => { state.selected = button.dataset.id; renderList(); });
       }
       for (const button of $("case-list").querySelectorAll(".group-head")) {
-        button.addEventListener("click", () => { state.theme = button.dataset.theme; renderThemes(); renderList(); });
+        button.addEventListener("click", () => {
+          const id = button.dataset.theme;
+          if (!state.collapsed.delete(id)) state.collapsed.add(id);
+          renderList();
+        });
       }
       renderDetail(cases.find(item => item.id === state.selected));
-      holdExplorerHeight();
       writeHash();
     }
 
-    // The explorer ends the page, so a shorter list would shorten the page and jolt the scroll position.
-    // It keeps the tallest height it has shown instead, leaving space below a short list.
-    let explorerHeight = 0;
-    const explorerNatural = () => Math.max(...[...document.querySelector(".explorer").children].map(child => child.offsetHeight));
-    function holdExplorerHeight() {
-      explorerHeight = Math.max(explorerHeight, explorerNatural());
-      document.querySelector(".explorer").style.minHeight = `${explorerHeight}px`;
-    }
-    // Scrolling by hand gives the held space back, but only the part already below the viewport,
-    // so the page never moves under the reader.
-    let trimQueued = false;
-    window.addEventListener("scroll", () => {
-      if (trimQueued) return;
-      trimQueued = true;
-      requestAnimationFrame(() => {
-        trimQueued = false;
-        const below = document.documentElement.scrollHeight - (scrollY + innerHeight);
-        const trimmed = Math.max(explorerNatural(), explorerHeight - below);
-        if (trimmed < explorerHeight) {
-          explorerHeight = trimmed;
-          document.querySelector(".explorer").style.minHeight = `${explorerHeight}px`;
-        }
-      });
-    }, { passive: true });
 
     // The key sits beside the labels it explains and marks the current case's own labels.
     const agreementMeanings = { 10: "identical results", 6: "one engine differs", 4: "two groups", 3: "a group of three; the other two each differ", 2: "two pairs, each with identical results", 1: "only two engines match", 0: "no two engines match" };
@@ -850,7 +789,6 @@
         row.addEventListener("click", () => {
           $("filter").value = "";
           openCase(row.dataset.id);
-          renderThemes();
           renderList();
           $("detail").scrollIntoView({ behavior: "smooth", block: "start" });
         });
@@ -873,14 +811,13 @@
       syncSortButtons();
       renderWeights();
       renderSummary();
-      renderThemes();
       renderList();
     }
 
     for (const tab of document.querySelectorAll(".tab")) {
       tab.addEventListener("click", () => {
         state.corpus = tab.dataset.corpus;
-        state.theme = "all";
+        state.collapsed = new Set();
         state.selected = null;
         render();
       });
