@@ -79,7 +79,7 @@
     .sort-button { border: 0; border-radius: 0; background: transparent; color: #29405c; padding: 3px 8px; font-size: .76rem; }
     .sort-button + .sort-button { border-left: 1px solid #c8d4e2; }
     .sort-button:hover { background: #f1f4f8; }
-    .case-filter { width: 100%; margin-top: 12px; border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 6px 9px; font-size: .85rem; }
+    .case-filter { width: 100%; margin: 0 0 10px; border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 6px 9px; font-size: .85rem; }
     .case-group + .case-group { margin-top: 8px; }
     /* Each theme heading is a band across the whole panel, tinted in the theme's color. */
     .explorer .group-head { width: calc(100% + 40px); margin: 0 -20px 3px; padding: 6px 20px; background: color-mix(in srgb, var(--c, #8a99ab) 11%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 75%, black); border-top: 1px solid color-mix(in srgb, var(--c, #8a99ab) 22%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--c, #8a99ab) 22%, transparent); }
@@ -448,8 +448,8 @@
           <button class="sort-button" type="button" data-sort="conformance" aria-pressed="false" title="Sort by how many engines return the correct cards" hidden>Correct</button></span>
         </div>
       </div>
-      <div class="case-list" id="case-list"></div>
       <input id="filter" class="case-filter" type="search" placeholder="Filter by word…" aria-label="Filter cases by any word in them">
+      <div class="case-list" id="case-list"></div>
     </div>
     <article class="card" id="detail" aria-live="polite"></article>
   </section>
