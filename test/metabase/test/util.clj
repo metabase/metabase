@@ -494,17 +494,6 @@
   (locking dimension-lock
     (next-method model explicit-attributes f)))
 
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/DataApp
-  "Give a temp data app a temp collection named like the one the API creates, unless the attributes set
-  `resource_collection_id`, even to nil."
-  [model explicit-attributes f]
-  (let [attributes (merge (t2.with-temp/with-temp-defaults model) explicit-attributes)]
-    (if (contains? attributes :resource_collection_id)
-      (next-method model attributes f)
-      (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:name      (str "Data App: " (:name attributes))
-                                                                      :namespace "data-apps"}]
-        (next-method model (assoc attributes :resource_collection_id collection-id) f)))))
-
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
     (methodical/add-primary-method! #'t2.with-temp/with-temp-defaults

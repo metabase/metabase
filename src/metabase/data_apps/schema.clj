@@ -12,7 +12,7 @@
 
 (def ^:private reserved-slugs
   "Slugs that collide with literal `/api/ee/apps/*` sub-routes, so an app with one would be unreachable."
-  #{"repo-status" "sandbox-host"})
+  #{"repo-status" "sandbox-host" "generate"})
 
 (defn- decoders
   "Schema properties decoding a value with `f` both in [[metabase.lib.core/normalize]] and at the API boundary."
@@ -86,10 +86,6 @@
    bytes?
    [:fn {:error/message "must be less than 10 MiB"} #(<= (alength ^bytes %) max-bundle-bytes)]])
 
-(mr/def ::bundle-text
-  "The text of a data app's bundle file."
-  [:string {:max max-bundle-bytes}])
-
 (mr/def ::data-app
   "A DataApp as selected from the app DB: every column of `:data_app`."
   [:merge
@@ -97,6 +93,17 @@
    [:map {:closed true}
     [:id              ms/PositiveInt]
     [:bundle_hash     {:optional true} [:maybe :string]]]])
+
+(mr/def ::data-app-preview
+  "A data app's dev preview: the slug its manifest declares, whether or not the app exists on the instance."
+  [:map {:closed true}
+   [:slug :string]])
+
+(mr/def ::data-app-info
+  "What a data app's request is checked as: the app it names, or a dev preview of one, which has no ID."
+  [:multi {:dispatch #(if (contains? % :id) :app :preview)}
+   [:app     ::data-app]
+   [:preview ::data-app-preview]])
 
 (mr/def ::data-app.update
   "What an update (or insert) of a DataApp accepts: every column of `:data_app` except `id` and the `bundle_hash` the

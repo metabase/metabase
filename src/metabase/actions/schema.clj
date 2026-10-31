@@ -184,6 +184,10 @@
   "Schema for inserting a new Action internally."
   (action-schema :insert false))
 
+(mr/def ::action.executable
+  "An Action that can be executed: one selected from the app DB, or an ad-hoc one built without saving it."
+  [:or ::action ::action.for-insert])
+
 (mr/def ::action.for-update
   "Schema for updating an Action internally."
   (action-schema :update false))
@@ -191,6 +195,10 @@
 (mr/def ::action.create-request
   "Schema for the REST API body that creates an Action, without the columns the server populates."
   (action-schema :insert true))
+
+(mr/def ::action.adhoc
+  "Schema for an ad-hoc Action, which runs without being saved, as its create request would describe it."
+  ::action.create-request)
 
 (mr/def ::action.update-request
   "Schema for the REST API body that updates an Action, without the columns the server populates."

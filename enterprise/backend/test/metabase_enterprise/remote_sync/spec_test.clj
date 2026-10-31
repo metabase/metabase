@@ -375,12 +375,14 @@
   "Runs `f` with `{:folder :root-action :folder-action :app-action}`: actions without a model in the data actions root,
   a data actions folder, and a data app collection."
   [f]
-  (mt/with-temp [:model/Collection {folder :id}        {:name "Billing" :namespace "data-actions" :location "/"}
-                 :model/Collection {app-coll :id}      {:name "App" :namespace "data-apps" :location "/"}
-                 :model/Action     {root-action :id}   {:type :query :name "At root"}
-                 :model/Action     {folder-action :id} {:type :query :name "In folder" :collection_id folder}
-                 :model/Action     {app-action :id}    {:type :query :name "App copy" :collection_id app-coll}]
-    (f {:folder folder :root-action root-action :folder-action folder-action :app-action app-action})))
+  (binding [mi/*deserializing?* true]
+    (mt/with-temp [:model/Collection     {folder :id}        {:name "Billing" :namespace "data-actions" :location "/"}
+                   :model/Collection     {app-coll :id}      {:name "App" :namespace "data-apps" :location "/"}
+                   :model/Action         {root-action :id}   {:type :query :name "At root"}
+                   :model/Action         {folder-action :id} {:type :query :name "In folder" :collection_id folder}
+                   :model/Action         {app-action :id}    {:type :implicit :name "App copy" :collection_id app-coll}
+                   :model/ImplicitAction _                   {:action_id app-action :kind "row/update" :table_id (mt/id :venues)}]
+      (f {:folder folder :root-action root-action :folder-action folder-action :app-action app-action}))))
 
 (deftest data-action-eligibility-follows-library-test
   (testing "actions without a model are synced with the Library from the data actions root and namespace"

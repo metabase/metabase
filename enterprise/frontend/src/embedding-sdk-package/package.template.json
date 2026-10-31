@@ -34,7 +34,7 @@
     },
     "./data-app-dev/config": {
       "types": "./dist/data-app-dev.config.d.ts",
-      "import": "./dist/data-app-dev.config.js"
+      "import": "./dist/data-app-dev.config.mjs"
     },
     "./package.json": "./package.json"
   },

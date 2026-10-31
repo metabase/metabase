@@ -1,0 +1,8 @@
+collection_id: librarylibrarydatadat
+is_published: true
+table_id:
+- Writable Postgres12
+- public
+- scoreboard_actions
+serdes/meta:
+- model: TableUserSettings
