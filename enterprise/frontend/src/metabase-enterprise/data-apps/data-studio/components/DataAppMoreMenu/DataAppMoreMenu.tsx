@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { useConfirmation, useMetadataToasts } from "metabase/common/hooks";
+import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
 import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useSetDataAppEnabledMutation } from "metabase-enterprise/api";
@@ -16,6 +17,15 @@ type DataAppMoreMenuProps = {
 };
 
 export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
+  const openEmbedWizard = useOpenEmbedJsWizard({
+    initialState: {
+      resourceType: "data-app",
+      resourceId: app.name,
+      isGuest: false,
+      useExistingUserSession: false,
+    },
+  });
+
   const [setDataAppEnabled] = useSetDataAppEnabledMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const { show: showConfirmation, modalContent } = useConfirmation();
@@ -77,6 +87,15 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
               {t`Open app`}
             </Menu.Item>
           )}
+          {isDataAppOpenable(app) && (
+            <Menu.Item
+              leftSection={<Icon name="embed" />}
+              onClick={() => openEmbedWizard({})}
+            >
+              {t`Embed`}
+            </Menu.Item>
+          )}
+
           <Menu.Item
             leftSection={
               <Icon name={app.enabled ? "eye_crossed_out" : "eye"} />

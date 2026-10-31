@@ -98,6 +98,19 @@ export const useSdkIframeEmbedSettings = ({
 
     return match(initialState)
       .with(
+        { resourceType: "data-app", resourceId: P.nonNullable },
+        (initialState) =>
+          getDefaultSdkIframeEmbedSettings({
+            experience: "app",
+            resourceId: initialState.resourceId,
+            isSimpleEmbedFeatureAvailable,
+            isGuestEmbedsEnabled,
+            isSsoEnabledAndConfigured,
+            isGuest: false,
+            useExistingUserSession: false,
+          }),
+      )
+      .with(
         { resourceType: "dashboard", resourceId: P.nonNullable },
         (initialState) =>
           getDefaultSdkIframeEmbedSettings({
