@@ -84,7 +84,23 @@
     .preset-button { border: 1.5px solid var(--c); border-radius: 999px; background: color-mix(in srgb, var(--c) 8%, transparent); color: color-mix(in srgb, var(--c) 85%, black); padding: 5px 14px; font-size: .88rem; font-weight: 600; cursor: pointer; }
     .preset-button:hover { background: color-mix(in srgb, var(--c) 16%, transparent); }
     .preset-button[aria-pressed="true"] { background: var(--c); color: white; box-shadow: 0 1px 6px color-mix(in srgb, var(--c) 45%, transparent); }
-    .weight-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 18px; font-size: .85rem; color: #5b6d83; }
+    .weight-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 4px 0 12px; font-size: .85rem; color: #5b6d83; }
+    /* Rankings answer "who wins" before the detail: one table per kind of query, leader first. */
+    .rankings { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin: 0 0 18px; }
+    .rank-table { border: 1px solid #dce5ef; border-radius: 10px; padding: 10px 14px 6px; }
+    .rank-table h3 { margin: 0 0 4px; font-size: .9rem; color: #29405c; }
+    .rank-table table { font-size: .9rem; }
+    .rank-table td { padding: 6px 6px; text-align: left; }
+    .rank-table td.rank { width: 2em; color: #8a99ab; font-variant-numeric: tabular-nums; }
+    .rank-table td.score { text-align: right; font-variant-numeric: tabular-nums; width: 3.5em; }
+    .rank-table td.behind { text-align: right; color: #8a99ab; font-size: .8rem; width: 4em; font-variant-numeric: tabular-nums; }
+    .rank-table td.bar-cell { width: 34%; }
+    .rank-bar { display: block; height: 6px; border-radius: 3px; background: #e8edf3; overflow: hidden; }
+    .rank-bar i { display: block; height: 100%; background: hsl(calc(4deg + 128deg * var(--v)) 62% 46%); }
+    .rank-table tr.leader td { background: #e6f4ea; font-weight: 700; }
+    .rank-table tr.leader td:first-child { border-radius: 6px 0 0 6px; }
+    .rank-table tr.leader td:last-child { border-radius: 0 6px 6px 0; }
+    .rank-table tbody tr:last-child td { border-bottom: 0; }
     .weight-presets .preset-label { font-weight: 650; color: #29405c; font-size: .9rem; }
     .weight-presets .preset-custom { font-style: italic; }
     .case-filter { width: 100%; margin: 0 0 10px; border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 6px 9px; font-size: .85rem; }
@@ -274,6 +290,11 @@
       .preset-button:hover { background: color-mix(in srgb, var(--c) 26%, transparent); }
       .preset-button[aria-pressed="true"] { background: var(--c); color: white; }
       .weight-presets { color: #aabbd0; }
+      .rank-table { border-color: #354963; }
+      .rank-table h3 { color: #e4edf7; }
+      .rank-bar { background: #2a3b50; }
+      .rank-bar i { background: hsl(calc(4deg + 128deg * var(--v)) 55% 55%); }
+      .rank-table tr.leader td { background: #1f4632; color: #e6faee; }
       .weight-presets .preset-label { color: #e4edf7; }
       .sort-label { color: #aabbd0; }
       th, td { border-color: #34465c; }
@@ -484,7 +505,9 @@
 
   <section class="card goal-scores" id="goal-scores" aria-labelledby="goal-scores-title" hidden>
     <h2 id="goal-scores-title">Scores by goal</h2>
-    <p class="lede">Each cell is the F1 score against the goal's correct cards, from 0 (none right) to 1 (exactly right).</p>
+    <p class="lede">Each score is the F1 score against the goal's correct cards, from 0 (none right) to 1 (exactly right).</p>
+    <div class="weight-presets" id="weight-presets"></div>
+    <div class="rankings" id="rankings"></div>
     <div class="reading-guide">
       <h3>How to read the table</h3>
       <ul>
@@ -496,7 +519,6 @@
       </ul>
     </div>
     <div class="table-wrap" id="score-table"></div>
-    <div class="weight-presets" id="weight-presets"></div>
     <details class="weights-panel" id="weights-panel">
       <summary>Adjust weights by kind of goal<span class="weights-state" id="weights-state"></span></summary>
       <div class="weights" id="weights" role="group" aria-label="Weight per kind of goal"></div>
@@ -908,6 +930,20 @@
           ${meanRow("Mean, best query", "bestScore", " final")}
         </tfoot>`;
       $("score-table").innerHTML = `<table class="score-table">${header}<tbody>${body}</tbody>${footer}</table>`;
+      // Ties share a rank: an engine's rank is one more than the number of engines strictly ahead of it.
+      const ranking = (title, key) => {
+        if (!totalWeight) return `<div class="rank-table"><h3>${title}</h3><p class="empty">Every weight is 0.</p></div>`;
+        // Rank on the two-decimal scores shown, so scores that read the same tie and the gaps add up.
+        const scored = data.engines.map(id => ({ id, score: Math.round(100 * mean(id, key)) / 100 })).sort((a, b) => b.score - a.score);
+        const top = scored[0].score;
+        const rows = scored.map(({ id, score }) => {
+          const rank = 1 + scored.filter(other => other.score > score + 1e-9).length;
+          const leader = score >= top - 1e-9;
+          return `<tr class="${leader ? "leader" : ""}"><td class="rank">${rank}</td><td>${escape(labels[id])}</td><td class="bar-cell"><span class="rank-bar"><i style="width:${(100 * score).toFixed(0)}%; --v:${score.toFixed(3)}"></i></span></td><td class="score">${fixed(score)}</td><td class="behind">${leader ? "" : `−${fixed(top - score)}`}</td></tr>`;
+        }).join("");
+        return `<div class="rank-table"><h3>${title}</h3><table><tbody>${rows}</tbody></table></div>`;
+      };
+      $("rankings").innerHTML = ranking("With original queries", "typedScore") + ranking("With best queries", "bestScore");
       for (const row of $("score-table").querySelectorAll("tr.goal-row")) {
         row.addEventListener("click", () => {
           $("filter").value = "";
