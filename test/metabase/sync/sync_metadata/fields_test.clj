@@ -162,23 +162,28 @@
     (mt/with-temp-copy-of-db
       (let [db (mt/db)
             db-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
-        (doseq [statement ["DROP TABLE IF EXISTS \"base_type_change_test\";"
-                           "CREATE TABLE \"base_type_change_test\" (\"string_tbc_int_col\" VARCHAR);"
-                           "INSERT INTO \"base_type_change_test\" (\"string_tbc_int_col\") VALUES ('1'), ('2'), ('3');"]]
-          (jdbc/execute! db-spec [statement]))
-        (sync/sync-database! (:id db))
-        (let [field (t2/select-one [:model/Field :id] :name "string_tbc_int_col")]
-          (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:coercion_strategy :Coercion/String->Integer})
+        ;; with-temp-copy-of-db copies Metabase metadata but keeps the original connection details.
+        ;; This DDL changes the shared test database, so remove the table in finally.
+        (try
+          (doseq [statement ["DROP TABLE IF EXISTS \"base_type_change_test\";"
+                             "CREATE TABLE \"base_type_change_test\" (\"string_tbc_int_col\" VARCHAR);"
+                             "INSERT INTO \"base_type_change_test\" (\"string_tbc_int_col\") VALUES ('1'), ('2'), ('3');"]]
+            (jdbc/execute! db-spec [statement]))
           (sync/sync-database! (:id db))
-          (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
-                  (t2/select-one :model/Field :id (:id field) {:from [(warehouse-schema-overlay/field-query)]})))
-          (jdbc/execute! db-spec ["ALTER TABLE \"base_type_change_test\" ALTER COLUMN \"string_tbc_int_col\" TYPE int USING \"string_tbc_int_col\"::integer;"])
-          (sync/sync-database! (:id db))
-          (testing "the base type change unsets the user's coercion, on the Field and for the user"
-            (is (=? {:coercion_strategy nil}
-                    (t2/select-one :model/Field :id (:id field))))
-            (is (=? {:coercion_strategy nil :effective_type :type/Integer}
-                    (t2/select-one :model/Field :id (:id field))))))))))
+          (let [field (t2/select-one [:model/Field :id] :name "string_tbc_int_col")]
+            (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:coercion_strategy :Coercion/String->Integer})
+            (sync/sync-database! (:id db))
+            (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
+                    (t2/select-one :model/Field :id (:id field) {:from [(warehouse-schema-overlay/field-query)]})))
+            (jdbc/execute! db-spec ["ALTER TABLE \"base_type_change_test\" ALTER COLUMN \"string_tbc_int_col\" TYPE int USING \"string_tbc_int_col\"::integer;"])
+            (sync/sync-database! (:id db))
+            (testing "the base type change unsets the user's coercion, on the Field and for the user"
+              (is (=? {:coercion_strategy nil}
+                      (t2/select-one :model/Field :id (:id field))))
+              (is (=? {:coercion_strategy nil :effective_type :type/Integer}
+                      (t2/select-one :model/Field :id (:id field))))))
+          (finally
+            (jdbc/execute! db-spec ["DROP TABLE IF EXISTS \"base_type_change_test\";"])))))))
 
 (deftest dont-show-deleted-fields-test
   (testing "make sure deleted fields doesn't show up in `:fields` of a table"

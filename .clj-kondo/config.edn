@@ -294,7 +294,8 @@
               :sqlite
               :sqlserver
               :starburst
-              :vertica}}
+              :vertica
+              :motherduck}}
 
   ;;
   ;; misc config for built-in linters

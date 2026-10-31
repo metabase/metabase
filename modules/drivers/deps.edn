@@ -21,4 +21,6 @@
   metabase/sparksql           {:local/root "sparksql"}
   metabase/sqlserver          {:local/root "sqlserver"}
   metabase/starburst          {:local/root "starburst"}
-  metabase/vertica            {:local/root "vertica"}}}
+  metabase/vertica            {:local/root "vertica"}
+  metabase/motherduck         {:local/root "motherduck"}
+  }}

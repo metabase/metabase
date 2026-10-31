@@ -1,0 +1,47 @@
+info:
+  name: Metabase MotherDuck Driver
+  version: 1.0.0
+  description: Allows Metabase to connect to MotherDuck over the Postgres wire protocol.
+contact-info:
+  name: MotherDuck
+  address: support@motherduck.com
+driver:
+  name: motherduck
+  display-name: MotherDuck
+  lazy-load: true
+  parent: postgres
+  connection-properties:
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - merge:
+              - host
+              - placeholder: pg.<region>.motherduck.com
+                required: true
+          - merge:
+              - port
+              - placeholder: 5432
+    - merge:
+        - dbname
+        - placeholder: my_db
+          required: true
+    - user
+    - password
+    - cloud-ip-address-info
+    - merge:
+        - ssl
+        - default: true
+    - ssh-tunnel
+    - advanced-options-start
+    - json-unfolding
+    - merge:
+        - additional-options
+        - placeholder: "prepareThreshold=0"
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.postgres
+  - step: load-namespace
+    namespace: metabase.driver.motherduck
+  - step: register-jdbc-driver
+    class: org.postgresql.Driver

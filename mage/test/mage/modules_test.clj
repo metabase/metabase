@@ -263,7 +263,7 @@
 
 (deftest cloud-drivers-are-correct
   (testing "Cloud drivers set matches expected"
-    (is (= #{:athena :bigquery :databricks :redshift :snowflake}
+    (is (= #{:athena :bigquery :databricks :motherduck :redshift :snowflake}
            mage.modules/cloud-drivers))))
 
 ;;; =============================================================================

@@ -312,6 +312,7 @@
    :multi-level-schema       multi-level-schema
    :additional-options       additional-options
    :advanced-options-start   advanced-options-start
+   :json-unfolding           json-unfolding
    :default-advanced-options default-advanced-options})
 
 (def cloud-ip-address-info

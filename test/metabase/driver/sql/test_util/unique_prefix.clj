@@ -1,7 +1,8 @@
 (ns metabase.driver.sql.test-util.unique-prefix
   "Tooling for testing Cloud-based SQL databases, creating unique schema names for every test run and 'garbage
   collecting' old ones. (Note that Athena and Databricks are Cloud-based DBs, but they don't use this because
-  they don't support creating databases during CI, so this is only used by Redshift, Snowflake, and Bigquery.)
+  they don't support creating databases during CI, so this is only used by Redshift, Snowflake, Bigquery, and
+  MotherDuck.)
 
   In the past we had one shared prefix for everybody, and everybody was expected to play nice and not screw with it.
   This eventually led to BIG problems when one CI job would think see that a dataset did not exist, and try to

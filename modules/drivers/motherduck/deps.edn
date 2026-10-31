@@ -1,0 +1,8 @@
+{:paths
+ ["src" "resources"]
+
+ ;; This driver has no production dependency. The driver speaks the Postgres wire
+ ;; protocol and uses `org.postgresql.Driver`. The core Metabase classpath already
+ ;; contains that JDBC driver. The DuckDB JDBC driver loads the test data only.
+ ;; Therefore this file does not declare the DuckDB JDBC driver.
+ :deps {}}

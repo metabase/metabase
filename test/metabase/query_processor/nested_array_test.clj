@@ -51,6 +51,12 @@
   [_driver]
   "[\n  [\n    [\n      \"a\",\n      \"b\"\n    ],\n    [\n      \"c\",\n      \"d\"\n    ]\n  ],\n  [\n    [\n      \"w\",\n      \"x\"\n    ],\n    [\n      \"y\",\n      \"z\"\n    ]\n  ]\n]")
 
+;; The MotherDuck Postgres endpoint returns this nested DuckDB list as text with OID 17000, which
+;; pgjdbc does not recognize as a Postgres array type. The text uses DuckDB list syntax, not JSON.
+(defmethod native-nested-array-results :motherduck
+  [_driver]
+  "[[[a, b], [c, d]], [[w, x], [y, z]]]")
+
 (doseq [driver [:postgres :vertica :mysql :sqlite :redshift :databricks :snowflake]]
   (defmethod driver/database-supports? [driver :test/nested-arrays]
     [_driver _feature _database]

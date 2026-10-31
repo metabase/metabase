@@ -7,6 +7,7 @@ import databricksLogo from "assets/img/drivers/databricks.svg?url";
 import druidLogo from "assets/img/drivers/druid.svg?url";
 import h2Logo from "assets/img/drivers/h2.svg?url";
 import mongoLogo from "assets/img/drivers/mongo.svg?url";
+import motherduckLogo from "assets/img/drivers/motherduck.svg?url";
 import mysqlLogo from "assets/img/drivers/mysql.svg?url";
 import oracleLogo from "assets/img/drivers/oracle.svg?url";
 import postgresLogo from "assets/img/drivers/postgres.svg?url";
@@ -73,6 +74,7 @@ export const ENGINE_LOGO: Record<string, string> = {
   "druid-jdbc": druidLogo,
   h2: h2Logo,
   mongo: mongoLogo,
+  motherduck: motherduckLogo,
   mysql: mysqlLogo,
   oracle: oracleLogo,
   postgres: postgresLogo,
