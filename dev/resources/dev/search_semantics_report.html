@@ -21,13 +21,13 @@
     .view-card strong { display: block; font-size: 1.02rem; }
     .view-card .view-sub { display: block; color: #5b6d83; font-size: .88rem; margin-top: 3px; }
     .view-dot { width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 2px solid #8a99ab; }
-    .view-card[aria-selected="true"] { border-color: #2f6fb3; background: #eef4fb; box-shadow: 0 0 0 3px #2f6fb326; }
-    .view-card[aria-selected="true"] .view-dot { border-color: #2f6fb3; background: radial-gradient(circle, #2f6fb3 45%, transparent 50%); }
+    .view-card[aria-pressed="true"] { border-color: #2f6fb3; background: #eef4fb; box-shadow: 0 0 0 3px #2f6fb326; }
+    .view-card[aria-pressed="true"] .view-dot { border-color: #2f6fb3; background: radial-gradient(circle, #2f6fb3 45%, transparent 50%); }
     .explore-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin: 8px 0 12px; }
     .explore-head h2 { margin: 0; }
     .mini-switch { display: inline-flex; border: 2px solid #2f6fb3; border-radius: 10px; overflow: hidden; }
     .mini-switch .tab { border: 0; border-radius: 0; background: white; color: #173c71; padding: 6px 14px; font-weight: 600; font-size: .9rem; }
-    .mini-switch .tab[aria-selected="true"] { background: #2f6fb3; color: white; }
+    .mini-switch .tab[aria-pressed="true"] { background: #2f6fb3; color: white; }
     button, input, select { font: inherit; }
     button { cursor: pointer; }
     .card { background: white; border: 1px solid #dce5ef; border-radius: 14px; box-shadow: 0 2px 9px #213f6610; padding: 20px; }
@@ -67,13 +67,17 @@
     tbody tr:last-child td { border-bottom: 0; }
     .note { color: #5b6d83; font-size: .85rem; margin: 12px 0 0; }
     /* At least a screen tall, so a shorter list cannot pull the page up from under the reader. */
-    .explorer { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 14px; align-items: start; min-height: calc(100vh - 32px); }
+    .explorer { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 14px; align-items: start; min-height: calc(100vh - 32px); }
     /* The case stays in view while the list scrolls with the page, so the list needs no scrollbar of its own. */
     #detail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
     .list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
     .list-head .note { margin: 0; }
-    .sort-toggle { display: flex; gap: 2px; }
-    .sort-button { border: 1px solid transparent; background: transparent; color: #5b6d83; border-radius: 6px; padding: 2px 7px; font-size: .78rem; }
+    .sort-label { color: #5b6d83; font-size: .74rem; margin-right: 6px; }
+    .sort-toggle { display: inline-flex; align-items: center; }
+    .sort-group { display: inline-flex; border: 1px solid #c8d4e2; border-radius: 7px; overflow: hidden; }
+    .sort-button { border: 0; border-radius: 0; background: transparent; color: #29405c; padding: 3px 8px; font-size: .76rem; }
+    .sort-button + .sort-button { border-left: 1px solid #c8d4e2; }
+    .sort-button:hover { background: #f1f4f8; }
     .case-filter { width: 100%; margin-top: 12px; border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 6px 9px; font-size: .85rem; }
     .case-group + .case-group { margin-top: 10px; }
     .group-head { display: flex; justify-content: space-between; width: 100%; border: 0; background: transparent; padding: 4px 8px; color: #5b6d83; font-size: .72rem; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; text-align: left; }
@@ -81,7 +85,8 @@
     .group-head::after { content: "▾"; margin-left: 6px; }
     .group-head[aria-expanded="false"]::after { content: "▸"; }
     .group-head > span:last-child { margin-left: auto; }
-    .sort-button[aria-pressed="true"] { background: #173c71; border-color: #173c71; color: white; }
+    .group-head > span:first-child::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--c, #8a99ab); }
+    .sort-button[aria-pressed="true"] { background: #e3e9f0; color: #172334; }
     .sort-button[aria-pressed="true"]::after { margin-left: 6px; font-size: .68rem; }
     .sort-button[aria-pressed="true"][data-direction="asc"]::after { content: "▲"; }
     .sort-button[aria-pressed="true"][data-direction="desc"]::after { content: "▼"; }
@@ -89,20 +94,23 @@
     .key-toggle { border: 0; background: transparent; color: #5b6d83; font-size: .8rem; padding: 0; display: inline-flex; align-items: center; gap: 5px; }
     .key-toggle::before { content: "i"; display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid currentColor; font: 700 .66rem/1 Georgia, serif; }
     .key-toggle:hover, .key-toggle[aria-expanded="true"] { color: #172334; text-decoration: underline; }
-    .label-key { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 24px; margin: 4px 0 16px; padding: 12px 14px; border-radius: 10px; background: #f5f7fb; font-size: .84rem; }
+    .label-key { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 12px 24px; margin: 4px 0 16px; padding: 12px 14px; border-radius: 10px; background: #f5f7fb; font-size: .84rem; }
     .label-key h4 { margin: 0 0 6px; font-size: .84rem; }
     .label-key dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; margin: 0; align-items: baseline; }
     .label-key dd { margin: 0; color: #5b6d83; }
-    .label-key dt .badge { opacity: .55; }
-    .label-key dt.current .badge { opacity: 1; box-shadow: 0 0 0 2px currentColor; }
+    .label-key dt.current .badge { box-shadow: 0 0 0 2px currentColor; }
     .label-key .key-foot { grid-column: 1 / -1; margin: 0; color: #5b6d83; }
     .case-list { display: grid; gap: 1px; }
-    .case-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; width: 100%; padding: 3px 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; color: inherit; }
-    .case-button:hover { background: #f2f6fb; }
-    .case-button[aria-current="true"] { background: #eaf2ff; border-color: #a9c7ec; }
-    .case-button .id { min-width: 0; font-weight: 650; overflow-wrap: anywhere; }
-    .case-button .scores { display: flex; gap: 8px; }
-    .case-button .score { flex: none; color: #245ea3; font-size: .78rem; font-weight: 700; }
+    .case-button { display: grid; grid-template-columns: 9.5em auto; column-gap: 10px; align-items: baseline; width: 100%; padding: 4px 10px; border: 0; border-radius: 6px; background: transparent; text-align: left; color: inherit; }
+    .case-button:hover { background: #f4f6f9; }
+    .case-button[aria-current="true"] { background: #eef2f7; box-shadow: inset 3px 0 #2f6fb3; }
+    .case-button .id { grid-column: 1 / -1; min-width: 0; font-size: .86rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .case-button .agree { color: #5b6d83; font-size: .74rem; }
+    /* Correctness judges the engines, so it carries color; agreement only describes them and stays grey. */
+    .case-button .right { font-size: .74rem; font-weight: 600; }
+    .case-button .right.all { color: #176735; }
+    .case-button .right.some { color: #9a5b00; }
+    .case-button .right.none { color: #b42635; }
     .badge { display: inline-block; border-radius: 999px; padding: 2px 7px; background: #e6f4e8; color: #18632c; font-size: .74rem; font-weight: 650; }
     .badge.divergent { background: #fff0de; color: #8a4d00; }
     .badge.neutral { background: #eef1f5; color: #465a71; }
@@ -206,11 +214,11 @@
       .view-label { color: #aabbd0; }
       .view-card { background: #1b2839; color: #e4edf7; border-color: #3d5068; }
       .view-card .view-sub { color: #aabbd0; }
-      .view-card[aria-selected="true"] { background: #1f3550; border-color: #6aa8ef; box-shadow: 0 0 0 3px #6aa8ef33; }
-      .view-card[aria-selected="true"] .view-dot { border-color: #6aa8ef; background: radial-gradient(circle, #6aa8ef 45%, transparent 50%); }
+      .view-card[aria-pressed="true"] { background: #1f3550; border-color: #6aa8ef; box-shadow: 0 0 0 3px #6aa8ef33; }
+      .view-card[aria-pressed="true"] .view-dot { border-color: #6aa8ef; background: radial-gradient(circle, #6aa8ef 45%, transparent 50%); }
       .mini-switch { border-color: #6aa8ef; }
       .mini-switch .tab { background: #1b2839; color: #cfe2fa; }
-      .mini-switch .tab[aria-selected="true"] { background: #4f8fd6; color: white; }
+      .mini-switch .tab[aria-pressed="true"] { background: #2f6fb3; color: white; }
       .key-toggle { color: #aabbd0; }
       .key-toggle:hover, .key-toggle[aria-expanded="true"] { color: #e4edf7; }
       .label-key { background: #172335; }
@@ -219,7 +227,11 @@
       .sort-button, .group-head { color: #aabbd0; }
       .group-head:hover { color: #e4edf7; }
 
-      .sort-button[aria-pressed="true"] { background: #2e67a8; border-color: #2e67a8; color: white; }
+      .sort-group, .sort-button + .sort-button { border-color: #53677e; }
+      .sort-button { color: #cfdbe8; }
+      .sort-button:hover { background: #22324a; }
+      .sort-button[aria-pressed="true"] { background: #33465e; color: white; }
+      .sort-label { color: #aabbd0; }
       th, td { border-color: #34465c; }
       th, .support-table tbody th, .engine-table tbody th { color: #b7c9de; }
       .support-table thead th, .engine-table thead th { background: #263a52; color: #e4edf7; }
@@ -227,9 +239,12 @@
       .support-status.yes { background: #204632; color: #a4e2b6; }
       .support-status.no { background: #35465a; color: #c3d0dd; }
       .footnote-marker { color: #ffc26b; }
-      .case-button:hover { background: #263b52; }
-      .case-button[aria-current="true"] { background: #25476c; border-color: #6d9cd4; }
-      .case-button .score { color: #91c1ff; }
+      .case-button:hover { background: #1f2d40; }
+      .case-button[aria-current="true"] { background: #22324a; box-shadow: inset 3px 0 #6aa8ef; }
+      .case-button .agree { color: #aabbd0; }
+      .case-button .right.all { color: #72d999; }
+      .case-button .right.some { color: #ffc26b; }
+      .case-button .right.none { color: #ff929d; }
       .query-table .sub, .query-table .same { color: #aabbd0; }
       .query-table .missing { color: #ff929d; }
       .query-table .extra-hits { color: #ffc26b; }
@@ -368,8 +383,8 @@
 
   <p class="view-label" id="view-label">Choose a view</p>
   <nav class="view-switch" aria-labelledby="view-label">
-    <button class="tab view-card" data-corpus="sameQuery" aria-selected="true"><span class="view-dot" aria-hidden="true"></span><span><strong>Same query for every engine</strong><span class="view-sub" id="view-sub-sameQuery"></span></span></button>
-    <button class="tab view-card" data-corpus="translations" aria-selected="false"><span class="view-dot" aria-hidden="true"></span><span><strong>Best query for each engine</strong><span class="view-sub" id="view-sub-translations"></span></span></button>
+    <button class="tab view-card" data-corpus="sameQuery" aria-pressed="true"><span class="view-dot" aria-hidden="true"></span><span><strong>Same query for every engine</strong><span class="view-sub" id="view-sub-sameQuery"></span></span></button>
+    <button class="tab view-card" data-corpus="translations" aria-pressed="false"><span class="view-dot" aria-hidden="true"></span><span><strong>Best query for each engine</strong><span class="view-sub" id="view-sub-translations"></span></span></button>
   </nav>
 
   <section class="summary-grid" id="metrics" aria-label="Corpus summary"></section>
@@ -406,18 +421,18 @@
   <div class="explore-head">
     <h2>Explore cases</h2>
     <div class="mini-switch" role="group" aria-label="View">
-      <button class="tab" type="button" data-corpus="sameQuery" aria-selected="true">Same query</button>
-      <button class="tab" type="button" data-corpus="translations" aria-selected="false">Best query</button>
+      <button class="tab" type="button" data-corpus="sameQuery" aria-pressed="true">Same query</button>
+      <button class="tab" type="button" data-corpus="translations" aria-pressed="false">Best query</button>
     </div>
   </div>
   <section class="explorer">
     <div class="card">
       <div class="list-head">
         <p class="note" id="list-count"></p>
-        <div class="sort-toggle" role="group" aria-label="Sort cases; click the selected sort to reverse direction">
+        <div class="sort-toggle" role="group" aria-label="Sort cases; click the selected sort to reverse direction"><span class="sort-label" aria-hidden="true">Sort</span><span class="sort-group">
           <button class="sort-button" type="button" data-sort="name" data-direction="asc" aria-pressed="true" aria-label="Sort by name ascending">Name</button>
           <button class="sort-button" type="button" data-sort="agreement" data-direction="desc" aria-pressed="false" aria-label="Sort by agreement descending" title="Sort by how many engines return the same cards">Same results</button>
-          <button class="sort-button" type="button" data-sort="conformance" data-direction="desc" aria-pressed="false" aria-label="Sort by conformance descending" title="Sort by how many engines return the correct cards" hidden>Correct</button>
+          <button class="sort-button" type="button" data-sort="conformance" data-direction="desc" aria-pressed="false" aria-label="Sort by conformance descending" title="Sort by how many engines return the correct cards" hidden>Correct</button></span>
         </div>
       </div>
       <div class="case-list" id="case-list"></div>
@@ -445,6 +460,7 @@
       const count = item.conforming.length;
       return count === 0 ? "None correct" : `${count} of ${data.engines.length} correct`;
     };
+    const correctness = item => item.conforming.length === data.engines.length ? "all" : item.conforming.length ? "some" : "none";
     const agreementTitle = item => `${item.matchingPairs} of ${data.pairCount} engine pairs return identical results`;
     const conformanceTitle = item => `${item.conforming.length} of ${data.engines.length} engines return the correct results; mean F1 ${percent(item.meanF1)}`;
     const badge = (text, title, className) => `<span class="badge ${className}" title="${escape(title)}">${escape(text)}</span>`;
@@ -618,10 +634,8 @@
       $("list-count").textContent = `${cases.length} ${cases.length === 1 ? noun : `${noun}s`}`;
       const caseButton = item => `<button class="case-button" data-id="${escape(item.id)}" aria-current="${item.id === state.selected}" title="${escape(item.focus)}">
           <span class="id">${escape(item.scenario)}</span>
-          <span class="scores">
-            <span class="score" aria-label="${escape(agreement(item))}" title="${escape(agreementTitle(item))}">${escape(agreement(item))}</span>
-            ${item.conforming ? `<span class="score" title="${escape(conformanceTitle(item))}">${escape(conformance(item))}</span>` : ""}
-          </span>
+          <span class="agree" title="${escape(agreementTitle(item))}">${escape(agreement(item))}</span>
+          ${item.conforming ? `<span class="right ${correctness(item)}" title="${escape(conformanceTitle(item))}">${escape(conformance(item))}</span>` : ""}
         </button>`;
       // The list is grouped by theme, each case in exactly one group; a heading folds its group away.
       $("case-list").innerHTML = themes().map(theme => [theme, cases.filter(item => themeOf(item) === theme.id)]).filter(([, members]) => members.length)
@@ -637,9 +651,10 @@
           const id = button.dataset.theme;
           if (!state.collapsed.delete(id)) state.collapsed.add(id);
           renderList();
+          $("case-list").querySelector(`.group-head[data-theme="${id}"]`).focus();
         });
       }
-      renderDetail(cases.find(item => item.id === state.selected));
+      renderDetail(cases.find(item => item.id === state.selected), cases.length > 0);
       writeHash();
     }
 
@@ -653,15 +668,18 @@
       const correct = item.conforming
         ? `<section><h4>How many engines get it right?</h4><dl>${row(conformance(item), "engines that return exactly the cards the user wants; their rows are highlighted below", true, item.conforming.length === data.engines.length ? "" : "divergent")}</dl></section>`
         : "";
-      return `<div class="label-key" id="label-key"><section><h4>Do the engines return the same cards?</h4><dl>${same}</dl></section>${correct}<p class="key-foot">Both ignore result order, and agreement says nothing about which engine is right.${item.conforming ? " Sorting by Correct breaks ties by mean F1, which gives partial credit for near misses." : ""}</p></div>`;
+      return `<div class="label-key" id="label-key"><section><h4>Do the engines return the same cards?</h4><dl>${same}</dl></section>${correct}<p class="key-foot">${item.conforming ? "Both measures ignore result order, and agreement says nothing about which engine is right. Sorting by Correct breaks ties by mean F1, which gives partial credit for near misses." : "Agreement ignores result order and says nothing about which engine is right."}</p></div>`;
     }
 
     function hitList(hits) {
       return hits.length ? escape(hits.join(", ")) : "none";
     }
 
-    function renderDetail(item) {
-      if (!item) { $("detail").innerHTML = '<p class="empty">No matching cases.</p>'; return; }
+    // A different case opens at its top; the same case keeps its place when it rerenders.
+    let shownCase = null;
+    function renderDetail(item, folded = false) {
+      if (!item) { shownCase = null; $("detail").innerHTML = `<p class="empty">${folded ? "Every group with a match is folded. Open one to see its cases." : "No matching cases."}</p>`; return; }
+      if (item.id !== shownCase) { $("detail").scrollTop = 0; shownCase = item.id; }
       const translated = state.corpus === "translations";
       const cutoff = data.provenance.cutoff;
       const correct = new Set(item.correct || []);
@@ -678,7 +696,7 @@
       const queryRows = !translated ? "" : item.engines.map(engine => {
         const name = `${escape(labels[engine.id])}${conforms(engine) ? '<span class="check" aria-label="correct">✓</span>' : ""}`;
         const adapted = engine.query !== item.query;
-        return `<tr class="${conforms(engine) ? "correct-row" : ""}"><td>${name}</td><td>${adapted ? `<code>${escape(engine.query)}</code>` : '<span class="same">unchanged</span>'}</td><td>${verdict(engine.hits)}${keywordArm(engine)}</td><td>${adapted ? verdict(engine.typedHits) : ""}</td></tr>`;
+        return `<tr class="${conforms(engine) ? "correct-row" : ""}"><td>${name}</td><td>${adapted ? `<code>${escape(engine.query)}</code>` : '<span class="same">unchanged</span>'}</td><td>${verdict(engine.hits)}${keywordArm(engine)}</td><td>${verdict(engine.typedHits)}</td></tr>`;
       }).join("");
       const queries = translated
         ? `<p class="single-query muted">Original query: <code>${escape(item.query)}</code></p><div class="table-wrap"><table class="query-table"><thead><tr><th>Engine</th><th>Best query</th><th>Wrong cards</th><th>Wrong cards, original query</th></tr></thead><tbody>${queryRows}</tbody></table></div>`
@@ -710,7 +728,7 @@
             <h2>${escape(item.scenario)}</h2>
             <p class="muted">${escape(item.focus)} · text search language: ${escape(item.config)}</p>
           </div>
-          <div class="head-side">${badges(item)}<button type="button" class="key-toggle" id="key-toggle" aria-expanded="${state.keyOpen}" aria-controls="label-key">What do these labels mean?</button></div>
+          <div class="head-side">${badges(item)}<button type="button" class="key-toggle" id="key-toggle" aria-expanded="${state.keyOpen}"${state.keyOpen ? ' aria-controls="label-key"' : ""}>What do these labels mean?</button></div>
         </div>
         ${state.keyOpen ? labelKey(item) : ""}
         ${notes}
@@ -719,7 +737,7 @@
         <h3>${resultTitle}</h3>
         <div class="table-wrap">${table(headers, rows)}</div>
         <p class="note">${resultNote}</p>`;
-      $("key-toggle").addEventListener("click", () => { state.keyOpen = !state.keyOpen; renderDetail(item); });
+      $("key-toggle").addEventListener("click", () => { state.keyOpen = !state.keyOpen; renderDetail(item); $("key-toggle").focus(); });
     }
 
     const engineIn = (item, id) => item.engines.find(engine => engine.id === id);
@@ -799,13 +817,13 @@
         button.hidden = button.dataset.sort === "conformance" && state.corpus !== "translations";
         button.setAttribute("aria-pressed", String(button.dataset.sort === state.sort));
         button.setAttribute("data-direction", direction);
-        button.setAttribute("aria-label", `Sort by ${button.dataset.sort} ${direction === "asc" ? "ascending" : "descending"}`);
+        button.setAttribute("aria-label", `Sort by ${button.textContent.toLowerCase()}, ${direction === "asc" ? "ascending" : "descending"}`);
       }
     }
 
     function render() {
       if (state.sort === "conformance" && state.corpus !== "translations") state.sort = "name";
-      for (const tab of document.querySelectorAll(".tab")) tab.setAttribute("aria-selected", String(tab.dataset.corpus === state.corpus));
+      for (const tab of document.querySelectorAll(".tab")) tab.setAttribute("aria-pressed", String(tab.dataset.corpus === state.corpus));
       syncSortButtons();
       renderWeights();
       renderSummary();
