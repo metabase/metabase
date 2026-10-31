@@ -11,6 +11,10 @@ import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 
 import {
+  XRAY_CARD_SEARCH_PARAM,
+  XRAY_SEARCH_PARAM,
+} from "../components/view/TableFlow/utils";
+import {
   getCard,
   getDatasetEditorTab,
   getOriginalQuestion,
@@ -108,8 +112,20 @@ export const updateUrl = createThunkAction(
               selectQuestionFromOptsBuilder(getState()),
             )
           : null;
+      // the /table URL drops other query params, but the selected x-ray chart belongs to this view
+      const xrayParams = new URLSearchParams();
+      for (const name of [XRAY_SEARCH_PARAM, XRAY_CARD_SEARCH_PARAM]) {
+        const value = queryParams[name];
+        if (typeof value === "string") {
+          xrayParams.set(name, value);
+        }
+      }
       const url =
-        tableUrl ?? getURLForCardState(newState, dirty, queryParams, objectId);
+        tableUrl != null
+          ? xrayParams.size > 0
+            ? `${tableUrl}?${xrayParams}`
+            : tableUrl
+          : getURLForCardState(newState, dirty, queryParams, objectId);
 
       const urlParsed = parseUrl(url);
       const to: Partial<Path> = {

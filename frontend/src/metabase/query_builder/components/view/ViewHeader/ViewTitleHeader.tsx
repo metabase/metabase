@@ -1,9 +1,6 @@
 import cx from "classnames";
 import type React from "react";
-import { useEffect } from "react";
-import { usePrevious } from "react-use";
 
-import { useToggle } from "metabase/common/hooks/use-toggle";
 import type {
   DatasetEditorTab,
   QueryBuilderMode,
@@ -14,16 +11,18 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
+import { useSelectedXrayChart } from "../TableFlow/use-xray-selection";
+import { getGalleryTableId } from "../TableFlow/utils";
 import { ViewSection } from "../ViewSection";
 
 import ViewTitleHeaderS from "./ViewTitleHeader.module.css";
 import {
   AdHocQuestionLeftSide,
   QueryBuilderBackButton,
-  QuestionFiltersHeader,
   SavedQuestionLeftSide,
   ViewTitleHeaderRightSide,
 } from "./components";
+import { XrayQuestionLeftSide } from "./components/XrayQuestionLeftSide";
 
 interface ViewTitleHeaderProps {
   question: Question;
@@ -46,7 +45,6 @@ interface ViewTitleHeaderProps {
   isRunnable: boolean;
   isRunning: boolean;
   isNativeEditorOpen: boolean;
-  isShowingSummarySidebar: boolean;
   isDirty: boolean;
   isResultDirty: boolean;
   isActionListVisible: boolean;
@@ -57,8 +55,6 @@ interface ViewTitleHeaderProps {
   }) => void;
   cancelQuery: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
-  editSummary: () => void;
-  onCloseSummary: () => void;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
     opts?: {
@@ -66,13 +62,10 @@ interface ViewTitleHeaderProps {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  areFiltersExpanded: boolean;
-  onExpandFilters: () => void;
-  onCollapseFilters: () => void;
   isShowingQuestionInfoSidebar: boolean;
   onCloseQuestionInfo: () => void;
-
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  isGalleryOpen?: boolean;
+  onToggleGallery?: () => void;
 
   className?: string;
   style?: React.CSSProperties;
@@ -89,137 +82,90 @@ export function ViewTitleHeader({
   originalQuestion,
   result,
   queryBuilderMode,
-  updateQuestion,
   isBookmarked,
   toggleBookmark,
   isRunnable,
   isRunning,
   isNativeEditorOpen,
-  isShowingSummarySidebar,
   isDirty,
   isResultDirty,
   isActionListVisible,
   runQuestionQuery,
   cancelQuery,
-  editSummary,
-  onCloseSummary,
   setQueryBuilderMode,
   isShowingQuestionInfoSidebar,
   onCloseQuestionInfo,
+  isGalleryOpen,
+  onToggleGallery,
   className,
   style,
 }: ViewTitleHeaderProps): React.JSX.Element {
-  const [
-    areFiltersExpanded,
-    { turnOn: expandFilters, turnOff: collapseFilters },
-  ] = useToggle(!question?.isSaved());
-
-  const previousQuestion = usePrevious(question);
-
   const query = question.query();
-  const previousQuery = usePrevious(query);
   const { isNative } = Lib.queryDisplayInfo(query);
-
-  useEffect(() => {
-    const isPreviousQuestionNative =
-      previousQuery && Lib.queryDisplayInfo(previousQuery).isNative;
-
-    if (isNative || isPreviousQuestionNative) {
-      return;
-    }
-
-    const filtersCount = Lib.filters(query, -1).length;
-    const previousFiltersCount =
-      previousQuery && Lib.filters(previousQuery, -1).length;
-
-    if (previousFiltersCount != null && filtersCount > previousFiltersCount) {
-      expandFilters();
-    }
-  }, [
-    previousQuestion,
-    question,
-    expandFilters,
-    previousQuery,
-    query,
-    isNative,
-  ]);
 
   const isSaved = question.isSaved();
   const isModelOrMetric =
     question.type() === "model" || question.type() === "metric";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
+  const { selectedCard: xrayCard, isSelectedCardEdited: isXrayCardEdited } =
+    useSelectedXrayChart(getGalleryTableId(question), false);
+  const isShowingXrayChart = xrayCard != null && queryBuilderMode === "view";
 
   return (
-    <>
-      <ViewSection
-        className={cx(ViewTitleHeaderS.ViewHeaderContainer, className, {
-          [ViewTitleHeaderS.isNavBarOpen]: isNavBarOpen,
-        })}
-        style={style}
-        data-testid="qb-header"
-      >
-        <Flex className={ViewTitleHeaderS.ViewHeaderLeftSideWrapper}>
-          <QueryBuilderBackButton mr="sm" />
-          {isSaved ? (
-            <SavedQuestionLeftSide
-              question={question}
-              isObjectDetail={isObjectDetail}
-              isAdditionalInfoVisible={isAdditionalInfoVisible}
-              onOpenQuestionInfo={onOpenQuestionInfo}
-              onSave={onSave}
-            />
-          ) : (
-            <AdHocQuestionLeftSide
-              question={question}
-              isObjectDetail={isObjectDetail}
-              isSummarized={isSummarized}
-              isNative={isNative}
-              originalQuestion={originalQuestion}
-              onOpenModal={onOpenModal}
-            />
-          )}
-        </Flex>
-        <ViewTitleHeaderRightSide
-          question={question}
-          result={result}
-          queryBuilderMode={queryBuilderMode}
-          isBookmarked={isBookmarked}
-          isRunnable={isRunnable}
-          isRunning={isRunning}
-          isNativeEditorOpen={isNativeEditorOpen}
-          isShowingSummarySidebar={isShowingSummarySidebar}
-          isDirty={isDirty}
-          isResultDirty={isResultDirty}
-          isActionListVisible={isActionListVisible}
-          runQuestionQuery={runQuestionQuery}
-          cancelQuery={cancelQuery}
-          onOpenModal={onOpenModal}
-          editSummary={editSummary}
-          onCloseSummary={onCloseSummary}
-          setQueryBuilderMode={setQueryBuilderMode}
-          toggleBookmark={toggleBookmark}
-          onOpenQuestionInfo={onOpenQuestionInfo}
-          onCloseQuestionInfo={onCloseQuestionInfo}
-          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
-          isObjectDetail={isObjectDetail}
-          isSaved={isSaved}
-          isModelOrMetric={isModelOrMetric}
-          areFiltersExpanded={areFiltersExpanded}
-          onExpandFilters={expandFilters}
-          onCollapseFilters={collapseFilters}
-        />
-      </ViewSection>
-
-      {QuestionFiltersHeader.shouldRender({
-        question,
-        queryBuilderMode,
-      }) && (
-        <QuestionFiltersHeader
-          expanded={areFiltersExpanded}
-          question={question}
-          updateQuestion={updateQuestion}
-        />
-      )}
-    </>
+    <ViewSection
+      className={cx(ViewTitleHeaderS.ViewHeaderContainer, className, {
+        [ViewTitleHeaderS.isNavBarOpen]: isNavBarOpen,
+      })}
+      style={style}
+      data-testid="qb-header"
+    >
+      <Flex className={ViewTitleHeaderS.ViewHeaderLeftSideWrapper}>
+        <QueryBuilderBackButton mr="sm" />
+        {isShowingXrayChart ? (
+          <XrayQuestionLeftSide card={xrayCard} isEdited={isXrayCardEdited} />
+        ) : isSaved ? (
+          <SavedQuestionLeftSide
+            question={question}
+            isObjectDetail={isObjectDetail}
+            isAdditionalInfoVisible={isAdditionalInfoVisible}
+            onOpenQuestionInfo={onOpenQuestionInfo}
+            onSave={onSave}
+          />
+        ) : (
+          <AdHocQuestionLeftSide
+            question={question}
+            isObjectDetail={isObjectDetail}
+            isSummarized={isSummarized}
+            isNative={isNative}
+            originalQuestion={originalQuestion}
+            onOpenModal={onOpenModal}
+          />
+        )}
+      </Flex>
+      <ViewTitleHeaderRightSide
+        question={question}
+        result={result}
+        queryBuilderMode={queryBuilderMode}
+        isBookmarked={isBookmarked}
+        isRunnable={isRunnable}
+        isRunning={isRunning}
+        isNativeEditorOpen={isNativeEditorOpen}
+        isGalleryOpen={isGalleryOpen}
+        onToggleGallery={onToggleGallery}
+        isDirty={isDirty}
+        isResultDirty={isResultDirty}
+        isActionListVisible={isActionListVisible}
+        runQuestionQuery={runQuestionQuery}
+        cancelQuery={cancelQuery}
+        onOpenModal={onOpenModal}
+        setQueryBuilderMode={setQueryBuilderMode}
+        toggleBookmark={toggleBookmark}
+        onOpenQuestionInfo={onOpenQuestionInfo}
+        onCloseQuestionInfo={onCloseQuestionInfo}
+        isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
+        isSaved={isSaved}
+        isModelOrMetric={isModelOrMetric}
+      />
+    </ViewSection>
   );
 }

@@ -8,9 +8,16 @@ export const questionShortcuts = {
     shortcut: ["e"],
     shortcutGroup: "question" as const,
   },
+  "query-builder-toggle-explore": {
+    get name() {
+      return t`Toggle explore`;
+    },
+    shortcut: ["e"],
+    shortcutGroup: "question" as const,
+  },
   "query-builder-visualization-open-filter": {
     get name() {
-      return t`Open filter dropdown`;
+      return t`Open filter panel`;
     },
     shortcut: ["f"],
     shortcutGroup: "question" as const,
