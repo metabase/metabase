@@ -1,0 +1,79 @@
+.fade {
+  background-color: var(--mb-color-background_surface-primary);
+  opacity: 0.75;
+}
+
+/* A tall transparent strip, so the dashed line is easy to grab. */
+.handle {
+  height: 16px;
+  margin-top: -8px;
+  cursor: ns-resize;
+  pointer-events: auto;
+  color: var(--mb-color-core-summarize);
+  touch-action: none;
+  outline: none;
+}
+
+.line {
+  position: absolute;
+  top: 7px;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed var(--mb-color-core-summarize);
+}
+
+.label {
+  position: absolute;
+  right: 0;
+  bottom: 12px;
+  padding: 0 0.25rem 0 0.5rem;
+  border: 1px solid var(--mb-color-core-summarize);
+  border-radius: 999px;
+  background-color: var(--mb-color-background_surface-primary);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.remove {
+  visibility: hidden;
+}
+
+.handle:hover .remove,
+.handle:focus-visible .remove {
+  visibility: visible;
+}
+
+.handle:hover .line,
+.handle:focus-visible .line,
+.handle[data-dragging] .line {
+  border-top-style: solid;
+}
+
+.handle:focus-visible .label {
+  box-shadow: 0 0 0 2px var(--mb-color-core-brand);
+}
+
+.landed .line {
+  animation: landed 1.4s ease-out;
+}
+
+@keyframes landed {
+  from {
+    border-top-width: 6px;
+  }
+
+  to {
+    border-top-width: 2px;
+  }
+}
+
+.menuItem {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+}
+
+.menuItem:hover {
+  background-color: var(--mb-color-background_page-secondary);
+}
