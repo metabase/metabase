@@ -31,6 +31,7 @@ export function useSdkIframeEmbedEventBus({
 }) {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
+  const [parentOrigin, setParentOrigin] = useState<string | null>(null);
   const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(
     null,
   );
@@ -38,10 +39,11 @@ export function useSdkIframeEmbedEventBus({
   useEffect(() => {
     const removeMessageListener = listenForEajsMessages({
       messageSource: "embed.js",
-      handler: (message) =>
+      handler: (message, event) =>
         match(message)
           .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
             setEmbedSettings(data);
+            setParentOrigin(event.origin);
             onSettingsChanged?.(data);
           })
           .with({ type: "metabase.embed.reportAnalytics" }, ({ data }) => {
@@ -84,7 +86,7 @@ export function useSdkIframeEmbedEventBus({
     }
   }, [embedSettings?.instanceUrl, usageAnalytics]);
 
-  return { sendMessage, embedSettings };
+  return { sendMessage, embedSettings, parentOrigin };
 }
 
 export function isMetabaseInstance(instanceUrl: string, embedHostUrl: string) {

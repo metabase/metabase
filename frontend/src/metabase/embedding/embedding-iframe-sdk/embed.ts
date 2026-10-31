@@ -10,6 +10,7 @@ import {
   normalizeDataAppPath,
   validateDataAppPath,
 } from "embedding-sdk-shared/lib/embedded-data-app-path";
+import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
@@ -178,6 +179,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
   // Used to track if the data app path prop has changed or not
   private _dataAppPath: string | null = null;
+  private _dataAppApiKey: string | undefined;
 
   ["custom-context"]: unknown;
 
@@ -277,7 +279,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       ...settings,
     } as SdkIframeEmbedElementSettings;
 
-    if (this._handleDataAppPathPropChange(settings, newValues)) {
+    if (this._handleDataAppSettingsChange(settings, newValues)) {
       return;
     }
 
@@ -396,6 +398,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     if (props.componentName === "metabase-data-app") {
       this._dataAppPath = props.path;
+      this._dataAppApiKey = props.apiKey;
       url = getDataAppEmbedUrl(props.instanceUrl, props.path);
     } else {
       url = new URL(`${props.instanceUrl}/${EMBEDDING_ROUTE}`);
@@ -436,6 +439,10 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   private _getIsLocalhost() {
+    if (this._componentName === "metabase-data-app") {
+      return getIsLocalhost();
+    }
+
     const { hostname } = window.location;
 
     try {
@@ -468,13 +475,18 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     if (settings.componentName === "metabase-data-app") {
       validateDataAppPath(settings.path);
 
-      if (
-        settings.isGuest ||
-        settings.guestEmbedProviderUri ||
-        settings.useExistingUserSession ||
-        settings.apiKey
-      ) {
-        raiseError("Data apps require SSO authentication.");
+      if (settings.isGuest || settings.guestEmbedProviderUri) {
+        raiseError("Guest embeds are not supported for data apps.");
+      }
+
+      if (settings.useExistingUserSession) {
+        raiseError(
+          "Using existing browser sessions are not supported for data apps.",
+        );
+      }
+
+      if (settings.apiKey && !settings._isLocalhost) {
+        raiseError("Using an API key in production is not allowed.");
       }
     }
 
@@ -744,11 +756,11 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   /**
-   * Data app path property can be changed after the embed is created.
+   * Data app paths and API keys can change after the embed is created.
    *
-   * Switching app name re-mounts the iframe. Otherwise, only do client-side routing.
+   * Switching apps or credentials remounts the iframe; route changes use client-side routing.
    */
-  private _handleDataAppPathPropChange(
+  private _handleDataAppSettingsChange(
     settings: Partial<SdkIframeEmbedElementSettings>,
     nextValues: SdkIframeEmbedElementSettings,
   ): boolean {
@@ -758,7 +770,12 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       normalizeDataAppPath(nextValues.path) !==
         normalizeDataAppPath(this._dataAppPath ?? "");
 
-    if (!hasDataAppPathChanged) {
+    const hasDataAppApiKeyChanged =
+      nextValues.componentName === "metabase-data-app" &&
+      "apiKey" in settings &&
+      nextValues.apiKey !== this._dataAppApiKey;
+
+    if (!hasDataAppPathChanged && !hasDataAppApiKeyChanged) {
       return false;
     }
 
@@ -767,8 +784,9 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     // Do not remount when the app name remains the same.
     // `useDataAppPathNavigation` hook will do client-side routing.
     if (
+      !hasDataAppApiKeyChanged &&
       getEmbeddedAppNameFromPath(nextValues.path) ===
-      getEmbeddedAppNameFromPath(this._dataAppPath ?? "")
+        getEmbeddedAppNameFromPath(this._dataAppPath ?? "")
     ) {
       return false;
     }

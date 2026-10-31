@@ -39,9 +39,13 @@ type Settings = Extract<
   { componentName: "metabase-data-app" }
 >;
 
-export function setupSettings(overrides: Partial<Settings> = {}) {
+export function setupSettings(
+  overrides: Partial<Settings> = {},
+  parentOrigin: string | null = "https://host.example.com",
+) {
   mockUseSdkIframeEmbedEventBus.mockReturnValue({
     sendMessage: jest.fn(),
+    parentOrigin,
     embedSettings: {
       componentName: "metabase-data-app",
       path: "sales/orders?active=true",

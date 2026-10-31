@@ -1,4 +1,8 @@
-import { MetabaseDataAppElement } from "./embed";
+import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
+
+import { MetabaseDataAppElement, setupConfigWatcher } from "./embed";
+
+jest.mock("embedding-sdk-shared/lib/get-is-localhost");
 
 const INSTANCE_URL = "https://gizmo.example.com/mb";
 
@@ -6,6 +10,8 @@ describe("metabase-data-app", () => {
   let consoleError: jest.SpyInstance;
 
   beforeEach(() => {
+    jest.mocked(getIsLocalhost).mockReturnValue(true);
+    setupConfigWatcher();
     window.metabaseConfig = { instanceUrl: INSTANCE_URL };
     consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
   });
@@ -126,12 +132,17 @@ describe("metabase-data-app", () => {
     );
   });
 
-  it.each([
-    { isGuest: true },
-    { apiKey: "secret" },
-    { useExistingUserSession: true },
-    { guestEmbedProviderUri: "/guest" },
-  ])("rejects unsupported auth methods: %p", (config) => {
+  it.each<[Record<string, unknown>, string]>([
+    [{ isGuest: true }, "Guest embeds are not supported for data apps."],
+    [
+      { useExistingUserSession: true },
+      "Using existing browser sessions are not supported for data apps.",
+    ],
+    [
+      { guestEmbedProviderUri: "/guest" },
+      "Guest embeds are not supported for data apps.",
+    ],
+  ])("rejects unsupported auth methods: %p", (config, message) => {
     window.metabaseConfig = { instanceUrl: INSTANCE_URL, ...config };
     const element = setup();
     expect(element.querySelector("iframe")).toBeNull();
@@ -139,8 +150,63 @@ describe("metabase-data-app", () => {
     expect(consoleError).toHaveBeenCalledWith(
       "[metabase.embed.error]",
       expect.objectContaining({
-        message: "Data apps require SSO authentication.",
+        message,
       }),
+    );
+  });
+
+  it("sends a local API key only in origin-bound settings", () => {
+    window.metabaseConfig = {
+      instanceUrl: INSTANCE_URL,
+      apiKey: "development-key",
+    };
+    const iframe = setup().querySelector("iframe")!;
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    ready(iframe);
+
+    expect(postMessage).toHaveBeenCalledWith(
+      {
+        type: "metabase.embed.setSettings",
+        data: expect.objectContaining({
+          apiKey: "development-key",
+          _isLocalhost: true,
+        }),
+      },
+      new URL(INSTANCE_URL).origin,
+    );
+    expect(iframe.src).not.toContain("development-key");
+  });
+
+  it("rejects production keys even when Metabase shares the host's hostname", () => {
+    jest.mocked(getIsLocalhost).mockReturnValue(false);
+    delete window.metabaseConfig;
+    window.metabaseConfig = {
+      instanceUrl: window.location.origin,
+      apiKey: "development-key",
+    };
+
+    expect(setup().querySelector("iframe")).toBeNull();
+    expect(consoleError).toHaveBeenCalledWith(
+      "[metabase.embed.error]",
+      expect.objectContaining({
+        message: "Using an API key in production is not allowed.",
+      }),
+    );
+  });
+
+  it("replaces the frame when credentials change", () => {
+    const element = setup();
+    const original = element.querySelector("iframe");
+
+    window.metabaseConfig = {
+      instanceUrl: INSTANCE_URL,
+      apiKey: "development-key",
+    };
+
+    expect(element.querySelector("iframe")).not.toBe(original);
+    expect(element.querySelector("iframe")?.src).not.toContain(
+      "development-key",
     );
   });
 
