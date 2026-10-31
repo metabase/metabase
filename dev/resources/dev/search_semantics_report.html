@@ -13,7 +13,11 @@
     h2 { font-size: 1.15rem; margin-bottom: 16px; }
     h3 { font-size: 1rem; margin-bottom: 10px; }
     .muted { color: #5b6d83; }
-    .intro { margin-bottom: 22px; max-width: 86ch; }
+    /* Stand-alone prose shares one measure, in rem so smaller text wraps at the same edge. */
+    .intro, .provenance, .support-notes, details.reference .note { max-width: 46rem; }
+    /* The findings sit inside a card, so their measure gives back the card's padding to end at the same edge. */
+    .findings ul { max-width: calc(46rem - 21px); }
+    .intro { margin-bottom: 22px; }
     .view-label { margin: 26px 0 8px; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #5b6d83; }
     .view-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 22px; }
     .view-card { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; text-align: left; border: 2px solid #c8d4e2; background: white; color: #172334; border-radius: 12px; padding: 14px 16px; }
@@ -167,6 +171,7 @@
     .fidelity-table th.group-start, .fidelity-table td.group-start { border-left: 2px solid #e8edf3; }
     .empty { color: #5b6d83; padding: 18px 0; }
     .provenance { font-size: .82rem; margin: -12px 0 18px; }
+    .provenance a { color: inherit; }
     .findings { margin-bottom: 18px; }
     .findings h2 { margin-bottom: 8px; }
     .findings ul { margin: 0; padding-left: 20px; }
@@ -565,7 +570,8 @@
 
     function renderFindings() {
       const { commit, dirty, generated, model, cutoff } = data.provenance;
-      $("provenance").textContent = `Built from commit ${commit}${dirty ? " with uncommitted changes" : ""} on ${generated}. Vectors from ${model}; the vector arm keeps cards within cosine distance ${fixed(cutoff)}.`;
+      const link = (href, text) => `<a href="${escape(href)}" target="_blank" rel="noopener noreferrer">${escape(text)}</a>`;
+      $("provenance").innerHTML = `Built from commit ${link(`https://github.com/metabase/metabase/commit/${commit}`, commit)}${dirty ? " with uncommitted changes" : ""} on ${escape(generated)}. Vectors from ${link(`https://huggingface.co/${model}`, model)}. The vector arm keeps cards within cosine distance ${fixed(cutoff)}.`;
       $("findings").innerHTML = data.findings.map(finding => `<li><a href="#${new URLSearchParams({ tab: "sameQuery", case: finding.case })}">${escape(finding.case)}</a>: ${inline(finding.text)}</li>`).join("");
     }
 
