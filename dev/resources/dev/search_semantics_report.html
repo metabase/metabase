@@ -67,10 +67,11 @@
     .sort-button[aria-pressed="true"][data-direction="asc"]::after { content: "▲"; }
     .sort-button[aria-pressed="true"][data-direction="desc"]::after { content: "▼"; }
     #list-count { margin: 0 0 10px; }
-    .score-guide { display: grid; gap: 6px; margin: -6px 0 14px; font-size: .9rem; }
-    .score-guide p { margin: 0; }
-    .case-list { max-height: 640px; overflow-y: auto; display: grid; gap: 5px; }
-    .case-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; width: 100%; padding: 10px 12px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; color: inherit; }
+    details.score-guide { margin: -8px 0 12px; font-size: .88rem; }
+    details.score-guide > summary { cursor: pointer; color: #29405c; font-weight: 600; }
+    details.score-guide p { margin: 6px 0 0; max-width: 90ch; }
+    .case-list { max-height: 640px; overflow-y: auto; display: grid; gap: 2px; }
+    .case-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; width: 100%; padding: 6px 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; color: inherit; }
     .case-button:hover { background: #f2f6fb; }
     .case-button[aria-current="true"] { background: #eaf2ff; border-color: #a9c7ec; }
     .case-button .id { grid-column: 1; min-width: 0; font-weight: 650; overflow-wrap: anywhere; }
@@ -83,15 +84,18 @@
     .badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
     .detail-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
     .detail-head h2 { overflow-wrap: anywhere; margin-bottom: 5px; }
-    .query-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 16px 0 20px; }
-    .query-box { border: 1px solid #e2eaf2; background: #f8fafd; border-radius: 8px; padding: 10px 12px; min-width: 0; }
-    .query-box.conforms { border-color: #6fbf87; background: #eef8f1; }
-    .conforms-tag { margin-left: 6px; color: #176735; font-size: .74rem; font-weight: 650; }
+    .query-table { margin: 4px 0 18px; }
+    .query-table th, .query-table td { text-align: left; white-space: normal; vertical-align: top; padding: 6px 10px; }
+    .query-table td:first-child { white-space: nowrap; font-weight: 600; }
+    .query-table code { background: transparent; padding: 0; }
+    .query-table .sub { display: block; color: #5b6d83; font-size: .8rem; margin-top: 2px; }
+    .query-table .letters span + span { margin-left: 6px; }
+    .query-table .missing { color: #b42635; font-size: .8rem; margin-left: 8px; }
+    .query-table .same { color: #8a99ab; }
+    .correct-pill { display: inline-block; margin-left: 6px; border-radius: 999px; padding: 0 7px; background: #e6f4e8; color: #18632c; font-size: .72rem; font-weight: 700; }
+    .single-query { margin: 0 0 6px; }
     th.conforms { background: #e6f4e8; color: #18632c; }
-    .query-box strong { display: block; margin-bottom: 5px; }
     code { padding: 2px 4px; border-radius: 4px; background: #edf1f6; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .query-box code { display: block; background: transparent; padding: 0; }
-    .query-box .small { display: block; margin-top: 5px; color: #5b6d83; font-size: .82rem; }
     .hit { color: #176735; font-weight: 750; }
     .miss { color: #a5afba; }
     .extra { color: #a44d00; font-weight: 750; }
@@ -164,10 +168,10 @@
     .weights output { font-variant-numeric: tabular-nums; color: #5b6d83; text-align: right; }
     details.weights-panel .note { max-width: 72ch; }
     @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } .case-list { max-height: 280px; } }
-    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid, .query-grid { grid-template-columns: 1fr; } .toolbar { flex-wrap: wrap; } .toolbar input { flex-basis: 100%; } }
+    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid { grid-template-columns: 1fr; } .toolbar { flex-wrap: wrap; } .toolbar input { flex-basis: 100%; } }
     @media (prefers-color-scheme: dark) {
       :root { color-scheme: dark; background: #101722; color: #e4edf7; }
-      .muted, .note, .support-notes, .metric .label, .case-button .focus, .query-box .small, .empty { color: #aabbd0; }
+      .muted, .note, .support-notes, .metric .label, .case-button .focus, .empty { color: #aabbd0; }
       .support-notes a { color: #91c1ff; }
       .card { background: #1b2839; border-color: #354963; box-shadow: none; }
       .tab, .toolbar input, .sort-button { background: #1b2839; color: #e4edf7; border-color: #53677e; }
@@ -183,9 +187,10 @@
       .case-button:hover { background: #263b52; }
       .case-button[aria-current="true"] { background: #25476c; border-color: #6d9cd4; }
       .case-button .score { color: #91c1ff; }
-      .query-box { background: #172335; border-color: #344963; }
-      .query-box.conforms { background: #183326; border-color: #3f8a5a; }
-      .conforms-tag { color: #72d999; }
+      details.score-guide > summary { color: #e4edf7; }
+      .query-table .sub, .query-table .same { color: #aabbd0; }
+      .query-table .missing { color: #ff929d; }
+      .correct-pill { background: #204632; color: #a4e2b6; }
       th.conforms { background: #204632; color: #a4e2b6; }
       code { background: #293c52; }
       .badge { background: #204632; color: #a4e2b6; }
@@ -341,7 +346,7 @@
     <p class="lede">Each cell is F1 against the goal's correct results, from 0 (none right) to 1 (exactly right).</p>
     <ul class="reading-guide">
       <li><span class="sc-legend">0.40 → <strong>1.00</strong></span> means 0.40 for the query as typed and 1.00 for the engine's adapted query. One number means adapting changed nothing.</li>
-      <li>An adapted query uses only words from the goal and the typed query.</li>
+      <li>An adapted query uses words a user could think of for the goal without knowing which cards exist, and any syntax the engine supports.</li>
       <li>A bold score with a blue bar is the best, or tied best, for that goal.</li>
       <li>Hover a cell for precision and recall. Click a goal to open it below.</li>
     </ul>
@@ -354,10 +359,11 @@
   </section>
 
   <h2>Explore cases</h2>
-  <div class="score-guide muted">
+  <details class="score-guide muted">
+    <summary>What agreement and conformance mean</summary>
     <p><strong>Agreement</strong> describes how the engines' result sets relate, ignoring order; it says nothing about which is right. “All agree” means all five return the same cards; “Four agree” means one engine differs; “Three and two agree” means two groups; “Three agree” means a group of three and two outliers; “Two pairs agree” and “One pair agrees” count matching pairs; “All differ” means no two engines match.</p>
     <p id="conformance-guide" hidden><strong>Conformance</strong> compares each engine with the intended results declared for the comparison: how many return exactly those results? Those engines are highlighted in the case detail. The intended results describe what the user most likely meant, so it is possible for no engine to achieve them. Sorting by conformance breaks ties by mean F1, which gives partial credit for near misses.</p>
-  </div>
+  </details>
   <div class="toolbar">
     <input id="filter" type="search" placeholder="Filter cases, queries, documents…" aria-label="Filter cases">
     <div class="sort-toggle" role="group" aria-label="Sort cases; click the selected sort to reverse direction">
@@ -439,7 +445,7 @@
       const summary = current().summary;
       $("corpus-description").textContent = state.corpus === "sameQuery"
         ? "Every engine receives the same query. Differences show how each interprets it."
-        : "Each goal names the cards a user wants. Engines may get an adapted query, using only words from the goal and the typed query, and are scored against those cards.";
+        : "Each goal names the cards a user wants. Engines may get an adapted query, using words a user could think of without knowing which cards exist, and are scored against those cards.";
       $("metrics").innerHTML = [
         [summary.count, state.corpus === "sameQuery" ? "Scenarios" : "Goals"],
         [summary.allEqual, "All engines agree"],
@@ -551,11 +557,27 @@
       const correct = new Set(item.correct || []);
       const conforms = engine => translated && item.conforming.includes(engine.id);
       const notes = [item.scenarioNote, item.note].filter(Boolean).map(note => `<p class="case-note muted">${inline(note)}</p>`).join("");
-      const queries = item.engines.map(engine => `<div class="query-box${conforms(engine) ? " conforms" : ""}"><strong>${escape(labels[engine.id])}${conforms(engine) ? '<span class="conforms-tag">✓ correct</span>' : ""}</strong><code>${escape(translated ? engine.query : item.query)}</code><span class="small">Hits: ${hitList(engine.hits)}</span>${engine.keywordHits ? `<span class="small">Keyword arm: ${hitList(engine.keywordHits)}</span>` : ""}${translated && engine.query !== item.query ? `<span class="small">As typed, <code>${escape(item.query)}</code>: ${hitList(engine.typedHits)}</span>` : ""}</div>`).join("");
-      const headers = ["Document", "Searchable fields", ...item.engines.map(engine => {
+      // Hits are colored against the correct results, so a row shows at a glance what an engine got right.
+      const letters = hits => {
+        if (!hits.length) return '<span class="same">none</span>';
+        const shown = hits.map(label => `<span class="${!translated ? "" : correct.has(label) ? "hit" : "extra"}">${escape(label)}</span>`).join("");
+        const missing = translated ? [...correct].filter(label => !hits.includes(label)) : [];
+        return `<span class="letters">${shown}</span>${missing.length ? `<span class="missing">missing ${escape(missing.join(", "))}</span>` : ""}`;
+      };
+      const keywordArm = engine => engine.keywordHits ? `<span class="sub">Keyword arm: ${hitList(engine.keywordHits)}</span>` : "";
+      const queryRows = !translated ? "" : item.engines.map(engine => {
+        const name = `${escape(labels[engine.id])}${conforms(engine) ? '<span class="correct-pill">✓ correct</span>' : ""}`;
+        const adapted = engine.query !== item.query;
+        return `<tr><td>${name}</td><td>${adapted ? `<code>${escape(engine.query)}</code>` : '<span class="same">as typed</span>'}</td><td>${letters(engine.hits)}${keywordArm(engine)}</td><td>${adapted ? letters(engine.typedHits) : '<span class="same">same</span>'}</td></tr>`;
+      }).join("");
+      const queries = translated
+        ? `<p class="single-query muted">Typed: <code>${escape(item.query)}</code></p><div class="table-wrap"><table class="query-table"><thead><tr><th>Engine</th><th>Adapted query</th><th>Hits</th><th>Hits as typed</th></tr></thead><tbody>${queryRows}</tbody></table></div>`
+        // With one query, the membership table already shows every engine's hits; only the keyword arm is extra.
+        : `<p class="single-query muted">Query: <code>${escape(item.query)}</code></p>${item.engines.filter(engine => engine.keywordHits).map(engine => `<p class="single-query muted">${escape(labels[engine.id])} keyword arm: ${hitList(engine.keywordHits)}</p>`).join("")}`;
+      const headers = ["Document", "Searchable fields", ...(translated ? ["Correct"] : []), ...item.engines.map(engine => {
         const text = engine.distances ? `${labels[engine.id]} (≤ ${fixed(cutoff)})` : labels[engine.id];
         return conforms(engine) ? { text: `${text} ✓`, className: "conforms" } : text;
-      }), ...(translated ? ["Correct"] : [])];
+      })];
       const rows = item.docs.map(doc => {
         const cells = item.engines.map(engine => {
           const hit = engine.hits.includes(doc.label);
@@ -565,12 +587,12 @@
           return `<span class="${kind}" title="${escape(kind)}">${hit ? "✓" : "·"}</span>${shown}`;
         });
         const fields = Object.entries(doc.attributes).map(([key, value]) => `${key}: ${value}`).join(" · ");
-        return [`<strong>${escape(doc.label)}</strong>`, `<span class="doc-text">${escape(fields)}</span>`, ...cells, ...(translated ? [correct.has(doc.label) ? "✓" : "·"] : [])];
+        return [`<strong>${escape(doc.label)}</strong>`, `<span class="doc-text">${escape(fields)}</span>`, ...(translated ? [correct.has(doc.label) ? "✓" : "·"] : []), ...cells];
       });
       const resultTitle = `Result membership${translated ? ` · correct results ${escape(item.correct.join(", ") || "none")}` : ""}`;
       const distanceNote = `Semantic only shows each card's cosine distance from the query: lower is closer, cards within ${fixed(cutoff)} are hits, and orange marks those within 0.05 of that cutoff.`;
       const resultNote = translated
-        ? `Highlighted engines return exactly the correct results. Orange ✓ is an extra hit; red · is a missed correct hit. ${distanceNote}`
+        ? `In both tables, green is a correct hit, orange an extra hit, and red a missed correct hit. Highlighted engines return exactly the correct results. ${distanceNote}`
         : `✓ is a hit; · is not. ${distanceNote} Semantic with fallback adds the keyword arm and appdb's PostgreSQL hits.`;
       $("detail").innerHTML = `
         <div class="detail-head">
@@ -581,8 +603,8 @@
           ${badges(item)}
         </div>
         ${notes}
-        <h3>${translated ? "Queries by engine" : "Identical query"}</h3>
-        <div class="query-grid">${queries}</div>
+        ${translated ? "<h3>Queries and hits by engine</h3>" : ""}
+        ${queries}
         <h3>${resultTitle}</h3>
         <div class="table-wrap">${table(headers, rows)}</div>
         <p class="note">${resultNote}</p>`;
