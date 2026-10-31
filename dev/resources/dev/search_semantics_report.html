@@ -197,28 +197,35 @@
     .sc .typed { color: #8a99ab; font-size: .82rem; }
     .sc .best { color: #172334; }
     .sc.zero .best { color: #a5afba; }
-    .sc .bar { display: block; width: 100%; height: 3px; border-radius: 2px; background: #e8edf3; overflow: hidden; }
-    .sc .bar i { display: block; height: 100%; background: #b3c1d1; }
+    .sc .bar { display: block; width: 100%; height: 4px; border-radius: 2px; background: #e8edf3; overflow: hidden; }
+    /* The bar runs from red at 0 to green at 1, so weak and strong scores stand apart at a glance. */
+    .sc .bar i { display: block; height: 100%; background: hsl(calc(4deg + 128deg * var(--v)) 62% 46%); }
     .sc.winner .best { font-weight: 750; }
-    .sc.winner .bar i { background: #2f6fb3; }
-    .score-table tr.kind-row th { background: transparent; color: #5b6d83; text-align: left; font-size: .74rem; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; padding-top: 16px; border-bottom-color: #c8d4e2; }
+    .score-table tr.kind-row th { background: color-mix(in srgb, var(--c, #8a99ab) 10%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 75%, black); text-align: left; font-size: .74rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding-top: 16px; border-bottom-color: #c8d4e2; }
     .score-table tr.kind-row .kind-weight { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 6px; }
     .score-table tr.goal-row { cursor: pointer; }
     .score-table tr.goal-row:hover { background: #f5f8fc; }
     .score-table tr.goal-row:hover td:first-child { text-decoration: underline; }
     .score-table tr.goal-row.muted-row { opacity: .4; }
     .score-table tfoot td { font-weight: 650; border-top: 2px solid #c8d4e2; }
-    .score-table tfoot tr.gain-row td { border-top: 0; background: #eef4fb; padding-top: 10px; padding-bottom: 10px; }
-    .score-table tfoot tr.gain-row td:first-child { color: #173c71; border-radius: 8px 0 0 8px; }
-    .score-table tfoot tr.gain-row td:last-child { border-radius: 0 8px 8px 0; }
-    .gain { display: inline-block; min-width: 4.2em; text-align: center; border-radius: 999px; padding: 2px 10px; background: #d5e4f6; color: #173c71; font-weight: 750; font-size: .95rem; }
+    /* The means are the table's answer, so they get the strongest band and larger numbers. */
+    .score-table tfoot tr.mean-row td { background: #e9eff7; padding-top: 12px; padding-bottom: 12px; font-size: 1.02rem; }
+    .score-table tfoot tr.mean-row td:first-child { color: #173c71; border-radius: 8px 0 0 8px; }
+    .score-table tfoot tr.mean-row td:last-child { border-radius: 0 8px 8px 0; }
+    .score-table tfoot tr.mean-row .sc .bar { height: 6px; }
+    .score-table tfoot tr.mean-row .sc .typed { font-size: .86rem; }
+    .score-table tfoot tr.gain-row td { border-top: 0; background: transparent; padding-top: 10px; padding-bottom: 10px; }
+    .score-table tfoot tr.gain-row td:first-child { color: #29405c; }
+    /* A gain's green deepens with its size relative to the largest gain (--g, 0 to 1). */
+    .gain { --g: 0; display: inline-block; min-width: 4.2em; text-align: center; border-radius: 999px; padding: 2px 10px; background: color-mix(in srgb, #1f9a55 calc(12% + 70% * var(--g)), #eef1f5); color: #0f3d22; font-weight: 750; font-size: .95rem; }
     .gain.none { background: transparent; color: #8a99ab; font-weight: 500; }
     details.weights-panel { margin-top: 14px; border-top: 1px solid #e8edf3; padding-top: 10px; }
     details.weights-panel > summary { cursor: pointer; color: #29405c; font-size: .88rem; font-weight: 600; }
     details.weights-panel > summary .weights-state { color: #5b6d83; font-weight: 400; margin-left: 4px; }
-    .weights { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, max-content)); gap: 6px 32px; margin: 12px 0 8px; }
-    .weights label { display: grid; grid-template-columns: 10.5em 80px 1.2em; align-items: center; gap: 8px; font-size: .85rem; }
-    .weights input { width: 80px; accent-color: #5b6d83; }
+    .weights { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, max-content)); gap: 8px 32px; margin: 12px 0 8px; }
+    .weights label { display: grid; grid-template-columns: 12em 80px 1.2em; align-items: center; gap: 8px; font-size: .85rem; color: color-mix(in srgb, var(--c) 80%, black); cursor: help; }
+    .weights label > span:first-child::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: var(--c); }
+    .weights input { width: 80px; accent-color: var(--c); cursor: pointer; }
     .weights output { font-variant-numeric: tabular-nums; color: #5b6d83; text-align: right; }
     details.weights-panel .note { max-width: 72ch; }
     @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } #detail { position: static; max-height: none; } }
@@ -296,19 +303,21 @@
       .case-note { border-left-color: #53677e; }
       .reading-guide { background: #172335; }
       .reading-guide h3 { color: #e4edf7; }
-      .reading-guide, .score-table tr.kind-row th, details.weights-panel > summary .weights-state { color: #aabbd0; }
+      .reading-guide, details.weights-panel > summary .weights-state { color: #aabbd0; }
       .score-table tr.kind-row th { border-bottom-color: #53677e; }
       .score-table tr.goal-row:hover { background: #22334a; }
       .sc .typed { color: #8295aa; }
       .sc .best { color: #e4edf7; }
       .sc.zero .best { color: #6f8297; }
       .sc .bar { background: #2a3b50; }
-      .sc .bar i { background: #5d7290; }
-      .sc.winner .bar i { background: #6aa8ef; }
+      .sc .bar i { background: hsl(calc(4deg + 128deg * var(--v)) 55% 55%); }
+      .score-table tr.kind-row th { background: color-mix(in srgb, var(--c, #8a99ab) 20%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 35%, white); }
+      .score-table tfoot tr.mean-row td { background: #22344d; }
+      .score-table tfoot tr.mean-row td:first-child { color: #cfe2fa; }
+      .score-table tfoot tr.gain-row td:first-child { color: #c3d0dd; }
+      .weights label { color: color-mix(in srgb, var(--c) 40%, white); }
       .score-table tfoot td { border-top-color: #53677e; }
-      .score-table tfoot tr.gain-row td { background: #20324a; }
-      .score-table tfoot tr.gain-row td:first-child { color: #cfe2fa; }
-      .gain { background: #2e4d74; color: #e4edf7; }
+      .gain { background: color-mix(in srgb, #2fbf6e calc(15% + 60% * var(--g)), #24344a); color: #eafbf0; }
       .gain.none { background: transparent; color: #8295aa; }
       :root { --tint: 106 168 239; }
       .pair-legend, .pair-table .vs { color: #aabbd0; }
@@ -319,7 +328,6 @@
       .fidelity-table th.group-start, .fidelity-table td.group-start { border-left-color: #34465c; }
       details.weights-panel { border-top-color: #34465c; }
       details.weights-panel > summary { color: #e4edf7; }
-      .weights input { accent-color: #aabbd0; }
     }
   </style>
 </head>
@@ -462,7 +470,7 @@
       <li>F1 combines precision, the share of returned cards that are correct, and recall, the share of correct cards that come back. It is their harmonic mean, so it is high only when both are high. Returning one of three correct cards and nothing else scores 0.5.</li>
       <li><span class="sc-legend">0.40 → <strong>1.00</strong></span> means 0.40 for the goal's original query and 1.00 for the engine's best query. One number means the best query scores the same.</li>
       <li>A best query uses words a user could think of for the goal without knowing which cards exist, and any syntax the engine supports.</li>
-      <li>A bold score with a blue bar is the best, or tied best, for that goal.</li>
+      <li>Bars run from red at 0 to green at 1. A bold score is the best, or tied best, for that goal.</li>
       <li>Hover a cell for precision and recall. Click a goal to open its case.</li>
       </ul>
     </div>
@@ -525,6 +533,8 @@
       const index = order.indexOf(id);
       return index < 0 ? "#4b5b70" : themePalette[index % themePalette.length];
     }
+    // Goal kinds keep one color wherever they appear: explorer bands, score table headings and weight sliders.
+    const kindColor = kind => themePalette[data.goalKinds.indexOf(kind) % themePalette.length];
     const themeOf = item => state.corpus === "translations"
       ? item.kind
       : scenarioThemes.find(theme => theme.scenarios.includes(item.scenario)).id;
@@ -784,7 +794,7 @@
     const scorePair = (typed, best, winner = false, title = "") => {
       const classes = ["sc", winner ? "winner" : "", best < 1e-9 ? "zero" : ""].filter(Boolean).join(" ");
       const typedPart = Math.abs(best - typed) < 1e-9 ? "" : `<span class="typed">${fixed(typed)} → </span>`;
-      return `<span class="${classes}" title="${escape(title)}"><span class="nums">${typedPart}<span class="best">${fixed(best)}</span></span><span class="bar"><i style="width:${(100 * best).toFixed(0)}%"></i></span></span>`;
+      return `<span class="${classes}" title="${escape(title)}"><span class="nums">${typedPart}<span class="best">${fixed(best)}</span></span><span class="bar"><i style="width:${(100 * best).toFixed(0)}%; --v:${best.toFixed(3)}"></i></span></span>`;
     };
     const weightsState = () => {
       const changed = data.goalKinds.filter(kind => goalsOf(kind).length && weightOf(kind) !== 1);
@@ -796,7 +806,7 @@
       $("weights-state").textContent = weightsState();
       $("weights").innerHTML = data.goalKinds.filter(kind => goalsOf(kind).length).map(kind => {
         const count = goalsOf(kind).length;
-        return `<label><span>${escape(kindLabel(kind))} <span class="muted">(${count})</span></span>
+        return `<label style="--c: ${kindColor(kind)}" title="${escape(kindDescriptions[kind] ?? "")}"><span>${escape(kindLabel(kind))} <span class="muted">(${count})</span></span>
           <input type="range" min="0" max="3" step="1" value="${weightOf(kind)}" data-kind="${escape(kind)}" aria-label="Weight for ${escape(kindLabel(kind))}">
           <output>${weightOf(kind)}</output></label>`;
       }).join("");
@@ -819,20 +829,22 @@
       // Each kind is averaged first, so a weight sets how much a kind counts, whatever its number of goals.
       // Only called when some kind has weight; with none, the totals show n/a rather than a misleading zero.
       const mean = (id, key) => kinds.reduce((sum, kind) => sum + weightOf(kind) * kindMean(kind, id, key), 0) / totalWeight;
+      const topMean = totalWeight ? Math.max(...data.engines.map(id => mean(id, "bestScore"))) : 0;
+      const topGain = totalWeight ? Math.max(...data.engines.map(id => mean(id, "bestScore") - mean(id, "typedScore"))) : 0;
       const header = `<thead><tr><th>Goal</th>${data.engines.map(id => `<th>${escape(labels[id])}</th>`).join("")}</tr></thead>`;
       const body = kinds.map(kind => {
         const goalRows = goalsOf(kind).map(item => `<tr class="goal-row${weightOf(kind) ? "" : " muted-row"}" data-id="${escape(item.id)}"><td>${escape(item.focus)}</td>${data.engines.map(id => {
           const engine = engineIn(item, id);
           return `<td class="score-cell">${scorePair(engine.typedScore.f1, engine.bestScore.f1, wins(item, id), scoreTitle(engine))}</td>`;
         }).join("")}</tr>`).join("");
-        return `<tr class="kind-row"><th colspan="${data.engines.length + 1}">${escape(kindLabel(kind))}${weightOf(kind) === 1 ? "" : `<span class="kind-weight">weight ${weightOf(kind)}</span>`}</th></tr>${goalRows}`;
+        return `<tr class="kind-row" style="--c: ${kindColor(kind)}"><th colspan="${data.engines.length + 1}" title="${escape(kindDescriptions[kind] ?? "")}">${escape(kindLabel(kind))}${weightOf(kind) === 1 ? "" : `<span class="kind-weight">weight ${weightOf(kind)}</span>`}</th></tr>${goalRows}`;
       }).join("");
       const footer = `<tfoot>
-          <tr><td>Mean of kinds</td>${data.engines.map(id => `<td class="score-cell">${totalWeight ? scorePair(mean(id, "typedScore"), mean(id, "bestScore")) : "n/a"}</td>`).join("")}</tr>
+          <tr class="mean-row"><td>Mean of kinds</td>${data.engines.map(id => `<td class="score-cell">${totalWeight ? scorePair(mean(id, "typedScore"), mean(id, "bestScore"), mean(id, "bestScore") >= topMean - 1e-9) : "n/a"}</td>`).join("")}</tr>
           <tr class="gain-row"><td>Gain from the best query</td>${data.engines.map(id => {
             if (!totalWeight) return `<td class="score-cell">n/a</td>`;
             const gain = mean(id, "bestScore") - mean(id, "typedScore");
-            return `<td class="score-cell"><span class="gain${gain < 0.005 ? " none" : ""}">+${fixed(gain)}</span></td>`;
+            return `<td class="score-cell"><span class="gain${gain < 0.005 ? " none" : ""}" style="--g: ${(topGain > 0 ? gain / topGain : 0).toFixed(3)}">+${fixed(gain)}</span></td>`;
           }).join("")}</tr>
         </tfoot>`;
       $("score-table").innerHTML = `<table class="score-table">${header}<tbody>${body}</tbody>${footer}</table>`;
