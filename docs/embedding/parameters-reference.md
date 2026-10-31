@@ -14,23 +14,25 @@ For each attribute's or prop's type and description, see:
 
 ## Which props to use
 
-| What you want       | On           | Web component                 | React SDK               |
-| ------------------- | ------------ | ----------------------------- | ----------------------- |
-| Starting values     | Dashboard    | `initial-parameters`          | `initialParameters`     |
-|                     | SQL question | `initial-sql-parameters`      | `initialSqlParameters`  |
-| Controlled values   | Dashboard    | `parameters`                  | `parameters`            |
-|                     | SQL question | `sql-parameters`              | `sqlParameters`         |
-| Change notification | Dashboard    | `parameters-change` event     | `onParametersChange`    |
-|                     | SQL question | `sql-parameters-change` event | `onSqlParametersChange` |
-| Hide widgets        | Both         | `hidden-parameters`           | `hiddenParameters`      |
+| What you want       | On                               | Web component                              | React SDK                           |
+| ------------------- | -------------------------------- | ------------------------------------------ | ----------------------------------- |
+| Starting values     | Dashboard                        | `initial-parameters`                       | `initialParameters`                 |
+|                     | SQL question                     | `initial-sql-parameters`                   | `initialSqlParameters`              |
+| Controlled values   | Dashboard                        | `parameters`                               | `parameters`                        |
+|                     | SQL question                     | `sql-parameters`                           | `sqlParameters`                     |
+|                     | Linked dashboard or SQL question | `navigated-entity-parameters`              | `navigatedEntityParameters`         |
+| Change notification | Dashboard                        | `parameters-change` event                  | `onParametersChange`                |
+|                     | SQL question                     | `sql-parameters-change` event              | `onSqlParametersChange`             |
+|                     | Linked dashboard or SQL question | `navigated-entity-parameters-change` event | `onNavigatedEntityParametersChange` |
+| Hide widgets        | Both                             | `hidden-parameters`                        | `hiddenParameters`                  |
 
 ## Web component attribute parsing
 
-The parameter attributes take JSON: an object keyed by slug, or for `hidden-parameters`, an array of slugs.
+The parameter attributes take JSON: an object keyed by slug, or for `hidden-parameters`, an array of slugs. `navigated-entity-parameters` takes an object keyed by `navigationId`, with an object keyed by slug for each visit.
 
 Attribute values are parsed as [JSON5](https://json5.org/), so single quotes, unquoted keys, and trailing commas all work. Only values that start with `{` or `[` are parsed as JSON. Other values stay strings, except `true`, `false`, and bare numbers, which become booleans and numbers. So wrap even a single slug in `hidden-parameters` in `[]`. Without the brackets, a dashboard embed won't render at all, and the console shows a `TypeError` rather than a message about the attribute. A question embed still renders, but it hides every parameter whose slug appears anywhere in the string. A value that starts with `{` or `[`, but that doesn't parse, stays a string, and Metabase logs an error.
 
-Changing `initial-parameters`, `initial-sql-parameters`, or `hidden-parameters` _after_ the embed has loaded re-renders the embed from scratch with the new values. Changing `parameters` or `sql-parameters` applies the new values and re-runs the queries, without re-rendering the embed from scratch.
+Changing `initial-parameters`, `initial-sql-parameters`, or `hidden-parameters` _after_ the embed has loaded re-renders the embed from scratch with the new values. Changing `parameters`, `sql-parameters`, or `navigated-entity-parameters` applies the new values and re-runs the queries, without re-rendering the embed from scratch.
 
 ## Value formats by parameter type
 
@@ -94,6 +96,19 @@ In an embed, the filter widget shows no label for the `last…` values, but the 
 | `source`             | Why the callback fired. See [When the callback fires](#when-the-callback-fires). |
 
 SQL questions deliver a [`SqlParameterChangePayload`](./sdk/api/SqlParameterChangePayload.html) through `onSqlParametersChange` or `sql-parameters-change`. It's the same object without `lastUsedParameters`.
+
+### Linked dashboard and question payload
+
+`onNavigatedEntityParametersChange` (SDK) and the `navigated-entity-parameters-change` event (web component, as `event.detail`) deliver a [`NavigatedEntityParameterChangePayload`](./sdk/api/NavigatedEntityParameterChangePayload.html) for each dashboard or SQL question that people open through [entity navigation](./parameters.md#control-values-on-linked-dashboards-and-questions). It's the dashboard payload for a linked dashboard, or the SQL question payload for a linked SQL question, plus these fields:
+
+| Field             | What it holds                                                                                                                                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entityType`      | `"dashboard"` or `"question"`.                                                                                                                                                                                         |
+| `entityId`        | The [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) of the dashboard or question on screen.                                                                                 |
+| `navigationId`    | The ID of this visit. Each new visit gets a new ID, and going back keeps it. Use it as the key in `navigatedEntityParameters`.                                                                                         |
+| `clickParameters` | The values the click set, keyed like `parameters`, with only the filters the click set. Empty when the click sets no filter. Values are parsed the way the linked item parses them, so `"Gizmo"` comes as `["Gizmo"]`. |
+
+For linked items, `initial-state` fires after each navigation, including when people go back to an earlier visit.
 
 ### When the callback fires
 
