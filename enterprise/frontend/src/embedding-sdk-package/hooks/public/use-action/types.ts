@@ -19,15 +19,15 @@ import type {
 } from "../data-schema";
 
 /**
- * Flat public kind union. Maps onto the backend's namespaced
- * `row/*` + `bulk/*` `implicitKind` and the `query` `type` value, but
- * exposes a simpler five-value surface to callers: `create` / `update` /
- * `delete` always refer to a single row, `bulk` covers any bulk variant,
- * and `sql` covers custom SQL actions (the backend's `query`-type action).
+ * Flat public kind union. Maps onto the backend's namespaced `row/*`
+ * `implicitKind` and the `query` `type` value, but exposes a simpler
+ * four-value surface to callers: `create` / `update` / `delete` always refer
+ * to a single row, and `sql` covers custom SQL actions (the backend's
+ * `query`-type action).
  *
  * @category useAction
  */
-export type ActionKind = "create" | "update" | "delete" | "bulk" | "sql";
+export type ActionKind = "create" | "update" | "delete" | "sql";
 
 /**
  * Response from a single-row create — the inserted row.
@@ -57,18 +57,6 @@ export type ActionResultForDelete = {
 };
 
 /**
- * Response from any bulk variant — a success flag plus optional counts.
- *
- * @category useAction
- */
-export type ActionResultForBulk = {
-  success: boolean;
-  "rows-created"?: number;
-  "rows-updated"?: number;
-  "rows-deleted"?: number;
-};
-
-/**
  * Response from a custom SQL action — the affected row count.
  *
  * @category useAction
@@ -89,7 +77,6 @@ export type AnyActionResult =
   | ActionResultForCreate
   | ActionResultForUpdate
   | ActionResultForDelete
-  | ActionResultForBulk
   | ActionResultForSql;
 
 /**
@@ -131,11 +118,9 @@ export type ActionResultForKind<TKind extends ActionKind | undefined> =
       ? ActionResultForUpdate
       : TKind extends "delete"
         ? ActionResultForDelete
-        : TKind extends "bulk"
-          ? ActionResultForBulk
-          : TKind extends "sql"
-            ? ActionResultForSql
-            : AnyActionResult;
+        : TKind extends "sql"
+          ? ActionResultForSql
+          : AnyActionResult;
 
 // ============================================================================
 // Data App schema-derived helpers

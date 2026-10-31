@@ -33,7 +33,6 @@ export { useAction } from "./hooks/public/use-action";
 export type {
   ActionExecuteError,
   ActionKind,
-  ActionResultForBulk,
   ActionResultForCreate,
   ActionResultForDelete,
   ActionResultForKind,

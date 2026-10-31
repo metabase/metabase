@@ -139,7 +139,7 @@
    :row/delete :model.row/delete})
 
 (def ^:private ImplicitActionKind
-  [:enum :model.row/create :model.row/update :model.row/delete :bulk/create :bulk/update :bulk/delete])
+  [:enum :model.row/create :model.row/update :model.row/delete])
 
 (mu/defn- build-implicit-query :- [:map
                                    [:query          ::mbql.s/Query]
