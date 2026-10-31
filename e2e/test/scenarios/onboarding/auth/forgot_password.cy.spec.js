@@ -3,6 +3,9 @@ import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 
+// The reset must use a password the user does not already have.
+const NEW_PASSWORD = `new-${admin.password}`;
+
 describe("scenarios > auth > password", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore();
@@ -24,8 +27,8 @@ describe("scenarios > auth > password", { tags: "@external" }, () => {
     H.getInbox().then(({ body: [{ html }] }) => {
       cy.visit(getResetLink(html));
 
-      cy.findByLabelText("Create a password").type(admin.password);
-      cy.findByLabelText("Confirm your password").type(admin.password);
+      cy.findByLabelText("Create a password").type(NEW_PASSWORD);
+      cy.findByLabelText("Confirm your password").type(NEW_PASSWORD);
       cy.findByText("Save new password").click();
 
       cy.findByText("You've updated your password.");
