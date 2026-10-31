@@ -12,7 +12,6 @@
         "graph.metrics": ["count"],
         "graph.x_axis.scale": "ordinal"
       },
-      "collection_preview": true,
       "entity_id": "X5ORiUiwibT52ot6mE2jX",
       "display": "bar",
       "parameter_mappings": [],

@@ -484,7 +484,6 @@
                    [:type        [:maybe :string]]]]]]
    [:collection_id         {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position   {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_preview    {:optional true} [:maybe :boolean]]
    [:collection_type       {:optional true} [:maybe :string]]
    [:dashboard_id          {:optional true} [:maybe ms/PositiveInt]]
    [:database_id           {:optional true} [:maybe ms/PositiveInt]]

@@ -106,7 +106,6 @@
       "parameter_mappings": [],
       "display": "funnel",
       "entity_id": "7nfzvY52htrwY14KL0AkP",
-      "collection_preview": true,
       "visualization_settings": {
         "funnel.type": "bar"
       },

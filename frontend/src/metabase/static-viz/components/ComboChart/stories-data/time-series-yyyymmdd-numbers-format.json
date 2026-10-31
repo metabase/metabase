@@ -21,7 +21,6 @@
         "graph.series_order": null,
         "graph.metrics": ["Y"]
       },
-      "collection_preview": true,
       "entity_id": "Zb3RzD74xSokV5oTVHqrJ",
       "display": "line",
       "parameter_mappings": [],

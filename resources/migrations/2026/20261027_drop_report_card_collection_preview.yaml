@@ -1,0 +1,23 @@
+## Collections no longer show live previews of pinned cards, so nothing reads or writes the per-card preview flag. A
+## rollback brings the column back with every card's preview enabled, its original default.
+
+databaseChangeLog:
+  - changeSet:
+      id: j38192
+      author: appleby
+      comment: Drop report_card.collection_preview, unused since collection previews were removed
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: collection_preview
+      rollback:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: collection_preview
+                  type: ${boolean.type}
+                  remarks: Indicating whether the card should be visualized in the collection preview
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false

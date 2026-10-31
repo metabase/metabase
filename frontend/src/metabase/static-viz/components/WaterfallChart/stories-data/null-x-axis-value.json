@@ -22,7 +22,6 @@
         "graph.dimensions": ["X"],
         "graph.y_axis.min": -100
       },
-      "collection_preview": true,
       "entity_id": "l-3bw7IqSJqQS9w4KrkX9",
       "display": "waterfall",
       "parameter_mappings": [],

@@ -1262,6 +1262,32 @@
                      :table_id    (:id table)}
                     (t2/select-one :model/Card :name "Customers")))))))))
 
+(deftest card-collection-preview-yaml-round-trip-test
+  (testing "Cards export without collection_preview, and older exports that still carry it load"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "my-db" :engine :h2)
+                table (ts/create! :model/Table :name "customers" :schema "PUBLIC" :db_id (:id db))
+                coll  (ts/create! :model/Collection :name "coll")
+                mp    (lib-be/application-database-metadata-provider (:id db))]
+            (ts/create! :model/Card
+                        :name          "Preview Card"
+                        :collection_id (:id coll)
+                        :database_id   (:id db)
+                        :table_id      (:id table)
+                        :dataset_query (lib/query mp (lib.metadata/table mp (:id table))))
+            (storage/store! (serdes/with-cache (into [] (extract/extract {:no-settings true})))
+                            (storage.files/file-writer dump-dir))))
+        (let [^File file (m/find-first #(str/ends-with? (.getName ^File %) "preview_card.yaml") (file-seq (io/file dump-dir)))
+              exported   (yaml/from-file file)]
+          (is (=? {:name "Preview Card"} exported))
+          (is (not (contains? exported :collection_preview)))
+          (dump/spit-yaml! file (assoc exported :collection_preview false)))
+        (ts/with-db dest-db
+          (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+          (is (t2/exists? :model/Card :name "Preview Card")))))))
+
 (deftest orphaned-transform-yaml-round-trip-test
   (testing "A Transform whose source database was deleted round-trips through YAML storage as a tombstone"
     (mt/with-premium-features #{:transforms-basic}

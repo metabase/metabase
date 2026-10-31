@@ -21,7 +21,6 @@
   {:archived               false
    :collection_id          nil
    :collection_position    nil
-   :collection_preview     true
    :database_id            (mt/id)
    :dataset_query          (:dataset_query card)
    :type                   :question

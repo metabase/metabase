@@ -50,7 +50,6 @@ serdes/meta:
 display: table
 archived_directly: false
 entity_id: StubDbQuestion1234567
-collection_preview: true
 visualization_settings: {}
 parameters: []
 dashboard_id: null

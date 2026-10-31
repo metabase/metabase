@@ -103,7 +103,7 @@
   (merge instance-fields
          {:entity_id entity_id :name name :type :question :display :table :description nil
           :creator_id (mt/user->id :crowberto)
-          :collection_preview true :card_schema nil :database_id (:database query)
+          :card_schema nil :database_id (:database query)
           :dataset_query (lib/prepare-for-serialization query) :visualization_settings {}
           :parameters [] :parameter_mappings [] :result_metadata nil :dimensions nil :dimension_mappings nil}))
 

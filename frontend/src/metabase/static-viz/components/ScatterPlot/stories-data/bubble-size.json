@@ -159,7 +159,6 @@
       "include_csv": false,
       "display": "scatter",
       "entity_id": "vxohQh58BefXK8GC9F3y-",
-      "collection_preview": true,
       "visualization_settings": {
         "scatter.bubble": "hp",
         "graph.dimensions": ["defense"],

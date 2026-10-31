@@ -79,7 +79,6 @@
    [:archived :boolean]
    [:copy {:optional true} :boolean]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_preview {:optional true} [:maybe :boolean]]
    [:fully_parameterized {:optional true} [:maybe :boolean]]
    [:based_on_upload {:optional true} [:maybe [:or ms/PositiveInt :string]]]
    [:collection {:optional true} [:maybe ::Collection]]

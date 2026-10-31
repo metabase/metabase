@@ -181,7 +181,6 @@
       "parameter_mappings": [],
       "display": "bar",
       "entity_id": "FvkdBkSLWFGWHJAy6FjvH",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.show_goal": false,
         "graph.show_values": false,

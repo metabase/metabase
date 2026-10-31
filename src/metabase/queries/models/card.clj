@@ -1517,7 +1517,7 @@
                                              :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
                                              :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                         :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                                        :result_metadata :collection_preview :verified-result-metadata?})]
+                                                        :result_metadata :verified-result-metadata?})]
       (assert-is-valid-dashboard-internal-update card-updates card-before-update)
       (maybe-unverify! card-before-update updated-fields actor)
       (queries.db/update-card! (:id card-before-update)
@@ -1684,7 +1684,7 @@
 
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
-  {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
+  {:copy [:archived :archived_directly :collection_position :description :display
           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
           :card_schema]
    :skip [;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the
@@ -1735,7 +1735,6 @@
     :dimension_mappings     {:export metrics/export-dimension-mappings :import metrics/import-dimension-mappings}}
    :defaults {:archived            false
               :archived_directly   false
-              :collection_preview  true
               :enable_embedding    false}})
 
 (defn- card-deps
