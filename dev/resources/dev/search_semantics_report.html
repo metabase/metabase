@@ -209,7 +209,11 @@
     .goal-scores { margin: 28px 0 0; }
     .goal-scores h2 { margin-bottom: 6px; }
     .goal-scores .lede { margin: 0 0 12px; }
-    .goal-scores .caveat { max-width: 46rem; margin: 0 0 12px; padding: 10px 14px; border-left: 3px solid #d9a441; background: #fbf6ea; border-radius: 0 8px 8px 0; color: #4a3d1f; font-size: .9rem; }
+    .goal-scores .caveat { margin: 0 0 14px; padding: 10px 16px 12px; border-left: 3px solid #d9a441; background: #fbf6ea; border-radius: 0 10px 10px 0; color: #4a3d1f; font-size: .86rem; }
+    .goal-scores .caveat h3 { margin: 0 0 4px; font-size: .9rem; color: #6b4e12; }
+    .goal-scores .caveat p { margin: 0 0 6px; }
+    .goal-scores .caveat ul { columns: 2 340px; column-gap: 36px; margin: 0; padding-left: 18px; }
+    .goal-scores .caveat li { break-inside: avoid; margin-bottom: 4px; }
     /* The guide is its own panel, in columns, so its lines stay short and it reads apart from the table. */
     .reading-guide { margin: 0 0 18px; padding: 10px 16px 12px; border-radius: 10px; background: #f5f7fb; color: #5b6d83; font-size: .86rem; }
     .reading-guide h3 { margin: 0 0 6px; color: #29405c; font-size: .82rem; }
@@ -292,6 +296,7 @@
       .preset-button[aria-pressed="true"] { background: var(--c); color: white; }
       .weight-presets { color: #aabbd0; }
       .goal-scores .caveat { background: #2b2618; border-left-color: #b8892f; color: #eadcb8; }
+      .goal-scores .caveat h3 { color: #f3d48f; }
       .rank-table { border-color: #354963; }
       .rank-table h3 { color: #e4edf7; }
       .rank-bar { background: #2a3b50; }
@@ -507,7 +512,16 @@
 
   <section class="card goal-scores" id="goal-scores" aria-labelledby="goal-scores-title" hidden>
     <h2 id="goal-scores-title">Scores by goal</h2>
-    <p class="caveat">These rankings do not predict how satisfied users would be. The goals were picked because they are tricky, so the ordinary searches that hit no edge case, likely most of them, are missing. Real traffic would have far more variety within each kind of goal and a different mix between kinds, and that mix differs from customer to customer. Semantic search is also likely to do worse as a catalog grows, since its vector arm struggles to tell similar cards apart, and this catalog is tiny. The rankings are still useful for comparing how each engine handles these particular cases.</p>
+    <div class="caveat">
+      <h3>How far to trust these rankings</h3>
+      <p>They compare how each engine handles these hand-picked cases. They don't predict how satisfied users would be.</p>
+      <ul>
+        <li>The goals were picked because they are tricky. Ordinary searches that hit no edge case, likely most real searches, are missing.</li>
+        <li>Real traffic has far more variety within each kind of goal, and a different mix between kinds.</li>
+        <li>That mix differs from customer to customer, so no single set of weights fits everyone.</li>
+        <li>Semantic search likely does worse as a catalog grows, because its vector arm struggles to tell similar cards apart. This catalog is tiny.</li>
+      </ul>
+    </div>
     <p class="lede">Each score is the F1 score against the goal's correct cards, from 0 (none right) to 1 (exactly right).</p>
     <div class="weight-presets" id="weight-presets"></div>
     <div class="rankings" id="rankings"></div>
