@@ -21,7 +21,9 @@
    [metabase.search.engine :as search.engine]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (java.util.concurrent ExecutionException)))
 
 (set! *warn-on-reflection* true)
 
@@ -319,7 +321,11 @@
     (search-fn (first all-queries) search-engine)
     ;; Create futures for parallel execution
     (let [futures      (mapv #(future (search-fn % search-engine)) all-queries)
-          result-lists (mapv deref futures)]
+          result-lists (try
+                         (mapv deref futures)
+                         (catch ExecutionException e
+                           ;; Throw what the query threw, as one query does without a future.
+                           (throw (or (ex-cause e) e))))]
       (reciprocal-rank-fusion result-lists))))
 
 (defn- confined-collection-id
@@ -629,7 +635,7 @@
               "tell the user that search is unavailable right now.")})
 
 (tools/defrecoverable search-failed!
-  "The search backend failed, for example because the search index is missing.
+  "The appdb search index is missing, for example because its tables are gone.
 
   The browse step browses only the content that the failed search was limited to. `verified-only` is
   true when the search was limited to verified content but `read_resource` is not, as in the profiles
@@ -660,8 +666,6 @@
 
 (defn- do-search
   [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit]}]
-  ;; Recoverable, not `:internal`: the agent can find the data without search, or tell the user that
-  ;; search failed. `read_resource` does not use the search index.
   (let [opts    (merge {:semantic-queries semantic_queries
                         :term-queries    keyword_queries
                         :entity-types    (or (seq entity_types) (vec default-types))
@@ -671,6 +675,11 @@
         results (try
                   (search opts)
                   (catch Exception e
+                    ;; A missing index is recoverable: the agent can find the data without search, or tell the
+                    ;; user that search failed. `read_resource` does not use the search index. Any other failure
+                    ;; is not planned for, so it ends the turn as `:internal`.
+                    (when-not (search/index-not-found? e)
+                      (throw e))
                     ;; The runtime logs a recoverable error at debug level, without its cause.
                     (log/error e "Metabot search failed")
                     (search-failed! {:collection-id (confined-collection-id (:metabot opts) (:profile-id opts))
