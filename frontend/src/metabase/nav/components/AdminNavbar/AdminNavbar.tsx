@@ -34,25 +34,22 @@ export const AdminNavbar = ({
   const isAdmin = useSelector(getUserIsAdmin);
   const navigate = useNavigate();
 
-  useRegisterShortcut(
-    [
-      {
-        id: "admin-change-tab",
-        perform: (_, event) => {
-          if (!event?.key) {
-            return;
-          }
-          const key = parseInt(event.key);
-          const path = adminPaths[key - 1]?.path;
+  useRegisterShortcut([
+    {
+      id: "admin-change-tab",
+      perform: (_, event) => {
+        if (!event?.key) {
+          return;
+        }
+        const key = parseInt(event.key);
+        const path = adminPaths[key - 1]?.path;
 
-          if (path) {
-            navigate(path);
-          }
-        },
+        if (path) {
+          navigate(path);
+        }
       },
-    ],
-    [adminPaths],
-  );
+    },
+  ]);
 
   return (
     <Flex

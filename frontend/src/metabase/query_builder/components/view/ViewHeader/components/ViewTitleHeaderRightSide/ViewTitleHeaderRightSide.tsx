@@ -152,11 +152,12 @@ export function ViewTitleHeaderRightSide({
           {
             id: "query-builder-data-refresh",
             perform: () =>
-              isRunning ? cancelQuery : runQuestionQuery({ ignoreCache: true }),
+              isRunning
+                ? cancelQuery()
+                : runQuestionQuery({ ignoreCache: true }),
           },
         ]
       : [],
-    [isRunning, isShowingNotebook, hasRunButton],
   );
 
   return (
@@ -232,7 +233,6 @@ export function ViewTitleHeaderRightSide({
         <QuestionActions
           question={question}
           isBookmarked={isBookmarked}
-          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
           onOpenModal={onOpenModal}
           onToggleBookmark={toggleBookmark}
           onSetQueryBuilderMode={setQueryBuilderMode}

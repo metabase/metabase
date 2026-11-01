@@ -1043,18 +1043,18 @@ export const getEmbeddingParameters = createSelector([getCard], (card) => {
 // Embeddings might be published without passing embedding_params to the server,
 // in which case it's an empty object. We should treat such situations with
 // caution, assuming that an absent parameter is "disabled".
-export function getEmbeddedParameterVisibility(
-  state: QueryBuilderStoreState,
-  slug: string,
-) {
-  const card = getCard(state);
-  if (!card?.enable_embedding) {
-    return null;
-  }
+// Memoized on the card, so `connect` sees the same function until the card changes.
+export const getEmbeddedParameterVisibilityGetter = createSelector(
+  [getCard],
+  (card) => (slug: string) => {
+    if (!card?.enable_embedding) {
+      return null;
+    }
 
-  const embeddingParams = card.embedding_params ?? {};
-  return embeddingParams[slug] ?? "disabled";
-}
+    const embeddingParams = card.embedding_params ?? {};
+    return embeddingParams[slug] ?? "disabled";
+  },
+);
 
 export const getSubmittableQuestion = (
   state: QueryBuilderStoreState,
