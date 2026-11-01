@@ -9,13 +9,13 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
 
@@ -115,13 +115,42 @@
         (lib/breakout (lib/with-temporal-bucket (column "created_at") :year))
         filter-and-order-counts)))
 
+(defmulti native-with-query-sql
+  "SQL of a native query that starts with `WITH`."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-with-query-sql :default
+  [_driver]
+  "WITH n AS (SELECT 1 AS x) SELECT x FROM n")
+
+(defmethod native-with-query-sql :oracle
+  [_driver]
+  "WITH n AS (SELECT 1 AS x FROM dual) SELECT x FROM n")
+
+(defmulti native-with-source-supported?
+  "Whether the database can run a query on a native question that starts with `WITH`. With subselects, the native SQL
+  goes inside a subquery."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-with-source-supported? :default
+  [_driver]
+  true)
+
+;; SQL Server does not allow a `WITH` clause in a subquery or a CTE body
+(defmethod native-with-source-supported? :sqlserver
+  [_driver]
+  false)
+
 (deftest ^:parallel multi-stage-questions-test
-  (mt/test-drivers (mt/normal-driver-select {:+fns [#(and (isa? driver/hierarchy % :sql)
-                                                          (sql.qp/use-ctes-for-stages? %))]
-                                             :+features [:nested-queries :left-join :native-parameter-card-reference]})
+  (mt/test-drivers (mt/normal-driver-select {:+features [:stage-ctes :nested-queries :left-join
+                                                         :native-parameter-card-reference]})
     (let [mp         (qp.test-util/metadata-provider-with-cards-for-queries
                       [(lib/limit (multi-stage-query (mt/metadata-provider)) 100)
-                       (lib/native-query (mt/metadata-provider) "WITH n AS (SELECT 1 AS x) SELECT x FROM n")])
+                       (lib/native-query (mt/metadata-provider) (native-with-query-sql driver/*driver*))])
           round-sums (partial mt/formatted-rows [str #(u/round-to-decimals 2 (double %))])]
       (testing "multi-stage question with joins"
         (let [query (multi-stage-query mp)]
@@ -159,11 +188,15 @@
                       ["1971-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 20]]
                      (mt/formatted-rows [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str int]
                                         (qp/process-query query))))))))
-      (testing "question on a native question that starts with WITH"
-        (let [query (lib/query mp (lib.metadata/card mp 2))]
-          (mt/with-native-query-testing-context query
-            (let [query-result (qp/process-query query)]
-              (is (= [[1]]
-                     (mt/formatted-rows [int] query-result)))
-              (is (re-find #"WITH.*__mb_stage"
-                           (-> query-result :data :native_form :query))))))))))
+      (when (native-with-source-supported? driver/*driver*)
+        (testing "question on a native question that starts with WITH"
+          (let [query (lib/query mp (lib.metadata/card mp 2))]
+            (mt/with-native-query-testing-context query
+              (let [query-result (qp/process-query query)]
+                (is (= [[1]]
+                       (mt/formatted-rows [int] query-result)))
+                (if (driver/database-supports? driver/*driver* :stage-ctes/nested (mt/db))
+                  (is (re-find #"WITH.*__mb_stage"
+                               (-> query-result :data :native_form :query)))
+                  (is (not (re-find #"WITH.*__mb_stage"
+                                    (-> query-result :data :native_form :query)))))))))))))

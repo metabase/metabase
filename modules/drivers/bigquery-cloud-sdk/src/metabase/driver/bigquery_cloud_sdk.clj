@@ -1140,6 +1140,7 @@
                               ;; tests expect the converted values.
                               :set-timezone                     true
                               :split-part                       true
+                              :stage-ctes                       true
                               ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
                               ;; falls back to a native `COUNT(*)` on the CTAS path.
                               ;; TODO: fix `execute-raw-queries!` to return accurate row counts for DDL

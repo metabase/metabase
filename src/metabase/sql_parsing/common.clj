@@ -143,6 +143,8 @@
       (json/decode+kw (call "simple_query" sql dialect)))
     (add-into-clause [_ dialect sql table-name]
       (call "add_into_clause" sql table-name dialect))
+    (add-insert-clause [_ dialect sql table-name]
+      (call "add_insert_clause" sql table-name dialect))
     (field-references [_ dialect sql]
       (json/decode+kw (call "field_references" sql dialect)))
     (replace-names [_ dialect sql replacements]

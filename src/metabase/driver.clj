@@ -1077,7 +1077,19 @@
     ;; (filters/joins/expressions) once and emits every breakout combination in a single query, rather
     ;; than a query per combination? Drivers that opt in must supply a `:pivot` clause compiler that
     ;; emits the `pivot-grouping` column alongside the breakouts and aggregations.
-    :native-pivot-tables})
+    :native-pivot-tables
+    ;;
+    ;; Does this driver support compiling multi-stage queries to CTEs instead of nested subselects?
+    ;; The driver should support putting a CTE at the start of a statement, or after `CREATE TABLE`
+    ;; or `INSERT INTO`, or the driver should change these statements so they are valid
+    ;; (e.g. `driver/compile-insert :sqlserver`). See also `:stage-ctes/nested`.
+    :stage-ctes
+    ;;
+    ;; Does this driver support CTEs inside another query, e.g. in the body of another CTE or in a subquery?
+    ;; This is necessary to compile queries with native stages that have their own CTEs, and native queries that
+    ;; reference a card with `{{#123}}`. If not, Metabase compiles these queries with nested subselects. By default,
+    ;; this has the same value as `:stage-ctes`.
+    :stage-ctes/nested})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -1138,6 +1150,11 @@
 (defmethod database-supports? [::driver :regex/lookaheads-and-lookbehinds]
   [driver _feature database]
   (database-supports? driver :regex database))
+
+;; by default a driver supports `:stage-ctes/nested` if it supports `:stage-ctes`
+(defmethod database-supports? [::driver :stage-ctes/nested]
+  [driver _feature database]
+  (database-supports? driver :stage-ctes database))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for

@@ -97,6 +97,7 @@
                               :rename                         true
                               :schemas                        true
                               :split-part                     true
+                              :stage-ctes                     true
                               :transforms/index-ddl           true
                               :transforms/python              true
                               :transforms/table               true
@@ -493,10 +494,6 @@
 (defmethod driver.sql/json-field-length :postgres
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
-
-(defmethod sql.qp/use-ctes-for-stages? :postgres
-  [_driver]
-  true)
 
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
