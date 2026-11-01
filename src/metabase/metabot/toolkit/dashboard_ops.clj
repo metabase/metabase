@@ -33,12 +33,15 @@
 ;;; ------------------------------------------------- Errors -------------------------------------------------------
 
 (def errors
-  "Every error code [[compile-ops]] throws, mapped to the schema of the values that explain it.
+  "Every error code the dashboard op tools throw, mapped to the schema of the values that explain it.
+   That is [[compile-ops]], and the save checks in [[metabase.metabot.toolkit.dashboard-write]].
    Values from an op have the types [[dashboard-op-schema/op-schema]] gives them, or `:any` where it leaves them open.
    Values read from the dashboard have their types.
    Errors thrown while checking or applying an op also carry `:op-index` (0-based) and `:op-name` (as sent, or nil).
-   The `:cards-without-tab` check runs after the last op, so that error carries neither."
+   The `:cards-without-tab` check runs after the last op, and `:invalid-payload` checks the whole save, sent ops or not.
+   So those two errors carry neither."
   {:invalid-op                         [:map {:closed true} [:explanation :any]]
+   :invalid-payload                    [:map {:closed true} [:explanation :any]]
    :duplicate-new-id                   [:map {:closed true} [:id :int]]
    :unknown-dashcard                   [:map {:closed true} [:dashcard-id :int]]
    :unknown-card                       [:map {:closed true} [:card-id :any]]
@@ -68,7 +71,7 @@
    :unresolved-target                  [:map {:closed true} [:target :any] [:card-id :int] [:parameter-id :string]]
    :missing-wire-target                [:map {:closed true}]})
 
-(defn- fail!
+(defn fail!
   "Throw the error `code` from [[errors]], with `data` holding the values that explain it.
    An unknown code, or data that breaks the code's schema, throws a plain `ex-info` instead.
    That is a bug in the caller, and no tool words it as a teaching error."

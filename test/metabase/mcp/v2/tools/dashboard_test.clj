@@ -9,12 +9,14 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.mcp.v2.dashboard-errors :as dashboard-errors]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.dashboard :as tools.dashboard]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
+   [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -451,14 +453,19 @@
            (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
                                    (wire {:method "create" :name "Sales" :archived true})))))))
 
-;; not ^:parallel: the `!` in validate-payload! trips the kondo deftest lint
+;; not ^:parallel: the `!` in write! trips the kondo deftest lint
 (deftest invalid-payload-error-text-test
-  (testing "GHY-4544: an invalid compiled payload is explained as humanized, quoted schema detail"
-    (let [text (try (#'tools.dashboard/validate-payload! {:parameters "nope"})
-                    nil
-                    (catch clojure.lang.ExceptionInfo e (ex-message e)))]
-      (is (str/starts-with? text "The requested ops produce an invalid dashboard: \"parameters\": "))
-      (is (not (str/includes? text "\n"))))))
+  (testing "GHY-4544: a payload the save would reject is explained as humanized, quoted schema detail"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard dash {}]
+        (let [text (try (dashboard-errors/do-with-teaching-errors
+                         #(dashboard-write/write! {:dashboard      (t2/hydrate dash [:dashcards :series :card] :tabs)
+                                                   :attrs          {:cache_ttl 0}
+                                                   :validate-only? true}))
+                        nil
+                        (catch clojure.lang.ExceptionInfo e (ex-message e)))]
+          (is (str/starts-with? text "This change would produce an invalid dashboard: \"cache_ttl\": "))
+          (is (not (str/includes? text "\n"))))))))
 
 (deftest unreadable-card-is-refused-for-a-non-admin-test
   (testing "a card that EXISTS but the caller cannot read is refused the same way a nonexistent one is, before
