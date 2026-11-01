@@ -2,7 +2,8 @@
   padding-left: calc(var(--tree-depth) * 1rem);
   color: var(--mb-color-text-primary);
 
-  &:focus-within {
+  /* Other controls in the row, like a remove button, draw their own ring */
+  &:has(.link:focus, .button:focus) {
     outline: 2px solid var(--mb-color-input-focus);
     outline-offset: -2px;
   }

@@ -42,7 +42,7 @@ export function Sortable({
   className,
   style,
   draggingStyle,
-  role = "button",
+  role,
 }: SortableProps) {
   const dragHandleRef = useRef(null);
 
@@ -68,6 +68,9 @@ export function Sortable({
 
   const childrenAsFunction = typeof children === "function";
 
+  // Without a keyboard sensor, these would make the wrapper a tab stop that does nothing
+  const dragAttributes = listeners?.onKeyDown ? attributes : undefined;
+
   return (
     <Component
       className={cx(className, { [S.dragging]: isDragging })}
@@ -79,9 +82,9 @@ export function Sortable({
       }}
       data-is-dragging={isDragging}
       ref={setNodeRef}
-      {...(disabled ? {} : attributes)}
+      {...dragAttributes}
       {...(!childrenAsFunction && listeners)}
-      role={role}
+      role={role ?? dragAttributes?.role}
     >
       {childrenAsFunction
         ? children({ dragHandleRef, dragHandleListeners: listeners })

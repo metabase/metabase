@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { times } from "underscore";
 
@@ -92,6 +93,62 @@ describe("BookmarkList", () => {
     ).toBeInTheDocument();
   });
 
+  describe("keyboard navigation (#85912)", () => {
+    const LONG_NAME = "A bookmark with a name long enough to be truncated";
+
+    it("only stops on each bookmark's link and remove button", async () => {
+      renderWithProviders(
+        <BookmarkList {...mockProps} bookmarks={createBookmarks(2)} />,
+      );
+
+      const [firstRemoveButton, secondRemoveButton] = screen.getAllByRole(
+        "button",
+        { name: "Remove bookmark" },
+      );
+
+      await userEvent.tab(); // the section header
+      await userEvent.tab();
+      expect(screen.getByRole("link", { name: /Bookmark 1/ })).toHaveFocus();
+      await userEvent.tab();
+      expect(firstRemoveButton).toHaveFocus();
+      await userEvent.tab();
+      expect(screen.getByRole("link", { name: /Bookmark 2/ })).toHaveFocus();
+      await userEvent.tab();
+      expect(secondRemoveButton).toHaveFocus();
+    });
+
+    it("shows the full name of a long bookmark when its link has focus", async () => {
+      renderWithProviders(
+        <BookmarkList
+          {...mockProps}
+          bookmarks={[createMockBookmark({ name: LONG_NAME })]}
+        />,
+      );
+
+      await userEvent.tab(); // the section header
+      await userEvent.tab();
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(LONG_NAME);
+    });
+
+    it("shows the remove button's tooltip when it has focus", async () => {
+      renderWithProviders(
+        <BookmarkList {...mockProps} bookmarks={createBookmarks(1)} />,
+      );
+
+      await userEvent.tab(); // the section header
+      await userEvent.tab();
+      await userEvent.tab();
+
+      expect(
+        screen.getByRole("button", { name: "Remove bookmark" }),
+      ).toHaveFocus();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Remove bookmark",
+      );
+    });
+  });
+
   describe("collection bookmark icons (enterprise)", () => {
     it.each([
       {
@@ -118,11 +175,8 @@ describe("BookmarkList", () => {
           { storeInitialState: enterpriseState },
         );
 
-        const row = screen.getByText(name).closest("a");
-        expect(
-          // Unjustified type cast. FIXME
-          within(row as HTMLElement).getByLabelText(`${icon} icon`),
-        ).toBeInTheDocument();
+        const row = screen.getByRole("link", { name: new RegExp(name) });
+        expect(within(row).getByLabelText(`${icon} icon`)).toBeInTheDocument();
       },
     );
   });
