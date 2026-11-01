@@ -541,6 +541,20 @@
 
 ;; clojure.walk reimplementation. Partially adapted from https://github.com/tonsky/clojure-plus.
 
+(defn mapv-mostly-unchanged
+  "Special optimized `mapv` implementation for usecases where `f` is an identity function for many/most inputs. `coll`
+  must be a vector."
+  [f coll]
+  (if (map-entry? coll)
+    (mapv f coll) ;; Revert to regular mapv
+    (maybe-persistent!
+     (reduce-kv (fn [v idx el]
+                  (let [el' (f el)]
+                    (if (identical? el' el)
+                      v
+                      (assoc+ v idx el'))))
+                coll coll))))
+
 (defn walk
   "Drop-in replacement for `clojure.walk/walk`. Optimized for efficiency and has the following behavior differences:
   - Doesn't walk over map entries. When descending into a map, walks keys and values separately.
@@ -566,13 +580,7 @@
           outer))
 
     (and (vector? form) (not (map-entry? form)))
-    (-> (reduce-kv (fn [v idx el]
-                     (let [el' (inner el)]
-                       (if (identical? el' el)
-                         v
-                         (assoc+ v idx el'))))
-                   form form)
-        maybe-persistent!
+    (-> (mapv-mostly-unchanged inner form)
         (add-original-meta form)
         outer)
 
