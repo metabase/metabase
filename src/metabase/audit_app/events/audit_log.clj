@@ -141,6 +141,48 @@
                              :model-id (:id object)
                              :user-id  user-id})))
 
+(defn- notification-send-recipient-summary
+  "Summarize a single `:model/NotificationRecipient` for the audit log, keeping enough to answer *who* the results
+  were sent to without dumping the whole encrypted recipient row."
+  [recipient]
+  (let [base {:type (:type recipient)}]
+    (case (:type recipient)
+      :notification-recipient/user
+      (assoc base :user_id (:user_id recipient) :email (get-in recipient [:user :email]))
+
+      :notification-recipient/group
+      (assoc base :permissions_group_id (:permissions_group_id recipient))
+
+      :notification-recipient/raw-value
+      (assoc base :value (get-in recipient [:details :value]))
+
+      base)))
+
+(defn- notification-send-details
+  "Build the `:details` map for an `:event/notification-send` audit event. `object` is the notification handed to
+  `send-notification!` (saved or unsaved), hydrated with `:handlers` and their `:recipients`."
+  [object]
+  {:notification_id (:id object)
+   :payload_type    (:payload_type object)
+   :card_id         (get-in object [:payload :card_id])
+   :recipients      (for [handler (:handlers object)]
+                      {:channel_type (:channel_type handler)
+                       :recipients   (map notification-send-recipient-summary (:recipients handler))})})
+
+(events/derive! ::notification-send-event ::event)
+(events/derive! :event/notification-send ::notification-send-event)
+
+(methodical/defmethod events/publish-event! ::notification-send-event
+  [topic {:keys [object user-id] :as _event}]
+  (let [card-id (get-in object [:payload :card_id])]
+    (audit-log/record-event! topic
+                             {:details  (notification-send-details object)
+                              :user-id  user-id
+                              ;; card notifications are centered on a question, so anchor the audit row to the card
+                              ;; (mirrors alert auditing); fall back to the notification otherwise.
+                              :model    (if card-id :model/Card :model/Notification)
+                              :model-id (or card-id (:id object))})))
+
 (events/derive! ::notification-handler-event ::event)
 (events/derive! :event/notification-unsubscribe-ex ::notification-handler-event)
 (events/derive! :event/notification-unsubscribe-undo-ex ::notification-handler-event)
