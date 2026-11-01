@@ -5,8 +5,8 @@ import { screen, within } from "__support__/ui";
 import { getLastHomepageSettingSettingCall, setup } from "./setup";
 
 describe("EmbedHomepage (OSS)", () => {
-  it("should link to the docs for static embedding", () => {
-    setup();
+  it("should link to the docs for static embedding", async () => {
+    await setup();
 
     expect(
       screen.getAllByRole("link", { name: "Read the docs" })[0],
@@ -16,8 +16,8 @@ describe("EmbedHomepage (OSS)", () => {
     );
   });
 
-  it("should link to the docs for embed js embedding", () => {
-    setup();
+  it("should link to the docs for embed js embedding", async () => {
+    await setup();
 
     const embedJsSection = screen.getByRole("region", {
       name: "Modular embedding",
@@ -34,8 +34,8 @@ describe("EmbedHomepage (OSS)", () => {
     );
   });
 
-  it("should link to the SDK quickstart", () => {
-    setup();
+  it("should link to the SDK quickstart", async () => {
+    await setup();
 
     expect(
       screen.getAllByRole("link", { name: "Check out the Quickstart" })[0],
@@ -45,8 +45,8 @@ describe("EmbedHomepage (OSS)", () => {
     );
   });
 
-  it("should link to the SDK docs", () => {
-    setup();
+  it("should link to the SDK docs", async () => {
+    await setup();
 
     const sdkSection = screen.getByRole("region", {
       name: "Embedded analytics SDK for React",
@@ -62,8 +62,8 @@ describe("EmbedHomepage (OSS)", () => {
     );
   });
 
-  it("should link to the example dashboard if `example-dashboard-id` is set", () => {
-    setup({ settings: { "example-dashboard-id": 1 } });
+  it("should link to the example dashboard if `example-dashboard-id` is set", async () => {
+    await setup({ settings: { "example-dashboard-id": 1 } });
 
     expect(
       screen.getByRole("link", {
@@ -73,7 +73,7 @@ describe("EmbedHomepage (OSS)", () => {
   });
 
   it("should set 'embedding-homepage' to 'dismissed-done' when dismissing as done", async () => {
-    setup();
+    await setup();
     await userEvent.hover(screen.getByText("Hide these"));
 
     await userEvent.click(screen.getByText("Embedding done, all good"));
@@ -85,7 +85,7 @@ describe("EmbedHomepage (OSS)", () => {
   });
 
   it("should set 'embedding-homepage' to 'dismissed-not-interested-now' when dismissing because not interested", async () => {
-    setup();
+    await setup();
     await userEvent.hover(screen.getByText("Hide these"));
 
     await userEvent.click(screen.getByText("I'm not interested right now"));
@@ -97,7 +97,7 @@ describe("EmbedHomepage (OSS)", () => {
   });
 
   it("should set 'embedding-homepage' to 'dismissed-run-into-issues' when dismissing because of issues", async () => {
-    setup();
+    await setup();
     await userEvent.hover(screen.getByText("Hide these"));
 
     await userEvent.click(screen.getByText("I ran into issues"));
@@ -108,8 +108,8 @@ describe("EmbedHomepage (OSS)", () => {
     expect(body).toEqual({ value: "dismissed-run-into-issues" });
   });
 
-  it("should show the advanced embeds upsell for OSS users", () => {
-    setup({ isAdmin: true });
+  it("should show the advanced embeds upsell for OSS users", async () => {
+    await setup({ isAdmin: true });
 
     expect(screen.getByText("More advanced embeds")).toBeInTheDocument();
 

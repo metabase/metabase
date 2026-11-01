@@ -150,11 +150,13 @@ export async function setupQuestionSharingMenu({
   );
 
   // Wait for the admin menu button to settle so async endpoint mocks resolve
-  // inside act. Non-admin menus render synchronously, and model/archived
-  // questions render nothing at all.
+  // inside act. Non-admin menus render synchronously, and model, archived and
+  // instance analytics questions render nothing at all.
   const isModel = questionOverrides.type === "model";
   const isArchived = questionOverrides.archived === true;
-  if (isAdmin && !isModel && !isArchived) {
+  const isInstanceAnalytics =
+    questionOverrides.collection?.type === "instance-analytics";
+  if (isAdmin && !isModel && !isArchived && !isInstanceAnalytics) {
     await screen.findByTestId("sharing-menu-button");
   }
 }
