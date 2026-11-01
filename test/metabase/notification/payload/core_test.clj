@@ -1,9 +1,9 @@
 (ns metabase.notification.payload.core-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.notification.core :as notification]
-   [metabase.notification.test-util :as notification.tu]))
+   [metabase.notification.test-util :as notification.tu]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -12,10 +12,5 @@
     (notification.tu/with-card-notification
       [notification {}]
       (let [payload (notification/notification-payload notification)]
-        (walk/prewalk
-         (fn [x]
-           (when (map? x)
-             (is (not (contains? x :lib/metadata))
-                 "No :lib/metadata should survive in the notification payload"))
-           x)
-         payload)))))
+        (match/match-all payload
+          {:lib/metadata _} (is false (str "No :lib/metadata should survive in the notification payload " &match)))))))

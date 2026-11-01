@@ -7,7 +7,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
@@ -1744,31 +1743,22 @@
                      {:id 2, :name "b", :location "/1/"}
                      {:id 3, :name "c", :location "/1/2/"}
                      {:id 4, :name "d", :location "/1/2/3/"}
-                     {:id 5, :name "e", :location "/1/"}]
-        clean      #(walk/prewalk
-                     (fn [x]
-                       ;; select important keys and remove empty children
-                       (if (map? x)
-                         (cond-> (select-keys x [:id :here :below :children])
-                           (not (seq (:children x))) (dissoc :children))
-                         x))
-                     %)]
+                     {:id 5, :name "e", :location "/1/"}]]
     (is (= [{:id 1 :name "a" :location "/"       :here #{:card}    :below #{:card :dataset}}
             {:id 2 :name "b" :location "/1/"                       :below #{:dataset}}
             {:id 3 :name "c" :location "/1/2/"   :here #{:dataset} :below #{:dataset}}
             {:id 4 :name "d" :location "/1/2/3/" :here #{:dataset}}
             {:id 5 :name "e" :location "/1/"     :here #{:card}}]
            (#'collection/annotate-collections {:card #{1 5} :dataset #{3 4}} collections)))
-    (is (= [{:id 1 :here #{:card} :below #{:card :dataset}
-             :children
-             [{:id 2 :below #{:dataset}
-               :children
-               [{:id 3 :here #{:dataset} :below #{:dataset}
-                 :children
-                 [{:id 4 :here #{:dataset}}]}]}
-              {:id 5 :here #{:card}}]}]
-           (clean (collection/collections->tree {:card #{1 5} :dataset #{3 4}}
-                                                collections))))))
+    (is (=? [{:id 1 :here #{:card} :below #{:card :dataset}
+              :children
+              [{:id 2 :below #{:dataset}
+                :children
+                [{:id 3 :here #{:dataset} :below #{:dataset}
+                  :children
+                  [{:id 4 :here #{:dataset}}]}]}
+               {:id 5 :here #{:card}}]}]
+            (collection/collections->tree {:card #{1 5} :dataset #{3 4}} collections)))))
 
 ;;; TODO -- does this belong here, or in the `audit-app` module?
 (deftest instance-analytics-collections-test

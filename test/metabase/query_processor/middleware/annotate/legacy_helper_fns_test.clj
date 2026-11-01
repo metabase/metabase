@@ -1,22 +1,19 @@
 (ns metabase.query-processor.middleware.annotate.legacy-helper-fns-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.match :as match]))
 
 (deftest ^:parallel aggregation-name-test
   (let [inner-query {:source-query    {:source-table (meta/id :venues)}
-                     :source-metadata [(walk/postwalk
-                                        (fn [form]
-                                          (cond-> form
-                                            (keyword? form) u/qualified-name))
-                                        (lib/lib-metadata-column->legacy-metadata-column
-                                         (meta/field-metadata :venues :name)))]
+                     :source-metadata [(match/replace-all (lib/lib-metadata-column->legacy-metadata-column
+                                                           (meta/field-metadata :venues :name))
+                                         #'keyword? (u/qualified-name &match))]
                      :aggregation     [[:count]]}]
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= "count"

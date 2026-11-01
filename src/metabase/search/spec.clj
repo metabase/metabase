@@ -5,13 +5,13 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.error :as me]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
 
@@ -328,12 +328,8 @@
     expr))
 
 (defn- insert-values [expr table m]
-  (walk/postwalk
-   (fn [x]
-     (if (and (keyword? x) (has-table? table x))
-       (get m (remove-table table x))
-       x))
-   expr))
+  (match/replace-all expr
+    (kw :guard (and (keyword? kw) (has-table? table kw))) (get m (remove-table table kw))))
 
 (defn- construct-source-where [id-fields]
   (cond

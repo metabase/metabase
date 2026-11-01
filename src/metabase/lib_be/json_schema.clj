@@ -12,20 +12,22 @@
   about what the keys have to look like; for instance types must always be
   keywords despite the fact that we're emitting them as JSON in the end so
   it doesn't really matter."
+  (:refer-clojure :exclude [empty? update-keys])
   (:require
    [malli.json-schema :as mjs]
    [medley.core :as m]
    [metabase.lib.schema :as schema]
    [metabase.util :as u]
    [metabase.util.json :as json-util]
-   [metabase.util.performance :as mp]))
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [empty? update-keys]]))
 
 (defn- collapse-branches [schema k]
   ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema
   ;; gets converted into an empty object in :allOf; for example ::literal/integer
   ;; in Malli is [:or :int [:fn u.number/bigint?]] which Malli compiles to
   ;; {:anyOf [{:type "integer"}]} but it should just become {:type "integer"}
-  (let [schema (update schema k (partial remove mp/empty?))]
+  (let [schema (update schema k (partial remove empty?))]
     (case (count (k schema))
       1 (merge (dissoc schema k) (first (k schema)))
       0 (dissoc schema k)
@@ -35,16 +37,6 @@
   (if (sequential? required)
     (map u/qualified-name required)
     required))
-
-(defn- update-schema-fields [node]
-  (if (map? node)
-    (-> node
-        (m/update-existing :required stringify)
-        (collapse-branches :allOf)
-        (collapse-branches :anyOf)
-        (collapse-branches :oneOf)
-        (m/update-existing :properties #(mp/update-keys % u/qualified-name)))
-    node))
 
 ;; due to a bug in malli, :cat schemas get compiled to an empty schema. this
 ;; wouldn't normally cause false negatives (just false positives) but there are
@@ -78,7 +70,13 @@
                    (update :definitions assoc
                            "metabase.lib.schema.template-tag.id"
                            {"$ref" "#/definitions/metabase.lib.schema.common.non-blank-string"}))]
-    (mp/postwalk update-schema-fields schema)))
+    (match/replace-all schema
+      #'map? (-> &match
+                 (m/update-existing :required stringify)
+                 (collapse-branches :allOf)
+                 (collapse-branches :anyOf)
+                 (collapse-branches :oneOf)
+                 (m/update-existing :properties #(update-keys % u/qualified-name))))))
 
 (defn write-schema
   "Print JSON Schema for MBQL5 queries, or write to a file if given."

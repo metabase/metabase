@@ -61,8 +61,11 @@
      :value pattern}
 
     (set? pattern)
-    {:type :set
-     :value pattern}
+    (if (= (count pattern) 1)
+      {:type :equality
+       :value (first pattern)}
+      {:type :set
+       :value pattern})
 
     :else
     (throw (ex-info "Invalid pattern" {:pattern pattern}))))
@@ -346,7 +349,7 @@
   [value & clauses]
   (match-one* value clauses))
 
-(defn- match-many* [value clauses]
+(defn- match-many* [value clauses all?]
   (when (odd? (count clauses))
     (throw (ex-info "match-many requires even number of clauses" {})))
   (let [pairs (partition 2 clauses)
@@ -363,20 +366,31 @@
         ;; Wrap explicit nil values.
         value (if (nil? value) `(identity nil) value)
         value-binding (when-not (or recursive? contains-&recur?) value)
+        acc (gensym "acc_")
         body (process-clauses pairs '&match value-binding)]
-    `(let [acc# (volatile! [])]
+    `(let [~acc (volatile! [])]
        ((fn ~'&recur [~'&match ~'&parents]
-          (if-some [result# ~(expand-or-some
-                              (cond-> [body]
-                                (some? default) (conj default)))]
-            ;; Important: a clause may return `nil` to stop further recursive search, yet we don't want that nil to
-            ;; wind up in results.
-            (do (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! acc# conj))
-                nil)
-            (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents)))
+          ;; When all? is true, always recur down regardless if the current level matched. Otherwise, stop at the
+          ;; first matched level.
+          ~(if all?
+             `(do (when-some [result# ~(expand-or-some
+                                        (cond-> [body]
+                                          (some? default) (conj default)))]
+                    ;; See note below. For [[match-all]] it makes less sense because we always continue the recursion
+                    ;; anyway, but we still don't want to collect nils.
+                    (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj)))
+                  (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents))
+             `(if-some [result# ~(expand-or-some
+                                  (cond-> [body]
+                                    (some? default) (conj default)))]
+                ;; Important: a clause may return `nil` to stop further recursive search, yet we don't want that
+                ;; nil to wind up in results.
+                (do (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj))
+                    nil)
+                (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents))))
         ~value
         ~(when contains-&parents? []))
-       (perf/not-empty @acc#))))
+       (perf/not-empty @~acc))))
 
 (defmacro match-many
   "Pattern matching macro, returns multiple things that match one of the `clauses` inside `value. See `match-one` for
@@ -397,7 +411,7 @@
     Note that returning `nil` still prevents other clauses from being checked, and causes recursion to stop."
   {:style/indent :defn}
   [value & clauses]
-  (match-many* value clauses))
+  (match-many* value clauses false))
 
 (defn- matches?* [value clause]
   (let [;; Wrap explicit nil values.
@@ -414,18 +428,24 @@
   [value clause]
   (matches?* value clause))
 
-;; TODO - it would be ultra handy to have a `match-all` function that could handle clauses with recursive matches,
-;; e.g. with a query like
-;;
-;;    {:query {:source-table 1, :joins [{:source-table 2, ...}]}}
-;;
-;; it would be useful to be able to do
-;;
-;;
-;;    ;; get *all* the source tables
-;;    (match/match-all query
-;;      (&match :guard (every-pred map? :source-table))
-;;      (:source-table &match))
+(defmacro match-all
+  "Like [[match-many]], keeps looking recursively inside the matched values too. Returns a vector of all non-nil return
+  values, outer matches before inner ones, or `nil` if nothing matched. See [[match-one]] for pattern and return
+  expression syntax. Like the rest match macros, looks into map values and sequential collections, but not into map
+  keys or sets.
+
+  Differences from [[match-many]]:
+
+  1. A match doesn't stop the recursion, so nested matches are collected as well:
+
+    (match-all {:filter [:= [:field 1 {:source-field [:field 2 nil]}] 3]}
+      [:field id & _] id)
+    ;; -> [1 2]
+
+  2. Returning `nil` only leaves that value out of the results, the search inside it still continues."
+  {:style/indent :defn}
+  [value & clauses]
+  (match-many* value clauses true))
 
 (defmacro replace
   "Walk `form` recursively and replace all patterns matched with `match-one` by the respective return expressions. The

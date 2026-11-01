@@ -1,7 +1,6 @@
 (ns metabase-enterprise.audit-app.api.collection-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase.collections.models.collection :as collection]
@@ -9,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (deftest list-collections-instance-analytics-test
@@ -56,11 +56,7 @@
       (->> (loop [[tree & coll-tree] collection-tree
                   ia-ids #{}]
              (cond (not tree) ia-ids
-                   (= "instance-analytics" (:type tree)) (let [ids (transient #{})]
-                                                           (walk/postwalk
-                                                            (fn [x] (when (and (map? x) (:id x)) (conj! ids (:id x))) x)
-                                                            tree)
-                                                           (recur coll-tree (into ia-ids (persistent! ids))))
+                   (= "instance-analytics" (:type tree)) (recur coll-tree (into ia-ids (match/match-all tree {:id id} id)))
                    ;; TODO: put my children onto the end of the coll-tree, then recur like normal
                    :else (recur (concat coll-tree (:children tree)) ia-ids)))
            (mapv (comp :name id->coll))))))

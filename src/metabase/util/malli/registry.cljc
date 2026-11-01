@@ -7,7 +7,7 @@
    [malli.core :as mc]
    [malli.registry]
    [malli.util :as mut]
-   [metabase.util.performance :refer [postwalk]])
+   [metabase.util.match :as match])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
@@ -20,12 +20,8 @@
 
   work correctly as cache keys instead of creating new entries every time the code is evaluated."
   [x]
-  (postwalk
-   (fn [form]
-     (cond-> form
-       (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
-       str))
-   x))
+  (match/replace-all x
+    (re :guard (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) re)) (str re)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *cache-miss-hook*
