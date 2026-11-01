@@ -34,7 +34,6 @@ import {
   Group,
   Icon,
   Menu,
-  Modal,
   Stack,
   Tooltip,
   rem,
@@ -395,20 +394,13 @@ export function DetailViewSidesheet({
         onSuccess={handleActionSuccess}
       />
 
-      <Modal
+      <DeleteObjectModal
         opened={isDeleteModalOpen}
+        actionId={deleteActionId}
+        objectId={rowId}
         onClose={handleDeleteModalClose}
-        size="lg"
-        withCloseButton={false}
-        padding={0}
-      >
-        <DeleteObjectModal
-          actionId={deleteActionId}
-          objectId={rowId}
-          onClose={handleDeleteModalClose}
-          onSuccess={handleDeleteSuccess}
-        />
-      </Modal>
+        onSuccess={handleDeleteSuccess}
+      />
     </>
   );
 }

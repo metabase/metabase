@@ -788,7 +788,7 @@ const MODEL_NAME = "Test Action Model";
           cy.findByTestId("action-editor-modal").should("not.exist");
 
           getActionParametersInputModal().within(() => {
-            cy.findByTestId("modal-header").findByText("New action name");
+            cy.findByRole("heading", { name: "New action name" });
 
             cy.findAllByPlaceholderText("Test placeholder");
 
@@ -915,7 +915,7 @@ describe(
           );
           cy.findByPlaceholderText("Score").should("have.value", "30");
 
-          cy.icon("close").click();
+          cy.findByLabelText("Close").click();
         });
 
         H.filterWidget().click();
@@ -1106,8 +1106,8 @@ const changeValue = ({ fieldName, fieldType, oldValue, newValue }) => {
   cy.findByPlaceholderText(fieldName)
     .should("have.attr", "type", fieldType)
     .should("have.value", oldValue)
-    .clear()
-    .type(newValue);
+    .clear({ scrollBehavior: "center" })
+    .type(newValue, { scrollBehavior: "center" });
 };
 
 function formFieldContainer(label) {

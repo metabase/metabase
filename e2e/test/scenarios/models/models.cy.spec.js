@@ -535,7 +535,7 @@ describe("scenarios > models", () => {
     H.modal().within(() => {
       cy.findByText("Variables in models aren't supported yet");
       cy.button("Turn this into a model").should("not.exist");
-      cy.icon("close").click();
+      cy.findByLabelText("Close").click();
     });
     H.openQuestionActions();
     assertIsQuestion();

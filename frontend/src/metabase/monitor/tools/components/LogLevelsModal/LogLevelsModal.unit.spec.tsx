@@ -56,9 +56,7 @@ const setup = ({ error, presets = [PRESET_A, PRESET_B] }: SetupOpts = {}) => {
 
   return renderWithProviders(
     <Route path="/">
-      {modalRoute("levels", LogLevelsModal, {
-        modalProps: { transitionProps: { duration: 0 } },
-      })}
+      {modalRoute("levels", LogLevelsModal, { noWrap: true })}
     </Route>,
     {
       initialRoute: "/levels",
