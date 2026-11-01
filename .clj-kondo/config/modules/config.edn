@@ -859,11 +859,7 @@
                     :model/DashboardTab
                     :model/Field
                     :model/ParameterCard
-                    :model/Pulse
-                    :model/PulseChannel
-                    :model/PulseChannelRecipient
-                    :model/Query
-                    :model/User}}
+                    :model/Query}}
 
   data-apps
   {:team "Embedding"
