@@ -1,24 +1,30 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { getDashboard, useUpdateCardMutation } from "metabase/api";
+import {
+  collectionApi,
+  getDashboard,
+  useUpdateCardMutation,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { QuestionMoveConfirmModal } from "metabase/common/collections/components/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/common/collections/types";
 import {
   canonicalCollectionId,
+  getCollectionPathAsArray,
   getEntityTypeFromCardType,
 } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { DashboardName } from "metabase/common/components/DashboardName";
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers";
 import { MoveModal } from "metabase/common/components/Pickers";
-import { useDispatch } from "metabase/redux";
+import { getUserPersonalCollectionId } from "metabase/current-user";
+import { useDispatch, useSelector } from "metabase/redux";
 import { questionUpdated } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
-import { Box, Icon, Radio, Title } from "metabase/ui";
+import { Alert, Box, Icon, Radio, Title, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Card } from "metabase-types/api";
 
@@ -37,14 +43,14 @@ type ConfirmationTypes =
 export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const personalCollectionId = useSelector(getUserPersonalCollectionId);
 
   const [updateCard] = useUpdateCardMutation();
 
   const [confirmMoveState, setConfirmMoveState] = useState<{
     type: ConfirmationTypes;
     destination: MoveDestination;
-    affectedDashboards?: any[];
-    isLoading?: boolean;
+    isOwnPersonalDestination?: boolean;
   } | null>(null);
   const [deleteOldDashcardsState, setDeleteOldDashcardsState] = useState<
     boolean | undefined
@@ -124,13 +130,41 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
     }
   };
 
+  const fetchIsInOwnPersonalCollection = async (
+    collectionId: number | null,
+  ) => {
+    if (collectionId === null || personalCollectionId == null) {
+      return false;
+    }
+    const collection = await dispatch(
+      collectionApi.endpoints.getCollection.initiate(
+        { id: collectionId, ignore_error: true },
+        { subscribe: false },
+      ),
+    )
+      .unwrap()
+      .catch(() => undefined); // the notice is advisory, so a failed lookup shouldn't block the move
+    return collection
+      ? getCollectionPathAsArray(collection).includes(
+          String(personalCollectionId),
+        )
+      : false;
+  };
+
   const handleChooseMoveLocation = async (destination: MoveDestination) => {
     const wasDq = _.isNumber(card.dashboard_id);
     const isDq = destination.model === "dashboard";
     const dashCount = card.dashboard_count ?? 0;
 
     if (wasDq && !isDq) {
-      setConfirmMoveState({ type: "dashboard-to-collection", destination });
+      const isOwnPersonalDestination = await fetchIsInOwnPersonalCollection(
+        canonicalCollectionId(destination.id),
+      );
+      setConfirmMoveState({
+        type: "dashboard-to-collection",
+        destination,
+        isOwnPersonalDestination,
+      });
     } else if (wasDq && isDq) {
       setConfirmMoveState({ type: "dashboard-to-dashboard", destination });
     } else if (!wasDq && isDq && dashCount > 0) {
@@ -145,6 +179,10 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
   };
 
   if (confirmMoveState?.type === "dashboard-to-collection") {
+    const isMovingFromSharedToPersonal =
+      confirmMoveState.isOwnPersonalDestination &&
+      !card.collection?.is_personal;
+
     return (
       <ConfirmModal
         data-testid="dashboard-to-collection-move-confirmation"
@@ -159,7 +197,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
             {c(
               "{0} is the dashboard name the question currently has dashcards in",
             ).jt`Do you still want this question to appear in ${(
-              <>
+              <Fragment key="dashboard">
                 <Icon
                   key="icon"
                   name="dashboard"
@@ -167,15 +205,37 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
                   size={20}
                 />{" "}
                 <DashboardName key="name" id={card.dashboard_id} />
-              </>
+              </Fragment>
             )}?`}
           </Title>
         }
         message={
           <>
-            <Box mt="-1.5rem">
+            <Box>
               {t`It can still appear there even though you’re moving it into a collection.`}
             </Box>
+            {isMovingFromSharedToPersonal && (
+              <Alert icon={<Icon name="info" />} mt="lg">
+                {c(
+                  "{0} is the dashboard name the question currently has dashcards in. {1} is a button that reopens the collection picker",
+                )
+                  .jt`You’re moving this question to a personal collection. Other people won’t be able to see it on ${(
+                  <DashboardName key="name" id={card.dashboard_id} />
+                )}, and you’ll only be able to add it to dashboards in your personal collection. To use it on other shared dashboards, ${(
+                  <UnstyledButton
+                    key="button"
+                    onClick={() => {
+                      setConfirmMoveState(null);
+                      setDeleteOldDashcardsState(undefined);
+                    }}
+                    c="core-brand"
+                    fw="bold"
+                  >{c(
+                    "Part of a sentence: “To use it on other shared dashboards, move it to a shared collection instead.” Reopens the collection picker",
+                  ).t`move it to a shared collection`}</UnstyledButton>
+                )} instead.`}
+              </Alert>
+            )}
             <Radio.Group
               value={`${!deleteOldDashcardsState}`}
               onChange={(val) => setDeleteOldDashcardsState(val !== "true")}
@@ -210,7 +270,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
           <Title fz="1.25rem" lh={1.5}>
             {c("{0} is the name of a dashboard")
               .jt`Moving this question to another dashboard will remove it from ${(
-              <>
+              <Fragment key="dashboard">
                 <Icon
                   key="icon"
                   name="dashboard"
@@ -218,7 +278,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
                   size={20}
                 />{" "}
                 <DashboardName key="name" id={card.dashboard_id} />
-              </>
+              </Fragment>
             )}`}
           </Title>
         }
