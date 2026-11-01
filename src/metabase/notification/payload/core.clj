@@ -1,6 +1,5 @@
 (ns metabase.notification.payload.core
   (:require
-   [clojure.walk :as w]
    [malli.util :as mut]
    [metabase.appearance.core :as appearance]
    [metabase.channel.models.channel :as models.channel]
@@ -14,6 +13,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [potemkin :as p]))
 
 (p/import-vars
@@ -178,11 +178,8 @@
   [notification :- ::Notification]
   (assoc (select-keys notification [:payload_type :creator_id])
          :creator (notification.db/user-summary (:creator_id notification))
-         :payload (w/prewalk (fn [x]
-                               (if (and (map? x) (:lib/metadata x))
-                                 (dissoc x :lib/metadata)
-                                 x))
-                             (payload notification))
+         :payload (match/replace-all (payload notification)
+                    {:lib/metadata _} (dissoc &match :lib/metadata))
          :context (default-context)))
 
 (defmulti skip-reason

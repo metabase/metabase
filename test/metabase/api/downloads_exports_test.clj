@@ -20,7 +20,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter.impl :as formatter]
    [metabase.pulse.send :as pulse.send]
@@ -29,6 +28,7 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)))
@@ -280,13 +280,9 @@
   "Walk `form` and normalise every numeric leaf to 2 decimal places — both numeric-looking strings (via
   [[normalize-num-str]]) and native doubles/BigDecimals (via `Math/round`). Non-numeric values pass through."
   [form]
-  (walk/prewalk
-   (fn [x]
-     (cond
-       (string? x) (normalize-num-str x)
-       (double? x) (double (/ (Math/round (* 100.0 x)) 100.0))
-       :else       x))
-   form))
+  (match/replace-all form
+    #'string? (normalize-num-str &match)
+    #'double? (double (/ (Math/round (* 100.0 &match)) 100.0))))
 
 (defn- all-outputs!
   [card-or-dashcard opts]
