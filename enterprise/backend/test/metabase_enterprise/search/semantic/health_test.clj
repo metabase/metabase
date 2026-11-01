@@ -482,11 +482,11 @@
     (is (thrown? InterruptedException
                  (semantic.health/report-repair-metrics! {:orphan-count 3})))))
 
-(deftest ^:synchronized refresh-clears-garbage-when-inactive-test
-  (testing "refresh NaNs a previously-emitted semantic garbage series when there's no active index, since no
-           repair push will clear it (the collector reads N/A)"
+(deftest ^:synchronized refresh-stops-exporting-garbage-when-inactive-test
+  (testing "refresh stops exporting a previously-emitted semantic garbage series when there's no active
+           index, since no repair push will clear it (the collector reads N/A)"
     (let [calls (atom [])]
-      (mt/with-dynamic-fn-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+      (mt/with-dynamic-fn-redefs [analytics/remove-series! (fn [& args] (swap! calls conj (vec args)))]
         (mt/with-dynamic-fn-redefs [health-inspector/enabled? (constantly false)]
           ;; make the series live: a repair push while the feature was on
           (mt/with-dynamic-fn-redefs
@@ -503,9 +503,8 @@
           (memoize/memo-clear! @#'semantic.health/active-index)
           (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-active? (constantly false)]
             (search.index-health/refresh-search-index-metrics!))))
-      (is (some (fn [[gauge labels value]]
+      (is (some (fn [[gauge labels]]
                   (and (= gauge :metabase-search/index-garbage-count)
-                       (= labels {:index "semantic-search"})
-                       (double? value) (Double/isNaN ^double value)))
+                       (= labels {:index "semantic-search"})))
                 @calls)
-          "the semantic garbage-count series is cleared with NaN"))))
+          "the semantic garbage-count series stops being exported"))))
