@@ -66,15 +66,11 @@ runs:
       # Resolve JOB_ID early (before the long test step) so the ci-conductor
       # reporter below can link failures to this exact job. Best-effort.
       uses: ./.github/actions/resolve-job-id
-    - name: Prepare front-end environment
+    - name: Download static viz bundle
       if: ${{ inputs.build-static-viz == 'true' }}
-      uses: ./.github/actions/prepare-frontend
-    - name: Build static viz frontend
-      if: ${{ inputs.build-static-viz == 'true' }}
-      run: bun run build-static-viz
-      shell: bash
-      env:
-        MB_EDITION: ${{ inputs.edition }}
+      uses: ./.github/actions/download-static-viz
+      with:
+        edition: ${{ inputs.edition }}
 
     # Granular rerun: on a re-run of a failed job, restore the list
     # of tests that failed on the previous attempt (uploaded below) so the test

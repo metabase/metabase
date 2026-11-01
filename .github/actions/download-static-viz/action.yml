@@ -1,0 +1,24 @@
+name: Download static-viz bundle
+description: >-
+  Put the static-viz bundle built by .github/workflows/static-viz.yml into the workspace: the bundle in
+  resources/frontend_client/app/dist and the generated .github/static-viz-sources.yaml. The calling job
+  must (transitively) `needs` that workflow, in the same run.
+inputs:
+  edition:
+    required: true
+    description: Edition to download (ee or oss).
+
+runs:
+  using: composite
+  steps:
+    - name: Download static-viz bundle (${{ inputs.edition }})
+      uses: actions/download-artifact@v8
+      with:
+        name: static-viz-${{ inputs.edition }}
+        path: .
+    - name: Check static-viz bundle
+      shell: bash
+      run: |
+        set -euo pipefail
+        ls -la resources/frontend_client/app/dist
+        test -s resources/frontend_client/app/dist/lib-static-viz.bundle.js
