@@ -255,10 +255,12 @@
 (deftest sql-edit-without-database-test
   (testing "editing a SQL query with no database reports the missing database, not a permission refusal"
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [draft {:database nil :type "native" :native {:query "SELECT 1" :template-tags {}}}]
-        (doseq [profile   [:sql :internal]
-                tool-name ["edit_sql_query" "replace_sql_query"]]
-          (testing (str profile " / " tool-name)
+      (let [query (lib/prepare-for-serialization (lib/native-query (mt/metadata-provider) "SELECT 1"))]
+        (doseq [[label draft] {"no database key" (dissoc query :database)
+                               "nil database"    (assoc query :database nil)}
+                profile       [:sql :internal]
+                tool-name     ["edit_sql_query" "replace_sql_query"]]
+          (testing (str label " / " profile " / " tool-name)
             (let [result (invoke-sql-tool profile {:state {:queries {"q1" draft}}} tool-name
                                           {:edits [{:old_string "1" :new_string "2"}] :new_query "SELECT 2"})]
               (is (= {:class        :unrecoverable

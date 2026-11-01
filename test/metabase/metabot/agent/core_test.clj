@@ -375,26 +375,29 @@
                           (str/includes? (:text %) "No active SQL editor was found"))
                     parts)))))))
 
-(def ^:private sql-draft-viewing
-  "A SQL editor, and the query in it, which has no database selected yet."
-  (conj sql-editor-viewing
-        {:type  "adhoc"
-         :id    "draft"
-         :query {:database nil :type "native" :native {:query "SELECT 1" :template-tags {}}}}))
+(def ^:private sql-drafts
+  "SQL queries with no database selected yet, by how each is built.
+  The legacy form checks that the shape a client can still send gets the same answer."
+  (let [query (lib/prepare-for-serialization (lib/native-query meta/metadata-provider "SELECT 1"))]
+    {"no database key" (dissoc query :database)
+     "nil database"    (assoc query :database nil)
+     "legacy form"     {:database nil :type "native" :native {:query "SELECT 1" :template-tags {}}}}))
 
 (deftest sql-edit-without-a-database-ends-the-turn-test
   (testing "an edit of a SQL query with no database ends the turn and asks the user to select one"
     (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
       (mt/with-current-user (mt/user->id :crowberto)
-        (doseq [profile [:sql :internal :internal-sql]]
-          (testing profile
+        (doseq [[label draft] sql-drafts
+                profile       [:sql :internal :internal-sql]]
+          (testing (str label " " profile)
             (is (= {:llm-calls     1
                     :finish-reason :terminal-error
                     :text          "No database is selected for this query. Select a database and try again."}
                    (turn-outcome
                     (run-tool-call-turn! profile
                                          {:capabilities    ["permission:write_sql_queries"]
-                                          :user_is_viewing sql-draft-viewing}
+                                          :user_is_viewing (conj sql-editor-viewing
+                                                                 {:type "adhoc" :id "draft" :query draft})}
                                          "edit_sql_query"
                                          {:query_id  "draft"
                                           :checklist "Checked"
