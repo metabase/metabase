@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-09T00:00:00
+      author: tplude
+      comment: Index core_session.ended_by_user_id, so deleting a user does not scan core_session to clear the FK
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: core_session
+                indexName: idx_core_session_ended_by_user_id
+      changes:
+        - createIndex:
+            tableName: core_session
+            indexName: idx_core_session_ended_by_user_id
+            columns:
+              - column:
+                  name: ended_by_user_id
+      rollback:
+        - dropIndex:
+            tableName: core_session
+            indexName: idx_core_session_ended_by_user_id
