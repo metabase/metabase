@@ -356,6 +356,13 @@
                        "create_sql_query"
                        {:database_id database-id :sql_query "SELECT 1" :title "Results"}))
 
+(defn- turn-outcome
+  "The LLM call count, the finish reason and the text the user saw, for a turn that [[run-tool-call-turn!]] ran."
+  [{:keys [llm-calls parts]}]
+  {:llm-calls     llm-calls
+   :finish-reason (:finish-reason (last parts))
+   :text          (str/join (keep #(when (= :text (:type %)) (:text %)) parts))})
+
 (deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
   (testing "the SQL profile ends the turn when no SQL editor is open, and tells the user why"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
@@ -366,6 +373,32 @@
           (is (some #(and (= :text (:type %))
                           (str/includes? (:text %) "No active SQL editor was found"))
                     parts)))))))
+
+(def ^:private sql-draft-viewing
+  "A SQL editor, and the query in it, which has no database selected yet."
+  (conj sql-editor-viewing
+        {:type  "adhoc"
+         :id    "draft"
+         :query {:database nil :type "native" :native {:query "SELECT 1" :template-tags {}}}}))
+
+(deftest sql-edit-without-a-database-ends-the-turn-test
+  (testing "an edit of a SQL query with no database ends the turn and asks the user to select one"
+    (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (doseq [profile [:sql :internal :internal-sql]]
+          (testing profile
+            (is (= {:llm-calls     1
+                    :finish-reason :terminal-error
+                    :text          "No database is selected for this query. Select a database and try again."}
+                   (turn-outcome
+                    (run-tool-call-turn! profile
+                                         {:capabilities    ["permission:write_sql_queries"]
+                                          :user_is_viewing sql-draft-viewing}
+                                         "edit_sql_query"
+                                         {:query_id  "draft"
+                                          :checklist "Checked"
+                                          :title     "Results"
+                                          :edits     [{:old_string "1" :new_string "2"}]}))))))))))
 
 (deftest permission-denial-ends-a-forced-tool-call-turn-test
   (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}

@@ -252,6 +252,21 @@
                   (is (= notebook-fallback (:error result)))
                   (is (str/includes? (:output result) "Build the question with `construct_notebook_query`")))))))))))
 
+(deftest sql-edit-without-database-test
+  (testing "editing a SQL query with no database reports the missing database, not a permission refusal"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [draft {:database nil :type "native" :native {:query "SELECT 1" :template-tags {}}}]
+        (doseq [profile   [:sql :internal]
+                tool-name ["edit_sql_query" "replace_sql_query"]]
+          (testing (str profile " / " tool-name)
+            (let [result (invoke-sql-tool profile {:state {:queries {"q1" draft}}} tool-name
+                                          {:edits [{:old_string "1" :new_string "2"}] :new_query "SELECT 2"})]
+              (is (= {:class        :unrecoverable
+                      :code         ::sql.common/no-database
+                      :user-message "No database is selected for this query. Select a database and try again."}
+                     (:error result)))
+              (is (str/includes? (:output result) "Don't retry")))))))))
+
 (deftest missing-sql-editor-test
   (doseq [memory [nil {} {:context {:user_is_viewing [{:type "code_editor" :buffers []}]}}]]
     (let [result (invoke-sql-tool :sql memory "create_sql_query" {:database_id Integer/MAX_VALUE})]
