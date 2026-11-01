@@ -4,18 +4,18 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { setup } from "./setup";
 
 describe("QuestionSettingsSidebar", () => {
-  it("should render the question settings sidesheet", () => {
-    setup({});
+  it("should render the question settings sidesheet", async () => {
+    await setup({});
     expect(screen.getByText("Question settings")).toBeInTheDocument();
   });
 
-  it("should show a model title for models", () => {
-    setup({ card: createMockCard({ type: "model" }) });
+  it("should show a model title for models", async () => {
+    await setup({ card: createMockCard({ type: "model" }) });
     expect(screen.getByText("Model settings")).toBeInTheDocument();
   });
 
-  it("should show a metrics title for metrics", () => {
-    setup({ card: createMockCard({ type: "metric" }) });
+  it("should show a metrics title for metrics", async () => {
+    await setup({ card: createMockCard({ type: "metric" }) });
     expect(screen.getByText("Metric settings")).toBeInTheDocument();
   });
 

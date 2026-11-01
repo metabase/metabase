@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import {
+  countRequests,
   findRequests,
   setupPropertiesEndpoints,
   setupTokenRefreshEndpoint,
@@ -59,9 +60,8 @@ const setup = async (hasRefresh = true) => {
 };
 
 const waitForGets = async (count: number) => {
-  return waitFor(async () => {
-    const gets = await findRequests("GET");
-    expect(gets.length).toBe(count);
+  return waitFor(() => {
+    expect(countRequests("GET")).toBe(count);
   });
 };
 

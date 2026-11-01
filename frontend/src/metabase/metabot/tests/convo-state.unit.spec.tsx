@@ -88,7 +88,7 @@ describe("metabot > convo state", () => {
       ],
     });
     await enterChatMessage("gimme state plz");
-    assertConversation([
+    await assertConversation([
       ["user", "gimme state plz"],
       ["agent", "here ya go"],
     ]);
@@ -106,7 +106,7 @@ describe("metabot > convo state", () => {
     });
 
     await enterChatMessage("i'm going to cancel this request...");
-    assertConversation([
+    await assertConversation([
       ["user", "gimme state plz"],
       ["agent", "here ya go"],
       ["user", "i'm going to cancel this request..."],

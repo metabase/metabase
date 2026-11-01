@@ -126,6 +126,14 @@ async function setup({
       expect(getDatasetCalls().length).toBeGreaterThan(0);
     });
   }
+  if (!error && !deferResponse) {
+    await waitFor(() => {
+      expect(screen.getByTestId("erroring-questions-table")).toHaveAttribute(
+        "aria-busy",
+        "false",
+      );
+    });
+  }
 
   return {
     ...utils,
