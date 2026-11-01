@@ -45,20 +45,31 @@
                 :model/CloudMigration :all :model/Setting :all
                 ;; Users need to login, make queries, and we need need to audit them.
                 :model/User :all :model/LoginHistory :all
+                ;; The timestamped model hook adds updated_at when login touches last_used_at.
+                :model/AuthIdentity #{:last_used_at :updated_at}
                 :model/UserParameterValue :all
                 :model/AuditLog :all :model/ViewLog :all
                 ;; Cards need to able to update their last used at timestamp, but we don't want to create
                 ;; new cards or update other fields.
-                :model/Card #{:id :last_used_at :updated_at}}
+                :model/Card #{:id :last_used_at :updated_at}
+                ;; Reading filter values stamps last_used_at so sync knows the values are in use.
+                :model/FieldValues #{:last_used_at :updated_at}
+                ;; OAuth clients such as MCP need to exchange codes and refresh tokens.
+                :model/OAuthClientEvent :all
+                :model/OAuthAuthorizationCode :all
+                :model/OAuthAccessToken :all
+                :model/OAuthRefreshToken :all}
                ;; These exceptions use table name instead of model name because you can actually bypass the model
                ;; and write toucan2 functions that interact with table directly.
                t2/table-name))
 
 (defn- update-exempted?
   [table-name {:keys [changes]}]
-  (or (=  (read-only-mode-exceptions table-name) :all)
-      (set/subset? (read-only-mode-exceptions table-name)
-                   (->> changes keys (into #{})))))
+  (let [exception (read-only-mode-exceptions table-name)]
+    (or (= exception :all)
+        (and (set? exception)
+             (seq changes)
+             (set/subset? (set (keys changes)) exception)))))
 
 ;; Block write calls to most tables in read-only mode.
 (methodical/defmethod t2.pipeline/build :before [#_query-type     :toucan.statement-type/DML
