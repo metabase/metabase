@@ -22,9 +22,9 @@ To open a live app, click the **three dots** on the app's row and select **Open 
 
 ## See what an app reads and writes
 
-Before you let more people open an app, check which data the app reads and writes. In the list of data apps, click the app. The app's **Questions** and **Actions** tabs list the questions and actions in the app's collection, and the **Permissions** tab lists the groups that can open the app. The list of questions doesn't include the app's metrics. The app's **Overview** tab has a preview of the app.
+Before you let more people open an app, check which data the app reads and writes. In the list of data apps, click the app. The app's **Questions** and **Actions** tabs list the questions and actions in the app's collection, and the **Permissions** tab lists the groups that can open the app. The app's **Overview** tab has a preview of the app.
 
-These tabs don't show everything that the app can read. The app can also read your published tables, and the metrics and dashboards in your Library. See [what a data app can read and write](./build.md#what-a-data-app-can-read-and-write).
+These tabs don't show everything that the app can read. The app can also read your published tables, and the metrics in your Library. See [what a data app can read and write](./build.md#what-a-data-app-can-read-and-write).
 
 ![Data app Overview tab](./images/data-apps-overview-tab.png)
 
@@ -71,10 +71,10 @@ To fix the group's access:
 
 ## Delete a data app
 
-Data Studio doesn't have an option to delete apps. To delete an app, ask your agent, or run:
+Data Studio doesn't have an option to delete apps. To delete an app, ask your agent, or delete these from your Remote Sync repository, merge the change into the branch that your Metabase pulls from, and [pull it](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git) into your Metabase:
 
-```sh
-mb data-app delete <slug>
-```
+- `data_apps/<slug>/`
+- `collections/data_apps/data_app__<slug>.yaml`
+- `collections/data_apps/data_app__<slug>/`
 
 Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access.

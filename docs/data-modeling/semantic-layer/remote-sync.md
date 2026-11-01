@@ -313,7 +313,7 @@ Remote sync uses the same serialization format as the [Metabase CLI serializatio
 - Metrics
 - Dashboards and their cards
 - Documents
-- [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase syncs the app's bundle and the Metabase items the app needs to run, not the app's source code. Keep the source code in your own repository so you can edit the app.
+- [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase pulls the app's bundle and the Metabase items the app needs to run, and ignores the app's source code, which you keep in the same repository.
 - SQL snippets
 - [Data actions](../data-actions.md)
 - The glossary
