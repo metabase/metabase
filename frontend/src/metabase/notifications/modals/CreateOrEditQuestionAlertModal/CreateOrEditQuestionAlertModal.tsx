@@ -250,6 +250,12 @@ export const CreateOrEditQuestionAlertModal = ({
             message: t`Failed to send test alert. ${findErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
+      } else {
+        dispatch(
+          addUndo({
+            message: t`Test alert sent.`,
+          }),
+        );
       }
     }
   };
