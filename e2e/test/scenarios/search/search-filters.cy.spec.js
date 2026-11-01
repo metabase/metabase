@@ -226,6 +226,23 @@ describe("scenarios > search", () => {
           });
         });
       });
+
+      it(
+        "should keep the Apply button visible when the type list is taller than the popover (metabase#83998)",
+        { viewportHeight: 500 },
+        () => {
+          cy.visit("/search?q=e");
+          cy.wait("@search");
+
+          cy.findByTestId("type-search-filter").click();
+          H.popover().within(() => {
+            cy.findByRole("button", { name: "Apply" }).should("be.visible");
+            cy.findByRole("checkbox", { name: "Document" }).click();
+            cy.findByRole("button", { name: "Apply" }).click();
+          });
+          cy.url().should("contain", "type=document");
+        },
+      );
     });
 
     describe("created_by filter", () => {
