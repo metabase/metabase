@@ -431,8 +431,7 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-dynamic-fn-redefs [queries/create-card!
                                 (fn [& _] (throw (ex-info "Private save failure." {:status-code 500})))]
-      (is (= {:error {:class :unrecoverable :code :internal}
-              :output "This call failed and the user was shown the error (:internal). Don't retry it."}
+      (is (= test-util/internal-failure
              (invoke-save-entity (assoc chart-args :destination {:target_type "collection"})))))))
 
 (deftest sensitive-query-test

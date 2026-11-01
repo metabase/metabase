@@ -1,6 +1,7 @@
 (ns metabase.metabot.agent.core-test
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.ai-tracing.core :as ait]
@@ -14,6 +15,7 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.api :as metabot.api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
@@ -26,10 +28,12 @@
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -293,25 +297,34 @@
              user-message (assoc-in [:error :user-message] user-message))})
 
 (deftest terminal-error-message-test
-  (let [denial [{:type :tool-input :id "a" :function "create_sql_query"}
-                (unrecoverable-part "a" "No native permission.")]]
+  (let [denial     [{:type :tool-input :id "a" :function "create_sql_query"}
+                    (unrecoverable-part "a" "No native permission.")]
+        undeclared {:type :tool-output :id "d" :result mut/internal-failure}]
     (testing "reads the user-facing message off an unrecoverable failure"
-      (is (= "No native permission." (#'agent/terminal-error-message denial))))
+      (is (= "No native permission." (#'agent/terminal-error-message denial 0))))
     (testing "a recoverable failure is not terminal — the model can still self-correct"
       (is (nil? (#'agent/terminal-error-message
                  [{:type :tool-output :id "b" :result {:output "syntax error"
-                                                       :error {:class :recoverable :code :x}}}]))))
+                                                       :error {:class :recoverable :code :x}}}]
+                 0))))
     (testing "and neither is a success"
       (is (nil? (#'agent/terminal-error-message
-                 [{:type :tool-output :id "b" :result {:output "fine"}}]))))
+                 [{:type :tool-output :id "b" :result {:output "fine"}}]
+                 0))))
     (testing "an unrecoverable failure with no :user-message gets the generic one, so the user is
              always told something"
       (is (= "Something went wrong."
-             (#'agent/terminal-error-message [(unrecoverable-part "c" nil)]))))
+             (#'agent/terminal-error-message [(unrecoverable-part "c" nil)] 0))))
     (testing "the first denial wins when an iteration produces several"
       (is (= "first" (#'agent/terminal-error-message
                       [(unrecoverable-part "a" "first")
-                       (unrecoverable-part "b" "second")]))))
+                       (unrecoverable-part "b" "second")]
+                      0))))
+    (testing "a failure no tool declared is terminal only once it is the turn's second"
+      (is (nil? (#'agent/terminal-error-message [undeclared] 1)))
+      (is (= "Something went wrong." (#'agent/terminal-error-message [undeclared] 2)))
+      (testing "and a denial in the same iteration still shows its own message"
+        (is (= "No native permission." (#'agent/terminal-error-message (into [undeclared] denial) 2)))))
     (testing "should-continue? is unaffected — the gate lives in loop-step, per profile"
       (is (#'agent/should-continue? 0 20 #{} denial)))))
 
@@ -324,37 +337,48 @@
   [{:type    "code_editor"
     :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}])
 
-(defn- run-sql-denial-turn!
-  "Run one turn whose first LLM response calls `create_sql_query` against `database-id` while the user views
-  `viewing`, by default a SQL editor."
-  [profile-id database-id & {:keys [viewing] :or {viewing sql-editor-viewing}}]
-  (let [call-count (atom 0)]
+(defn- run-sql-turn!
+  "Run one turn whose LLM responses call `create_sql_query` against `database-id` and then answer in text, while the
+  user views `viewing`, by default a SQL editor. `calls` holds the call IDs of each response, by default one response
+  with one call. `writer`, when given, receives the turn as SSE lines, the way the chat endpoint streams it. Return the
+  LLM requests and the turn's parts."
+  [profile-id database-id & {:keys [viewing calls writer] :or {viewing sql-editor-viewing, calls [["t1"]]}}]
+  (let [requests  (atom [])
+        responses (mapv (fn [ids]
+                          (mapv (fn [id]
+                                  {:type      :tool-input
+                                   :id        id
+                                   :function  "create_sql_query"
+                                   :arguments {:database_id database-id
+                                               :sql_query   "SELECT 1"
+                                               :title       "Results"}})
+                                ids))
+                        calls)]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
       ;; the tool executor lives inside `call-llm`, so redef the transport to let the tool run
-      (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
-                                                          (if (= 1 (swap! call-count inc))
-                                                            (mut/mock-llm-response
-                                                             [{:type      :tool-input
-                                                               :id        "t1"
-                                                               :function  "create_sql_query"
-                                                               :arguments {:database_id database-id
-                                                                           :sql_query   "SELECT 1"
-                                                                           :title       "Results"}}])
-                                                            (mut/mock-llm-response [{:type :text :text "Sorry."}])))]
-        (let [parts (into [] (run-agent-loop
-                              {:messages   [{:role :user :content "Query that database"}]
-                               :state      {}
-                               :profile-id profile-id
-                               :context    {:capabilities    ["permission:write_sql_queries"]
-                                            :user_is_viewing viewing}}))]
-          {:llm-calls @call-count :parts parts})))))
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [request]
+                                                          (mut/mock-llm-response
+                                                           (get responses (dec (count (swap! requests conj request)))
+                                                                [{:type :text :text "Sorry."}])))]
+        (let [turn  (run-agent-loop
+                     {:messages   [{:role :user :content "Query that database"}]
+                      :state      {}
+                      :profile-id profile-id
+                      :context    {:capabilities    ["permission:write_sql_queries"]
+                                   :user_is_viewing viewing}})
+              parts (if writer
+                      (let [streamed (atom [])]
+                        (transduce (comp (u/tee-xf streamed) (self.core/parts->aisdk-sse-xf)) writer turn)
+                        @streamed)
+                      (into [] turn))]
+          {:llm-calls (count @requests) :requests @requests :parts parts})))))
 
 (deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
   (testing "the SQL profile ends the turn when no SQL editor is open, and tells the user why"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql db-id :viewing [])]
+        (let [{:keys [llm-calls parts]} (run-sql-turn! :sql db-id :viewing [])]
           (is (= 1 llm-calls))
           (is (= :terminal-error (:finish-reason (last parts))))
           (is (some #(and (= :text (:type %))
@@ -374,7 +398,7 @@
       (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
       (mt/with-current-user (mt/user->id :rasta)
         (testing ":sql has no notebook builder to fall back to, so the loop stops on the denial"
-          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql builder-db)]
+          (let [{:keys [llm-calls parts]} (run-sql-turn! :sql builder-db)]
             (is (= 1 llm-calls)
                 "one call, not the profile's 20 iterations")
             (is (= :terminal-error (:finish-reason (last parts))))
@@ -386,7 +410,7 @@
                 "state data part still closes the turn")))
         (testing (str ":internal has the notebook builder, so the agent is told to build the question "
                       "there and the turn continues")
-          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal builder-db)]
+          (let [{:keys [llm-calls parts]} (run-sql-turn! :internal builder-db)]
             (is (= 2 llm-calls))
             (is (=? {:type   :tool-output
                      :result {:error  {:class :recoverable}
@@ -395,11 +419,11 @@
             (is (not= :terminal-error (:finish-reason (last parts))))))
         (testing ":internal-sql is :internal without the notebook builder, so the turn stops on the denial"
           (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
-            (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal-sql builder-db)]
+            (let [{:keys [llm-calls parts]} (run-sql-turn! :internal-sql builder-db)]
               (is (= 1 llm-calls))
               (is (= :terminal-error (:finish-reason (last parts)))))))
         (testing "a database the user cannot read at all stops the turn the same way"
-          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql unreadable-db)]
+          (let [{:keys [llm-calls parts]} (run-sql-turn! :sql unreadable-db)]
             (is (= 1 llm-calls)
                 "the read-check denial is terminal too -- otherwise the stricter permission loops")
             (is (= :terminal-error (:finish-reason (last parts))))
@@ -407,8 +431,46 @@
                             (str/includes? (:text %) "do not have access to this database"))
                       parts))))
         (testing "a database the user can query natively is not denied"
-          (let [{:keys [parts]} (run-sql-denial-turn! :sql native-db)]
+          (let [{:keys [parts]} (run-sql-turn! :sql native-db)]
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
+(deftest a-turn-survives-one-undeclared-failure-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                (fn [_] (throw (ex-info "Connection reset by peer" {})))]
+      (testing "the model reads only that the call failed, and answers"
+        (let [{:keys [llm-calls requests parts]} (run-sql-turn! :internal (mt/id))]
+          (is (= 2 llm-calls))
+          (is (some #{(:output mut/internal-failure)} (tree-seq coll? seq (:input (second requests)))))
+          (is (= :stop (:finish-reason (last parts))))))
+      (testing "the second ends the turn with the generic message"
+        (doseq [[label calls] {"in a later iteration"  [["t1"] ["t2"]]
+                               "in the same iteration" [["t1" "t2"]]}]
+          (testing label
+            (let [{:keys [llm-calls parts]} (run-sql-turn! :internal (mt/id) :calls calls)]
+              (is (= (count calls) llm-calls))
+              (is (= :terminal-error (:finish-reason (last parts))))
+              (is (some #(= "Something went wrong." (:text %)) parts)))))))))
+
+(deftest the-turn-stops-when-the-client-leaves-during-a-tool-call-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [create-sql-query (mt/original-fn #'create-sql-query-tools/create-sql-query)]
+      (doseq [[outcome call] {"succeeds"                           create-sql-query
+                              "fails with an undeclared exception" (fn [_] (throw (ex-info "Connection reset" {})))}]
+        (testing (str "the client leaves while a tool call runs, and the call " outcome)
+          (let [canceled-chan (a/promise-chan)
+                canceled?     (volatile! false)]
+            (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query (fn [args]
+                                                                                  (a/>!! canceled-chan :canceled)
+                                                                                  (call args))]
+              (let [{:keys [llm-calls parts]}
+                    (run-sql-turn! :internal (mt/id)
+                                   :writer (#'metabot.api/streaming-writer-rf
+                                            (java.io.ByteArrayOutputStream.) canceled-chan canceled?))]
+                (is @canceled?)
+                (is (= 1 llm-calls))
+                (is (not-any? #(= :finish (:type %)) parts)
+                    "the turn stops where the client left, without finishing")))))))))
 
 (deftest blank-replacement-after-edit-test
   ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.

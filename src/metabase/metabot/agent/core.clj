@@ -219,19 +219,35 @@
   [parts]
   (some #(= (:type %) :error) parts))
 
-(defn- terminal-error-message
-  "The user-facing message from a tool failure no retry can fix, or nil if there was none.
+(def ^:private max-undeclared-failures
+  "How many tool failures that no tool declared a turn survives. The next one ends it, which stops a retry loop."
+  1)
 
-  An unrecoverable failure is one only the user can act on — a permission denial, a server fault —
-  so the turn ends. The message is the `:user-message` the tool chose; a tool that set none gets the
-  generic one, because `:output` is written for the model and says only that the call failed."
-  [parts]
-  (some (fn [part]
-          (when (and (= (:type part) :tool-output)
-                     (= :unrecoverable (get-in part [:result :error :class])))
-            (or (not-empty (get-in part [:result :error :user-message]))
-                (tru "Something went wrong."))))
-        parts))
+(defn- undeclared-failure?
+  "Whether `part` is a tool call that failed in a way no tool declared, which the runtime reports as `:internal`."
+  [part]
+  (and (= (:type part) :tool-output)
+       (= :internal (get-in part [:result :error :code]))))
+
+(defn- terminal-error-message
+  "The user-facing message that ends the turn after this iteration's tool calls, or nil if the turn goes on.
+
+  A declared unrecoverable failure is one only the user can act on, such as a permission denial, so
+  the turn ends. The message is the `:user-message` the tool chose; a tool that set none gets the
+  generic one, because `:output` is written for the model and says only that the call failed.
+
+  A failure no tool declared ends the turn only when `undeclared-failures`, the turn's count of them
+  with this iteration's included, passes [[max-undeclared-failures]]. The message is then the generic one."
+  [parts undeclared-failures]
+  (let [declared (some (fn [part]
+                         (when (and (= (:type part) :tool-output)
+                                    (= :unrecoverable (get-in part [:result :error :class]))
+                                    (not (undeclared-failure? part)))
+                           (get-in part [:result :error])))
+                       parts)]
+    (when (or declared (< max-undeclared-failures undeclared-failures))
+      (or (not-empty (:user-message declared))
+          (tru "Something went wrong.")))))
 
 (defn- should-continue?
   "Determine if agent should continue iterating."
@@ -561,16 +577,30 @@
                                                      :permission/metabot)}
                            tracking-opts)}))
 
+(defn- stop-recording-rf
+  "Wrap `rf` so that `stopped?` turns true once `rf` returns `reduced`.
+
+  The loop can't learn that its consumer stopped from what an iteration returns: the eductions an iteration reduces
+  unwrap a `reduced` before they return."
+  [rf stopped?]
+  (fn [acc part]
+    (u/prog1 (rf acc part)
+      (when (reduced? <>)
+        (vreset! stopped? true)))))
+
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
   [agent rf init usage-atom]
-  {:agent      agent
-   :rf         rf
-   :result     init
-   :iteration  1
-   :status     :continue
-   :usage-atom usage-atom
-   :sent-parts []})
+  (let [consumer-stopped? (volatile! false)]
+    {:agent               agent
+     :rf                  (stop-recording-rf rf consumer-stopped?)
+     :consumer-stopped?   consumer-stopped?
+     :result              init
+     :iteration           1
+     :status              :continue
+     :usage-atom          usage-atom
+     :sent-parts          []
+     :undeclared-failures 0}))
 
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
@@ -612,7 +642,7 @@
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom sent-parts] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom sent-parts undeclared-failures consumer-stopped?] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
@@ -659,15 +689,16 @@
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
-          ;; Every profile, not just the `:required-tool-call?` ones. An unrecoverable failure is
-          ;; defined as one only the user can act on, so the class is the decision and the profile
+          ;; Every profile, not just the `:required-tool-call?` ones. A declared unrecoverable failure
+          ;; is defined as one only the user can act on, so the error is the decision and the profile
           ;; is not part of it. A tool that wants the agent to carry on past a failure declares it
           ;; recoverable, which is a choice made at the error, where the reason for it is visible.
-          (let [terminal-error (terminal-error-message parts)]
+          (let [undeclared-failures (+ undeclared-failures (count (filter undeclared-failure? parts)))
+                terminal-error      (terminal-error-message parts undeclared-failures)]
             (cond
-              (reduced? result')
+              @consumer-stopped?
               ;; consumer signalled early termination (e.g. client disconnect / cancellation)
-              (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
+              (assoc loop-state :status :reduced :finish-reason :reduced :result (unreduced result'))
 
               terminal-error
               (let [result'' (rf result' (terminal-error-text-part terminal-error))]
@@ -680,7 +711,11 @@
                              :result (rf result'' (final-state-part @memory-atom))))))
 
               (should-continue? iteration max-iter terminal-tools parts)
-              (assoc loop-state :result result' :iteration (inc iteration) :sent-parts input-parts)
+              (assoc loop-state
+                     :result result'
+                     :iteration (inc iteration)
+                     :sent-parts input-parts
+                     :undeclared-failures undeclared-failures)
 
               :else
               (let [reason (finish-reason iteration max-iter terminal-tools parts)]
@@ -804,12 +839,11 @@
                                               :ai/state      (:state opts)}
                           (let [agent      (init-agent opts)
                                 usage-atom (atom {})
-                                {result        :result
-                                 iteration     :iteration
-                                 finish-reason :finish-reason} (->> (initial-loop-state agent rf init usage-atom)
-                                                                    (iterate loop-step)
-                                                                    (drop-while #(= :continue (:status %)))
-                                                                    first)]
+                                {:keys [result iteration finish-reason consumer-stopped?]}
+                                (->> (initial-loop-state agent rf init usage-atom)
+                                     (iterate loop-step)
+                                     (drop-while #(= :continue (:status %)))
+                                     first)]
                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
                             ;; Materialized turn-level outputs for evals: token usage, why the loop
                             ;; stopped, and the final agent state (link registry / generated entities).
@@ -817,8 +851,9 @@
                               (ait/record! {:ai/finish-reason finish-reason
                                             :ai/usage         @usage-atom
                                             :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
-                            ;; A :reduced stop (client disconnect / cancellation) has already terminated
-                            ;; the reducing fn — stepping it again would violate the transducer contract.
+                            ;; A consumer that stopped (client disconnect / cancellation) has terminated the
+                            ;; reducing fn, at whichever write it stopped, and stepping it again would violate
+                            ;; the transducer contract.
                             ;; Append trailing parts only on a normal finish: the debug log, the
                             ;; loop's finish reason, and the eval-session pointer that lets the
                             ;; harness locate the per-session `<session-id>.jsonl` (it reads that
@@ -827,8 +862,8 @@
                             ;; in-process `capture-reducible`/`capturing` path is capture-active but
                             ;; deliberately file-less (session id nil, read `:trace`), so emitting a
                             ;; pointer there would name a `<nil>.jsonl` that never exists.
-                            (if (= :reduced finish-reason)
-                              result
+                            (if @consumer-stopped?
+                              (unreduced result)
                               (-> result
                                   (cond->
                                    (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))

@@ -221,7 +221,8 @@
 (deftest ^:parallel an-undeclared-exception-is-unrecoverable-and-leaks-nothing-test
   (let [outcome (invoke "crash" {})]
     (is (= {:class :unrecoverable :code :internal} (:error outcome)))
-    (is (= "This call failed and the user was shown the error (:internal). Don't retry it."
+    (is (= (str "This call failed with an unexpected error. Don't retry the same call. "
+                "Try another approach, or tell the user it failed.")
            (:output outcome)))
     (testing "neither the exception message nor its ex-data reaches the model"
       (doseq [secret ["SELECT" "secrets" "clojure.lang" "hunter2"]]
