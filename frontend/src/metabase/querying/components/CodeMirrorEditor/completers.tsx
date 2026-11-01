@@ -24,19 +24,26 @@ type SchemaCompletionOptions = {
   databaseId?: DatabaseId | null;
 };
 
+function anchorStart(expr: RegExp) {
+  const flags = expr.flags.replace(/[gy]/g, "");
+  if (expr.source.startsWith("^")) {
+    return expr.flags === flags ? expr : new RegExp(expr.source, flags);
+  }
+  return new RegExp(`^(?:${expr.source})`, flags);
+}
+
 function matchAfter(context: CompletionContext, expr: RegExp) {
   const line = context.state.doc.lineAt(context.pos);
   const str = line.text.slice(context.pos - line.from);
-  const found = str.search(expr);
-  if (found < 0) {
+  const match = anchorStart(expr).exec(str);
+  if (!match || match[0].length === 0) {
     return null;
   }
 
-  const text = str.slice(found);
   return {
     from: context.pos,
-    to: context.pos + text.length,
-    text,
+    to: context.pos + match[0].length,
+    text: match[0],
   };
 }
 
