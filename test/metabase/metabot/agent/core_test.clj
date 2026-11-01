@@ -324,10 +324,10 @@
   [{:type    "code_editor"
     :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}])
 
-(defn- run-sql-denial-turn!
-  "Run one turn whose first LLM response calls `create_sql_query` against `database-id` while the user views
-  `viewing`, by default a SQL editor."
-  [profile-id database-id & {:keys [viewing] :or {viewing sql-editor-viewing}}]
+(defn- run-tool-call-turn!
+  "Run one `profile-id` turn with `context`, whose first LLM response calls `function` with `arguments`.
+  Every later response is text."
+  [profile-id context function arguments]
   (let [call-count (atom 0)]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
@@ -337,18 +337,24 @@
                                                             (mut/mock-llm-response
                                                              [{:type      :tool-input
                                                                :id        "t1"
-                                                               :function  "create_sql_query"
-                                                               :arguments {:database_id database-id
-                                                                           :sql_query   "SELECT 1"
-                                                                           :title       "Results"}}])
+                                                               :function  function
+                                                               :arguments arguments}])
                                                             (mut/mock-llm-response [{:type :text :text "Sorry."}])))]
         (let [parts (into [] (run-agent-loop
-                              {:messages   [{:role :user :content "Query that database"}]
+                              {:messages   [{:role :user :content "Go ahead"}]
                                :state      {}
                                :profile-id profile-id
-                               :context    {:capabilities    ["permission:write_sql_queries"]
-                                            :user_is_viewing viewing}}))]
+                               :context    context}))]
           {:llm-calls @call-count :parts parts})))))
+
+(defn- run-sql-denial-turn!
+  "Run one turn whose first LLM response calls `create_sql_query` against `database-id` while the user views
+  `viewing`, by default a SQL editor."
+  [profile-id database-id & {:keys [viewing] :or {viewing sql-editor-viewing}}]
+  (run-tool-call-turn! profile-id
+                       {:capabilities ["permission:write_sql_queries"] :user_is_viewing viewing}
+                       "create_sql_query"
+                       {:database_id database-id :sql_query "SELECT 1" :title "Results"}))
 
 (deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
   (testing "the SQL profile ends the turn when no SQL editor is open, and tells the user why"
