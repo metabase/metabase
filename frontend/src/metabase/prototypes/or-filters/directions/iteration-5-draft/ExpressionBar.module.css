@@ -1,0 +1,442 @@
+/* Same footprint as the QB FilterPanel row: pills with `sm` gaps, `sm` vertical padding. */
+.bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 0.375rem;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-xxl);
+  border-top: 1px solid var(--mb-color-border-neutral);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  cursor: text;
+}
+
+.barInvalid {
+  box-shadow: inset 0 -2px 0 var(--mb-color-feedback-negative);
+}
+
+.pill {
+  display: inline-flex;
+  border-radius: 0.75rem;
+}
+
+/* A pill the arrow keys landed on: Enter opens its editor. */
+.pill:focus {
+  outline: 2px solid var(--mb-color-core-filter);
+  outline-offset: 1px;
+}
+
+/* AND / OR: small caps chips that read as connectors, not as content. */
+.op {
+  padding: 0 0.375rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: none;
+  color: var(--mb-color-text-secondary);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  line-height: 1.25rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background-color 120ms,
+    color 120ms;
+}
+
+.op:hover {
+  background-color: var(--mb-color-background_page-secondary);
+  color: var(--mb-color-text-primary);
+}
+
+.opOr {
+  color: var(--mb-color-core-filter);
+}
+
+.opOr:hover {
+  color: var(--mb-color-core-filter);
+}
+
+/* Parentheses: tall, light brackets in the filter color that wrap the pills they group. */
+.paren {
+  padding: 0 0.0625rem;
+  border: none;
+  border-radius: 0.25rem;
+  background: none;
+  color: var(--mb-color-core-filter);
+  font-family: inherit;
+  font-weight: 300;
+  font-size: 1.625rem;
+  line-height: 1.5rem;
+  transform: scaleY(1.1);
+  cursor: pointer;
+}
+
+.paren:hover {
+  color: var(--mb-color-feedback-negative);
+}
+
+.tokenError {
+  outline: 2px solid var(--mb-color-feedback-negative);
+  outline-offset: 1px;
+  border-radius: 0.75rem;
+}
+
+/* Click targets between tokens: clicking one puts the caret there. */
+.gap {
+  align-self: stretch;
+  width: 0.375rem;
+  cursor: text;
+}
+
+/* Stands in for a gap, so moving the caret never shifts the tokens around it. */
+.caretSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 0.375rem;
+}
+
+/* The caret's input: bare text while it could be `and`/`or`, a pill once it is a filter. */
+.typing {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Only typed text needs room beside the neighbouring tokens. */
+.typingText {
+  padding: 0 0.125rem;
+}
+
+/* Unfocused and empty: keeps the input focusable without taking space. */
+.typingIdle:not(:focus-within) {
+  width: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.typingPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0 0.25rem;
+  padding: 0.1875rem 0.5rem 0.1875rem 0.1875rem;
+  border: 1px solid
+    color-mix(in srgb, var(--mb-color-core-filter) 45%, transparent);
+  border-radius: 1rem;
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-core-filter) 20%,
+    transparent
+  );
+  color: var(--mb-color-core-filter);
+}
+
+.input::placeholder {
+  color: var(--mb-color-text-secondary);
+  font-weight: normal;
+}
+
+.input {
+  min-width: 2px;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  caret-color: var(--mb-color-core-filter);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.typingColumn {
+  padding: 0 0.5rem;
+  border-radius: 0.6875rem;
+  background-color: var(--mb-color-background_surface-primary);
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+}
+
+.typingClose {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+/* The list's own search box is driven by the bar, so it stays out of sight. */
+.columnList [data-element-id="list-section"]:has(input) {
+  height: 0;
+  overflow: hidden;
+  border: none;
+  opacity: 0;
+}
+
+@keyframes flash {
+  0%,
+  40% {
+    box-shadow: 0 0 0 3px var(--mb-color-core-filter);
+  }
+
+  100% {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}
+
+/* Filters a drill just appended pulse once, to show where they landed. */
+.flash {
+  animation: flash 1.6s ease-out;
+}
+
+.list {
+  color: var(--mb-color-core-filter);
+}
+
+.logicRow {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+/* With a keyword matched, an empty column list is not "no results". */
+.logicRow
+  ~ *
+  [data-element-id="list-section"]:not(:has([data-element-id]), :has(input)) {
+  display: none;
+}
+
+.logicKeyword {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  height: 1.75rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+  background: none;
+  color: var(--mb-color-text-secondary);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.logicKeyword:hover {
+  border-color: var(--mb-color-core-filter);
+}
+
+.logicKeywordOr {
+  color: var(--mb-color-core-filter);
+}
+
+.logicKeywordParen {
+  color: var(--mb-color-core-filter);
+  font-weight: 400;
+  font-size: 1rem;
+}
+
+/* The keyword the typed text spells: Enter or space enters it. */
+.logicKeywordActive {
+  border-color: var(--mb-color-core-filter);
+  background-color: var(--mb-color-core-filter);
+  color: var(--mb-color-text-primary-inverse);
+}
+
+/* Clicks fall through to the bar, which puts the caret at the end. */
+.placeholder {
+  color: var(--mb-color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  pointer-events: none;
+}
+
+/* While editing, each parenthesized group gets its own indented row. */
+.barExpanded {
+  /* Same as the folded bar: placing the caret never changes the bar's height. */
+  row-gap: 0.375rem;
+}
+
+.rowBreak {
+  flex-basis: 100%;
+  height: 0;
+}
+
+/* Inside a notebook cell: fills the cell, padding included, so any click in it places the caret. */
+.barNotebook {
+  flex: 1;
+  align-self: stretch;
+  margin: -14px;
+  padding: 14px;
+  border: none;
+  row-gap: 0.5rem;
+}
+
+.barNotebookRoot {
+  display: flex;
+  flex: 1;
+  align-self: stretch;
+}
+
+.barNotebook .pill {
+  border-radius: 6px;
+}
+
+.notebookPillClose {
+  margin-left: 0.5rem;
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+
+/* The Metabot icon stays out of the way until the cell is hovered or focused. */
+.barNotebook .metabot {
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.barNotebook:hover .metabot,
+.barNotebook:focus-within .metabot,
+.barNotebook .metabot:has([aria-expanded="true"]) {
+  opacity: 1;
+}
+
+/* A Summarize cell: click anywhere in it for the caret. */
+.typedCell {
+  gap: 0.5rem;
+  min-height: 3.5rem;
+  cursor: text;
+}
+
+/* The pill being built takes the notebook pill's shape, still tinted while it is a draft. */
+.barNotebook .typingPill {
+  margin: 0;
+  padding: 10px;
+  border-width: 2px;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+.barNotebook .typingColumn {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--mb-color-core-filter);
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Spaced like pills joined by an implicit AND: a gap on each side of it. */
+.trailing {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+
+  &:not(:first-child) {
+    margin-left: 0.75rem;
+  }
+}
+
+.barRoundOps .trailing {
+  gap: 0.25rem;
+
+  &:not(:first-child) {
+    margin-left: 0.25rem;
+  }
+}
+
+/* AND / OR as small bordered circles, with tighter gaps around them. */
+.barRoundOps .op {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0 0.25rem;
+  padding: 0;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 0.5rem;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.barRoundOps .gap {
+  width: 0.125rem;
+}
+
+.barRoundOps .caretSlot {
+  min-width: 0.125rem;
+}
+
+/* The tall bracket glyph carries its own side bearing; pull it in so a circle sits as far from a paren as from a pill. */
+.barRoundOps .paren {
+  margin: 0 0.0625rem;
+  padding: 0;
+}
+
+/* Without ANDs, the draft pill needs the same room around it as a pill beside a pill. */
+.caretSlotSpaced:has(> :not(.typingIdle)),
+.caretSlotSpaced:has(> .typingIdle:focus-within) {
+  padding: 0 0.375rem;
+}
+
+/* Between pills, the empty draft is only a caret: no room is made until there is text. */
+.caretSlotMid:has([data-testid="draft-filter-pill"] input[data-empty]) {
+  padding: 0;
+
+  /* The caret takes no room and draws over the gap, so the pills on either side stay put. */
+  & [data-testid="draft-filter-pill"] {
+    width: 0;
+    min-width: 0;
+    min-height: 0;
+    border-width: 0;
+    justify-content: center;
+  }
+
+  & input[data-empty] {
+    flex: none;
+    width: 2px;
+    min-width: 0;
+  }
+}
+
+/* The same for the closed caret: an empty one between pills only draws over the gap. */
+.caretSlotMid:has(> .typingIdle:not(.typingText)) {
+  padding: 0;
+
+  & .typingIdle {
+    width: 0;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  & .input {
+    flex: none;
+  }
+}
+
+/* Between the filters on the rows and the filters on the summary. Not a token: nothing to click or select. */
+.stageDash {
+  margin: 0 0.5rem;
+  color: var(--mb-color-text-secondary);
+  font-weight: bold;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* The summary's own bar, flush inside the rows bar's trailing slot. */
+.barNested {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+}
+
+/* A pill's editor: the same border as the draft pill's suggestion list, a Mantine Combobox. */
+.pillDropdown.pillDropdown {
+  border: 1px solid var(--popover-border-color);
+}

@@ -1,0 +1,72 @@
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-family: var(--mantine-font-family-monospace);
+}
+
+.table th,
+.table td {
+  padding: 0.375rem 0.5rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table thead th {
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  height: 2.75rem;
+}
+
+.table tbody tr + tr td {
+  border-top: 1px dashed var(--mb-color-border-neutral);
+}
+
+.lead {
+  width: 3.5rem;
+  color: var(--mb-color-text-secondary);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.lead[data-first="true"] {
+  color: var(--mb-color-text-primary);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.cell {
+  min-width: 9rem;
+}
+
+.any {
+  color: var(--mb-color-text-secondary);
+  border: 1.5px dashed transparent;
+  border-radius: 1rem;
+  padding: 0.1875rem 0.625rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.table tbody tr:hover .any {
+  border-color: var(--mb-color-border-neutral-strong);
+}
+
+.any:hover {
+  color: var(--mb-color-core-filter);
+  border-color: var(--mb-color-core-filter);
+}
+
+.actions {
+  white-space: nowrap;
+  text-align: right;
+  width: 1%;
+}
