@@ -25,6 +25,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -34,6 +35,7 @@
    (clojure.core.async.impl.channels ManyToManyChannel)
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
+   (com.google.auth.oauth2 GoogleCredentials)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetListOption
@@ -92,27 +94,43 @@
   "Where `ServiceAccountCredentials` exchanges the signed JWT when the credentials JSON names no `token_uri`."
   "https://oauth2.googleapis.com/token")
 
-(defn- service-account-token-uri
-  "The URI [[bigquery.common/service-account-json->service-account-credential]] will POST a signed assertion to.
-  `ServiceAccountCredentials/fromStream` honors a `token_uri` out of the credentials JSON, so this is a destination
-  chosen by whoever supplied the credentials rather than a fixed Google endpoint."
-  [service-account-json]
-  (or (when-not (str/blank? service-account-json)
-        (perf/not-empty (get (json/decode service-account-json) "token_uri")))
-      default-token-uri))
+(defn- json-urls
+  "Every string that looks like an HTTP(S) URL anywhere inside decoded JSON `x`."
+  [x]
+  (into [] (filter #(and (string? %) (re-find #"(?i)^https?://" %))) (tree-seq coll? seq x)))
+
+(defn- credential-urls
+  "The URLs the credentials in `details` make Metabase connect to while authenticating."
+  [{:keys [service-account-json credential-config-json] :as details}]
+  (case (bigquery.common/credentials-source details)
+    ;; `ServiceAccountCredentials/fromStream` honors a `token_uri` out of the key, so where the signed assertion gets
+    ;; POSTed is a destination chosen by whoever supplied the credentials rather than a fixed Google endpoint.
+    :service-account     [(or (perf/not-empty (get (json/decode service-account-json) "token_uri"))
+                              default-token-uri)]
+    ;; A credential configuration file is URLs all the way down: the token exchange endpoint, the service account
+    ;; impersonation endpoint, and often the place the subject token is fetched from (e.g. a cloud metadata server).
+    ;; Every one of them was chosen by whoever supplied the file, so report them all rather than a known subset.
+    :credential-config   (json-urls (json/decode credential-config-json))
+    ;; Application Default Credentials come from the Metabase server's own environment, not from `details`.
+    :application-default []))
 
 (defmethod driver/connection-hosts :bigquery-cloud-sdk
-  [_driver {:keys [host service-account-json]}]
-  (driver/hosts-from-details
-   {:api-host   (if (str/blank? host) default-api-host host)
-    :token-host (service-account-token-uri service-account-json)}
-   [:api-host :token-host]))
+  [_driver {:keys [host] :as details}]
+  (into (driver/hosts-from-details {:api-host (if (str/blank? host) default-api-host host)} [:api-host])
+        (keep u.http/->hostname)
+        (credential-urls details)))
 
 (mu/defn- database-details->client
   ^BigQuery [details :- :metabase.lib.schema.common/database-details]
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
-  (let [base-creds   (bigquery.common/database-details->service-account-credential details)
-        creds        (.createScoped base-creds bigquery-scopes)
+  (let [^GoogleCredentials base-creds (bigquery.common/database-details->credentials details)
+        ;; A service account key needs scopes. Credentials the environment hands out, like the GCE/GKE metadata
+        ;; server's, can come with scopes of their own, and then the library asks us not to add any.
+        creds        (if (.createScopedRequired base-creds)
+                       (.createScoped base-creds bigquery-scopes)
+                       base-creds)
+        ;; Jobs are created and billed in this project; queried tables can live elsewhere.
+        ^String billing-project-id (bigquery.common/get-billing-project-id details)
         mb-version   (:tag driver-api/mb-version-info)
         run-mode     (name driver-api/run-mode)
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
@@ -128,14 +146,12 @@
         bq-bldr      (doto (BigQueryOptions/newBuilder)
                        (.setCredentials creds)
                        (.setHeaderProvider header-provider)
-                       (.setTransportOptions transport-options))]
+                       (.setTransportOptions transport-options)
+                       (.setProjectId billing-project-id))]
     (when universe-domain
       (.setUniverseDomain bq-bldr universe-domain))
     (when-let [host (perf/not-empty (:host details))]
       (.setHost bq-bldr host))
-    (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
-      ;; Jobs are created and billed in this project; queried tables can live elsewhere.
-      (.setProjectId bq-bldr billing-project-id))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
