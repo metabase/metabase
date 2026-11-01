@@ -927,6 +927,22 @@
       (is (= {:errors {:password "did not match stored password"}}
              (mt/client :post 401 "session" (mt/user->credentials :lucky)))))))
 
+(deftest ldap-login-throttles-account-across-login-aliases-test
+  (testing "LDAP login - failures under uid and mail add up for one directory account"
+    (ldap.test/with-ldap-server!
+      (mt/with-temporary-setting-values [mfa-enforcement :off]
+        (api.session/reset-throttlers-for-testing!)
+        (try
+          (doseq [username (concat (repeat 5 "sbrown20") (repeat 5 "Sally.Brown@metabase.com"))]
+            (mt/client :post 401 "session" {:username username, :password "wrong-password"}))
+          (is (=? {:errors {:username #"Too many attempts!.*"}}
+                  (mt/client :post 401 "session" {:username "sbrown20", :password "1234"})))
+          (testing "refused login creates no user"
+            (is (not (t2/exists? :model/User :%lower.email "sally.brown@metabase.com"))))
+          (finally
+            (api.session/reset-throttlers-for-testing!)
+            (t2/delete! :model/User :%lower.email "sally.brown@metabase.com")))))))
+
 (deftest ldap-login-deactivated-user-test
   (testing "LDAP login - deactivated user cannot login"
     (ldap.test/with-ldap-server!
