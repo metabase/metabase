@@ -1,3 +1,5 @@
+import { Position } from "@xyflow/react";
+
 import type { ErdResponse } from "metabase-types/api";
 import {
   createMockErdEdge,
@@ -5,7 +7,8 @@ import {
   createMockErdNode,
 } from "metabase-types/api/mocks";
 
-import { HEADER_HEIGHT_PX, ROW_HEIGHT_PX } from "../constants";
+import { HEADER_HEIGHT_PX, NODE_WIDTH_PX, ROW_HEIGHT_PX } from "../constants";
+import type { SchemaViewerFlowNode } from "../types";
 
 import { getNodeHeight, getNodeId, toFlowGraph } from "./flow-graph";
 
@@ -66,6 +69,203 @@ describe("toFlowGraph — field sort order", () => {
       "extra_a",
       "extra_d",
     ]);
+  });
+});
+
+describe("toFlowGraph — linked foreign key rows", () => {
+  it("groups FKs with a known target right after the PKs and records their row range", () => {
+    const response: ErdResponse = {
+      nodes: [
+        createMockErdNode({
+          table_id: 1,
+          fields: [
+            createMockErdField({ id: 1, name: "extra", semantic_type: null }),
+            createMockErdField({
+              id: 2,
+              name: "fk_hidden_target",
+              semantic_type: "type/FK",
+              fk_target_table_id: null,
+            }),
+            createMockErdField({
+              id: 3,
+              name: "fk_linked_a",
+              semantic_type: "type/FK",
+              fk_target_table_id: 7,
+            }),
+            createMockErdField({ id: 4, name: "pk", semantic_type: "type/PK" }),
+            createMockErdField({
+              id: 5,
+              name: "fk_linked_b",
+              semantic_type: "type/FK",
+              fk_target_table_id: 8,
+            }),
+          ],
+        }),
+      ],
+      edges: [],
+    };
+
+    const [node] = toFlowGraph(response).nodes;
+
+    expect(node.data.fields.map((f) => f.name)).toEqual([
+      "pk",
+      "fk_linked_a",
+      "fk_linked_b",
+      "fk_hidden_target",
+      "extra",
+    ]);
+    expect(node.data.linkedForeignKeyRows).toEqual({ start: 1, count: 2 });
+  });
+});
+
+describe("toFlowGraph — fixed node and handle geometry", () => {
+  it("declares dimensions and positions handles from sorted field rows", () => {
+    const response: ErdResponse = {
+      nodes: [
+        createMockErdNode({
+          table_id: 1,
+          fields: [
+            createMockErdField({ id: 11, semantic_type: null }),
+            createMockErdField({ id: 12, semantic_type: "type/FK" }),
+            createMockErdField({ id: 13, semantic_type: "type/PK" }),
+          ],
+        }),
+        createMockErdNode({
+          table_id: 2,
+          fields: [createMockErdField({ id: 21, semantic_type: "type/PK" })],
+        }),
+      ],
+      edges: [
+        createMockErdEdge({
+          source_table_id: 1,
+          source_field_id: 12,
+          target_table_id: 2,
+          target_field_id: 21,
+        }),
+      ],
+    };
+
+    const { nodes } = toFlowGraph(response);
+    const source = nodes.find((node) => node.id === "table-1")!;
+    const target = nodes.find((node) => node.id === "table-2")!;
+
+    expect(source).toMatchObject({
+      width: NODE_WIDTH_PX,
+      height: HEADER_HEIGHT_PX + 3 * ROW_HEIGHT_PX,
+      style: {
+        width: NODE_WIDTH_PX,
+        height: HEADER_HEIGHT_PX + 3 * ROW_HEIGHT_PX,
+      },
+    });
+    expect(source.data.handles).toEqual([
+      {
+        id: "field-12",
+        type: "source",
+        position: Position.Right,
+        x: NODE_WIDTH_PX - 0.5,
+        y: HEADER_HEIGHT_PX + ROW_HEIGHT_PX + (ROW_HEIGHT_PX - 1) / 2,
+        width: 1,
+        height: 1,
+      },
+    ]);
+    expect(target.data.handles).toEqual([
+      {
+        id: "field-21",
+        type: "target",
+        position: Position.Left,
+        x: -0.5,
+        y: HEADER_HEIGHT_PX + (ROW_HEIGHT_PX - 1) / 2,
+        width: 1,
+        height: 1,
+      },
+    ]);
+  });
+
+  it("deduplicates a target handle shared by multiple incoming edges", () => {
+    const targetField = createMockErdField({
+      id: 21,
+      semantic_type: "type/PK",
+    });
+    const response: ErdResponse = {
+      nodes: [
+        createMockErdNode({
+          table_id: 1,
+          fields: [createMockErdField({ id: 11, semantic_type: "type/FK" })],
+        }),
+        createMockErdNode({ table_id: 2, fields: [targetField] }),
+        createMockErdNode({
+          table_id: 3,
+          fields: [createMockErdField({ id: 31, semantic_type: "type/FK" })],
+        }),
+      ],
+      edges: [
+        createMockErdEdge({
+          source_table_id: 1,
+          source_field_id: 11,
+          target_table_id: 2,
+          target_field_id: 21,
+        }),
+        createMockErdEdge({
+          source_table_id: 3,
+          source_field_id: 31,
+          target_table_id: 2,
+          target_field_id: 21,
+        }),
+      ],
+    };
+
+    const target = toFlowGraph(response).nodes.find(
+      (node) => node.id === "table-2",
+    )!;
+
+    expect(
+      target.data.handles.filter((handle) => handle.id === "field-21"),
+    ).toEqual([
+      expect.objectContaining({ type: "target", position: Position.Left }),
+    ]);
+  });
+
+  it("declares a distinct right-side target handle for self references", () => {
+    const response: ErdResponse = {
+      nodes: [
+        createMockErdNode({
+          table_id: 1,
+          fields: [
+            createMockErdField({ id: 11, semantic_type: "type/FK" }),
+            createMockErdField({ id: 12, semantic_type: "type/PK" }),
+            createMockErdField({ id: 13, semantic_type: null }),
+          ],
+        }),
+      ],
+      edges: [
+        createMockErdEdge({
+          source_table_id: 1,
+          source_field_id: 11,
+          target_table_id: 1,
+          target_field_id: 12,
+        }),
+      ],
+    };
+
+    const [node] = toFlowGraph(response).nodes;
+
+    expect(node.data.handles).toEqual([
+      expect.objectContaining({
+        id: "field-12-right",
+        type: "target",
+        position: Position.Right,
+        x: NODE_WIDTH_PX - 0.5,
+      }),
+      expect.objectContaining({
+        id: "field-11",
+        type: "source",
+        position: Position.Right,
+        x: NODE_WIDTH_PX - 0.5,
+      }),
+    ]);
+    expect(node.data.handles.some((handle) => handle.id === "field-13")).toBe(
+      false,
+    );
   });
 });
 
@@ -132,7 +332,7 @@ describe("toFlowGraph — edge ids and handles", () => {
 });
 
 describe("toFlowGraph — per-table edge roles", () => {
-  it("populates sourceFieldIds, targetFieldIds, and selfRefTargetFieldIds correctly", () => {
+  it("anchors each field by its edge roles, with self-reference targets on the right", () => {
     const response: ErdResponse = {
       nodes: [
         createMockErdNode({
@@ -141,7 +341,11 @@ describe("toFlowGraph — per-table edge roles", () => {
         }),
         createMockErdNode({
           table_id: 2,
-          fields: [createMockErdField({ id: 20 })],
+          fields: [
+            createMockErdField({ id: 20 }),
+            createMockErdField({ id: 21 }),
+            createMockErdField({ id: 22 }),
+          ],
         }),
       ],
       edges: [
@@ -163,13 +367,17 @@ describe("toFlowGraph — per-table edge roles", () => {
     const t1 = nodes.find((n) => n.id === "table-1")!;
     const t2 = nodes.find((n) => n.id === "table-2")!;
 
-    expect([...t1.data.sourceFieldIds]).toEqual([10]);
-    expect([...t1.data.targetFieldIds]).toEqual([]);
-    expect([...t1.data.selfRefTargetFieldIds]).toEqual([]);
+    const anchors = (node: SchemaViewerFlowNode) =>
+      node.data.handles
+        .map((handle) => `${handle.type}:${handle.id}:${handle.position}`)
+        .sort();
 
-    expect([...t2.data.sourceFieldIds]).toEqual([21]);
-    expect([...t2.data.targetFieldIds]).toEqual([20]);
-    expect([...t2.data.selfRefTargetFieldIds]).toEqual([22]);
+    expect(anchors(t1)).toEqual(["source:field-10:right"]);
+    expect(anchors(t2)).toEqual([
+      "source:field-21:right",
+      "target:field-20:left",
+      "target:field-22-right:right",
+    ]);
   });
 });
 

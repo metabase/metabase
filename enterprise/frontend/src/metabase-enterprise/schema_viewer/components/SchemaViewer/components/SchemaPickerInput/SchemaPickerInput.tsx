@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -13,6 +13,12 @@ import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import S from "./SchemaPickerInput.module.css";
 
+// Characters typed within this interval extend one typeahead query.
+const TYPEAHEAD_RESET_MS = 500;
+// List items the typeahead can move to; the "Back" header is not one of them.
+const TYPEAHEAD_ITEM_SELECTOR =
+  '[role="menuitem"]:not([data-testid="mini-picker-header"])';
+
 type SchemaPickerInputProps = {
   databaseId: DatabaseId | undefined;
   schema: SchemaName | undefined;
@@ -26,6 +32,60 @@ export function SchemaPickerInput({
 }: SchemaPickerInputProps) {
   const navigate = useNavigate();
   const [opened, setOpened] = useState(databaseId == null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Mantine's `returnFocus` is not used: it would also pull focus back from
+  // whatever the user clicked to close the dropdown. Escape returns focus
+  // natively; picking an item and Shift+Tab do it here.
+  const closeAndFocusTrigger = useCallback(() => {
+    setOpened(false);
+    triggerRef.current?.focus();
+  }, []);
+
+  const typeaheadRef = useRef({ query: "", resetTimeout: -1 });
+
+  // Mantine's Menu has no typeahead: typing moves focus to the matching item.
+  const handleTypeahead = (event: React.KeyboardEvent<HTMLElement>) => {
+    const isCharacter =
+      event.key.length === 1 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey;
+    const typeahead = typeaheadRef.current;
+    // Outside a query, Space keeps activating the focused item.
+    if (!isCharacter || (event.key === " " && typeahead.query === "")) {
+      return;
+    }
+    event.preventDefault();
+    // Keep typed characters from triggering global shortcuts such as "g h".
+    event.stopPropagation();
+    window.clearTimeout(typeahead.resetTimeout);
+    typeahead.query += event.key;
+    typeahead.resetTimeout = window.setTimeout(() => {
+      typeahead.query = "";
+    }, TYPEAHEAD_RESET_MS);
+
+    const items = [
+      ...event.currentTarget.querySelectorAll<HTMLElement>(
+        TYPEAHEAD_ITEM_SELECTOR,
+      ),
+    ];
+    const query = typeahead.query.toLowerCase();
+    items
+      .find((item) => item.textContent?.toLowerCase().includes(query))
+      ?.focus();
+  };
+
+  const handleDropdownKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    // Mantine's focus trap keeps Tab inside the dropdown; Shift+Tab leaves it
+    // back to the trigger instead.
+    if (event.key === "Tab" && event.shiftKey) {
+      event.preventDefault();
+      closeAndFocusTrigger();
+      return;
+    }
+    handleTypeahead(event);
+  };
 
   const handleChange = useCallback(
     (picked: MiniPickerPickableItem) => {
@@ -40,9 +100,9 @@ export function SchemaPickerInput({
           schema: picked.name,
         }),
       );
-      setOpened(false);
+      closeAndFocusTrigger();
     },
-    [onSchemaChange, navigate],
+    [onSchemaChange, navigate, closeAndFocusTrigger],
   );
 
   const hasNamedSchema = schema != null && schema.length > 0;
@@ -63,6 +123,9 @@ export function SchemaPickerInput({
   return (
     <MiniPicker
       opened={opened}
+      // Focuses the first item whenever the list changes, e.g. after
+      // opening a database.
+      trapFocus
       onClose={() => setOpened(false)}
       models={["schema"]}
       includeHiddenSchemas
@@ -72,9 +135,13 @@ export function SchemaPickerInput({
         onChange: setOpened,
         clickOutsideEvents: ["pointerdown", "touchstart"],
         position: "bottom-start",
+        // Move focus into the dropdown when it opens.
+        trapFocus: true,
       }}
+      menuDropdownProps={{ onKeyDown: handleDropdownKeyDown }}
     >
       <Button
+        ref={triggerRef}
         size="lg"
         className={S.triggerButton}
         leftSection={
