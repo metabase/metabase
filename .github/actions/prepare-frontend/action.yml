@@ -11,6 +11,11 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Disable CLJS analyzer caching for clean CI builds
+      shell: bash
+      # CI jobs do not restore .shadow-cljs; local builds keep analyzer-cache reuse.
+      run: echo "CLJS_CACHE_LEVEL=none" >> "$GITHUB_ENV"
+
     - name: Prepare Node + Bun environment
       uses: ./.github/actions/prepare-node-bun
       with:

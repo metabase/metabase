@@ -36,6 +36,7 @@
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition
+                     "CLJS_CACHE_LEVEL" (or (env/env :cljs-cache-level) "all")
                      "EMIT_BUNDLE_STATS" (or (env/env :emit-bundle-stats) "false")
                      "INSTRUMENT_COVERAGE" (or (env/env :instrument-coverage) "false")}}
               "bun" "run" "build-release"))
