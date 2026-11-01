@@ -1,0 +1,19 @@
+(ns metabase.query-processor.permissions
+  "Security-lint test example: a permission check that runs only when a user is bound. Exercises
+  `check-gated-on-current-user`."
+  (:require
+   [metabase.api.common :as api]))
+
+(defn- check-audit-db [query] query)
+
+(defn- record-view! [query] query)
+
+;; the audit-DB guard under the user gate: a public card, run as admin with no user bound, skips it
+(defn check-query-permissions* [query]
+  (when api/*current-user-id*
+    (check-audit-db query)))
+
+;; the same gate over something only a bound user has: nothing to report
+(defn maybe-record-view! [query]
+  (when api/*current-user-id*
+    (record-view! query)))
