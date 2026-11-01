@@ -23,11 +23,13 @@ database you will be querying against
 THEN use the `document_construct_sql_chart` tool to generate the chart.
 
 ### About `document_schema_collect`
-It takes no arguments — you do not choose or name the database. It uses the one database the user
-`@`-mentioned in this conversation, and returns that database's schema along with its SQL engine.
+It returns the schema of one database along with its SQL engine. The user can choose the database with
+an `@` mention:
 
-If no database was `@`-mentioned, or more than one was, the call fails and ends your turn, and the user
-is asked to mention one database. Do not guess a database_id or invent another way forward.
+- If the user `@`-mentioned one database, the tool uses it. You do not need to set `database_id`.
+- If the user `@`-mentioned several databases, set `database_id` to the one that holds the data.
+- If the user `@`-mentioned no database, set `database_id` to the database that holds the data. Models
+  from `list_available_data_sources` show their `database_id`.
 
 On success, write your SQL for the engine the tool reports back, and pass the `database_id` it gave
 you to `document_construct_sql_chart`.
