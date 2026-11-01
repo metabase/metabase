@@ -8,6 +8,8 @@ import type {
   SendTestNotificationRequest,
 } from "metabase-types/api";
 
+import type { HealthCheck } from "./types";
+
 export const securityCenterApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     listSecurityAdvisories: builder.query<ListAdvisoriesResponse, void>({
@@ -55,6 +57,64 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
         },
       }),
     }),
+    listHealthChecks: builder.query<HealthCheck[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/security-center/health-checks",
+      }),
+      providesTags: [listTag("security-health-check")],
+    }),
+    recheckHealthChecks: builder.mutation<HealthCheck[], void>({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/security-center/health-checks/recheck",
+      }),
+      onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            securityCenterApi.util.updateQueryData(
+              "listHealthChecks",
+              undefined,
+              () => data,
+            ),
+          );
+        } catch {}
+      },
+    }),
+    recheckHealthCheck: builder.mutation<HealthCheck, string>({
+      query: (checkId) => ({
+        method: "POST",
+        url: `/api/ee/security-center/health-checks/${checkId}/recheck`,
+      }),
+      onQueryStarted: async (_checkId, { dispatch, queryFulfilled }) => {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            securityCenterApi.util.updateQueryData(
+              "listHealthChecks",
+              undefined,
+              (checks) =>
+                checks.map((check) => (check.id === data.id ? data : check)),
+            ),
+          );
+        } catch {}
+      },
+    }),
+    acknowledgeHealthCheck: builder.mutation<void, string>({
+      query: (checkId) => ({
+        method: "POST",
+        url: `/api/ee/security-center/health-checks/${checkId}/acknowledgement`,
+      }),
+      invalidatesTags: [listTag("security-health-check")],
+    }),
+    unacknowledgeHealthCheck: builder.mutation<void, string>({
+      query: (checkId) => ({
+        method: "DELETE",
+        url: `/api/ee/security-center/health-checks/${checkId}/acknowledgement`,
+      }),
+      invalidatesTags: [listTag("security-health-check")],
+    }),
   }),
 });
 
@@ -64,4 +124,9 @@ export const {
   useAcknowledgeAdvisoriesMutation,
   useSyncSecurityAdvisoriesMutation,
   useSendTestNotificationMutation,
+  useListHealthChecksQuery,
+  useRecheckHealthChecksMutation,
+  useRecheckHealthCheckMutation,
+  useAcknowledgeHealthCheckMutation,
+  useUnacknowledgeHealthCheckMutation,
 } = securityCenterApi;
