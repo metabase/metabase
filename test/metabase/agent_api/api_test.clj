@@ -2248,7 +2248,8 @@
                             result ((get-in entries ["get_field_values" :fn]) args)]
                         (is (some? (get-in unrestricted [:structured-output :value_metadata :statistics])))
                         (if blocked?
-                          (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+                          (is (= {:result-type :field-metadata :field_id "count" :reference_name "count"
+                                  :value_metadata nil}
                                  (:structured-output result)))
                           (is (= unrestricted result)))))))
                 (let [response (mt/user-http-request :rasta :post 200 "agent/v1/read-resource"

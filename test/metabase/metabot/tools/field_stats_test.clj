@@ -1,12 +1,15 @@
 (ns metabase.metabot.tools.field-stats-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.field-stats-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.test-util :as tools.tu]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -185,3 +188,51 @@
         (testing "a metric that doesn't exist is refused as not found"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
                                 (metric-values Integer/MAX_VALUE))))))))
+
+(defn- field-metadata-xml
+  "Render the drill-in for `request` as the LLM sees it, or the error message when the drill-in fails."
+  [request]
+  (try
+    (llm-shape/field-metadata->xml (:structured-output (metabot.tools.field-stats/field-values request)))
+    (catch clojure.lang.ExceptionInfo e
+      (ex-message e))))
+
+(deftest metric-dimension-drill-in-joined-copy-test
+  (testing "a metric drill-in on a renamed joined copy returns that copy, referenced by its output name"
+    (mt/with-temp [:model/Card {card-id :id}   {:type :question :dataset_query (tools.tu/venues-self-join-query)}
+                   :model/Card {metric-id :id} {:type          :metric
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (-> (lib/query mp (lib.metadata/card mp card-id))
+                                                                     (lib/aggregate (lib/count))))}]
+      (mt/as-admin
+        (let [xml (field-metadata-xml {:entity-type "metric", :entity-id metric-id, :field-id "NAME_2", :limit 5})]
+          (is (str/includes? xml "Reference (copy into a field clause): \"NAME_2\""))
+          (is (not (str/includes? xml "\"NAME_2\"]"))))))))
+
+(deftest field-metadata-requested-numeric-string-id-renders-portable-fk-test
+  (testing "a drill-in requested by a numeric string id renders the portable FK, never the requested id"
+    (mt/as-admin
+      (let [xml (field-metadata-xml {:entity-type "table", :entity-id (mt/id :venues)
+                                     :field-id (str (mt/id :venues :name)), :limit 5})]
+        (is (str/includes? xml (str "Reference (copy into a field clause): "
+                                    "[\"test-data (h2)\",\"PUBLIC\",\"VENUES\",\"NAME\"]")))
+        (is (not (str/includes? xml (str "Reference (copy into a field clause): \"" (mt/id :venues :name) "\""))))))))
+
+(deftest metric-field-stats-multi-stage-over-model-test
+  (testing "a drill-in on a multi-stage metric over a model accepts the base table's fields, not the model's columns"
+    (mt/with-temp [:model/Card {model-id :id}  {:type :model :dataset_query (tools.tu/orders-model-query)}
+                   :model/Card {metric-id :id} {:type          :metric
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (-> (lib/query mp (lib.metadata/card mp model-id))
+                                                                     lib/append-stage
+                                                                     (lib/aggregate (lib/count))))}]
+      (mt/as-admin
+        (testing "a model-only column is an unknown field"
+          (is (re-find #"Field Doubled Total was not found in metric"
+                       (field-metadata-xml {:entity-type "metric", :entity-id metric-id
+                                            :field-id "Doubled Total", :limit 5}))))
+        (testing "a base table field returns its statistics"
+          (is (=? {:structured-output {:field_id    (mt/id :orders :total)
+                                       :portable_fk ["test-data (h2)" "PUBLIC" "ORDERS" "TOTAL"]}}
+                  (metabot.tools.field-stats/field-values
+                   {:entity-type "metric", :entity-id metric-id, :field-id (mt/id :orders :total), :limit 5}))))))))

@@ -212,12 +212,13 @@
       (doseq [profile [:document-generate-content :slackbot]]
         (let [unrestricted (mt/as-admin (card-field-metadata profile card-id "count"))
               user-result (card-field-metadata profile card-id "count")]
-          (is (= {:result-type :field-metadata :field_id "count"
+          (is (= {:result-type :field-metadata :field_id "count" :reference_name "count"
                   :value_metadata {:statistics (merge {:distinct-count 1 :percent-null 0.0}
                                                       (get-in fingerprint [:type :type/Number]))}}
                  (:structured-output unrestricted)))
           (if restricted?
-            (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+            (is (= {:result-type :field-metadata :field_id "count" :reference_name "count"
+                    :value_metadata nil}
                    (:structured-output user-result)))
             (is (= unrestricted user-result))))))))
 
@@ -264,7 +265,8 @@
           (is (= (merge {:distinct-count 1 :percent-null 0.0} (get-in fingerprint [:type :type/Number]))
                  (get-in (mt/with-test-user :crowberto (card-field-metadata profile card-id "count"))
                          [:structured-output :value_metadata :statistics])))
-          (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+          (is (= {:result-type :field-metadata :field_id "count" :reference_name "count"
+                  :value_metadata nil}
                  (:structured-output (mt/with-test-user :rasta (card-field-metadata profile card-id "count"))))))))))
 
 (deftest virtual-column-fingerprint-returned-for-unrestricted-user-test
@@ -288,5 +290,6 @@
                 (let [unrestricted (mt/as-admin (card-field-metadata profile card-id field-id))
                       result (card-field-metadata profile card-id field-id)]
                   (is (pos? (get-in unrestricted [:structured-output :value_metadata :statistics :distinct-count])))
-                  (is (= {:result-type :field-metadata :field_id field-id :value_metadata nil}
+                  (is (= {:result-type :field-metadata :field_id field-id :reference_name field-id
+                          :value_metadata nil}
                          (:structured-output result))))))))))))

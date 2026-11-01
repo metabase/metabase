@@ -436,6 +436,7 @@
                                                       {:data_source "question" :source_id card-id :field_id "bird_count"})]
                           (is (nil? (:error result)))
                           (is (= {:result-type :field-metadata :field_id "bird_count"
+                                  :reference_name "bird_count"
                                   :value_metadata {:statistics statistics}}
                                  (:structured-output result)))
                           result)))]
