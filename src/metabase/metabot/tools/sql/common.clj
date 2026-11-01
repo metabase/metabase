@@ -164,11 +164,15 @@
                            :data {:database-id database-id}})))
 
 (defn query-for-sql-edit!
-  "Return a stored SQL query, checking its ID, native query permission, and format."
+  "Return a stored SQL query, checking its ID, database, native query permission, and format."
   [queries-state query-id]
   (let [available (sort (for [[id query] queries-state :when (metabot.u/extract-sql-content query)] id))
         query (or (get queries-state query-id)
                   (recoverable/unknown-query-id! {:query-id query-id :available available}))]
+    (when-not (:database query)
+      (tools/unrecoverable!
+       ::no-database
+       {:user-message (tru "No database is selected for this query. Select a database and try again.")}))
     (check-native-query-access! (:database query))
     (when-not (metabot.u/extract-sql-content query)
       (not-sql! {:query-id query-id :available available}))

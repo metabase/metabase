@@ -8,6 +8,7 @@
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.channel.settings :as channel.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.llm.test-util :as llm.tu]
@@ -324,10 +325,10 @@
   [{:type    "code_editor"
     :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}])
 
-(defn- run-sql-denial-turn!
-  "Run one turn whose first LLM response calls `create_sql_query` against `database-id` while the user views
-  `viewing`, by default a SQL editor."
-  [profile-id database-id & {:keys [viewing] :or {viewing sql-editor-viewing}}]
+(defn- run-tool-call-turn!
+  "Run one `profile-id` turn with `context`, whose first LLM response calls `function` with `arguments`.
+  Every later response is text."
+  [profile-id context function arguments]
   (let [call-count (atom 0)]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
@@ -337,18 +338,31 @@
                                                             (mut/mock-llm-response
                                                              [{:type      :tool-input
                                                                :id        "t1"
-                                                               :function  "create_sql_query"
-                                                               :arguments {:database_id database-id
-                                                                           :sql_query   "SELECT 1"
-                                                                           :title       "Results"}}])
+                                                               :function  function
+                                                               :arguments arguments}])
                                                             (mut/mock-llm-response [{:type :text :text "Sorry."}])))]
         (let [parts (into [] (run-agent-loop
-                              {:messages   [{:role :user :content "Query that database"}]
+                              {:messages   [{:role :user :content "Go ahead"}]
                                :state      {}
                                :profile-id profile-id
-                               :context    {:capabilities    ["permission:write_sql_queries"]
-                                            :user_is_viewing viewing}}))]
+                               :context    context}))]
           {:llm-calls @call-count :parts parts})))))
+
+(defn- run-sql-denial-turn!
+  "Run one turn whose first LLM response calls `create_sql_query` against `database-id` while the user views
+  `viewing`, by default a SQL editor."
+  [profile-id database-id & {:keys [viewing] :or {viewing sql-editor-viewing}}]
+  (run-tool-call-turn! profile-id
+                       {:capabilities ["permission:write_sql_queries"] :user_is_viewing viewing}
+                       "create_sql_query"
+                       {:database_id database-id :sql_query "SELECT 1" :title "Results"}))
+
+(defn- turn-outcome
+  "The LLM call count, the finish reason and the text the user saw, for a turn that [[run-tool-call-turn!]] ran."
+  [{:keys [llm-calls parts]}]
+  {:llm-calls     llm-calls
+   :finish-reason (:finish-reason (last parts))
+   :text          (str/join (keep #(when (= :text (:type %)) (:text %)) parts))})
 
 (deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
   (testing "the SQL profile ends the turn when no SQL editor is open, and tells the user why"
@@ -360,6 +374,35 @@
           (is (some #(and (= :text (:type %))
                           (str/includes? (:text %) "No active SQL editor was found"))
                     parts)))))))
+
+(def ^:private sql-drafts
+  "SQL queries with no database selected yet, by how each is built.
+  The legacy form checks that the shape a client can still send gets the same answer."
+  (let [query (lib/prepare-for-serialization (lib/native-query meta/metadata-provider "SELECT 1"))]
+    {"no database key" (dissoc query :database)
+     "nil database"    (assoc query :database nil)
+     "legacy form"     {:database nil :type "native" :native {:query "SELECT 1" :template-tags {}}}}))
+
+(deftest sql-edit-without-a-database-ends-the-turn-test
+  (testing "an edit of a SQL query with no database ends the turn and asks the user to select one"
+    (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (doseq [[label draft] sql-drafts
+                profile       [:sql :internal :internal-sql]]
+          (testing (str label " " profile)
+            (is (= {:llm-calls     1
+                    :finish-reason :terminal-error
+                    :text          "No database is selected for this query. Select a database and try again."}
+                   (turn-outcome
+                    (run-tool-call-turn! profile
+                                         {:capabilities    ["permission:write_sql_queries"]
+                                          :user_is_viewing (conj sql-editor-viewing
+                                                                 {:type "adhoc" :id "draft" :query draft})}
+                                         "edit_sql_query"
+                                         {:query_id  "draft"
+                                          :checklist "Checked"
+                                          :title     "Results"
+                                          :edits     [{:old_string "1" :new_string "2"}]}))))))))))
 
 (deftest permission-denial-ends-a-forced-tool-call-turn-test
   (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}
@@ -409,6 +452,44 @@
         (testing "a database the user can query natively is not denied"
           (let [{:keys [parts]} (run-sql-denial-turn! :sql native-db)]
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
+(deftest slack-dead-ends-end-the-turn-test
+  (mt/with-temp [:model/Card      {card-id :id} {}
+                 :model/Dashboard {dash-id :id} {}]
+    (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [schedule    {:frequency "daily" :hour 9}
+              slack-calls [[:slackbot "create_alert"
+                            {:card_id card-id :send_condition "has_result" :schedule schedule}]
+                           [:slackbot "create_dashboard_subscription"
+                            {:dashboard_id dash-id :schedule schedule}]]
+              chat-calls  (for [profile [:internal :internal-sql]]
+                            [profile "create_dashboard_subscription"
+                             {:dashboard_id dash-id :slack_channel "data-team" :schedule schedule}])
+              outcome     (fn [[profile function arguments]]
+                            (turn-outcome
+                             (run-tool-call-turn! profile
+                                                  (if (= :slackbot profile) {:slack_channel_id "D0123"} {})
+                                                  function
+                                                  arguments)))]
+          (testing "every alert and subscription tool ends the turn when Slack isn't connected"
+            (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly false)]
+              (doseq [[profile function :as call] (concat slack-calls chat-calls)]
+                (is (= {:llm-calls     1
+                        :finish-reason :terminal-error
+                        :text          "Slack isn't connected to Metabase. An admin can connect it in Admin settings."}
+                       (outcome call))
+                    (str profile " " function)))))
+          (testing "the Slack tools end the turn in a conversation that Metabase can't post to, such as a DM"
+            (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)
+                                        channel.settings/slack-cached-channels-and-usernames
+                                        (constantly {:channels []})]
+              (doseq [[_ function :as call] slack-calls]
+                (is (=? {:llm-calls     1
+                         :finish-reason :terminal-error
+                         :text          #"Metabase can't send alerts or subscriptions to this conversation\..*"}
+                        (outcome call))
+                    function)))))))))
 
 (deftest blank-replacement-after-edit-test
   ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
