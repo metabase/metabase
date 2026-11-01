@@ -12,6 +12,7 @@ import { useLatest } from "react-use";
 import { TextInput } from "metabase/ui";
 import type { ChartSettingWidgetProps } from "metabase/viz-core";
 
+export const DEBOUNCE_MS = 200;
 const ALLOWED_CHARS = new Set([
   "0",
   "1",
@@ -87,7 +88,7 @@ export const ChartSettingInputNumeric = ({
   const processValueDebounced = useMemo(() => {
     return debounce((rawValue: string) => {
       processValueRef.current(rawValue);
-    }, 200);
+    }, DEBOUNCE_MS);
   }, [processValueRef]);
 
   const handleFocus = useCallback(() => {

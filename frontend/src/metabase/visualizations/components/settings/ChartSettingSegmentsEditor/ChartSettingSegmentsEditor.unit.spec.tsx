@@ -1,8 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, render, screen, within } from "__support__/ui";
+import { delay } from "__support__/utils";
 import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import type { ScalarSegment } from "metabase-types/api";
+
+import { DEBOUNCE_MS } from "../ChartSettingInputNumeric";
 
 import {
   ChartSettingSegmentsEditor,
@@ -39,7 +42,7 @@ it("Should render a segment editor", () => {
   // Unjustified type cast. FIXME
   const firstRow = screen.getAllByRole("row").at(1) as HTMLElement;
 
-  expect(within(firstRow).getByPlaceholderText(/optional/)).toHaveValue("bad");
+  expect(within(firstRow).getByPlaceholderText(/Label/)).toHaveValue("bad");
   expect(within(firstRow).getByPlaceholderText(/Min/)).toHaveValue("0");
   expect(within(firstRow).getByPlaceholderText(/Max/)).toHaveValue("100");
 });
@@ -51,7 +54,7 @@ it("Should pass back a new array of segments on change", async () => {
 
   await userEvent.clear(min);
   await userEvent.type(min, "20");
-  fireEvent.blur(min);
+  await delay(DEBOUNCE_MS * 2);
 
   expect(onChange).toHaveBeenCalledWith(
     expect.arrayContaining([
