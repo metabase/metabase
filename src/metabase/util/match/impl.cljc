@@ -70,10 +70,7 @@
   [replace-fn form clause-parents]
   (cond
     (map? form)
-    (reduce-kv (fn [form k v]
-                 (let [repl (replace-fn v (maybe-add-to-parents clause-parents k))]
-                   (cond-> form
-                     (not (identical? v form)) (assoc k repl))))
+    (reduce-kv (fn [form k v] (assoc form k (replace-fn v (maybe-add-to-parents clause-parents k))))
                form form)
 
     (sequential? form)
