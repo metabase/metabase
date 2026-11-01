@@ -10,6 +10,11 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(def ^:private fake-channels
+  {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})
+
+(def ^:private daily-schedule {:frequency "daily" :hour 9})
+
 (defn- subscribe
   "Run `create_dashboard_subscription` through the Slack agent loop and return its result.
   The call comes from Slack conversation `channel-id`."
@@ -27,13 +32,12 @@
 (deftest subscribes-the-current-conversation-test
   (mt/with-model-cleanup [:model/Pulse]
     (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
-                                channel.settings/slack-cached-channels-and-usernames
-                                (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
+                                channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Sales"}
                        :model/Card          {card-id :id} {}
                        :model/DashboardCard _             {:dashboard_id dash-id :card_id card-id}]
-          (let [{:keys [output error]} (subscribe {:dashboard_id dash-id :schedule {:frequency "daily" :hour 9}}
+          (let [{:keys [output error]} (subscribe {:dashboard_id dash-id :schedule daily-schedule}
                                                   "C123")
                 pulse                  (t2/select-one :model/Pulse :dashboard_id dash-id)]
             (is (nil? error))
@@ -48,4 +52,4 @@
     (is (= {:class        :unrecoverable
             :code         ::tools.create-alert/not-in-slack
             :user-message "This can only be set up from a Slack conversation."}
-           (:error (subscribe {:dashboard_id 1 :schedule {:frequency "daily" :hour 9}} nil))))))
+           (:error (subscribe {:dashboard_id 1 :schedule daily-schedule} nil))))))
