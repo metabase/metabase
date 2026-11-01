@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { findRequests } from "__support__/server-mocks";
 import { setupForgotPasswordEndpoint } from "__support__/server-mocks/session";
 import {
   setupPasswordResetUrlEndpoint,
@@ -54,7 +55,7 @@ function setup({
       params={{ userId: String(user.id) }}
       onClose={onCloseSpy}
     />,
-    { storeInitialState },
+    { storeInitialState, withUndos: true },
   );
   return { onCloseSpy };
 }
@@ -91,6 +92,22 @@ describe("UserPasswordResetModal", () => {
       { method: "POST" },
     );
     expect(call).toBeTruthy();
+  });
+
+  it("should offer the reset link for sharing", async () => {
+    setup();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Get reset link" }),
+    );
+
+    expect(
+      await screen.findByText(
+        `Password reset link for ${TEST_USER.common_name}`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toHaveValue(
+      `http://localhost:3000/auth/reset_password/${TEST_USER.id}_token`,
+    );
   });
 
   it("should call onClose when clicking Done after getting reset link", async () => {
@@ -149,5 +166,62 @@ describe("UserPasswordResetModal", () => {
         screen.getByRole("button", { name: "Reset password" }),
       ).toBeInTheDocument();
     });
+  });
+});
+
+describe("UserPasswordResetModal without email configured", () => {
+  it("should generate a temporary password that can be revealed", async () => {
+    const { onCloseSpy } = setup();
+    await screen.findByText("Are you sure you want to do this?");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Reset password" }),
+    );
+
+    expect(
+      await screen.findByText(
+        `${TEST_USER.common_name}'s password has been reset`,
+      ),
+    ).toBeInTheDocument();
+    const passwordField = screen.getByLabelText(/^temporary password$/i);
+    expect(passwordField).toHaveAttribute("type", "password");
+
+    await userEvent.click(screen.getByLabelText("Toggle password visibility"));
+    expect(passwordField).toHaveAttribute("type", "text");
+
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain(`/api/user/${TEST_USER.id}/password`);
+    expect(body).toEqual({ password: expect.any(String) });
+
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onCloseSpy).toHaveBeenCalled();
+  });
+});
+
+describe("UserPasswordResetModal with email configured", () => {
+  it("should email the reset link and close without showing a password", async () => {
+    const { onCloseSpy } = setup({ emailConfigured: true });
+    await screen.findByText("Are you sure you want to do this?");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Reset password" }),
+    );
+
+    expect(
+      await screen.findByText(
+        `Password reset email sent to ${TEST_USER.common_name}`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(`${TEST_USER.common_name}'s password has been reset`),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/^temporary password$/i),
+    ).not.toBeInTheDocument();
+    expect(onCloseSpy).toHaveBeenCalled();
+
+    const [{ url, body }] = await findRequests("POST");
+    expect(url).toContain("/api/session/forgot_password");
+    expect(body).toEqual({ email: TEST_USER.email });
   });
 });

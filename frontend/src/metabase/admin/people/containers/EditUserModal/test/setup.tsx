@@ -1,7 +1,10 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupUserEndpoints } from "__support__/server-mocks";
+import {
+  setupUpdateUserFailureEndpoint,
+  setupUserEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
@@ -26,11 +29,17 @@ export const defaultUser = createMockUser({
 export const setup = ({
   userData,
   enterprisePlugins,
+  updateErrors,
 }: {
   userData: Partial<User>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  updateErrors?: Record<string, string>;
 }) => {
-  setupUserEndpoints(createMockUser(userData));
+  const user = createMockUser(userData);
+  if (updateErrors) {
+    setupUpdateUserFailureEndpoint(user.id, updateErrors);
+  }
+  setupUserEndpoints(user);
 
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({}),

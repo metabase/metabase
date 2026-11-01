@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 
 import { defaultUser, setup } from "./setup";
 
@@ -47,6 +47,34 @@ describe("Edit user modal", () => {
       user_group_memberships: [],
       login_attributes: {},
     });
+  });
+
+  it("should close the modal once the update succeeds", async () => {
+    const { onCloseSpy } = setup({ userData: defaultUser });
+    const firstNameField = await screen.findByLabelText("First name");
+
+    await userEvent.clear(firstNameField);
+    await userEvent.type(firstNameField, "Misty");
+    await userEvent.click(await screen.findByText("Update"));
+
+    await waitFor(() => expect(onCloseSpy).toHaveBeenCalled());
+  });
+
+  it("should show the error the API rejects an update with (metabase#46449)", async () => {
+    const { onCloseSpy } = setup({
+      userData: defaultUser,
+      updateErrors: {
+        first_name: "nullable value must be a non-blank string.",
+      },
+    });
+    const firstNameField = await screen.findByLabelText("First name");
+
+    await userEvent.clear(firstNameField);
+    await userEvent.type(firstNameField, " ");
+    await userEvent.click(await screen.findByText("Update"));
+
+    expect(await screen.findByText(/non-blank string\./)).toBeInTheDocument();
+    expect(onCloseSpy).not.toHaveBeenCalled();
   });
 
   describe("users with empty name fields (metabase#46446)", () => {

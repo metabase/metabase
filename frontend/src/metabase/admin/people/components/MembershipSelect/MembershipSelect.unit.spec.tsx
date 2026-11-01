@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -33,34 +34,47 @@ const ADD_DISABLED_MESSAGE =
 
 const setup = ({
   memberGroupIds = [ALL_USERS.id],
+  managerGroupIds = [],
   tokenFeatures = {},
+  groups = GROUPS,
+  withGroupManagers = false,
 }: {
   memberGroupIds?: number[];
+  managerGroupIds?: number[];
   tokenFeatures?: Partial<TokenFeatures>;
+  groups?: GroupInfo[];
+  withGroupManagers?: boolean;
 } = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),
   });
+  if (withGroupManagers) {
+    setupEnterpriseOnlyPlugin("group_managers");
+  }
   const memberships = new Map<number, Partial<Member>>(
-    memberGroupIds.map((id) => [id, { group_id: id }]),
+    memberGroupIds.map((id) => [
+      id,
+      { group_id: id, is_group_manager: managerGroupIds.includes(id) },
+    ]),
   );
 
   const onAdd = jest.fn();
   const onRemove = jest.fn();
+  const onChange = jest.fn();
 
   renderWithProviders(
     <MembershipSelect
-      groups={GROUPS}
+      groups={groups}
       memberships={memberships}
       isUserAdmin={false}
       onAdd={onAdd}
       onRemove={onRemove}
-      onChange={jest.fn()}
+      onChange={onChange}
     />,
     { storeInitialState: createMockState({ settings }) },
   );
 
-  return { onAdd, onRemove };
+  return { onAdd, onRemove, onChange };
 };
 
 const openPicker = () =>
@@ -160,6 +174,75 @@ describe("MembershipSelect", () => {
       expect(
         within(lists[1]).getByRole("button", { name: "Marketing" }),
       ).toBeInTheDocument();
+    });
+  });
+});
+
+describe("MembershipSelect summary", () => {
+  it("should say Default when the user is only in the default group", () => {
+    setup();
+
+    expect(screen.getByText("Default")).toBeInTheDocument();
+  });
+
+  it("should name the one group the user is in besides the default", () => {
+    setup({ memberGroupIds: [ALL_USERS.id, MARKETING.id] });
+
+    expect(screen.getByText("Marketing")).toBeInTheDocument();
+  });
+
+  it("should count the groups once there is more than one", () => {
+    setup({ memberGroupIds: [ALL_USERS.id, MARKETING.id, DATA_ANALYSTS.id] });
+
+    expect(screen.getByText("2 other groups")).toBeInTheDocument();
+  });
+
+  it("should say Admin for a member of the Administrators group", () => {
+    const administrators = createMockGroup({
+      id: 4,
+      name: "Administrators",
+      magic_group_type: "admin",
+    });
+    setup({
+      groups: [...GROUPS, administrators],
+      memberGroupIds: [ALL_USERS.id, administrators.id],
+    });
+
+    expect(screen.getByText("Admin")).toBeInTheDocument();
+  });
+});
+
+describe("MembershipSelect manager toggle", () => {
+  it("should promote a member to manager and demote them again", async () => {
+    const { onChange } = setup({
+      memberGroupIds: [ALL_USERS.id, MARKETING.id],
+      tokenFeatures: { advanced_permissions: true },
+      withGroupManagers: true,
+    });
+    await openPicker();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Turn into Manager" }),
+    );
+    expect(onChange).toHaveBeenLastCalledWith(MARKETING.id, {
+      is_group_manager: true,
+    });
+  });
+
+  it("should demote a manager back to member", async () => {
+    const { onChange } = setup({
+      memberGroupIds: [ALL_USERS.id, MARKETING.id],
+      managerGroupIds: [MARKETING.id],
+      tokenFeatures: { advanced_permissions: true },
+      withGroupManagers: true,
+    });
+    await openPicker();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Turn into Member" }),
+    );
+    expect(onChange).toHaveBeenLastCalledWith(MARKETING.id, {
+      is_group_manager: false,
     });
   });
 });
