@@ -38,7 +38,6 @@
    [agent-message/lint-jsonrpc-error '(jsonrpc-error id -32602 "x")]
    [agent-message/lint-success-content '(success-content "x")]
    [agent-message/lint-ex-info "(ex-info \"x\" {:status-code 404})"]
-   [agent-message/lint-op-error '(op-error! idx "add_link" "x")]
    [agent-message/lint-ellipsize '(ellipsize "x" 300)]
    [agent-message/lint-list-content '(list-content data total {:empty-hint "x"})]])
 
@@ -261,8 +260,7 @@
 (def ^:private helper-cases
   "`[hook fn-name form-fn]`: a message-taking helper's hook, the name its finding cites, and a function of a message
   returning a call that passes it to the helper."
-  [[agent-message/lint-op-error "op-error!" #(list 'dashboard-ops/op-error! 'idx "add_link" %)]
-   [agent-message/lint-ellipsize "ellipsize" #(list 'common/ellipsize % 300)]
+  [[agent-message/lint-ellipsize "ellipsize" #(list 'common/ellipsize % 300)]
    [agent-message/lint-list-content "list-content" #(list 'common/list-content 'rows 0 {:offset 0 :empty-hint %})]
    [agent-message/lint-list-content "paged-list-content"
     #(list 'paged-list-content 'args 'rows {:empty-hint %} 'identity)]])
@@ -279,7 +277,6 @@
         (testing (pr-str text)
           (is (empty? (findings hook (form-fn text))))))))
   (testing "only the message argument is checked"
-    (is (empty? (findings agent-message/lint-op-error '(op-error! (str "0") (str "op") (msg ["x"])))))
     (is (empty? (findings agent-message/lint-ellipsize '(ellipsize (msg ["x"]) (str "300")))))
     (is (empty? (findings agent-message/lint-list-content '(list-content (str "data") 0 {:param (str "x")}))))
     (is (empty? (findings agent-message/lint-list-content '(list-content data 0 opts))))

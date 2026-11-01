@@ -29,6 +29,7 @@
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
+   [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -49,30 +50,19 @@
    any named by an op."
   [dash ops]
   (into (set (keep :card_id (:dashcards dash)))
-        ;; `:series` is add_card's series list, `:card_ids` set_series'. Both name cards the
-        ;; projection reads back, so a missed one reaches it as a bare `{:id n}` map.
-        (mapcat (fn [op] (concat [(:card_id op)] (:series op) (:card_ids op))))
+        (mapcat dashboard-ops/card-refs)
         ops))
 
 (defn- fetch-cards
-  "`{card-id card}` for `ids`, behind read checks. A card the caller cannot read is omitted, so
-   an op referencing it fails with a teaching error rather than leaking its existence."
+  "The `{card-id card}` map for `ids`, behind read checks.
+   It omits a card the caller cannot read, so an op naming one fails the compiler's `:unknown-card` check.
+   That is the same error as for a card that does not exist."
   [ids]
   (let [ids (into #{} (filter int?) ids)]
     (when (seq ids)
       (into {} (for [card  (mcp.db/select-by-ids :model/Card ids)
                      :when (mi/can-read? card)]
                  [(:id card) card])))))
-
-(defn- check-cards-exist!
-  "Reject an op naming a card the caller cannot read, before any write happens. Covers series
-   cards too: they are placed on the dashboard just as `card_id` is, and leaving them unchecked
-   would both skip the permission boundary and hand the projection a card it never fetched."
-  [ops cards]
-  (doseq [[idx op] (map-indexed vector ops)
-          card-id  (concat [(:card_id op)] (:series op) (:card_ids op))
-          :when    (and card-id (not (contains? cards card-id)))]
-    (dashboard-errors/op-error! idx (:op op) (message/msg ["no card with id %s that you can read."] card-id))))
 
 ;;; ------------------------------------------------ Response ------------------------------------------------------
 
@@ -431,7 +421,6 @@
   [dash ops attrs validate-only?]
   (let [ops     (mapv compact-op ops)
         cards   (fetch-cards (referenced-card-ids dash ops))
-        _       (check-cards-exist! ops cards)
         payload (normalize-parameters (dashboard-errors/compile-ops dash ops cards))]
     (validate-payload! (merge attrs payload))
     (if validate-only?
