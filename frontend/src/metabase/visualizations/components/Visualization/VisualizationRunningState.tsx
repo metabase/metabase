@@ -4,14 +4,17 @@ import { useTimeout } from "react-use";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useSelector } from "metabase/redux";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
-import { Flex, Loader, Title } from "metabase/ui";
+import { Flex, Loader, Text, Title } from "metabase/ui";
 
 const SLOW_MESSAGE_TIMEOUT = 4000;
 
 export function VisualizationRunningState({
   className = "",
+  hint,
 }: {
   className?: string;
+  /** Prototype: a line under the message, like the usual runtime. */
+  hint?: string | null;
 }) {
   const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
 
@@ -33,6 +36,11 @@ export function VisualizationRunningState({
       <Title c="core-brand" order={3} mt="xl">
         {message}
       </Title>
+      {hint != null && (
+        <Text c="text-secondary" mt="sm">
+          {hint}
+        </Text>
+      )}
     </Flex>
   );
 }

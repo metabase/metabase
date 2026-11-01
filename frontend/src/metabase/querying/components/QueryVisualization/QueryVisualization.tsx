@@ -6,7 +6,11 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { Warnings } from "metabase/common/components/Warnings";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Box, Flex, Stack, Text } from "metabase/ui";
+import {
+  LOADING_SPINNER_DELAY_MS,
+  usePrototypeSetting,
+} from "metabase/prototype";
+import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
@@ -15,7 +19,7 @@ import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import S from "./QueryVisualization.module.css";
-import { RunButtonWithTooltip } from "./RunButtonWithTooltip";
+import { useRuntimeEstimateHint } from "./RuntimeEstimate";
 import { VisualizationError } from "./VisualizationError";
 import { VisualizationResult } from "./VisualizationResult";
 import type { QueryVisualizationProps } from "./types";
@@ -36,6 +40,9 @@ export function QueryVisualization(props: QueryVisualizationProps) {
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
+  const [spinnerDelayMs] = usePrototypeSetting(LOADING_SPINNER_DELAY_MS);
+  const isSpinnerShown = useIsRunningLong(Boolean(isRunning), spinnerDelayMs);
+  const estimateHint = useRuntimeEstimateHint(question, Boolean(isRunning));
   const [warnings, setWarnings] = useState<string[]>([]);
 
   // The result is not rendered until the query returns, so the chart chunk
@@ -57,9 +64,15 @@ export function QueryVisualization(props: QueryVisualizationProps) {
 
   return (
     <Box pos="relative" h="100%" className={cx(className, S.root)}>
-      {isRunning ? <VisualizationRunningState className={S.overlay} /> : null}
+      {isSpinnerShown ? (
+        <VisualizationRunningState
+          className={cx(S.overlay, S.fadeIn)}
+          hint={estimateHint}
+        />
+      ) : null}
       <VisualizationDirtyState
         {...props}
+        estimateHint={estimateHint}
         hidden={!isDirtyStateShown}
         className={S.overlay}
       />
@@ -68,7 +81,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
       )}
       <Box
         className={cx(S.visualization, QueryBuilderS.Visualization, {
-          [QueryBuilderS.VisualizationLoading]: isRunning,
+          [QueryBuilderS.VisualizationLoading]: isSpinnerShown,
         })}
         data-testid="query-visualization-root"
       >
@@ -98,6 +111,22 @@ export function QueryVisualization(props: QueryVisualizationProps) {
   );
 }
 
+// Prototype: fast queries show no spinner, so that it does not flash.
+function useIsRunningLong(isRunning: boolean, delayMs: number): boolean {
+  const [isLong, setIsLong] = useState(false);
+
+  useEffect(() => {
+    if (!isRunning) {
+      setIsLong(false);
+      return;
+    }
+    const timeoutId = setTimeout(() => setIsLong(true), delayMs);
+    return () => clearTimeout(timeoutId);
+  }, [isRunning, delayMs]);
+
+  return isRunning && isLong;
+}
+
 const VisualizationEmptyState = ({ children }: { children: ReactNode }) => {
   const keyboardShortcut = getRunQueryShortcut();
 
@@ -125,16 +154,19 @@ type VisualizationDirtyStateProps = {
   isResultDirty?: boolean;
   runQuestionQuery?: () => void;
   cancelQuery?: () => void;
+  onResetChanges?: () => void;
   hidden?: boolean;
+  estimateHint?: string | null;
 };
 
 export const VisualizationDirtyState = ({
   className,
   isRunning,
-  isResultDirty,
   runQuestionQuery,
   cancelQuery,
+  onResetChanges,
   hidden,
+  estimateHint,
 }: VisualizationDirtyStateProps) => {
   const keyboardShortcut = getRunQueryShortcut();
 
@@ -153,27 +185,40 @@ export const VisualizationDirtyState = ({
       className={cx(className, QueryBuilderS.Overlay, {
         [QueryBuilderS.OverlayActive]: !hidden,
         [QueryBuilderS.OverlayHidden]: hidden,
+        [S.dirtyTint]: !hidden,
       })}
       direction="column"
       justify="center"
       align="center"
       gap="sm"
       data-testid="run-button-overlay"
-      onClick={handleClick}
     >
-      <RunButtonWithTooltip
-        className={S.shadowed}
-        iconSize={32}
-        circular
-        hidden={hidden}
-        isRunning={Boolean(isRunning)}
-        isDirty={Boolean(isResultDirty)}
-      />
-      {!hidden && <Text c="text-secondary">{keyboardShortcut}</Text>}
+      {/* Prototype: a larger run button with the shortcut inside, on a
+          tinted result. */}
+      {!hidden && (
+        <button
+          className={S.runPill}
+          aria-label={t`Refresh`}
+          data-testid="run-button"
+          onClick={handleClick}
+        >
+          <Icon name="play" size={20} />
+          {t`Run`}
+          <span className={S.runPillShortcut}>{keyboardShortcut}</span>
+          {estimateHint != null && (
+            <span className={S.runPillHint}>{estimateHint}</span>
+          )}
+        </button>
+      )}
+      {!hidden && onResetChanges != null && (
+        <button className={S.resetButton} onClick={onResetChanges}>
+          {t`Reset changes instead`}
+        </button>
+      )}
     </Flex>
   );
 };
 
 function getRunQueryShortcut() {
-  return isMac() ? t`⌘ + return` : t`Ctrl + enter`;
+  return isMac() ? t`⌘ + Return` : t`Ctrl + Enter`;
 }
