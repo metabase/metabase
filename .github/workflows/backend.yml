@@ -34,14 +34,11 @@ jobs:
       static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
       - uses: actions/checkout@v7
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Build static-viz frontend
-        run: bun run build-static-viz
-        env:
-          MB_EDITION: ee
+      # Needed here for the list of sources
+      - name: Download static-viz bundle
+        uses: ./.github/actions/download-static-viz
+        with:
+          edition: ee
       - name: Check for static viz changes
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: static_viz
@@ -211,16 +208,14 @@ jobs:
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
     steps:
       - uses: actions/checkout@v7
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
           java-version: "${{ matrix.java-version }}"
-      - name: Build static-viz frontend
-        run: bun run build-static-viz
-        env:
-          MB_EDITION: ${{ matrix.job.edition }}
+      - name: Download static-viz bundle
+        uses: ./.github/actions/download-static-viz
+        with:
+          edition: ${{ matrix.job.edition }}
 
       - name: Resolve current job id
         # Resolve JOB_ID before the long test step so the ci-conductor reporter
