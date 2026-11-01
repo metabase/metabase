@@ -2,7 +2,7 @@
   "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
   (:refer-clojure :exclude [mapv get-in empty?])
   (:require
-   [metabase.util.performance :refer [mapv get-in empty?]]))
+   [metabase.util.performance :as perf :refer [mapv get-in empty?]]))
 
 (defn update-in-unless-empty
   "Like `update-in`, but only updates if the existing value is non-empty."
@@ -76,9 +76,17 @@
                      (not (identical? v form)) (assoc k repl))))
                form form)
 
+    (vector? form)
+    (let [fst (first form)
+          parents (maybe-add-to-parents clause-parents (when (keyword? fst) fst))]
+      (perf/mapv-mostly-unchanged #(replace-fn % parents) form))
+
     (sequential? form)
-    (mapv #(let [fst (first form)]
-             (replace-fn % (maybe-add-to-parents clause-parents (when (keyword? fst) fst))))
-          form)
+    (let [fst (first form)
+          parents (maybe-add-to-parents clause-parents (when (keyword? fst) fst))
+          f #(replace-fn % parents)]
+      (if (vector? form)
+        (perf/mapv-mostly-unchanged f form)
+        (or (seq (mapv f form)) ())))
 
     :else form))
