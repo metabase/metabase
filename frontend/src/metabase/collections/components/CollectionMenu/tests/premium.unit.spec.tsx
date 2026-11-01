@@ -144,6 +144,7 @@ describe("CollectionMenu", () => {
         collection: createMockCollection({ can_write: true }),
         isAdmin: true,
         numberOfStaleItems: 10,
+        seenBadges: ["clean-stale-items"],
       });
 
       await assertIndicatorHidden();
