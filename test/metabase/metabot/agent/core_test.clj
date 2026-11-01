@@ -8,6 +8,7 @@
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.channel.settings :as channel.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.llm.test-util :as llm.tu]
@@ -448,6 +449,44 @@
         (testing "a database the user can query natively is not denied"
           (let [{:keys [parts]} (run-sql-denial-turn! :sql native-db)]
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
+(deftest slack-dead-ends-end-the-turn-test
+  (mt/with-temp [:model/Card      {card-id :id} {}
+                 :model/Dashboard {dash-id :id} {}]
+    (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [schedule    {:frequency "daily" :hour 9}
+              slack-calls [[:slackbot "create_alert"
+                            {:card_id card-id :send_condition "has_result" :schedule schedule}]
+                           [:slackbot "create_dashboard_subscription"
+                            {:dashboard_id dash-id :schedule schedule}]]
+              chat-calls  (for [profile [:internal :internal-sql]]
+                            [profile "create_dashboard_subscription"
+                             {:dashboard_id dash-id :slack_channel "data-team" :schedule schedule}])
+              outcome     (fn [[profile function arguments]]
+                            (turn-outcome
+                             (run-tool-call-turn! profile
+                                                  (if (= :slackbot profile) {:slack_channel_id "D0123"} {})
+                                                  function
+                                                  arguments)))]
+          (testing "every alert and subscription tool ends the turn when Slack isn't connected"
+            (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly false)]
+              (doseq [[profile function :as call] (concat slack-calls chat-calls)]
+                (is (= {:llm-calls     1
+                        :finish-reason :terminal-error
+                        :text          "Slack isn't connected to Metabase. An admin can connect it in Admin settings."}
+                       (outcome call))
+                    (str profile " " function)))))
+          (testing "the Slack tools end the turn in a conversation that Metabase can't post to, such as a DM"
+            (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)
+                                        channel.settings/slack-cached-channels-and-usernames
+                                        (constantly {:channels []})]
+              (doseq [[_ function :as call] slack-calls]
+                (is (=? {:llm-calls     1
+                         :finish-reason :terminal-error
+                         :text          #"Metabase can't send alerts or subscriptions to this conversation\..*"}
+                        (outcome call))
+                    function)))))))))
 
 (deftest blank-replacement-after-edit-test
   ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
