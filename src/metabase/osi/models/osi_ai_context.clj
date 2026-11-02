@@ -292,8 +292,7 @@
    ;; entities, and the target instance's entities have their own histories. An imported row carries no
    ;; `basis`, so a new row is a forced candidate on the target. Updating an existing row explicitly clears
    ;; stale generation claims below when the imported content differs.
-   :skip      [:created_at :updated_at :generated_at :invalidated_at :basis_invalidated_at :basis :rewrite_requested_at
-               :generator_version]
+   :skip      [:generated_at :invalidated_at :basis_invalidated_at :basis :rewrite_requested_at :generator_version]
    :transform {:data_source     {:export name
                                  ;; Every pre-metadata export was curated through the CRUD API, so absence
                                  ;; means human-approved on both insert and update. Preserving a target's

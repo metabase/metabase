@@ -398,12 +398,12 @@
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {included :id} {:db_id db-id, :name "included", :is_published false}
                      :model/Table {excluded :id} {:db_id db-id, :name "excluded", :is_published true
-                                                   :collection_id (:id data)}
+                                                  :collection_id (:id data)}
                      :model/Segment {segment-id :id} {:table_id included, :name "Child"
                                                       :definition {:source-table included, :filter [:= 1 1]}}]
         (t2/insert! :model/TableUserSettings {:table_id included, :is_published true, :collection_id (:id data)
-                                               :display_name "User name", :description "User description"
-                                               :description_set true})
+                                              :display_name "User name", :description "User description"
+                                              :description_set true})
         (t2/insert! :model/TableUserSettings {:table_id excluded, :is_published false})
         (doseq [projection [:library-index :osi-context]]
           (let [all (spec/member-entities projection)

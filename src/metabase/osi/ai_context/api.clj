@@ -170,7 +170,7 @@
           ;; Keep `data_source` unchanged until generated content actually replaces the row. Changing it when
           ;; the rewrite is merely requested would immediately hide human-approved instructions from the agent.
           (pos? (osi.db/update-if-unchanged! (:entity_type conditions) (:entity_local_id conditions)
-                                       (:updated_at entry) stamp))
+                                             (:updated_at entry) stamp))
           (get-entry entity-type entity-local-id)
 
           (< attempt 4)
