@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -43,6 +43,7 @@ export function CustomURLPicker({
   const hasLinkTemplate = !!clickBehavior.linkTemplate;
   const [modalOpened, { open: openModal, close: closeModal }] =
     useDisclosure(!hasLinkTemplate);
+  const formId = useId();
   const canSelect = clickBehaviorIsValid({
     ...clickBehavior,
     linkTemplate: url,
@@ -55,12 +56,20 @@ export function CustomURLPicker({
     [],
   );
 
-  const handleSubmit = useCallback(() => {
-    updateSettings({
-      ...clickBehavior,
-      linkTemplate: url,
-    });
-  }, [clickBehavior, updateSettings, url]);
+  const handleSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (!canSelect) {
+        return;
+      }
+      updateSettings({
+        ...clickBehavior,
+        linkTemplate: url,
+      });
+      closeModal();
+    },
+    [canSelect, clickBehavior, closeModal, updateSettings, url],
+  );
 
   const handleReset = useCallback(() => {
     updateSettings({
@@ -104,13 +113,18 @@ export function CustomURLPicker({
           <Text>
             {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}
           </Text>
-          <TextInputBlurChange
-            autoFocus
-            value={url}
-            placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
-            onChange={handleLinkTemplateChange}
-            className={cx(CS.block, CS.full)}
-          />
+          {/* "Done" joins this form via form={formId}. Keep the link text input out:
+              on unmount it saves with the old clickBehavior, which drops the URL. */}
+          <form id={formId} onSubmit={handleSubmit}>
+            <TextInputBlurChange
+              data-autofocus
+              aria-label={t`URL`}
+              value={url}
+              placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
+              onChange={handleLinkTemplateChange}
+              className={cx(CS.block, CS.full)}
+            />
+          </form>
           {hasColumnLevelClickBehavior(dashcard) && (
             <CustomLinkText
               updateSettings={updateSettings}
@@ -122,11 +136,8 @@ export function CustomURLPicker({
         <Modal.Footer>
           <Button
             variant="filled"
-            type="button"
-            onClick={() => {
-              handleSubmit();
-              closeModal();
-            }}
+            type="submit"
+            form={formId}
             disabled={!canSelect}
           >{t`Done`}</Button>
         </Modal.Footer>
