@@ -4288,9 +4288,10 @@
     (testing "the joined min_2 is a Float, even though the joined Date min is deduplicated to min_2"
       (is (= "type/Float" (base-type (get-in (repair* q) ["stages" 2 "filters" 0 2])))))
     (testing "a loose spelling of min_2 also finds the Float"
-      (doseq [column-name ["Min_2" "MIN-2"]]
+      (doseq [column-name ["Min_2" "MIN-2"]
+              :let        [loose (assoc-in q ["stages" 2 "filters" 0 2 2] column-name)]]
         (is (=? (typed (join-ref "Prev" "min_2") "type/Float")
-                (get-in (repair* (assoc-in q ["stages" 2 "filters" 0 2 2] column-name)) ["stages" 2 "filters" 0 2])))))))
+                (get-in (repair* loose) ["stages" 2 "filters" 0 2])))))))
 
 (deftest ^:parallel previous-stage-join-alias-display-name-collision-test
   (let [joined (update first-orders-stage "aggregation" conj ["max" {"name" "min_2"} (orders-col "TOTAL")])]
@@ -4353,30 +4354,58 @@
                               (query (orders-stage {"joins"   [(join "Plain" [(orders-stage {})])]
                                                     "filters" [["not-null" {} (join-ref "Plain" (conj orders "TOTAL"))]]}))))))))
 
+(def ^:private people ["Sample" "PUBLIC" "PEOPLE"])
+
+(def ^:private people-id (conj people "ID"))
+
+(def ^:private plain-join (join "Plain" [(orders-stage {})]))
+
+(defn- plain-filtering [target]
+  (query (orders-stage {"joins"   [plain-join]
+                        "filters" [["not-null" {} (join-ref "Plain" target)]]})))
+
+(defn- advice-flags
+  "The flags on each problem in the join-alias error `q`'s repair raises, which pick the advice in its message."
+  [q]
+  (mapv #(select-keys % [:named? :plain? :other-table?]) (:problems (repair-error q))))
+
 (deftest ^:parallel plain-table-join-other-table-path-ref-test
-  (let [plain-filtering (fn [target]
-                          (query (orders-stage {"joins"   [(join "Plain" [(orders-stage {})])]
-                                                "filters" [["not-null" {} (join-ref "Plain" target)]]})))]
-    (testing "a path ref through a plain table join to another table's column of the same name raises"
-      (is (= [[0 "Plain" ["PEOPLE.ID"]]]
-             (join-problems (plain-filtering ["Sample" "PUBLIC" "PEOPLE" "ID"])))))
-    (testing "the error says how to reach the other table, without the advice for names or grouped joins"
-      (let [message (:message (repair-error (plain-filtering ["Sample" "PUBLIC" "PEOPLE" "ID"])))]
-        (is (str/includes? message "set `source-field-join-alias` to the join's alias"))
-        (is (not-any? #(str/includes? message %) ["display label" "grouped join"]))))
-    (testing "a path ref there in the join's own fields raises too"
-      (is (= [[0 "Plain" ["PEOPLE.ID"]]]
-             (join-problems (query (orders-stage {"joins" [(assoc (join "Plain" [(orders-stage {})])
-                                                                  "fields" [["field" {} ["Sample" "PUBLIC" "PEOPLE" "ID"]]])]}))))))
-    (testing "a path ref to the joined table's own column is accepted"
-      (is (nil? (repair-error (plain-filtering (conj orders "ID"))))))
-    (testing "a path ref to a column of a join nested in the joined stage is accepted"
-      (let [people ["Sample" "PUBLIC" "PEOPLE"]
-            inner  (assoc (join "People" [(stage {"source-table" people})])
-                          "conditions" [["=" {} (orders-col "USER_ID") (join-ref "People" (conj people "ID"))]]
-                          "fields" "all")]
-        (is (nil? (repair-error (query (orders-stage {"joins"   [(join "Outer" [(orders-stage {"joins" [inner]})])]
-                                                      "filters" [["not-null" {} (join-ref "Outer" (conj people "ID"))]]})))))))))
+  (testing "a path ref through a plain table join to another table's column of the same name raises"
+    (is (= [[0 "Plain" ["PEOPLE.ID"]]] (join-problems (plain-filtering people-id))))
+    (is (= [{:named? false, :plain? true, :other-table? true}] (advice-flags (plain-filtering people-id)))))
+  (testing "a path ref there in the join's own fields raises too"
+    (is (= [[0 "Plain" ["PEOPLE.ID"]]]
+           (join-problems (query (orders-stage {"joins" [(assoc plain-join "fields" [["field" {} people-id]])]}))))))
+  (testing "a path ref to the joined table's own column is accepted"
+    (is (nil? (repair-error (plain-filtering (conj orders "ID"))))))
+  (testing "a path ref to a column of a join nested in the joined stage is accepted"
+    (let [inner (assoc (join "People" [(stage {"source-table" people})])
+                       "conditions" [["=" {} (orders-col "USER_ID") (join-ref "People" people-id)]]
+                       "fields"     "all")
+          outer (join "Outer" [(orders-stage {"joins" [inner]})])]
+      (is (nil? (repair-error (query (orders-stage {"joins"   [outer]
+                                                    "filters" [["not-null" {} (join-ref "Outer" people-id)]]}))))))))
+
+(deftest ^:parallel join-alias-field-advice-test
+  (let [message (comp :message repair-error)]
+    (testing "a ref to another table through a plain table join is told how to reach that table, and nothing else"
+      (let [m (message (plain-filtering people-id))]
+        (is (str/includes? m "set `source-field-join-alias` to the join's alias"))
+        (is (not-any? #(str/includes? m %) ["display label" "grouped join"]))))
+    (testing "a bad name through a plain table join gets only the advice about names"
+      (let [q (plain-filtering "nope")
+            m (message q)]
+        (is (= [{:named? true, :plain? true, :other-table? false}] (advice-flags q)))
+        (is (str/includes? m "display label"))
+        (is (not-any? #(str/includes? m %) ["grouped join" "source-field-join-alias"]))))
+    (testing "problems in a grouped and a plain table join get the advice for each"
+      (let [q (query (orders-stage {"joins"   [(join "First" [first-orders-stage]) plain-join]
+                                    "filters" [["not-null" {} (join-ref "First" "nope")]
+                                               ["not-null" {} (join-ref "Plain" people-id)]]}))]
+        (is (= [{:named? true, :plain? false, :other-table? false}
+                {:named? false, :plain? true, :other-table? true}]
+               (advice-flags q)))
+        (is (every? #(str/includes? (message q) %) ["display label" "grouped join" "source-field-join-alias"]))))))
 
 (deftest ^:parallel join-alias-field-type-idempotent-test
   (let [once (repair* first-order-query)]
