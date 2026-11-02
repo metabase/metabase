@@ -277,8 +277,8 @@
                                         :aggregation  [["metric" {} metric-eid]]}]})]
             (testing "an uncurated native question isn't readable through the metric URI"
               (is (denied? (read native-question)))
-              (is (some #(str/includes? % "not a metric") (:errors (metadata native-question)))
-                  "list_available_fields checks the kind first"))
+              (is (some #(str/includes? % "only uses curated content") (:errors (metadata native-question)))
+                  "list_available_fields reads a question passed as a metric as a question, and judges it on curation"))
             (testing "an uncurated model on a curated table isn't readable through the metric URI"
               (is (denied? (read plain-model)))
               (is (some #(str/includes? % "not a metric") (:errors (metadata plain-model)))))
