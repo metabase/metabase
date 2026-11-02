@@ -1,3 +1,4 @@
-.root {
-  flex-shrink: 0;
+.input {
+  font-size: var(--mantine-font-size-md);
+  box-shadow: var(--mantine-shadow-xs);
 }

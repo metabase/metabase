@@ -428,7 +428,8 @@ function useExpression({
   };
 }
 
-function getTooltipPosition(state: EditorState) {
+/** Where the completion/help tooltip anchors: the token at the cursor, or the one before a `,` or `(`. */
+export function getTooltipPosition(state: EditorState) {
   const pos = state.selection.main.head;
   const source = state.doc.toString();
   let token = tokenAtPos(source, pos);

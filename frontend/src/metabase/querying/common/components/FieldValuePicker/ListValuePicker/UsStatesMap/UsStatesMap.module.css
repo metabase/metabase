@@ -1,0 +1,55 @@
+.map {
+  display: block;
+  margin-inline: auto;
+}
+
+.state {
+  fill: var(--mb-color-background_surface-secondary);
+  stroke: var(--mb-color-background_page-primary);
+  stroke-width: 0.75;
+
+  /* Prototype: the design uses palm shades, which have no semantic tokens. */
+  &[data-available="true"] {
+    cursor: pointer;
+    fill: color-mix(
+      in srgb,
+      var(--mb-color-core-summarize) 25%,
+      var(--mb-color-background_page-primary)
+    );
+
+    &:hover {
+      fill: color-mix(
+        in srgb,
+        var(--mb-color-core-summarize) 45%,
+        var(--mb-color-background_page-primary)
+      );
+    }
+  }
+
+  /* The shade grows with the share of the rows with the state. */
+  &[data-available="true"][data-shaded="true"] {
+    fill: color-mix(
+      in srgb,
+      var(--mb-color-core-summarize) calc(12% + var(--state-shade) * 0.68),
+      var(--mb-color-background_page-primary)
+    );
+
+    &:hover {
+      stroke: var(--mb-color-core-summarize);
+    }
+  }
+
+  &[data-selected="true"],
+  &[data-selected="true"]:hover {
+    fill: color-mix(
+      in srgb,
+      var(--mb-color-core-summarize) 80%,
+      var(--mb-color-background_page-primary)
+    );
+  }
+
+  /* With shades, a selected state is brand blue, like a selected tile. */
+  &[data-available="true"][data-shaded="true"][data-selected="true"] {
+    fill: var(--mb-color-background_surface-brand-strong);
+  }
+}

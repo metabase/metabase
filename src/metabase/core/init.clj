@@ -54,6 +54,7 @@
    [metabase.permissions.init]
    [metabase.premium-features.init]
    [metabase.product-feedback.init]
+   [metabase.prototype.init]
    [metabase.public-sharing.init]
    [metabase.pulse.init]
    [metabase.queries.init]
