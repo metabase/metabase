@@ -9,6 +9,7 @@
    [metabase-enterprise.search.entity-retrieval.reconcile :as entity-retrieval.reconcile]
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase.api.common :as api]
+   [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
@@ -31,6 +32,21 @@
   (with-redefs [config/dev-available? false
                 config/config-bool  (constantly true)]
     (is (true? (#'osi-generation/enabled?)))))
+
+(deftest demo-routes-preserve-open-api-spec-test
+  (let [prefix   "/api/ee/osi-generation-demo"
+        expected (open-api/open-api-spec @#'osi-generation/enabled-routes prefix)]
+    (is (seq (:paths expected)))
+    (is (= expected (open-api/open-api-spec osi-generation/routes prefix)))))
+
+(deftest disabled-demo-routes-return-not-found-test
+  (with-redefs [config/dev-available? false
+                config/config-bool  (constantly false)]
+    (let [result (promise)]
+      (osi-generation/routes {:request-method :get, :uri "/status"}
+                             #(deliver result %)
+                             #(deliver result %))
+      (is (= {:status 404, :body "Not found."} @result)))))
 
 (deftest library-entities-test
   (let [context {:entity_type     "card"

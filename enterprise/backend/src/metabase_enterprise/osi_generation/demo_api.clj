@@ -12,6 +12,7 @@
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
@@ -412,9 +413,12 @@
 (def ^:private enabled-routes
   (api.macros/ns-handler *ns* +auth))
 
-(defn routes
+(def ^{:arglists '([request respond raise])} routes
   "`/api/ee/osi-generation-demo` routes, enabled only for local development or an opted-in PR environment."
-  [request respond raise]
-  (if (enabled?)
-    (enabled-routes request respond raise)
-    (respond {:status 404, :body "Not found."})))
+  (open-api/handler-with-open-api-spec
+   (fn [request respond raise]
+     (if (enabled?)
+       (enabled-routes request respond raise)
+       (respond {:status 404, :body "Not found."})))
+   (fn [prefix]
+     (open-api/open-api-spec enabled-routes prefix))))
