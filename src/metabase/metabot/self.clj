@@ -844,7 +844,8 @@
   provider system prompt, keeping untrusted content in the user channel."
   [provider-and-model messages json-schema temperature max-tokens opts]
   (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
-  (when-let [limit-msg (usage/check-usage-limits!)]
+  (warn-when-missing-request-id "call-llm-structured-with-trace" opts)
+  (when-let [limit-msg (usage/check-usage-limits! (:request-id opts))]
     (throw (ex-info limit-msg
                     {:type       :metabot/usage-limit-reached
                      :error-code "ai_usage_limit_reached"

@@ -308,7 +308,15 @@
    (chat-completions->aisdk-chunks-xf stop-reasons nil))
   ([stop-reasons {:keys [forward-reasoning?]}]
    (fn [rf]
-     (let [raw-rf       rf
+     (let [downstream-rf rf
+           cancelled?   (volatile! false)
+           raw-rf       (fn
+                          ([result] (downstream-rf result))
+                          ([result chunk]
+                           (let [next-result (downstream-rf result chunk)]
+                             (when (reduced? next-result)
+                               (vreset! cancelled? true))
+                             next-result)))
            deferred     (volatile! [])
            defer?       (volatile! false)
            rf           (fn [result chunk]
@@ -327,6 +335,7 @@
            ;; carried across start/delta/end, same as openai.clj; :id is the open block's id
            payload      (volatile! {})
            stop-reason  (volatile! nil)
+           usage-seen?  (volatile! false)
            no-calls     {:calls [] :by-key {} :previous nil}
            tool-calls   (volatile! no-calls)
            discarded-arguments? (volatile! false)
@@ -348,7 +357,20 @@
        (fn
          ([result]
           (vreset! tool-calls no-calls)
-          (raw-rf (unreduced (release! (close! result) []))))
+          (let [result (release! (close! result) [])
+                reason (core/stop-reason->finish-reason stop-reasons @stop-reason)
+                result (if (and (not @cancelled?) (not @usage-seen?)
+                                (contains? #{"length" "content-filter"} reason))
+                         (raw-rf result (cond-> {:type :usage
+                                                 :usage (usage->aisdk-usage nil)
+                                                 :id @message-id
+                                                 :model @model-name
+                                                 :finish-reason reason
+                                                 :raw-finish-reason @stop-reason}
+                                          @discarded-arguments?
+                                          (assoc ::core/discarded-tool-arguments? true)))
+                         result)]
+            (raw-rf (unreduced result))))
 
          ([result {:keys [id model choices usage error] :as chunk}]
           (if (= chunk core/interrupted-stream-event)
@@ -444,15 +466,16 @@
                                                                        (vreset! stop-reason finish-reason))
                                                                      (finish!))
                 ;; Usage (often on a separate final chunk with empty choices)
-                (some? usage)                                    (rf (cond-> {:type  :usage
-                                                                              :usage (usage->aisdk-usage usage)
-                                                                              :id    @message-id
-                                                                              :model @model-name}
-                                                                       @discarded-arguments?
-                                                                       (assoc ::core/discarded-tool-arguments? true)
-                                                                       @stop-reason
-                                                                       (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
-                                                                              :raw-finish-reason @stop-reason)))
+                (some? usage)                                    (-> (u/prog1 (vreset! usage-seen? true))
+                                                                     (rf (cond-> {:type  :usage
+                                                                                  :usage (usage->aisdk-usage usage)
+                                                                                  :id    @message-id
+                                                                                  :model @model-name}
+                                                                           @discarded-arguments?
+                                                                           (assoc ::core/discarded-tool-arguments? true)
+                                                                           @stop-reason
+                                                                           (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
+                                                                                  :raw-finish-reason @stop-reason))))
                 ;; An error in the stream, e.g. a failure partway through generation
                 error-text                                       (-> (close!)
                                                                      (rf (error-chunk error error-text))))))))))))
