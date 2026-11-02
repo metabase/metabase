@@ -22,7 +22,7 @@ import {
   useRecheckHealthCheckMutation,
   useRecheckHealthChecksMutation,
 } from "../../api";
-import { SeverityBadge } from "../SeverityBadge/SeverityBadge";
+import { SeverityBadge } from "../../components/SeverityBadge/SeverityBadge";
 
 import { HealthCheckItems } from "./HealthCheckItems";
 import { RecheckButton } from "./RecheckButton";

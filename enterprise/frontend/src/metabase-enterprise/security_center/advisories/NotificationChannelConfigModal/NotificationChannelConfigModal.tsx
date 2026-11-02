@@ -10,7 +10,7 @@ import { useSendTestNotificationMutation } from "../../api";
 import {
   serializeNotificationConfig,
   useNotificationConfig,
-} from "../../hooks/use-notification-config";
+} from "../hooks/use-notification-config";
 
 import { EmailChannelCard } from "./EmailChannelCard/EmailChannelCard";
 import { SlackChannelCard } from "./SlackChannelCard/SlackChannelCard";

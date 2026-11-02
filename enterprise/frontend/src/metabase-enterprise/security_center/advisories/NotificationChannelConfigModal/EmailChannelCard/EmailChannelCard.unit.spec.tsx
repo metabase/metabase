@@ -3,13 +3,13 @@ import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 
-import type { NotificationConfig } from "../../../hooks/use-notification-config";
-import { useNotificationConfig } from "../../../hooks/use-notification-config";
+import type { NotificationConfig } from "../../hooks/use-notification-config";
+import { useNotificationConfig } from "../../hooks/use-notification-config";
 
 import { EmailChannelCard } from "./EmailChannelCard";
 
-jest.mock("../../../hooks/use-notification-config", () => ({
-  ...jest.requireActual("../../../hooks/use-notification-config"),
+jest.mock("../../hooks/use-notification-config", () => ({
+  ...jest.requireActual("../../hooks/use-notification-config"),
   useNotificationConfig: jest.fn(),
 }));
 

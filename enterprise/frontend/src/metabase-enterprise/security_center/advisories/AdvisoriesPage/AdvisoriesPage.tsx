@@ -19,19 +19,19 @@ import {
 
 import { trackSecurityCenterPageViewed } from "../../analytics";
 import { useSyncSecurityAdvisoriesMutation } from "../../api";
-import {
-  NotificationConfigProvider,
-  useNotificationConfigState,
-} from "../../hooks/use-notification-config";
-import { useSecurityAdvisories } from "../../hooks/use-security-advisories";
-import type { AdvisoryFilter } from "../../types";
-import { filterAdvisories, getTargetUpgradeVersion } from "../../utils";
 import { AdvisoryFilterBar } from "../AdvisoryFilterBar/AdvisoryFilterBar";
 import { AdvisoryList } from "../AdvisoryList/AdvisoryList";
 import { NotificationChannelConfigModal } from "../NotificationChannelConfigModal/NotificationChannelConfigModal";
 import { UpgradeBanner } from "../UpgradeBanner/UpgradeBanner";
+import {
+  NotificationConfigProvider,
+  useNotificationConfigState,
+} from "../hooks/use-notification-config";
+import { useSecurityAdvisories } from "../hooks/use-security-advisories";
+import type { AdvisoryFilter } from "../types";
+import { filterAdvisories, getTargetUpgradeVersion } from "../utils";
 
-import S from "./SecurityCenterPage.module.css";
+import S from "./AdvisoriesPage.module.css";
 
 const DEFAULT_FILTER: AdvisoryFilter = {
   severity: "all",
@@ -40,7 +40,7 @@ const DEFAULT_FILTER: AdvisoryFilter = {
 
 const MAX_POLL_COUNT = 30;
 
-export function SecurityCenterPage() {
+export function AdvisoriesPage() {
   const [searchParams] = useSearchParams();
   const [isPolling, setIsPolling] = useState(false);
   const {

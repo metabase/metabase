@@ -18,8 +18,8 @@ import {
 import type { Advisory, AdvisoryId } from "metabase-types/api";
 
 import { trackSecurityAdvisoryDownloadClicked } from "../../analytics";
-import { getDownloadJarForInstance, isAcknowledged } from "../../utils";
-import { SeverityBadge } from "../SeverityBadge/SeverityBadge";
+import { SeverityBadge } from "../../components/SeverityBadge/SeverityBadge";
+import { getDownloadJarForInstance, isAcknowledged } from "../utils";
 
 const DISALLOWED_ELEMENTS = ["img"];
 

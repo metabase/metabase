@@ -4,7 +4,7 @@ import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { Box, Checkbox, Group, Select, Stack } from "metabase/ui";
 import type { AdvisorySeverity } from "metabase-types/api";
 
-import type { AdvisoryFilter } from "../../types";
+import type { AdvisoryFilter } from "../types";
 
 interface AdvisoryFilterBarProps {
   filter: AdvisoryFilter;

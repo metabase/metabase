@@ -13,12 +13,12 @@ const securityCenterPage = () =>
 
 const securityCenterAdvisoriesPage = () =>
   import(
-    /* webpackChunkName: "security-center" */ "./components/SecurityCenterPage/SecurityCenterPage"
-  ).then(({ SecurityCenterPage }) => ({ Component: SecurityCenterPage }));
+    /* webpackChunkName: "security-center" */ "./advisories/AdvisoriesPage/AdvisoriesPage"
+  ).then(({ AdvisoriesPage }) => ({ Component: AdvisoriesPage }));
 
 const securityCenterHealthChecksPage = () =>
   import(
-    /* webpackChunkName: "security-center" */ "./components/HealthChecksPage/HealthChecksPage"
+    /* webpackChunkName: "security-center" */ "./health-checks/HealthChecksPage/HealthChecksPage"
   ).then(({ HealthChecksPage }) => ({ Component: HealthChecksPage }));
 
 export function initializePlugin() {

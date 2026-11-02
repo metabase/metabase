@@ -12,7 +12,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useNotificationConfig } from "metabase-enterprise/security_center/hooks/use-notification-config";
+import { useNotificationConfig } from "metabase-enterprise/security_center/advisories/hooks/use-notification-config";
 
 export function EmailChannelCard({ isConfigured }: { isConfigured: boolean }) {
   const { config, updateEmailHandler, toggleSendToAllAdmins, users } =

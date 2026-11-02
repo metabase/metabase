@@ -1,7 +1,9 @@
 import type { Advisory } from "metabase-types/api";
 
+import { isAffected } from "../utils";
+
 import type { AdvisoryFilter } from "./types";
-import { filterAdvisories, isAffected, sortAdvisories } from "./utils";
+import { filterAdvisories, sortAdvisories } from "./utils";
 
 const makeAdvisory = (overrides: Partial<Advisory>): Advisory => ({
   advisory_id: "SA-001",

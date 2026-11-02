@@ -2,7 +2,7 @@ import {
   useAcknowledgeAdvisoriesMutation,
   useAcknowledgeAdvisoryMutation,
   useListSecurityAdvisoriesQuery,
-} from "../api";
+} from "../../api";
 
 const POLLING_INTERVAL = 2000;
 

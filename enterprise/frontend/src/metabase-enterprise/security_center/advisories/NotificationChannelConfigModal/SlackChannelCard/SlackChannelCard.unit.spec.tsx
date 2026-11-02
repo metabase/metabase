@@ -4,13 +4,13 @@ import {
   createMockSlackChannelSpec,
 } from "metabase-types/api/mocks/security-center";
 
-import type { NotificationConfig } from "../../../hooks/use-notification-config";
-import { useNotificationConfig } from "../../../hooks/use-notification-config";
+import type { NotificationConfig } from "../../hooks/use-notification-config";
+import { useNotificationConfig } from "../../hooks/use-notification-config";
 
 import { SlackChannelCard } from "./SlackChannelCard";
 
-jest.mock("../../../hooks/use-notification-config", () => ({
-  ...jest.requireActual("../../../hooks/use-notification-config"),
+jest.mock("../../hooks/use-notification-config", () => ({
+  ...jest.requireActual("../../hooks/use-notification-config"),
   useNotificationConfig: jest.fn(),
 }));
 

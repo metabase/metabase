@@ -16,10 +16,10 @@ import {
 } from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
 
-import * as notificationHook from "../../hooks/use-notification-config";
-import * as advisoriesHook from "../../hooks/use-security-advisories";
+import * as notificationHook from "../hooks/use-notification-config";
+import * as advisoriesHook from "../hooks/use-security-advisories";
 
-import { SecurityCenterPage } from "./SecurityCenterPage";
+import { AdvisoriesPage } from "./AdvisoriesPage";
 
 const mockAcknowledge = jest.fn();
 const mockAcknowledgeAll = jest.fn();
@@ -73,7 +73,7 @@ function setup(
     resetConfig: jest.fn(),
   });
 
-  renderWithProviders(<Route path="*" element={<SecurityCenterPage />} />, {
+  renderWithProviders(<Route path="*" element={<AdvisoriesPage />} />, {
     withRouter: true,
     initialRoute,
     storeInitialState: {
@@ -84,7 +84,7 @@ function setup(
   });
 }
 
-describe("SecurityCenterPage", () => {
+describe("AdvisoriesPage", () => {
   afterEach(() => {
     jest.restoreAllMocks();
     mockAcknowledge.mockClear();

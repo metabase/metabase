@@ -16,20 +16,20 @@ import {
   createMockSlackChannelSpec,
 } from "metabase-types/api/mocks/security-center";
 
-import type { NotificationConfig } from "../../hooks/use-notification-config";
+import type { NotificationConfig } from "../hooks/use-notification-config";
 import {
   NotificationConfigProvider,
   useNotificationConfig,
   useNotificationConfigState,
-} from "../../hooks/use-notification-config";
+} from "../hooks/use-notification-config";
 
 import { NotificationChannelConfigModal } from "./NotificationChannelConfigModal";
 
 // ── UI behaviour tests (mocked hook) ────────────────────────────────
 
-jest.mock("../../hooks/use-notification-config", () => {
+jest.mock("../hooks/use-notification-config", () => {
   return {
-    ...jest.requireActual("../../hooks/use-notification-config"),
+    ...jest.requireActual("../hooks/use-notification-config"),
     useNotificationConfig: jest.fn(),
   };
 });
@@ -271,7 +271,7 @@ function setupWithRealHook({
 } = {}) {
   // Restore the real implementation for save-payload tests
   mockedUseNotificationConfig.mockImplementation(
-    jest.requireActual("../../hooks/use-notification-config")
+    jest.requireActual("../hooks/use-notification-config")
       .useNotificationConfig,
   );
 
