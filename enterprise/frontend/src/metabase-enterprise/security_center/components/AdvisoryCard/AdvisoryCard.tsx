@@ -1,4 +1,3 @@
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Markdown } from "metabase/common/components/Markdown";
@@ -6,7 +5,6 @@ import { useSetting } from "metabase/settings";
 import {
   Anchor,
   Badge,
-  type BadgeColor,
   Box,
   Button,
   Card,
@@ -18,14 +16,15 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import type {
-  Advisory,
-  AdvisoryId,
-  AdvisorySeverity,
-} from "metabase-types/api";
+import type { Advisory, AdvisoryId } from "metabase-types/api";
 
 import { trackSecurityAdvisoryDownloadClicked } from "../../analytics";
-import { getDownloadJarForInstance, isAcknowledged } from "../../utils";
+import {
+  getDownloadJarForInstance,
+  getSeverityColor,
+  getSeverityLabel,
+  isAcknowledged,
+} from "../../utils";
 
 const DISALLOWED_ELEMENTS = ["img"];
 
@@ -153,32 +152,4 @@ export function AdvisoryCard({
       </Stack>
     </Card>
   );
-}
-
-function getSeverityColor({
-  isAffecting,
-  severity,
-}: {
-  isAffecting: boolean;
-  severity: AdvisorySeverity;
-}): BadgeColor {
-  if (!isAffecting) {
-    return "neutral";
-  }
-
-  return match(severity)
-    .with("critical", () => "negative" as const)
-    .with("high", () => "negative" as const)
-    .with("medium", () => "warning" as const)
-    .with("low", () => "positive" as const)
-    .exhaustive();
-}
-
-function getSeverityLabel(severity: AdvisorySeverity): string {
-  return match(severity)
-    .with("critical", () => t`Critical`)
-    .with("high", () => t`High`)
-    .with("medium", () => t`Medium`)
-    .with("low", () => t`Low`)
-    .exhaustive();
 }

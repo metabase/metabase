@@ -25,6 +25,7 @@ import type {
   HealthCheck,
   HealthCheckId,
   HealthCheckItem,
+  ListHealthChecksResponse,
 } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -441,33 +442,34 @@ describe("HealthChecksPage", () => {
     ).toEqual(["All UsersCan query Warehouse", "All UsersCan query Analytics"]);
   });
 
-  it("disables re-check all while a check is re-checked", async () => {
-    const recheckResponse = defer<HealthCheck>();
+  it("disables re-check on every card while all checks are re-checked", async () => {
+    const recheckAllResponse = defer<ListHealthChecksResponse>();
     fetchMock.post(
-      `path:/api/ee/security-center/health-checks/${FAILING_CHECK.id}/recheck`,
-      () => recheckResponse.promise,
+      "path:/api/ee/security-center/health-checks/recheck",
+      () => recheckAllResponse.promise,
     );
     await setup({ checks: [FAILING_CHECK] });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "sync icon Re-check" }),
+      screen.getByRole("button", { name: "sync icon Re-check all" }),
     );
 
+    expect(screen.getByRole("button", { name: /Re-check all/ })).toBeDisabled();
     expect(
-      screen.getByRole("button", { name: "sync icon Re-check all" }),
+      screen.getByRole("button", { name: "sync icon Re-check" }),
     ).toBeDisabled();
 
-    recheckResponse.resolve(FAILING_CHECK);
+    recheckAllResponse.resolve({ checks: [FAILING_CHECK] });
 
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "sync icon Re-check all" }),
+        screen.getByRole("button", { name: "sync icon Re-check" }),
       ).toBeEnabled(),
     );
   });
 
   it("re-checks all checks and shows the returned results", async () => {
-    const track = jest.spyOn(analytics, "trackAllHealthChecksRecheckClicked");
+    const track = jest.spyOn(analytics, "trackHealthCheckRecheckClicked");
     setupRecheckHealthChecksEndpoint([PASSING_CHECK]);
     await setup({ checks: [FAILING_CHECK, PASSING_CHECK] });
 
@@ -484,6 +486,7 @@ describe("HealthChecksPage", () => {
       ),
     ).toHaveLength(1);
     expect(track).toHaveBeenCalledTimes(1);
+    expect(track).toHaveBeenCalledWith("all");
   });
 
   it("keeps the check and shows an error when a re-check fails", async () => {

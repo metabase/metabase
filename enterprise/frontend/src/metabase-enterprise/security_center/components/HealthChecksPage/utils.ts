@@ -1,39 +1,79 @@
 import { match } from "ts-pattern";
+import { t } from "ttag";
+import _ from "underscore";
 
+import type { BadgeColor } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 import type {
   HealthCheck,
   HealthCheckId,
   HealthCheckItem,
   HealthCheckStatus,
+  IconName,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { compareBySeverity } from "../../utils";
 
-const getChecksByStatus = (
+export const HEALTH_CHECK_STATUSES = [
+  "fail",
+  "unknown",
+  "pass",
+] as const satisfies HealthCheckStatus[];
+
+export const RECHECK_ALL_CACHE_KEY = "security-center-recheck-all";
+
+type StatusStyle = {
+  icon: IconName;
+  iconColor: ColorName;
+  badgeColor: BadgeColor;
+};
+
+const STATUS_STYLES: Record<HealthCheckStatus, StatusStyle> = {
+  fail: {
+    icon: "warning_triangle_filled",
+    iconColor: "feedback-negative",
+    badgeColor: "negative",
+  },
+  unknown: { icon: "info", iconColor: "text-secondary", badgeColor: "warning" },
+  pass: {
+    icon: "check_filled",
+    iconColor: "feedback-positive",
+    badgeColor: "positive",
+  },
+};
+
+const getStatusLabel = (status: HealthCheckStatus) =>
+  match(status)
+    .with("fail", () => t`Failing`)
+    .with("unknown", () => t`Couldn't check`)
+    .with("pass", () => t`Passed`)
+    .exhaustive();
+
+export const getStatusInfo = (status: HealthCheckStatus) => ({
+  ...STATUS_STYLES[status],
+  label: getStatusLabel(status),
+});
+
+export const getChecksByStatus = (
   checks: HealthCheck[],
   status: HealthCheckStatus,
-): HealthCheck[] =>
-  checks.filter((check) => check.status === status).sort(compareBySeverity);
+) => checks.filter((check) => check.status === status).sort(compareBySeverity);
 
-export const groupHealthChecks = (checks: HealthCheck[]) => ({
-  failing: getChecksByStatus(checks, "fail"),
-  unknown: getChecksByStatus(checks, "unknown"),
-  passed: getChecksByStatus(checks, "pass"),
-});
+export const partitionItemsByProblem = (items: HealthCheckItem[]) =>
+  _.partition(
+    _.sortBy(items, (item) => HEALTH_CHECK_STATUSES.indexOf(item.status)),
+    (item) => item.status !== "pass",
+  );
 
-export const splitHealthCheckItems = (items: HealthCheckItem[]) => ({
-  problems: [
-    ...items.filter((item) => item.status === "fail"),
-    ...items.filter((item) => item.status === "unknown"),
-  ],
-  passed: items.filter((item) => item.status === "pass"),
-});
+export const isNotFoundError = (error: unknown) =>
+  isObject(error) && error.status === 404;
 
 export const getHealthCheckItemUrl = (
   checkId: HealthCheckId,
   item: HealthCheckItem,
-): string | null =>
+) =>
   match({ checkId, item })
     .with(
       { checkId: "read-only-connections", item: { entity_type: "database" } },
@@ -48,11 +88,6 @@ export const getHealthCheckItemUrl = (
       ({ item }) => Urls.groupDataPermissions(item.entity_id),
     )
     .otherwise(() => null);
-
-export const getHealthCheckItemKey = (item: HealthCheckItem, index: number) =>
-  item.entity_type
-    ? `${item.entity_type}-${item.entity_id}-${index}`
-    : String(index);
 
 export const getHealthCheckSettingsUrl = (checkId: HealthCheckId) =>
   match(checkId)

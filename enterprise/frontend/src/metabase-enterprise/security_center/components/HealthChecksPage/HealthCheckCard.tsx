@@ -1,64 +1,49 @@
-import { useState } from "react";
 import { t } from "ttag";
 
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import {
+  Accordion,
   Anchor,
   Badge,
-  type BadgeColor,
   Box,
   Button,
   Card,
+  FixedSizeIcon,
+  Flex,
   Group,
-  Icon,
-  Loader,
   Stack,
   Text,
   Title,
-  UnstyledButton,
 } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type {
   HealthCheck,
   HealthCheckId,
   HealthCheckItem,
-  HealthCheckStatus,
-  IconName,
 } from "metabase-types/api";
 
+import { trackHealthCheckRecheckClicked } from "../../analytics";
 import {
-  getHealthCheckItemKey,
+  useRecheckHealthCheckMutation,
+  useRecheckHealthChecksMutation,
+} from "../../api";
+import { getSeverityColor, getSeverityLabel } from "../../utils";
+
+import S from "./HealthCheckCard.module.css";
+import { RecheckButton } from "./RecheckButton";
+import { useRecheckErrorToast } from "./use-recheck-error-toast";
+import {
+  RECHECK_ALL_CACHE_KEY,
   getHealthCheckItemUrl,
   getHealthCheckSettingsUrl,
-  splitHealthCheckItems,
+  getStatusInfo,
+  isNotFoundError,
+  partitionItemsByProblem,
 } from "./utils";
 
-const STATUS_BADGE_COLOR: Record<HealthCheckStatus, BadgeColor> = {
-  fail: "negative",
-  unknown: "warning",
-  pass: "positive",
-};
-
-const STATUS_ICON: Record<HealthCheckStatus, IconName> = {
-  fail: "warning_triangle_filled",
-  unknown: "info",
-  pass: "check_filled",
-};
-
-const STATUS_ICON_COLOR: Record<HealthCheckStatus, ColorName> = {
-  fail: "feedback-negative",
-  unknown: "text-secondary",
-  pass: "feedback-positive",
-};
-
-const getStatusLabel = (status: HealthCheckStatus) =>
-  ({
-    fail: t`Failing`,
-    unknown: t`Couldn't check`,
-    pass: t`Passing`,
-  })[status];
+const ROW_LINE_HEIGHT = "1.25rem";
 
 type HealthCheckItemRowProps = {
   checkId: HealthCheckId;
@@ -66,6 +51,7 @@ type HealthCheckItemRowProps = {
 };
 
 const HealthCheckItemRow = ({ checkId, item }: HealthCheckItemRowProps) => {
+  const { label, icon, iconColor } = getStatusInfo(item.status);
   const url = getHealthCheckItemUrl(checkId, item);
 
   return (
@@ -73,113 +59,134 @@ const HealthCheckItemRow = ({ checkId, item }: HealthCheckItemRowProps) => {
       gap="sm"
       wrap="nowrap"
       align="flex-start"
+      px="lg"
+      py="sm"
       data-testid="health-check-item"
     >
-      <Icon
-        name={STATUS_ICON[item.status]}
-        c={STATUS_ICON_COLOR[item.status]}
-        aria-label={getStatusLabel(item.status)}
-      />
-      <Box>
-        {item.entity_name && url && (
-          <Anchor component={Link} to={url} size="sm" fw="bold">
-            {item.entity_name}
-          </Anchor>
-        )}
-        {item.entity_name && !url && (
-          <Text size="sm" fw="bold">
-            {item.entity_name}
-          </Text>
-        )}
+      <Flex h={ROW_LINE_HEIGHT} align="center">
+        <FixedSizeIcon name={icon} c={iconColor} aria-label={label} />
+      </Flex>
+      <Stack gap="xxs" miw={0}>
+        {item.entity_name &&
+          (url ? (
+            <Anchor component={Link} to={url} fw="bold" lh={ROW_LINE_HEIGHT}>
+              {item.entity_name}
+            </Anchor>
+          ) : (
+            <Text fw="bold" lh={ROW_LINE_HEIGHT}>
+              {item.entity_name}
+            </Text>
+          ))}
         {item.message && (
-          <Text size="sm" c="text-secondary">
+          <Text c="text-secondary" lh={ROW_LINE_HEIGHT}>
             {item.message}
           </Text>
         )}
-      </Box>
+      </Stack>
     </Group>
   );
 };
+
+type HealthCheckItemRowsProps = {
+  checkId: HealthCheckId;
+  items: HealthCheckItem[];
+};
+
+const HealthCheckItemRows = ({ checkId, items }: HealthCheckItemRowsProps) =>
+  items.map((item, index) => (
+    <HealthCheckItemRow key={index} checkId={checkId} item={item} />
+  ));
 
 type HealthCheckItemsProps = {
   check: HealthCheck;
 };
 
 const HealthCheckItems = ({ check }: HealthCheckItemsProps) => {
-  const [isPassedOpened, setIsPassedOpened] = useState(false);
-  const { problems, passed } = splitHealthCheckItems(check.items);
-  const passedCount = passed.length;
-  const isPassedCollapsible = problems.length > 0 && passedCount > 0;
-  const isPassedShown = !isPassedCollapsible || isPassedOpened;
+  const [problemItems, passedItems] = partitionItemsByProblem(check.items);
+  const { icon, iconColor } = getStatusInfo("pass");
+
+  if (problemItems.length === 0 || passedItems.length === 0) {
+    return (
+      <Card withBorder p={0} className={S.itemList}>
+        <HealthCheckItemRows
+          checkId={check.id}
+          items={[...problemItems, ...passedItems]}
+        />
+      </Card>
+    );
+  }
 
   return (
-    <Stack gap="sm">
-      {problems.map((item, index) => (
-        <HealthCheckItemRow
-          key={getHealthCheckItemKey(item, index)}
-          checkId={check.id}
-          item={item}
-        />
-      ))}
-      {isPassedCollapsible && (
-        <UnstyledButton
-          aria-expanded={isPassedOpened}
-          onClick={() => setIsPassedOpened(!isPassedOpened)}
-        >
-          <Group gap="xs">
-            <Icon name={isPassedOpened ? "chevrondown" : "chevronright"} />
-            <Text
-              size="sm"
-              c="text-secondary"
-            >{t`Passed (${passedCount})`}</Text>
-          </Group>
-        </UnstyledButton>
-      )}
-      {isPassedShown &&
-        passed.map((item, index) => (
-          <HealthCheckItemRow
-            key={getHealthCheckItemKey(item, index)}
-            checkId={check.id}
-            item={item}
-          />
-        ))}
-    </Stack>
+    <Card withBorder p={0} className={S.itemList}>
+      <HealthCheckItemRows checkId={check.id} items={problemItems} />
+      <Accordion
+        radius={0}
+        transitionDuration={0}
+        classNames={{ content: S.passedContent }}
+      >
+        <Accordion.Item value="passed">
+          <Accordion.Control icon={<FixedSizeIcon name={icon} c={iconColor} />}>
+            {t`Passed (${passedItems.length})`}
+          </Accordion.Control>
+          <Accordion.Panel>
+            <HealthCheckItemRows checkId={check.id} items={passedItems} />
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
+    </Card>
   );
 };
 
 type HealthCheckCardProps = {
   check: HealthCheck;
-  isRechecking: boolean;
-  isRecheckDisabled: boolean;
-  onRecheck: (checkId: HealthCheckId) => void;
 };
 
-export const HealthCheckCard = ({
-  check,
-  isRechecking,
-  isRecheckDisabled,
-  onRecheck,
-}: HealthCheckCardProps) => {
-  const settingsUrl = getHealthCheckSettingsUrl(check.id);
+export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
+  const [recheck, { isLoading: isRechecking }] =
+    useRecheckHealthCheckMutation();
+  const [, { isLoading: isRecheckingAll }] = useRecheckHealthChecksMutation({
+    fixedCacheKey: RECHECK_ALL_CACHE_KEY,
+  });
+  const showRecheckError = useRecheckErrorToast();
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(check.docs.page, {
     anchor: check.docs.anchor,
   });
   const isFailing = check.status === "fail";
+  const settingsUrl = isFailing ? getHealthCheckSettingsUrl(check.id) : null;
+
+  const handleRecheck = async () => {
+    trackHealthCheckRecheckClicked(check.id);
+    const { error } = await recheck(check.id);
+    if (error && !isNotFoundError(error)) {
+      showRecheckError();
+    }
+  };
 
   return (
     <Card
-      p="xl"
+      p="xxl"
       withBorder
       data-testid="health-check-card"
       data-check-id={check.id}
     >
-      <Stack gap="md">
+      <Stack gap="lg">
         <Group gap="sm" justify="space-between" align="flex-start">
           <Group gap="sm">
-            <Badge color={STATUS_BADGE_COLOR[check.status]} size="sm">
-              {getStatusLabel(check.status)}
+            <Badge
+              color={getSeverityColor({
+                isAffecting: isFailing,
+                severity: check.severity,
+              })}
+              tt={
+                isFailing && check.severity === "critical"
+                  ? "uppercase"
+                  : undefined
+              }
+              size="sm"
+            >
+              {getSeverityLabel(check.severity)}
             </Badge>
-            {check.requires_restart && isFailing && (
+            {isFailing && check.requires_restart && (
               <Badge color="neutral" size="sm">{t`Requires a restart`}</Badge>
             )}
           </Group>
@@ -187,40 +194,38 @@ export const HealthCheckCard = ({
             {t`Checked ${getRelativeTime(check.checked_at)}`}
           </Text>
         </Group>
-        <Title order={4}>{check.title}</Title>
-        <Text c="text-secondary">{check.description}</Text>
+
+        <Stack gap="sm">
+          <Title order={4}>{check.title}</Title>
+          <Text c="text-secondary">{check.description}</Text>
+        </Stack>
+
         <HealthCheckItems check={check} />
+
         {isFailing && (
           <Box>
-            <Text fw="bold" mb="xs">{t`How to fix`}</Text>
+            <Text fw={700} mb="xxs">{t`How to fix`}</Text>
             <Text c="text-secondary">{check.remediation}</Text>
-            {settingsUrl && (
-              <Anchor component={Link} to={settingsUrl} size="sm">
-                {t`Open settings`}
-              </Anchor>
-            )}
           </Box>
         )}
-        <Group gap="lg">
-          <Button
-            variant="subtle"
-            leftSection={
-              isRechecking ? <Loader size="1rem" /> : <Icon name="sync" />
-            }
-            disabled={isRecheckDisabled}
-            onClick={() => onRecheck(check.id)}
+
+        <Group gap="lg" mt="sm">
+          {settingsUrl && (
+            <Button component={Link} to={settingsUrl} variant="filled">
+              {t`Open settings`}
+            </Button>
+          )}
+          <RecheckButton
+            isRechecking={isRechecking}
+            isDisabled={isRecheckingAll}
+            onClick={handleRecheck}
           >
             {t`Re-check`}
-          </Button>
+          </RecheckButton>
           {showMetabaseLinks && (
-            <Anchor
-              href={docsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="sm"
-            >
+            <Button component={ExternalLink} href={docsUrl} variant="subtle">
               {t`Read the docs`}
-            </Anchor>
+            </Button>
           )}
         </Group>
       </Stack>

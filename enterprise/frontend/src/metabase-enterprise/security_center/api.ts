@@ -1,3 +1,4 @@
+import { handleQueryFulfilled } from "metabase/api/utils/lifecycle";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import { listTag } from "metabase-enterprise/api/tags";
 import type {
@@ -72,44 +73,36 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_result, error) =>
         error ? [listTag("security-health-check")] : [],
-      onQueryStarted: async (checkId, { dispatch, queryFulfilled }) => {
-        try {
-          const { data: recheckedCheck } = await queryFulfilled;
+      onQueryStarted: (checkId, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, (recheckedCheck) =>
           dispatch(
             securityCenterApi.util.updateQueryData(
               "listHealthChecks",
               undefined,
-              ({ checks }) => ({
-                checks: checks.map((check) =>
+              (draft) => {
+                draft.checks = draft.checks.map((check) =>
                   check.id === checkId ? recheckedCheck : check,
-                ),
-              }),
+                );
+              },
             ),
-          );
-        } catch {
-          return;
-        }
-      },
+          ),
+        ),
     }),
     recheckHealthChecks: builder.mutation<ListHealthChecksResponse, void>({
       query: () => ({
         method: "POST",
         url: "/api/ee/security-center/health-checks/recheck",
       }),
-      onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
-        try {
-          const { data } = await queryFulfilled;
+      onQueryStarted: (_arg, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, (response) =>
           dispatch(
-            securityCenterApi.util.updateQueryData(
+            securityCenterApi.util.upsertQueryData(
               "listHealthChecks",
               undefined,
-              () => data,
+              response,
             ),
-          );
-        } catch {
-          return;
-        }
-      },
+          ),
+        ),
     }),
   }),
 });

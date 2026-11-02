@@ -1,136 +1,119 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 
+import ShieldImage from "assets/img/shield-96x96.svg";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useToast } from "metabase/common/hooks";
 import {
+  Accordion,
   Badge,
-  Box,
-  Button,
   Card,
   Group,
   Icon,
-  Loader,
   Stack,
   Text,
   Title,
-  UnstyledButton,
 } from "metabase/ui";
-import type { HealthCheck, HealthCheckId } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
+import type { HealthCheck, HealthCheckStatus } from "metabase-types/api";
 
 import {
-  trackAllHealthChecksRecheckClicked,
   trackHealthCheckRecheckClicked,
   trackHealthChecksPageViewed,
 } from "../../analytics";
 import {
   useListHealthChecksQuery,
-  useRecheckHealthCheckMutation,
   useRecheckHealthChecksMutation,
 } from "../../api";
 
 import { HealthCheckCard } from "./HealthCheckCard";
-import { groupHealthChecks } from "./utils";
+import S from "./HealthChecksPage.module.css";
+import { RecheckButton } from "./RecheckButton";
+import { useRecheckErrorToast } from "./use-recheck-error-toast";
+import {
+  HEALTH_CHECK_STATUSES,
+  RECHECK_ALL_CACHE_KEY,
+  getChecksByStatus,
+  getStatusInfo,
+} from "./utils";
 
 type HealthCheckGroupProps = {
-  title: string;
+  status: HealthCheckStatus;
   checks: HealthCheck[];
-  isDefaultOpened: boolean;
-  recheckingCheckIds: ReadonlySet<HealthCheckId>;
-  isRecheckingAll: boolean;
-  onRecheck: (checkId: HealthCheckId) => void;
 };
 
-const HealthCheckGroup = ({
-  title,
-  checks,
-  isDefaultOpened,
-  recheckingCheckIds,
-  isRecheckingAll,
-  onRecheck,
-}: HealthCheckGroupProps) => {
-  const [isOpened, setIsOpened] = useState(isDefaultOpened);
-
+const HealthCheckGroup = ({ status, checks }: HealthCheckGroupProps) => {
   if (checks.length === 0) {
     return null;
   }
 
+  const { label, badgeColor } = getStatusInfo(status);
+
   return (
-    <Box component="section" aria-label={title}>
-      <UnstyledButton
-        aria-expanded={isOpened}
-        mb="md"
-        onClick={() => setIsOpened(!isOpened)}
-      >
-        <Group gap="sm" align="center">
-          <Icon name={isOpened ? "chevrondown" : "chevronright"} />
-          <Badge size="sm">{checks.length}</Badge>
-          <Title order={4}>{title}</Title>
-        </Group>
-      </UnstyledButton>
-      {isOpened && (
-        <Stack gap="md">
-          {checks.map((check) => (
-            <HealthCheckCard
-              key={check.id}
-              check={check}
-              isRechecking={recheckingCheckIds.has(check.id)}
-              isRecheckDisabled={
-                isRecheckingAll || recheckingCheckIds.has(check.id)
-              }
-              onRecheck={onRecheck}
-            />
-          ))}
-        </Stack>
-      )}
-    </Box>
+    <Accordion
+      defaultValue={status === "fail" ? status : null}
+      transitionDuration={0}
+      classNames={{ content: S.groupContent }}
+    >
+      <Accordion.Item value={status}>
+        <Accordion.Control
+          icon={
+            <Badge color={badgeColor} size="sm">
+              {checks.length}
+            </Badge>
+          }
+        >
+          {label}
+        </Accordion.Control>
+        <Accordion.Panel>
+          <Stack gap="lg">
+            {checks.map((check) => (
+              <HealthCheckCard key={check.id} check={check} />
+            ))}
+          </Stack>
+        </Accordion.Panel>
+      </Accordion.Item>
+    </Accordion>
   );
 };
 
 type HealthChecksSummaryProps = {
-  passedCount: number;
-  totalCount: number;
+  checks: HealthCheck[];
 };
 
-const HealthChecksSummary = ({
-  passedCount,
-  totalCount,
-}: HealthChecksSummaryProps) => {
-  const isAllClear = passedCount === totalCount;
+const HealthChecksSummary = ({ checks }: HealthChecksSummaryProps) => {
+  const passedCount = checks.filter((check) => check.status === "pass").length;
+  const isAllClear = passedCount === checks.length;
+
+  if (isAllClear) {
+    return (
+      <Card p="xxl" withBorder>
+        <Stack align="center" gap="lg">
+          <img src={ShieldImage} alt="" />
+          <Text fw="bold">{t`All security checks pass`}</Text>
+        </Stack>
+      </Card>
+    );
+  }
+
+  const { icon, iconColor } = getStatusInfo("fail");
 
   return (
     <Card p="lg" withBorder>
       <Group gap="sm">
-        <Icon
-          name={isAllClear ? "check_filled" : "warning_triangle_filled"}
-          c={isAllClear ? "feedback-positive" : "feedback-negative"}
-        />
-        <Text fw="bold">
-          {isAllClear
-            ? t`All security checks pass`
-            : t`${passedCount} of ${totalCount} checks pass`}
-        </Text>
+        <Icon name={icon} c={iconColor} />
+        <Text fw="bold">{t`${passedCount} of ${checks.length} checks pass`}</Text>
       </Group>
     </Card>
   );
 };
 
-type HealthChecksContentProps = Pick<
-  HealthCheckGroupProps,
-  "recheckingCheckIds" | "isRecheckingAll" | "onRecheck"
-> & {
+type HealthChecksContentProps = {
   checks: HealthCheck[];
-  error: unknown;
+  isError: boolean;
 };
 
-const HealthChecksContent = ({
-  checks,
-  error,
-  ...groupProps
-}: HealthChecksContentProps) => {
-  if (error) {
+const HealthChecksContent = ({ checks, isError }: HealthChecksContentProps) => {
+  if (isError) {
     return (
       <EmptyState
         icon="warning_triangle_filled"
@@ -143,111 +126,58 @@ const HealthChecksContent = ({
     return <EmptyState message={t`No health checks apply to this instance.`} />;
   }
 
-  const { failing, unknown, passed } = groupHealthChecks(checks);
-
   return (
-    <Stack gap="lg">
-      <HealthChecksSummary
-        passedCount={passed.length}
-        totalCount={checks.length}
-      />
-      <HealthCheckGroup
-        title={t`Failing`}
-        checks={failing}
-        isDefaultOpened
-        {...groupProps}
-      />
-      <HealthCheckGroup
-        title={t`Couldn't check`}
-        checks={unknown}
-        isDefaultOpened={false}
-        {...groupProps}
-      />
-      <HealthCheckGroup
-        title={t`Passed`}
-        checks={passed}
-        isDefaultOpened={false}
-        {...groupProps}
-      />
+    <Stack gap="xxl">
+      <HealthChecksSummary checks={checks} />
+      <Stack gap="lg">
+        {HEALTH_CHECK_STATUSES.map((status) => (
+          <HealthCheckGroup
+            key={status}
+            status={status}
+            checks={getChecksByStatus(checks, status)}
+          />
+        ))}
+      </Stack>
     </Stack>
   );
 };
 
 export const HealthChecksPage = () => {
-  const { data, isLoading, error } = useListHealthChecksQuery(undefined, {
+  const { data, isLoading, isError } = useListHealthChecksQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
-  const [recheck] = useRecheckHealthCheckMutation();
   const [recheckAll, { isLoading: isRecheckingAll }] =
-    useRecheckHealthChecksMutation();
-  const [recheckingCheckIds, setRecheckingCheckIds] = useState<
-    ReadonlySet<HealthCheckId>
-  >(new Set());
-  const [sendToast] = useToast();
+    useRecheckHealthChecksMutation({ fixedCacheKey: RECHECK_ALL_CACHE_KEY });
+  const showRecheckError = useRecheckErrorToast();
+  const checks = data?.checks ?? [];
 
   useEffect(() => {
     trackHealthChecksPageViewed();
   }, []);
 
-  const showRecheckError = () =>
-    sendToast({
-      variant: "negative",
-      message: t`Failed to re-check. Please try again.`,
-    });
-
-  const handleRecheck = async (checkId: HealthCheckId) => {
-    trackHealthCheckRecheckClicked(checkId);
-    setRecheckingCheckIds((ids) => new Set(ids).add(checkId));
-    try {
-      await recheck(checkId).unwrap();
-    } catch (error) {
-      if (!isObject(error) || error.status !== 404) {
-        showRecheckError();
-      }
-    } finally {
-      setRecheckingCheckIds((ids) => {
-        const nextIds = new Set(ids);
-        nextIds.delete(checkId);
-        return nextIds;
-      });
-    }
-  };
-
   const handleRecheckAll = async () => {
-    trackAllHealthChecksRecheckClicked();
-    try {
-      await recheckAll().unwrap();
-    } catch {
+    trackHealthCheckRecheckClicked("all");
+    const { error } = await recheckAll();
+    if (error) {
       showRecheckError();
     }
   };
 
-  const checks = data?.checks ?? [];
-  const isRechecking = isRecheckingAll || recheckingCheckIds.size > 0;
-
   return (
     <Stack gap="lg" data-testid="health-checks-page">
-      <Group gap="sm" justify="space-between" align="center">
+      <Group gap="sm" justify="space-between">
         <Title order={1}>{t`Health checks`}</Title>
-        <Button
+        <RecheckButton
           variant="subtle"
-          leftSection={
-            isRecheckingAll ? <Loader size="1rem" /> : <Icon name="sync" />
-          }
-          disabled={isRechecking || checks.length === 0}
+          isRechecking={isRecheckingAll}
+          isDisabled={checks.length === 0}
           onClick={handleRecheckAll}
         >
           {t`Re-check all`}
-        </Button>
+        </RecheckButton>
       </Group>
       <LoadingAndErrorWrapper loading={isLoading}>
-        <HealthChecksContent
-          checks={checks}
-          error={error}
-          recheckingCheckIds={recheckingCheckIds}
-          isRecheckingAll={isRecheckingAll}
-          onRecheck={handleRecheck}
-        />
+        <HealthChecksContent checks={checks} isError={isError} />
       </LoadingAndErrorWrapper>
     </Stack>
   );

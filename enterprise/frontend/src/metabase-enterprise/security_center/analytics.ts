@@ -19,16 +19,11 @@ export const trackHealthChecksPageViewed = () => {
   });
 };
 
-export const trackHealthCheckRecheckClicked = (checkId: HealthCheckId) => {
+export const trackHealthCheckRecheckClicked = (
+  checkId: HealthCheckId | "all",
+) => {
   trackSimpleEvent({
     event: "security_center_health_check_recheck_clicked",
     event_detail: checkId,
-  });
-};
-
-export const trackAllHealthChecksRecheckClicked = () => {
-  trackSimpleEvent({
-    event: "security_center_health_check_recheck_clicked",
-    event_detail: "all",
   });
 };

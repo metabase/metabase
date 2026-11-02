@@ -283,7 +283,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       cy.url().should("include", "/admin/security-center/health-checks");
       cy.findByTestId("health-checks-page").within(() => {
         cy.findByText(/checks pass/).should("be.visible");
-        cy.findByRole("region", { name: "Failing" }).within(() => {
+        cy.findByRole("region", { name: /Failing/ }).within(() => {
           healthCheckCard("https-site-url").should("be.visible");
         });
       });
@@ -293,7 +293,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       H.updateSetting("site-url", "http://localhost:4000");
       cy.visit("/admin/security-center/health-checks");
 
-      cy.findByRole("region", { name: "Failing" }).within(() => {
+      cy.findByRole("region", { name: /Failing/ }).within(() => {
         healthCheckCard("https-site-url").should("be.visible");
       });
 
@@ -304,8 +304,8 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
         .click();
 
       healthCheckCard("https-site-url").should("not.exist");
-      cy.findByRole("region", { name: "Passed" }).within(() => {
-        cy.findByRole("button", { name: /Passed/ }).click();
+      cy.findByRole("button", { name: /Passed/ }).click();
+      cy.findByRole("region", { name: /Passed/ }).within(() => {
         healthCheckCard("https-site-url").should("be.visible");
       });
     });
