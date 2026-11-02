@@ -1181,19 +1181,126 @@
 
 (deftest card-in-a-data-apps-collection-is-admin-only-test
   (testing "Only administrators write a card in a collection of the data apps namespace"
-    ;; created as a load creates it, which doesn't check that the table is published
-    (binding [mi/*deserializing?* true]
-      (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
-                     :model/Card       card                {:collection_id collection-id
-                                                            :dataset_query (mt/mbql-query venues)}]
-        (mt/with-test-user :crowberto
-          (is (true? (mi/can-write? card)))
-          (is (true? (mi/can-write? :model/Card (:id card))))
-          (is (true? (:can_write (t2/hydrate card :can_write))))
-          (is (true? (mi/can-create? :model/Card {:collection_id collection-id}))))
-        (mt/with-test-user :rasta
-          (is (false? (mi/can-write? card)))
-          (is (false? (mi/can-create? :model/Card {:collection_id collection-id}))))))))
+    (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
+                   :model/Card       card                {:collection_id collection-id
+                                                          :dataset_query (mt/mbql-query venues)}]
+      (mt/with-test-user :crowberto
+        (is (true? (mi/can-write? card)))
+        (is (true? (mi/can-write? :model/Card (:id card))))
+        (is (true? (:can_write (t2/hydrate card :can_write))))
+        (is (true? (mi/can-create? :model/Card {:collection_id collection-id}))))
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-write? card)))
+        (is (false? (mi/can-create? :model/Card {:collection_id collection-id})))))))
+
+(defn- venues-query
+  "A query of all venues."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
+(deftest card-in-a-data-apps-collection-holds-query-on-database-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must hold a query on a database"
+                            (t2/insert! :model/Card {:name                   "Empty"
+                                                     :display                "table"
+                                                     :visualization_settings {}
+                                                     :creator_id             (mt/user->id :crowberto)
+                                                     :collection_id          collection-id
+                                                     :dataset_query          {}}))))))
+
+(deftest card-in-a-data-apps-collection-is-plain-question-test
+  (testing "a card in a collection of the data apps namespace is a question in no dashboard or document, not archived,
+            public or embedded, however it gets there"
+    (when config/ee-available?
+      (mt/with-temporary-setting-values [enable-public-sharing   true
+                                         enable-embedding-static true]
+        (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
+                       :model/Card       {card-id :id}       {:collection_id collection-id :dataset_query (venues-query)}
+                       :model/Document   {document-id :id}   {:name "Notes"}]
+          (doseq [[label changes] [["archived" {:archived true}]
+                                   ["a model" {:type :model}]
+                                   ["public" {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :crowberto)}]
+                                   ["embedded" {:enable_embedding true}]
+                                   ["with embedding parameters" {:embedding_params {}}]
+                                   ["in a document" {:document_id document-id}]]]
+            (testing label
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question, in no dashboard or document"
+                                    (t2/update! :model/Card :id card-id changes)))
+              (testing "moved in from elsewhere"
+                (mt/with-temp [:model/Card {other-id :id} (merge {:dataset_query (venues-query)} changes)]
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question|can hold only questions"
+                                        (t2/update! :model/Card :id other-id {:collection_id collection-id})))
+                  (is (nil? (t2/select-one-fn :collection_id :model/Card :id other-id)))))))
+          (is (=? {:archived false :public_uuid nil :type :question :document_id nil}
+                  (t2/select-one :model/Card :id card-id))))))))
+
+(deftest card-in-a-data-apps-collection-has-no-parameters-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
+                   :model/Card       {card-id :id}       {:collection_id collection-id :dataset_query (venues-query)}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can't have parameters"
+                            (t2/update! :model/Card :id card-id {:parameters [{:id   "venue"
+                                                                               :slug "venue"
+                                                                               :name "Venue"
+                                                                               :type :string/=}]})))
+      (testing "an empty list is no parameters"
+        (mt/with-temp [:model/Card {other-id :id} {:collection_id collection-id :dataset_query (venues-query) :parameters []}]
+          (is (= [] (t2/select-one-fn :parameters :model/Card :id other-id))))))))
+
+(deftest card-in-a-data-apps-collection-reads-table-in-single-stage-test
+  (testing "a card in a collection of the data apps namespace reads a table in a single MBQL stage, without explicit
+            joins or custom columns, whether it is saved or changed"
+    (when config/ee-available?
+      (let [mp         (mt/metadata-provider)
+            venues     (venues-query)
+            categories (lib.metadata/table mp (mt/id :categories))]
+        (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
+                       :model/Card       {card-id :id}       {:collection_id collection-id :dataset_query venues}
+                       :model/Card       {other-id :id}      {:dataset_query venues}]
+          (doseq [[label query message]
+                  [["SQL" (lib/native-query mp "SELECT * FROM venues") #"must be built with the query builder"]
+                   ["two stages" (lib/append-stage (lib/aggregate venues (lib/count))) #"single stage"]
+                   ["a card as the source, even one in the same collection"
+                    (lib/query mp (lib.metadata/card mp card-id)) #"must read a table, not a card"]
+                   ["another card as the source" (lib/query mp (lib.metadata/card mp other-id)) #"must read a table, not a card"]
+                   ["an explicit join"
+                    (lib/join venues (lib/join-clause categories [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                                         (lib.metadata/field mp (mt/id :categories :id)))]))
+                    #"can't join tables explicitly"]
+                   ["a custom column"
+                    (lib/expression venues "Double price" (lib/* (lib.metadata/field mp (mt/id :venues :price)) 2))
+                    #"can't have custom columns"]]]
+            (testing label
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                    (mt/with-temp [:model/Card _ {:collection_id collection-id :dataset_query query}])))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                    (t2/update! :model/Card :id card-id {:dataset_query query})))
+              (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card :id card-id))))))))))
+
+(deftest card-in-a-data-apps-collection-reads-any-table-test
+  (testing "the hook reads only the card, so the tables, metrics, segments and measures its query names may be any"
+    (when config/ee-available?
+      (let [venues   (venues-query)
+            category (some #(when (= (mt/id :categories :name) (:id %)) %) (lib/filterable-columns venues))]
+        (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
+                       :model/Card       {card-id :id}       {:collection_id collection-id :dataset_query venues}
+                       :model/Card       {metric-id :id}     {:type :metric :dataset_query (lib/aggregate venues (lib/count))}
+                       :model/Segment    {segment-id :id}    {:name       "Bars"
+                                                              :table_id   (mt/id :venues)
+                                                              :definition (lib/filter venues (lib/= category "Bar"))}
+                       :model/Measure    {measure-id :id}    {:name       "Categories"
+                                                              :table_id   (mt/id :venues)
+                                                              :definition (lib/aggregate venues (lib/distinct category))}]
+          (let [mp (mt/metadata-provider)]
+            (doseq [[label query] [["another table" (lib/query mp (lib.metadata/table mp (mt/id :users)))]
+                                   ["an implicit join" (lib/breakout venues category)]
+                                   ["a metric" (lib/aggregate venues (lib.metadata/metric mp metric-id))]
+                                   ["a segment" (lib/filter venues (lib.metadata/segment mp segment-id))]
+                                   ["a measure" (lib/aggregate venues (lib.metadata/measure mp measure-id))]]]
+              (testing label
+                (is (= 1 (t2/update! :model/Card :id card-id {:dataset_query query})))))))))))
 
 (deftest ^:parallel breakouts->identifier->action-fn-test
   (are [b1 b2 expected-identifier->action] (=? expected-identifier->action
