@@ -1444,6 +1444,22 @@
                     (map :name)
                     set)))
 
+(deftest transforms-folder-cannot-be-archived-test
+  (mt/with-temp [:model/Collection {folder-id :id} {:name "Folder" :namespace :transforms}]
+    (testing "archiving a transforms folder is refused"
+      (is (= "A transforms folder cannot be archived. Delete it instead."
+             (mt/user-http-request :crowberto :put 400 (str "collection/" folder-id) {:archived true})))
+      (is (false? (t2/select-one-fn :archived :model/Collection :id folder-id))))
+    (testing "a refused archive also leaves the other fields of the request unwritten"
+      (mt/user-http-request :crowberto :put 400 (str "collection/" folder-id) {:name "Renamed" :archived true})
+      (is (= "Folder" (t2/select-one-fn :name :model/Collection :id folder-id))))
+    (testing "an already archived transforms folder can still be unarchived"
+      (t2/update! :model/Collection :id folder-id {:archived             true
+                                                   :archived_directly    true
+                                                   :archive_operation_id (str (random-uuid))})
+      (mt/user-http-request :crowberto :put 200 (str "collection/" folder-id) {:archived false})
+      (is (false? (t2/select-one-fn :archived :model/Collection :id folder-id))))))
+
 (deftest collections-are-moved-to-trash-when-archived
   (testing "I can trash something by marking it as archived"
     (mt/with-temp [:model/Collection collection {:name "Art Collection"}

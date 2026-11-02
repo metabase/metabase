@@ -99,7 +99,8 @@
 
 (mu/defn update-collection!
   "Modify the collection with `id`, including archiving or unarchiving it, or moving it. Write-checks the collection,
-  gates `authority_level` behind superuser plus the Official Collections feature, applies the plain column updates,
+  refuses to archive a transforms folder with a 400, gates `authority_level` behind superuser plus the Official
+  Collections feature, applies the plain column updates,
   then moves or archives as `collection-updates` asks, and publishes the update and touch events. Returns the updated
   collection. The single source of truth for collection updates; REST and agent callers both go through here."
   [id                 :- ms/PositiveInt
@@ -109,6 +110,11 @@
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
      (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
+    ;; A transforms folder is deleted, never archived: an archived folder hides transforms that keep running. Check
+    ;; before any write, so a refused request changes nothing.
+    (api/check-400 (not (and (:archived collection-updates)
+                             (= (:namespace collection-before-update) collection/transforms-ns)))
+                   (tru "A transforms folder cannot be archived. Delete it instead."))
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword (:authority_level collection-updates))
