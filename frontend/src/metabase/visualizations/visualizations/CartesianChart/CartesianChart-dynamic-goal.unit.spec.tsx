@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import {
   DYNAMIC_GOAL_CARTESIAN_DISPLAYS,
+  queryAllEChartsGoalLines,
   queryEChartsGoalLine,
 } from "__support__/dynamic-goals";
 import { setupCardDataset } from "__support__/server-mocks";
@@ -14,6 +15,7 @@ import type {
   DatasetData,
   RawSeries,
   VisualizationDisplay,
+  VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -43,7 +45,21 @@ const ROWS = [
   ["Mar", 3],
 ];
 
+const MULTI_SERIES_COLS = [
+  ...COLS,
+  createMockColumn({ name: "sum", base_type: "type/Integer" }),
+];
+
+const MULTI_SERIES_ROWS = [
+  ["Jan", 1, 10],
+  ["Feb", 2, 20],
+  ["Mar", 3, 30],
+];
+
 const GOAL_LABEL = "Target";
+
+// echarts draws the line over a white halo
+const PATHS_PER_GOAL_LINE = 2;
 
 const ANSWERED = createMockReferencedEntitiesResults({
   column: "goal",
@@ -55,15 +71,27 @@ const FAILED = createMockFailedReferencedEntitiesResults();
 type SetupOpts = {
   display: VisualizationDisplay;
   referencedEntities?: DatasetData["referenced_entities"];
+  cols?: DatasetData["cols"];
+  rows?: DatasetData["rows"];
+  settings?: VisualizationSettings;
   onUpdateGoalWarning?: OnUpdateGoalWarning;
 };
 
 async function setup({
   display,
   referencedEntities,
+  cols,
+  rows,
+  settings,
   onUpdateGoalWarning,
 }: SetupOpts) {
-  const rawSeries = createSeries(display, referencedEntities);
+  const rawSeries = createSeries({
+    display,
+    referenced_entities: referencedEntities,
+    cols,
+    rows,
+    settings,
+  });
 
   jest.useFakeTimers();
   renderWithProviders(
@@ -162,10 +190,57 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
   },
 );
 
-function createSeries(
-  display: VisualizationDisplay,
-  referenced_entities?: DatasetData["referenced_entities"],
-): RawSeries {
+describe("line chart with multiple series and a dynamic goal", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  // each panel has its own y-axis, so unlike multiple y-axes the goal isn't tied to the first series
+  it("draws the goal line in each split panel", async () => {
+    await setup({
+      display: "line",
+      referencedEntities: ANSWERED,
+      cols: MULTI_SERIES_COLS,
+      rows: MULTI_SERIES_ROWS,
+      settings: {
+        "graph.metrics": ["count", "sum"],
+        "graph.split_panels": true,
+      },
+    });
+
+    expect(queryAllEChartsGoalLines()).toHaveLength(2 * PATHS_PER_GOAL_LINE);
+  });
+
+  it("draws one goal line with multiple y-axes", async () => {
+    await setup({
+      display: "line",
+      referencedEntities: ANSWERED,
+      cols: MULTI_SERIES_COLS,
+      rows: MULTI_SERIES_ROWS,
+      settings: {
+        "graph.metrics": ["count", "sum"],
+        series_settings: { sum: { axis: "right" } },
+      },
+    });
+
+    expect(queryAllEChartsGoalLines()).toHaveLength(PATHS_PER_GOAL_LINE);
+    expect(screen.getByText("250")).toBeInTheDocument();
+  });
+});
+
+function createSeries({
+  display,
+  referenced_entities,
+  cols = COLS,
+  rows = ROWS,
+  settings,
+}: {
+  display: VisualizationDisplay;
+  referenced_entities?: DatasetData["referenced_entities"];
+  cols?: DatasetData["cols"];
+  rows?: DatasetData["rows"];
+  settings?: VisualizationSettings;
+}): RawSeries {
   return [
     {
       card: createMockCard({
@@ -176,11 +251,12 @@ function createSeries(
           "graph.show_goal": true,
           "graph.goal_label": GOAL_LABEL,
           "graph.goal_value": { type: "card", id: 9, column: "goal" },
+          ...settings,
         },
       }),
       data: createMockDatasetData({
-        cols: COLS,
-        rows: ROWS,
+        cols,
+        rows,
         referenced_entities,
       }),
     },

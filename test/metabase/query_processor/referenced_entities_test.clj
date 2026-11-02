@@ -141,6 +141,22 @@
         (is (= "failed" (:status goal)))
         (is (nil? (:error_type goal)))))))
 
+(deftest dataset-endpoint-archived-source-test
+  (testing "archiving a goal's source doesn't break the goal: unlike a deleted source, it still resolves"
+    (mt/with-temp [:model/Card    {card-id :id}    {:archived      true
+                                                    :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Measure {measure-id :id} {:archived   true
+                                                    :name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (venues-count-measure)}]
+      (let [response (mt/user-http-request
+                      :crowberto :post 202 "dataset"
+                      (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                             :referenced_entities [{:type "card" :id card-id}
+                                                   {:type "measure" :id measure-id}]))]
+        (is (= [[100]] (get-in (ref-entity response :card card-id) [:data :rows])))
+        (is (= [[100]] (get-in (ref-entity response :measure measure-id) [:data :rows])))))))
+
 (deftest dataset-endpoint-unreadable-card-test
   (testing "a referenced card the caller can't read fails softly without failing the main query"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -479,6 +495,25 @@
           (is (= "completed" (:status goal)))
           (is (= [[1000]] (get-in goal [:data :rows]))))))))
 
+(deftest public-card-endpoint-scrubs-referenced-entity-errors-test
+  (testing "GET /api/public/card/:uuid/query hides the raw error of a failed referenced query"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/native-query {:query "SELECT * FROM goal_table_that_does_not_exist"})}
+                     :model/Card {uuid :public_uuid} {:dataset_query           (mt/mbql-query venues {:aggregation [[:count]]})
+                                                      :display                 :scalar
+                                                      :public_uuid             (str (random-uuid))
+                                                      :visualization_settings  {:scalar.segments
+                                                                                [{:min   {:id     goal-id
+                                                                                          :type   "card"
+                                                                                          :column "count"}
+                                                                                  :max   nil
+                                                                                  :color "red"}]}}]
+        (let [response (client/client :get 202 (str "public/card/" uuid "/query"))
+              goal     (ref-entity response :card goal-id)]
+          (is (= "completed" (:status response)))
+          (is (= "failed" (:status goal)))
+          (is (= "An error occurred while running the query." (:error goal))))))))
+
 (deftest public-card-endpoint-keeps-referenced-entity-error-type-test
   (testing "GET /api/public/card/:uuid/query keeps the error type of a referenced card that doesn't exist"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -513,7 +548,19 @@
             (testing "referenced card ran against the other database"
               (is (nil? (:error goal)))
               (is (= "completed" (:status goal)))
-              (is (= [[3]] (get-in goal [:data :rows]))))))))))
+              (is (= [[3]] (get-in goal [:data :rows])))))
+          (testing "a saved card reads the reference from its viz settings"
+            (mt/with-temp [:model/Card {chart-id :id} {:dataset_query          main-query
+                                                       :display                :scalar
+                                                       :visualization_settings {:scalar.segments
+                                                                                [{:min   (goal-ref goal-id)
+                                                                                  :max   nil
+                                                                                  :color "red"}]}}]
+              (let [response (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id))
+                    goal     (ref-entity response :card goal-id)]
+                (is (= [[100]] (get-in response [:data :rows])))
+                (is (nil? (:error goal)))
+                (is (= [[3]] (get-in goal [:data :rows])))))))))))
 
 (deftest card-endpoint-measure-goal-test
   (testing "POST /api/card/:id/query resolves a measure GoalSource from viz settings"
