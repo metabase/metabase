@@ -173,6 +173,7 @@ jobs:
       contents: read
       issues: write
     uses: ./.github/workflows/release-milestone-manage.yml
+    secrets: inherit
     with:
       version: ${{ inputs.version }}
 
@@ -281,3 +282,27 @@ jobs:
     with:
       commit: ${{ inputs.commit }}
       version: ${{ inputs.version }}
+
+  notify-failure:
+    needs:
+      - start-message
+      - check-version
+      - check-commit
+      - tag-uberjar-for-release
+      - upload-to-cloud
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Send release failure message
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Tagging
+          version: ${{ inputs.version }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
