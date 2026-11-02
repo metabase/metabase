@@ -6,9 +6,7 @@ redirect_from:
 
 # Introduction to model actions
 
-> We recommend [data actions](../../data-actions.md) over model actions. Data actions don't need a model. Create a model action only when you need to run the action from a [button on a dashboard](../../../dashboards/actions.md).
-
-> Model actions only work on [PostgreSQL and MySQL](../../data-actions.md#databases-that-support-data-actions).
+> Like [data actions](../../data-actions.md), model actions only work on [PostgreSQL and MySQL](../../data-actions.md#databases-that-support-data-actions).
 
 ![Example action](./images/example-action.png)
 

@@ -12,11 +12,11 @@ Data apps are custom apps that you build on your Metabase data with an AI coding
 
 ## [Getting started with data apps](./getting-started.md)
 
-Set up a development Metabase, a Git repository, and an AI coding agent, and then build your first app and ship it to production, step by step.
+Build your first app, step by step. You need only your production Metabase.
 
 ## [Build a data app](./build.md)
 
-What you need to build an app, how an AI coding agent builds and changes it with the Metabase CLI, where to keep the app's source code, and how to ship the app to production through Git.
+What you need to build an app, how an AI coding agent builds and changes it with the Metabase CLI, where to keep the app's source code, and how to ship the app to production with Git.
 
 ## [Manage data apps](./manage.md)
 
