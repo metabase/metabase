@@ -1450,15 +1450,16 @@
     (mt/test-driver :sqlserver
       (is (true? (sql-jdbc.execute/cancelation-poisons-connection? :sqlserver))
           "SQL Server does not recover from a cancelation on its own, so the Connection must not be recycled")
-      (letfn [(rows [table n]
+      (letfn [(table-query [table]
                 (let [mp (mt/metadata-provider)]
-                  (cond-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                    n    (lib/limit n)
-                    true (-> qp/process-query mt/rows))))]
-        ;; stopping at the limit leaves the statement producing, which is what triggers the cancel-and-discard
-        (is (= 4 (count (rows :venues 4))))
+                  (lib/query mp (lib.metadata/table mp (mt/id table)))))
+              (rows [query]
+                (-> query qp/process-query mt/rows))]
+        ;; a cap below the SQL limit leaves the statement producing, which is what triggers the cancel-and-discard
+        (is (= 4 (count (rows (-> (lib/limit (table-query :venues) 10)
+                                  (assoc :constraints {:max-results-bare-rows 4}))))))
         (testing "and a later query reading every row still succeeds"
-          (is (= 1000 (count (rows :checkins nil)))))))))
+          (is (= 1000 (count (rows (table-query :checkins))))))))))
 
 (defn- temp-table-rows [conn table]
   (driver/query-on-connection :sqlserver conn [(str "SELECT * FROM " table) []] {:max-rows 10}))

@@ -895,11 +895,55 @@
   [_ ^SQLException e]
   (boolean (re-find #"^(?:21|22|23|42)" (str (.getSQLState e)))))
 
+(defn- cancel-requested?
+  "Whether the QP asked to cancel the current query through [[driver-api/canceled-chan]]."
+  []
+  ;; the channel is a promise-chan, so `poll!` does not take the value away from other readers
+  (some? (some-> (driver-api/canceled-chan) a/poll!)))
+
 (defn- error-in-query?
   [driver ^SQLException e]
-  (and (not (or (some-> (driver-api/canceled-chan) a/poll!)
+  (and (not (or (cancel-requested?)
                 (driver/query-canceled? driver e)))
        (impl-error-in-query? driver e)))
+
+(defn- sql-row-bound
+  "The row bound that the final MBQL stage puts in the SQL, or nil when there is none.
+
+    (sql-row-bound {:type :query, :query {:limit 4}})                  ; => 4
+    (sql-row-bound {:type :query, :query {:page {:page 2, :items 4}}}) ; => 4
+    (sql-row-bound {:type :native, :native {:query \"SELECT 1\"}})     ; => nil"
+  [{query-type :type, inner-query :query}]
+  (when (= :query query-type)
+    ;; only the top-level stage: a bound on a nested `:source-query` does not bound the rows of the outer query
+    (let [bound (or (:limit inner-query) (get-in inner-query [:page :items]))]
+      (when (pos-int? bound)
+        bound))))
+
+(defn- bound-at-cap
+  "The SQL row bound of `outer-query` when it equals `max-rows`, else nil.
+
+    (bound-at-cap {:type :query, :query {:limit 4}} 4) ; => 4
+    (bound-at-cap {:type :query, :query {:limit 5}} 4) ; => nil
+
+  A bound of `Integer/MAX_VALUE` gives nil, because the statement cap is one more than the bound, and
+  `Statement.setMaxRows` takes an `int`."
+  [outer-query max-rows]
+  (let [bound (sql-row-bound outer-query)]
+    (when (and bound
+               (= bound max-rows)
+               (< bound Integer/MAX_VALUE))
+      bound)))
+
+(defn- cancel-after-reduce?
+  "Whether [[execute-reducible-query]] cancels the statement after the reduce.
+
+    (cancel-after-reduce? :postgres false 4 4)   ; => false, the reduce read the whole SQL bound
+    (cancel-after-reduce? :postgres false nil 4) ; => true"
+  [driver exhausted? bound rows-read]
+  (not (or exhausted?
+           (= bound rows-read)
+           (drivers-exempt-from-cancelation driver))))
 
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
@@ -912,7 +956,8 @@
                      (->> (driver-api/query->remark driver outer-query)
                           (inject-remark driver sql))
                      sql)
-          max-rows (driver-api/determine-query-max-rows outer-query)]
+          max-rows (driver-api/determine-query-max-rows outer-query)
+          bound    (bound-at-cap outer-query max-rows)]
       (do-with-connection-with-options
        driver
        (driver-api/database (driver-api/metadata-provider))
@@ -927,14 +972,16 @@
            (try
              (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
                          ^ResultSet rs (try
-                                         (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
+                                         (execute-statement-or-prepared-statement!
+                                          driver stmt (if bound (inc bound) max-rows) params sql)
                                          (catch Throwable e
                                            (throw (query-error driver sql params e))))]
                (let [rsmeta           (.getMetaData rs)
                      results-metadata {:cols (column-metadata driver rsmeta)}
-                     ;; whether the ResultSet ran out of rows is only observable while reducing, but it is needed after
-                     ;; reduction has finished, so the row thunk records it on the way past
+                     ;; The row thunk records whether the ResultSet is exhausted and how many rows it read. Only the
+                     ;; reduce can see this, but the code after the reduce needs it.
                      exhausted?       (volatile! false)
+                     rows-read        (volatile! 0)
                      next-row         (row-thunk driver rs rsmeta)
                      rows             (driver-api/reducible-rows
                                        (fn []
@@ -946,19 +993,39 @@
                                                        (throw (if (error-in-query? driver e)
                                                                 (query-error driver sql params e)
                                                                 e))))]
-                                           (when-not row
+                                           (if row
+                                             (vswap! rows-read inc)
                                              (vreset! exhausted? true))
                                            row))
                                        (driver-api/canceled-chan))]
                  (try (respond results-metadata rows)
-                      ;; Following cancels the statement on the dbms side.
-                      ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
-                      ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
-                      ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
-                      ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
-                      ;; An exhausted ResultSet has nothing left to cancel.
+                      ;; Cancel the statement on the DBMS side when it can still have rows to send. Otherwise `.close`
+                      ;; can block after the reduce stops early, for example at
+                      ;; [[metabase.query-processor.middleware.limit/limit-xform]]. This occurred on Redshift:
+                      ;; https://github.com/metabase/metabase/issues/39018 and
+                      ;; https://github.com/metabase/metabase/pull/41470.
+                      ;; It also handles a query canceled through [[driver-api/canceled-chan]] (#41448).
+                      ;;
+                      ;; Do not cancel when no rows remain: the ResultSet is exhausted, or the reduce read exactly
+                      ;; the SQL bound, which is also the QP row cap. A needless cancel is not free: on Redshift it
+                      ;; names the session, not the statement, so a late cancel can stop the next query on that
+                      ;; connection.
+                      ;;
+                      ;; At the bound, the statement cap is `bound + 1`. With a cap of `bound`, Redshift sends a row
+                      ;; limit of `bound` in Execute, and the server can suspend the portal:
+                      ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/v2.2.5/src/main/java/com/amazon/redshift/core/v3/QueryExecutorImpl.java#L1494-L1506
+                      ;; `Statement.close()` then sends a cancel itself:
+                      ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/v2.2.5/src/main/java/com/amazon/redshift/jdbc/RedshiftStatementImpl.java#L767-L788
+                      ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/v2.2.5/src/main/java/com/amazon/redshift/jdbc/RedshiftStatementImpl.java#L1050-L1089
+                      ;;
+                      ;; With `bound + 1`, the SQL bound ends the query first. `with-open` closes the ResultSet
+                      ;; before the Statement. On Redshift, `rs.close()` waits for the fetch ring buffer thread, which
+                      ;; reads the socket to ReadyForQuery and sets the state to IDLE:
+                      ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/v2.2.5/src/main/java/com/amazon/redshift/core/v3/QueryExecutorImpl.java#L2892-L2905
+                      ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/v2.2.5/src/main/java/com/amazon/redshift/core/v3/QueryExecutorImpl.java#L3082
+                      ;; So `stmt.close()` finds the statement idle and sends no cancel.
                       (finally
-                        (when-not (or @exhausted? (drivers-exempt-from-cancelation driver))
+                        (when (cancel-after-reduce? driver @exhausted? bound @rows-read)
                           (vreset! canceled? (cancel-statement! driver stmt)))))))
              (catch SQLException e
                (throw (ex-info (ex-message e) {:type driver-api/qp.error-type.qp} e)))
@@ -966,8 +1033,11 @@
              ;; ClickHouse and Presto their `.close` round-trips to the server and throws once the Connection is gone.
              ;; Discarding is safe here because this Connection was acquired for this query alone -- see
              ;; [[do-with-resolved-connection]] for the cases where a Connection instead belongs to the caller.
+             ;; A QP cancel can reach the Statement through the canceled chan alone, for example when it arrives after
+             ;; the reduce read the last row. So a fired channel counts as a cancel too.
              (finally
-               (when (and @canceled? (cancelation-poisons-connection? driver))
+               (when (and (or @canceled? (cancel-requested?))
+                          (cancelation-poisons-connection? driver))
                  (sql-jdbc.conn/discard-pooled-connection! conn))))))))))
 
 (defn reducible-query

@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
@@ -329,14 +330,24 @@
                   response (mt/user-http-request :crowberto :post 503 "dataset" query)]
               (is (= "connection-pool-checkout-queue-full" (:error_type response))))))))))
 
-(defn- venues-rows
-  "Run an unaggregated venues query limited to `n` rows."
-  [n]
+(defn- venues-query
+  "An unaggregated query of all 100 venues."
+  []
   (let [mp (mt/metadata-provider)]
-    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-        (lib/limit n)
-        qp/process-query
-        mt/rows)))
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
+(defn- venues-count-by-id
+  "A query that counts venues per id: 100 rows, aggregated, so the QP adds no SQL limit."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (venues-query)
+        (lib/aggregate (lib/count))
+        (lib/breakout (lib.metadata/field mp (mt/id :venues :id))))))
+
+(defn- row-count
+  "Run `query` and return how many rows it returned."
+  [query]
+  (-> query qp/process-query mt/rows count))
 
 (deftest cancel-statement-only-when-rows-remain-test
   (testing "the statement is canceled only when reduction stopped before the ResultSet ran out of rows"
@@ -344,20 +355,132 @@
                       {:+parent :sql-jdbc
                        :-fns    [#'sql-jdbc.execute/drivers-exempt-from-cancelation]})
       ;; take the dataset creation and sync queries before anything is counted
-      (venues-rows 1)
-      (let [cancels (atom 0)]
-        ;; the stub reports that no cancelation was issued, so nothing downstream acts on one
-        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/cancel-statement! (fn [_driver _stmt]
+      (row-count (lib/limit (venues-query) 1))
+      (let [cancels (atom 0)
+            cancel! (mt/original-fn #'sql-jdbc.execute/cancel-statement!)
+            run     (fn [query]
+                      (reset! cancels 0)
+                      (row-count query))]
+        ;; count each call, then do the real cancel, so that a driver still discards a canceled connection
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/cancel-statement! (fn [driver stmt]
                                                                          (swap! cancels inc)
-                                                                         false)]
+                                                                         (cancel! driver stmt))]
           (testing "rows ran out, so there is nothing left to cancel"
-            (reset! cancels 0)
-            (is (= 100 (count (venues-rows 1000))))
+            (is (= 100 (run (lib/limit (venues-query) 1000))))
             (is (zero? @cancels)))
-          (testing "reduction stopped at the row limit while the statement was still producing (#39018)"
-            (reset! cancels 0)
-            (is (= 4 (count (venues-rows 4))))
-            (is (pos? @cancels))))))))
+          (testing "reduction read exactly the SQL limit, so the server has no rows left"
+            (is (= 4 (run (lib/limit (venues-query) 4))))
+            (is (zero? @cancels)))
+          (testing "reduction read exactly the page items, so the server has no rows left"
+            (is (= 4 (run (lib/with-page (venues-query) {:page 1 :items 4}))))
+            (is (zero? @cancels)))
+          (testing "a cap below the SQL limit leaves the statement producing (#39018)"
+            (is (= 4 (run (-> (lib/limit (venues-query) 10)
+                              (assoc :constraints {:max-results-bare-rows 4})))))
+            (is (= 1 @cancels)))
+          (testing "an aggregated query has no SQL limit, so a cap leaves the statement producing"
+            (is (= 4 (run (assoc (venues-count-by-id) :constraints {:max-results 4}))))
+            (is (= 1 @cancels))))))))
+
+(defn- rff-canceling-at-row!
+  "The default rff, which also cancels the query through [[qp.pipeline/*canceled-chan*]] when it gets row `n`."
+  [n]
+  (fn [metadata]
+    (let [rf        (qp.reducible/default-rff metadata)
+          rows-seen (volatile! 0)]
+      (fn
+        ([] (rf))
+        ([acc] (rf acc))
+        ([acc row]
+         (when (= n (vswap! rows-seen inc))
+           (a/offer! qp.pipeline/*canceled-chan* ::canceled))
+         (rf acc row))))))
+
+(defn- do-with-poisoning-cancelation
+  "Call `thunk` while [[sql-jdbc.execute/cancelation-poisons-connection?]] returns true for `driver`."
+  [driver thunk]
+  (assert (= (get-method sql-jdbc.execute/cancelation-poisons-connection? :default)
+             (get-method sql-jdbc.execute/cancelation-poisons-connection? driver))
+          "the driver must use the default method, so that removing the test method restores it")
+  (defmethod sql-jdbc.execute/cancelation-poisons-connection? driver [_driver] true)
+  (try
+    (thunk)
+    (finally
+      (remove-method sql-jdbc.execute/cancelation-poisons-connection? driver))))
+
+(deftest discard-connection-after-canceled-chan-fires-test
+  (testing "a QP cancel that arrives after the reduce read exactly the SQL limit still discards a poisoned Connection"
+    (mt/test-driver :h2
+      ;; take the dataset creation and sync queries before anything is counted
+      (row-count (lib/limit (venues-query) 1))
+      (let [discards (atom 0)
+            discard! (mt/original-fn #'sql-jdbc.conn/discard-pooled-connection!)
+            run      (fn [query rff]
+                       (reset! discards 0)
+                       (-> (qp/process-query query rff) mt/rows count))]
+        (do-with-poisoning-cancelation
+         :h2
+         (fn []
+           (mt/with-dynamic-fn-redefs [sql-jdbc.conn/discard-pooled-connection! (fn [conn]
+                                                                                  (swap! discards inc)
+                                                                                  (discard! conn))]
+             (testing "with no cancel, the Connection goes back to the pool"
+               (is (= 4 (run (lib/limit (venues-query) 4) nil)))
+               (is (zero? @discards)))
+             ;; the reduce stops at row 4 before it polls the channel again, so only the canceled chan shows the cancel
+             (testing "the canceled chan fired at the last row"
+               (is (= 4 (run (lib/limit (venues-query) 4) (rff-canceling-at-row! 4))))
+               (is (= 1 @discards))))))))))
+
+(deftest statement-max-rows-test
+  (testing "the statement cap is one above a SQL limit that equals it, so that the server can finish the query"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      (let [max-rows (atom nil)
+            execute! (mt/original-fn #'sql-jdbc.execute/execute-statement-or-prepared-statement!)
+            run      (fn [query]
+                       (reset! max-rows nil)
+                       (row-count query))]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/execute-statement-or-prepared-statement!
+                                    (fn [driver stmt n params sql]
+                                      (reset! max-rows n)
+                                      (execute! driver stmt n params sql))]
+          (testing "SQL limit at the cap"
+            (is (= 4 (run (lib/limit (venues-query) 4))))
+            (is (= 5 @max-rows)))
+          (testing "page items at the cap"
+            (is (= 4 (run (lib/with-page (venues-query) {:page 1 :items 4}))))
+            (is (= 5 @max-rows)))
+          (testing "cap below the SQL limit"
+            (is (= 4 (run (-> (lib/limit (venues-query) 10)
+                              (assoc :constraints {:max-results-bare-rows 4})))))
+            (is (= 4 @max-rows)))
+          (testing "a SQL limit of Integer/MAX_VALUE stays the cap, because one more does not fit in an int"
+            (is (= 100 (run (lib/limit (venues-query) Integer/MAX_VALUE))))
+            (is (= Integer/MAX_VALUE @max-rows))))))))
+
+(deftest ^:parallel sql-row-bound-test
+  ;; resolved at run time, so that this namespace still loads where the private helpers do not exist
+  (let [sql-row-bound (requiring-resolve 'metabase.driver.sql-jdbc.execute/sql-row-bound)
+        bound-at-cap  (requiring-resolve 'metabase.driver.sql-jdbc.execute/bound-at-cap)
+        mbql          (fn [inner-query] {:type :query, :query inner-query})]
+    (testing "the bound is the positive :limit, else the positive :page :items, of the final stage only"
+      (are [query bound] (= bound (sql-row-bound query))
+        (mbql {:limit 4})                            4
+        (mbql {:limit 1})                            1
+        (mbql {:limit 0})                            nil
+        (mbql {:limit -1})                           nil
+        (mbql {:page {:page 2, :items 4}})           4
+        (mbql {:source-query {:limit 4}})            nil
+        {:type :query}                               nil
+        {:type :native, :native {:query "SELECT 1"}} nil))
+    (testing "the bound counts only when it equals the cap and one more still fits in an int"
+      (are [limit max-rows bound] (= bound (bound-at-cap (mbql {:limit limit}) max-rows))
+        4                       4                       4
+        5                       4                       nil
+        3                       4                       nil
+        4                       nil                     nil
+        (dec Integer/MAX_VALUE) (dec Integer/MAX_VALUE) (dec Integer/MAX_VALUE)
+        Integer/MAX_VALUE       Integer/MAX_VALUE       nil))))
 
 (deftest error-while-reading-rows-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
