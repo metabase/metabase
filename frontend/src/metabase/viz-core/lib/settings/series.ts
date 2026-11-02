@@ -1,5 +1,5 @@
 import { getIn } from "icepick";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { color } from "metabase/ui/colors";
 import { deriveChartShadeColor } from "metabase/ui/colors/accents";
@@ -202,7 +202,7 @@ export function seriesSetting({
       getProps: () => ({
         options: [
           { name: t`Auto`, value: null },
-          { name: t`On`, value: true },
+          { name: c("option is On; as opposed to Off").t`On`, value: true },
           { name: t`Off`, value: false },
         ],
       }),
