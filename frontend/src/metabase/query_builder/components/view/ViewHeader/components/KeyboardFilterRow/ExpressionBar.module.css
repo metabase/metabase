@@ -264,8 +264,3 @@
   padding: 0;
   border: none;
 }
-
-/* A pill's editor: the same border as the draft pill's suggestion list, a Mantine Combobox. */
-.pillDropdown.pillDropdown {
-  border: 1px solid var(--popover-border-color);
-}

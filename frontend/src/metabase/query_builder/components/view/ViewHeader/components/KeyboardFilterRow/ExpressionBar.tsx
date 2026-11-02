@@ -15,8 +15,7 @@ import { noop } from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { TYPING_PAUSE_MS } from "metabase/querying/filters/components/FilterPicker/FilterAutoApplyContext";
-import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
-import { Box, Button, Group, Icon, Popover, Text } from "metabase/ui";
+import { Box, Button, Group, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
@@ -55,7 +54,7 @@ import {
   writeTokens,
 } from "./tokens";
 import type { DraftState, SuggestionGroup } from "./types";
-import { getDraftStateFromFilter } from "./utils";
+import { getDraftColumn, getDraftStateFromFilter } from "./utils";
 
 export type ExpressionBarProps = {
   query: Lib.Query;
@@ -1092,54 +1091,45 @@ type SeriesFilterDraftProps = {
   onClose: () => void;
 };
 
-/** A summary picked in the column list: its pill, with the app's own filter picker. */
+/**
+ * A summary picked in the column list: the inline pill on the summary stage,
+ * with the column set, so it starts at the operator.
+ */
 function SeriesFilterDraft({
   series,
   onApply,
   onClose,
 }: SeriesFilterDraftProps) {
   const { query, stageIndex, column } = series;
+  const initialState = useMemo(
+    () => ({ column: getDraftColumn(query, stageIndex, column), values: [] }),
+    [query, stageIndex, column],
+  );
+  const apply = (filterables: Lib.Filterable[]) =>
+    onApply(
+      filterables.reduce(
+        (nextQuery, filterable) =>
+          Lib.filter(
+            nextQuery,
+            stageIndex,
+            toFilterClause(nextQuery, stageIndex, filterable),
+          ),
+        query,
+      ),
+    );
   return (
-    <Popover
-      opened
-      position="bottom-start"
-      onChange={(opened) => !opened && onClose()}
-    >
-      <Popover.Target>
-        <div className={RowS.draftPill} data-testid="draft-filter-pill">
-          <span className={cx(RowS.segment, RowS.columnSegment)}>
-            {series.label}
-          </span>
-          <span className={RowS.placeholder}>…</span>
-          <Icon
-            className={RowS.removeIcon}
-            name="close"
-            size={12}
-            role="button"
-            aria-label={t`Remove filter`}
-            onClick={onClose}
-          />
-        </div>
-      </Popover.Target>
-      <Popover.Dropdown className={S.pillDropdown}>
-        <FilterPickerBody
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
-          isNew
-          onChange={(clause) =>
-            onApply(
-              Lib.filter(
-                query,
-                stageIndex,
-                toFilterClause(query, stageIndex, clause),
-              ),
-            )
-          }
-          onClose={onClose}
-        />
-      </Popover.Dropdown>
-    </Popover>
+    <DraftFilterPill
+      query={query}
+      stageIndex={stageIndex}
+      initialState={initialState}
+      hasPlaceholder={false}
+      onDraftChange={noop}
+      onSubmit={(filterable) => apply([filterable])}
+      onSubmitFilters={apply}
+      onDone={onClose}
+      onCancel={onClose}
+      onRemove={onClose}
+    />
   );
 }
 
