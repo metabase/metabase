@@ -2824,7 +2824,8 @@
 
   Genuine ambiguity (more than one loose hit) is left unmatched at each layer.
   A column whose name legitimately needs quotes (vanishingly rare) is never clobbered.
-  With `join-alias`, each exact match tries `join-alias__name` before the name itself, keeping the ref's spelling."
+  With `join-alias`, each exact match tries `join-alias__name` before the name itself, keeping the ref's spelling.
+  Loose matches through `join-alias` use a spelling that resolves back to the same column."
   ([cols col-name]
    (match-cross-stage-column cols col-name nil))
   ([cols col-name join-alias]
@@ -2845,7 +2846,14 @@
        [spelling (:types match)]
        (when-let [match (or (loose-on :name stripped)
                             (loose-on :display-name stripped))]
-         [(:name match) (:types match)])))))
+         (let [desired-alias (:desired-alias match)
+               prefix        (when join-alias (str join-alias "__"))
+               spelling      (if (and prefix desired-alias (str/starts-with? desired-alias prefix))
+                               (subs desired-alias (count prefix))
+                               (:name match))]
+           ;; A deduplicated name can denote another column after lib adds the join prefix.
+           (when (or (nil? join-alias) (= match (lib-match spelling)))
+             [spelling (:types match)])))))))
 
 (defn- maybe-fill-cross-stage-types
   "Given a cross-stage field clause and a name→types map, return the clause with its column name

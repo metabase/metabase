@@ -4271,6 +4271,16 @@
     (testing "the joined min_2 is a Float, even though the joined Date min is deduplicated to min_2"
       (is (= "type/Float" (base-type (get-in (repair* q) ["stages" 2 "filters" 0 2])))))))
 
+(deftest ^:parallel previous-stage-join-alias-display-name-collision-test
+  (let [joined (update first-orders-stage "aggregation" conj ["max" {"name" "min_2"} (orders-col "TOTAL")])]
+    (doseq [column-name ["Min of Created At" "min-of-created-at"]]
+      (let [q   (query min-total-by-user-stage
+                       (stage {"joins" [(assoc (join "Prev" [joined] :lhs user-id-by-name) "fields" "all")]})
+                       (stage {"filters" [["not-null" {} (join-ref "Prev" column-name)]]}))
+            out (repair* q)]
+        (is (=? (typed (join-ref "Prev" "min") "type/Date") (get-in out ["stages" 2 "filters" 0 2])))
+        (is (= out (repair* out)))))))
+
 (deftest ^:parallel previous-stage-join-alias-custom-display-name-test
   (let [joined (assoc-in prev-joined-stage ["joins" 0 "stages" 0 "breakout" 0 1 "display-name"] "Account key")
         q      (query joined (stage {"filters" [["not-null" {} (join-ref "Prev" "USER_ID")]]}))]
