@@ -743,6 +743,9 @@ function ValuesSourceTypeModalLoader({
       density="relaxed"
       title={t`Selectable values for ${props.parameter.name}`}
       classNames={{ content: isContentHidden ? S.hiddenContent : undefined }}
+      // The picker is outside this modal's React tree, so a lock here would
+      // treat it as outside the modal and cancel its wheel and touch scrolling
+      lockScroll={!isContentHidden}
       onClose={props.onClose}
     >
       <ModalLoadingAndErrorWrapper

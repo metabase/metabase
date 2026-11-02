@@ -21,6 +21,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -474,6 +475,22 @@ describe("ValuesSourceModal", () => {
         expect(
           screen.getByRole("button", { name: /Reviews/ }),
         ).toBeInTheDocument();
+      });
+
+      it("should not block scrolling inside the picker", async () => {
+        await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+          }),
+        });
+
+        await userEvent.click(
+          screen.getByRole("button", { name: /Pick a model or question/ }),
+        );
+        const picker = await screen.findByTestId("entity-picker-modal");
+
+        // `fireEvent` returns false when a handler called `preventDefault`
+        expect(fireEvent.wheel(picker, { deltaY: 100 })).toBe(true);
       });
 
       it("should display a message when the user has no access to the card", async () => {
