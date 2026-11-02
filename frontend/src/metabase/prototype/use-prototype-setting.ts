@@ -40,6 +40,21 @@ function parseStoredValue<S extends PrototypeSetting>(
 }
 
 /**
+ * The current value of a prototype setting, for code outside React. It does
+ * not update when the value changes, so read it again each time.
+ */
+export function getPrototypeSetting<S extends PrototypeSetting>(
+  setting: S,
+): S["defaultValue"] {
+  try {
+    const storedValue = localStorage.getItem(STORAGE_KEY_PREFIX + setting.key);
+    return parseStoredValue(setting, storedValue ?? undefined);
+  } catch {
+    return setting.defaultValue;
+  }
+}
+
+/**
  * The current value of a prototype setting and a function to change it.
  * Values are stored in the browser's local storage, so they stay after a
  * reload, and every component that reads the same setting gets the new value.

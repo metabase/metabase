@@ -45,9 +45,9 @@ const NO_COUNTS: ValueCounts = { type: "none" };
 
 /**
  * Prototype: how many rows of the query have each value of a column with a few
- * values. The other filters of the query apply. Queries on the fast tables
- * count the data. A query on a slow table counts its sample, and the counts
- * are estimates.
+ * values. The other filters of the query apply. On fast data, queries count
+ * the data. On slow data, a query counts the sample of its table, and the
+ * counts are estimates.
  */
 export function useValueCounts({
   query,

@@ -1,5 +1,4 @@
 import * as Lib from "metabase-lib";
-import type { PrototypeDataInfo } from "metabase-types/api";
 
 /** The query with the draft filter in place of `filter`, or added to it. */
 export function getQueryWithFilter(
@@ -49,18 +48,5 @@ export function isFilterOnlyChange(query1: Lib.Query, query2: Lib.Query) {
   return (
     !areQueriesEqual(query1, query2) &&
     areQueriesEqual(removeFilters(query1), removeFilters(query2))
-  );
-}
-
-export function readsSlowTable(
-  query: Lib.Query,
-  prototypeData: PrototypeDataInfo | null | undefined,
-): boolean {
-  if (prototypeData == null) {
-    return false;
-  }
-  const slowTableIds = new Set<unknown>(prototypeData.slow_table_ids);
-  return Lib.dependentMetadata(query, undefined, "question").some(
-    (item) => item.type === "table" && slowTableIds.has(item.id),
   );
 }

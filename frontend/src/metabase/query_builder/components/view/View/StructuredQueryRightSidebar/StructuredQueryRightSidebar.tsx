@@ -1,9 +1,8 @@
 import { match } from "ts-pattern";
 
-import { useSetting } from "metabase/settings";
+import { isSlowData } from "metabase/prototype";
 import type Question from "metabase-lib/v1/Question";
 
-import { readsSlowTable } from "../../FilterAutoApply/utils";
 import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "../../sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "../../sidebars/SummarizeSidebar";
@@ -33,8 +32,6 @@ export const StructuredQueryRightSidebar = ({
   question,
   updateQuestion,
 }: StructuredQueryRightSidebarProps) => {
-  const prototypeData = useSetting("prototype-data");
-
   return match({
     isSaved: question.isSaved(),
     isShowingSummarySidebar,
@@ -54,10 +51,10 @@ export const StructuredQueryRightSidebar = ({
             // Prototype: on slow data, a summary change only makes the result
             // out of date, and the user reruns the question with the run
             // button, like with the filters.
-            const isSlowData = readsSlowTable(nextQuery, prototypeData);
+            const isSlow = isSlowData();
             updateQuestion(nextQuestion.setDefaultDisplay(), {
-              run: !isSlowData,
-              shouldUpdateUrl: isSlowData,
+              run: !isSlow,
+              shouldUpdateUrl: isSlow,
             });
           }}
           onClose={onCloseSummary}

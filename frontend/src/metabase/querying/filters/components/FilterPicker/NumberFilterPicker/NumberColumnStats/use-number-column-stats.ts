@@ -2,6 +2,7 @@ import { useMemo, useRef } from "react";
 
 import { skipToken, useGetPrototypeSamplesQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useIsSlowData } from "metabase/prototype";
 import { useSetting } from "metabase/settings";
 import * as Lib from "metabase-lib";
 
@@ -34,7 +35,7 @@ interface UseNumberColumnStatsProps {
 /** The rows that the filter of the slider keeps. */
 export interface NumberMatchCount {
   count: number;
-  /** True when the count comes from the sample of a slow table. */
+  /** True when the count comes from a sample, on slow data. */
   isEstimate: boolean;
   /** True when so few rows of the sample match that the count is a guess. */
   isFew: boolean;
@@ -42,7 +43,7 @@ export interface NumberMatchCount {
 
 export interface NumberColumnStatsResult {
   stats: NumberColumnStats;
-  /** True when the stats come from the sample of a slow table. */
+  /** True when the stats come from a sample, on slow data. */
   isEstimate: boolean;
   /** Row counts in equal buckets from `range.min` to `range.max`. */
   histogram: number[];
@@ -77,20 +78,21 @@ export type StatsSource =
       type: "sample";
       rowCount: number;
       sampleCount: number;
-      /** The exact min and max of the number columns of the slow table. */
+      /** The exact min and max of the number columns of the sampled table. */
       ranges: Map<number, { min: number; max: number }>;
     };
 
 const NO_STATS: StatsSource = { type: "none" };
 
 /**
- * Prototype: queries that read only the fast tables of the prototype dataset
- * get their stats from the data. A query on one slow table gets them from the
- * sample of that table, which Metabase makes in the background. Other queries
- * get no stats, because a slow table makes each query wait for seconds.
+ * Prototype: on fast data, queries on the prototype dataset get their stats
+ * from the data. On slow data, a query on one table gets them from the sample
+ * of that table, which Metabase makes in the background. Other queries get no
+ * stats, because on slow data each query waits for seconds.
  */
 export function useStatsSource(query: Lib.Query): StatsSource {
   const prototypeData = useSetting("prototype-data");
+  const isSlow = useIsSlowData();
   const { data: samples } = useGetPrototypeSamplesQuery();
   return useMemo(() => {
     if (
@@ -99,25 +101,23 @@ export function useStatsSource(query: Lib.Query): StatsSource {
     ) {
       return NO_STATS;
     }
-    const fastTableIds = new Set(prototypeData.fast_table_ids);
     const tableIds = Lib.allSourceTableIds(query);
     if (tableIds.length === 0) {
       return NO_STATS;
     }
-    const slowTableIds = tableIds.filter((id) => !fastTableIds.has(id));
-    if (slowTableIds.length === 0) {
+    if (!isSlow) {
       return { type: "fast" };
     }
     // A sample joined to another sample has almost no matching rows, so only
-    // a query whose source is the one slow table can use its sample.
+    // a query that reads one table can use its sample.
     const sourceTableId = Lib.sourceTableOrCardId(query);
     const sample = samples?.tables.find(
       (table) => table.table_id === sourceTableId,
     );
     if (
       sample == null ||
-      slowTableIds.length !== 1 ||
-      slowTableIds[0] !== sourceTableId
+      tableIds.length !== 1 ||
+      tableIds[0] !== sourceTableId
     ) {
       return NO_STATS;
     }
@@ -132,7 +132,7 @@ export function useStatsSource(query: Lib.Query): StatsSource {
         ]),
       ),
     };
-  }, [query, prototypeData, samples]);
+  }, [query, prototypeData, isSlow, samples]);
 }
 
 /**

@@ -11,7 +11,10 @@ import { useLatest } from "react-use";
 
 import type * as Lib from "metabase-lib";
 
-import { FilterAutoApplyContext } from "./FilterAutoApplyContext";
+import {
+  FilterAutoApplyContext,
+  TYPING_PAUSE_MS,
+} from "./FilterAutoApplyContext";
 import type { FilterChangeOpts } from "./types";
 
 const NON_TEXT_INPUT_TYPES = new Set([
@@ -104,8 +107,8 @@ export function useFilterAutoApply({
       pendingDraftRef.current = draftFilter;
       if (!isTextEntry(document.activeElement)) {
         flush();
-      } else if (autoApply.typedValuesApplyMode === "pause") {
-        timeoutRef.current = setTimeout(flush, autoApply.typingPauseMs);
+      } else {
+        timeoutRef.current = setTimeout(flush, TYPING_PAUSE_MS);
       }
     },
     [isActive, autoApplyRef, cancel, flush],

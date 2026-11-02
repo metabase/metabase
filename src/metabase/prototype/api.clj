@@ -5,7 +5,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.prototype.ai-filters :as ai-filters]
    [metabase.prototype.field-categories :as field-categories]
-   [metabase.prototype.filter-summary :as filter-summary]
    [metabase.prototype.filter-usage :as filter-usage]
    [metabase.prototype.filter-values :as filter-values]
    [metabase.prototype.runtime-estimate :as runtime-estimate]
@@ -109,21 +108,10 @@
                                       [:field_id ms/PositiveInt]
                                       [:min      number?]
                                       [:max      number?]]]]]]
-  "Prototype: the samples of the slow tables. For each table, its row count and the size of its sample. For each
-  number column of these tables, its exact min and max."
+  "Prototype: the samples of the tables. For each table, its row count and the size of its sample. For each number
+  column of these tables, its exact min and max."
   []
   (samples/sample-info))
-
-(api.macros/defendpoint :post "/filter-summary"
-  :- [:map [:summary [:maybe :string]]]
-  "Prototype: a short summary of the filters of a question, for the filter bar. `filters` are the texts of the
-  filter pills."
-  [_route-params
-   _query-params
-   body :- [:map {:closed true}
-            [:question_name {:optional true} [:maybe :string]]
-            [:filters       [:sequential {:min 1} ms/NonBlankString]]]]
-  (filter-summary/summarize-filters body))
 
 (api.macros/defendpoint :get "/runtime-estimate"
   :- [:map

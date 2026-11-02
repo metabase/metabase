@@ -57,13 +57,16 @@
     (t2/update! :model/FieldUserSettings field-id {:semantic_type semantic-type})
     (t2/insert! :model/FieldUserSettings {:field_id field-id, :semantic_type semantic-type})))
 
-(mu/defn set-table-display-name!
-  "Set the display name of the Table with `table-id` as a user value, the same as an edit in the data model."
+(mu/defn set-table-display-name-and-description!
+  "Set the display name and the description of the Table with `table-id` as user values, the same as an edit in the
+  data model."
   [table-id     :- ::lib.schema.id/table
-   display-name :- :string]
-  (if (t2/exists? :model/TableUserSettings table-id)
-    (t2/update! :model/TableUserSettings table-id {:display_name display-name})
-    (t2/insert! :model/TableUserSettings {:table_id table-id, :display_name display-name})))
+   display-name :- :string
+   description  :- :string]
+  (let [values {:display_name display-name, :description description}]
+    (if (t2/exists? :model/TableUserSettings table-id)
+      (t2/update! :model/TableUserSettings table-id values)
+      (t2/insert! :model/TableUserSettings (assoc values :table_id table-id)))))
 
 (mu/defn set-field-description!
   "Set the description of the Field with `field-id` as a user value, the same as an edit in the data model."
@@ -165,6 +168,12 @@
   "The names of the not archived Cards in the Collection with `collection-id`. Prototype: reads the table directly."
   [collection-id]
   (t2/select-fn-vec :name [:report_card :name] :collection_id collection-id :archived false))
+
+(defn card-in-collection
+  "The id and query of the not archived Card named `card-name` in the Collection with `collection-id`, or nil.
+  Prototype: reads the table directly."
+  [collection-id card-name]
+  (t2/select-one [:report_card :id :dataset_query] :collection_id collection-id :name card-name :archived false))
 
 (mu/defn field-for-filter-values :- [:maybe :map]
   "The Field with `field-id`, with its Table name and fingerprint, for the AI filter values."

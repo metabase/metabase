@@ -17,6 +17,7 @@ import {
   getShallowDatabases,
   selectQuestionFromCard,
 } from "metabase/metadata-store";
+import { isSlowData } from "metabase/prototype";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
@@ -26,7 +27,6 @@ import {
   questionUpdated,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState, State } from "metabase/redux/store";
-import { getSetting } from "metabase/settings";
 import {
   LIST_TIMELINES_REQUEST,
   getTransformedTimelines,
@@ -59,10 +59,7 @@ import {
   trackNewQuestionSaved,
   trackQuestionTimelineEventsSaved,
 } from "../../analytics";
-import {
-  isFilterOnlyChange,
-  readsSlowTable,
-} from "../../components/view/FilterAutoApply/utils";
+import { isFilterOnlyChange } from "../../components/view/FilterAutoApply/utils";
 import { updateModelIndexes } from "../../model-indexes/actions";
 import {
   API_CREATE_QUESTION,
@@ -251,10 +248,7 @@ function isSlowFilterDrill(state: State, nextCard: Card) {
     return false;
   }
   const nextQuery = selectQuestionFromCard(state, nextCard).query();
-  return (
-    readsSlowTable(nextQuery, getSetting(state, "prototype-data")) &&
-    isFilterOnlyChange(question.query(), nextQuery)
-  );
+  return isSlowData() && isFilterOnlyChange(question.query(), nextQuery);
 }
 
 // DEPRECATED, still used in a couple places

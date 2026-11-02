@@ -16,7 +16,7 @@
 
 (def version
   "Version of the dataset. Increment it to make existing instances seed the data again."
-  1)
+  2)
 
 (def schema-name
   "Postgres schema that holds the dataset."
@@ -464,11 +464,10 @@
        :resolved_at      resolved})))
 
 (def tables
-  "Table definitions in insert order. `:slow?` marks the tables whose queries Metabase delays on purpose."
+  "Table definitions in insert order."
   [{:name        "countries"
     :display-name "Countries"
     :description "Countries of the world, one row per country."
-    :slow?       false
     :rows        countries-rows
     :columns     [[:id "integer" :type/PK]
                   [:code "char(2)" :type/Country]
@@ -491,7 +490,6 @@
    {:name        "us_states"
     :display-name "US States"
     :description "US states, one row per state."
-    :slow?       false
     :rows        us-states-rows
     :columns     [[:id "integer" :type/PK]
                   [:code "char(2)" :type/State]
@@ -509,7 +507,6 @@
    {:name        "stores"
     :display-name "Stores"
     :description "Physical stores, in the US and abroad."
-    :slow?       false
     :rows        stores-rows
     :columns     [[:id "integer" :type/PK]
                   [:name "text" :type/Name]
@@ -536,7 +533,6 @@
    {:name        "products"
     :display-name "Products"
     :description "Product catalog."
-    :slow?       false
     :rows        products-rows
     :columns     [[:id "integer" :type/PK]
                   [:sku "uuid" nil]
@@ -566,7 +562,6 @@
    {:name        "customers"
     :display-name "Customers"
     :description "Customers of the shop."
-    :slow?       false
     :rows        customers-rows
     :columns     [[:id "integer" :type/PK]
                   [:uuid "uuid" nil]
@@ -599,8 +594,7 @@
                   [:churned_at "timestamptz" :type/CancelationTimestamp]]}
    {:name        "orders"
     :display-name "Orders"
-    :description "Orders. A slow table: Metabase delays its queries on purpose."
-    :slow?       true
+    :description "Orders."
     :rows        orders-rows
     :foreign-keys {:customer_id "customers", :product_id "products", :store_id "stores"}
     :columns     [[:id "integer" :type/PK]
@@ -631,8 +625,7 @@
                   [:gift_message "text" :type/Comment]]}
    {:name        "web_events"
     :display-name "Web Events"
-    :description "Website and app analytics events. A slow table: Metabase delays its queries on purpose."
-    :slow?       true
+    :description "Website and app analytics events."
     :rows        web-events-rows
     :foreign-keys {:customer_id "customers"}
     :columns     [[:id "uuid" :type/PK]
@@ -657,8 +650,7 @@
                   [:properties "jsonb" nil]]}
    {:name        "reviews"
     :display-name "Reviews"
-    :description "Product reviews. A slow table: Metabase delays its queries on purpose."
-    :slow?       true
+    :description "Product reviews."
     :rows        reviews-rows
     :foreign-keys {:product_id "products", :customer_id "customers"}
     :columns     [[:id "integer" :type/PK]
@@ -674,8 +666,7 @@
                   [:created_at "timestamptz" :type/CreationTimestamp]]}
    {:name        "support_tickets"
     :display-name "Support Tickets"
-    :description "Customer support tickets. A slow table: Metabase delays its queries on purpose."
-    :slow?       true
+    :description "Customer support tickets."
     :rows        support-tickets-rows
     :foreign-keys {:customer_id "customers"}
     :columns     [[:id "integer" :type/PK]
@@ -699,14 +690,9 @@
    ["order_status" ["pending" "processing" "shipped" "delivered" "cancelled" "returned"]]
    ["ticket_priority" ["low" "medium" "high" "urgent"]]])
 
-(defn table-display-name
-  "Display name of `table` in Metabase, with a label that says whether it is slow or fast."
-  [{:keys [display-name slow?]}]
-  (str display-name (if slow? " (slow)" " (fast)")))
-
-(def slow-table-names
-  "Names of the tables whose queries Metabase delays on purpose."
-  (into #{} (comp (filter :slow?) (map :name)) tables))
+(def table-names
+  "Names of the tables of the dataset, in insert order."
+  (mapv :name tables))
 
 (def context-tables
   "Tables whose generated rows later generators need, e.g. `orders` picks from `products`."

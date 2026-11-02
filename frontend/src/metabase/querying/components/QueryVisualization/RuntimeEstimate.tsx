@@ -6,7 +6,7 @@ import {
   skipToken,
   useGetPrototypeRuntimeEstimateQuery,
 } from "metabase/api";
-import { SHOW_RUNTIME_ESTIMATE, usePrototypeSetting } from "metabase/prototype";
+import { useIsSlowData } from "metabase/prototype";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -15,15 +15,15 @@ const MIN_ESTIMATE_MS = 1000;
 
 /**
  * Prototype: a hint like "Usually takes about 10 seconds", from the past runs
- * of the question. A changed saved question uses the runs of the saved
- * question. Other questions use the runs of all queries on their source
- * table. Null for fast questions and questions with too few runs.
+ * of the question on slow data. A changed saved question uses the runs of the
+ * saved question. Other questions use the runs of all queries on their source
+ * table. Null on fast data, and for questions with too few runs.
  */
 export function useRuntimeEstimateHint(
   question: Question,
   isRunning: boolean,
 ): string | null {
-  const [isEnabled] = usePrototypeSetting(SHOW_RUNTIME_ESTIMATE);
+  const isEnabled = useIsSlowData();
   const cardId = question.id() ?? question.card().original_card_id;
   const sourceId = Lib.sourceTableOrCardId(question.query());
   const tableId = typeof sourceId === "number" ? sourceId : undefined;

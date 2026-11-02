@@ -8,7 +8,6 @@ import type { CurrencyStyle } from "./formatting";
 import type { GroupMappings } from "./group";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";
-import type { ConcreteTableId } from "./table";
 import type { UserId } from "./user";
 
 export interface OidcAuthProvider {
@@ -458,13 +457,10 @@ export type CustomGeoJSONMap = {
 export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
 /**
- * The prototype dataset (see PROTOTYPE.md). Queries on the slow tables wait
- * `prototype-slow-query-delay-ms` on purpose.
+ * The prototype dataset (see PROTOTYPE.md).
  */
 export interface PrototypeDataInfo {
   database_id: DatabaseId;
-  slow_table_ids: ConcreteTableId[];
-  fast_table_ids: ConcreteTableId[];
 }
 
 interface InstanceSettings {

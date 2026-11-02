@@ -11,7 +11,8 @@ export interface DraftFilterProps {
   draftFilter?: Lib.ExpressionClause;
 }
 
-export type TypedValuesApplyMode = "pause" | "blur";
+/** How long auto-apply waits after the last key press in a typed value. */
+export const TYPING_PAUSE_MS = 250;
 
 export interface FilterAutoApplyContextValue {
   /** Whether filter changes on this query apply to the question at once. */
@@ -21,8 +22,6 @@ export interface FilterAutoApplyContextValue {
    * nothing when the question already has this query.
    */
   apply: (props: DraftFilterProps) => void;
-  typedValuesApplyMode: TypedValuesApplyMode;
-  typingPauseMs: number;
 }
 
 /**

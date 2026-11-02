@@ -277,8 +277,8 @@ interface SliderValueInputProps {
   onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
-// Prototype: number inputs with a histogram slider, for the fast tables of the
-// prototype dataset only.
+// Prototype: number inputs with a histogram slider, for the prototype dataset
+// only.
 function SliderValueInput({
   autoFocus,
   operator,

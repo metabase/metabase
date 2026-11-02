@@ -1106,8 +1106,8 @@ interface NumberHistogramPopoverProps {
 
 /**
  * Prototype: the histogram and the slider from the filter widgets prototype,
- * under the number inputs. It shows for the fast prototype tables, and for a
- * slow table with a sample.
+ * under the number inputs. It shows on fast data, and on slow data for a query
+ * on one table, from its sample.
  */
 function NumberHistogramPopover({
   query,

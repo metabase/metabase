@@ -9,4 +9,8 @@ export type {
   SelectPrototypeSetting,
   TextPrototypeSetting,
 } from "./types";
-export { usePrototypeSetting } from "./use-prototype-setting";
+export { isSlowData, useIsSlowData } from "./data-speed";
+export {
+  getPrototypeSetting,
+  usePrototypeSetting,
+} from "./use-prototype-setting";

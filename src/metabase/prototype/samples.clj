@@ -1,6 +1,7 @@
 (ns metabase.prototype.samples
-  "Prototype: random samples of the slow tables, and exact statistics of their number columns. Metabase makes them in
-  the background, before a user opens a question, so that the filter widgets of slow tables show a histogram at once.
+  "Prototype: random samples of the tables, and exact statistics of their number columns. Metabase makes them in the
+  background, before a user opens a question, so that the filter widgets show a histogram at once when the data is
+  slow. Tables with fewer rows than the sample size are copied completely.
 
   The samples are in the `prototype_sample` schema of the app DB, with the same table names as the dataset. Sync
   reads only the `prototype_data` schema, so Metabase does not show them as tables. A query runs on the samples when
@@ -101,7 +102,7 @@
                                 PRIMARY KEY (table_name, column_name))" (quote-name schema-name))])
   ;; A fixed seed gives the same samples each time.
   (jdbc/execute! conn ["SELECT setseed(0.42)"])
-  (doseq [table-name (sort dataset/slow-table-names)]
+  (doseq [table-name dataset/table-names]
     (make-sample! conn table-name))
   (jdbc/execute! conn [(format "COMMENT ON SCHEMA %s IS '%s%s'"
                                (quote-name schema-name) version-comment-prefix (version-string))]))
@@ -112,13 +113,13 @@
   [force?]
   (with-open [conn (jdbc/get-connection (mdb/data-source))]
     (when (or force? (not= (version-string) (sampled-version conn)))
-      (log/info "Prototype samples: sampling the slow tables")
+      (log/info "Prototype samples: sampling the tables")
       (jdbc/with-transaction [tx conn]
         (make-samples! tx))
       (log/info "Prototype samples: done"))))
 
 (defn sample-info
-  "The samples for the frontend, by Metabase ids: the row count and the sample size of each slow table, and the exact
+  "The samples for the frontend, by Metabase ids: the row count and the sample size of each table, and the exact
   min and max of its number columns."
   []
   (when-let [database-id (prototype.db/prototype-database-id)]

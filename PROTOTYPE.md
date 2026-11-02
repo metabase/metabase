@@ -1,6 +1,6 @@
 # Filter prototypes
 
-This branch (`filters-prototype-base`) is the base for the filter prototypes. Each prototype is a branch off this one. This branch adds a mock dataset with many column types, and it makes some tables slow on purpose.
+This branch (`filters-prototype-base`) is the base for the filter prototypes. Each prototype is a branch off this one. This branch adds a mock dataset with many column types, and it can make all queries slow on purpose.
 
 ## Run it
 
@@ -29,38 +29,45 @@ If the Prototype Data database does not appear, look in the Metabase log for lin
 
 Metabase writes the data into the `prototype_data` schema of its Postgres app DB. The generator is `src/metabase/prototype/dataset.clj`. It uses fixed random seeds, so the rows are the same on every machine.
 
-| Table | Rows | Speed | Good for |
-|---|---|---|---|
-| `countries` | 46 | fast | world map, flags (ImageURL), arrays, percentages |
-| `us_states` | 50 | fast | US state map, income, percentages |
-| `stores` | 300 | fast | pin map, opening times, open and closed dates |
-| `products` | 1,000 | fast | categories, prices, scores, images, JSON attributes, tags |
-| `customers` | 5,000 | fast | avatars, emails, US and world locations, plans, enum status, IP addresses |
-| `orders` | 100,000 | **slow** | currency, quantities, durations, shipping location, FKs to customers, products and stores |
-| `web_events` | 150,000 | **slow** | UUIDs, URLs, devices and browsers, times of day, JSON properties |
-| `reviews` | 25,000 | **slow** | 1–5 ratings, sentiment scores, long text, photos |
-| `support_tickets` | 15,000 | **slow** | priorities (enum), assignees, durations, nullable dates |
+| Table | Rows | Good for |
+|---|---|---|
+| `countries` | 46 | world map, flags (ImageURL), arrays, percentages |
+| `us_states` | 50 | US state map, income, percentages |
+| `stores` | 300 | pin map, opening times, open and closed dates |
+| `products` | 1,000 | categories, prices, scores, images, JSON attributes, tags |
+| `customers` | 5,000 | avatars, emails, US and world locations, plans, enum status, IP addresses |
+| `orders` | 100,000 | currency, quantities, durations, shipping location, FKs to customers, products and stores |
+| `web_events` | 150,000 | UUIDs, URLs, devices and browsers, times of day, JSON properties |
+| `reviews` | 25,000 | 1–5 ratings, sentiment scores, long text, photos |
+| `support_tickets` | 15,000 | priorities (enum), assignees, durations, nullable dates |
 
 The data covers these semantic types: PK, FK, Name, Title, Description, Comment, Category, Company, Subscription, Source, Owner, Email, URL, ImageURL, AvatarURL, IPAddress, City, State, Country, ZipCode, Latitude, Longitude, Price, Cost, GrossMargin, Income, Discount, Currency, Percentage, Score, Quantity, Duration, Birthdate, and the Creation, Join, Updated, Deletion and Cancelation timestamps and dates. It also has columns with no semantic type: booleans, dates, times, timestamps with and without time zone, UUIDs, Postgres enums, text arrays and JSON.
 
 The semantic types come from `dataset.clj`, not from sync. Metabase saves them as user values, the same as when you change them in the data model admin. You can still change them in the admin.
 
-## Slow and fast tables
+## Fast and slow data
 
-When a user runs a query that reads a slow table, Metabase waits before it runs the query. The wait is a base delay of 5 seconds, times a factor for each table (Web Events ×2, Orders ×1, Support Tickets ×0.7, Reviews ×0.5), times a random 0.9 to 1.5, so runtimes vary like real ones. Queries that read only fast tables run without a wait. This applies to query builder questions, SQL questions, joins and dashboards. Cached results do not wait.
+The **Data** setting in the prototype settings menu (see below) makes all data fast or slow:
+
+- **Fast**: queries run at once.
+- **Slow**: Metabase waits before it runs each query. The wait is a base delay of 5 seconds, times a random 0.9 to 1.5, so runtimes vary like real ones. This applies to all tables, to query builder questions, SQL questions, joins and dashboards. Cached results do not wait.
+
+Each browser has its own choice: the frontend sends it in the `X-Metabase-Prototype-Data-Speed` header of each API request. To compare fast and slow data side by side, use a normal and a private window, or two browsers. The default is fast.
 
 - To change the base delay, set `MB_PROTOTYPE_SLOW_QUERY_DELAY_MS`, or change the `prototype-slow-query-delay-ms` setting.
-- To change the factors, edit `delay-factors` in `src/metabase/prototype/slow_queries.clj`.
-- To make a different table slow or fast, change its `:slow?` in `src/metabase/prototype/dataset.clj`.
+- The backend is in `src/metabase/prototype/slow_queries.clj`.
 
-The run button and the loading spinner show how long a question usually takes, from its past runs in `query_execution`. After the setup creates the first admin, Metabase seeds a history of runs for each table, and the question "Purchases by device" in the "Runtime estimates" collection with its own runs. See `src/metabase/prototype/runtime_estimate.clj`.
+On slow data, the filter widgets get their estimates from a sample of each table, which Metabase makes in the background (`src/metabase/prototype/samples.clj`).
 
-The frontend can read which tables are slow:
+The run button and the loading spinner show how long a question usually takes on slow data, from its past runs in `query_execution`. Runs on fast data are not in the estimate. After the setup creates the first admin, Metabase seeds a history of runs for each table, and the question "Purchases by device" in the "Runtime estimates" collection with its own runs. See `src/metabase/prototype/runtime_estimate.clj`.
+
+The frontend can read the choice:
 
 ```ts
-const prototypeData = useSetting("prototype-data");
-// { database_id: 2, slow_table_ids: [9, 15, 11, 13], fast_table_ids: [7, 14, 12, 10, 8] }
-const delayMs = useSetting("prototype-slow-query-delay-ms");
+import { isSlowData, useIsSlowData } from "metabase/prototype";
+
+const isSlow = useIsSlowData(); // in a component
+isSlowData(); // outside React, e.g. in a Redux action
 ```
 
 ## Prototype settings

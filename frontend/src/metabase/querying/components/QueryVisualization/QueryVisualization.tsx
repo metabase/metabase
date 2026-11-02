@@ -6,10 +6,6 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { Warnings } from "metabase/common/components/Warnings";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import {
-  LOADING_SPINNER_DELAY_MS,
-  usePrototypeSetting,
-} from "metabase/prototype";
 import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
@@ -23,6 +19,12 @@ import { useRuntimeEstimateHint } from "./RuntimeEstimate";
 import { VisualizationError } from "./VisualizationError";
 import { VisualizationResult } from "./VisualizationResult";
 import type { QueryVisualizationProps } from "./types";
+
+/**
+ * Prototype: how long a query runs before the question shows the loading
+ * spinner. Faster queries show no spinner.
+ */
+const LOADING_SPINNER_DELAY_MS = 500;
 
 export function QueryVisualization(props: QueryVisualizationProps) {
   const {
@@ -40,8 +42,10 @@ export function QueryVisualization(props: QueryVisualizationProps) {
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
-  const [spinnerDelayMs] = usePrototypeSetting(LOADING_SPINNER_DELAY_MS);
-  const isSpinnerShown = useIsRunningLong(Boolean(isRunning), spinnerDelayMs);
+  const isSpinnerShown = useIsRunningLong(
+    Boolean(isRunning),
+    LOADING_SPINNER_DELAY_MS,
+  );
   const estimateHint = useRuntimeEstimateHint(question, Boolean(isRunning));
   const [warnings, setWarnings] = useState<string[]>([]);
 

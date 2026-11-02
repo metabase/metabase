@@ -1,10 +1,11 @@
 (ns metabase.prototype.runtime-estimate
-  "Prototype: an estimate of how long a query runs, from the past runs in `query_execution`. A saved question uses
-  the runs of that question. Other queries use the runs of all queries on the same source table.
+  "Prototype: an estimate of how long a query runs on slow data, from the past runs in `query_execution`. A saved
+  question uses the runs of that question. Other queries use the runs of all queries on the same source table. Runs
+  on fast data are not in the estimate.
 
   A new instance has no runs, so Metabase seeds some: a demo question with its own runs, and runs for each table of
   the prototype dataset. The seeded runtimes follow the same distribution as the delays of
-  [[metabase.prototype.slow-queries]], so the estimates agree with what the user sees."
+  [[metabase.prototype.slow-queries]], so the estimates agree with what the user sees on slow data."
   (:require
    [buddy.core.hash :as buddy-hash]
    [metabase.app-db.core :as mdb]
@@ -34,10 +35,13 @@
   "Fewer runs than this give no estimate."
   3)
 
+(def ^:private min-slow-run-ms
+  "Runs on fast data take less than this, so the estimate leaves them out."
+  1000)
+
 (def ^:private run-filter
-  "Runs that tell how long the query took on the database: no cached results, no errors, and no queries on the
-  samples of the slow tables."
-  (str "coalesce(e.cache_hit, false) = false AND e.error IS NULL"
+  "Runs that tell how long the query took on slow data: no cached results, no errors, and no fast runs."
+  (str "coalesce(e.cache_hit, false) = false AND e.error IS NULL AND e.running_time >= " min-slow-run-ms
        " AND e.started_at > now() - interval '" history-days " days'"))
 
 (defn- query-running-times [sql-params]
@@ -86,34 +90,34 @@
 ;;; ------------------------------------------------ Seeded history ------------------------------------------------
 
 (def ^:private seed-version
-  "Increment it to seed the history again on existing instances. A new seed adds runs; it does not remove the old
-  ones."
-  1)
+  "Increment it to seed the history again on existing instances. A new seed replaces the seeded runs, and keeps
+  the runs of users."
+  2)
 
 (def ^:private collection-name "Runtime estimates")
 
 (def ^:private demo-question-name "Purchases by device")
 
-(def ^:private fast-table-ms
-  "Runtimes of queries on the fast tables: from 60 ms to about 400 ms."
-  [60 340])
+(defn- seeded-running-time
+  "A runtime on slow data: the delay of [[slow-queries/delay-ms]], plus 60 to 300 ms for the query itself."
+  [^Random r]
+  (+ 60 (.nextInt r 240) (slow-queries/delay-ms (.nextDouble r))))
 
-(defn- seeded-running-time [^Random r table-names]
-  (let [overhead (+ 60 (.nextInt r 240))]
-    (if (some dataset/slow-table-names table-names)
-      (+ overhead (slow-queries/delay-ms table-names (.nextDouble r)))
-      (let [[lo spread] fast-table-ms]
-        (+ lo (long (* spread (Math/pow (.nextDouble r) 2))))))))
+(defn- seed-hash [hash-key]
+  (buddy-hash/sha256 (str "prototype-runtime-seed/" hash-key)))
 
 (defn- insert-runs!
-  "Insert `n` runs of `dataset-query` over the past 60 days, with the `query` row that tells their source table."
-  [conn ^Random r {:keys [n card-id database-id executor-id dataset-query table-names hash-key]}]
-  (let [query-hash (buddy-hash/sha256 (str "prototype-runtime-seed/" hash-key))
-        times      (vec (repeatedly n #(seeded-running-time r table-names)))
+  "Replace the seeded runs of `hash-key` with `n` runs of `dataset-query` over the past 60 days, with the `query` row
+  that tells their source table. `dataset-query` is a map, or a JSON string from the app DB."
+  [conn ^Random r {:keys [n card-id database-id executor-id dataset-query hash-key]}]
+  (let [query-hash (seed-hash hash-key)
+        times      (vec (repeatedly n #(seeded-running-time r)))
         now        (OffsetDateTime/now)]
+    (jdbc/execute! conn ["DELETE FROM query_execution WHERE hash = ?" query-hash])
     (jdbc/execute! conn ["INSERT INTO query (query_hash, average_execution_time, query) VALUES (?, ?, ?)
-                          ON CONFLICT (query_hash) DO NOTHING"
-                         query-hash (long (/ (reduce + times) n)) (json/encode dataset-query)])
+                          ON CONFLICT (query_hash) DO UPDATE SET average_execution_time = EXCLUDED.average_execution_time"
+                         query-hash (long (/ (reduce + times) n))
+                         (if (string? dataset-query) dataset-query (json/encode dataset-query))])
     (doseq [running-time times]
       (jdbc/execute! conn ["INSERT INTO query_execution
                               (hash, started_at, running_time, result_rows, native, context, executor_id, card_id,
@@ -128,7 +132,9 @@
                            card-id
                            database-id]))))
 
-(defn- create-demo-question! [mp table-ids admin-id]
+(defn- demo-question!
+  "The demo question. Creates it when it is not there."
+  [mp table-ids admin-id]
   (let [table-id      (get table-ids "web_events")
         field-ids     (prototype.db/field-ids-by-name table-id)
         field         #(lib.metadata/field mp (get field-ids %))
@@ -139,17 +145,18 @@
                           (lib/filter (lib/= (field "is_bot") false))
                           (lib/aggregate (lib/count))
                           (lib/breakout (field "device")))]
-    (queries/create-card! {:name                   demo-question-name
-                           :display                :bar
-                           :dataset_query          query
-                           :visualization_settings {}
-                           :collection_id          collection-id}
-                          {:id admin-id})))
+    (or (prototype.db/card-in-collection collection-id demo-question-name)
+        (queries/create-card! {:name                   demo-question-name
+                               :display                :bar
+                               :dataset_query          query
+                               :visualization_settings {}
+                               :collection_id          collection-id}
+                              {:id admin-id}))))
 
 (defn- seed! [database-id admin-id]
   (let [mp        (lib-be/application-database-metadata-provider database-id)
         table-ids (prototype.db/table-ids-by-name database-id dataset/schema-name)
-        card      (create-demo-question! mp table-ids admin-id)
+        card      (demo-question! mp table-ids admin-id)
         r         (Random. 42)]
     (with-open [conn (jdbc/get-connection (mdb/data-source))]
       (jdbc/with-transaction [tx conn]
@@ -158,7 +165,6 @@
                             :database-id   database-id
                             :executor-id   admin-id
                             :dataset-query (:dataset_query card)
-                            :table-names   #{"web_events"}
                             :hash-key      (str "card/" (:id card))})
         (doseq [{table-name :name} dataset/tables
                 :let  [table-id (get table-ids table-name)]
@@ -170,7 +176,6 @@
                                               :database database-id
                                               :stages   [{:lib/type     "mbql.stage/mbql"
                                                           :source-table table-id}]}
-                              :table-names   #{table-name}
                               :hash-key      (str "table/" table-name)}))))))
 
 (defn ensure-seeded!
