@@ -99,6 +99,18 @@ describe("progress chart dynamic goal", () => {
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
+  it("formats the goal with this chart's column settings", async () => {
+    setup({
+      settings: {
+        ...SETTINGS,
+        column_settings: { '["name","count"]': { prefix: "$" } },
+      },
+      referencedEntities: createMockReferencedEntitiesResults({ value: 2500 }),
+    });
+
+    expect(await screen.findByText("Goal $2,500")).toBeInTheDocument();
+  });
+
   it("re-runs the query with the referenced entity when the dataset has no answer", async () => {
     setupCardDataset({
       dataset: {

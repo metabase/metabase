@@ -2,10 +2,11 @@ import ReactDOMServer from "react-dom/server";
 
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import type { GoalData } from "metabase/viz-core";
-import type { GoalSegment } from "metabase-types/api";
+import type { GoalSegment, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 
 import GaugeContainer from "./GaugeContainer";
@@ -26,15 +27,21 @@ const RED = "#ED6E6E";
 const BLUE = "#509EE3";
 
 type SetupOpts = {
+  columnSettings?: VisualizationSettings["column_settings"];
   data?: GoalData;
   segments?: GoalSegment[];
 };
 
-function setup({ data = DATA, segments }: SetupOpts = {}) {
+function setup({ columnSettings, data = DATA, segments }: SetupOpts = {}) {
   const root = document.createElement("div");
   root.innerHTML = ReactDOMServer.renderToStaticMarkup(
     <GaugeContainer
-      card={{ visualization_settings: { "gauge.segments": segments } }}
+      card={{
+        visualization_settings: {
+          column_settings: columnSettings,
+          "gauge.segments": segments,
+        },
+      }}
       data={data}
       getColor={getColor}
     />,
@@ -86,6 +93,23 @@ describe("GaugeContainer", () => {
 
     expect(getSegmentFills(root)).toEqual([GREEN]);
     expect(root).toHaveTextContent("250");
+  });
+
+  it("formats a bound from another entity with this chart's column settings", () => {
+    const root = setup({
+      data: {
+        ...DATA,
+        referenced_entities: createMockReferencedEntitiesResults({
+          value: 2500,
+        }),
+      },
+      columnSettings: { '["name","count"]': { prefix: "$" } },
+      segments: [
+        { min: 0, max: { type: "card", id: 9, column: "goal" }, color: GREEN },
+      ],
+    });
+
+    expect(root).toHaveTextContent("$2,500");
   });
 
   it("fills a legacy segment without a color with the static text-secondary color", () => {
