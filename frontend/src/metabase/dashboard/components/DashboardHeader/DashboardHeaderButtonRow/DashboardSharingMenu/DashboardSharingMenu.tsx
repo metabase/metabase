@@ -112,6 +112,7 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
         {canShare && isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
             hasPublicLink={hasPublicLink}
+            entity={{ model: "dashboard", id: dashboard.id }}
             onClick={() => setModalType("dashboard-public-link")}
           />
         )}

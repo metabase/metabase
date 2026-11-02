@@ -263,6 +263,7 @@
    "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
+   "/public-link-refusal"  (+auth metabase.public-sharing-rest.api/refusal-routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
