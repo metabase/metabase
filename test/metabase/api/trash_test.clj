@@ -3,7 +3,8 @@
    [clojure.test :refer [deftest testing is]]
    [metabase.collections.models.collection :as collection]
    [metabase.queries-rest.api.card-test :refer [card-with-name-and-query]]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (def dashboard-defaults {:name          "Dashboard"
                          :parameters    [{:id "abc123", :name "test", :type "date"}]
@@ -76,28 +77,42 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :crowberto :put 403 (str "dashboard/" id) {:collection_id (collection/trash-collection-id)}))))))
 
+(defn- pulse-payload [card-id]
+  {:name          "A Pulse"
+   :cards         [{:id                card-id
+                    :include_csv       false
+                    :include_xls       false
+                    :dashboard_card_id nil}]
+   :channels      [{:enabled       true
+                    :channel_type  "email"
+                    :schedule_type "daily"
+                    :schedule_hour 12
+                    :schedule_day  nil
+                    :recipients    []}]
+   :skip_if_empty false
+   :parameters    [{:id "abc123" :name "test" :type "date"}]})
+
+(defn- stored-collection-id [pulse-id]
+  (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))
+
 (deftest cannot-move-pulse-to-trash-test
-  (testing "Cannot move a pulse to the trash"
-    (mt/with-temp [:model/Card       {card-id :id}                       {}
-                   :model/Dashboard  {dashboard-id :id} {:name "Birdcage KPIs"}]
-      (let [payload {:name          "A Pulse"
-                     :cards         [{:id                card-id
-                                      :include_csv       false
-                                      :include_xls       false
-                                      :dashboard_card_id nil}]
-                     :channels      [{:enabled       true
-                                      :channel_type  "email"
-                                      :schedule_type "daily"
-                                      :schedule_hour 12
-                                      :schedule_day  nil
-                                      :recipients    []}]
-                     :dashboard_id  dashboard-id
-                     :skip_if_empty false
-                     :parameters    [{:id "abc123" :name "test" :type "date"}]}]
-        (mt/with-model-cleanup [:model/Pulse]
-          (let [{id :id} (mt/user-http-request :rasta :post 200 "pulse" payload)]
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :put 403 (str "pulse/" id) {:collection_id (collection/trash-collection-id)})))))))))
+  (mt/with-temp [:model/Collection {coll-id :id}      {}
+                 :model/Card       {card-id :id}      {}
+                 :model/Dashboard  {dashboard-id :id} {:name "Birdcage KPIs" :collection_id coll-id}]
+    (mt/with-model-cleanup [:model/Pulse]
+      (testing "Cannot move a pulse without a dashboard to the trash"
+        (let [{id :id} (mt/user-http-request :rasta :post 200 "pulse" (pulse-payload card-id))]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "pulse/" id) {:collection_id (collection/trash-collection-id)})))
+          (is (nil? (stored-collection-id id)))))
+      (testing "A dashboard subscription ignores a move to the trash and stays in its dashboard's collection"
+        (let [{id :id} (mt/user-http-request :rasta :post 200 "pulse"
+                                             (assoc (pulse-payload card-id) :dashboard_id dashboard-id))
+              response (mt/user-http-request :rasta :put 200 (str "pulse/" id)
+                                             {:collection_id (collection/trash-collection-id)})]
+          (is (= coll-id (:collection_id response)))
+          (is (= coll-id (stored-collection-id id)))
+          (is (not= (collection/trash-collection-id) (stored-collection-id id))))))))
 
 (deftest ^:parallel cannot-move-collection-to-trash-test
   (testing "Cannot move a a collection to the trash"
