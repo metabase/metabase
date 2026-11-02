@@ -17,6 +17,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type {
   HealthCheck,
@@ -29,7 +30,7 @@ import {
   useRecheckHealthCheckMutation,
   useRecheckHealthChecksMutation,
 } from "../../api";
-import { getSeverityColor, getSeverityLabel } from "../../utils";
+import { SeverityBadge } from "../SeverityBadge/SeverityBadge";
 
 import S from "./HealthCheckCard.module.css";
 import { RecheckButton } from "./RecheckButton";
@@ -39,7 +40,6 @@ import {
   getHealthCheckItemUrl,
   getHealthCheckSettingsUrl,
   getStatusInfo,
-  isNotFoundError,
   partitionItemsByProblem,
 } from "./utils";
 
@@ -103,37 +103,41 @@ type HealthCheckItemsProps = {
 
 const HealthCheckItems = ({ check }: HealthCheckItemsProps) => {
   const [problemItems, passedItems] = partitionItemsByProblem(check.items);
-  const { icon, iconColor } = getStatusInfo("pass");
-
-  if (problemItems.length === 0 || passedItems.length === 0) {
-    return (
-      <Card withBorder p={0} className={S.itemList}>
-        <HealthCheckItemRows
-          checkId={check.id}
-          items={[...problemItems, ...passedItems]}
-        />
-      </Card>
-    );
-  }
+  const isPassedCollapsed = problemItems.length > 0 && passedItems.length > 0;
 
   return (
     <Card withBorder p={0} className={S.itemList}>
-      <HealthCheckItemRows checkId={check.id} items={problemItems} />
-      <Accordion
-        radius={0}
-        transitionDuration={0}
-        classNames={{ content: S.passedContent }}
-      >
-        <Accordion.Item value="passed">
-          <Accordion.Control icon={<FixedSizeIcon name={icon} c={iconColor} />}>
-            {t`Passed (${passedItems.length})`}
-          </Accordion.Control>
-          <Accordion.Panel>
-            <HealthCheckItemRows checkId={check.id} items={passedItems} />
-          </Accordion.Panel>
-        </Accordion.Item>
-      </Accordion>
+      <HealthCheckItemRows
+        checkId={check.id}
+        items={
+          isPassedCollapsed ? problemItems : [...problemItems, ...passedItems]
+        }
+      />
+      {isPassedCollapsed && (
+        <PassedItems checkId={check.id} items={passedItems} />
+      )}
     </Card>
+  );
+};
+
+const PassedItems = ({ checkId, items }: HealthCheckItemRowsProps) => {
+  const { icon, iconColor } = getStatusInfo("pass");
+
+  return (
+    <Accordion
+      radius={0}
+      transitionDuration={0}
+      classNames={{ content: S.passedContent }}
+    >
+      <Accordion.Item value="passed">
+        <Accordion.Control icon={<FixedSizeIcon name={icon} c={iconColor} />}>
+          {t`Passed (${items.length})`}
+        </Accordion.Control>
+        <Accordion.Panel>
+          <HealthCheckItemRows checkId={checkId} items={items} />
+        </Accordion.Panel>
+      </Accordion.Item>
+    </Accordion>
   );
 };
 
@@ -157,7 +161,7 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
   const handleRecheck = async () => {
     trackHealthCheckRecheckClicked(check.id);
     const { error } = await recheck(check.id);
-    if (error && !isNotFoundError(error)) {
+    if (error && !isResourceNotFoundError(error)) {
       showRecheckError();
     }
   };
@@ -172,20 +176,7 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
       <Stack gap="lg">
         <Group gap="sm" justify="space-between" align="flex-start">
           <Group gap="sm">
-            <Badge
-              color={getSeverityColor({
-                isAffecting: isFailing,
-                severity: check.severity,
-              })}
-              tt={
-                isFailing && check.severity === "critical"
-                  ? "uppercase"
-                  : undefined
-              }
-              size="sm"
-            >
-              {getSeverityLabel(check.severity)}
-            </Badge>
+            <SeverityBadge severity={check.severity} isAffecting={isFailing} />
             {isFailing && check.requires_restart && (
               <Badge color="neutral" size="sm">{t`Requires a restart`}</Badge>
             )}

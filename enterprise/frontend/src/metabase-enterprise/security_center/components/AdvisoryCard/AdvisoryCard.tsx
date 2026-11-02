@@ -4,7 +4,6 @@ import { Markdown } from "metabase/common/components/Markdown";
 import { useSetting } from "metabase/settings";
 import {
   Anchor,
-  Badge,
   Box,
   Button,
   Card,
@@ -19,12 +18,8 @@ import {
 import type { Advisory, AdvisoryId } from "metabase-types/api";
 
 import { trackSecurityAdvisoryDownloadClicked } from "../../analytics";
-import {
-  getDownloadJarForInstance,
-  getSeverityColor,
-  getSeverityLabel,
-  isAcknowledged,
-} from "../../utils";
+import { getDownloadJarForInstance, isAcknowledged } from "../../utils";
+import { SeverityBadge } from "../SeverityBadge/SeverityBadge";
 
 const DISALLOWED_ELEMENTS = ["img"];
 
@@ -49,20 +44,10 @@ export function AdvisoryCard({
     <Card p="xxl" withBorder data-testid="advisory-card">
       <Stack gap="lg">
         <Group gap="sm" justify="space-between" align="flex-start">
-          <Badge
-            color={getSeverityColor({
-              isAffecting,
-              severity: advisory.severity,
-            })}
-            tt={
-              isAffecting && advisory.severity === "critical"
-                ? "uppercase"
-                : undefined
-            }
-            size="sm"
-          >
-            {getSeverityLabel(advisory.severity)}
-          </Badge>
+          <SeverityBadge
+            severity={advisory.severity}
+            isAffecting={isAffecting}
+          />
           {!isAffecting && (
             <Group gap="xxs" align="center">
               <Text size="sm" c="feedback-positive" fw={500}>

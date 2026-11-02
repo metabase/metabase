@@ -12,7 +12,6 @@ import type {
   HealthCheckStatus,
   IconName,
 } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 import { compareBySeverity } from "../../utils";
 
@@ -66,9 +65,6 @@ export const partitionItemsByProblem = (items: HealthCheckItem[]) =>
     _.sortBy(items, (item) => HEALTH_CHECK_STATUSES.indexOf(item.status)),
     (item) => item.status !== "pass",
   );
-
-export const isNotFoundError = (error: unknown) =>
-  isObject(error) && error.status === 404;
 
 export const getHealthCheckItemUrl = (
   checkId: HealthCheckId,
