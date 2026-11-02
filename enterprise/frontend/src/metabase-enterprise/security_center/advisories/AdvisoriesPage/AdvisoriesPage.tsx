@@ -17,7 +17,7 @@ import {
   Title,
 } from "metabase/ui";
 
-import { trackSecurityCenterPageViewed } from "../../analytics";
+import { trackAdvisoriesPageViewed } from "../../analytics";
 import { useSyncSecurityAdvisoriesMutation } from "../../api";
 import { AdvisoryFilterBar } from "../AdvisoryFilterBar/AdvisoryFilterBar";
 import { AdvisoryList } from "../AdvisoryList/AdvisoryList";
@@ -112,7 +112,7 @@ export function AdvisoriesPage() {
   const isSyncInProgress = isSyncing || isPolling;
 
   useEffect(() => {
-    trackSecurityCenterPageViewed();
+    trackAdvisoriesPageViewed();
   }, []);
 
   const currentVersion = version?.tag ?? "";
@@ -138,7 +138,7 @@ export function AdvisoriesPage() {
 
   return (
     <NotificationConfigProvider value={notificationConfig}>
-      <Box className={S.root} data-testid="security-center-page">
+      <Box className={S.root} data-testid="advisories-page">
         <Stack gap="lg" className={S.header}>
           <Group gap="sm" align="center">
             <Title order={1}>{t`Security advisories`}</Title>

@@ -1,7 +1,7 @@
 import { trackSimpleEvent } from "metabase/analytics";
 import type { HealthCheckId } from "metabase-types/api";
 
-export const trackSecurityCenterPageViewed = () => {
+export const trackAdvisoriesPageViewed = () => {
   trackSimpleEvent({
     event: "security_center_page_viewed",
   });

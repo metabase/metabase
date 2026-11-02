@@ -45,8 +45,8 @@ function seedAllAdvisories() {
   ]);
 }
 
-function securityCenterContent() {
-  return cy.findByTestId("security-center-page");
+function advisoriesPageContent() {
+  return cy.findByTestId("advisories-page");
 }
 
 describe("scenarios > admin > security center", { tags: "@EE" }, () => {
@@ -60,12 +60,12 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     // Without a token the page should not render
     H.deleteToken();
     cy.visit("/admin/security-center");
-    cy.findByTestId("security-center-page").should("not.exist");
+    cy.findByTestId("advisories-page").should("not.exist");
 
     // Re-activate the token (no advisories seeded) → empty state
     H.activateToken("pro-self-hosted");
     cy.visit("/admin/security-center");
-    securityCenterContent().within(() => {
+    advisoriesPageContent().within(() => {
       cy.findByText(/No known security issues/).should("be.visible");
     });
   });
@@ -73,14 +73,14 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
   it("should display advisory cards sorted by affected status and severity, and support filtering", () => {
     seedAllAdvisories();
     cy.visit("/admin/security-center");
-    securityCenterContent().within(() => {
+    advisoriesPageContent().within(() => {
       cy.findByText("Security advisories").should("be.visible");
       cy.findByTestId("current-version").should("be.visible");
     });
 
     // All three advisory cards are visible
     cy.findAllByTestId("advisory-card").should("have.length", 3);
-    securityCenterContent().within(() => {
+    advisoriesPageContent().within(() => {
       cy.findByText("Critical RCE vulnerability").should("be.visible");
       cy.findByText("SQL injection in query builder")
         .scrollIntoView()
@@ -101,7 +101,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     cy.findByTestId("severity-filter").click();
     cy.findByRole("option", { name: "Critical" }).click();
     cy.findAllByTestId("advisory-card").should("have.length", 1);
-    securityCenterContent().within(() => {
+    advisoriesPageContent().within(() => {
       cy.findByText("Critical RCE vulnerability").should("be.visible");
     });
 
@@ -114,7 +114,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
   it("should dismiss individual advisories, dismiss all, and toggle dismissed visibility", () => {
     seedAllAdvisories();
     cy.visit("/admin/security-center");
-    securityCenterContent().within(() => {
+    advisoriesPageContent().within(() => {
       cy.findByText("Security advisories").should("be.visible");
     });
 
@@ -148,7 +148,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     cy.intercept("POST", "/api/ee/security-center/acknowledge").as(
       "acknowledgeAll",
     );
-    securityCenterContent().findByText("Dismiss all").click();
+    advisoriesPageContent().findByText("Dismiss all").click();
     cy.wait("@acknowledgeAll").then(({ request }) => {
       expect(request.body.advisory_ids).to.include("TEST-002");
       expect(request.body.advisory_ids).to.include("TEST-003");
@@ -156,7 +156,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     });
 
     // "Dismiss all" button disappears when no non-affecting advisories remain
-    securityCenterContent().findByText("Dismiss all").should("not.exist");
+    advisoriesPageContent().findByText("Dismiss all").should("not.exist");
   });
 
   it("should show nav item with badge and navigate to the security center", () => {
@@ -174,7 +174,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       cy.findByText("Security").click();
     });
     cy.url().should("include", "/admin/security-center");
-    securityCenterContent().within(() => {
+    advisoriesPageContent().within(() => {
       cy.findByText("Security advisories").should("be.visible");
     });
   });
@@ -183,7 +183,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     seedAllAdvisories();
     H.setupSMTP();
     cy.visit("/admin/security-center");
-    securityCenterContent().within(() => {
+    advisoriesPageContent().within(() => {
       cy.findByText("Security advisories").should("be.visible");
     });
 
@@ -213,7 +213,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     H.enableTracking();
     cy.intercept("POST", "/api/ee/security-center/sync").as("sync");
     cy.visit("/admin/security-center");
-    securityCenterContent().within(() => {
+    advisoriesPageContent().within(() => {
       cy.findByText("Security advisories").should("be.visible");
     });
     H.expectUnstructuredSnowplowEvent({
