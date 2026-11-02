@@ -361,15 +361,18 @@ cascading_migrate_down() {
   edition_prefix=$(get_edition_prefix "$source_version") || return 1
 
   local steps=$((source_major - target_major))
-  log "Cascading migrate down: v$source_major → v$target_major ($steps step(s))"
-
-  # Build version sequence: source version first, then intermediate rolling versions
   local versions=("$source_version")
-  local current=$((source_major - 1))
-  while (( current > target_major )); do
-    versions+=("v${edition_prefix}.${current}.x")
-    ((current--))
-  done
+  if [[ "$source_version" == "HEAD" ]]; then
+    steps=1
+  else
+    # Build version sequence: source version first, then intermediate rolling versions
+    local current=$((source_major - 1))
+    while (( current > target_major )); do
+      versions+=("v${edition_prefix}.${current}.x")
+      ((current--))
+    done
+  fi
+  log "Cascading migrate down: v$source_major → v$target_major ($steps step(s))"
 
   # Simple loop - each step handles its own image resolution
   local step=1
@@ -527,6 +530,20 @@ main() {
   init_logs
 
   trap 'code=$?; cleanup; record_result "$code"; exit "$code"' EXIT
+
+  if [[ "$direction" == "downgrade" ]]; then
+    log ""
+    log "Step 0: Seeding app DB with TARGET version ($TARGET_VERSION)..."
+    start_metabase "$target_image"
+
+    if ! wait_for_health "$HEALTH_TIMEOUT"; then
+      error "❌ TARGET version ($TARGET_VERSION) failed health check on an empty app DB"
+      docker compose logs metabase
+      exit 1
+    fi
+
+    stop_metabase "seed target $TARGET_VERSION"
+  fi
 
   log ""
   log "Step 1: Starting SOURCE version ($SOURCE_VERSION)..."
