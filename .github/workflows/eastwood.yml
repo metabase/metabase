@@ -36,7 +36,6 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run Eastwood
-        id: lint
         continue-on-error: true
         run: ${{ matrix.command }} :out '"warnings.txt"' 2>&1 | tee lint.log
       # Eastwood stops at the first exception, so only its closing summary shows it linted every namespace.
@@ -55,6 +54,17 @@ jobs:
           path: |
             outcome.txt
             warnings.txt
+            lint.log
+      - name: Fail on incomplete linting or findings
+        run: |
+          if [ "$(cat outcome.txt)" != complete ]; then
+            echo "::error::Eastwood didn't finish linting ${{ matrix.target }}. See the Run Eastwood step."
+            exit 1
+          fi
+          if [ -s warnings.txt ]; then
+            echo "::error::Eastwood found warnings in ${{ matrix.target }}. See warnings.txt in the artifact."
+            exit 1
+          fi
 
   report:
     name: Report Eastwood findings
@@ -184,7 +194,8 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         run: |
-          jq -n --arg channel "$SLACK_CHANNEL" --arg text ":x: The weekly Eastwood run on metabase/metabase failed to run: $RUN_URL" \
+          jq -n --arg channel "$SLACK_CHANNEL" \
+            --arg text ":x: The weekly Eastwood run on metabase/metabase failed to run: $RUN_URL" \
             '{channel: $channel, text: $text}' |
             curl -sSf https://slack.com/api/chat.postMessage \
               -H "Authorization: Bearer $SLACK_BOT_TOKEN" \

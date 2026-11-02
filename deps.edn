@@ -298,9 +298,9 @@
     io.zonky.test.postgres/embedded-postgres-binaries-linux-amd64    {:mvn/version "18.3.0"} ; Linux x86_64 (covers ubuntu-latest GH Actions runner)
     io.zonky.test.postgres/embedded-postgres-binaries-linux-arm64v8  {:mvn/version "18.3.0"} ; Linux arm64
     io.zonky.test.postgres/embedded-postgres-binaries-windows-amd64  {:mvn/version "18.3.0"} ; Windows x86_64
-    jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
-                                  :exclusions
-                                  [org.ow2.asm/asm-all]}
+    ;; Clojure 1.12 method values and parameter tags require the fork.
+    jonase/eastwood              {:git/url "https://github.com/crisptrutski/eastwood.git"
+                                  :git/sha "a092722a3aa8b3c570c40246866b280122ef9779"}
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
     net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
     nrepl/nrepl                  {:mvn/version "1.5.1"}                     ; nREPL server
@@ -706,11 +706,7 @@
   {:exec-fn   metabase.linters.eastwood/eastwood-tests
    :exec-args {:exclude-linters [:wrong-arity [:suspicious-test :second-arg-is-not-string]]
                :exclude-namespaces
-               [;; byte/1 dispatch value trips up Eastwood's reader
-                metabase.test.http-client
-                ;; Cookie/.getName qualified method trips up Eastwood's analyzer
-                metabase.server.middleware.settings-cache-test
-                ;; .cljc syntax error during Eastwood's analyze+eval phase
+               [;; .cljc syntax error during Eastwood's analyze+eval phase
                 metabase.lib.query-test
                 ;; "count not supported on this type: Symbol" in Eastwood's analyzer
                 metabase.query-processor.parameters.temporal-units-test
