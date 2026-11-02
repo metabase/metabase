@@ -148,9 +148,10 @@
                      :model/Card card {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
                                        :display                :scalar
                                        :document_id            (:id document)
-                                       :visualization_settings {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
-                                                                                   :max   nil
-                                                                                   :color "red"}]}}]
+                                       :visualization_settings
+                                       {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
+                                                           :max   nil
+                                                           :color "red"}]}}]
         (t2/update! :model/Document :id (:id document)
                     {:document (documents.test-util/cards->prose-mirror-ast [(:id card)])})
         (is (= [[1000]]
