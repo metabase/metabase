@@ -153,10 +153,6 @@ const visitsCte = (spec: AnalysisSpec, visit: PathsVisit): Cte => {
   };
 };
 
-/** The steps a path shows after its first, at most. */
-export const getPathDepth = (paths: PathsSpec): number =>
-  Math.min(paths.steps, 8);
-
 /**
  * Each visit's steps in order as `ordered_steps`, and the window of them the
  * paths cover as `bounds`.
@@ -250,7 +246,7 @@ const pathWindowCtes = (
     name: "bounds",
     note: getBoundsNote({ ...paths, start, end }),
     deps: ["ordered_steps"],
-    body: getBoundsBody({ ...paths, start, end }, getPathDepth(paths))
+    body: getBoundsBody({ ...paths, start, end }, paths.steps)
       .filter(Boolean)
       .join("\n"),
   });
@@ -264,7 +260,6 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
     return { ctes: [], select: "SELECT 1", warnings: [] };
   }
 
-  const depth = getPathDepth(paths);
   const window = pathWindowCtes(spec, paths);
   const warnings = [...window.warnings];
   const ctes = [...window.ctes];
@@ -324,7 +319,8 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
   });
 
   // Only "from" has paths that can end early; the others end at their ending event.
-  const dropOff = paths.direction === "from" ? ` OR step <= ${depth}` : "";
+  const dropOff =
+    paths.direction === "from" ? ` OR step <= ${paths.steps}` : "";
   ctes.push({
     name: "edges",
     note: "one row per step, from each step to the next — keys carry the step number so a repeated step is a new node, not a loop",

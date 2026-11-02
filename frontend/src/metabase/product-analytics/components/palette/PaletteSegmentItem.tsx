@@ -38,6 +38,7 @@ export type SavedSegmentActions = {
 type PaletteSegmentItemProps = {
   segment: PaletteSegment;
   onEditDraft?: () => void;
+  /** Omitted without permission to write segments. */
   onSaveDraft?: () => void;
   onDiscardDraft?: () => void;
   /** A saved segment's definition, shown below the row when expanded. */
@@ -128,12 +129,14 @@ export const PaletteSegmentItem = ({
             >
               {t`Edit draft`}
             </Menu.Item>
-            <Menu.Item
-              leftSection={<Icon name="bookmark" />}
-              onClick={onSaveDraft}
-            >
-              {t`Save as a segment…`}
-            </Menu.Item>
+            {onSaveDraft !== undefined && (
+              <Menu.Item
+                leftSection={<Icon name="bookmark" />}
+                onClick={onSaveDraft}
+              >
+                {t`Save as a segment…`}
+              </Menu.Item>
+            )}
             <Menu.Item
               leftSection={<Icon name="trash" />}
               onClick={onDiscardDraft}
