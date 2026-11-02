@@ -1,9 +1,11 @@
 import { getIn } from "icepick";
+import slugg from "slugg";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
 import type { Location } from "metabase/router";
+import { appendSlug } from "metabase/urls";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
@@ -439,7 +441,7 @@ export function createTabSlug({
   if (id === null || id < 0 || !name) {
     return "";
   }
-  return [id, ...name.toLowerCase().split(" ")].join("-");
+  return appendSlug(id, slugg(name));
 }
 
 export function canResetFilter(parameter: UiParameter): boolean {
