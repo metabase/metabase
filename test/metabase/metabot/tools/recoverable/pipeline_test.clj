@@ -2,8 +2,9 @@
   "Guards the one gap `with-pipeline-errors` cannot close by itself.
 
   The converter maps a pipeline `:error` code onto a declaration by name. A code with no declaration
-  is not converted, so it becomes unrecoverable and ends the turn — silently, and only in production.
-  This test reads the pipeline's own sources and fails while the gap is still cheap to close."
+  is not converted, so it becomes `:internal` and the model never reads the pipeline's message. That
+  happens silently, and only in production. This test reads the pipeline's own sources and fails
+  while the gap is still cheap to close."
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -70,7 +71,7 @@
     (is (empty? missing)
         (str "These representations-pipeline :error codes have no declaration in "
              "metabase.metabot.tools.recoverable.pipeline, so `tools.core/with-pipeline-errors` "
-             "will not convert them and they will end the turn instead of teaching the agent: "
+             "will not convert them, and the agent will read a fixed sentence instead of what went wrong: "
              (pr-str (sort missing))
              ". Add a `defpipeline-error` for each, or decide it really is unrecoverable and say so "
              "in a comment there."))))

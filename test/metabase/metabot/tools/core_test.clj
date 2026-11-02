@@ -237,7 +237,7 @@
       (is (some? @inner)))))
 
 (deftest ^:parallel only-declared-recoverables-are-captured-test
-  (testing "an undeclared exception ends the turn and discards the items that loaded"
+  (testing "an undeclared exception fails the whole call and discards the items that loaded"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"a real bug"
          (tools/call (reify
