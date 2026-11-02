@@ -14,9 +14,8 @@
 (deftest ^:parallel cross-database-hint-test
   (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table]]
     (testing error
-      (is (= (str "A query can only reference saved questions, models, metrics, measures and segments "
-                  "from its own database. Use one from that database, or change the source to a table "
-                  "in the referenced item's database.")
+      (is (= (str "Neither a structured query nor a SQL query can combine data from two databases. Tell the user "
+                  "that one query cannot combine data from these two databases, and say what you can do instead.")
              (some-> (recovery-hints/recovery-hint {:error error}) message/render))))))
 
 (deftest ^:parallel ambiguous-database-name-hint-test

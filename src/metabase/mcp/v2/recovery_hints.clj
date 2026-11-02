@@ -111,9 +111,9 @@
                        "owns the segment and use the numeric id from its segments list.")])
 
     (:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table)
-    (message/msg [(str "A query can only reference saved questions, models, metrics, measures and segments "
-                       "from its own database. Use one from that database, or change the source to a table "
-                       "in the referenced item's database.")])
+    (message/msg [(str "Neither a structured query nor a SQL query can combine data from two databases. Tell the "
+                       "user that one query cannot combine data from these two databases, and say what you can do "
+                       "instead.")])
 
     (:unknown-database :ambiguous-database-name)
     (message/msg [(str "Use a numeric table id in `source-table:` (from \"browse_data\" "
