@@ -471,12 +471,12 @@
   (try
     (thunk)
     (catch Throwable e
-      (let [{:keys [agent-error? status-code error humanized]} (ex-data e)
+      (let [{:keys [agent-error? status-code error humanized] :as data} (ex-data e)
             code (pipeline-error-code error)]
         (cond
-          ;; Already declared, e.g. by a nested `with-entity`: its payload and recovery steps are more specific
-          ;; than anything below would rebuild. A declared not-found carries a 404 and would lose its entity.
-          (contains? (ex-data e) tools.error/error-key)
+          ;; Its payload and recovery steps are more specific than anything below would rebuild. A declared
+          ;; not-found carries a 404, and a declared recoverable carries `:agent-error?`, so both would match.
+          (contains? data tools.error/error-key)
           (throw e)
 
           ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
@@ -503,7 +503,8 @@
     (with-pipeline-errors
       (construct/execute-representations-query query))
 
-  Three cases:
+  Four cases:
+  - a declared tool error passes through unchanged, so a nested `with-entity` keeps the entity it names;
   - an `:agent-error?` exception whose ex-data carries an `:error` code declared in
     `metabase.metabot.tools.recoverable.pipeline` becomes that error, with the pipeline's own
     sentence as the message;

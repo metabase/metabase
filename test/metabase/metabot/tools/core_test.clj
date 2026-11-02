@@ -395,21 +395,19 @@
                           (tools/with-pipeline-errors
                             (tools/with-entity {:kind :table :id 5}
                               (throw (ex-info "nope" {:status-code 404}))))))))))
-  (testing "a declared unrecoverable error is not turned into anything else"
-    (is (=? {:class :unrecoverable :code ::refused :user-message "No."}
-            (tools.error/classify
-             (is (thrown? clojure.lang.ExceptionInfo
-                          (tools/with-pipeline-errors
-                            (tools.error/unrecoverable! ::refused {:user-message "No."}))))))))
-  (testing "the declared error is rethrown as it is, not rebuilt"
-    (let [declared (try
-                     (tools/with-entity {:kind :table :id 5}
-                       (throw (ex-info "nope" {:status-code 404})))
-                     (catch Throwable e e))]
-      (is (identical? declared
-                      (try
-                        (tools/with-pipeline-errors (throw declared))
-                        (catch Throwable e e)))))))
+  (doseq [[branch thunk] [["refusal"
+                           #(tools/with-entity {:kind :table :id 5}
+                              (throw (ex-info "nope" {:status-code 404})))]
+                          ["agent-error"
+                           #(tools.error/throw-recoverable!
+                             :metabase.metabot.tools.recoverable.pipeline/unknown-table
+                             {:message "No table found."})]]]
+    (testing (str "a declared error that would match the " branch " branch is rethrown as it is, not rebuilt")
+      (let [declared (try (thunk) (catch Throwable e e))]
+        (is (identical? declared
+                        (try
+                          (tools/with-pipeline-errors (throw declared))
+                          (catch Throwable e e))))))))
 
 (deftest ^:parallel with-pipeline-errors-does-not-relay-foreign-messages-test
   (testing "Lib exceptions stay unrecoverable without a declared `:error` code and lose the `:agent-error?` flag."
