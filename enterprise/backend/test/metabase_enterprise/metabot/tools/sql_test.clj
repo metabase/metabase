@@ -7,12 +7,15 @@
    [metabase.audit-app.core :as audit]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.sql-test :as sql-test]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
@@ -45,3 +48,13 @@
                   (is (str/includes? output "Metabase does not run SQL on the Internal Metabase Database"))
                   (is (= (= :internal profile)
                          (str/includes? output "Build the question with `construct_notebook_query`"))))))))))))
+
+(deftest read-resource-says-sql-is-unavailable-on-the-audit-database-test
+  (mt/with-premium-features #{:audit-app}
+    (audit-test/with-audit-db-restoration!
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [model-id (t2/select-one-pk :model/Card :database_id audit/audit-db-id :type :model)]
+          (doseq [uri [(str "metabase://database/" audit/audit-db-id) (str "metabase://model/" model-id)]]
+            (testing uri
+              (is (str/includes? (:output (test-util/call-tool read-resource/read-resource-tool {:uris [uri]}))
+                                 "sql_unavailable=\"true\"")))))))))

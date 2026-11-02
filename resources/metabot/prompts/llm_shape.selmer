@@ -64,7 +64,7 @@ This will help avoid errors due to unexpected data types or formats.
 </metric>
 {% endif %}
 {% if is_table %}
-<table id="{{table_id}}", name="{{table_name}}" database_id="{{table_database_id}}"{% if table_database_name %} database_name="{{table_database_name}}"{% endif %} database_engine="{{table_database_engine}}" fully_qualified_name="{{table_fqn}}">
+<table id="{{table_id}}", name="{{table_name}}" database_id="{{table_database_id}}"{% if table_database_name %} database_name="{{table_database_name}}"{% endif %} database_engine="{{table_database_engine}}"{% if table_sql_unavailable %} sql_unavailable="true"{% endif %} fully_qualified_name="{{table_fqn}}">
 
 ### Description
 {{table_description}}
@@ -108,7 +108,7 @@ This will help avoid errors due to unexpected data types or formats.
 </table>
 {% endif %}
 {% if is_model %}
-<metabase-model id="{{model_id}}" name="{{model_name}}" is_verified="{{model_verified}}" database_id="{{model_database_id}}"{% if model_database_name %} database_name="{{model_database_name}}"{% endif %} database_engine="{{model_database_engine}}" fully_qualified_name="{{model_fqn}}"{% if model_portable_entity_id %} portable_entity_id="{{model_portable_entity_id}}"{% endif %}>
+<metabase-model id="{{model_id}}" name="{{model_name}}" is_verified="{{model_verified}}" database_id="{{model_database_id}}"{% if model_database_name %} database_name="{{model_database_name}}"{% endif %} database_engine="{{model_database_engine}}"{% if model_sql_unavailable %} sql_unavailable="true"{% endif %} fully_qualified_name="{{model_fqn}}"{% if model_portable_entity_id %} portable_entity_id="{{model_portable_entity_id}}"{% endif %}>
 
 ### Description
 {{model_description}}
@@ -288,7 +288,7 @@ or jargon that may be relevant to the user's questions.
 </user>
 {% endif %}
 {% if is_search_result %}
-<{{search_tag_name}} id="{{search_id}}"{% if search_uri %} uri="{{search_uri}}"{% endif %} name="{{search_name}}"{% if search_has_curated %} is_curated="{{search_curated}}"{% endif %}{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_has_official %} is_official="{{search_official}}"{% endif %}{% if search_has_can_write %} can_write="{{search_can_write}}"{% endif %}{% if search_data_layer %} data_layer="{{search_data_layer}}"{% endif %}{% if search_data_authority %} data_authority="{{search_data_authority}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_source_card_entity_id %} source_card_portable_entity_id="{{search_source_card_entity_id}}"{% if search_source_card_name %} source_card_name="{{search_source_card_name}}"{% endif %}{% endif %}{% if search_source_unavailable %} source_unavailable="true"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
+<{{search_tag_name}} id="{{search_id}}"{% if search_uri %} uri="{{search_uri}}"{% endif %} name="{{search_name}}"{% if search_has_curated %} is_curated="{{search_curated}}"{% endif %}{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_has_official %} is_official="{{search_official}}"{% endif %}{% if search_has_can_write %} can_write="{{search_can_write}}"{% endif %}{% if search_data_layer %} data_layer="{{search_data_layer}}"{% endif %}{% if search_data_authority %} data_authority="{{search_data_authority}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_sql_unavailable %} sql_unavailable="true"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_source_card_entity_id %} source_card_portable_entity_id="{{search_source_card_entity_id}}"{% if search_source_card_name %} source_card_name="{{search_source_card_name}}"{% endif %}{% endif %}{% if search_source_unavailable %} source_unavailable="true"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
 {% if search_description %}
 {{search_description}}
 {% endif %}
