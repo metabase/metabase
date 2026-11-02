@@ -1,8 +1,10 @@
 (ns metabase-enterprise.data-apps.db
-  "Application database queries for the data-apps module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
+  "Application database queries for the data-apps module, so the rest of the module only touches `toucan2.core` for
+  model definitions and hydration methods."
   (:require
-   [metabase-enterprise.data-apps.schema :as data-apps.schema]
+   [clojure.set :as set]
+   [metabase.collections.models.collection :as collection]
+   [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.util.malli :as mu]
@@ -28,18 +30,6 @@
   [slug :- :string]
   (t2/select-one non-blob-model :name slug))
 
-(mu/defn enabled-data-app-by-slug
-  "The enabled DataApp named `slug` without its bundle, or nil."
-  [slug :- :string]
-  (t2/select-one non-blob-model :name slug :enabled true))
-
-(mu/defn data-apps
-  "Every DataApp without its bundle, ordered by display name; only the enabled ones when `available?`."
-  [available? :- [:maybe :boolean]]
-  (t2/select non-blob-model
-             (cond-> {:order-by [[:display_name :asc]]}
-               available? (assoc :where [:= :enabled true]))))
-
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
@@ -61,36 +51,38 @@
   [slug :- :string]
   (t2/exists? :model/DataApp :name slug))
 
-(mu/defn data-app-entity-id-named
-  "The `:entity_id` of the DataApp named `slug`, or nil."
-  [slug :- :string]
-  (t2/select-one-fn :entity_id :model/DataApp :name slug))
-
 (mu/defn resource-collection?
   "Whether the Collection with `collection-id` is the resource collection of a DataApp."
   [collection-id :- pos-int?]
   (t2/exists? :model/DataApp :resource_collection_id collection-id))
 
-(mu/defn insert-data-app!
-  "Insert the DataApp `row`."
-  [row :- ::data-apps.schema/data-app.update]
-  (t2/insert! :model/DataApp row))
+(mu/defn other-app-has-collection?
+  "Whether a DataApp other than the one with `app-id`, or any when it is nil, has the Collection with `collection-id`."
+  [collection-id :- pos-int?
+   app-id        :- [:maybe pos-int?]]
+  (t2/exists? :model/DataApp :resource_collection_id collection-id :id [:not= (or app-id -1)]))
 
-(mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
-  "Insert the DataApp `row`, returning its ID."
-  [row :- ::data-apps.schema/data-app.update]
-  (t2/insert-returning-pk! :model/DataApp row))
+(mu/defn data-apps-namespace-collection?
+  "Whether the Collection with `collection-id` is in the data-apps namespace."
+  [collection-id :- pos-int?]
+  (t2/exists? :model/Collection :id collection-id :namespace "data-apps"))
+
+(mu/defn resource-collection-name :- :string
+  "The name of the resource collection of the data app named `slug`."
+  [slug :- :string]
+  (format "Data App: %s" slug))
+
+(mu/defn insert-resource-collection! :- ms/PositiveInt
+  "Insert the resource collection of the data app named `slug`, a top-level collection of data apps, returning its ID."
+  [slug :- :string]
+  (t2/insert-returning-pk! :model/Collection {:name      (resource-collection-name slug)
+                                              :namespace "data-apps"}))
 
 (mu/defn update-data-app!
   "Apply `changes` to the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt
    changes     :- ::data-apps.schema/data-app.update]
   (t2/update! :model/DataApp :id data-app-id changes))
-
-(mu/defn delete-data-app!
-  "Delete the DataApp with `data-app-id`."
-  [data-app-id :- ms/PositiveInt]
-  (t2/delete! :model/DataApp :id data-app-id))
 
 (defn resource-collection-ids
   "The IDs of the resource collections owned by data apps."
@@ -101,49 +93,6 @@
   "The ID of the resource collection owned by the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
   (t2/select-one-fn :resource_collection_id :model/DataApp :id data-app-id))
-
-(defn resource-collection-owned?
-  "Whether a data app owns the collection with `collection-id`."
-  [collection-id]
-  (t2/exists? :model/DataApp :resource_collection_id collection-id))
-
-(defn data-app-by-entity-id
-  "The `:id`, `:entity_id`, and `:resource_collection_id` of the DataApp with `entity-id`, or nil."
-  [entity-id]
-  (t2/select-one [:model/DataApp :id :entity_id :resource_collection_id] :entity_id entity-id))
-
-(defn active-table?
-  "Whether the table with `table-id` is active."
-  [table-id]
-  (some? (t2/select-one-pk :model/Table :id table-id :active true
-                           {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]})))
-
-(defn active-field?
-  "Whether the field with `field-id` is active."
-  [field-id]
-  (some? (t2/select-one-pk :model/Field :id field-id :active true
-                           {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]})))
-
-(defn collections-by-entity-ids
-  "The `:id`, `:entity_id` and `:namespace` of the collections with `entity-ids`."
-  [entity-ids]
-  (if (seq entity-ids)
-    (t2/query {:select [:id :entity_id :namespace] :from [:collection] :where [:in :entity_id entity-ids]})
-    []))
-
-(defn cards-by-entity-ids
-  "The `:entity_id` and `:collection_id` of the cards with `entity-ids`."
-  [entity-ids]
-  (if (seq entity-ids)
-    (t2/query {:select [:entity_id :collection_id] :from [:report_card] :where [:in :entity_id entity-ids]})
-    []))
-
-(defn actions-by-entity-ids
-  "The `:entity_id` and `:collection_id` of the actions with `entity-ids`."
-  [entity-ids]
-  (if (seq entity-ids)
-    (t2/select [:model/Action :entity_id :collection_id] :entity_id [:in entity-ids])
-    []))
 
 (defn collection-card-ids
   "The IDs of the cards in the collection with `collection-id`."
@@ -160,61 +109,34 @@
   [collection-id]
   (t2/select-one :model/Collection :id collection-id))
 
-(defn update-resource-collection!
-  "Apply `changes` to the resource collection with `collection-id`."
-  [collection-id changes]
-  (t2/update! :model/Collection :id collection-id changes))
-
 (defn delete-resource-collection!
   "Delete the resource collection with `collection-id`."
   [collection-id]
   (t2/delete! :model/Collection :id collection-id))
 
-(defn permissions-for-paths-excluding-group
-  "Permission grants for `paths`, excluding `group-id`."
-  [paths group-id]
-  (t2/select [:model/Permissions :group_id :object]
-             :object [:in paths]
-             :group_id [:not= group-id]))
+(mu/defn readable-data-app-ids-select
+  "A HoneySQL query of the ids of the DataApps that the User with `user-id` can read: every app for a superuser, else
+  the enabled apps whose resource collection they can read."
+  [user-id    :- ms/PositiveInt
+   superuser? :- :boolean]
+  (if superuser?
+    ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)]}
+    ^:allow-subquery {:select [:id]
+                      :from   [(t2/table-name :model/DataApp)]
+                      :where  [:and
+                               [:= :enabled true]
+                               [:in :resource_collection_id
+                                (collection/visible-collection-query
+                                 {:permission-level :read :include-archived-items :all}
+                                 {:current-user-id user-id :is-superuser? false})]]}))
 
-(defn table
-  "The active Table with `table-id`, or nil. The typed schema lists only active tables."
-  [table-id]
-  (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
-
-(defn destination-database-ids
-  "The IDs among `database-ids` of the databases that are routing destinations."
-  [database-ids]
-  (if (seq database-ids)
-    (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil])
-    #{}))
-
-(defn cards-by-ids
-  "The Cards with `card-ids`."
-  [card-ids]
-  (if (seq card-ids)
-    (t2/select :model/Card :id [:in card-ids])
-    []))
-
-(defn app-assignments
-  "Assignments for the requested apps."
-  [app-ids]
-  (if (seq app-ids)
-    (t2/select :model/DataAppGroupAssignment :data_app_id [:in app-ids])
-    []))
-
-(defn insert-assignments!
-  "Assign groups to an app. The unique constraint rejects concurrent duplicates."
-  [app-id group-ids]
-  (t2/insert! :model/DataAppGroupAssignment
-              (mapv (fn [group-id] {:data_app_id app-id :permission_group_id group-id}) group-ids)))
-
-(defn delete-assignments!
-  "Remove the requested group assignments from an app."
-  [app-id group-ids]
-  (if (seq group-ids)
-    (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id [:in group-ids])
-    0))
+(mu/defn readable-data-apps
+  "The DataApps that the User with `user-id` can read, without their bundles, ordered by display name."
+  [user-id    :- ms/PositiveInt
+   superuser? :- :boolean]
+  (t2/select non-blob-model
+             {:where    [:in :id (readable-data-app-ids-select user-id superuser?)]
+              :order-by [[:display_name :asc]]}))
 
 (defn permissions-for-warnings
   "View-data permission rows for the warning tables and their databases."
@@ -226,6 +148,86 @@
                :perm_type :perms/view-data
                {:where [:or [:in :table_id table-ids] [:= :table_id nil]]})
     []))
+
+(mu/defn active-tables
+  "The active Tables with `table-ids`, in name then id order."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select :model/Table
+               {:from     [(warehouse-schema-overlay/table-query)]
+                :where    [:and [:= :active true] [:in :id table-ids]]
+                :order-by [[:name :asc] [:id :asc]]})
+    []))
+
+(mu/defn table
+  "The Table with `table-id`, or nil."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one :model/Table {:from [(warehouse-schema-overlay/table-query)] :where [:= :id table-id]}))
+
+(mu/defn resource-cards
+  "The unarchived Cards in the collection with `collection-id`, in name then id order."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select :model/Card {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
+                          :order-by [[:name :asc] [:id :asc]]}))
+
+(mu/defn resource-action-ids
+  "The IDs of the unarchived Actions in the collection with `collection-id`, in name then id order."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-pks-vec :model/Action {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
+                                    :order-by [[:name :asc] [:id :asc]]}))
+
+(mu/defn external-card-ids :- [:set ::lib.schema.id/card]
+  "Among `card-ids`, those of no Card in the collection with `collection-id`."
+  [collection-id :- [:maybe ::lib.schema.id/collection]
+   card-ids      :- [:set {:min 1} ::lib.schema.id/card]]
+  (set/difference card-ids (when collection-id
+                             (t2/select-pks-set :model/Card :id [:in card-ids] :collection_id collection-id))))
+
+(mu/defn external-metric-ids :- [:set ::lib.schema.id/card]
+  "Among `card-ids`, those of no metric in the Library's Metrics collection or one of its subcollections."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (set/difference card-ids (t2/select-fn-set :id [:model/Card :report_card.id]
+                                             {:join  [:collection [:= :collection.id :report_card.collection_id]]
+                                              :where [:and
+                                                      [:in :report_card.id card-ids]
+                                                      [:= :report_card.type "metric"]
+                                                      [:= :collection.type collection/library-metrics-collection-type]]})))
+
+(mu/defn external-table-ids :- [:set ::lib.schema.id/table]
+  "Among `table-ids`, those of no Table published to the Library."
+  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
+  (set/difference table-ids (t2/select-pks-set :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                                                             :where [:and [:in :id table-ids] [:= :is_published true]]})))
+
+(mu/defn published-tables :- [:sequential :metabase.warehouse-schema.schema/table]
+  "The Tables published to the Library, with their databases and schemas."
+  []
+  (t2/select [:model/Table :id :db_id :schema]
+             {:from  [(warehouse-schema-overlay/table-query)]
+              :where [:= :is_published true]}))
+
+(mu/defn external-segment-ids :- [:set ::lib.schema.id/segment]
+  "Among `segment-ids`, those of no Segment of a Table published to the Library."
+  [segment-ids :- [:set {:min 1} ::lib.schema.id/segment]]
+  (set/difference segment-ids (t2/select-fn-set :id [:model/Segment :segment.id]
+                                                {:join  [(warehouse-schema-overlay/table-query {:alias :table})
+                                                         [:= :table.id :segment.table_id]]
+                                                 :where [:and [:in :segment.id segment-ids] [:= :table.is_published true]]})))
+
+(mu/defn external-measure-ids :- [:set ::lib.schema.id/measure]
+  "Among `measure-ids`, those of no Measure of a Table published to the Library."
+  [measure-ids :- [:set {:min 1} ::lib.schema.id/measure]]
+  (set/difference measure-ids (t2/select-fn-set :id [:model/Measure :measure.id]
+                                                {:join  [(warehouse-schema-overlay/table-query {:alias :table})
+                                                         [:= :table.id :measure.table_id]]
+                                                 :where [:and [:in :measure.id measure-ids] [:= :table.is_published true]]})))
+
+(defn destination-database-ids
+  "The IDs among `database-ids` of the databases that are routing destinations."
+  [database-ids]
+  (if (seq database-ids)
+    (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil])
+    #{}))
 
 (mu/defn metric-cards-in-collections
   "The non-archived metric Cards in `collection-ids`, in name then id order."
@@ -254,41 +256,10 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
-(mu/defn model-less-query-action-ids
-  "The ids of the unarchived query Actions without a model outside `excluded-collection-ids`, in name then id
-  order."
-  [excluded-collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pks-vec :model/Action
-                     {:where    [:and
-                                 [:= :model_id nil]
-                                 [:= :type "query"]
-                                 [:= :archived false]
-                                 [:or
-                                  [:= :collection_id nil]
-                                  [:exists ^:allow-subquery {:select [1]
-                                                             :from [[(t2/table-name :model/Collection) :c]]
-                                                             :where [:and
-                                                                     [:= :c.id :action.collection_id]
-                                                                     [:= :c.archived false]
-                                                                     [:= :c.namespace "data-actions"]]}]]
-                                 (when (seq excluded-collection-ids)
-                                   [:or [:= :collection_id nil] [:not-in :collection_id excluded-collection-ids]])]
-                      :order-by [[:name :asc] [:id :asc]]}))
-
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn active-tables
-  "The active Tables with `table-ids`, in name then id order."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (if (seq table-ids)
-    (t2/select :model/Table
-               {:from     [(warehouse-schema-overlay/table-query)]
-                :where    [:and [:= :active true] [:in :id table-ids]]
-                :order-by [[:name :asc] [:id :asc]]})
-    []))
 
 (mu/defn published-tables-in-collections
   "The active, published Tables in `collection-ids`, in name then id order."

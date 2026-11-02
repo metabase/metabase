@@ -28,6 +28,8 @@
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
+(set! *warn-on-reflection* true)
+
 (methodical/defmethod t2/table-name :model/Measure [_model] :measure)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :measure] [_original-model _k] :model/Measure)
 

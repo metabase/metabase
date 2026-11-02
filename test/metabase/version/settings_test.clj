@@ -6,6 +6,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.version.settings :as version.settings]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (def prevent? #'version.settings/prevent-upgrade?)

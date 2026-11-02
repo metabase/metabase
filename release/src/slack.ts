@@ -567,6 +567,33 @@ export async function sendPublishFailureMessage({
   });
 }
 
+export async function sendDockerReadmeFailureMessage({
+  channelName,
+  version,
+  runId,
+  owner,
+  repo,
+  edition,
+}: {
+  channelName: string;
+  version: string;
+  runId: number;
+  owner: string;
+  repo: string;
+  edition: string;
+}) {
+  const message = `:warning: ${githubRunLink(`Updating the ${edition} Docker Hub README for ${getGenericVersion(version)} failed`, runId.toString(), owner, repo)}. The release itself is fine.`;
+
+  const buildThread = await getExistingSlackMessage(version, channelName);
+
+  if (!buildThread?.id) {
+    await sendSlackMessage({ channelName, message });
+    return;
+  }
+
+  await sendSlackReply({ channelName, message, messageId: buildThread.id });
+}
+
 export async function sendPublishCompleteMessage({
   channelName,
   version,

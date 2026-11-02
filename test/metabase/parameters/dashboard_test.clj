@@ -87,9 +87,9 @@
                                                                 :type "date/all-options"}]})]
               (is (= "completed" (:status response))))))))))
 
+;; Test for issue #47951: Dashboard filters should show remapped values even when
+;; user has view-data but not create-queries permissions on the target table.
 (deftest ^:synchronized dashboard-remapping-multi-field-permissions-test
-  "Test for issue #47951: Dashboard filters should show remapped values even when
-   user has view-data but not create-queries permissions on the target table."
   (testing "Dashboard parameter remapping with multi-field FK scenario"
     (mt/dataset test-data
       (let [orders-product-id-field-id (mt/id :orders :product_id)

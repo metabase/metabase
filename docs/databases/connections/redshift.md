@@ -102,11 +102,7 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
-## Model features
-
-Choose whether to enable features related to Metabase models. These will often require a write connection.
-
-### Model persistence
+## Model persistence
 
 You can enable model persistence to allow Metabase to create tables with model data and refresh them on a schedule. This requires write permissions to a designated schema.
 

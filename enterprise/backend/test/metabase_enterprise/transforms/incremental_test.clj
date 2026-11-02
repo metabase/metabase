@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -165,12 +166,12 @@
     (some-> result :data :rows first first bigint)))
 
 (defn- get-checkpoint-value [transform-id]
-  (let [transform (t2/select-one :model/Transform transform-id)
+  (let [transform (t2/select-one :model/Transform :id transform-id)
         {:keys [last_checkpoint_value]} transform]
     (when last_checkpoint_value
       (let [source-incremental-strategy (get-in transform [:source :source-incremental-strategy])
             field-id (:checkpoint-filter-field-id source-incremental-strategy)
-            field (t2/select-one :model/Field field-id)]
+            field (t2/select-one :model/Field :id field-id)]
         (#'transforms-base.u/parse-checkpoint-value (:base_type field) last_checkpoint_value)))))
 
 (defn- compare-checkpoint-values
@@ -185,8 +186,8 @@
 (defn- insert-test-products!
   "Insert new products into the transforms_products table."
   [products]
-  (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
-        spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+  (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table :id (mt/id :transforms_products))
+        spec      (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
         table-sql (sql.u/quote-name driver/*driver* :table schema source-table-name)
         field-sql #(sql.u/quote-name driver/*driver* :field %)]
     (if (#{:clickhouse :snowflake} driver/*driver*)
@@ -215,8 +216,8 @@
 
 (defn- delete-test-products!
   [products]
-  (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
-        spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+  (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table :id (mt/id :transforms_products))
+        spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
         delete-sql (format "DELETE FROM %s WHERE %s IN (%s)"
                            (sql.u/quote-name driver/*driver* :table schema source-table-name)
                            (sql.u/quote-name driver/*driver* :field "name")
@@ -239,7 +240,7 @@
 (defn- target-table-gen [prefix]
   {:type     :table
    :name     prefix
-   :schema   (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+   :schema   (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
    :database (mt/id)})
 
 (deftest create-incremental-transform-test
@@ -300,7 +301,7 @@
                             (is (compare-checkpoint-values checkpoint-type expected-initial-checkpoint checkpoint)
                                 (format "Checkpoint should be MAX(%s) from all 16 rows" (:field-name checkpoint-config)))))))
                     (testing "Second run with no new data adds nothing"
-                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (let [transform (t2/select-one :model/Transform :id (:id transform))]
                         (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                         (let [row-count           (get-table-row-count target-table)
                               distinct-timestamps (get-distinct-timestamp-count target-table)]
@@ -313,7 +314,7 @@
                             :category "Gadget"
                             :price 379.99
                             :created-at "2024-01-20T10:00:00"}]
-                          (let [transform (t2/select-one :model/Transform (:id transform))]
+                          (let [transform (t2/select-one :model/Transform :id (:id transform))]
                             (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                             (let [row-count           (get-table-row-count target-table)
                                   distinct-timestamps (get-distinct-timestamp-count target-table)
@@ -347,7 +348,7 @@
                     (is (nil? (mt/user-http-request :crowberto :post 204 (format "transform/%s/reset-checkpoint" (:id transform)))))
                     (is (nil? (get-checkpoint-value (:id transform)))))
                   (testing "the next run reprocesses the full source table, not just the tail"
-                    (let [transform (t2/select-one :model/Transform (:id transform))]
+                    (let [transform (t2/select-one :model/Transform :id (:id transform))]
                       (execute-transform-with-ordering! transform :mbql (:field-name checkpoint-config) {:run-method :manual})
                       (is (= 17 (get-table-row-count target-table))
                           "full reload replaces the target with all 17 source rows"))))))))))))
@@ -366,7 +367,7 @@
                       {:keys [expected-initial-checkpoint]} checkpoint-config
                       initial-payload (make-incremental-transform-payload "Switch Transform" target-table transform-type checkpoint-config)]
                   (mt/with-temp [:model/Transform transform initial-payload]
-                    (let [get-transform #(t2/select-one :model/Transform (:id transform))]
+                    (let [get-transform #(t2/select-one :model/Transform :id (:id transform))]
                       (testing "Initial incremental run processes all data"
                         (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                         (transforms.tu/wait-for-table (:name target-table) 10000)
@@ -392,7 +393,7 @@
                           (is (= "table" (-> updated :target :type)))
                           (is (nil? (-> updated :source :source-incremental-strategy)))))
                       (testing "Non-incremental run overwrites all data"
-                        (let [transform (t2/select-one :model/Transform (:id transform))]
+                        (let [transform (t2/select-one :model/Transform :id (:id transform))]
                           (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                           (let [row-count           (get-table-row-count target-table)
                                 distinct-timestamps (get-distinct-timestamp-count target-table)]
@@ -439,7 +440,7 @@
                         (is (= "table-incremental" (-> updated :target :type)))
                         (is (= "checkpoint" (-> updated :source :source-incremental-strategy :type)))))
                     (testing "First incremental run after switch recreates table with checkpoint"
-                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (let [transform (t2/select-one :model/Transform :id (:id transform))]
                         (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                         (let [row-count           (get-table-row-count target-table)
                               distinct-timestamps (get-distinct-timestamp-count target-table)
@@ -448,7 +449,7 @@
                           (is (= 1 distinct-timestamps) "Should have 1 distinct timestamp")
                           (is (compare-checkpoint-values checkpoint-type expected-initial-checkpoint checkpoint) "Checkpoint should be computed from existing data"))))
                     (testing "Second incremental run with no new data"
-                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (let [transform (t2/select-one :model/Transform :id (:id transform))]
                         (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                         (let [row-count           (get-table-row-count target-table)
                               distinct-timestamps (get-distinct-timestamp-count target-table)]
@@ -461,7 +462,7 @@
                             :category "Gadget"
                             :price 379.99
                             :created-at "2024-01-20T10:00:00"}]
-                          (let [transform (t2/select-one :model/Transform (:id transform))]
+                          (let [transform (t2/select-one :model/Transform :id (:id transform))]
                             (execute-transform-with-ordering! transform transform-type (:field-name checkpoint-config) {:run-method :manual})
                             (let [row-count (get-table-row-count target-table)
                                   checkpoint (get-checkpoint-value (:id transform))]
@@ -478,7 +479,7 @@
           (with-transform-cleanup! [target-table "unsupported_type_test"]
             (let [name-field-id (mt/id :transforms_products :name)
                   table-id (mt/id :transforms_products)
-                  schema (t2/select-one-fn :schema :model/Table table-id)
+                  schema (t2/select-one-fn :schema :model/Table :id table-id)
                   transform-payload {:name "Invalid Checkpoint Type Transform"
                                      :source {:type "query"
                                               :query {:database (mt/id)
@@ -511,7 +512,7 @@
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [target-table "empty_table_target"]
           (let [db-id   (mt/id)
-                db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
+                db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
                 table-id (mt/id :transforms_products)
                 checkpoint-field-id (t2/select-one-pk :model/Field :name "id" :table_id table-id)
                 ;; Query that returns no rows but has the checkpoint column
@@ -539,7 +540,7 @@
               (testing "sync has picked up table"
                 (is (=? {:name target-table} (t2/select-one :model/Table :name target-table))))
               (testing "checkpoint is set from source table MAX even though query returned no rows"
-                (let [transform (t2/select-one :model/Transform (:id transform))]
+                (let [transform (t2/select-one :model/Transform :id (:id transform))]
                   (is (some? (:last_checkpoint_value transform))
                       "Checkpoint is computed from source table, not query output"))))))))))
 
@@ -604,7 +605,7 @@
                            :target-incremental-strategy {:type "append"}}]
               (mt/with-temp [:model/Transform transform {:name "test transform" :source source, :target target}]
                 ;; Mark the field as inactive
-                (t2/update! :model/Field field-id {:active false})
+                (t2/update! :model/Field :id field-id {:active false})
                 (try
                   (testing "Transform execution fails with inactive checkpoint field"
                     (is (thrown-with-msg?
@@ -613,7 +614,7 @@
                          (transforms.execute/execute! transform {:run-method :manual}))))
                   (finally
                     ;; Restore field to active state for other tests
-                    (t2/update! :model/Field field-id {:active true})))))))))))
+                    (t2/update! :model/Field :id field-id {:active true})))))))))))
 
 (deftest changing-query-keeps-checkpoint-test
   (mt/test-drivers #{:postgres}
@@ -621,7 +622,7 @@
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [target-table "change_table_target"]
           (let [db-id   (mt/id)
-                db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
+                db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
                 table-id (mt/id :transforms_products)
                 checkpoint-field-id (t2/select-one-pk :model/Field :name "id" :table_id table-id)
                 make-source (fn [query-sql]
@@ -651,16 +652,16 @@
                 (transforms.execute/execute! transform {:run-method :manual})
                 (is (= 16 (count (pg-table-rows db-spec target-table)))))
               (t2/update! :model/Transform
-                          (:id transform)
+                          :id (:id transform)
                           {:source (make-source "SELECT id FROM {{source_table}} AS s ORDER BY id DESC")})
               (testing "run after query change with no new data keeps same row count"
-                (transforms.execute/execute! (t2/select-one :model/Transform (:id transform)) {:run-method :manual})
+                (transforms.execute/execute! (t2/select-one :model/Transform :id (:id transform)) {:run-method :manual})
                 (is (= 16 (count (pg-table-rows db-spec target-table)))
                     "Checkpoint preserved across query change, no new rows added"))
               (testing "after inserting new data, incremental run appends"
                 (with-insert-test-products!
                   [{:name "New Product" :category "Test" :price 99.99 :created-at "2024-01-21T10:00:00"}]
-                  (let [transform (t2/select-one :model/Transform (:id transform))]
+                  (let [transform (t2/select-one :model/Transform :id (:id transform))]
                     (transforms.execute/execute! transform {:run-method :manual})
                     (is (= 17 (count (pg-table-rows db-spec target-table)))
                         "Should append 1 new row after query change")))))))))))
@@ -696,7 +697,7 @@
                         (is (compare-checkpoint-values checkpoint-type expected-initial-checkpoint checkpoint)
                             (format "Checkpoint should be MAX(%s) from all 16 rows" field-name))))
                     (testing "Second run without new data adds nothing"
-                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (let [transform (t2/select-one :model/Transform :id (:id transform))]
                         (transforms.execute/execute! transform {:run-method :manual})
                         (let [row-count (get-table-row-count target-table)]
                           (is (= 16 row-count) "Should still have 16 rows, no new data"))))
@@ -707,7 +708,7 @@
                             :category "Electronics"
                             :price 299.99
                             :created-at "2024-01-21T10:00:00"}]
-                          (let [transform (t2/select-one :model/Transform (:id transform))]
+                          (let [transform (t2/select-one :model/Transform :id (:id transform))]
                             (transforms.execute/execute! transform {:run-method :manual})
                             (let [row-count  (get-table-row-count target-table)
                                   checkpoint (get-checkpoint-value (:id transform))]
@@ -748,7 +749,7 @@
                       (testing "append run preserves the indexes"
                         (with-insert-test-products! [{:name "Incremental Index Product" :category "Gadget"
                                                       :price 379.99 :created-at "2024-01-20T10:00:00"}]
-                          (let [transform (t2/select-one :model/Transform (:id transform))]
+                          (let [transform (t2/select-one :model/Transform :id (:id transform))]
                             (execute-transform-with-ordering! transform transform-type checkpoint-field
                                                               {:run-method :manual})
                             (is (= expected (physical-indexes (mt/db) schema table-name)))))))))))))))))
@@ -780,12 +781,12 @@
                   (testing "the watermark survives the request untouched"
                     (is (some? (get-checkpoint-value (:id transform)))))
                   (testing "the next run rebuilds and the index lands in the warehouse"
-                    (let [transform (t2/select-one :model/Transform (:id transform))]
+                    (let [transform (t2/select-one :model/Transform :id (:id transform))]
                       (execute-transform-with-ordering! transform :mbql checkpoint-field {:run-method :manual})
                       (is (contains? (physical-indexes (mt/db) (:schema target) table-name) "mid_run_idx"))
                       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex
                                                           :transform_id (:id transform)
                                                           :index_name "mid_run_idx")))))
                   (testing "once settled, the run after that appends again"
-                    (let [transform (t2/select-one :model/Transform (:id transform))]
+                    (let [transform (t2/select-one :model/Transform :id (:id transform))]
                       (is (not (transforms-base.u/full-incremental-run? transform))))))))))))))

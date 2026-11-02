@@ -68,8 +68,8 @@ interface ModelActionListItemProps {
   actionUrl: string;
   canRun: boolean;
   canEdit: boolean;
-  canArchive: boolean;
-  onArchive: (action: WritebackAction) => void;
+  canDelete: boolean;
+  onDelete: (action: WritebackAction) => void;
 }
 
 export function ModelActionListItem({
@@ -77,8 +77,8 @@ export function ModelActionListItem({
   actionUrl,
   canRun,
   canEdit,
-  canArchive,
-  onArchive,
+  canDelete,
+  onDelete,
 }: ModelActionListItemProps) {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
@@ -87,13 +87,14 @@ export function ModelActionListItem({
     { open: openExecuteModal, close: closeExecuteModal },
   ] = useDisclosure(false);
 
-  const handleArchive = useCallback(() => {
+  const handleDelete = useCallback(() => {
     askConfirmation({
-      title: t`Archive ${action.name}?`,
-      confirmButtonText: t`Archive`,
-      onConfirm: () => onArchive(action),
+      title: t`Delete ${action.name}?`,
+      message: t`Dashboard buttons and public forms that use this action will be removed.`,
+      confirmButtonText: t`Delete`,
+      onConfirm: () => onDelete(action),
     });
-  }, [action, askConfirmation, onArchive]);
+  }, [action, askConfirmation, onDelete]);
 
   return (
     <>
@@ -139,12 +140,12 @@ export function ModelActionListItem({
             >
               {canEdit ? t`Edit` : t`View`}
             </Menu.Item>
-            {canArchive && (
+            {canDelete && (
               <Menu.Item
-                leftSection={<Icon name="archive" aria-hidden />}
-                onClick={handleArchive}
+                leftSection={<Icon name="trash" aria-hidden />}
+                onClick={handleDelete}
               >
-                {t`Archive`}
+                {t`Delete`}
               </Menu.Item>
             )}
           </Menu.Dropdown>

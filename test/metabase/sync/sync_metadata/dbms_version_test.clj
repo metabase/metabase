@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -22,10 +23,10 @@
       (mt/dataset test-data
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
-              _                    (t2/update! :model/Database (u/the-id db) {:dbms_version nil})
+              _                    (t2/update! :model/Database :id (u/the-id db) {:dbms_version nil})
               db                   (t2/select-one :model/Database :id (u/the-id db))
               version-after-update (db-dbms-version db)
-              _                    (sync-dbms-ver/sync-dbms-version! db)]
+              _                    (sync-dbms-ver/sync-dbms-version! (driver.u/lib-database (:id db)))]
           (testing "On startup is the dbms-version specified?"
             (is (nil? (check-dbms-version version-on-load))))
           (testing "Check to make sure the test removed the timezone"

@@ -6,7 +6,9 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.run-query :as tools.run-query]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.sql.common :as sql.common]
@@ -59,19 +61,38 @@
                              :mode "rewrite"
                              :value sql}))
 
+(def ^:private notebook-tool-name "construct_notebook_query")
+
+(tools/defrecoverable no-native-permission-with-notebook-fallback!
+  "The user may not write SQL against the target database, and the notebook builder is offered this turn."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "You do not have permission to write SQL against this database."
+   :recovery [{:uses #{notebook-tool-name}
+               :text (str "Build the question with `construct_notebook_query` instead. Don't write SQL against"
+                          " this database again.")}]})
+
+(defn- do-with-notebook-fallback
+  "Call `thunk`, rethrowing its native-query refusal as [[no-native-permission-with-notebook-fallback!]]
+  when the notebook builder is offered this turn.
+  Without the notebook builder the refusal still ends the turn."
+  [ctx thunk]
+  ;; A user who may write SQL on any database gets the SQL tools, so the agent can pick a database where they may not.
+  ;; The recoverable error lets it try the notebook builder instead of ending the turn.
+  (try
+    (thunk)
+    (catch clojure.lang.ExceptionInfo e
+      (if (and (= ::sql.common/no-native-permission (get-in (ex-data e) [tools.error/error-key :code]))
+               (contains? (:tool-names ctx) notebook-tool-name))
+        (tools.error/throw-recoverable! ::no-native-permission-with-notebook-fallback {} {:cause e})
+        (throw e)))))
+
 (defn- query-viz-part
   [{:keys [query-id query]} title]
   (streaming/viz-part {:entity-id (str (random-uuid))
                        :query-id query-id
                        :query (links/->frontend-query query)
                        :title title}))
-
-(defn- validated-sql-action!
-  [{:keys [validation-result action-result]}]
-  (let [{:keys [valid? dialect error-message]} validation-result]
-    (when-not valid?
-      (sql.common/sql-syntax-error! {:dialect dialect :error-message error-message}))
-    action-result))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Create SQL query
@@ -98,8 +119,9 @@
                       (or (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
                           (tools/unrecoverable! ::missing-editor
                                                 {:user-message (tru "No active SQL editor was found. Open a SQL editor and try again.")})))
-          action-result (validated-sql-action!
-                         (create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query}))
+          action-result (sql.common/validated-sql-action!
+                         (do-with-notebook-fallback
+                          ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query})))
           {:keys [query-id query-content]} action-result
           structured (assoc action-result :result-type :query)
           instr (if code-edit?
@@ -135,7 +157,7 @@
 
 (defn- sql-edit-result
   [operation-result title instruction-fn ctx]
-  (let [{:keys [query-id query-content] :as action-result} (validated-sql-action! operation-result)
+  (let [{:keys [query-id query-content] :as action-result} (sql.common/validated-sql-action! operation-result)
         structured (assoc action-result :result-type :query)
         buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
         instr (instruction-fn query-id (some? buffer-id))]
@@ -155,11 +177,12 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      :args edit-sql-schema})
   (handle [_ {query-id :query_id :keys [edits checklist title]} ctx]
-    (sql-edit-result (edit-sql-query-tools/edit-sql-query
-                      {:query-id query-id
-                       :edits edits
-                       :checklist checklist
-                       :queries-state (get-in (some-> (:memory-atom ctx) deref) [:state :queries] {})})
+    (sql-edit-result (do-with-notebook-fallback
+                      ctx #(edit-sql-query-tools/edit-sql-query
+                            {:query-id query-id
+                             :edits edits
+                             :checklist checklist
+                             :queries-state (shared/current-queries-state (:memory-atom ctx))}))
                      title instructions/edit-sql-query-instructions-for ctx)))
 
 (def edit-sql-query-tool
@@ -187,11 +210,12 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      :args replace-sql-schema})
   (handle [_ {query-id :query_id new-query :new_query :keys [checklist title]} ctx]
-    (sql-edit-result (replace-sql-query-tools/replace-sql-query
-                      {:query-id query-id
-                       :sql new-query
-                       :checklist checklist
-                       :queries-state (get-in (some-> (:memory-atom ctx) deref) [:state :queries] {})})
+    (sql-edit-result (do-with-notebook-fallback
+                      ctx #(replace-sql-query-tools/replace-sql-query
+                            {:query-id query-id
+                             :sql new-query
+                             :checklist checklist
+                             :queries-state (shared/current-queries-state (:memory-atom ctx))}))
                      title instructions/replace-sql-query-instructions-for ctx)))
 
 (def replace-sql-query-tool

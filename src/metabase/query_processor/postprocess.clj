@@ -14,6 +14,7 @@
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.middleware.pivot-export :as pivot-export]
    [metabase.query-processor.middleware.results-metadata :as results-metadata]
+   [metabase.query-processor.middleware.row-restricted-metadata :as row-restricted-metadata]
    [metabase.query-processor.middleware.visualization-settings :as viz-settings]
    [metabase.query-processor.pivot.middleware :as qp.pivot.middleware]
    [metabase.query-processor.schema :as qp.schema]
@@ -40,6 +41,7 @@
    #'qp.middleware.enterprise/limit-download-result-rows
    #'qp.add-rows-truncated/add-rows-truncated
    #'qp.add-timezone-info/add-timezone-info
+   #'row-restricted-metadata/strip-row-restricted-fingerprints
    #'qp.middleware.enterprise/merge-sandboxing-metadata
    #'qp.add-remaps/remap-results
    #'pivot-export/add-data-for-pivot-export

@@ -165,10 +165,6 @@ If you're having trouble with your BigQuery connection, you can check out this [
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
-## Model features
-
-There aren't (yet) any model features available for BigQuery.
-
 ## Database routing
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.

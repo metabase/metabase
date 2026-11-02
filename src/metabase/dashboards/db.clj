@@ -34,7 +34,7 @@
   `:archived`, `:collection_id`, `:cache_ttl`, ...), and a narrowed schema refuses every one of them."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard dashboard-id changes))
+  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn delete-dashboard-revisions!
   "Delete the Revisions of the Dashboard with `dashboard-id`, returning the number deleted."
@@ -218,7 +218,7 @@
   "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
   [dashcard-id :- ::lib.schema.id/dashcard
    changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard dashcard-id changes))
+  (t2/update! :model/DashboardCard :id dashcard-id changes))
 
 (mu/defn delete-dashcards!
   "Delete the DashboardCards with `dashcard-ids`, returning the number deleted."
@@ -360,7 +360,8 @@
   [[link-card-info-rows]], or nil."
   [model :- :string
    id    :- [:or :int :string]]
-  (t2/select-one (serdes/link-card-model->toucan-model model) (link-card-info-query-for-model model id)))
+  (t2/select-one (serdes/link-card-model->toucan-model model)
+                 (h2x/assert-map-or-nil! (link-card-info-query-for-model model id))))
 
 (defn- link-card-info-query
   [link-card-model->ids]
@@ -391,7 +392,7 @@
   "Apply `changes` to the DashboardTab with `tab-id`, returning the number updated."
   [tab-id  :- ms/PositiveInt
    changes :- (mut/select-keys ::dashboards.schema/dashboard-tab.update [:name :position])]
-  (t2/update! :model/DashboardTab tab-id changes))
+  (t2/update! :model/DashboardTab :id tab-id changes))
 
 (mu/defn delete-dashboard-tabs!
   "Delete the DashboardTabs with `tab-ids`, returning the number deleted."

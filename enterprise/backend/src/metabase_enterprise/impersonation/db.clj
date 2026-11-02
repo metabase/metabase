@@ -3,7 +3,9 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [malli.util :as mut]
+   [metabase-enterprise.impersonation.models.impersonation-query-cache :as impersonation-query-cache]
    [metabase-enterprise.impersonation.schema :as impersonation.schema]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -88,7 +90,34 @@
   [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
+(mu/defn query-cache :- [:maybe ::impersonation.schema/impersonation-query-cache]
+  "The ImpersonationQueryCache with the lookup key of `input`, or nil."
+  [{:keys [input_query input_engine input_allow_write input_admin input_version]}
+   :- ::impersonation.schema/impersonation-query-cache.update]
+  (t2/select-one :model/ImpersonationQueryCache
+                 :input_query_hash  (impersonation-query-cache/query-hash input_query)
+                 :input_engine      input_engine
+                 :input_allow_write input_allow_write
+                 :input_admin       input_admin
+                 :input_version     input_version))
+
+(mu/defn update-or-insert-query-cache! :- ms/PositiveInt
+  "Update the ImpersonationQueryCache with the lookup key of `row` to `row`, or insert `row` when there is none."
+  [{:keys [input_query input_engine input_allow_write input_admin input_version] :as row}
+   :- ::impersonation.schema/impersonation-query-cache.update]
+  (app-db/update-or-insert! :model/ImpersonationQueryCache
+                            {:input_query_hash  (impersonation-query-cache/query-hash input_query)
+                             :input_engine      input_engine
+                             :input_allow_write input_allow_write
+                             :input_admin       input_admin
+                             :input_version     input_version}
+                            (constantly row)))
+
+(mu/defn delete-outdated-query-caches! :- :int
+  "Delete the ImpersonationQueryCaches cached by a Metabase version other than `version` or before `cutoff`,
+  returning the number deleted."
+  [version :- :string
+   cutoff  :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (t2/delete! :model/ImpersonationQueryCache {:where [:or
+                                                      [:not= :input_version version]
+                                                      [:< :created_at cutoff]]}))

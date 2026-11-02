@@ -4,6 +4,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.events.core :as events]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -58,7 +59,10 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {include-editable-data-model? :include_editable_data_model} :- [:map {:closed true}
-                                                                   [:include_editable_data_model {:default false} ms/BooleanValue]]]
+                                                                   [:include_editable_data_model {:default false} ms/BooleanValue]]
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-field id))
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
 
 (api.macros/defendpoint :post "/table-ids" :- [:map
@@ -232,7 +236,11 @@
   "Get the count and distinct count of `Field` with ID."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-field id))
   (let [field (api/read-check :model/Field id)]
     [[:count     (metadata-from-qp/field-count field)]
      [:distincts (metadata-from-qp/field-distinct-count field)]]))
@@ -300,7 +308,11 @@
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-field id))
   (let [field (api/query-check (warehouse-schema-rest.db/field id))]
     (parameters.field/field->values field)))
 
@@ -394,7 +406,12 @@
                               [:id        ms/PositiveInt]
                               [:search-id ms/PositiveInt]]
    {:keys [value]} :- [:map {:closed true}
-                       [:value {:optional true} ms/NonBlankString]]]
+                       [:value {:optional true} ms/NonBlankString]]
+   _body
+   request]
+  (when-let [data-app (data-apps/request-data-app request)]
+    (data-apps/check-field data-app id)
+    (data-apps/check-field data-app search-id))
   (when-not value
     (api/check-400 (request/limit) "Limit required if value is omitted"))
   (let [field        (api/check-404 (warehouse-schema-rest.db/field id))
@@ -414,7 +431,12 @@
                                 [:id          ms/PositiveInt]
                                 [:remapped-id ms/PositiveInt]]
    {:keys [value]} :- [:map {:closed true}
-                       [:value ms/NonBlankString]]]
+                       [:value ms/NonBlankString]]
+   _body
+   request]
+  (when-let [data-app (data-apps/request-data-app request)]
+    (data-apps/check-field data-app id)
+    (data-apps/check-field data-app remapped-id))
   (let [field          (-> (warehouse-schema-rest.db/field id) api/check-404 api/read-check)
         remapped-field (-> (warehouse-schema-rest.db/field remapped-id) api/check-404 api/read-check)
         value          (parameters.field/parse-query-param-value-for-field field value)]
@@ -428,5 +450,9 @@
   "Return related entities."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-field id))
   (-> (warehouse-schema-rest.db/field id) api/read-check xrays/related))

@@ -27,7 +27,7 @@ export type ImageSource = {
 // Don't break existing empty states
 // TODO - remove these and update empty states with proper usage of illustrationElement
 const LegacyIcon = ({ icon }: { icon: IconName }) =>
-  icon ? <Icon name={icon} className={CS.textLight} size={40} /> : null;
+  icon ? <Icon name={icon} className={CS.textSecondary} size={40} /> : null;
 
 const LegacyImage = ({
   image,

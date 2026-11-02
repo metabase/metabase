@@ -106,7 +106,7 @@
           :when (nil? (:dataset_query q))]
     (when-let [ctx (qp.context/build-row-context q)]
       (when-let [dq (qp.variants/dataset-query (:query_type q) ctx)]
-        (t2/update! :model/ExplorationQuery (:id q)
+        (t2/update! :model/ExplorationQuery :id (:id q)
                     {:dataset_query     dq
                      :data_access_token (perms/data-access-token
                                          {:database-id (:database_id q)
@@ -283,7 +283,7 @@
                             :target       [:field {} 999999999]
                             :table-id     (mt/id :venues)}]
           ;; Replace whatever sync wrote with a minimal pair: one resolvable, one not.
-          (t2/update! :model/Card (:id metric)
+          (t2/update! :model/Card :id (:id metric)
                       {:dimensions         [{:id good-id :name "NAME" :display-name "Good"
                                              :effective-type :type/Text}
                                             {:id bad-id  :name "ZZZ"  :display-name "Unresolvable"
@@ -869,7 +869,7 @@
             orig-tid  (:id thread)]
         (is (pos? (count (:queries thread))) "the first run materialized queries")
         ;; Simulate a finished run so we can prove restart clears the terminal-state gates.
-        (t2/update! :model/ExplorationThread orig-tid
+        (t2/update! :model/ExplorationThread :id orig-tid
                     {:query_plan_started_at (t/offset-date-time)
                      :analysis_started_at   (t/offset-date-time)
                      :completed_at          (t/offset-date-time)})
@@ -910,7 +910,7 @@
             tid     (-> created :threads first :id)]
         ;; Perms ride the thread's parent exploration, resolved by `write-check-thread`.
         ;; Mark the thread terminal — restart refuses in-flight threads with a 409.
-        (t2/update! :model/ExplorationThread tid {:completed_at (t/offset-date-time)})
+        (t2/update! :model/ExplorationThread :id tid {:completed_at (t/offset-date-time)})
         (mt/user-http-request other :post 403 (format "exploration/thread/%d/restart" tid))
         (let [resp (mt/user-http-request owner :post 200 (format "exploration/thread/%d/restart" tid))]
           (is (= 1 (count (:threads resp))) "still a single thread after restart"))))))
@@ -928,7 +928,7 @@
                                :model/ExplorationThread
                                {:exploration_id expl-id :name "drill" :position 1
                                 :completed_at   (t/offset-date-time)}))]
-          (t2/update! :model/ExplorationThread root-tid {:completed_at (t/offset-date-time)})
+          (t2/update! :model/ExplorationThread :id root-tid {:completed_at (t/offset-date-time)})
           (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" root-tid))
           (is (nil? (t2/select-one-fn :completed_at :model/ExplorationThread :id root-tid))
               "the named (root) thread was reset")
@@ -1178,7 +1178,7 @@
                  :stored_result_id     sr-id})))
 
 (defn- mark-done! [query-id]
-  (t2/update! :model/ExplorationQuery query-id {:status "done"}))
+  (t2/update! :model/ExplorationQuery :id query-id {:status "done"}))
 
 (deftest exploration-query-result-streams-stored-result-test
   (testing "GET /query/:id streams the stored worker result as JSON"
@@ -1230,7 +1230,7 @@
             qid    (-> resp :threads first :queries first :id)
             ;; stands in for a driver error carrying SQL and row values the reader can't query
             secret "SECRET_VALUE_FROM_DRIVER_ERROR"]
-        (t2/update! :model/ExplorationQuery qid {:status "error" :error_message secret})
+        (t2/update! :model/ExplorationQuery :id qid {:status "error" :error_message secret})
         (testing "GET /query/:id — the endpoint that already allowlists its 409 payload"
           (let [body (mt/user-http-request u :get 409 (format "exploration/query/%d" qid))]
             (is (not (str/includes? (pr-str body) secret)))
@@ -1591,7 +1591,7 @@
                     :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (let [sr-id  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                        :exploration_query_id qid)
               before (t2/select :model/StoredResultUse :stored_result_id sr-id)
@@ -1649,7 +1649,7 @@
                           :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (let [doc   (mt/user-http-request u :post 200
                                           (format "exploration/%d/summary/append" expl-id)
                                           (assoc append-display+viz :exploration_query_ids [qid]))
@@ -1717,7 +1717,7 @@
         (store-fake-result! qid qp-out)
         (mark-done! qid)
         ;; Give the EQ a real dataset_query so create-card! has a database_id to inherit.
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                           :exploration_query_id qid)
               doc       (t2/select-one :model/Document :id doc-id)
@@ -1757,7 +1757,7 @@
                     :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (mt/user-http-request u :post 200
                               (format "exploration/%d/summary/append" eid)
                               (assoc append-display+viz :exploration_query_ids [qid]))
@@ -2311,7 +2311,7 @@
             that leaves canceled_at NULL"
     (mt/with-model-cleanup [:model/ExplorationQuery :model/ExplorationThread :model/Exploration :model/Card]
       (let [{:keys [thread-id]} (minimal-cancel-fixture! (mt/user->id :rasta) 1)
-            _    (t2/update! :model/ExplorationThread thread-id
+            _    (t2/update! :model/ExplorationThread :id thread-id
                              {:completed_at (t/offset-date-time)})
             resp (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))]
         (is (nil? (:canceled_at resp))
@@ -2618,7 +2618,7 @@
                   :dimensions    [{:dimension-id (duid "price") :display-name "Price"}]})]
         ;; Mark the source thread as a follow-up so the next drill is nested. Any real page works;
         ;; a made-up id would violate the source_page_id FK.
-        (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id (:page-id src)})
+        (t2/update! :model/ExplorationThread :id (:thread-id src) {:source_page_id (:page-id src)})
         (mt/user-http-request :crowberto :post 200
                               (str "exploration/" (:exploration-id src) "/explore-further")
                               {:page_id         (:page-id src)
@@ -2818,15 +2818,15 @@
           (is (pos? (t2/count :model/ExplorationQuery :exploration_thread_id tid))
               "its materialized queries are untouched"))
         (testing "a canceled thread with a query still mid-QP-execution returns 409"
-          (t2/update! :model/ExplorationThread tid
+          (t2/update! :model/ExplorationThread :id tid
                       {:canceled_at  (t/offset-date-time)
                        :completed_at (t/offset-date-time)})
-          (t2/update! :model/ExplorationQuery eq-id {:status "running" :started_at (t/offset-date-time)})
+          (t2/update! :model/ExplorationQuery :id eq-id {:status "running" :started_at (t/offset-date-time)})
           (mt/user-http-request u :post 409 (format "exploration/thread/%d/restart" tid))
           (is (some? (t2/select-one-fn :completed_at :model/ExplorationThread :id tid))
               "the terminal stamp survives — nothing was reset"))
         (testing "once no query is mid-execution, restart succeeds and leaves the thread claimable"
-          (t2/update! :model/ExplorationQuery eq-id {:status "canceled"})
+          (t2/update! :model/ExplorationQuery :id eq-id {:status "canceled"})
           (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" tid))
           (let [thread (t2/select-one :model/ExplorationThread :id tid)]
             ;; exactly the state the planning worker's claim-unplanned-thread! predicate claims:
@@ -2869,7 +2869,7 @@
     (doseq [qid qids]
       (store-fake-result! qid qp-out)
       (mark-done! qid)
-      (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)}))
+      (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)}))
     {:exploration-id (:id resp) :document-id (-> resp :document :id) :query-ids qids}))
 
 (defn- combine-with-perms-stubbed!
@@ -2910,14 +2910,14 @@
             doc    (t2/select-one :model/Document :id document-id)
             sr-2   (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                      :exploration_query_id (second query-ids))]
-        (t2/update! :model/StoredResult sr-2 {:data_access_token {:sandbox {1 "deadbeef"}}})
+        (t2/update! :model/StoredResult :id sr-2 {:data_access_token {:sandbox {1 "deadbeef"}}})
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"different data-access contexts"
              (combine-with-perms-stubbed!
               query-ids document-id (:collection_id doc) u
               {:display "bar" :visualization-settings {}})))
         (testing "and a source with no recorded lens at all is refused too"
-          (t2/update! :model/StoredResult sr-2 {:data_access_token nil})
+          (t2/update! :model/StoredResult :id sr-2 {:data_access_token nil})
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"no recorded data-access context"
                (combine-with-perms-stubbed!
@@ -2938,7 +2938,7 @@
                                              (lib/aggregate (lib/count)))))]
         ;; Give the second source a genuinely different query, so "checked the first one" and
         ;; "checked them all" are distinguishable.
-        (t2/update! :model/ExplorationQuery (second query-ids) {:dataset_query other-q})
+        (t2/update! :model/ExplorationQuery :id (second query-ids) {:dataset_query other-q})
         (let [checked (atom [])]
           (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query
                                       (fn [q] (swap! checked conj q) nil)]

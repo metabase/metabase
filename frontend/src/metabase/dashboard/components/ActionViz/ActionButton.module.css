@@ -1,8 +1,15 @@
-.actionButton {
-  &[data-variant]:disabled,
-  &[data-variant][data-disabled="true"] {
+/* Doubled selector so these overrides beat the disabled rule in
+   Button.module.css regardless of bundle order. */
+.actionButton.actionButton {
+  &[data-variant]:disabled:not([data-loading]),
+  &[data-variant][data-disabled="true"]:not([data-loading]) {
     opacity: 0.5;
     color: var(--button-color);
     background-color: var(--button-bg);
+  }
+
+  &[data-variant="default"]:disabled:not([data-loading]),
+  &[data-variant="default"][data-disabled="true"]:not([data-loading]) {
+    border-color: var(--mb-color-border-neutral-strong);
   }
 }

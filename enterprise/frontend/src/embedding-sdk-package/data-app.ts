@@ -54,6 +54,7 @@ export {
 } from "./hooks/public/use-metabase-query";
 export type {
   DefinedQuery,
+  LegacyQuestionSource,
   MetabaseLocalFieldReference,
   MetabaseBreakout,
   MetabaseDynamicColumn,
@@ -66,11 +67,13 @@ export type {
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
 export type {
-  ActionKindFromDataAppSchema,
-  ActionParametersFromDataAppSchema,
+  ActionDefinition,
+  ActionKindFromDefinition,
+  ActionParametersFromDefinition,
   DefinedAction,
+  ImplicitActionDefinition,
 } from "./hooks/public/use-action";
 export type {
   DataAppFactory,
   DataAppMetabaseProviderProps,
-} from "metabase-enterprise/data_apps/sandbox/types";
+} from "metabase-enterprise/data-apps/sandbox/types";

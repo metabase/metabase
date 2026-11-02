@@ -151,11 +151,11 @@ describe(
         .should("be.visible");
 
       openActionMenuFor("Delete Order");
-      H.popover().findByText("Archive").click();
+      H.popover().findByText("Delete").click();
 
       H.modal().within(() => {
-        cy.findByText("Archive Delete Order?").should("be.visible");
-        cy.findByRole("button", { name: "Archive" }).click();
+        cy.findByText("Delete Delete Order?").should("be.visible");
+        cy.findByRole("button", { name: "Delete" }).click();
       });
 
       cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
@@ -212,7 +212,7 @@ describe(
       openActionMenuFor(SAMPLE_QUERY_ACTION.name);
       H.popover().within(() => {
         cy.findByText("View").should("be.visible");
-        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Delete").should("not.exist");
         cy.findByText("View").click();
       });
 
@@ -237,7 +237,7 @@ describe(
         cy.findByLabelText("Success message").should("be.disabled");
       });
 
-      cy.signIn("normal");
+      cy.signInAsAdmin();
       cy.reload();
 
       // Check can pick between all databases
@@ -250,9 +250,7 @@ describe(
         cy.findByText("QA Postgres12").should("be.visible");
       });
 
-      cy.signInAsAdmin();
       H.setActionsEnabledForDB(SAMPLE_DB_ID, false);
-      cy.signIn("normal");
       cy.reload();
 
       // Check can only see the action database

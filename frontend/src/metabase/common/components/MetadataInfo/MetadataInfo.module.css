@@ -6,7 +6,7 @@
 }
 
 .EmptyDescription {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
   font-weight: 700;
 }
 

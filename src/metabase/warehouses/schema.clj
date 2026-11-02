@@ -34,10 +34,6 @@
   "The `:write_data_details` column of a Database, decoded."
   [:or ms/DatabaseDetails ::database.undecryptable-column])
 
-(mr/def ::database.admin-details
-  "The `:admin_details` column of a Database, decoded."
-  [:or ms/DatabaseDetails ::database.undecryptable-column])
-
 (mr/def ::database
   "A Database as selected from the app DB: every column of `:metabase_database`, plus `:features` added by the model's after-select hook."
   [:merge
@@ -89,7 +85,6 @@
    [:router_database_id          {:optional true} [:maybe ::lib.schema.id/database]]
    [:provider_name               {:optional true} [:maybe :string]]
    [:write_data_details          {:optional true} [:maybe ::database.write-data-details]]
-   [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
 (mr/def ::database-or-metadata

@@ -242,7 +242,8 @@
   [table]
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
-  (warehouse-schema.db/delete-fields-for-table! (:id table)))
+  (warehouse-schema.db/delete-fields-for-table! (:id table))
+  (warehouse-schema.db/delete-implicit-actions-for-table! (:id table)))
 
 (t2/define-before-update :model/Table
   [table]

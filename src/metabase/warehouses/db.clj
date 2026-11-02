@@ -38,13 +38,13 @@
   "Set the connection details of the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    details     :- ::warehouses.schema/database.details]
-  (t2/update! :model/Database database-id {:details details}))
+  (t2/update! :model/Database :id database-id {:details details}))
 
 (mu/defn set-database-provider-name!
   "Set the provider name of the Database with `database-id`, returning the number updated."
   [database-id    :- ::lib.schema.id/database
    provider-name  :- :string]
-  (t2/update! :model/Database database-id {:provider_name provider-name}))
+  (t2/update! :model/Database :id database-id {:provider_name provider-name}))
 
 (mu/defn health-check-candidate-ids
   "The `:id` of the lowest-id non-audit, non-sample, non-stub, non-destination Database of each engine."
@@ -103,12 +103,18 @@
                        :select [:id]
                        :where  [:= :database_id database-id]}))
 
-(mu/defn delete-query-actions-for-database!
-  "Delete the query Actions whose query runs against the Database with `database-id`, returning the number deleted."
+(mu/defn delete-actions-for-database!
+  "Delete the query Actions whose query runs against the Database with `database-id` and the implicit Actions that write
+  to one of its Tables, returning the number deleted."
   [database-id :- ::lib.schema.id/database]
-  (if-let [action-ids (not-empty (t2/select-fn-set :action_id :model/QueryAction :database_id database-id))]
-    (t2/delete! :model/Action :id [:in action-ids])
-    0))
+  (let [[table-subquery _] (warehouse-schema-overlay/table-query)]
+    (if-let [action-ids (not-empty (into (t2/select-fn-set :action_id :model/QueryAction :database_id database-id)
+                                         (t2/select-fn-set :action_id :model/ImplicitAction
+                                                           {:join  [[table-subquery :table]
+                                                                    [:= :table.id :implicit_action.table_id]]
+                                                            :where [:= :table.db_id database-id]})))]
+      (t2/delete! :model/Action :id [:in action-ids])
+      0)))
 
 (mu/defn delete-cards-for-database!
   "Delete the Cards of the Database with `database-id`."

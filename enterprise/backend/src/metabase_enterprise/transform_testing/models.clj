@@ -35,6 +35,17 @@
   {:inputs       (json-column ::transform-testing.schema/inputs)
    :expectations (json-column ::transform-testing.schema/expectations)})
 
+(methodical/defmethod t2/batched-hydrate [:model/TransformTest :last_run]
+  "Add the newest run, or nil, to each transform test."
+  [_model _k transform-tests]
+  (if-not (seq transform-tests)
+    transform-tests
+    (let [id->run (into {}
+                        (map (juxt :transform_test_id identity))
+                        (transform-testing.db/latest-transform-test-runs (into #{} (map :id) transform-tests)))]
+      (for [transform-test transform-tests]
+        (assoc transform-test :last_run (get id->run (:id transform-test)))))))
+
 (defmethod audit-app/model-details :model/TransformTest
   [transform-test _event-type]
   (select-keys transform-test [:transform_id :name :description]))

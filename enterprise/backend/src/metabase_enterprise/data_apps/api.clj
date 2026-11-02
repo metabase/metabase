@@ -1,26 +1,23 @@
 (ns metabase-enterprise.data-apps.api
-  "Data-app endpoints, mounted at `/api/apps`: create, read, update, and delete data apps, and serve their
-   bundles. See `README.md` in this directory for how the pieces fit together.
-
-   Note: we can't use `/app/...` for the frontend or `/api/app/...` for the API
-   because Metabase's server reserves `/app/*` for serving static assets (see
-   `metabase.server.routes/static-files-handler`)."
+  "Data-app endpoints, mounted at `/api/ee/apps`: list data apps, enable or disable them, manage the groups that can read
+  their collections, serve their bundles, and generate the files of their repository."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
-   [metabase-enterprise.data-apps.generate :as data-apps.generate]
+   [metabase-enterprise.data-apps.generate.actions :as generate.actions]
+   [metabase-enterprise.data-apps.generate.queries :as generate.queries]
+   [metabase-enterprise.data-apps.generate.schema :as generate.schema]
+   [metabase-enterprise.data-apps.generate.util :as generate.util]
    [metabase-enterprise.data-apps.group-access :as data-app.group-access]
-   [metabase-enterprise.data-apps.models.data-app :as data-app]
-   [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
-   [metabase.remote-sync.core :as remote-sync]
+   [metabase.data-apps.schema :as data-apps.schema]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
@@ -76,35 +73,62 @@
    [:created_at      :any]
    [:updated_at      :any]])
 
-(def ^:private CreateDataAppRequest
-  [:map {:closed true}
-   [:name          ::data-apps.schema/slug]
-   [:display_name  ::data-apps.schema/display-name]
-   [:description   {:optional true} ::data-apps.schema/description]
-   [:version       {:optional true} ::data-apps.schema/version]
-   [:bundle_path   ::data-apps.schema/bundle-path]
-   [:allowed_hosts {:optional true} ::data-apps.schema/allowed-hosts]
-   [:bundle        ::data-apps.schema/bundle-text]])
-
 (def ^:private UpdateDataAppRequest
   [:map {:closed true}
-   [:enabled       {:optional true} :boolean]
-   [:display_name  {:optional true} ::data-apps.schema/display-name]
-   [:description   {:optional true} ::data-apps.schema/description]
-   [:version       {:optional true} ::data-apps.schema/version]
-   [:bundle_path   {:optional true} ::data-apps.schema/bundle-path]
-   [:allowed_hosts {:optional true} ::data-apps.schema/allowed-hosts]
-   [:bundle        {:optional true} ::data-apps.schema/bundle-text]])
+   [:enabled :boolean]])
 
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
+   [:id           ms/PositiveInt]
    [:name         ms/NonBlankString]
-   [:display_name ms/NonBlankString]])
+   [:display_name ms/NonBlankString]
+   [:enabled      :boolean]
+   [:outdated     :boolean]])
 
 (def ^:private RepoStatusResponse
   [:map
    [:configured :boolean]
    [:url [:maybe :string]]])
+
+(def ^:private GeneratedFiles
+  [:sequential [:map {:closed true}
+                [:path     ms/NonBlankString]
+                [:contents :string]]])
+
+(defn- kebab-case-keys
+  "`x` with the keys of every map in it kebab-cased, as the SDK's camelCase keys are in Lib's test query spec."
+  [x]
+  (walk/postwalk #(cond-> % (map? %) (update-keys (comp keyword u/->kebab-case-en name))) x))
+
+(defn- definitions-schema
+  "Request schema for definitions by export name."
+  [definition-schema]
+  [:and
+   {:decode/normalize (fn [definitions]
+                        (cond-> definitions
+                          (map? definitions)
+                          (update-vals #(api.macros/decode-and-validate-params :body definition-schema %))))}
+   (ms/string-keyed-map definition-schema)
+   [:fn {:error/message "export names whose files have distinct paths"}
+    (fn [definitions]
+      (apply distinct? nil (map generate.util/resource-path (keys definitions))))]])
+
+(def ^:private QueryDefinitions
+  "The `defineQuery` exports of a data app's `metabase.queries.ts`, by export name: each one's entity ID, and its
+  definition as a one-stage test query."
+  (definitions-schema
+    [:map {:closed true}
+     [:entityId ms/NanoIdString]
+     [:query    [:and {:decode/api kebab-case-keys} ::data-apps.schema/query-spec]]]))
+
+(def ^:private ActionDefinitions
+  "The `defineAction` exports of a data app's `metabase.actions.ts`, by export name: implicit actions of `kind` on a
+  table."
+  (definitions-schema
+    [:merge
+     [:map {:closed true}
+      [:entityId ms/NanoIdString]]
+     ::data-apps.schema/action-spec]))
 
 (def ^:private AddGroupsRequest
   [:map {:closed true}
@@ -161,17 +185,8 @@
   "Return full data-app metadata, with whether the app is outdated, to superusers and only
    navigational fields to other users."
   [app]
-  (if api/*is-superuser?*
-    (assoc app :outdated (data-app.config/outdated? app))
-    (select-keys app [:name :display_name])))
-
-(defn- read-check-data-app
-  "Check whether the current user can access a data app. Viewing requires read access to the app's
-   resource collection, which every app has."
-  [app]
-  (api/read-check app)
-  (api/read-check :model/Collection (:resource_collection_id app))
-  app)
+  (cond-> (assoc app :outdated (data-app.config/outdated? app))
+    (not api/*is-superuser?*) (select-keys [:id :name :display_name :enabled :outdated])))
 
 (defn- check-not-outdated
   "Refuse an app built for an older contract than this Metabase serves with a 409 carrying
@@ -187,120 +202,55 @@
   app)
 
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]
-  "List the data apps. Pass `available=true` to return only enabled apps. An outdated app is never
-   available, and otherwise listed only to superusers, who see it badged."
-  [_route-params
-   {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
-  (->> (data-apps.db/data-apps available)
-       (filter mi/can-read?)
-       (remove #(and (or available (not api/*is-superuser?*))
-                     (data-app.config/outdated? %)))
+  "List the data apps the user can read. Disabled and outdated apps are listed only to superusers, who see them
+  badged."
+  []
+  (->> (data-apps.db/readable-data-apps api/*current-user-id* (boolean api/*is-superuser?*))
+       (remove #(and (not api/*is-superuser?*) (data-app.config/outdated? %)))
        (mapv data-app-response)))
 
-;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
-;; slashes inside a segment, so `/:slug` would otherwise swallow `/x/bundle`.
-;; The regex also excludes the literal `repo-status` sub-route above.
-(defn- with-bundle
-  "The DataApp `changes` with their `bundle` text as the bytes the app is served."
-  [changes]
-  (cond-> changes
-    (contains? changes :bundle) (update :bundle data-app/file->bundle)))
-
-(defn- write-check-data-app
-  "The DataApp named `slug` without its bundle, checked for existence and write permissions."
-  [slug]
-  (api/write-check (api/check-404 (data-apps.db/data-app-by-slug slug))))
-
-(defn- check-editable!
-  "Throws a 403 when `app` is read-only under remote sync."
-  [app]
-  (api/check-403 (remote-sync/model-editable? :model/DataApp app)))
-
-(api.macros/defendpoint :post "/" :- DataAppResponse
-  "Create a data app from its manifest fields and bundle."
-  [_route-params
-   _query-params
-   body :- CreateDataAppRequest]
-  (api/create-check :model/DataApp body)
-  (check-editable! body)
-  (let [app (data-apps.db/data-app (data-apps.apps/create-app! (with-bundle body)))]
-    (events/publish-event! :event/data-app-create {:object app :user-id api/*current-user-id*})
-    (data-app-response app)))
-
-;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
-;; slashes inside a segment, so `/:slug` would otherwise swallow `/x/bundle`.
-;; The regex also excludes the literal `repo-status` sub-route above.
+;; NOTE on the `slug-regex` constraint: the default path-param matcher allows slashes inside a segment, so `/:slug`
+;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status`, `sandbox-host` and
+;; `generate` routes.
 (api.macros/defendpoint :put ["/:slug" :slug slug-regex] :- DataAppResponse
-  "Update a data app's manifest fields or bundle, or enable or disable it. Disabled apps are not served."
+  "Enable or disable a data app. A disabled app is served to superusers only. Superusers only; anything else about an
+  app changes only through a repository import."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
-   changes :- UpdateDataAppRequest]
-  (let [app            (write-check-data-app slug)
-        synced-changes (dissoc changes :enabled)]
-    (when (seq synced-changes)
-      (check-editable! app))
-    (when (seq changes)
-      (data-apps.db/update-data-app! (:id app) (with-bundle changes)))
-    (let [app (data-apps.db/data-app (:id app))]
-      (when (seq synced-changes)
-        (events/publish-event! :event/data-app-update {:object app :user-id api/*current-user-id*}))
-      (data-app-response app))))
-
-(api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
-  "Delete a data app, its bundle, its collection, and its group assignments."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (let [app (write-check-data-app slug)]
-    (check-editable! app)
-    (data-apps.db/delete-data-app! (:id app))
-    (events/publish-event! :event/data-app-delete {:object app :user-id api/*current-user-id*}))
-  ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
-  ;; above (returning `generic-204-no-content` would fail that validation).
-  nil)
-
-(api.macros/defendpoint :post "/generate/app" :- ::data-apps.schema/app-files
-  "A data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the
-  YAML a remote-sync export writes. An existing app passes its `entity_id` and `collection_id` to keep them; a new app
-  gets new entity IDs. For superusers: the files are written into the app's repository, which only an admin works
-  with."
-  [_route-params
-   _query-params
-   body :- ::data-apps.schema/app-request]
+   {:keys [enabled]} :- UpdateDataAppRequest]
   (api/check-superuser)
-  (data-apps.generate/app body))
+  (let [app (api/check-404 (data-apps.db/data-app-by-slug slug))]
+    (data-apps.db/update-data-app! (:id app) {:enabled enabled})
+    (data-app-response (data-apps.db/data-app (:id app)))))
 
-(def ^:private typescript-response-headers
-  {"Content-Type"                 "text/typescript; charset=utf-8"
-   "X-Content-Type-Options"       "nosniff"
-   "Cross-Origin-Resource-Policy" "same-origin"
-   "Referrer-Policy"              "no-referrer"
-   "Cache-Control"                "no-store"})
-
-(api.macros/defendpoint :get "/generate/schemas" :- :any
-  "The TypeScript module a data app's definitions are written against: the root libraries' tables and metrics, and
-  the query actions that belong to no model. For superusers: a data app's author builds from it, and only an admin
-  works with an app's repository."
+(api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles
+  "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and
+  measures, and its metrics. Superusers only."
   []
   (api/check-superuser)
-  {:status  200
-   :headers typescript-response-headers
-   :body    (data-apps.generate/schemas)})
+  (generate.schema/generate))
 
-(api.macros/defendpoint :post "/generate/resources" :- [:map {:closed true}
-                                                        [:queries [:sequential ::data-apps.schema/file]]
-                                                        [:actions [:sequential ::data-apps.schema/file]]
-                                                        [:metrics [:sequential ::data-apps.schema/file]]]
-  "The files of a data app's collection, each a file name in the collection's folder and the YAML a remote-sync
-  export writes: the saved question of each `defineQuery` definition in `queries`, the copy of each action without a
-  model in `actions`, and the copies of the metrics the queries aggregate. Each item answers on its own, with its file
-  or the error that stops it. For superusers: the files are written into the app's repository, which only an admin
-  works with."
+(api.macros/defendpoint :post "/generate/queries" :- GeneratedFiles
+  "The YAML files of the questions a data app defines, one per `defineQuery` export in `queries`, in its collection with
+  the entity ID `collection`. Nothing is saved. Superusers only."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
-            [:queries {:optional true} [:maybe [:sequential ::data-apps.schema/query]]]
-            [:actions {:optional true} [:maybe [:sequential ::data-apps.schema/action]]]]]
+   {:keys [collection queries]} :- [:map {:closed true}
+                                    [:collection ms/NanoIdString]
+                                    [:queries QueryDefinitions]]]
   (api/check-superuser)
-  (data-apps.generate/resources body))
+  (generate.queries/generate collection queries))
+
+(api.macros/defendpoint :post "/generate/actions" :- GeneratedFiles
+  "The YAML files of the implicit actions a data app defines, one per `defineAction` export in `actions`, in its
+  collection with the entity ID `collection`. Nothing is saved. Superusers only."
+  [_route-params
+   _query-params
+   {:keys [collection actions]} :- [:map {:closed true}
+                                    [:collection ms/NanoIdString]
+                                    [:actions ActionDefinitions]]]
+  (api/check-superuser)
+  (generate.actions/generate collection actions))
 
 (def ^:private GroupPermissionWarning
   [:map
@@ -316,7 +266,7 @@
 
 (api.macros/defendpoint :get ["/:slug/group-permission-warnings" :slug slug-regex]
   :- [:sequential GroupPermissionWarning]
-  "Return missing table access for groups already assigned to this app."
+  "Return missing table access for the groups listed for this app."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (api/check-superuser)
   (data-app.group-access/permission-warnings (api/check-404 (data-apps.db/data-app-by-slug slug))))
@@ -328,13 +278,13 @@
    [:member_count ms/IntGreaterThanOrEqualToZero]])
 
 (api.macros/defendpoint :get ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
-  "List the groups assigned to a data app."
+  "List the groups other than Administrators that can read a data app's resource collection."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (api/check-superuser)
   (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/data-app-by-slug slug))))
 
 (api.macros/defendpoint :post ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
-  "Assign a batch of internal groups atomically."
+  "Grant a batch of internal groups read access to a data app's resource collection atomically."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    {group-ids :group_ids} :- AddGroupsRequest]
@@ -342,7 +292,7 @@
   (data-app.group-access/add-groups! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-ids))
 
 (api.macros/defendpoint :delete ["/:slug/groups/:group-id" :slug slug-regex] :- :nil
-  "Remove a group's assignment and collection access."
+  "Revoke a group's access to a data app's resource collection."
   [{:keys [slug group-id]} :- [:map {:closed true} [:slug ms/NonBlankString] [:group-id ms/PositiveInt]]]
   (api/check-superuser)
   (data-app.group-access/remove-group! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-id))
@@ -352,13 +302,13 @@
 ;; what iframe to render, before any data-app realm exists, so the request never carries the
 ;; marker. The bundle is fetched from inside that iframe, where it does.
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
-  "Fetch metadata for a single enabled data app by its slug."
+  "Fetch metadata for a single data app by its slug, disabled ones to superusers only."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (let [app (read-check-data-app (data-apps.db/enabled-data-app-by-slug slug))]
+  (let [app (api/read-check (data-apps.db/data-app-by-slug slug))]
     (data-app-response (cond-> app (not api/*is-superuser?*) check-not-outdated))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
-  "Serve the cached JS bundle for a single enabled data app by slug. Honors
+  "Serve the cached JS bundle for a single data app by slug, disabled ones to superusers only. Honors
    `If-None-Match` against the content-hash ETag with a 304."
   {:scope api-scope/data-app}
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
@@ -368,7 +318,7 @@
    respond
    raise]
   (try
-    (let [row  (check-not-outdated (read-check-data-app (data-apps.db/enabled-data-app-by-slug slug)))
+    (let [row  (check-not-outdated (api/read-check (data-apps.db/data-app-by-slug slug)))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond
@@ -388,10 +338,10 @@
                       :body    (ByteArrayInputStream. bundle)})
             (respond {:status  404
                       :headers {"Content-Type" "application/json"}
-                      :body    "{\"error\":\"Bundle not synced yet\"}"})))))
+                      :body    "{\"error\":\"This app has no bundle yet\"}"})))))
     (catch Throwable e
       (raise e))))
 
 (def routes
-  "`/api/apps` routes."
+  "`/api/ee/apps` routes."
   (api.macros/ns-handler *ns* +auth))

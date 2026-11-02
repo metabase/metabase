@@ -20,28 +20,71 @@ import { TEST_SCHEMA } from "./fixtures";
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 
 const revenueQuery = defineQuery({
-  savedQuestionEntityId: "revenueQuestionEntity",
   source: TEST_SCHEMA.tables.orders,
   limit: 10,
 });
 
-const _savedQuestionEntityId: "revenueQuestionEntity" =
-  revenueQuery.savedQuestionEntityId;
 const _queryLimit: 10 = revenueQuery.limit;
 
+const ordersQuestionQuery = defineQuery({
+  source: {
+    type: "card",
+    entityId: "ordersQuestionEntity1",
+    columns: TEST_SCHEMA.questions.ordersQuestion.columns,
+  },
+});
+
+const _questionEntityId: "ordersQuestionEntity1" =
+  ordersQuestionQuery.source.entityId;
+
 const CreateOrder = defineAction({
-  copiedActionEntityId: "createOrderCopyEntity",
-  action: TEST_SCHEMA.actions.createOrder,
+  entityId: "createOrderEntity",
+  kind: "row/create",
+  table: TEST_SCHEMA.tables.orders,
 });
 
-const _copiedActionEntityId: "createOrderCopyEntity" =
-  CreateOrder.copiedActionEntityId;
-const _sourceActionId: 51 = CreateOrder.action.id;
+const _actionEntityId: "createOrderEntity" = CreateOrder.entityId;
 
-// A definition is valid before its copy is written.
+const REVIEWS_TABLE = {
+  type: "table",
+  id: 3,
+  fields: {
+    reviewId: {
+      type: "column",
+      fieldId: 300,
+      tableId: 3,
+      name: "Review ID",
+      slug: "review_id",
+      jsType: "number",
+    },
+  },
+} as const;
+
+const CreateReview = defineAction({
+  entityId: "createReviewEntity",
+  kind: "row/create",
+  table: REVIEWS_TABLE,
+});
+
 const UpdateOrder = defineAction({
-  action: TEST_SCHEMA.actions.updateOrder,
+  entityId: "updateOrderEntity",
+  kind: "row/update",
+  table: TEST_SCHEMA.tables.orders,
 });
+
+function CardQueryFixtures() {
+  const { data } = useMetabaseQuery(ordersQuestionQuery);
+  const _status: string | null | undefined = data?.rows[0]?.STATUS;
+  const _amount: number | null | undefined = data?.rows[0]?.AMOUNT;
+
+  const grouped = useMetabaseQuery(ordersQuestionQuery, {
+    aggregations: [count()],
+    breakouts: [{ type: "column", name: "STATUS" }],
+  });
+  const _groupedStatus: string | null | undefined =
+    grouped.data?.rows[0]?.STATUS;
+  const _groupedCount: number | null | undefined = grouped.data?.rows[0]?.count;
+}
 
 // --------
 // Compile-time contracts that must pass type-checking.
@@ -151,27 +194,30 @@ function ValidTypeFixtures() {
 
   void createOrder.execute({ status: "shipped" });
 
-  const createdCount: number | undefined =
-    createOrder.result?.["rows-affected"];
+  const createdRow = createOrder.result?.["created-row"];
 
-  void createdCount;
+  void createdRow;
 
   const updateOrder = useDataAppAction(UpdateOrder);
 
   void updateOrder.execute({ id: 1 });
 
+  // A parameter is keyed by its column's slug, not its name.
+  void useDataAppAction(CreateReview).execute({ review_id: 1 });
+
   // The SDK hook takes a plain definition object, and a `defineAction` export too.
   const sdkCreateOrder = useAction({
-    action: TEST_SCHEMA.actions.createOrder,
+    entityId: "createOrderEntity",
+    kind: "row/create",
+    table: TEST_SCHEMA.tables.orders,
   });
 
   void sdkCreateOrder.execute({ status: "shipped" });
   void useAction(CreateOrder).execute({ status: "shipped" });
 
-  const updatedCount: number | undefined =
-    updateOrder.result?.["rows-affected"];
+  const updatedRows = updateOrder.result?.["rows-updated"];
 
-  void updatedCount;
+  void updatedRows;
 
   // A raw id types nothing, so the generics still stand in for a definition.
   const rawAction = useAction<{ status: string }, "create">(51);
@@ -306,10 +352,9 @@ function ValidTypeFixtures() {
     }),
   );
 
-  // A static query published as a card, with dynamic clauses layered on top.
+  // A table query with dynamic clauses layered on top.
   const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
-    savedQuestionEntityId: "ordersQuestionEntity1",
   });
 
   const dynamicResult = useMetabaseQuery(staticQuery, {
@@ -436,3 +481,4 @@ for (const numBins of [10, 50, 100] as const) {
     orderBys: [orderBy(binnedAmount, "asc")],
   });
 }
+void CardQueryFixtures;

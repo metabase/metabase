@@ -256,7 +256,7 @@
 (deftest ^:synchronized complex-distinct-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::complex-distinct-aggregation-test)
     (testing "Aggregation as `Count / Distinct([SOME_FIELD])` returns expected results (#35425)"
-      (every?
+      (run!
        (fn [[_id c d c-div-d more-complex]]
          (testing "Simple division"
            (is (= (u/round-to-decimals 2 (double (/ c d)))

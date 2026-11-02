@@ -280,6 +280,18 @@ describe("formatDateTimeForParameter", () => {
     });
 
     test.each([
+      ["minute-of-hour", 7, "7"],
+      ["day-of-month", 5, "5"],
+      ["day-of-week", 1, "Sunday"],
+      ["month-of-year", 1, "January"],
+      ["month-of-year", 12, "December"],
+      ["quarter-of-year", 1, "Q1"],
+      ["quarter-of-year", 4, "Q4"],
+    ] as const)("should format %s %s as %s", (unit, value, formatted) => {
+      expect(formatDateTimeWithUnit(value, unit)).toEqual(formatted);
+    });
+
+    test.each([
       ["minute", "Wed, April 27, 2022, 6:00 AM"],
       ["hour", "Wed, April 27, 2022, 6:00 AM"],
       ["day", "Wed, April 27, 2022"],

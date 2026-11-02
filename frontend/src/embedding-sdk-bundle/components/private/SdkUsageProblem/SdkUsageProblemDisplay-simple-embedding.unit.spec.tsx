@@ -8,7 +8,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { screen, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
-import { getHostReactMajorVersion } from "embedding-sdk-bundle/lib/host-react-version";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {
@@ -25,16 +24,6 @@ const TEST_USER = createMockUser();
 
 jest.mock("metabase/visualizations/register", () => ({
   registerVisualizations: jest.fn(),
-}));
-
-// Jest runs React 18 on localhost, which shows the React 18 warning banner.
-// Each test sets the host React major version instead.
-// Without the real module behind it, isHostReactVersionSupported is undefined
-// here, and anything that loads the SDK hooks throws: each of them calls that
-// check when its module loads.
-jest.mock("embedding-sdk-bundle/lib/host-react-version", () => ({
-  ...jest.requireActual("embedding-sdk-bundle/lib/host-react-version"),
-  getHostReactMajorVersion: jest.fn(),
 }));
 
 jest.mock("metabase/embedding-sdk/config", () => ({
@@ -56,12 +45,9 @@ jest.mock("metabase/embedding-sdk/config", () => ({
 interface Options {
   hasSimpleEmbeddingFeature?: boolean;
   isSimpleEmbeddingEnabled?: boolean;
-  hostReactMajorVersion?: number;
 }
 
-const setup = ({ hostReactMajorVersion = 19, ...options }: Options) => {
-  jest.mocked(getHostReactMajorVersion).mockReturnValue(hostReactMajorVersion);
-
+const setup = (options: Options) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_simple: options.hasSimpleEmbeddingFeature ?? true,
   });
@@ -171,15 +157,5 @@ describe("SdkUsageProblemDisplay (simple embedding)", () => {
     ).toBeInTheDocument();
 
     mock.mockRestore();
-  });
-
-  it("does not show the React 18 warning, since the iframe embed runs the React shipped by Metabase", async () => {
-    expect(window.location.origin).toBe("http://localhost");
-
-    await setup({ hostReactMajorVersion: 18 });
-
-    expect(
-      screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
-    ).not.toBeInTheDocument();
   });
 });
