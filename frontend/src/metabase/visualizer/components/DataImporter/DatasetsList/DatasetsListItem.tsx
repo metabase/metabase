@@ -30,7 +30,6 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
     <Button
       justify="start"
       flex="0 0 auto"
-      pl={0}
       variant={selected ? "filled" : "subtle"}
       color={selected ? "brand" : "neutral"}
       data-testid="swap-dataset-button"
