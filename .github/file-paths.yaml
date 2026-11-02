@@ -341,6 +341,12 @@ build_embedding_sdk_package:
   - *embedding_documentation
   - *frontend_sources
 
+cross_version: &cross_version
+  - "cross-version/**"
+  - ".github/workflows/cross-version.yml"
+  - ".github/scripts/build-cross-version-matrix.js"
+  - "release/src/cross-version-helpers.ts"
+
 # The uberjar only exists to feed e2e, the SDK suites that boot a Metabase instance, bundle-size and
 # containerize, so it is worth building exactly when one of them might run. The SDK's type checks run
 # against the package artifact alone, so embedding docs do not belong here.
@@ -351,6 +357,7 @@ build_uberjar:
   - *embedding_sdk_components
   - *embedding_sdk_host_sample_apps
   - *workflows
+  - *cross_version
 
 yaml:
   - "**/*.yml"
