@@ -2821,10 +2821,11 @@
     1. an exact match on a name lib resolves: the desired alias, then the deduplicated name, then `:name`.
        The ref keeps its spelling, since a nested join's column is `P__NAME` to lib even when its `:name` is `NAME`;
     2. the same match with surrounding double quotes stripped, giving the stripped spelling;
-    3. a loose `:name` match that folds case and hyphens/whitespace to underscores, but **only
-       when exactly one** real column matches - so `count-where` resolves to `count_where`;
-    4. with `join-alias`, the same loose match on the desired alias without its `join-alias__` prefix -
-       so `Sum` finds a joined `sum` that the previous stage deduplicated to `sum_2`;
+    3. with `join-alias`, a loose match on the desired alias without its `join-alias__` prefix, which folds case and
+       hyphens/whitespace to underscores, but **only when exactly one** real column matches - so `Sum` finds a
+       joined `sum` that the previous stage deduplicated to `sum_2`.
+       It comes first because, as with exact matches, the join's own name wins over a deduplicated `:name`;
+    4. the same loose match on `:name` - so `count-where` resolves to `count_where`;
     5. a loose `:display-name` match (same folding, same one-hit guard) - so a ref the LLM
        wrote with the UI label (`\"Max of Instance Has SC\"`) recovers the machine name (`max`).
 
@@ -2854,8 +2855,8 @@
      (if-let [[spelling match] (some #(when-let [match (lib-match %)] [% match])
                                      (distinct [col-name stripped]))]
        [spelling (:types match)]
-       (when-let [match (or (loose-on :name stripped)
-                            (when prefix (loose-on unprefixed stripped))
+       (when-let [match (or (when prefix (loose-on unprefixed stripped))
+                            (loose-on :name stripped)
                             (loose-on :display-name stripped))]
          (let [spelling (or (unprefixed match) (:name match))]
            ;; A deduplicated name can denote another column after lib adds the join prefix.
