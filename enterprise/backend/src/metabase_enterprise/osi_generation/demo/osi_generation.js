@@ -4,6 +4,7 @@ const state = {
   entities: [],
   indexEntries: [],
   indexBusy: false,
+  indexOffset: 0,
   runs: [],
   selected: null,
   status: null,
@@ -23,6 +24,7 @@ const renderedSnapshots = {
 };
 
 let queuedRunWatch = null;
+let completionRefreshPending = false;
 const runIdsAwaitingEnd = new Set();
 
 const els = {
@@ -43,6 +45,8 @@ const els = {
   entityList: document.querySelector("#entity-list"),
   indexStepCopy: document.querySelector("#index-step-copy"),
   indexList: document.querySelector("#index-list"),
+  indexPrevious: document.querySelector("#index-previous"),
+  indexNext: document.querySelector("#index-next"),
   indexSummary: document.querySelector("#index-summary"),
   librarySearchResults: document.querySelector("#library-search-results"),
   librarySearchSummary: document.querySelector("#library-search-summary"),
@@ -330,6 +334,7 @@ function runSummaryMarkup(summary) {
   const index = reconcile.index || {};
   const execution = reconcile.execution || {};
   const llmCalls = summary.llm_calls || [];
+  const callCount = summary.llm_call_count ?? llmCalls.length;
   const longestCall = Math.max(...llmCalls.map((call) => call.duration_ms || 0), 1);
   const hasUsage = usage.input_tokens != null || usage.output_tokens != null;
   const hasReconcile = summary.reconcile != null;
@@ -365,7 +370,7 @@ function runSummaryMarkup(summary) {
         <div class="llm-calls">
           <div class="llm-calls-heading">
             <strong>LLM calls</strong>
-            <span>${llmCalls.length} sequential ${llmCalls.length === 1 ? "request" : "requests"}</span>
+            <span>${summary.llm_calls_truncated ? `Showing ${llmCalls.length} of ` : ""}${callCount} sequential ${callCount === 1 ? "request" : "requests"}</span>
           </div>
           <div class="llm-call-list">
             ${llmCalls.map((call) => {
@@ -434,7 +439,7 @@ function renderIndexEntries() {
         <span class="index-entry-meta">Document · ${escapeHtml(entry.doc_id)}</span>
         <span class="index-entry-meta">
           Vector ·
-          <span class="vector-hash" tabindex="0" aria-describedby="vector-tooltip" data-vector="${escapeHtml(entry.vector_base64)}">${escapeHtml(entry.vector_hash)}</span>
+          <span class="vector-hash" tabindex="0" aria-describedby="vector-tooltip" data-doc-id="${escapeHtml(entry.doc_id)}">${escapeHtml(entry.vector_hash)}</span>
         </span>
       </div>
     </div>`).join("") : '<div class="empty"><p>The Library index is empty.</p><p>Reconcile to populate it.</p></div>';
@@ -447,9 +452,20 @@ function renderIndexEntries() {
   });
 }
 
-function showVectorTooltip(target) {
+async function showVectorTooltip(target) {
   window.clearTimeout(hideVectorTooltip.timer);
-  els.vectorTooltip.textContent = target.dataset.vector;
+  els.vectorTooltip.textContent = "Loading…";
+  try {
+    if (!target.dataset.vector) {
+      const result = await request(`${apiBase}/index/vector/${encodeURIComponent(target.dataset.docId)}`);
+      target.dataset.vector = result.vector;
+    }
+    if (!target.matches(":hover") && document.activeElement !== target) return;
+    els.vectorTooltip.textContent = target.dataset.vector;
+  } catch (error) {
+    showToast(error.message, true);
+    return;
+  }
   els.vectorTooltip.classList.add("show");
   const targetRect = target.getBoundingClientRect();
   const tooltipRect = els.vectorTooltip.getBoundingClientRect();
@@ -641,8 +657,9 @@ async function loadRenderedPrompt() {
 }
 
 async function refreshIndexEntries() {
+  if (!state.status?.index_available) return;
   window.clearTimeout(refreshIndexEntries.timer);
-  return latestRefresh("index", () => request(`${apiBase}/index`), (result) => {
+  return latestRefresh("index", () => request(`${apiBase}/index?offset=${state.indexOffset}`), (result) => {
     els.indexList.setAttribute("aria-busy", String(result.busy));
     if (result.busy) {
       state.indexBusy = true;
@@ -650,10 +667,13 @@ async function refreshIndexEntries() {
       if (renderedSnapshots.index == null) renderIndexEntries();
       refreshIndexEntries.timer = window.setTimeout(() => {
         refreshIndexEntries().catch((error) => showToast(error.message, true));
-      }, 100);
+      }, 1500);
       return;
     }
 
+    els.indexPrevious.disabled = state.indexOffset === 0;
+    els.indexNext.disabled = result.data.length <= 50;
+    result.data = result.data.slice(0, 50);
     const view = { busy: result.busy, data: result.data };
     state.indexBusy = false;
     els.indexSummary.textContent = `${result.data.length} ${result.data.length === 1 ? "document" : "documents"}`;
@@ -678,13 +698,21 @@ function parsedContext() {
   }
 }
 
+async function refreshAfterIndexMutation() {
+  await refreshStatus();
+  if (state.status?.index_available) {
+    await request("/api/osi/ai-context/reconcile", { method: "POST" });
+    await refreshIndexEntries();
+  }
+}
+
 async function saveContext(context, message) {
   const entity = state.selected;
   await mutate(["entities", "index"], `/api/osi/ai-context/${encodeURIComponent(entity.entity_type)}/${entity.entity_local_id}`, {
     method: "PUT",
     body: JSON.stringify({ ai_context: context }),
   });
-  await refreshEntities();
+  await Promise.all([refreshEntities(), refreshAfterIndexMutation()]);
   els.editor.close();
   showToast(message);
 }
@@ -707,11 +735,20 @@ async function refreshEntities() {
   });
 }
 
+function normalizeTaskKeys(value) {
+  if (Array.isArray(value)) return value.map(normalizeTaskKeys);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key.replaceAll("-", "_"), normalizeTaskKeys(item)]));
+  }
+  return value;
+}
+
 async function refreshRuns() {
   window.clearTimeout(refreshRuns.timer);
   return latestRefresh("runs", () => request(`${apiBase}/runs`), (result) => {
-    updateRenderedCollection("runs", result.data, () => {
-      state.runs = result.data;
+    const runs = result.data.map((run) => ({ ...run, summary: normalizeTaskKeys(run.summary) }));
+    updateRenderedCollection("runs", runs, () => {
+      state.runs = runs;
       renderRuns();
     });
   });
@@ -746,7 +783,7 @@ function updateQueuedRunWatch() {
 
 function scheduleRunRefresh(delay = 1500) {
   window.clearTimeout(refreshRuns.timer);
-  if (queuedRunWatch || activeRunIds().size || runIdsAwaitingEnd.size) {
+  if (queuedRunWatch || activeRunIds().size || runIdsAwaitingEnd.size || completionRefreshPending) {
     refreshRuns.timer = window.setTimeout(refreshRunProgress, delay);
   }
 }
@@ -754,7 +791,10 @@ function scheduleRunRefresh(delay = 1500) {
 async function refreshRunProgress() {
   try {
     const activeBefore = activeRunIds();
-    const [runsRefreshed] = await Promise.all([refreshRuns(), refreshStatus()]);
+    const [runsResult, statusResult] = await Promise.allSettled([refreshRuns(), refreshStatus()]);
+    if (statusResult.status === "rejected") showToast(statusResult.reason.message, true);
+    if (runsResult.status === "rejected") throw runsResult.reason;
+    const runsRefreshed = runsResult.value;
     if (!runsRefreshed) {
       return;
     }
@@ -770,10 +810,12 @@ async function refreshRunProgress() {
       if (!run || run.ended_at) runIdsAwaitingEnd.delete(id);
     });
     const queuedRunFinished = updateQueuedRunWatch();
-    if (activeRunFinished || queuedRunFinished) {
+    if (activeRunFinished || queuedRunFinished) completionRefreshPending = true;
+    if (completionRefreshPending) {
       // Entity and index responses are moving intermediate snapshots while generation writes. Keep those
       // larger, scrollable lists stable during the run and paint their committed result once at the end.
       await Promise.all([refreshEntities(), refreshIndexEntries()]);
+      completionRefreshPending = false;
     }
   } catch (error) {
     showToast(error.message, true);
@@ -785,7 +827,8 @@ async function refreshRunProgress() {
 async function refreshAll() {
   setBusy(els.refreshAll, true, "Refreshing…");
   try {
-    await Promise.all([refreshStatus(), refreshEntities(), refreshRuns(), refreshIndexEntries()]);
+    await Promise.all([refreshStatus(), refreshEntities(), refreshRuns()]);
+    await refreshIndexEntries();
   } catch (error) {
     showToast(error.message, true);
   } finally {
@@ -801,8 +844,9 @@ els.enabledToggle.addEventListener("change", async () => {
       method: "PUT",
       body: JSON.stringify({ enabled: els.enabledToggle.checked }),
     });
-    await Promise.all([refreshStatus(), refreshIndexEntries()]);
+    await refreshStatus();
     showToast(result.enabled ? "Generation enabled" : "Generation disabled");
+    refreshIndexEntries().catch((error) => showToast(`Index refresh failed: ${error.message}`, true));
   } catch (error) {
     await refreshStatus().catch(() => {});
     showToast(error.message, true);
@@ -815,8 +859,9 @@ els.ensureJob.addEventListener("click", async () => {
   setBusy(els.ensureJob, true, "Ensuring…");
   try {
     await mutate(["status"], `${apiBase}/ensure-job`, { method: "POST" });
-    await Promise.all([refreshStatus(), refreshIndexEntries()]);
+    await refreshStatus();
     showToast("Scheduler is running and the generation job is registered");
+    refreshIndexEntries().catch((error) => showToast(`Index refresh failed: ${error.message}`, true));
   } catch (error) {
     showToast(error.message, true);
   } finally {
@@ -845,7 +890,7 @@ els.deleteContexts.addEventListener("click", async () => {
   setBusy(els.deleteContexts, true, "Deleting…");
   try {
     const result = await mutate(["status", "entities", "index"], `${apiBase}/contexts`, { method: "DELETE" });
-    await Promise.all([refreshStatus(), refreshEntities()]);
+    await Promise.all([refreshEntities(), refreshAfterIndexMutation()]);
     showToast(`Deleted ${result.deleted} AI context${result.deleted === 1 ? "" : "s"}`);
   } catch (error) {
     showToast(error.message, true);
@@ -858,14 +903,14 @@ els.deleteRuns.addEventListener("click", async () => {
   if (!window.confirm("Delete all OSI generation run history? Other task history will remain.")) return;
   setBusy(els.deleteRuns, true, "Deleting…");
   try {
-    queuedRunWatch = null;
-    runIdsAwaitingEnd.clear();
     const result = await mutate(["runs"], `${apiBase}/runs`, { method: "DELETE" });
     await refreshRuns();
+    scheduleRunRefresh();
     showToast(`Deleted ${result.deleted} generation run${result.deleted === 1 ? "" : "s"}`);
   } catch (error) {
     showToast(error.message, true);
   } finally {
+    scheduleRunRefresh();
     setBusy(els.deleteRuns, false);
   }
 });
@@ -924,10 +969,11 @@ els.saveDescription.addEventListener("click", async () => {
       method: "PUT",
       body: JSON.stringify({ description: els.sourceDescription.value }),
     });
-    await refreshEntities();
+    await Promise.all([refreshEntities(), refreshAfterIndexMutation()]);
     const refreshed = state.entities.find((candidate) =>
       candidate.entity_type === entity.entity_type && candidate.entity_local_id === entity.entity_local_id
     );
+    if (state.selected !== entity || !refreshed) return;
     state.selected = refreshed;
     els.sourceDescription.value = refreshed.description || "";
     els.sourceDescription.dataset.savedValue = els.sourceDescription.value;
@@ -936,7 +982,7 @@ els.saveDescription.addEventListener("click", async () => {
     if (els.promptDisclosure.open) await loadRenderedPrompt();
     showToast(entityStatus(refreshed).startsWith("approved")
       ? "Source updated; approved context remains protected and index sync was requested"
-      : "Source updated; regeneration and index sync were requested");
+      : "Source updated; context is eligible for regeneration and index sync completed");
   } catch (error) {
     showToast(error.message, true);
   } finally {
@@ -965,6 +1011,14 @@ els.requestRewrite.addEventListener("click", async () => {
   }
 });
 
+els.indexPrevious.addEventListener("click", () => {
+  state.indexOffset = Math.max(0, state.indexOffset - 50);
+  refreshIndexEntries().catch((error) => showToast(error.message, true));
+});
+els.indexNext.addEventListener("click", () => {
+  state.indexOffset += 50;
+  refreshIndexEntries().catch((error) => showToast(error.message, true));
+});
 els.refreshAll.addEventListener("click", refreshAll);
 els.search.addEventListener("input", renderEntities);
 els.statusFilter.addEventListener("change", renderEntities);

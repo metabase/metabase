@@ -21,6 +21,8 @@
    [metabase.osi.models.osi-ai-context :as osi-ai-context]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
+   [metabase.settings.core :as setting]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
@@ -79,7 +81,8 @@
   (let [job-registered (task/job-exists? generation/generation-job-key)
         index-status   (entity-retrieval.ee/retrieval-status false)]
     {:ai_features_enabled (llm.settings/ai-features-enabled?)
-     :enabled             (generation.settings/osi-generation-enabled)
+     :enabled             (setting/get-value-of-type :boolean :osi-generation-enabled)
+     :effective_enabled   (generation.settings/osi-generation-enabled)
      :available           (generation/available?)
      :configured          (generation.settings/configured?)
      :index_available     (every? val (:dependencies index-status))
@@ -170,24 +173,23 @@
    (semantic.db.datasource/ensure-initialized-data-source!)))
 
 (defn- library-index-entries
-  []
-  (let [datasource      (semantic.db.datasource/ensure-initialized-data-source!)
-        library-classes (into #{}
-                              (map (fn [{:keys [entity_type entity_local_id]}]
-                                     (entity-retrieval/entity-class entity_type entity_local_id)))
-                              (spec/member-entities :library-index))]
+  [offset]
+  (let [datasource (semantic.db.datasource/ensure-initialized-data-source!)]
     (or (entity-retrieval.reconcile/with-index-read-lock
           datasource
           (fn [conn]
-            {:busy false
+            (let [library-classes (into #{}
+                                        (map (fn [{:keys [entity_type entity_local_id]}]
+                                               (entity-retrieval/entity-class entity_type entity_local_id)))
+                                        (spec/member-entities :library-index))]
+              {:busy false
              :data (if-not (entity-retrieval.index-table/vectors-table-exists? conn)
                      []
                      (->> (jdbc/execute!
                            conn
                            [(format (str "SELECT doc_id, entity_type, entity_local_id, doc_type, doc_text, "
                                          "vector_dims(doc_embedding) AS vector_dimensions, "
-                                         "md5(vector_send(doc_embedding)) AS vector_hash, "
-                                         "encode(vector_send(doc_embedding), 'base64') AS vector_base64 "
+                                         "md5(vector_send(doc_embedding)) AS vector_hash "
                                          "FROM %s "
                                          "ORDER BY entity_type, entity_local_id, doc_type, doc_text, doc_id")
                                     (entity-retrieval.index-table/vectors-table-sql))]
@@ -195,7 +197,9 @@
                           (filter (fn [{:keys [entity_type entity_local_id]}]
                                     (contains? library-classes
                                                (entity-retrieval/entity-class entity_type entity_local_id))))
-                          vec))}))
+                          (drop offset)
+                          (take 51)
+                          vec))})))
         {:busy true, :data []})))
 
 (defn- comparison-search
@@ -227,7 +231,8 @@
 
 (defn- delete-generation-runs!
   []
-  {:deleted (t2/delete! :model/TaskHistory :task generation.task/generation-task-history-name)})
+  {:deleted (t2/delete! :model/TaskHistory :task generation.task/generation-task-history-name
+                         :status [:not= :started])})
 
 (defn- ensure-generation-job!
   []
@@ -272,7 +277,7 @@
    {:keys [enabled]} :- [:map [:enabled :boolean]]]
   (api/check-superuser)
   (generation.settings/osi-generation-enabled! enabled)
-  {:enabled (generation.settings/osi-generation-enabled)})
+  {:enabled (setting/get-value-of-type :boolean :osi-generation-enabled)})
 
 (api.macros/defendpoint :post "/ensure-job" :- :any
   "Start the task scheduler and register the OSI generation job when necessary."
@@ -296,12 +301,29 @@
   (clear-library-index!))
 
 (api.macros/defendpoint :get "/index" :- :any
-  "List every Library index document, including its pgvector binary encoded as base64."
-  []
+  "List a page of Library index documents."
+  [_route-params
+   {:keys [offset]} :- [:map [:offset {:optional true} [:int {:min 0}]]]]
   (api/check-superuser)
   (api/check-400 (entity-retrieval.ee/available?)
                  "Library retrieval is unavailable; check its pgvector and embedding configuration.")
-  (library-index-entries))
+  (update (library-index-entries (or offset 0)) :data vec))
+
+(api.macros/defendpoint :get "/index/vector/:doc-id" :- :any
+  "Return the encoded vector for one index document."
+  [{:keys [doc-id]} :- [:map [:doc-id :string]]]
+  (api/check-superuser)
+  (api/check-400 (entity-retrieval.ee/available?) "Library retrieval is unavailable.")
+  (let [datasource (semantic.db.datasource/ensure-initialized-data-source!)]
+    (or (entity-retrieval.reconcile/with-index-read-lock
+          datasource
+          (fn [conn]
+            (api/check-404
+             (jdbc/execute-one! conn
+                                [(format "SELECT encode(vector_send(doc_embedding), 'base64') AS vector FROM %s WHERE doc_id = ?"
+                                         (entity-retrieval.index-table/vectors-table-sql)) doc-id]
+                                {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+        (throw (ex-info "Index is busy." {:status-code 503})))))
 
 (api.macros/defendpoint :get "/search/:engine" :- :any
   "Run the real AppDB, semantic, or Library-retrieval search path without persisting an engine override in
@@ -310,8 +332,12 @@
    {:keys [q]} :- [:map [:q ms/NonBlankString]]]
   (api/check-superuser)
   (if (= engine "library")
-    (library-retrieval-search q)
-    (comparison-search engine q)))
+    (do
+      (api/check-400 (entity-retrieval.ee/available?) "Library retrieval is unavailable.")
+      (library-retrieval-search q))
+    (let [engine-key (search.engine/canonical-engine engine)]
+      (api/check-400 (= :ok (search.engine/engine-status engine-key)) "Search engine is unavailable.")
+      (comparison-search (name engine-key) q))))
 
 (api.macros/defendpoint :put "/entities/:entity-type/:entity-local-id/description" :- :any
   "Edit a Library entity's source description, which is part of the generation basis and makes generated

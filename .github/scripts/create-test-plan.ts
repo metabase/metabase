@@ -12,10 +12,11 @@ import { type FileDependency, parseCruiseModules } from "./affected-modules";
 import { createTestPlan } from "./affected-tests";
 import { listSpecFiles } from "./e2e-spec-globs.mjs";
 
-const UNIT_ROOTS = ["frontend/src", "enterprise/frontend/src"];
+const UNIT_ROOTS = ["frontend/src", "enterprise/frontend/src", "dev/test/dev"];
 const UNIT_GLOBS = [
   "frontend/src/**/*.unit.spec.{js,jsx,ts,tsx}",
   "enterprise/frontend/src/**/*.unit.spec.{js,jsx,ts,tsx}",
+  "dev/test/dev/osi_generation_page.unit.spec.js",
 ];
 
 const STORY_ROOTS = ["frontend", "enterprise/frontend"];

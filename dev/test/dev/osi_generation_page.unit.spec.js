@@ -84,7 +84,7 @@ describe("OSI generation page polling", () => {
       if (requestPath.endsWith("/entities")) {
         return response({ data: [entity] });
       }
-      if (requestPath.endsWith("/index")) {
+      if (requestPath.includes("/index?offset=")) {
         return response({ busy: false, data: [] });
       }
       if (requestPath.endsWith("/runs")) {
@@ -119,7 +119,7 @@ describe("OSI generation page polling", () => {
       if (requestPath.endsWith("/entities")) {
         return response({ data: [] });
       }
-      if (requestPath.endsWith("/index")) {
+      if (requestPath.includes("/index?offset=")) {
         return response({ busy: false, data: [] });
       }
       if (requestPath.endsWith("/runs")) {
@@ -133,34 +133,36 @@ describe("OSI generation page polling", () => {
               started_at: "2026-09-09T12:00:00Z",
               status: "success",
               summary: {
-                already_approved: 0,
+                "already-approved": 2,
                 candidates: 3,
                 errors: 0,
                 generated: 3,
-                llm_calls: [
+                "llm-call-count": 100,
+                "llm-calls-truncated": true,
+                "llm-calls": [
                   {
-                    duration_ms: 6572,
-                    entity_local_id: 1,
-                    entity_type: "table",
-                    input_tokens: 1569,
+                    "duration-ms": 6572,
+                    "entity-local-id": 1,
+                    "entity-type": "table",
+                    "input-tokens": 1569,
                     outcome: "generated",
-                    output_tokens: 256,
+                    "output-tokens": 256,
                   },
                   {
-                    duration_ms: 9131,
-                    entity_local_id: 2,
-                    entity_type: "table",
-                    input_tokens: 1565,
+                    "duration-ms": 9131,
+                    "entity-local-id": 2,
+                    "entity-type": "table",
+                    "input-tokens": 1565,
                     outcome: "generated",
-                    output_tokens: 275,
+                    "output-tokens": 275,
                   },
                   {
-                    duration_ms: 6173,
-                    entity_local_id: 3,
-                    entity_type: "table",
-                    input_tokens: 1561,
+                    "duration-ms": 6173,
+                    "entity-local-id": 3,
+                    "entity-type": "table",
+                    "input-tokens": 1561,
                     outcome: "generated",
-                    output_tokens: 260,
+                    "output-tokens": 260,
                   },
                 ],
                 pending: 0,
@@ -170,7 +172,7 @@ describe("OSI generation page polling", () => {
                 },
                 restamped: 0,
                 skipped: 0,
-                usage: { input_tokens: 4695, output_tokens: 791 },
+                usage: { "input-tokens": 4695, "output-tokens": 791 },
               },
             },
           ],
@@ -189,6 +191,7 @@ describe("OSI generation page polling", () => {
     expect(document.querySelector(".run-stat-grid")).toHaveTextContent(
       "3 Generated",
     );
+    expect(document.querySelector(".run-stat-grid")).toHaveTextContent("2 Already approved");
     expect(document.querySelector(".run-detail-groups")).toHaveTextContent(
       "4,695 input tokens",
     );
@@ -198,7 +201,7 @@ describe("OSI generation page polling", () => {
     expect(document.querySelector(".run-description")).toBeNull();
     expect(document.querySelectorAll(".llm-call-row")).toHaveLength(3);
     expect(document.querySelector(".llm-calls")).toHaveTextContent(
-      "3 sequential requests",
+      "Showing 3 of 100 sequential requests",
     );
     expect(document.querySelector(".llm-calls")).toHaveTextContent("9.1 s");
   });
@@ -226,7 +229,7 @@ describe("OSI generation page polling", () => {
         }
         return response({ data: [entity("New result")] });
       }
-      if (requestPath.endsWith("/index")) {
+      if (requestPath.includes("/index?offset=")) {
         return response({ busy: false, data: [] });
       }
       if (requestPath.endsWith("/runs")) {
@@ -281,7 +284,7 @@ describe("OSI generation page polling", () => {
       if (requestPath.endsWith("/entities")) {
         return response({ data: [] });
       }
-      if (requestPath.endsWith("/index")) {
+      if (requestPath.includes("/index?offset=")) {
         indexRequests += 1;
         if (indexRequests === 2) {
           return response({ busy: true, data: [] });
@@ -316,7 +319,7 @@ describe("OSI generation page polling", () => {
       document.querySelector("#reconcile"),
     );
 
-    await jest.advanceTimersByTimeAsync(100);
+    await jest.advanceTimersByTimeAsync(1500);
     await flushPromises();
 
     expect(document.querySelector("#index-list")).toHaveTextContent(
@@ -347,7 +350,7 @@ describe("OSI generation page polling", () => {
         calls.entities += 1;
         return response({ data: [] });
       }
-      if (requestPath.endsWith("/index")) {
+      if (requestPath.includes("/index?offset=")) {
         calls.index += 1;
         return response({ busy: false, data: [] });
       }
@@ -398,7 +401,7 @@ describe("OSI generation page polling", () => {
       if (requestPath.endsWith("/entities")) {
         return response({ data: [] });
       }
-      if (requestPath.endsWith("/index")) {
+      if (requestPath.includes("/index?offset=")) {
         return response({ busy: false, data: [] });
       }
       if (requestPath.endsWith("/runs")) {
@@ -436,7 +439,7 @@ describe("OSI generation page polling", () => {
         calls.entities += 1;
         return response({ data: [] });
       }
-      if (requestPath.endsWith("/index")) {
+      if (requestPath.includes("/index?offset=")) {
         calls.index += 1;
         return response({ busy: false, data: [] });
       }
@@ -474,7 +477,7 @@ describe("OSI generation page polling", () => {
         calls.entities += 1;
         return response({ data: [] });
       }
-      if (requestPath.endsWith("/index")) {
+      if (requestPath.includes("/index?offset=")) {
         calls.index += 1;
         return response({ busy: false, data: [] });
       }
