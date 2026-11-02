@@ -1060,6 +1060,37 @@ describe("GoalValueInput", () => {
     });
   });
 
+  // only a column list can disable a choice, so a sole column is committed and reported afterwards
+  it("commits the sole column of a question that returns multiple rows", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        result_metadata: [NUMERIC_FIELDS[0]],
+      }),
+    );
+    setupCardDatasetWithReferencedEntities(
+      createMockFailedReferencedEntitiesResults({
+        error_type: "too-many-rows",
+      }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Orders");
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 9,
+        column: "total",
+      });
+    });
+  });
+
   it("keeps the columns enabled when the question returns a single row (UIT-145)", async () => {
     setupCardEndpoints(
       createMockCard({ id: 9, result_metadata: NUMERIC_FIELDS }),

@@ -18,8 +18,12 @@ export const DYNAMIC_GOAL_DISPLAYS = [
   "boxplot",
 ] as const satisfies readonly VisualizationDisplay[];
 
+const GOAL_LINE_SELECTOR = `path[stroke-dasharray="${GOAL_LINE_DASH.join(",")}"]`;
+
 export function queryEChartsGoalLine() {
-  return document.querySelector(
-    `path[stroke-dasharray="${GOAL_LINE_DASH.join(",")}"]`,
-  );
+  return document.querySelector(GOAL_LINE_SELECTOR);
+}
+
+export function queryAllEChartsGoalLines() {
+  return document.querySelectorAll(GOAL_LINE_SELECTOR);
 }
