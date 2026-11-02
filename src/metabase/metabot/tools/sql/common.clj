@@ -148,13 +148,6 @@
   {:uses #{"construct_notebook_query"}
    :text "Build the question with `construct_notebook_query` instead. Don't write SQL against this database again."})
 
-(tools/defrecoverable sql-on-audit-database!
-  "The SQL targets the audit database, and the notebook builder is offered this turn."
-  {:payload [:map {:closed true}]}
-  [_]
-  {:message  "Metabase does not run SQL on the Internal Metabase Database, for any user."
-   :recovery [notebook-instead-step]})
-
 (defn native-query-access?
   "Whether the current user may write and run native queries against `database-id`.
   No nil-user escape, unlike `qp.perms/current-user-has-adhoc-native-query-perms?`, and a

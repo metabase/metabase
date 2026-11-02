@@ -70,6 +70,13 @@
   {:message  "You do not have permission to write SQL against this database."
    :recovery [sql.common/notebook-instead-step]})
 
+(tools/defrecoverable sql-on-audit-database-with-notebook-fallback!
+  "The SQL targets the audit database, and the notebook builder is offered this turn."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "Metabase does not run SQL on the Internal Metabase Database, for any user."
+   :recovery [sql.common/notebook-instead-step]})
+
 (defn- do-with-notebook-fallback
   "Call `thunk`, making SQL refusals recoverable when the notebook builder is offered this turn."
   [ctx thunk]
@@ -81,7 +88,7 @@
       (if-let [recovery-code (when (contains? (:tool-names ctx) notebook-tool-name)
                                (case (get-in (ex-data e) [tools.error/error-key :code])
                                  ::sql.common/no-native-permission ::no-native-permission-with-notebook-fallback
-                                 ::sql.common/sql-on-audit-database ::sql.common/sql-on-audit-database
+                                 ::sql.common/sql-on-audit-database ::sql-on-audit-database-with-notebook-fallback
                                  nil))]
         (tools.error/throw-recoverable! recovery-code {} {:cause e})
         (throw e)))))

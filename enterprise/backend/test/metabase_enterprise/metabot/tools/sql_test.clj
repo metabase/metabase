@@ -10,6 +10,7 @@
    [metabase.metabot.agent.core-test :as agent-test]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.resources :as read-resource]
+   [metabase.metabot.tools.sql :as sql]
    [metabase.metabot.tools.sql-test :as sql-test]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.permissions.core :as perms]
@@ -49,7 +50,9 @@
               (mt/with-current-user (mt/user->id user)
                 (let [{:keys [error output]} (#'sql-test/invoke-sql-tool profile memory tool-name args)]
                   (is (= (cond-> {:class (if (= :internal profile) :recoverable :unrecoverable)
-                                  :code  ::sql.common/sql-on-audit-database}
+                                  :code  (if (= :internal profile)
+                                           ::sql/sql-on-audit-database-with-notebook-fallback
+                                           ::sql.common/sql-on-audit-database)}
                            (not= :internal profile)
                            (assoc :user-message audit-sql-unavailable-message))
                          error))
@@ -101,7 +104,8 @@
                   (is (= 2 llm-calls))
                   (is (= :stop (:finish-reason (last parts))))
                   (is (=? {:type :tool-output
-                           :result {:error {:class :recoverable :code ::sql.common/sql-on-audit-database}
+                           :result {:error {:class :recoverable
+                                            :code ::sql/sql-on-audit-database-with-notebook-fallback}
                                     :output #"(?s).*Build the question with `construct_notebook_query`.*"}}
                           (some #(when (= :tool-output (:type %)) %) parts))))))))))))
 
