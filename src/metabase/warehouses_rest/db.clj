@@ -27,9 +27,9 @@
                          [:%lower.display_name :asc]]}))
 
 (mu/defn active-visible-schemas-for-databases
-  "The Database id, schema and published state of each active, visible Table of the Databases with `database-ids`."
+  "The Database id and schema of each active, visible Table of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select [:model/Table :db_id :schema :is_published]
+  (t2/select [:model/Table :db_id :schema]
              :db_id           [:in database-ids]
              :active          true
              :visibility_type nil
