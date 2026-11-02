@@ -291,7 +291,9 @@
                        (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers))))]
     ;; sending runs the notification's payload as its creator, so gate on write access rather than read access
     (api/write-check notification)
-    (notification/send-notification! notification :notification/sync? true)))
+    (u/prog1 (notification/send-notification! notification :notification/sync? true)
+      ;; audit the manual send so exfiltration of a question's results leaves a trace of who sent it and to whom
+      (events/publish-event! :event/notification-send {:object notification :user-id api/*current-user-id*}))))
 
 (defn- promote-to-t2-instance
   [notification]
@@ -320,7 +322,9 @@
                          (assoc-in [:payload :disable_links]
                                    (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request))
                          promote-to-t2-instance)]
-    (notification/send-notification! notification :notification/sync? true)))
+    (u/prog1 (notification/send-notification! notification :notification/sync? true)
+      ;; audit unsaved "Send now": otherwise results can be emailed out with no record of who did it or where they went
+      (events/publish-event! :event/notification-send {:object notification :user-id api/*current-user-id*}))))
 
 (defn unsubscribe-user!
   "Unsubscribe a user from a notification."
