@@ -181,6 +181,7 @@ jobs:
           retention-days: 90
 
       - name: Open, update, or close the Eastwood issue
+        id: sync
         if: github.ref == 'refs/heads/master'
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
@@ -190,7 +191,8 @@ jobs:
         run: bun .github/scripts/eastwood-report.ts sync report.md report/findings.json
 
       - name: Alert when Eastwood can't run
-        if: failure() && github.ref == 'refs/heads/master'
+        # failure() includes lint jobs that failed on warnings after completing successfully.
+        if: failure() && steps.sync.outcome != 'success' && github.ref == 'refs/heads/master'
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         run: |
