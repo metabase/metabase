@@ -513,7 +513,11 @@ export function DraftFilterPill({
     >
       <div
         ref={pillRef}
-        className={cx(S.draftPill, { [S.draftPillBare]: step === "column" })}
+        className={cx(S.draftPill, {
+          // Only a new filter is plain text at the caret. A pill whose column
+          // the user changes stays a pill.
+          [S.draftPillBare]: step === "column" && editedPart == null,
+        })}
         data-testid="draft-filter-pill"
       >
         {isAiFiltersMode && (
@@ -555,11 +559,25 @@ export function DraftFilterPill({
             </button>
           )}
         {step !== "operator" && operator?.pillValueLabel != null && (
+          // The operator is also the value, so it looks like a value token.
+          // Its cross clears the choice, and the user picks another one.
           <button
             className={`${S.segment} ${S.valuesSegment}`}
             onClick={() => editPart("operator")}
           >
-            <span className={S.value}>{operator.pillValueLabel}</span>
+            <span className={S.token}>
+              {operator.pillValueLabel}
+              <Icon
+                name="close"
+                size={8}
+                role="button"
+                aria-label={t`Remove value`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  updateDraft({ column, values: [] });
+                }}
+              />
+            </span>
           </button>
         )}
         {step === "operator" && column?.operators != null && (
@@ -605,6 +623,7 @@ export function DraftFilterPill({
                 }
               }}
               onBack={() => editPart("operator")}
+              onClear={() => updateDraft({ ...draft, values: [] })}
             />
           )}
         {step === "value" &&
@@ -646,7 +665,12 @@ export function DraftFilterPill({
             />
           )}
         {step !== "value" && operator != null && (
-          <ValueTokens values={values} operator={operator} />
+          // The values look the same as when the user edits them.
+          <ValueTokens
+            values={values}
+            operator={operator}
+            onRemoveValue={removeValue}
+          />
         )}
         {(aiValues.state.status === "loading" ||
           aiFilters.state.status === "loading") && <Loader size="xs" />}
@@ -1185,6 +1209,8 @@ interface DatePickerValueInputProps {
   label: string | null;
   onChange: (value: DatePickerValue) => void;
   onBack: () => void;
+  /** Removes the value, like the cross of a value token. */
+  onClear: () => void;
 }
 
 /**
@@ -1201,6 +1227,7 @@ function DatePickerValueInput({
   label,
   onChange,
   onBack,
+  onClear,
 }: DatePickerValueInputProps) {
   const availableUnits = useMemo(
     () => getDatePickerUnits(query, stageIndex, column),
@@ -1216,7 +1243,20 @@ function DatePickerValueInput({
     <Popover opened position="bottom-start" withinPortal={false} shadow="md">
       <Popover.Target>
         <span className={`${S.segment} ${S.valuesSegment}`}>
-          <span className={S.value}>{label ?? "…"}</span>
+          {label != null ? (
+            <span className={S.token}>
+              {label}
+              <Icon
+                name="close"
+                size={8}
+                role="button"
+                aria-label={t`Remove value`}
+                onClick={onClear}
+              />
+            </span>
+          ) : (
+            <span className={S.placeholder}>…</span>
+          )}
         </span>
       </Popover.Target>
       <Popover.Dropdown>
