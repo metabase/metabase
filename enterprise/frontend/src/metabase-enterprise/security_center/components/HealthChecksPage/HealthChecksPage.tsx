@@ -27,10 +27,19 @@ import {
 
 type HealthChecksContentProps = {
   checks: HealthCheck[];
+  isLoading: boolean;
   isError: boolean;
 };
 
-const HealthChecksContent = ({ checks, isError }: HealthChecksContentProps) => {
+const HealthChecksContent = ({
+  checks,
+  isLoading,
+  isError,
+}: HealthChecksContentProps) => {
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
   if (isError) {
     return (
       <EmptyState
@@ -68,6 +77,7 @@ export const HealthChecksPage = () => {
     useRecheckHealthChecksMutation({ fixedCacheKey: RECHECK_ALL_CACHE_KEY });
   const showRecheckError = useRecheckErrorToast();
   const checks = data?.checks ?? [];
+  const hasChecks = !isError && checks.length > 0;
 
   useEffect(() => {
     trackHealthChecksPageViewed();
@@ -85,18 +95,21 @@ export const HealthChecksPage = () => {
     <Stack gap="lg" data-testid="health-checks-page">
       <Group gap="sm" justify="space-between">
         <Title order={1}>{t`Health checks`}</Title>
-        <RecheckButton
-          variant="subtle"
-          isRechecking={isRecheckingAll}
-          isDisabled={checks.length === 0}
-          onClick={handleRecheckAll}
-        >
-          {t`Re-check all`}
-        </RecheckButton>
+        {hasChecks && (
+          <RecheckButton
+            variant="subtle"
+            isRechecking={isRecheckingAll}
+            onClick={handleRecheckAll}
+          >
+            {t`Re-check all`}
+          </RecheckButton>
+        )}
       </Group>
-      <LoadingAndErrorWrapper loading={isLoading}>
-        <HealthChecksContent checks={checks} isError={isError} />
-      </LoadingAndErrorWrapper>
+      <HealthChecksContent
+        checks={checks}
+        isLoading={isLoading}
+        isError={isError}
+      />
     </Stack>
   );
 };

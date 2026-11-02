@@ -154,8 +154,8 @@ describe("HealthChecksPage", () => {
       screen.queryByText("All security checks pass"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "sync icon Re-check all" }),
-    ).toBeDisabled();
+      screen.queryByRole("button", { name: "sync icon Re-check all" }),
+    ).not.toBeInTheDocument();
   });
 
   it("opens failing checks and collapses the other groups", async () => {
@@ -607,7 +607,7 @@ describe("HealthChecksPage", () => {
       screen.getByText("Something went wrong loading health checks."),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "sync icon Re-check all" }),
-    ).toBeDisabled();
+      screen.queryByRole("button", { name: "sync icon Re-check all" }),
+    ).not.toBeInTheDocument();
   });
 });

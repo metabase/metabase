@@ -5,7 +5,7 @@ import { Button, type ButtonProps, Icon, Loader } from "metabase/ui";
 type RecheckButtonProps = {
   variant?: ButtonProps["variant"];
   isRechecking: boolean;
-  isDisabled: boolean;
+  isDisabled?: boolean;
   onClick: () => void;
   children: ReactNode;
 };
