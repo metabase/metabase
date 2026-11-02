@@ -94,6 +94,15 @@
   {:message "The SQL query contains more than one statement, and only one is supported. No changes were saved."
    :recovery [{:uses #{} :text "Rewrite the SQL as one statement, then retry."}]})
 
+(tools/defrecoverable unclosed-template-tag!
+  "The proposed SQL has a `[[` or `{{` with no matching `]]` or `}}`."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message (str "The SQL query has a `[[` or `{{` with no matching `]]` or `}}`. The problem can be in SQL that "
+                 "was there before this call. No changes were saved.")
+   :recovery [{:uses #{} :text (str "Close each `[[` with `]]` and each `{{` with `}}`, or remove the unclosed "
+                                    "clause, then retry.")}]})
+
 (tools/defrecoverable blank-sql!
   "Creating, replacing, or editing the query would leave it with no SQL."
   {:payload [:map {:closed true} [:query-id {:optional true} :string]]}
@@ -138,9 +147,10 @@
   [{:keys [validation-result action-result]}]
   (let [{:keys [valid? dialect error-message reason]} validation-result]
     (cond
-      valid?                          action-result
-      (= :multiple-statements reason) (multiple-sql-statements! {})
-      :else                           (sql-syntax-error! {:dialect dialect :error-message error-message}))))
+      valid?                            action-result
+      (= :multiple-statements reason)   (multiple-sql-statements! {})
+      (= :unclosed-template-tag reason) (unclosed-template-tag! {})
+      :else                             (sql-syntax-error! {:dialect dialect :error-message error-message}))))
 
 (defn native-query-access?
   "Whether the current user may write and run native queries against `database-id`.

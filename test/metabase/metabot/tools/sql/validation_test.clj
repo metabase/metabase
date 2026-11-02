@@ -61,6 +61,15 @@
    {:context "Snippet references should skip validation"
     :dialect "postgres" :sql "SELECT * FROM {{snippet: common_user_joins}}"
     :expected {:valid? true :dialect "postgres"}}
+   {:context "An unclosed optional clause should fail validation"
+    :dialect "postgres" :sql "SELECT count(*) FROM products [[WHERE category = {{cat}}"
+    :expected {:valid? false :dialect "postgres" :reason :unclosed-template-tag}}
+   {:context "An unclosed variable should fail validation when no dialect is provided"
+    :dialect nil :sql "SELECT * FROM products WHERE category = {{cat"
+    :expected {:valid? false :dialect nil :reason :unclosed-template-tag}}
+   {:context "Brackets in a string literal should not fail validation"
+    :dialect "postgres" :sql "SELECT '[[' AS a, '{{' AS b FROM products"
+    :expected {:valid? true :dialect "postgres"}}
    {:context "Validation should be skipped when no dialect is provided"
     :dialect nil :sql "SELECT * FROM users"
     :expected {:valid? true :dialect nil}}

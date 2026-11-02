@@ -434,6 +434,38 @@
               (is (not (str/includes? output "Common issues to check:")))
               (is (nil? (:structured-output result))))))))))
 
+(deftest unclosed-template-tag-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [engine [:postgres :h2]]
+      (mt/with-temp [:model/Database {db-id :id :as db} {:engine engine}]
+        (mt/with-db db
+          (doseq [profile [:internal :sql]
+                  tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+            (testing (str engine " / " profile " / " tool-name)
+              (let [result (invoke-with-proposed-sql profile tool-name db-id "SELECT * FROM t [[WHERE x = {{x}}")
+                    output (:output result)]
+                (is (= {:class :recoverable :code ::sql.common/unclosed-template-tag} (:error result)))
+                (is (str/includes? output "with no matching `]]` or `}}`"))
+                (is (str/includes? output "No changes were saved."))
+                (is (nil? (:structured-output result)))))))))))
+
+(deftest edit-elsewhere-in-sql-with-unclosed-template-tag-test
+  (testing "An edit that leaves an existing unclosed tag in place returns a recoverable error, and an edit that closes it succeeds"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [memory (assoc editor-memory :state {:queries {"q1" {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query "SELECT * FROM venues [[WHERE id = {{id}}"}}}})]
+        (doseq [profile [:internal :sql]]
+          (testing profile
+            (is (= {:class :recoverable :code ::sql.common/unclosed-template-tag}
+                   (:error (invoke-sql-tool profile memory "edit_sql_query"
+                                            {:edits [{:old_string "*" :new_string "name"}]}))))
+            (let [result (invoke-sql-tool profile memory "edit_sql_query"
+                                          {:edits [{:old_string "{{id}}" :new_string "{{id}}]]"}]})]
+              (is (nil? (:error result)))
+              (is (= "SELECT * FROM venues [[WHERE id = {{id}}]]"
+                     (get-in result [:structured-output :query-content]))))))))))
+
 (deftest closest-sql-match-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [ticket-sql "SELECT\n  id,\n  name\nFROM venues\nWHERE\n  price > 2 AND category_id IN (1, 2)"

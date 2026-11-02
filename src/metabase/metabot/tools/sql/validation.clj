@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -61,6 +62,17 @@
   (boolean (and (string? sql)
                 (re-find #"\{\{|\[\[" sql))))
 
+(defn- unclosed-template-tag?
+  "Whether `sql` has a `[[` or `{{` with no matching `]]` or `}}`. `lib/recognize-template-tags` throws only for an
+  unclosed tag."
+  [sql]
+  (and (contains-template-tags? sql)
+       (try
+         (lib/recognize-template-tags sql)
+         false
+         (catch clojure.lang.ExceptionInfo _
+           true))))
+
 (mr/def ::validation-result
   [:map
    [:valid? :boolean]
@@ -72,7 +84,10 @@
 (mu/defn validate-sql :- ::validation-result
   "Validate sql query.
 
-  Validation is short-circuited and query is considered valid for following cases:
+  For every dialect, sql with a `[[` or `{{` that has no matching `]]` or `}}` is not valid, with `:reason`
+  `:unclosed-template-tag`. Metabase cannot make a query from such sql.
+
+  Otherwise validation is short-circuited and query is considered valid for following cases:
   - sql string is empty,
   - dialect is `nil` or maps to `nil` (e.g. h2, vertica),
   - dialect is not in [[dialect-mapping]],
@@ -87,14 +102,22 @@
   [dialect :- [:maybe :string]
    sql :- :string]
   (let [mapped-dialect (get dialect-mapping dialect)]
-    (if (or (nil? dialect)
-            (str/blank? sql)
-            (not (contains? dialect-mapping dialect))
-            (nil? mapped-dialect)
-            (contains-template-tags? sql))
+    (cond
+      (unclosed-template-tag? sql)
+      {:valid? false
+       :dialect dialect
+       :reason :unclosed-template-tag}
+
+      (or (nil? dialect)
+          (str/blank? sql)
+          (not (contains? dialect-mapping dialect))
+          (nil? mapped-dialect)
+          (contains-template-tags? sql))
       {:valid? true
        :dialect dialect
        :transpiled-sql sql}
+
+      :else
       (let [{:keys [error-message reason transpiled-sql status]}
             (sql-tools/transpile-sql sql mapped-dialect mapped-dialect)]
         (merge
