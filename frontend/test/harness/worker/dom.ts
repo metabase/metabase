@@ -7,6 +7,7 @@ import type * as Jsdom from "jsdom";
 
 import { runnerDirectory } from "../jest-config.ts";
 
+import { project } from "./project.ts";
 import { globals, propertiesOf, tryTo } from "./properties.ts";
 
 const require = createRequire(import.meta.url);
@@ -149,7 +150,15 @@ export function currentWindow(): Jsdom.DOMWindow {
  * Makes the global object look like jest's: the window's properties on it, and
  * Node's globals that the window lacks removed.
  */
+/**
+ * Puts the window on the global object, for a project with jest's jsdom
+ * environment. A project with the node environment keeps the window only for
+ * the resets between files.
+ */
 export function installDom(): void {
+  if (project.environment === "node") {
+    return;
+  }
   replaceNodeFetch();
   if (globals.self === undefined) {
     globals.self = globalThis;
@@ -169,7 +178,9 @@ export function installDom(): void {
 export function replaceWindow(): Jsdom.DOMWindow {
   const previous = dom.window;
   dom = createDom();
-  installWindowGlobals({ again: true });
+  if (project.environment === "jsdom") {
+    installWindowGlobals({ again: true });
+  }
   return previous;
 }
 
