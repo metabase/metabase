@@ -1915,7 +1915,7 @@
 
   osi
   {:team "Metabot"
-   :api  #{metabase.osi.ai-context.api metabase.osi.models.osi-ai-context}
+   :api  #{metabase.osi.ai-context.api}
    :uses #{api
            app-db
            models

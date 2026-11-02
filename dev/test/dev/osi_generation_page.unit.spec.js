@@ -191,7 +191,9 @@ describe("OSI generation page polling", () => {
     expect(document.querySelector(".run-stat-grid")).toHaveTextContent(
       "3 Generated",
     );
-    expect(document.querySelector(".run-stat-grid")).toHaveTextContent("2 Already approved");
+    expect(document.querySelector(".run-stat-grid")).toHaveTextContent(
+      "2 Already approved",
+    );
     expect(document.querySelector(".run-detail-groups")).toHaveTextContent(
       "4,695 input tokens",
     );
@@ -204,6 +206,59 @@ describe("OSI generation page polling", () => {
       "Showing 3 of 100 sequential requests",
     );
     expect(document.querySelector(".llm-calls")).toHaveTextContent("9.1 s");
+  });
+
+  it("waits for the edited entity's targeted sync before refreshing the index", async () => {
+    const entity = {
+      context: null,
+      description: "Old description",
+      entity_local_id: 1,
+      entity_type: "metric",
+      generation_state: "missing",
+      name: "Revenue",
+    };
+    let indexRequests = 0;
+    let checks = 0;
+    global.fetch = jest.fn(async (requestPath, options) => {
+      if (requestPath.endsWith("/entities"))
+        return response({ data: [entity] });
+      if (requestPath.endsWith("/description")) {
+        entity.description = JSON.parse(options.body).description;
+        return response({ updated: 1 });
+      }
+      if (requestPath.includes("/index/settled/")) {
+        checks += 1;
+        return response({ busy: false, settled: checks > 1 });
+      }
+      if (requestPath.includes("/index?offset=")) {
+        indexRequests += 1;
+        return response({ busy: false, data: [] });
+      }
+      if (requestPath.endsWith("/runs")) return response({ data: [] });
+      if (requestPath.endsWith("/status")) return response(statusResponse);
+      throw new Error(`Unexpected request: ${requestPath}`);
+    });
+
+    window.eval(fs.readFileSync(scriptPath, "utf8"));
+    await flushPromises();
+    document.querySelector(".entity-row").click();
+    const input = document.querySelector("#source-description");
+    input.value = "Updated description";
+    input.dispatchEvent(new Event("input"));
+    document.querySelector("#save-description").click();
+    await flushPromises();
+    expect(indexRequests).toBe(1);
+    await jest.advanceTimersByTimeAsync(2000);
+    expect(checks).toBe(1);
+    expect(indexRequests).toBe(1);
+    await jest.advanceTimersByTimeAsync(2000);
+    expect(checks).toBe(2);
+    expect(indexRequests).toBe(2);
+    expect(
+      global.fetch.mock.calls.some(
+        ([url]) => url === "/api/osi/ai-context/reconcile",
+      ),
+    ).toBe(false);
   });
 
   it("does not let an older refresh replace newer Library content", async () => {
