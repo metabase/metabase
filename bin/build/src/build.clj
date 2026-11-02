@@ -10,7 +10,6 @@
    [clojure.tools.build.api :as b]
    [environ.core :as env]
    [flatland.ordered.map :as ordered-map]
-   [i18n.create-artifacts :as i18n]
    [metabuild-common.core :as u]))
 
 (set! *warn-on-reflection* true)
@@ -84,7 +83,7 @@
    :version      (fn [{:keys [edition version]}]
                    (version-properties/generate-version-properties-file! edition version))
    :translations (fn [_]
-                   (i18n/create-all-artifacts!))
+                   (u/sh {:dir u/project-root-directory} "bin/i18n/build-translation-resources"))
    :frontend     (fn [{:keys [edition]}]
                    (build-frontend! edition))
    :licenses     (fn [{:keys [edition]}]
