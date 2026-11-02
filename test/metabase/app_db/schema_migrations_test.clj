@@ -4429,3 +4429,39 @@
                 "Monthly job" false
                 "Custom job"  true}
                (job-active)))))))
+
+(deftest unarchive-transforms-folders-test
+  (testing "b20m1q unarchives every archived transforms folder and leaves every other collection as it is"
+    (impl/test-migrations ["b20m1q"] [migrate!]
+      (let [op-id         (str (random-uuid))
+            collection!   (fn [{:keys [name namespace location archived? archived-directly?]}]
+                            (t2/insert-returning-pk! :collection
+                                                     (cond-> {:name       name
+                                                              :slug       name
+                                                              :location   location
+                                                              :namespace  namespace
+                                                              :entity_id  (u/generate-nano-id)
+                                                              :created_at :%now
+                                                              :archived   archived?}
+                                                       archived? (assoc :archived_directly    archived-directly?
+                                                                        :archive_operation_id op-id))))
+            folder-id     (collection! {:name "folder" :namespace "transforms" :location "/"
+                                        :archived? true :archived-directly? true})
+            subfolder-id  (collection! {:name "subfolder" :namespace "transforms" :location (format "/%d/" folder-id)
+                                        :archived? true :archived-directly? false})
+            live-id       (collection! {:name "live" :namespace "transforms" :location "/" :archived? false})
+            trashed-id    (collection! {:name "trashed" :namespace nil :location "/"
+                                        :archived? true :archived-directly? true})
+            archive-state (fn [id]
+                            (t2/select-one [:collection :archived :archived_directly :archive_operation_id] :id id))
+            unarchived    {:archived false :archived_directly nil :archive_operation_id nil}]
+        (migrate!)
+        (testing "the archived transforms folder and its subfolder show again, in their old place"
+          (is (= unarchived (archive-state folder-id)))
+          (is (= unarchived (archive-state subfolder-id)))
+          (is (= (format "/%d/" folder-id) (t2/select-one-fn :location :collection :id subfolder-id))))
+        (testing "a transforms folder that is not archived is unchanged"
+          (is (= unarchived (archive-state live-id))))
+        (testing "an archived collection outside the transforms namespace stays in the Trash"
+          (is (= {:archived true :archived_directly true :archive_operation_id op-id}
+                 (archive-state trashed-id))))))))

@@ -1,0 +1,18 @@
+## GDGT-3440: a transforms folder is deleted, never archived. An archived transforms folder hid the transforms in it,
+## which kept running on their jobs, and no page in the UI restored the folder. This changeset unarchives every archived
+## transforms folder, so the folder and its transforms show again in the Transforms list, in their old place:
+## archiving keeps a collection's location, so clearing the three archive columns is enough.
+## The rollback does nothing: the archive state is not kept, and an archived transforms folder cannot be rebuilt.
+
+databaseChangeLog:
+  - changeSet:
+      id: b20m1q
+      author: brybacki
+      comment: Unarchive the archived transforms folders
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET archived = FALSE, archived_directly = NULL, archive_operation_id = NULL
+              WHERE namespace = 'transforms' AND archived = TRUE;
+      rollback: # nothing to undo: the archive state is gone
