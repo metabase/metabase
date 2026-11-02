@@ -68,9 +68,7 @@
   {:payload [:map {:closed true}]}
   [_]
   {:message  "You do not have permission to write SQL against this database."
-   :recovery [{:uses #{notebook-tool-name}
-               :text (str "Build the question with `construct_notebook_query` instead. Don't write SQL against"
-                          " this database again.")}]})
+   :recovery [sql.common/notebook-instead-step]})
 
 (defn- do-with-notebook-fallback
   "Call `thunk`, rethrowing its native-query refusal as [[no-native-permission-with-notebook-fallback!]]
