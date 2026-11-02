@@ -129,9 +129,12 @@ job and fails in the other is a difference between the two runners.
 | Test API                                                            | jest's own globals                           | jest's globals on top of `node:test`        |
 | Module resolution and setup files                                   | `jest.config.js`                             | The same values, read from `jest.config.js` |
 | Timers, `process.env`, the console, keys added to the global object | Discarded with the sandbox of each spec file | Reset between spec files                    |
+| A test or hook that runs out of time                                | The next tests run                           | The worker skips its next tests and ends    |
 
 The second row is the source of the speed difference. The other rows exist so
-that a spec cannot tell which runner it is under.
+that a spec cannot tell which runner it is under, except the last one. Code
+that ran out of time can still run, and here it would run in the same process
+as the next tests.
 
 Coverage reports and the timezone suite are not available here. Use jest's own
 runner for those.
@@ -184,7 +187,7 @@ on the runner.
 | Variable           | Default              | Meaning                                                                                     |
 | ------------------ | -------------------- | ------------------------------------------------------------------------------------------- |
 | `NT_TIMEOUT`       | from the jest config | Time limit of a test, in milliseconds.                                                      |
-| `NT_HOOK_TIMEOUT`  | 8000                 | Time limit of a hook, in milliseconds.                                                      |
+| `NT_HOOK_TIMEOUT`  | `NT_TIMEOUT`         | Time limit of a hook that sets none, in milliseconds.                                       |
 | `NT_MAX_RSS_MB`    | 1500                 | A worker above this resident size is replaced after its current file.                       |
 | `NT_MAX_FILES`     | not set              | A worker is replaced after this many spec files.                                            |
 | `NT_HEAP_MB`       | 1536                 | Heap limit of a worker.                                                                     |

@@ -65,6 +65,26 @@ export function recordSkipped(tests: TestIdentity[]): void {
   fileResult.skippedTests.push(...tests);
 }
 
+export function recordTodo(tests: TestIdentity[]): void {
+  fileResult.todo += tests.length;
+  fileResult.todoTests.push(...tests);
+}
+
+/**
+ * Records the error of an afterAll hook. The file fails, and its tests keep
+ * their results.
+ */
+export function recordSuiteError(hook: string, error: unknown): void {
+  const { message, stack } = describeError(error);
+  fileResult.suiteErrors.push({
+    test: hook,
+    message,
+    stack,
+    frames: projectFrames(stack),
+    output: "",
+  });
+}
+
 /**
  * Records a failed test, or with no identity a failure of the file itself,
  * such as one that did not load.
@@ -130,8 +150,11 @@ function createFileResult(): FileResult {
     passed: 0,
     failed: 0,
     skipped: 0,
+    todo: 0,
     passedTests: [],
     skippedTests: [],
+    todoTests: [],
     failures: [],
+    suiteErrors: [],
   };
 }

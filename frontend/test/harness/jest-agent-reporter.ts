@@ -166,17 +166,11 @@ export default class AgentReporter {
   }
 }
 
+// A file whose afterAll hook failed has both its test results and an
+// execution error. A file that did not load has only the error.
 function failuresOf(testResult: TestResult): Failure[] {
-  const { testExecError } = testResult;
-  if (testExecError) {
-    return [
-      failureOf(
-        "(the file did not load)",
-        testExecError.stack ?? testExecError.message,
-      ),
-    ];
-  }
-  return testResult.testResults
+  const { testExecError, testResults } = testResult;
+  const testFailures = testResults
     .filter((assertion) => assertion.status === "failed")
     .map((assertion) =>
       failureOf(
@@ -185,6 +179,16 @@ function failuresOf(testResult: TestResult): Failure[] {
         consoleOutputOf(assertion.failureDetails),
       ),
     );
+  if (!testExecError) {
+    return testFailures;
+  }
+  const fileFailure = failureOf(
+    testResults.length > 0
+      ? "(the file failed after its tests)"
+      : "(the file did not load)",
+    testExecError.stack ?? testExecError.message,
+  );
+  return [...testFailures, fileFailure];
 }
 
 function failureOf(test: string, stack: string, output = ""): Failure {

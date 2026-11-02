@@ -59,9 +59,16 @@ export type FileResult = {
   passed: number;
   failed: number;
   skipped: number;
+  todo: number;
   passedTests: TestIdentity[];
   skippedTests: TestIdentity[];
+  todoTests: TestIdentity[];
   failures: TestFailure[];
+  /**
+   * Errors of afterAll hooks. jest reports them as a failure of the file, and
+   * keeps the results of its tests.
+   */
+  suiteErrors: TestFailure[];
   /**
    * Absent when the file did not get as far as its snapshots.
    */

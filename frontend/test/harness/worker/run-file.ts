@@ -22,6 +22,7 @@ import {
   createSuite,
   forgetPackageHooks,
   fullName,
+  hookTimeoutOf,
   packageHooks,
   rootSuite,
   selectTests,
@@ -60,6 +61,8 @@ import {
   recordLateFailure,
   recordPassed,
   recordSkipped,
+  recordSuiteError,
+  recordTodo,
   startTestOutput,
   takeTestOutput,
 } from "./results.ts";
@@ -83,11 +86,10 @@ import {
 type HookChain = Pick<Hooks, "beforeEach" | "afterEach">;
 type Failure = { error: unknown };
 
+// jest gives each hook and each test body its own deadline, testTimeout
+// unless the hook or the test sets one.
 const TEST_TIMEOUT_MS = Number(process.env.NT_TIMEOUT ?? testTimeoutMs ?? 5000);
-const HOOK_TIMEOUT_MS = Number(process.env.NT_HOOK_TIMEOUT ?? 8000);
-// The body's own deadline is shorter than node:test's, so that the runner's
-// error, with its cleanup, comes first.
-const BODY_SHARE_OF_TIMEOUT = 0.9;
+const HOOK_TIMEOUT_MS = Number(process.env.NT_HOOK_TIMEOUT ?? TEST_TIMEOUT_MS);
 
 // fetch-mock cancels an aborted request's body from an AbortSignal handler,
 // and undici has already locked that stream, so the error arrives
@@ -150,12 +152,15 @@ async function runFileInScope(t: TestContext, file: string): Promise<void> {
 }
 
 async function runFileSuite(t: TestContext, fileSuite: Suite): Promise<void> {
-  for (const fn of [...packageHooks.beforeAll, ...rootSuite.beforeAll]) {
-    await fn();
-  }
+  const setupError = await runBeforeAll([
+    ...packageHooks.beforeAll,
+    ...rootSuite.beforeAll,
+  ]);
   actEnvironmentForFile = globals.IS_REACT_ACT_ENVIRONMENT;
   try {
-    if (fileSuite.mode === "skip") {
+    if (setupError) {
+      failTestsIn(fileSuite, setupError);
+    } else if (fileSuite.mode === "skip") {
       recordSkipped(testsIn(fileSuite));
     } else {
       await runSuite(t, fileSuite, {
@@ -165,13 +170,55 @@ async function runFileSuite(t: TestContext, fileSuite: Suite): Promise<void> {
       });
     }
   } finally {
-    for (const fn of [...rootSuite.afterAll, ...packageHooks.afterAll]) {
-      try {
-        await fn();
-      } catch {
-        // jest reports a failing afterAll of the root block on the file, which
-        // has run its tests already.
-      }
+    await runAfterAll([...rootSuite.afterAll, ...packageHooks.afterAll]);
+  }
+}
+
+// jest runs every beforeAll hook of a block, and a failure in one fails each
+// test in the block.
+async function runBeforeAll(hooks: TestFunction[]): Promise<Failure | null> {
+  let failure: Failure | null = null;
+  for (const fn of hooks) {
+    try {
+      await runHook(fn);
+    } catch (error) {
+      failure ??= { error };
+    }
+  }
+  return failure;
+}
+
+// jest reports the error of an afterAll hook on the file, whose tests keep
+// their results.
+async function runAfterAll(hooks: TestFunction[]): Promise<void> {
+  for (const fn of hooks) {
+    try {
+      await runHook(fn);
+    } catch (error) {
+      recordSuiteError("afterAll", error);
+    }
+  }
+}
+
+function runHook(fn: TestFunction): Promise<unknown> {
+  return withDeadline(fn, hookTimeoutOf(fn) ?? HOOK_TIMEOUT_MS, "hook");
+}
+
+// The tests of a block whose beforeAll failed. They fail with its error and do
+// not run. Skipped and todo tests keep their state.
+function failTestsIn(suite: Suite, { error }: Failure): void {
+  for (const child of suite.children) {
+    if (child.type === "suite") {
+      failTestsIn(child.suite, { error });
+      continue;
+    }
+    const identity = { ancestors: child.path, title: child.name };
+    if (child.mode === "todo") {
+      recordTodo([identity]);
+    } else if (child.mode === "skip") {
+      recordSkipped([identity]);
+    } else {
+      recordFailure(fullName(child, " > "), error, "", identity);
     }
   }
 }
@@ -190,9 +237,21 @@ async function runSuite(
       ? [...outer.afterEach, ...suite.afterEach]
       : [...suite.afterEach, ...outer.afterEach],
   };
-  for (const fn of suite.beforeAll) {
-    await fn();
+  const setupError = await runBeforeAll(suite.beforeAll);
+  if (setupError) {
+    failTestsIn(suite, setupError);
+  } else {
+    await runChildren(t, suite, hooks);
   }
+  await runAfterAll(suite.afterAll);
+  releaseSuite(suite, hooks);
+}
+
+async function runChildren(
+  t: TestContext,
+  suite: Suite,
+  hooks: HookChain,
+): Promise<void> {
   for (const child of suite.children) {
     if (child.type === "suite") {
       const skip = child.suite.mode === "skip";
@@ -207,23 +266,22 @@ async function runSuite(
     // A test that outlived its deadline is still running and still writing
     // to the shared registries, so every test after it in this worker is
     // skipped rather than scored against that mess.
-    const skip = isPoisoned() || child.mode === "skip";
-    const todo = child.mode === "todo";
-    if (skip || todo) {
-      recordSkipped([{ ancestors: child.path, title: child.name }]);
-      await t.test(child.name, { skip, todo }, () => {});
+    const identity = { ancestors: child.path, title: child.name };
+    if (child.mode === "todo") {
+      recordTodo([identity]);
+      await t.test(child.name, { todo: true }, () => {});
       continue;
     }
-    await t.test(
-      child.name,
-      { timeout: child.timeoutMs ?? TEST_TIMEOUT_MS },
-      () => runTest(child, hooks),
-    );
+    if (isPoisoned() || child.mode === "skip") {
+      recordSkipped([identity]);
+      await t.test(child.name, { skip: true }, () => {});
+      continue;
+    }
+    // No node:test timeout: the hooks and the body each have their own
+    // deadline, and node:test would start the next test while this one still
+    // runs its afterEach hooks.
+    await t.test(child.name, () => runTest(child, hooks));
   }
-  for (const fn of suite.afterAll) {
-    await fn();
-  }
-  releaseSuite(suite, hooks);
 }
 
 async function runTest(test: TestNode, hooks: HookChain): Promise<void> {
@@ -271,7 +329,7 @@ async function runHooksAndBody(
     // A hook that never settles would skip every cleanup after it, and the
     // routes and timers it leaves behind would fail the following tests.
     try {
-      await withDeadline(fn, HOOK_TIMEOUT_MS);
+      await runHook(fn);
     } catch (error) {
       failure ??= { error };
     }
@@ -299,15 +357,12 @@ async function runBeforeEachAndBody(
     tryTo(clearCallHistory);
     setTestPhase("beforeEach");
     for (const fn of beforeEach) {
-      await withDeadline(fn, HOOK_TIMEOUT_MS);
+      await runHook(fn);
     }
     tryTo(dropUnmatchedCalls);
     setTestPhase("body");
     const body = test.fn ?? (() => {});
-    await withDeadline(
-      body,
-      Math.round((test.timeoutMs ?? TEST_TIMEOUT_MS) * BODY_SHARE_OF_TIMEOUT),
-    );
+    await withDeadline(body, test.timeoutMs ?? TEST_TIMEOUT_MS, "test");
     setTestPhase("afterBody");
     return null;
   } catch (error) {

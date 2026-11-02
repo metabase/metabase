@@ -179,9 +179,9 @@ export class TestTimeoutError extends Error {}
 let poisoned = false;
 
 /**
- * Whether a test outlived its deadline. Its body cannot be cancelled, and in a
- * shared process it keeps registering routes and timers for later tests to
- * trip over, so the worker is spent.
+ * Whether a test outlived its deadline or its heap limit. Its body cannot be
+ * cancelled, and in a shared process it keeps registering routes and timers
+ * for later tests to trip over, so the worker is spent.
  */
 export function isPoisoned(): boolean {
   return poisoned;
@@ -196,6 +196,7 @@ export function isPoisoned(): boolean {
 export function withDeadline<T>(
   run: () => T | Promise<T>,
   timeoutMs: number,
+  kind: "test" | "hook",
 ): Promise<T> {
   let deadline: TimerHandle | undefined;
   let heapCheck: TimerHandle | undefined;
@@ -209,7 +210,11 @@ export function withDeadline<T>(
     deadline = realSetTimeout(() => {
       stop();
       poisoned = true;
-      reject(new TestTimeoutError(`test timed out after ${timeoutMs} ms`));
+      reject(
+        new TestTimeoutError(
+          `Exceeded timeout of ${timeoutMs} ms for a ${kind}.\nAdd a timeout value to this ${kind} to increase the timeout, if this is a long-running ${kind}. See https://jestjs.io/docs/api#testname-fn-timeout.`,
+        ),
+      );
     }, timeoutMs);
     // The worker lives long and its heap only grows, so the limit applies to
     // what this test adds.
@@ -218,9 +223,10 @@ export function withDeadline<T>(
       const growthMb = heapUsedMb() - heapAtStartMb;
       if (growthMb > TEST_HEAP_LIMIT_MB) {
         stop();
+        poisoned = true;
         reject(
           new TestTimeoutError(
-            `test aborted after adding ${growthMb} MB of heap`,
+            `The ${kind} was stopped after it added ${growthMb} MB of heap`,
           ),
         );
       }
