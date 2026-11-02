@@ -15,7 +15,7 @@
   queries solely into the weak-flag tallies."
   (:require
    [clojure.string :as str]
-   [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.util :as u])
   (:import
    (java.util Random)))

@@ -46,6 +46,8 @@
 (defn print-comparison!
   "Print a [[runner/run-comparison!]] result as the table, deltas, and provisional regression signal."
   [{arm-results :arms, deltas :deltas, gate :regression-gate}]
+  ;; This REPL entry point deliberately prints a readable comparison for the operator.
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (pprint/print-table [:arm :status :docs :vis-n :vis-hit-at-1 :vis-mrr :vis-recall-at-10 :vis-ndcg-at-10
                        :hold-n :hold-ndcg-at-10 :weak-tp :weak-fp]
                       (comparison-rows arm-results))
