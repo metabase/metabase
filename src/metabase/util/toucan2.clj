@@ -76,9 +76,14 @@
   `(t2/delete! ~@(wrap-args args)))
 
 (defmacro update!
-  "`t2/update!` with every runtime value in its conditions and changes bound."
+  "`t2/update!` with every runtime value in its conditions bound; the changes map is left to Toucan's transforms."
   [& args]
-  `(t2/update! ~@(wrap-args (butlast args)) ~(wrap-dynamic (last args))))
+  `(t2/update! ~@(wrap-args (butlast args)) ~(last args)))
+
+(defmacro insert!
+  "`t2/insert!`, with the rows left to Toucan's transforms."
+  [& args]
+  `(t2/insert! ~@args))
 
 (defmacro query
   "`t2/query` on literal query map `m` with every runtime value bound."

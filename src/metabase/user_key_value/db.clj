@@ -5,8 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.toucan2 :as t2x]
-   [toucan2.core :as t2]))
+   [metabase.util.toucan2 :as t2x]))
 
 (mu/defn user-key-value
   "The UserKeyValue of the User with `user-id` for `k` in `namespace`, or nil."
@@ -39,11 +38,11 @@
    k          :- :string
    value      :- :string
    expires-at :- [:maybe ms/TemporalInstant]]
-  (t2/insert! :model/UserKeyValue {:user_id    user-id
-                                   :namespace  namespace
-                                   :key        k
-                                   :value      value
-                                   :expires_at expires-at}))
+  (t2x/insert! :model/UserKeyValue {:user_id    user-id
+                                    :namespace  namespace
+                                    :key        k
+                                    :value      value
+                                    :expires_at expires-at}))
 
 (mu/defn delete-user-key-value!
   "Delete the UserKeyValue of the User with `user-id` for `k` in `namespace`, returning the number deleted."
