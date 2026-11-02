@@ -1,8 +1,10 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupDatabasesEndpoints,
-  setupSearchEndpoints,
+  setupTableEndpoints,
+  setupTableSearchEndpoint,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -10,11 +12,11 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import type { Database, SearchResult } from "metabase-types/api";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import type { Database, Table } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockSchema,
-  createMockSearchResult,
   createMockTable,
 } from "metabase-types/api/mocks";
 
@@ -141,22 +143,28 @@ const MOCK_DATABASES = [
   DATABASE_WITH_UNNAMED_SCHEMA,
 ];
 
+interface SetupOpts {
+  path?: TreePath;
+  databases?: Database[];
+  searchTables?: Table[];
+}
+
 function setup({
   path = {},
   databases = MOCK_DATABASES,
-  searchResults = [],
-}: {
-  path?: TreePath;
-  databases?: Database[];
-  searchResults?: SearchResult[];
-} = {}) {
+  searchTables = [],
+}: SetupOpts = {}) {
   setupDatabasesEndpoints(databases);
-  setupSearchEndpoints(searchResults);
+  setupTableSearchEndpoint(searchTables);
+  searchTables.forEach((table) => setupTableEndpoints(table));
 
-  const onChange = jest.fn();
+  const onChange = jest.fn<void, [TreePath], undefined>();
 
   renderWithProviders(
-    <UncontrolledTablePicker initialValue={path} onChange={onChange} />,
+    <>
+      <UncontrolledTablePicker initialValue={path} onChange={onChange} />
+      <UndoListing />
+    </>,
   );
   return { onChange };
 }
@@ -343,32 +351,102 @@ describe("TablePicker", () => {
   });
 
   describe("Search view", () => {
-    const DATABASE = "DATABASE";
-    const SCHEMA = "SCHEMA";
-    const FOO_RESULT = createMockSearchResult({
+    const DATABASE = createMockDatabase({
       id: nextId(),
-      model: "table",
-      name: "Foo",
-      table_name: "FOO",
-      table_schema: SCHEMA,
-      database_name: DATABASE,
+      name: "DATABASE",
+    });
+    const SCHEMA = "SCHEMA";
+    const FOO_RESULT = createMockTable({
+      id: nextId(),
+      name: "FOO",
+      display_name: "Foo",
+      schema: SCHEMA,
+      db_id: DATABASE.id,
+      db: DATABASE,
       initial_sync_status: "complete",
     });
-    const BAR_RESULT = createMockSearchResult({
+    const BAR_RESULT = createMockTable({
       id: nextId(),
-      model: "table",
-      name: "Bar",
-      table_name: "BAR",
-      table_schema: SCHEMA,
-      database_name: DATABASE,
+      name: "BAR",
+      display_name: "Bar",
+      schema: SCHEMA,
+      db_id: DATABASE.id,
+      db: DATABASE,
       initial_sync_status: "complete",
     });
 
     const SEARCH_RESULTS = [FOO_RESULT, BAR_RESULT];
 
+    it.each([
+      {
+        visibilityType: null,
+        action: "Hide table",
+        nextAction: "Unhide table",
+        nextVisibilityType: "hidden",
+      },
+      {
+        visibilityType: "hidden",
+        action: "Unhide table",
+        nextAction: "Hide table",
+        nextVisibilityType: null,
+      },
+    ] as const)(
+      "should $action from search results and allow undo",
+      async ({ visibilityType, action, nextAction, nextVisibilityType }) => {
+        let table = createMockTable({
+          ...FOO_RESULT,
+          visibility_type: visibilityType,
+        });
+        const { onChange } = setup({
+          databases: [...MOCK_DATABASES, DATABASE],
+          searchTables: [table],
+        });
+
+        fetchMock.modifyRoute("table-search", {
+          response: () => [table],
+        });
+        fetchMock.modifyRoute(`table-${table.id}-put`, {
+          response: () => {
+            table = {
+              ...table,
+              visibility_type: table.visibility_type === null ? "hidden" : null,
+            };
+            return table;
+          },
+        });
+
+        await userEvent.type(searchInput(), "foo");
+        await userEvent.click(
+          await screen.findByRole("button", { name: action }),
+        );
+
+        expect(
+          await screen.findByRole("button", { name: nextAction }),
+        ).toBeInTheDocument();
+        expect(searchInput()).toHaveValue("foo");
+        expect(onChange).not.toHaveBeenCalled();
+
+        await userEvent.click(await screen.findByText("Undo"));
+
+        expect(
+          await screen.findByRole("button", { name: action }),
+        ).toBeInTheDocument();
+        expect(searchInput()).toHaveValue("foo");
+        expect(
+          fetchMock.callHistory
+            .calls(`path:/api/table/${table.id}`, { method: "PUT" })
+            .map(({ options }) => options.body),
+        ).toEqual([
+          JSON.stringify({ visibility_type: nextVisibilityType }),
+          JSON.stringify({ visibility_type: visibilityType }),
+        ]);
+      },
+    );
+
     it("should filter the tree based on the search input", async () => {
       const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
+        databases: [...MOCK_DATABASES, DATABASE],
+        searchTables: SEARCH_RESULTS,
       });
 
       await userEvent.type(searchInput(), "foo");
@@ -381,10 +459,46 @@ describe("TablePicker", () => {
 
       await clickItem(FOO_RESULT);
       expect(onChange).toHaveBeenCalledWith({
-        databaseId: FOO_RESULT.database_id,
-        schemaName: FOO_RESULT.table_schema,
+        databaseId: FOO_RESULT.db_id,
+        schemaName: FOO_RESULT.schema,
         tableId: FOO_RESULT.id,
       });
+    });
+
+    it("should exclude search results from databases absent from the metadata tree", async () => {
+      const auditDatabase = createMockDatabase({
+        id: nextId(),
+        name: "Instance Analytics",
+      });
+      const allowedTable = createMockTable({
+        ...FOO_RESULT,
+        name: "audit_events",
+        display_name: "Audit Events",
+      });
+      const excludedTable = createMockTable({
+        id: nextId(),
+        name: "v_audit_log",
+        display_name: "V Audit Log",
+        db_id: auditDatabase.id,
+        db: auditDatabase,
+        initial_sync_status: "complete",
+      });
+      setup({
+        databases: [...MOCK_DATABASES, DATABASE],
+        searchTables: [allowedTable, excludedTable],
+      });
+
+      await userEvent.type(searchInput(), "audit");
+
+      expect(
+        await screen.findByText(allowedTable.display_name),
+      ).toBeInTheDocument();
+      expect(item(DATABASE)).toBeInTheDocument();
+      expect(item(auditDatabase)).not.toBeInTheDocument();
+      expect(item(excludedTable)).not.toBeInTheDocument();
+      expect(
+        screen.getAllByRole("button", { name: "Hide table" }),
+      ).toHaveLength(1);
     });
 
     it("should render a message when no results are found", async () => {
@@ -397,7 +511,8 @@ describe("TablePicker", () => {
 
     it("should be possible to use the keyboard to select items in the search results", async () => {
       const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
+        databases: [...MOCK_DATABASES, DATABASE],
+        searchTables: SEARCH_RESULTS,
       });
 
       await userEvent.type(searchInput(), "foo");
@@ -412,15 +527,16 @@ describe("TablePicker", () => {
       await userEvent.type(searchInput(), "{Enter}");
 
       expect(onChange).toHaveBeenCalledWith({
-        databaseId: FOO_RESULT.database_id,
-        schemaName: FOO_RESULT.table_schema,
+        databaseId: FOO_RESULT.db_id,
+        schemaName: FOO_RESULT.schema,
         tableId: FOO_RESULT.id,
       });
     });
 
     it("should not crash when pressing Enter with no item selected (metabase#63350)", async () => {
       const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
+        databases: [...MOCK_DATABASES, DATABASE],
+        searchTables: SEARCH_RESULTS,
       });
 
       await userEvent.type(searchInput(), "search");
