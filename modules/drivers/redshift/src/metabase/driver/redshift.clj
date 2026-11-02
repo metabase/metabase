@@ -553,6 +553,14 @@
   [_]
   "SET TIMEZONE TO %s;")
 
+(defmethod sql-jdbc.execute/cancelation-poisons-connection? :redshift
+  [_driver]
+  ;; A cancel names the session, not the statement, and goes over a new socket:
+  ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/v2.2.5/src/main/java/com/amazon/redshift/core/QueryExecutorBase.java#L188-L230
+  ;; So a late cancel can stop the next query on a pooled Connection. The SQL Server case that added this method:
+  ;; https://github.com/metabase/metabase/pull/80033.
+  true)
+
 ;; This impl is basically the same as the default impl in [[metabase.driver.sql-jdbc.execute]], but doesn't attempt to
 ;; make the connection read-only, because that seems to be causing problems for people
 (defmethod sql-jdbc.execute/do-with-connection-with-options :redshift

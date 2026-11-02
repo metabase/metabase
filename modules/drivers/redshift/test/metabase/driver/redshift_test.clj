@@ -36,6 +36,9 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (com.amazon.redshift.jdbc RedshiftStatementImpl)
+   (java.lang.reflect InvocationHandler InvocationTargetException Proxy)
+   (java.sql ResultSet Statement)
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
 (set! *warn-on-reflection* true)
@@ -860,3 +863,86 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+;;; ------------------------------------------------- Cancelation --------------------------------------------------
+
+(deftest ^:parallel cancelation-poisons-connection-method-test
+  (testing "a Redshift cancel names the session, so a canceled Connection must not go back to the pool"
+    (is (true? (sql-jdbc.execute/cancelation-poisons-connection? :redshift))))
+  (testing "Postgres, the parent of Redshift, keeps its pooled Connection"
+    (is (false? (sql-jdbc.execute/cancelation-poisons-connection? :postgres)))))
+
+(defn- table-query
+  "An unaggregated query of all rows of `table`."
+  [table]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table)))))
+
+(deftest cancelation-poisons-connection-test
+  (testing "after the QP cancels a query, it discards the Connection, and the next query still succeeds"
+    (mt/test-driver :redshift
+      (let [discards (atom 0)
+            discard! (mt/original-fn #'sql-jdbc.conn/discard-pooled-connection!)
+            run      (fn [query]
+                       (reset! discards 0)
+                       (count (mt/rows (qp/process-query query))))]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.conn/discard-pooled-connection! (fn [conn]
+                                                                               (swap! discards inc)
+                                                                               (discard! conn))]
+          ;; a cap below the SQL limit leaves the statement producing, so the QP cancels it and discards the Connection
+          (is (= 4 (run (-> (lib/limit (table-query :venues) 10)
+                            (assoc :constraints {:max-results-bare-rows 4})))))
+          (is (= 1 @discards))
+          (testing "and a later query reading every row still succeeds, with no discard"
+            (is (= 1000 (run (table-query :checkins))))
+            (is (zero? @discards))))))))
+
+(defn- statement-state
+  "The `statementState` of the Redshift statement behind `stmt`, as a string, for example \"IDLE\".
+
+  The field is private in Redshift JDBC 2.2.5:
+  https://github.com/aws/amazon-redshift-jdbc-driver/blob/v2.2.5/src/main/java/com/amazon/redshift/jdbc/RedshiftStatementImpl.java"
+  [^Statement stmt]
+  (let [^Class impl-class RedshiftStatementImpl
+        field             (doto (.getDeclaredField impl-class "statementState")
+                            (.setAccessible true))]
+    (str (.get field (.unwrap stmt impl-class)))))
+
+(defn- result-set-calling-on-close
+  "A ResultSet that delegates each call to `rs`, and calls `(on-close)` after `rs` closes."
+  ^ResultSet [^ResultSet rs on-close]
+  (Proxy/newProxyInstance
+   (.getClassLoader ResultSet)
+   (into-array Class [ResultSet])
+   (reify InvocationHandler
+     (invoke [_this _proxy method args]
+       (let [result (try
+                      (.invoke method rs args)
+                      ;; rethrow what the driver threw, not the reflection wrapper
+                      (catch InvocationTargetException e
+                        (throw (.getCause e))))]
+         (when (= "close" (.getName method))
+           (on-close))
+         result)))))
+
+(deftest exact-limit-leaves-statement-idle-test
+  (testing "after a query reads exactly its SQL limit, the statement is idle when it closes, so it sends no cancel"
+    (mt/test-driver :redshift
+      ;; `Statement.close()` calls `cancel()`, which sends a cancel when the state is IN_QUERY or IN_QUERY_SUSPENDED:
+      ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/v2.2.5/src/main/java/com/amazon/redshift/jdbc/RedshiftStatementImpl.java#L767-L788
+      ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/v2.2.5/src/main/java/com/amazon/redshift/jdbc/RedshiftStatementImpl.java#L1050-L1089
+      (let [max-rows (atom nil)
+            state    (atom nil)
+            execute! (mt/original-fn #'sql-jdbc.execute/execute-statement-or-prepared-statement!)]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/execute-statement-or-prepared-statement!
+                                    (fn [driver stmt n params sql]
+                                      (reset! max-rows n)
+                                      ;; `with-open` closes the ResultSet before the Statement, so this reads the
+                                      ;; state that `stmt.close()` sees
+                                      (result-set-calling-on-close (execute! driver stmt n params sql)
+                                                                   #(reset! state (statement-state stmt))))]
+          (is (= 4 (count (mt/rows (qp/process-query (lib/limit (table-query :venues) 4)))))))
+        (is (= 5 @max-rows)
+            "the statement cap is one above the SQL limit")
+        (is (= "IDLE" @state)
+            "expected RedshiftStatementImpl.statementState (Redshift JDBC 2.2.5) to be IDLE after rs.close()")))))
