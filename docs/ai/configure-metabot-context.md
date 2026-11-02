@@ -11,7 +11,7 @@ Metabot answers questions using the metadata and content in your Metabase. This 
 
 | Where                                                       | What Metabot searches                                                                                                                                                                                                              |
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Chat sidebar](./metabot.md#the-metabot-chat-sidebar)       | Tables, models, metrics, questions, dashboards, and documents the person has permission to see, plus their recently viewed items.                                                                                                  |
+| [Chat sidebar](./metabot.md#the-metabot-chat-sidebar)       | Tables, models, metrics, measures, segments, questions, dashboards, and documents the person has permission to see, plus their recently viewed items.                                                                              |
 | [AI exploration](./metabot.md#ai-exploration)               | The [Library](#publish-tables-and-metrics-to-the-library), if you have one. Otherwise, the [collection for natural language querying](#without-a-library-point-ai-exploration-at-a-collection).                                    |
 | [SQL generation](./metabot.md#metabot-in-the-native-editor) | Tables in the database selected in the SQL editor.                                                                                                                                                                                 |
 | [Documents](../documents/introduction.md) (**Ask Metabot**) | Models and metrics in the [collection for natural language querying](#without-a-library-point-ai-exploration-at-a-collection), or all models and metrics if you haven't set one. To write SQL, the database the person @-mentions. |
@@ -58,15 +58,19 @@ Metabase picks up foreign keys that your database defines as constraints. Many d
 
 If people calculate "net revenue" or filter for "active customers" in slightly different ways, define the calculation once as a [measure](../data-modeling/semantic-layer/measures.md) or [segment](../data-modeling/semantic-layer/segments.md) on the table.
 
-When Metabot looks at a table or model, it sees its measures and segments and is instructed to use them instead of writing its own. Metabot can't search for measures and segments directly, so they only help once Metabot has found the table.
+When Metabot looks at a table, it sees the table's measures and segments and is instructed to use them instead of writing its own calculation. Metabot also searches for measures and segments by name, especially when a question names a rate ("churn rate") or a group ("active customers").
 
-## Build metrics and models for common questions
+## Curate the sources you want Metabot to use
 
-When more than one source could answer a question, Metabot prefers a [metric](../data-modeling/semantic-layer/metrics.md), then a [model](../data-modeling/models/models.md), then a saved question, and finally a raw table. Building metrics and models for your most common questions steers Metabot toward them.
+When more than one source could answer a question, Metabot picks the most curated one: [Metrics](../data-modeling/semantic-layer/metrics.md)** are preferred for calculations. [Models](../data-modeling/models/models.md)** serve as a fallback when no matching metric is found. Build a metric if you want Metabot to reuse a calculation.
+
+In additiona, **saved questions** are used when one directly answers the question. **Tables** rank higher if they're [published](../data-modeling/semantic-layer/published-tables.md) or their visibility layer is **Final** rather than **Internal**. **[Verified](../exploration-and-organization/content-verification.md)** items and items in [official collections](../exploration-and-organization/collections.md#official-collections) also count as endorsed.
+
+If a source is named or is open, Metabot uses that source, even if a more curated one exists.
 
 ## Hide tables and columns nobody should query
 
-- **Tables**: In **Data Studio > Connected data**, set the table's [visibility layer](../data-modeling/metadata/managing-tables.md#visibility-layer) to **Hidden**. Metabot can't find or use hidden tables. Hidden tables also disappear from the query builder and stop syncing.
+- **Tables**: In **Data Studio > Connected data**, set the table's [visibility layer](../data-modeling/metadata/managing-tables.md#visibility-layer) to **Hidden**. Hidden tables don't show up in Metabot's search or in the tables it considers for SQL, and Metabot can't build query-builder questions on them. Hidden tables also disappear from the query builder and stop syncing.
 - **Columns**: Set the column's [visibility](../data-modeling/metadata/metadata-editing.md#field-visibility) to **Do not include**. Metabot never sees these columns. They also disappear from the query builder.
 
 Neither setting is a permission: people can still query hidden tables and columns with SQL. To control what data Metabot can get to, use [data permissions](../permissions/data.md).
@@ -128,6 +132,6 @@ Documents are an exception to this: when a document is open, the chat sidebar do
 
 ## Some changes don't affect Metabot
 
-- **Table display names**: Metabot works with the table's name in the database, not the display name you set. However, column display names do reach Metabot.
+- **Table display names**: Metabot works with a table's database name, not its display name. Search does match display names, though, so a good display name still helps Metabot find the table. Column display names do reach Metabot.
 - **Why this table is interesting** and **Things to be aware of about this table** in [Data Reference](../exploration-and-organization/data-model-reference.md): Metabot never sees these, put that information in the description instead.
 - **Verification doesn't add content to the Library.** Verified items count as curated content, but only publishing or moving an item puts it in the Library.
