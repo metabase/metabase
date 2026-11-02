@@ -108,6 +108,7 @@
                                                            true)
                      #'index-table/vectors-table-sql (constantly "library-index")
                      #'index-table/meta-table-sql (constantly "library-index-meta")
+                     #'jdbc/transact (fn [connection f _opts] (f connection))
                      #'jdbc/execute-one! (fn [connection statement]
                                            (is (= ::connection connection))
                                            (swap! statements conj statement)
@@ -118,7 +119,7 @@
       #(do
          (is (= {:deleted 46} (reconcile/clear-index! ::pgvector)))
          (is (= [["DELETE FROM library-index"]
-                 ["UPDATE library-index-meta SET reconciled_at = NULL WHERE id = 1"]]
+                 ["DELETE FROM library-index-meta WHERE id = 1"]]
                 @statements))))))
 
 (defn- index-rows [ds]
