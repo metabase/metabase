@@ -957,6 +957,16 @@ export const getOtherSeriesTooltipModel = (
   };
 };
 
+export function getGoalFormatter({
+  leftAxisModel,
+  rightAxisModel,
+}: {
+  leftAxisModel: { formatGoal: AxisFormatter } | null;
+  rightAxisModel: { formatGoal: AxisFormatter } | null;
+}) {
+  return (leftAxisModel ?? rightAxisModel)?.formatGoal;
+}
+
 export const getGoalLineHoverData = (
   settings: ComputedVisualizationSettings,
   element: EventTarget | null,

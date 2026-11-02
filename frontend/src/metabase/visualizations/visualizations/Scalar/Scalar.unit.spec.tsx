@@ -444,6 +444,15 @@ describe("Scalar conditional colors", () => {
     expect(screen.getByText("above goal")).toBeInTheDocument();
   });
 
+  it("formats a dynamic range bound like the value", async () => {
+    setup(createScalarSeries(createReferencedEntitiesAnswer(1234.56789)), [
+      { min: GOAL_REF, max: null, color: "green", label: "above goal" },
+    ]);
+
+    await userEvent.hover(screen.getByTestId("scalar-value"));
+    expect(await screen.findByText("≥ 1,234.57")).toBeInTheDocument();
+  });
+
   it("keeps the default color when the value misses the resolved range", () => {
     setup(createScalarSeries(createReferencedEntitiesAnswer(20000)), [
       { min: GOAL_REF, max: null, color: "green", label: "above goal" },
