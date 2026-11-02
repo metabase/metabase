@@ -46,16 +46,18 @@ If your Metabase already syncs in Read-only mode, and the tables that your app n
 Skip this step if your Metabase already syncs with a Git repository.
 
 1. Create a new repository on GitHub, GitLab, or Bitbucket, and initialize it with a README file. See [Set up a repository](../data-modeling/semantic-layer/remote-sync.md#1-set-up-a-repository-to-store-your-content).
-2. Create an access token that can read the repository. Your Metabase only pulls from the repository, so the token doesn't need write access. For the permissions that each provider needs, see [Create a token for your production Metabase](../data-modeling/semantic-layer/remote-sync.md#5-create-a-token-for-your-production-metabase).
+2. Create an access token that can read and write content  from the repository. For the permissions that each provider needs, see [Create a token for your production Metabase](../data-modeling/semantic-layer/remote-sync.md#5-create-a-token-for-your-production-metabase).
 3. On your Metabase, go to **Admin** > **Settings** > **Remote sync**.
 4. In **Repository URL**, enter the repository's URL, for example `https://github.com/your-org/your-repo`.
-5. Select **Read-only**.
+5. Since this is your production Metabase, you should select **Read-only**. This means that everything in Library must be edited through Remote Sync. In Read-only mode, you and your agent won't be able to update the Library via the app or CLI. If you're just trying out Remote Sync for data apps, you can set it to Read-Write.
 6. In **Access Token**, paste the token.
 7. Click **Set up remote sync**.
 
-Metabase pulls from the repository's default branch, usually `main`. Anyone who can push to the repository can change the content in your Metabase, so give write access only to people that you trust as admins. For auto-sync, local repositories, and the other options, see [Remote sync](../data-modeling/semantic-layer/remote-sync.md).
+Metabase pulls from the repository's default branch, usually `main`. 
 
-This guide assumes your remote sync setup in your production Metabase is set to read-only.
+**Anyone who can push to the repository can change the content in your Metabase, so give write access only to people that you trust as admins.** For auto-sync, local repositories, and the other options, see [Remote sync](../data-modeling/semantic-layer/remote-sync.md).
+
+This guide assumes your Remote Sync setup in your production Metabase is set to "Read only."
 
 ### 3. Install Node.js
 
@@ -102,13 +104,7 @@ git clone https://github.com/your-org/your-repo
 cd your-repo
 ```
 
-Your agent works in this folder, on the branch that your production Metabase pulls from. To find that branch, go to **Admin** > **Settings** > **Remote sync** on your production Metabase, and look at **Sync branch**. It's probably `main` or `master`. If the branch isn't your repository's default branch, switch to it, for example:
-
-```sh
-git switch production
-```
-
-Your agent stops if the folder isn't a clone of the repository that your production Metabase syncs with, or if the clone isn't on the branch that your production Metabase pulls from.
+Your agent works in this folder, on the branch that your production Metabase pulls from. To find that branch, go to **Admin** > **Settings** > **Remote sync** on your production Metabase, and look at **Sync branch**. It's probably `main` or `master`. 
 
 ## Build the app
 
@@ -146,12 +142,12 @@ Ship the app to my Metabase.
 
 The agent will
 
-- Build the app
+- Build the app.
 - Commits the app's source code, bundle, and collection to the branch that your production Metabase pulls from.
 - Pushes the branch to your remote repo.
 - Then the agent pulls the branch into your production Metabase via the CLI.
 
-If your agent can't commit or push, for example because its permission settings block a push to the branch, you'll need to run the commands yourself in your clone. Use your app's slug. The agent adds `.env.local` to your `.gitignore` file to keep the preview's API key out of Git, so commit that file too:
+If your agent can't commit or push (for example because you don't trust it), you'll need to run the commands yourself in your clone. Use your app's slug. Add the `.env.local` to your `.gitignore` file to keep the preview's API key out of Git, so commit that file too:
 
 ```sh
 git add .gitignore data_apps/<slug> collections/data_apps
@@ -163,27 +159,25 @@ Then, on your production Metabase, [pull the changes](../data-modeling/semantic-
 
 Open the app at `/apps/<slug>` on your production Metabase, for example `https://metabase.example.com/apps/orders-overview`.
 
-Check the app there, not only in the preview. The preview gets the Metabase SDK from npm, but your production Metabase runs the app with its own copy of the SDK, so the app can look a little different. If something looks wrong, [change the app](#change-the-app).
-
 ## Grant permissions to groups
 
 ### 10. Add groups to the app
 
-1. On your production Metabase, click the **grid** icon in the upper right, and select **Data studio**.
+1. In your Metabase, click the **grid** icon in the upper right, and select **Data studio**.
 2. Click **Data apps**, and click the app.
 3. On the **Permissions** tab, add the groups that can open the app.
 
 People in those groups can now open the app at `/apps/<slug>`. The app runs with each person's [data permissions](../permissions/data.md), so people see only the data that they're allowed to see. For more, see [Choose who can open an app](./manage.md#choose-who-can-open-an-app).
 
-## Change the app
+## Edit the app
 
-1. In your clone, pull the latest changes:
+1. In your clone of your Remote Sync repository, pull the latest changes:
 
    ```sh
    git pull
    ```
 
-2. Start your agent in the clone, and ask for the change. To show the agent what to change, give it a screenshot of the app.
+2. Start your agent in the directory and ask it for the changes you want.
 3. Check the change in the preview.
 4. When the change is ready, ask your agent:
 
