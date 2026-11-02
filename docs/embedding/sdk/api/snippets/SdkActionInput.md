@@ -1,3 +1,6 @@
 ```ts
-type SdkActionInput = SdkActionId | SdkActionDefinition;
+type SdkActionInput =
+  | SdkActionId
+  | SdkActionDefinition
+  | SdkLegacyActionDefinition;
 ```

@@ -23,9 +23,9 @@
 | <a id="shadow"></a> `shadow?`                             | `string`                                                       | Color used for popover shadows                                                          |
 | <a id="summarize"></a> `summarize?`                       | `string`                                                       | Color used for aggregations and breakouts context                                       |
 | <a id="text-hover"></a> `text-hover?`                     | `string`                                                       | Color used for some button text on hover                                                |
-| <a id="text-primary"></a> `text-primary?`                 | `string`                                                       | Text color on dark elements. Should be a lighter color for readability.                 |
+| <a id="text-primary"></a> `text-primary?`                 | `string`                                                       | Main text color. Should have the most contrast with the background.                     |
 | <a id="text-secondary"></a> `text-secondary?`             | `string`                                                       | Lighter variation of dark text on light elements.                                       |
-| <a id="text-tertiary"></a> `text-tertiary?`               | `string`                                                       | Text color on light elements. Should be a darker color for readability.                 |
+| <a id="text-tertiary"></a> `text-tertiary?`               | `string`                                                       | Muted text color for placeholders and disabled elements.                                |
 | <a id="text-white"></a> `text-white?`                     | `string`                                                       | Color used for white text                                                               |
 
 <!-- [<endsnippet properties>] -->
