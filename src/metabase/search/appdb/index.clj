@@ -110,6 +110,58 @@
   (when table
     (search.db/table-exists? (table-name table))))
 
+(defn- index-not-found!
+  "Throw because no search index can serve queries. `index-state` is the tracking state before the last sync, and
+  `cause` is the query failure that showed the index was gone, if any. In prod, also start to build the index."
+  [index-state cause]
+  (when config/is-prod?
+    (log/warn "Triggering a late initialization of the appdb search index.")
+    (try
+      (future
+        (search.engine/init! :search.engine/appdb {:force-reset? false}))
+      (catch Exception e
+        (log/error (ex-message e)))))
+  (throw (ex-info "Search Index not found."
+                  {:search/index-not-found? true
+                   :search-engine           :search.engine/appdb
+                   :db-type                 (mdb/db-type)
+                   :version                 (search.spec/index-version-hash)
+                   :lang_code               (i18n/site-locale-string)
+                   :forced-init?            config/is-prod?
+                   :index-state-before      index-state
+                   :index-state-after       @*indexes*
+                   :index-metadata          (search.db/index-metadata-for-engine :appdb)}
+                  cause)))
+
+(defn- synced-active-table!
+  "The active table after a sync of the tracking state. Throws [[index-not-found!]] with `cause` when there is none."
+  [cause]
+  (let [index-state @*indexes*]
+    (or (:active (sync-tracking-atoms!))
+        (index-not-found! index-state cause))))
+
+(defn do-with-active-table
+  "Call `f` with the active index table and return its result.
+
+  The tracking state syncs only every few minutes, so it can track no table after another node built the index, or a
+  table that is gone. Then this syncs the tracking state and uses the table that the sync finds. When there is no
+  index, it throws an ex-info with `:search/index-not-found?` in its ex-data."
+  [f]
+  (let [table (or (active-table)
+                  (u/prog1 (synced-active-table! nil)
+                    (log/warn "The appdb search index was found only after a sync of the tracking state.")))]
+    (try
+      (f table)
+      (catch Exception e
+        (if (and (sql-errors/table-not-found? e) (not (exists? table)))
+          (let [active (synced-active-table! e)]
+            (log/warnf "The appdb search index %s is gone; querying the new index %s." table active)
+            (f active))
+          (do
+            ;; Rule out the error coming from stale index metadata.
+            (sync-tracking-atoms!)
+            (throw e)))))))
+
 (defn- drop-table! [table]
   (boolean
    (when table

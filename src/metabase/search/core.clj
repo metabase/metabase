@@ -101,6 +101,11 @@
   []
   (seq (search.engine/active-engines)))
 
+(defn index-not-found?
+  "Whether `e` says that no search index can serve queries."
+  [e]
+  (boolean (:search/index-not-found? (ex-data e))))
+
 (defn check-for-removed-env-vars!
   "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is false, and would have been
   required to disable the engine, naming the exact configuration change that keeps semantic search off.
