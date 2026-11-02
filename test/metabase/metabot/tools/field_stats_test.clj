@@ -11,6 +11,7 @@
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.test-util :as tools.tu]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -255,3 +256,22 @@
                                        :portable_fk ["test-data (h2)" "PUBLIC" "ORDERS" "TOTAL"]}}
                   (metabot.tools.field-stats/field-values
                    {:entity-type "metric", :entity-id metric-id, :field-id (mt/id :orders :total), :limit 5}))))))))
+
+(deftest model-drill-in-on-numeric-alias-of-another-field-test
+  (testing "a model column aliased as the ID of another field returns its own statistics, not that field's"
+    (mt/as-admin
+      (let [name-id (mt/id :venues :name)
+            alias   (str name-id)
+            native  (lib/native-query (mt/metadata-provider)
+                                      (format "SELECT CATEGORY_ID AS \"%s\", NAME FROM VENUES" alias))
+            columns (mapv #(assoc % :id (if (= alias (:name %)) (mt/id :venues :category_id) name-id))
+                          (get-in (qp/process-query native) [:data :cols]))
+            drill   #(:structured-output (metabot.tools.field-stats/field-values
+                                          {:entity-type "model", :entity-id %1, :field-id %2, :limit 5}))]
+        (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query native :result_metadata columns}]
+          (testing "the emitted alias finds the aliased column"
+            (is (=? {:reference_name alias
+                     :value_metadata {:statistics {:distinct-count 28}}}
+                    (drill model-id alias))))
+          (testing "the integer field ID still finds the field"
+            (is (=? {:portable_fk ["test-data (h2)" "PUBLIC" "VENUES" "NAME"]} (drill model-id name-id)))))))))

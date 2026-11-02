@@ -193,8 +193,8 @@
 
   Accepts physical field IDs as integers or numeric strings, and aliases for virtual columns and for later columns of
   one physical field. Matches the ids of [[column-field-ids]]. With `query`, it also accepts the output name of a
-  renamed field copy of `query`, like `\"NAME_2\"`. A numeric ID shared by a field and its copy finds the first of
-  them."
+  renamed field copy of `query`, like `\"NAME_2\"`, and that name wins over a field ID: a copy named `\"48\"` is found
+  before the field with ID 48. A numeric ID shared by a field and its copy finds the first of them."
   ([field-id columns]
    (when (some? field-id)
      (let [numeric-id (cond
@@ -210,9 +210,9 @@
              (m/find-first #(= (:id %) numeric-id) columns))
            (find-by-id (str field-id))))))
   ([query field-id columns]
-   (or (find-column-by-field-id field-id columns)
-       (when (string? field-id)
-         (m/find-first #(and (= (:name %) field-id) (renamed-field-column? query %)) columns)))))
+   (or (when (string? field-id)
+         (m/find-first #(and (= (:name %) field-id) (renamed-field-column? query %)) columns))
+       (find-column-by-field-id field-id columns))))
 
 (defn- renamed-column-source-table
   "Return the portable path of the table of a renamed field copy, or nil for any other column.
