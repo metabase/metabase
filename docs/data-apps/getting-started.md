@@ -32,7 +32,7 @@ You do these steps once.
 
 ### 1. Make sure you have tables published to your Library
 
-Your app reads the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your Library. Data apps only work with publishe tables.
+Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your Library.
 
 1. Click the **grid** icon in the upper right, and select **Data Studio**.
 2. In the left sidebar, click **Semantic layer**. If Metabase asks you to create your semantic layer, click **Create my semantic layer**.
@@ -207,6 +207,10 @@ An app can also add, edit, and delete rows in your database, with actions. Actio
    ```
 
 For the rules that an app's actions follow, see [What a data app can read and write](./build.md#what-a-data-app-can-read-and-write).
+
+## Let us know what you think
+
+Data apps are in active development. If you run into a bug or have an idea for how data apps should work, [file an issue](https://github.com/metabase/metabase/issues/new/choose).
 
 ## Next steps
 

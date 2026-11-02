@@ -166,7 +166,3 @@ The app can then get data from the site with `fetch`. The app can also show the 
 Ask your agent for any style you like. You can even travel through time:
 
 ![A data app styled like a retro black-and-white desktop app, with a File menu and a table of products](./images/data-app-retro.png)
-
-## Let us know what you think
-
-Data apps are in active development. If you run into a bug or have an idea for how data apps should work, [file an issue](https://github.com/metabase/metabase/issues/new/choose).
