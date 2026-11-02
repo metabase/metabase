@@ -24,10 +24,6 @@
   border-style: dashed;
 }
 
-.item[data-status="sample"] {
-  color: var(--mb-color-text-secondary);
-}
-
 .item[data-dragging="true"] {
   opacity: 0.5;
 }

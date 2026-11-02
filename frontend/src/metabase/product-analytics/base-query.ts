@@ -5,12 +5,13 @@ import type {
   ColumnRoles,
   PageviewRule,
   PathCleaningRule,
+  UsersTableLink,
 } from "metabase/event-tables";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
-import type { ExtraColumn, ProjectedColumn, UsersTableLink } from "./columns";
+import type { ExtraColumn, ProjectedColumn } from "./columns";
 import {
   parseDateRange,
   serializeDateRange,
@@ -295,7 +296,7 @@ export const buildBaseQuery = (
   let usersJoinAlias: string | undefined;
   if (usersColumns.length > 0) {
     if (usersTable === undefined) {
-      throw new Error(t`The person column doesn't link to a users table.`);
+      throw new Error(t`The person column doesn't link to a people table.`);
     }
     ({ query, alias: usersJoinAlias } = joinUsersTable(
       metadataProvider,

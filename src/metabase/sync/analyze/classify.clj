@@ -137,6 +137,16 @@
           {:fields-classified (count fields)
            :fields-failed fields-failed})))))
 
+(defn- link-users-table!
+  "Points the event `table`'s foreign key at the users table its detected event schema ships beside it, when that
+  table exists. Warehouses without foreign keys, like ClickHouse, never report the link themselves."
+  [table {schema-name "schema"}]
+  (when-let [{users-table :table, :keys [primary-key foreign-key]} (analyze/users-table-link schema-name)]
+    ;; Sync writes the synced value only, so an admin who removed the foreign key keeps it removed.
+    (sync.db/mark-fk! (:db_id table)
+                      (:schema table) (:name table) foreign-key
+                      (:schema table) users-table primary-key)))
+
 (mu/defn ^:always-validate classify-table!
   "Run various classifiers on the `table`. These do things like inferring (and setting) entity type of `table`."
   [table :- i/TableInstance]
@@ -150,7 +160,11 @@
                             detected (assoc :entity_type :entity/EventTable))))]
     (if (instance? Exception updated-table)
       table
-      (save-model-updates! table updated-table))))
+      (u/prog1 (save-model-updates! table updated-table)
+        (when-let [detected (:detected_event_settings updated-table)]
+          (sync-util/with-error-handling (format "Error linking the users table of %s"
+                                                 (sync-util/name-for-logging table))
+            (link-users-table! table detected)))))))
 
 (def ^:private LogProgressFn
   [:=> [:cat :string [:schema i/TableInstance]] :nil])

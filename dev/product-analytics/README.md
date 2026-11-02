@@ -97,27 +97,18 @@ mb table update <table-id> --body '{"entity_type":"entity/EventTable"}'
 
 ### Link identities to events
 
-ClickHouse has no foreign keys, so sync can't discover the relationship.
-Set it in Metabase: `pa_identities_resolved.person_id` is the primary key and
-`pa_events_resolved.person_id` points at it. After that the current identity
+ClickHouse has no foreign keys, so sync can't discover the relationship from
+the database. Instead, when sync recognizes `pa_events_resolved` as a Metabase
+Track event table, it points `pa_events_resolved.person_id` at
+`pa_identities_resolved.person_id` (`link-users-table!` in
+`src/metabase/sync/analyze/classify.clj`). The `sync-schema` above does it; for
+a database synced before this, sync it again. After that the current identity
 traits show up as implicitly joined columns when filtering or breaking out
-events. Insights ignore them; see "A person's traits" above.
+events, and people segments read the identities table. Insights ignore them;
+see "A person's traits" above.
 
-```bash
-DB_ID=$(mb db list --json | jq '.data[] | select(.name == "Product Analytics") | .id')
-field_id() {  # table name, field name
-  local table_id
-  table_id=$(mb table list --db-id "$DB_ID" --json | jq --arg n "$1" '.data[] | select(.name == $n) | .id')
-  mb table get "$table_id" --include fields --json | jq --arg n "$2" '.fields[] | select(.name == $n) | .id'
-}
-IDENTITY_PK=$(field_id pa_identities_resolved person_id)
-EVENT_FK=$(field_id pa_events_resolved person_id)
-
-mb field update "$IDENTITY_PK" --body '{"semantic_type":"type/PK"}'
-mb field update "$EVENT_FK" --body "{\"semantic_type\":\"type/FK\",\"fk_target_field_id\":$IDENTITY_PK}"
-mb table update "$(mb table list --db-id "$DB_ID" --json | jq '.data[] | select(.name == "pa_identities_resolved") | .id')" \
-  --body '{"entity_type":"entity/UserTable"}'
-```
+Removing the foreign key in Data Studio sticks: sync only writes its own value,
+and yours takes precedence.
 
 Don't link the raw tables the same way. In Track, `pa_identities.session_id`
 is the `identify()` id (the same value as `pa_events.distinct_id`), not a

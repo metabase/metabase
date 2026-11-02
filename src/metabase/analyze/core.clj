@@ -28,7 +28,8 @@
  [metabase.analyze.classifiers.data-sensitivity
   infer-data-sensitivity]
  [metabase.analyze.classifiers.event-schema
-  detect-event-schema]
+  detect-event-schema
+  users-table-link]
  [metabase.analyze.classifiers.name
   infer-entity-type-by-name
   infer-semantic-type-by-name]

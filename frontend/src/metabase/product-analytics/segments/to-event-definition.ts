@@ -11,11 +11,11 @@ const STAGE_INDEX = -1;
 
 /** Whether an event slot can take this segment. */
 export const isEventSegment = (segment: PaletteSegment): boolean =>
-  segment.source === "event" && segment.status !== "sample";
+  segment.source === "event";
 
-/** Whether the people filter can take this segment. Samples have no conditions. */
+/** Whether the people filter can take this segment. */
 export const isPeopleSegment = (segment: PaletteSegment): boolean =>
-  segment.source === "people" && segment.status !== "sample";
+  segment.source === "people";
 
 /**
  * The event a segment defines. A saved segment becomes a segment clause on
@@ -48,8 +48,6 @@ export const segmentFilterables = (
       );
       return query !== undefined ? Lib.filters(query, STAGE_INDEX) : [];
     }
-    case "sample":
-      return [];
   }
 };
 
@@ -98,8 +96,6 @@ export const segmentToEventDefinition = (
         ? { name: segment.name, query: Lib.toJsQuery(query) }
         : undefined;
     }
-    case "sample":
-      return undefined;
   }
 };
 

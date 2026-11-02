@@ -193,3 +193,39 @@ So that a saved analysis still works elsewhere, an analysis that uses a draft co
 - **Nothing ties the copy to its draft.** Only the label is kept, so an analysis can't offer to switch to the segment once the draft is saved.
 
 After the prototype, drafts need a home on the server, per person, whether that's a draft state on the segment model or something of their own. An analysis could then keep a draft by id like a saved segment, and follow it when it's saved.
+
+## The people table
+
+People segments, person properties in the filter and breakout pickers, and person drills read a people table: the table the person column's foreign key points to (`getUsersTableLink` in `metabase/event-tables`). It stays a foreign key in table metadata, not a product analytics setting, so the rest of Metabase gets the implicit joins too: "Page views by company over time" in the query builder is something pure-play product analytics tools can't do.
+
+### Only through the person column
+
+The link has to be on the person column, because a person's segments and properties have to be the same on all their events. That takes a stitched person column, one id per person across their anonymous and identified events, as `pa_events_resolved.person_id` is:
+
+`coalesce(distinct_id, the earliest distinct_id seen on this visitor_id, visitor_id)`
+
+- **Without stitching, funnels break.** `coalesce(distinct_id, visitor_id)` row by row makes one person two: their cookie before signing up and their id after. A funnel from an anonymous step to signing up then converts almost no one.
+- **A foreign key on another column is wrong in quieter ways.** GA4's export has `user_pseudo_id`, a browser cookie that survives logging in, and `user_id`, set only after it; as far as we know, GA stitches them only in its own reports. With `user_pseudo_id` as the person and a foreign key on `user_id`, segment membership would differ between a person's anonymous and identified events: a segment breakout takes any one of them (`actor_breakouts`), and a required segment drops their anonymous events. An earlier version of this branch allowed it and was reverted.
+- **So a raw GA4 table** either counts by `user_pseudo_id`, per device, with no people table, or gets a stitched view first (the dbt-ga4 package builds one, we believe).
+
+Limiting the link to the person column also means there's no choice between foreign keys: a column has at most one.
+
+Open questions:
+
+- **Where stitching happens.** In the warehouse (a view, a dbt model, or a Metabase transform), or as a person role that's an expression ([Roles as expressions](event-table-settings.plan.md#roles-as-expressions)). An expression can't have a foreign key, so that would bring back linking through another column, and with it a choice between foreign keys, and segment membership computed per person rather than per event. A window over the visitor would also only see events in the date range, so an `identify()` before the range wouldn't link up. That points to the warehouse.
+- **A stitched id that isn't the people table's key**, like a generated UUID, would need a mapping to the people table. Not designed for.
+
+### Setting it up
+
+- **Track:** sync sets the foreign key when it recognizes `pa_events_resolved` (`link-users-table!` in `sync/analyze/classify.clj`), since ClickHouse has none to report. Sync writes only its own value, so an admin who removes the foreign key keeps it removed. It runs in the analyze phase, so it shares the delay in [Recognize tables when sync finds them](#recognize-tables-when-sync-finds-them).
+- **Segment and RudderStack** ship a `users` table keyed like `tracks.user_id`, so they could be linked the same way once their schemas are validated (see [Event schemas](#event-schemas)), with the same caveat: `user_id` is empty before someone is identified. Mixpanel's and PostHog's people exports are less consistent; check real ones first.
+- **Everything else:** warehouse-native customers usually have their own people table, from their app's database, beside the events, but nothing tells us which table it is. The people segments panel and the person column ask for it, with a link to the event table's fields in Data Studio for someone who can edit them.
+- **Mismatched key types,** like a text person column against an integer `users.id`, can't be joined through a foreign key; they need a view or a coercion.
+- **Different databases:** a people table in another database than the events can't be joined at all. On Snowflake that includes another database on the same account; on BigQuery, datasets in one project share a connection.
+
+### Companies, and group analytics
+
+Treating any table a foreign key reaches as an entity, with segments and properties like the people table's, is tempting, and close to PostHog's and Mixpanel's group analytics and Amplitude's accounts. But it's less direct than it looks:
+
+- **Counting companies needs each event's company.** Those tools require the group key on every event. In warehouse data it's usually on the people table (`users.company_id`), one hop from the events. That needs a "group" role that can be an implicitly joined column, which is the roles-as-expressions work, plus a decision about people who belong to several companies, or change company.
+- **Company properties are two hops away** (`events → users → companies`). Lib only offers implicit joins one hop from a query's tables (`implicitly-joinable-columns`), but an explicit join to the people table makes its foreign keys implicitly joinable, so two hops work through one explicit join.

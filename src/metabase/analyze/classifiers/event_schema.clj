@@ -18,6 +18,9 @@
   `:pageviews` is the column and value that mark a pageview, which paths name by their URL path. It's detected
   even for schemas without a URL path column, so it applies once someone picks one.
 
+  `:users-table` is the table of people a schema ships beside its event table, in the same schema, and how the two
+  join; see [[users-table-link]].
+
   The third-party schemas were written from memory of each vendor's docs and haven't been checked against real
   exports; see \"Event schemas\" in `dev/product-analytics/context/post-prototype.md`."
   [{:schema    "metabase-track"
@@ -25,7 +28,8 @@
                 :url_path  "url_path"}
     :required  #{:timestamp :person :session :event_name :url_path}
     ;; Umami's event types: 1 is a pageview, 2 a custom event
-    :pageviews {:column "event_type", :value 1}}
+    :pageviews {:column "event_type", :value 1}
+    :users-table {:table "pa_identities_resolved", :primary-key "person_id", :foreign-key "person_id"}}
    {:schema    "snowplow"
     :roles     {:timestamp "derived_tstamp", :person "domain_userid", :session "domain_sessionid"
                 :event_name "event_name", :url_path "page_urlpath"}
@@ -98,3 +102,12 @@
   [fields :- [:sequential [:map [:name :string]]]]
   (let [fields-by-name (u/index-by (comp u/lower-case-en :name) fields)]
     (some #(match-schema fields-by-name %) event-schemas)))
+
+(mu/defn users-table-link :- [:maybe [:map
+                                      [:table       :string]
+                                      [:primary-key :string]
+                                      [:foreign-key :string]]]
+  "The users table the event schema named `schema-name` ships beside its event table, in the same schema: the table's
+  name, its key, and the event table column that holds the key. Nil when the schema has none."
+  [schema-name :- :string]
+  (:users-table (m/find-first #(= (:schema %) schema-name) event-schemas)))

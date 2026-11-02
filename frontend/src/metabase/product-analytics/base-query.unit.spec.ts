@@ -161,7 +161,7 @@ describe("buildBaseQuery", () => {
         requiredPeopleSegments: [],
         lookbackDays: 0,
       }),
-    ).toThrow("The person column doesn't link to a users table.");
+    ).toThrow("The person column doesn't link to a people table.");
   });
 });
 

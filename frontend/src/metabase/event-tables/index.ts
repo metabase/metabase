@@ -46,3 +46,5 @@ export type {
   StoredSettings,
 } from "./settings/types";
 export { withWidgetProps } from "./settings/with-widget-props";
+export { UsersTablePrompt } from "./UsersTablePrompt";
+export { type UsersTableLink, getUsersTableLink } from "./users-table";

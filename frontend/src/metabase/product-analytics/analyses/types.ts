@@ -1,6 +1,7 @@
 import type {
   EventTableSettings,
   SettingDefinitions,
+  UsersTableLink,
 } from "metabase/event-tables";
 import type {
   CardDisplayType,
@@ -8,7 +9,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type { ExtraColumn, UsersTableLink } from "../columns";
+import type { ExtraColumn } from "../columns";
 import type { EventDefinition, EventFlags } from "../events/types";
 import type { AnalysisFilters } from "../filters";
 import type {

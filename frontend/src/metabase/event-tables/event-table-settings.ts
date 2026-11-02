@@ -6,6 +6,7 @@ import type { Table } from "metabase-types/api";
 import { ColumnPickerWidget } from "./ColumnPickerWidget";
 import { PageviewsWidget } from "./PageviewsWidget";
 import { PathCleaningWidget } from "./PathCleaningWidget";
+import { PersonColumnWidget } from "./PersonColumnWidget";
 import {
   type ColumnRole,
   REQUIRED_COLUMN_ROLES,
@@ -156,10 +157,18 @@ export const EVENT_TABLE_SETTINGS: SettingDefinitions<
     group: "required_columns",
     isDate: true,
   }),
-  "columns.person": columnRoleSetting("columns.person", {
-    getTitle: () => t`Person column`,
-    group: "required_columns",
-  }),
+  "columns.person": {
+    ...columnRoleSetting("columns.person", {
+      getTitle: () => t`Person column`,
+      group: "required_columns",
+    }),
+    widget: PersonColumnWidget,
+    getProps: ({ table }) => ({
+      columns: getColumnOptions(table),
+      isRequired: true,
+      table,
+    }),
+  },
   "columns.event_name": columnRoleSetting("columns.event_name", {
     getTitle: () => t`Event name column`,
     group: "optional_columns",

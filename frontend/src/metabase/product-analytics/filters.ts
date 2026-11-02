@@ -64,16 +64,15 @@ export const hasFilters = (filters: AnalysisFilters): boolean =>
   filters.cohorts.length > 0 ||
   filters.people.length > 0;
 
-/** Adds a people segment from the palette, once. Samples have no conditions to add. */
+/** Adds a people segment from the palette, once. */
 export const withPeopleFilter = (
   filters: AnalysisFilters,
   segment: PaletteSegment,
 ): AnalysisFilters => {
-  const ref = toPeopleSegmentRef(segment);
   const isAdded = filters.people.some((people) => people.key === segment.key);
-  return ref === undefined || isAdded
+  return isAdded
     ? filters
-    : { ...filters, people: [...filters.people, ref] };
+    : { ...filters, people: [...filters.people, toPeopleSegmentRef(segment)] };
 };
 
 /** The filter query, or `null` when there is none or it can't be read. */

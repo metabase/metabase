@@ -3,13 +3,15 @@ import { useCallback, useMemo } from "react";
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import {
   type StoredSettings,
+  type UsersTableLink,
   computeSettings,
   getMissingColumnRoles,
   getSettingWidgets,
+  getUsersTableLink,
 } from "metabase/event-tables";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
-import { getPersonColumn, getUsersTableLink } from "./analyses/column-roles";
+import { getPersonColumn } from "./analyses/column-roles";
 import { getColumnRoles } from "./analyses/common-settings";
 import { getAnalysisConfig } from "./analyses/config";
 import type {
@@ -34,11 +36,14 @@ type UseAnalysisArgs<K extends AnalysisKind> = {
   colors: DisplayColors;
 };
 
-/** The table the person column links to, once its metadata is loaded. */
+/**
+ * The link to the people table, known with the event table, and the people
+ * table once its metadata is loaded too.
+ */
 const useUsersTable = (
   table: Table | undefined,
   stored: StoredSettings,
-): UsersTable | undefined => {
+): { link: UsersTableLink | undefined; usersTable: UsersTable | undefined } => {
   const link = useMemo(
     () => getUsersTableLink(table, getPersonColumn(table, stored)),
     [table, stored],
@@ -46,14 +51,15 @@ const useUsersTable = (
   const metadata = useGetTableQueryMetadataQuery(
     link !== undefined ? { id: link.tableId } : skipToken,
   );
-  const usersTable = metadata.currentData;
-  return useMemo(
+  const usersTableMetadata = metadata.currentData;
+  const usersTable = useMemo(
     () =>
-      link !== undefined && usersTable !== undefined
-        ? { link, table: usersTable }
+      link !== undefined && usersTableMetadata !== undefined
+        ? { link, table: usersTableMetadata }
         : undefined,
-    [link, usersTable],
+    [link, usersTableMetadata],
   );
+  return { link, usersTable };
 };
 
 /**
@@ -73,7 +79,7 @@ export const useAnalysis = <K extends AnalysisKind>({
     tableId !== undefined ? { id: tableId } : skipToken,
   );
   const table = tableMetadata.currentData;
-  const usersTable = useUsersTable(table, stored);
+  const { link: usersTableLink, usersTable } = useUsersTable(table, stored);
 
   const context = useMemo<AnalysisContext>(
     () => ({ table, usersTable }),
@@ -149,6 +155,8 @@ export const useAnalysis = <K extends AnalysisKind>({
     config,
     table,
     usersTable,
+    /** While the people table loads, `usersTable` is undefined but this isn't. */
+    usersTableLink,
     computed,
     widgets,
     spec,

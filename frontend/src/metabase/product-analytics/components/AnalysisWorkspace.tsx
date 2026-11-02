@@ -125,6 +125,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     config,
     table,
     usersTable,
+    usersTableLink,
     computed,
     spec,
     widgets,
@@ -371,6 +372,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               source="event"
               table={table}
               usersTable={usersTable}
+              isUsersTableLinked={usersTableLink !== undefined}
               isHinted={isSegmentsHinted}
               onClose={() => setIsSegmentsOpen(false)}
             />
@@ -380,6 +382,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               source="people"
               table={table}
               usersTable={usersTable}
+              isUsersTableLinked={usersTableLink !== undefined}
               isHinted={isPeopleSegmentsHinted}
               onClose={() => setIsPeopleSegmentsOpen(false)}
             />

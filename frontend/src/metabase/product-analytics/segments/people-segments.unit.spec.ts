@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import type { UsersTableLink } from "metabase/event-tables";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_DATABASE } from "metabase-lib/test-helpers";
@@ -8,7 +9,6 @@ import {
 } from "metabase-types/api/mocks";
 import { PEOPLE, PEOPLE_ID } from "metabase-types/api/mocks/presets";
 
-import type { UsersTableLink } from "../columns";
 import { createFlagAllocator } from "../events/allocate-flags";
 import { findColumn } from "../find-column";
 

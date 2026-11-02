@@ -1,5 +1,4 @@
 import type { ColumnRole } from "metabase/event-tables";
-import type { TableId } from "metabase-types/api";
 
 /** The names the planners read on `events_base`. */
 export const PLANNER_COLUMN_NAMES: Record<ColumnRole, string> = {
@@ -15,15 +14,6 @@ export const PLANNER_COLUMN_NAMES: Record<ColumnRole, string> = {
  * event. Lifecycle uses it to tell who's new without reading their history.
  */
 export const FIRST_SEEN_COLUMN = "person__first_seen_at";
-
-/** How the event table reaches the users table its person column links to. */
-export type UsersTableLink = {
-  tableId: TableId;
-  /** The event table column that holds the users table key. */
-  foreignKey: string;
-  /** The users table column the foreign key points to. */
-  primaryKey: string;
-};
 
 /** A column an analysis reads on `events_base` beyond the roles. */
 export type ExtraColumn = {

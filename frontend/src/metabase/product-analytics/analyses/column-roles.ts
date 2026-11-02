@@ -17,8 +17,6 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type { Field, Table } from "metabase-types/api";
 
-import type { UsersTableLink } from "../columns";
-
 import type { AnalysisContext } from "./types";
 
 /**
@@ -34,29 +32,6 @@ export const getPersonColumn = (
   return typeof value === "string" && isColumnInTable(table, value)
     ? value
     : getEventTableSettings(table)["columns.person"];
-};
-
-/** The table the person column's foreign key points to, if any. */
-export const getUsersTableLink = (
-  table: Table | undefined,
-  personColumn: string | null,
-): UsersTableLink | undefined => {
-  if (table === undefined) {
-    return undefined;
-  }
-  const field = table.fields?.find((item) => item.name === personColumn);
-  // `query_metadata` sends `target: null` on fields without a foreign key.
-  const target = field?.target;
-  if (field === undefined || target == null) {
-    return undefined;
-  }
-  return target.table_id === table.id
-    ? undefined
-    : {
-        tableId: target.table_id,
-        foreignKey: field.name,
-        primaryKey: target.name,
-      };
 };
 
 /** A column that describes a person rather than an event. */
