@@ -51,6 +51,7 @@ export const RunButton = forwardRef(function RunButton(
       })}
       data-testid="run-button"
       aria-label={ariaLabel}
+      aria-hidden={hidden}
       onClick={isRunning ? onCancel : onRun}
     >
       <Icon className={S.icon} name={icon} size={iconSize} />
