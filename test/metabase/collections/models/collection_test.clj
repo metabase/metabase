@@ -3451,3 +3451,40 @@
         (let [descendants (serdes/descendants "Collection" (:id coll) {:skip-archived false})]
           (is (contains? descendants ["Table" (:id active-table)]))
           (is (contains? descendants ["Table" (:id archived-table)])))))))
+
+(deftest data-apps-collection-holds-only-questions-and-implicit-actions-test
+  (testing "a collection of the data apps namespace holds questions and implicit actions, nothing else"
+    (when config/ee-available?
+      (mt/with-temp [:model/Collection {collection-id :id :as collection} {:namespace "data-apps"}
+                     :model/Dashboard  {dashboard-id :id}                 {:name "Elsewhere"}]
+        (doseq [[label insert!] [["a dashboard" #(mt/with-temp [:model/Dashboard _ {:collection_id collection-id}])]
+                                 ["a collection" #(mt/with-temp [:model/Collection _ {:namespace "data-apps"
+                                                                                      :location  (collection/children-location collection)}])]
+                                 ["a model" #(mt/with-temp [:model/Card _ {:type :model :collection_id collection-id}])]
+                                 ["a metric" #(mt/with-temp [:model/Card _ {:type :metric :collection_id collection-id}])]]]
+          (testing label
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions" (insert!)))))
+        (testing "a dashboard moved in"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions"
+                                (t2/update! :model/Dashboard :id dashboard-id {:collection_id collection-id})))
+          (is (nil? (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))))
+        (testing "a bookmark is not content"
+          (mt/with-temp [:model/CollectionBookmark _ {:collection_id collection-id :user_id (mt/user->id :crowberto)}]
+            (is (t2/exists? :model/CollectionBookmark :collection_id collection-id))))))))
+
+(deftest data-apps-collection-stays-top-level-collection-test
+  (testing "a collection of the data apps namespace can't be moved, typed or made a sample, but can be described, synced
+            and cleared of an archive marker"
+    (when config/ee-available?
+      (mt/with-temp [:model/Collection {collection-id :id :as collection} {:namespace "data-apps"}
+                     :model/Collection {other-id :id :as other}            {:namespace "data-apps"}]
+        (doseq [changes [{:type "library-metrics"} {:is_sample true} {:location (str "/" other-id "/")}]]
+          (testing (pr-str changes)
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stays a top-level collection of data apps"
+                                  (t2/update! :model/Collection :id collection-id changes)))))
+        (testing "move-collection!"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move a data app's collection"
+                                (collection/move-collection! collection (collection/children-location other)))))
+        (t2/update! :model/Collection :id collection-id {:archive_operation_id nil :is_remote_synced true :description "Birds"})
+        (is (=? {:location "/" :is_remote_synced true :description "Birds"}
+                (t2/select-one :model/Collection :id collection-id)))))))

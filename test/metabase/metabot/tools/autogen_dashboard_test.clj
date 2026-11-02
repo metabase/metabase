@@ -309,7 +309,7 @@
                  (invoke {:query_id "q-sql"} queries))))))))
 
 (deftest unexpected-error-test
-  (testing "an error that no one declared ends the turn"
+  (testing "an error that no one declared is `:internal`"
     (mt/with-dynamic-fn-redefs [metabot.db/table (fn [_] (throw (ex-info "boom" {})))]
       (is (= {:class :unrecoverable :code :internal}
              (:error (invoke {:table_id 1})))))))
