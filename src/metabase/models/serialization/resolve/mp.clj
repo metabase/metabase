@@ -128,15 +128,17 @@
 (defn- database-mismatch-ex-info
   "Build the agent-facing error for a portable table FK that names a database other than `metadata-provider`'s.
 
-  It is `:cross-database-table` when the name belongs to another database, and `:unknown-table` when it
-  names none."
+  It is `:cross-database-table` when the name finds another database, and `:unknown-table` otherwise."
   [metadata-provider [path-db-name :as path]]
   (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)
         ;; This tells the agent nothing new, since the query's first stage already finds its database by name.
-        names-a-database? (and (string? path-db-name)
-                               (app-db-backed-provider? metadata-provider)
-                               (some? (models.db/database-id-by-name path-db-name)))]
-    (if names-a-database?
+        named-db-id     (when (and (string? path-db-name)
+                                   (app-db-backed-provider? metadata-provider))
+                          (models.db/database-id-by-name path-db-name))
+        ;; A MySQL app DB compares names without case, so the name can find this query's own database.
+        other-database? (and (some? named-db-id)
+                             (not= named-db-id current-db-id))]
+    (if other-database?
       (ex-info (tru "Portable table FK {0} references database {1}, but this query targets database {2}. Cross-database queries are not supported."
                     (pr-str path)
                     (pr-str path-db-name)
