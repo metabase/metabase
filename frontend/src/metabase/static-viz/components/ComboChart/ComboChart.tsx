@@ -70,7 +70,6 @@ export const ComboChart = ({
     height,
     fitWithinBounds,
     isReversed: settings["legend.is_reversed"],
-    // Fold before layout, off the chart height, as the interactive path does.
     getLayout: (chartHeight) => {
       const chartModel = getChartModelAtHeight(
         baseChartModel,

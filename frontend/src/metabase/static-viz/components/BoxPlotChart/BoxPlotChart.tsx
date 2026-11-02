@@ -50,7 +50,6 @@ export function BoxPlotChart({
     renderingContext.cartesianSize,
   );
 
-  // The box plot always fits its legend within the given height.
   const {
     chartHeight,
     legend,

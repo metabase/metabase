@@ -129,7 +129,6 @@ interface ChartWithBottomLegendInput<TLayout> extends Omit<
 
 export interface ChartWithBottomLegend<TLayout> {
   chartHeight: number;
-  /** The chart's layout at `chartHeight`, to draw it with. */
   layout: TLayout;
   legend: BottomLegend;
 }
