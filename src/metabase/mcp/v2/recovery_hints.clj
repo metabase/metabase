@@ -39,7 +39,7 @@
       (message/msg ["`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."]))))
 
 (defn- usable-sources-hint
-  "Return the usable source IDs from an `:incompatible-metric` error as MCP guidance."
+  "Return the usable source IDs from an `:incompatible-metric` or `:metric-as-source-card` error as MCP guidance."
   [usable-sources]
   (when (seq usable-sources)
     (apply message/msg
@@ -61,7 +61,7 @@
   "The v2 recovery message for an agent error's `ex-data`, or nil when it has none."
   [{:keys [error entity-type entity-id usable-sources source-card source-card-type]}]
   (case error
-    :incompatible-metric
+    (:incompatible-metric :metric-as-source-card)
     (usable-sources-hint usable-sources)
 
     :uri-in-source-table

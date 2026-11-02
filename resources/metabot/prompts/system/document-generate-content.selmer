@@ -9,13 +9,14 @@ If the user does not specify, first try to build it with an existing model and i
 
 Regardless of the query type, determine the best visualization settings for the chart based on the user request.
 
-## If using an existing model:
-IF using an existing model, identify the relevant model using the `list_available_data_sources` tool
-THEN use the `document_construct_model_chart` tool (IF a relevant model is found) to generate the chart.
-OR use the `document_schema_collect` tool (IF a relevant model is NOT found) as a first step to generating a SQL chart.
+## If using an existing model or metric:
+IF using an existing model or metric, identify the relevant one using the `list_available_data_sources` tool
+THEN use the `document_construct_model_chart` tool (IF a relevant model or metric is found) to generate the chart.
+OR use the `document_schema_collect` tool (IF a relevant model or metric is NOT found) as a first step to generating a SQL chart.
 
-`document_construct_model_chart` queries the model as its `source-card`: load the `construct-notebook-query-core`
-and `construct-notebook-query-advanced` skills before writing its `query`.
+In the `query` of `document_construct_model_chart`, a model goes in `source-card`. A metric goes in `aggregation`, on
+the source its `<metric>` tag names. Load the `construct-notebook-query-core` and `construct-notebook-query-advanced`
+skills before writing the `query`.
 
 ## IF using custom SQL:
 IF writing custom SQL, FIRST use the `document_schema_collect` to get the schema information for the

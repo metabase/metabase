@@ -364,6 +364,11 @@
   ;; No step: the message names the source each metric needs, or says it has none.
   [])
 
+(defpipeline-error metric-as-source-card!
+  "A metric was the stage's `source-card:`, and the stage did not aggregate it."
+  ;; No step: the message names the source the metric needs, or says it has none.
+  [])
+
 ;;; Query shape
 
 (defpipeline-error missing-source-in-first-stage!

@@ -2757,6 +2757,57 @@
                           (get-in [:structured-output :query]))]
             (is (= [[18760]] (mt/rows (qp/process-query query))))))))))
 
+(deftest metric-as-source-card-test
+  (testing "a metric in `source-card:` on a stage that does not aggregate it"
+    (mt/with-temp [:model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name          "Big order count"
+                    :type          :metric
+                    :dataset_query (-> (table-query :orders)
+                                       (lib/filter (lib/> (field-col :orders :total) 100))
+                                       (lib/aggregate (lib/count)))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [on-metric (fn [stage]
+                          (query-data {"lib/type" "mbql/query"
+                                       "stages"   [(merge {"lib/type"    "mbql.stage/mbql"
+                                                           "source-card" metric-eid}
+                                                          stage)]}))
+              rows      (fn [query-data]
+                          (-> (construct/execute-representations-query query-data)
+                              (get-in [:structured-output :query])
+                              qp/process-query
+                              mt/rows))]
+          (testing "reads the metric's result in the query processor, so a count is wrong"
+            ;; Not `card-query`: Lib builds a metric's query on the metric's own source.
+            (is (= [[1]] (mt/rows (qp/process-query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (str "card__" metric-id)
+                                                                :aggregation  [[:count]]}})))))
+          (testing "is refused with an error that names the source to use"
+            (doseq [stage [{"aggregation" [["count" {}]]}
+                           {"aggregation" [["sum" {} ["field" {} "TOTAL"]]]
+                            "breakout"    [["field" {"temporal-unit" "month"} "CREATED_AT"]]}
+                           {"breakout" [["field" {"temporal-unit" "month"} "CREATED_AT"]]}]]
+              (testing (pr-str stage)
+                (is (=? {:class :recoverable
+                         :code  :metabase.metabot.tools.recoverable.pipeline/metric-as-source-card
+                         :text  (str "The metric \"Big order count\" (needs source-table: "
+                                     (json/encode (orders-source-table-fk)) ") is in `source-card:`. A metric is "
+                                     "an aggregation, not a source: a stage on a metric reads its result, not its "
+                                     "rows. Build the stage on the source shown for the metric, and reference the "
+                                     "metric as `aggregation: [[\"metric\", {}, \"<portable_entity_id>\"]]`.")}
+                        (test-util/tool-failure construct/construct-notebook-query-tool {:query (on-metric stage)}))))))
+          (testing "gives the MCP surface the numeric source"
+            (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                 (construct/execute-representations-query (on-metric {"aggregation" [["count" {}]]}))))]
+              (is (=? {:error          :metric-as-source-card
+                       :metric-ids     [metric-id]
+                       :usable-sources {metric-id {:source-table (mt/id :orders)}}}
+                      (ex-data e)))))
+          (testing "is accepted when the stage aggregates that metric, which the query processor expands"
+            (is (= [[5755]] (rows (on-metric {"aggregation" [["metric" {} metric-eid]]})))))
+          (testing "and the query the error asks for gives the same result"
+            (is (= [[5755]] (rows (metric-query-data {"source-table" (orders-source-table-fk)} metric-eid))))))))))
+
 (deftest metric-source-check-follows-a-source-card-that-changed-table-test
   (testing "After C1 moves from ORDERS to PRODUCTS, the check follows it as the query processor does"
     (mt/with-temp [:model/Card {c1-id :id}
