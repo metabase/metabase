@@ -22,8 +22,10 @@ import type {
   LoginStatus,
   MetabaseUser,
 } from "embedding-sdk-bundle/types/user";
+import type { MetabaseActionMock } from "embedding-sdk-package/testing/lib/private/actions";
 import { createMockSdkBundle } from "embedding-sdk-package/testing/lib/private/bundle";
 import { installMockSdk } from "embedding-sdk-package/testing/lib/private/install";
+import type { MetabaseQueryMock } from "embedding-sdk-package/testing/lib/private/queries";
 
 export type MetabaseTestOptions = {
   CollectionBrowser?: ComponentType<CollectionBrowserProps>;
@@ -41,6 +43,8 @@ export type MetabaseTestOptions = {
   loginStatus?: LoginStatus;
   applicationName?: string;
   availableFonts?: string[];
+  dataAppQueries?: readonly MetabaseQueryMock[];
+  dataAppActions?: readonly MetabaseActionMock[];
 };
 
 export type MetabaseTestProviderProps = MetabaseTestOptions & {
