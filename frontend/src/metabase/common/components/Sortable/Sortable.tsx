@@ -69,7 +69,8 @@ export function Sortable({
   const childrenAsFunction = typeof children === "function";
 
   // Without a keyboard sensor, these would make the wrapper a tab stop that does nothing
-  const dragAttributes = listeners?.onKeyDown ? attributes : undefined;
+  const dragAttributes =
+    listeners?.onKeyDown && !disabled ? attributes : undefined;
 
   return (
     <Component

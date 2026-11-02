@@ -25,9 +25,24 @@ describe("Sortable", () => {
       "tabindex",
     );
   });
+
+  it("is not a tab stop when it's disabled, even with a keyboard sensor", () => {
+    render(<SortableInContext withKeyboard disabled />);
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByText("Item").parentElement).not.toHaveAttribute(
+      "tabindex",
+    );
+  });
 });
 
-function SortableInContext({ withKeyboard }: { withKeyboard: boolean }) {
+function SortableInContext({
+  withKeyboard,
+  disabled,
+}: {
+  withKeyboard: boolean;
+  disabled?: boolean;
+}) {
   const pointerSensor = useSensor(PointerSensor);
   const keyboardSensor = useSensor(KeyboardSensor);
 
@@ -36,7 +51,7 @@ function SortableInContext({ withKeyboard }: { withKeyboard: boolean }) {
       sensors={withKeyboard ? [pointerSensor, keyboardSensor] : [pointerSensor]}
     >
       <SortableContext items={["item"]}>
-        <Sortable id="item">
+        <Sortable id="item" disabled={disabled}>
           <span>Item</span>
         </Sortable>
       </SortableContext>
