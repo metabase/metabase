@@ -249,6 +249,62 @@ describe("GoalValueInput", () => {
     );
   });
 
+  it("returns to the entity picker when navigating back from a question picked in the search list with the keyboard (GDGT-3278)", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        result_metadata: [
+          createMockField({ name: "total", base_type: "type/Integer" }),
+          createMockField({
+            name: "avg",
+            display_name: "Average",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setupCardDatasetWithReferencedEntities({});
+    setup();
+
+    await openMenuWithKeyboard();
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Enter}");
+    const searchResult = await screen.findByRole("menuitem", {
+      name: /Orders/,
+    });
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText("Search…")).toHaveFocus(),
+    );
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(getEntityPickerBackItem()).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(searchResult).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("menuitem", { name: /Average/ });
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: /Orders/ })).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText("Search…")).toHaveFocus(),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: /Orders/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Average/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("returns to the root menu from the entity picker with the keyboard (GDGT-3278)", async () => {
     setupEntityPicker([
       createMockSearchResult({ id: 15, model: "card", name: "Other question" }),
