@@ -130,7 +130,8 @@
                                                          :function {:name      "run_python"
                                                                     :arguments (first fragments)}}]})]
                                   (for [f (rest fragments)]
-                                    (chunk {:tool_calls [{:index 0 :function {:arguments f}}]}))))]
+                                    (chunk {:tool_calls [{:index 0 :function {:arguments f}}]}))
+                                  [{:choices [{:delta {} :finish_reason "tool_calls"}]}]))]
       (is (= (apply str fragments)
              (apply str (keep :inputTextDelta parts)))
           "the indented line is not silently deleted from the arguments"))))
@@ -791,7 +792,8 @@
                                             :tool_calls [{:index 0 :id "call-a" :type "function"
                                                           :function {:name "t" :arguments "{}"}}
                                                          {:index 1 :id "call-b" :type "function"
-                                                          :function {:name "t" :arguments "{}"}}]}}]}]))))))
+                                                          :function {:name "t" :arguments "{}"}}]}}]}
+                        {:choices [{:delta {} :finish_reason "tool_calls"}]}]))))))
 
 (deftest ^:parallel chunks-xf-empty-continuation-arguments-emit-nothing-test
   (testing "a continuation fragment carrying \"\" emits no delta, since an empty string adds nothing

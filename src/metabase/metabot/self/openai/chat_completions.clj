@@ -308,7 +308,20 @@
    (chat-completions->aisdk-chunks-xf stop-reasons nil))
   ([stop-reasons {:keys [forward-reasoning?]}]
    (fn [rf]
-     (let [current-type (volatile! nil) ;; :text | :reasoning | nil
+     (let [raw-rf       rf
+           deferred     (volatile! [])
+           defer?       (volatile! false)
+           rf           (fn [result chunk]
+                          (if (and @defer? (#{:text-start :text-delta :text-end
+                                              :reasoning-start :reasoning-delta :reasoning-end} (:type chunk)))
+                            (do (vswap! deferred conj chunk) result)
+                            (raw-rf result chunk)))
+           release!     (fn [result calls]
+                          (let [chunks (concat (mapcat tool-call-chunks (with-ids calls)) @deferred)]
+                            (vreset! deferred [])
+                            (vreset! defer? false)
+                            (u/reduce-preserving-reduced raw-rf result chunks)))
+           current-type (volatile! nil) ;; :text | :reasoning | nil
            message-id   (volatile! nil)
            model-name   (volatile! nil)
            ;; carried across start/delta/end, same as openai.clj; :id is the open block's id
@@ -316,6 +329,7 @@
            stop-reason  (volatile! nil)
            no-calls     {:calls [] :by-key {} :previous nil}
            tool-calls   (volatile! no-calls)
+           discarded-arguments? (volatile! false)
            ;; Close the open text or reasoning block, if there is one
            close!       (fn [result]
                           (if-let [block-type @current-type]
@@ -329,115 +343,119 @@
            ;; Close the open block, then emit the assembled tool calls. A `reduced` result stops the
            ;; emission and stays wrapped, so the consumer's early termination reaches the caller.
            finish!      (fn [result]
-                          (u/prog1 (u/reduce-preserving-reduced
-                                    rf
-                                    (close! result)
-                                    (mapcat tool-call-chunks (with-ids (:calls @tool-calls))))
+                          (u/prog1 (release! (close! result) (:calls @tool-calls))
                             (vreset! tool-calls no-calls)))]
        (fn
          ([result]
           (vreset! tool-calls no-calls)
-          (rf (unreduced (close! result))))
+          (raw-rf (unreduced (release! (close! result) []))))
 
          ([result {:keys [id model choices usage error] :as chunk}]
           (if (= chunk core/interrupted-stream-event)
             (do (vreset! tool-calls no-calls)
-                result)
-          (let [choice        (first choices)
-                delta         (:delta choice)
-                finish-reason (:finish_reason choice)
-                error-text    (when (or (some? error)
-                                        ;; OpenRouter repeats the finish reason on its usage chunk; only the first may raise the error.
-                                        (and (nil? @stop-reason)
-                                             (= "error" (core/stop-reason->finish-reason stop-reasons finish-reason))))
-                                (or (:message error)
-                                    (some-> error pr-str)
-                                    (tru "The model provider failed to complete the response")))
-                call-deltas   (:tool_calls delta)
-                reasoning-md  (:reasoning_metadata delta)
-                ;; Determine what kind of content this chunk carries.
-                ;; Empty-string content (common between tool calls) is ignored
-                ;; to avoid spurious text blocks.
-                chunk-type    (cond
-                                (not-empty (:content delta))  :text
-                                ;; tool_calls outrank reasoning, so a delta carrying both loses its
-                                ;; reasoning fragment: display text, recoverable. No probed provider
-                                ;; combines the two in one delta today.
-                                (seq call-deltas)             :function_call
-                                (and forward-reasoning?
-                                     (delta-reasoning delta)) :reasoning
-                                :else                         nil)]
-            (cond-> result
-              ;; Emit :start on first chunk
-              (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
-                                                                   (u/prog1
-                                                                     (vreset! message-id id)
-                                                                     (vreset! model-name model)))
-              ;; Close the open text or reasoning block when the content type changes
-              (and @current-type
-                   chunk-type
-                   (not= chunk-type @current-type))            (close!)
-              ;; Start a new text block
-              (and (= chunk-type :text)
-                   (not= @current-type :text))                 (-> (u/prog1
-                                                                     (let [tid (core/mkid)]
-                                                                       (vreset! current-type :text)
-                                                                       (vreset! payload {:id tid})))
-                                                                   (rf (merge {:type :text-start} @payload)))
-              ;; Text delta
-              (and (= chunk-type :text)
-                   (some? (:content delta)))                   (rf {:type  :text-delta
-                                                                    :id    (:id @payload)
-                                                                    :delta (:content delta)})
-              ;; Start a new reasoning block
-              (and (= chunk-type :reasoning)
-                   (not= @current-type :reasoning))            (-> (u/prog1
-                                                                     (let [rid (core/mkid)]
-                                                                       (vreset! current-type :reasoning)
-                                                                       (vreset! payload {:id rid})))
-                                                                   (rf (merge {:type :reasoning-start} @payload)))
-              ;; Reasoning delta
-              (= chunk-type :reasoning)                        (rf {:type  :reasoning-delta
-                                                                    :id    (:id @payload)
-                                                                    :delta (delta-reasoning delta)})
-              ;; A delta may carry ready-namespaced provider metadata for the
-              ;; open reasoning block, ridden out on its end chunk the way
-              ;; openai.clj rides out encrypted_content. :reasoning_metadata is
-              ;; not a wire key — no Chat Completions server emits it; only a
-              ;; dialect's own pre-transform mints it (today Mistral's
-              ;; flatten-content-chunks, carrying a think-chunk signature) — so
-              ;; this clause never fires for any other dialect. It is carried
-              ;; opaquely: the minting side owns the namespace inside it.
-              (and reasoning-md
-                   (= @current-type :reasoning))               (u/prog1
-                                                                 (vswap! payload assoc
-                                                                         :providerMetadata reasoning-md))
-              ;; Every tool_calls entry joins its call, whatever the delta's content type
-              (seq call-deltas)                                (u/prog1
-                                                                 (vswap! tool-calls
-                                                                         #(reduce conj-tool-call-delta % call-deltas)))
-              ;; Emitting a tool call runs it, so drop the calls an error cuts off
-              error-text                                       (u/prog1
-                                                                 (vreset! tool-calls no-calls))
-              (and (some? finish-reason)
-                   (not (contains? #{"stop" "tool-calls"}
-                                   (core/stop-reason->finish-reason stop-reasons finish-reason))))
-              (u/prog1 (vreset! tool-calls no-calls))
-              ;; Finish reason — close whatever is open, then emit only successful tool calls
-              (some? finish-reason)                            (-> (u/prog1
-                                                                     (vreset! stop-reason finish-reason))
-                                                                   (finish!))
-              ;; Usage (often on a separate final chunk with empty choices)
-              (some? usage)                                    (rf (cond-> {:type  :usage
-                                                                            :usage (usage->aisdk-usage usage)
-                                                                            :id    @message-id
-                                                                            :model @model-name}
-                                                                     @stop-reason
-                                                                     (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
-                                                                            :raw-finish-reason @stop-reason)))
-              ;; An error in the stream, e.g. a failure partway through generation
-              error-text                                       (-> (close!)
-                                                                   (rf (error-chunk error error-text))))))))))))
+                (release! result []))
+            (let [choice        (first choices)
+                  delta         (:delta choice)
+                  finish-reason (:finish_reason choice)
+                  error-text    (when (or (some? error)
+                                          ;; OpenRouter repeats the finish reason on its usage chunk; only the first may raise the error.
+                                          (and (nil? @stop-reason)
+                                               (= "error" (core/stop-reason->finish-reason stop-reasons finish-reason))))
+                                  (or (:message error)
+                                      (some-> error pr-str)
+                                      (tru "The model provider failed to complete the response")))
+                  call-deltas   (:tool_calls delta)
+                  reasoning-md  (:reasoning_metadata delta)
+                  ;; Determine what kind of content this chunk carries.
+                  ;; Empty-string content (common between tool calls) is ignored
+                  ;; to avoid spurious text blocks.
+                  chunk-type    (cond
+                                  (not-empty (:content delta))  :text
+                                  ;; tool_calls outrank reasoning, so a delta carrying both loses its
+                                  ;; reasoning fragment: display text, recoverable. No probed provider
+                                  ;; combines the two in one delta today.
+                                  (seq call-deltas)             :function_call
+                                  (and forward-reasoning?
+                                       (delta-reasoning delta)) :reasoning
+                                  :else                         nil)]
+              (cond-> result
+                ;; Emit :start on first chunk
+                (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
+                                                                     (u/prog1
+                                                                       (vreset! message-id id)
+                                                                       (vreset! model-name model)))
+                ;; Close the open text or reasoning block when the content type changes
+                (and @current-type
+                     chunk-type
+                     (not= chunk-type @current-type))            (close!)
+                ;; Start a new text block
+                (and (= chunk-type :text)
+                     (not= @current-type :text))                 (-> (u/prog1
+                                                                       (let [tid (core/mkid)]
+                                                                         (vreset! current-type :text)
+                                                                         (vreset! payload {:id tid})))
+                                                                     (rf (merge {:type :text-start} @payload)))
+                ;; Text delta
+                (and (= chunk-type :text)
+                     (some? (:content delta)))                   (rf {:type  :text-delta
+                                                                      :id    (:id @payload)
+                                                                      :delta (:content delta)})
+                ;; Start a new reasoning block
+                (and (= chunk-type :reasoning)
+                     (not= @current-type :reasoning))            (-> (u/prog1
+                                                                       (let [rid (core/mkid)]
+                                                                         (vreset! current-type :reasoning)
+                                                                         (vreset! payload {:id rid})))
+                                                                     (rf (merge {:type :reasoning-start} @payload)))
+                ;; Reasoning delta
+                (= chunk-type :reasoning)                        (rf {:type  :reasoning-delta
+                                                                      :id    (:id @payload)
+                                                                      :delta (delta-reasoning delta)})
+                ;; A delta may carry ready-namespaced provider metadata for the
+                ;; open reasoning block, ridden out on its end chunk the way
+                ;; openai.clj rides out encrypted_content. :reasoning_metadata is
+                ;; not a wire key — no Chat Completions server emits it; only a
+                ;; dialect's own pre-transform mints it (today Mistral's
+                ;; flatten-content-chunks, carrying a think-chunk signature) — so
+                ;; this clause never fires for any other dialect. It is carried
+                ;; opaquely: the minting side owns the namespace inside it.
+                (and reasoning-md
+                     (= @current-type :reasoning))               (u/prog1
+                                                                   (vswap! payload assoc
+                                                                           :providerMetadata reasoning-md))
+                ;; Every tool_calls entry joins its call, whatever the delta's content type
+                (seq call-deltas)                                (-> (close!)
+                                                                     (u/prog1
+                                                                       (vswap! tool-calls
+                                                                               #(reduce conj-tool-call-delta % call-deltas))
+                                                                       (vreset! defer? true)))
+                ;; Emitting a tool call runs it, so drop the calls an error cuts off
+                error-text                                       (u/prog1
+                                                                   (vreset! tool-calls no-calls))
+                (and (some? finish-reason)
+                     (not (contains? #{"stop" "tool-calls"}
+                                     (core/stop-reason->finish-reason stop-reasons finish-reason))))
+                (u/prog1
+                  (when (some #(some not-empty (:args %)) (:calls @tool-calls))
+                    (vreset! discarded-arguments? true))
+                  (vreset! tool-calls no-calls))
+                ;; Finish reason — close whatever is open, then emit only successful tool calls
+                (some? finish-reason)                            (-> (u/prog1
+                                                                       (vreset! stop-reason finish-reason))
+                                                                     (finish!))
+                ;; Usage (often on a separate final chunk with empty choices)
+                (some? usage)                                    (rf (cond-> {:type  :usage
+                                                                              :usage (usage->aisdk-usage usage)
+                                                                              :id    @message-id
+                                                                              :model @model-name}
+                                                                       @discarded-arguments?
+                                                                       (assoc ::core/discarded-tool-arguments? true)
+                                                                       @stop-reason
+                                                                       (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
+                                                                              :raw-finish-reason @stop-reason)))
+                ;; An error in the stream, e.g. a failure partway through generation
+                error-text                                       (-> (close!)
+                                                                     (rf (error-chunk error error-text))))))))))))
 
 ;;; Request body
 

@@ -181,6 +181,7 @@
     "metabase_enterprise.impersonation.task.query_cache_cleanup.ImpersonationQueryCacheCleanup"
     "metabase_enterprise.mcp.task.mcp_usage_trimmer.McpUsageTrimmer"
     "metabase_enterprise.metabot.task.ai_usage_trimmer.AiUsageTrimmer"
+    "metabase_enterprise.osi_generation.task.generate.OsiAiContextGeneration"
     "metabase_enterprise.remote_sync.task.import.AutoImport"
     "metabase_enterprise.remote_sync.task.table_cleanup.RemoteSyncTableCleanup"
     "metabase_enterprise.replacement.timeout.TimeoutReplacementRuns"

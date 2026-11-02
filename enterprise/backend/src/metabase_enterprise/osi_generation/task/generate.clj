@@ -53,9 +53,11 @@
           ;; from appdb state. Cancellation and fatal errors remain visible to Quartz.
           (log/error e "OSI generation run failed"))))))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Generates OSI ai_context metadata for library entities."}
-  OsiAiContextGeneration [_ctx]
+(task/defjob OsiAiContextGeneration
+  "Generates OSI ai_context metadata for library entities."
+  {:saved-class "metabase_enterprise.osi_generation.task.generate.OsiAiContextGeneration"
+   :concurrent? false}
+  [_ctx]
   (run!*))
 
 (def ^:private generation-trigger-key

@@ -73,6 +73,7 @@
           ;; Function items are provisional until response.completed. Buffer the ordered suffix so
           ;; unsuccessful terminal outcomes can drop tools without reordering later text/reasoning.
           pending-chunks (volatile! [])
+          discarded-arguments? (volatile! false)
           completed-tool-ids (volatile! #{})
           clear!       (fn [result]
                          (u/prog1 result
@@ -115,6 +116,12 @@
                                              @current-type                    (close! result)
                                              :else                            result)
                                  completed @completed-tool-ids
+                                 _ (when (some (fn [[tool-id chunk]]
+                                                 (and tool-id
+                                                      (not (and successful? (contains? completed tool-id)))
+                                                      (not-empty (:inputTextDelta chunk))))
+                                               @pending-chunks)
+                                     (vreset! discarded-arguments? true))
                                  result    (u/reduce-preserving-reduced
                                             (fn [result [tool-id chunk]]
                                               (if (or (nil? tool-id)
@@ -254,13 +261,14 @@
                ;; still has valid partial output, so we record its usage rather than treating it as an error.
                (contains? #{"response.completed" "response.incomplete"} t)
                (emit-rf! (let [raw (if (= t "response.completed")
-                                       "completed"
-                                       (get-in response [:incomplete_details :reason]))]
+                                     "completed"
+                                     (get-in response [:incomplete_details :reason]))]
                            (cond-> {:type  :usage
                                     :usage (openai-usage->aisdk-usage @last-usage)
                                     ;; non-standard extension, not in AISDK5
                                     :id    (:id response)
                                     :model @model-name}
+                             @discarded-arguments? (assoc ::core/discarded-tool-arguments? true)
                              raw (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons raw)
                                         :raw-finish-reason raw))))
                (contains? #{"response.completed" "response.incomplete"} t)
@@ -280,13 +288,12 @@
                                                                             (tru "The model provider failed to complete the response"))})
                (= t "error")                      (resolve-tools! false)
                (and (= t "error") @last-usage)    (-> (emit-rf! {:type  :usage
-                                                                  :usage (openai-usage->aisdk-usage @last-usage)
-                                                                  :id    @response-id
-                                                                  :model @model-name})
-                                                       (u/prog1 (vreset! last-usage nil)))
+                                                                 :usage (openai-usage->aisdk-usage @last-usage)
+                                                                 :id    @response-id
+                                                                 :model @model-name})
+                                                      (u/prog1 (vreset! last-usage nil)))
                (= t "error")                      (emit-rf! {:type      :error
                                                              :errorText (or (:message error) (:message chunk))})))))))))
-
 
 ;;; AISDK parts → OpenAI Responses API input items
 

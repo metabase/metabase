@@ -321,6 +321,7 @@
           usage-acc        (volatile! nil)
           stop-reason      (volatile! nil)
           pending-chunks   (volatile! [])
+          discarded-arguments? (volatile! false)
           emit!            (fn [result tool-chunk? chunk]
                              (cond
                                (reduced? result) result
@@ -330,7 +331,12 @@
           emit-rf!         (fn [result chunk]
                              (if (reduced? result) result (rf result chunk)))
           resolve-tools!   (fn [result successful?]
-                             (let [result (u/reduce-preserving-reduced
+                             (let [_ (when-not successful?
+                                       (when (some (fn [[tool? chunk]]
+                                                     (and tool? (not-empty (:inputTextDelta chunk))))
+                                                   @pending-chunks)
+                                         (vreset! discarded-arguments? true)))
+                                   result (u/reduce-preserving-reduced
                                            (fn [result [tool-chunk? chunk]]
                                              (if (or successful? (not tool-chunk?))
                                                (rf result chunk)
@@ -378,8 +384,8 @@
                                  (-> (close-blocks! result)
                                      (emit! true start)
                                      (emit! true {:type           :tool-input-delta
-                                          :toolCallId     tool-id
-                                          :inputTextDelta (json/encode (or (:args functionCall) {}))})
+                                                  :toolCallId     tool-id
+                                                  :inputTextDelta (json/encode (or (:args functionCall) {}))})
                                      (emit! true (merge {:type :tool-input-available} ids))))
 
                                ;; Thought and text share one block discipline: open a block only for
@@ -427,6 +433,7 @@
                                                  :usage usage
                                                  :id    @message-id
                                                  :model @model-name}
+                                          @discarded-arguments? (assoc ::core/discarded-tool-arguments? true)
                                           reason (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons reason)
                                                         :raw-finish-reason reason))))]
            (if (reduced? result) result (rf result))))

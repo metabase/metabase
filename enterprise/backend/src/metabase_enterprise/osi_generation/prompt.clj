@@ -12,8 +12,8 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
-   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.osi.ai-context.api :as osi-api]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.util.malli :as mu]
    [selmer.parser :as selmer])
   (:import

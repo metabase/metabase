@@ -563,16 +563,22 @@
      ;; if we ever change it to stream tools rather than collect them in one piece, we'd need to improve logic here too
      (let [current-id (volatile! nil)
            acc        (volatile! [])
+           discard!   (fn []
+                        (when (and (seq @acc) (not (complete-aisdk-group? @acc)))
+                          (log/debug "Discarding incomplete tool input"
+                                     {:tool-call-id (:toolCallId (first @acc))})))
            ;; is it not nice how consistent the AI SDK format is?
            getid      #(or (:id %) (:messageId %) (:toolCallId %))
            flush!     (fn [result]
                         (u/prog1 (cond-> result
                                    (and (seq @acc) (complete-aisdk-group? @acc))
                                    (rf (aisdk-chunks->part @acc)))
+                          (discard!)
                           (vreset! current-id nil)
                           (vreset! acc [])))]
        (fn
          ([result]
+          (discard!)
           (cond-> result
             (and (seq @acc) (complete-aisdk-group? @acc))
             (rf (aisdk-chunks->part @acc))

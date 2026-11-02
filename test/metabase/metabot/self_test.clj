@@ -1863,6 +1863,20 @@
                  :finish-reason "length"}
                 (ex-data (structured-call-error))))))))
 
+(deftest call-llm-structured-wire-truncation-outranks-text-test
+  (llm.tu/with-default-connections
+    (let [events [{:id "c1", :choices [{:delta {:content answer-text}}]}
+                  {:choices [{:delta {:tool_calls [{:index 0, :id "call-1"
+                                                    :function {:name "json", :arguments "{"}}]}}]}
+                  {:choices [{:delta {}, :finish_reason "length"}]
+                   :usage {:prompt_tokens 3, :completion_tokens 4}}]]
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)
+                                  openrouter/openrouter
+                                  (fn [_] (self.core/completion-safe-eduction
+                                           (chat-completions/chat-completions->aisdk-chunks-xf) events))]
+        (is (=? {:error-code "structured-output-incomplete", :finish-reason "length"}
+                (ex-data (structured-call-error))))))))
+
 (deftest call-llm-structured-draft-json-before-unclosed-block-test
   (llm.tu/with-default-connections
     (testing "a closed JSON block is used when an unclosed block after it was cut off by a length stop"

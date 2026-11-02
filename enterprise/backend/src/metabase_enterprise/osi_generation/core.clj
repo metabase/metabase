@@ -16,17 +16,16 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [java-time.api :as t]
    [metabase-enterprise.osi-generation.candidates :as candidates]
+   [metabase-enterprise.osi-generation.db :as db]
    [metabase-enterprise.osi-generation.generate :as generate]
    [metabase-enterprise.osi-generation.metrics :as metrics]
    [metabase-enterprise.osi-generation.settings :as settings]
    [metabase-enterprise.osi-generation.throttle :as throttle]
    [metabase-enterprise.search.semantic.embedding :as embedding]
-   [metabase.app-db.core :as app-db]
+   [metabase.premium-features.core :as premium-features]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.spec :as spec]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -74,26 +73,13 @@
   leaves the row a candidate for the next run. `basis` is not rewritten: the stored and fresh values
   are equal by definition when the diff is nil."
   [{:keys [entity_type entity_local_id invalidated_at]}]
-  (t2/update! :model/OsiAiContext
-              {:entity_type entity_type, :entity_local_id entity_local_id}
-              {:basis_invalidated_at invalidated_at}))
+  (db/update-context! {:entity_type entity_type, :entity_local_id entity_local_id}
+                      {:basis_invalidated_at invalidated_at}))
 
 (defn- insert-new!
   "Insert a new generated row, returning `:generated` for this writer or `:skipped` after a race."
   [entity-type entity-local-id stamp]
-  ;; The savepoint keeps a duplicate-key race from aborting an outer PostgreSQL transaction;
-  ;; `with-conflict-retry` then rechecks existence once. Returning from the insert branch is an
-  ;; explicit win—no timestamp round-trip comparison across database precisions.
-  (app-db/with-conflict-retry
-    (if (t2/exists? :model/OsiAiContext
-                    :entity_type entity-type :entity_local_id entity-local-id)
-      :skipped
-      (do
-        (t2/with-transaction [_conn]
-          (t2/insert! :model/OsiAiContext (merge stamp
-                                                 {:entity_type entity-type
-                                                  :entity_local_id entity-local-id})))
-        :generated))))
+  (db/insert-context-if-absent! entity-type entity-local-id stamp))
 
 (defn- source-basis-current?
   "Whether the source entity still projects to the basis captured before the LLM call. A missing source
@@ -132,14 +118,13 @@
       ;; while retaining `updated_at`. Generated content then changes ownership to :metabot via `stamp`.
       (if (and (or (= :metabot (:data_source existing-context))
                    (and (= :human (:data_source existing-context)) rewrite-requested?))
-               (pos? (t2/update! :model/OsiAiContext
-                                 (cond-> {:entity_type     (:entity_type existing-context)
-                                          :entity_local_id (:entity_local_id existing-context)
-                                          :updated_at      (:updated_at existing-context)
-                                          :data_source     (:data_source existing-context)}
-                                   (= :human (:data_source existing-context))
-                                   (assoc :rewrite_requested_at (:rewrite_requested_at existing-context)))
-                                 stamp)))
+               (pos? (db/update-context! (cond-> {:entity_type     (:entity_type existing-context)
+                                                  :entity_local_id (:entity_local_id existing-context)
+                                                  :updated_at      (:updated_at existing-context)
+                                                  :data_source     (:data_source existing-context)}
+                                           (= :human (:data_source existing-context))
+                                           (assoc :rewrite_requested_at (:rewrite_requested_at existing-context)))
+                                         stamp)))
         :generated
         :skipped)
 

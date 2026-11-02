@@ -100,11 +100,13 @@
           ;; Once a provisional tool starts, buffer the ordered suffix. Successful tool_use releases
           ;; it intact; any other finish drops only tool chunks and releases later text/reasoning in order.
           pending-chunks (volatile! [])
+          discarded-arguments? (volatile! false)
           usage-part   (fn []
                          (cond-> {:type  :usage
                                   :usage (claude-usage->aisdk-usage @last-usage)
                                   :id    @message-id
                                   :model @model-name}
+                           @discarded-arguments? (assoc ::core/discarded-tool-arguments? true)
                            @stop-reason
                            (assoc :finish-reason
                                   (core/stop-reason->finish-reason stop-reasons @stop-reason)
@@ -143,6 +145,11 @@
                                                @current-type (close! result)
                                                :else         result)
                                  successful? (and successful? (not open-tool?))
+                                 _ (when-not successful?
+                                     (when (some (fn [[tool? chunk]]
+                                                   (and tool? (not-empty (:inputTextDelta chunk))))
+                                                 @pending-chunks)
+                                       (vreset! discarded-arguments? true)))
                                  result      (u/reduce-preserving-reduced
                                               (fn [result [tool-chunk? chunk]]
                                                 (if (or successful? (not tool-chunk?))
