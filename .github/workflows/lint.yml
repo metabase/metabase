@@ -88,9 +88,9 @@ jobs:
           if: needs.files-changed.outputs.workflows == 'true'
           run: ${{ steps.download.outputs.executable }} --color --verbose ${{ needs.files-changed.outputs.workflows_files }}
 
-        - name: Lint create-backport scripts
+        - name: Lint CI shell scripts
           if: needs.files-changed.outputs.ci_scripts == 'true'
-          run: shellcheck .github/actions/create-backport/{kondo-ratchets,create-backport-test}.sh
+          run: find .github/actions .github/scripts -type f -name '*.sh' -exec shellcheck {} +
 
         - name: Check every workflow job sets a timeout
           if: needs.files-changed.outputs.workflows == 'true'
