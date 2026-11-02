@@ -40,12 +40,22 @@ export function FilterPillParts({
       >
         {columnLabel}
       </button>
-      <button
-        className={`${S.segment} ${S.operatorSegment}`}
-        onClick={handleClick("operator")}
-      >
-        {getPillOperatorLabel(operator)}
-      </button>
+      {!operator.hasNoPillOperator && (
+        <button
+          className={`${S.segment} ${S.operatorSegment}`}
+          onClick={handleClick("operator")}
+        >
+          {getPillOperatorLabel(operator)}
+        </button>
+      )}
+      {operator.pillValueLabel != null && (
+        <button
+          className={`${S.segment} ${S.valuesSegment}`}
+          onClick={handleClick("operator")}
+        >
+          <span className={S.value}>{operator.pillValueLabel}</span>
+        </button>
+      )}
       {values.length > 0 && (
         <button
           className={`${S.segment} ${S.valuesSegment}`}

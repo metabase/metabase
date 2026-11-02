@@ -200,6 +200,18 @@
   border-top: 1px solid var(--mb-color-border-neutral);
 }
 
+.selectedOption,
+.selectedOption[data-combobox-selected] {
+  background-color: var(--mb-color-background_surface-brand-strong);
+  color: var(--mb-color-text-primary-inverse);
+}
+
+/* The list has a padding of `md`, so the line spans the whole width. */
+.groupDivider {
+  margin: var(--mantine-spacing-sm) calc(-1 * var(--mantine-spacing-md));
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
 .sectionToggle {
   display: flex;
   align-items: center;

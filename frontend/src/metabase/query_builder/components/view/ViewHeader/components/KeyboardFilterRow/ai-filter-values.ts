@@ -56,6 +56,7 @@ export function useAiFilterValues({
       column == null ||
       operator == null ||
       operator.valueKind === "none" ||
+      operator.valueKind === "date-picker" ||
       state.status === "loading"
     ) {
       return;

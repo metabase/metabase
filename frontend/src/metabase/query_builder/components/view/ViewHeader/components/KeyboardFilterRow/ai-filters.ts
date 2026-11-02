@@ -138,8 +138,8 @@ function getSpecificOperator(
 }
 
 /**
- * Prototype: the inline pill has no date operators, so the AI gets its own
- * date operators, like "last 30 days".
+ * Prototype: the date operators of the inline pill are shortcuts and pickers,
+ * so the AI gets its own date operators, like "last 30 days".
  */
 function getDateOperators(column: Lib.ColumnMetadata): AiOperator[] {
   return [
@@ -186,17 +186,23 @@ function getDateOperators(column: Lib.ColumnMetadata): AiOperator[] {
   ];
 }
 
-function toAiOperator(operator: DraftOperator): AiOperator {
-  return {
-    key: operator.key,
-    label: operator.label,
-    valueKind: operator.valueKind,
-    options: operator.options?.map((option) => option.value),
-    getFilterClause: (values) =>
-      values.every((value) => isValidValue(operator, value))
-        ? getDraftFilterClause({ operator, values })
-        : undefined,
-  };
+function toAiOperator(operator: DraftOperator): AiOperator[] {
+  // The AI has no date pickers. Date columns get their own AI operators.
+  if (operator.valueKind === "date-picker") {
+    return [];
+  }
+  return [
+    {
+      key: operator.key,
+      label: operator.label,
+      valueKind: operator.valueKind,
+      options: operator.options?.map((option) => option.value),
+      getFilterClause: (values) =>
+        values.every((value) => isValidValue(operator, value))
+          ? getDraftFilterClause({ operator, values })
+          : undefined,
+    },
+  ];
 }
 
 /** The columns that the AI can filter on, with the operators of each. */
@@ -205,8 +211,8 @@ function getAiColumns(query: Lib.Query, stageIndex: number): AiColumn[] {
     group.columns.flatMap(({ column, label, kind, operators }): AiColumn[] => {
       const fieldId = Lib.fieldValuesSearchInfo(query, column).fieldId;
       const base = { table: group.label, name: label, fieldId };
-      if (operators != null && kind !== "other") {
-        return [{ ...base, kind, operators: operators.map(toAiOperator) }];
+      if (operators != null && kind !== "other" && kind !== "date") {
+        return [{ ...base, kind, operators: operators.flatMap(toAiOperator) }];
       }
       if (Lib.isDateOrDateTime(column)) {
         return [{ ...base, kind: "date", operators: getDateOperators(column) }];

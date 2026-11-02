@@ -1,7 +1,16 @@
 import { t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
+import {
+  SHORTCUT_OPTION_GROUPS,
+  TYPE_OPTIONS,
+} from "metabase/querying/common/components/DatePicker/DateShortcutPicker/constants";
 import { getCountryName } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/countries";
 import { getStateName } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/states";
+import type {
+  DatePickerValue,
+  RelativeDatePickerValue,
+} from "metabase/querying/common/types";
 import { getFilterClause as getBooleanFilterClause } from "metabase/querying/filters/components/FilterPicker/BooleanFilterPicker/utils";
 import { OPERATORS as COORDINATE_OPERATORS } from "metabase/querying/filters/components/FilterPicker/CoordinateFilterPicker/constants";
 import {
@@ -18,6 +27,11 @@ import {
   getFilterClause as getStringFilterClause,
   getAvailableOptions as getStringOperatorOptions,
 } from "metabase/querying/filters/components/FilterPicker/StringFilterPicker/utils";
+import {
+  getDateFilterClause,
+  getDateFilterDisplayName,
+  getDatePickerValue,
+} from "metabase/querying/filters/utils/dates";
 import { formatNumber } from "metabase/utils/formatting";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
@@ -74,8 +88,11 @@ function getColumnKind(column: Lib.ColumnMetadata): ColumnKind {
   if (Lib.isBoolean(column)) {
     return "boolean";
   }
-  if (Lib.isTime(column) || Lib.isDateOrDateTime(column)) {
+  if (Lib.isTime(column)) {
     return "other";
+  }
+  if (Lib.isDateOrDateTime(column)) {
+    return "date";
   }
   if (Lib.isNumeric(column)) {
     return "number";
@@ -101,37 +118,154 @@ export function changeDraftColumn(
     : { column: newColumn, values: [] };
 }
 
+/**
+ * Prototype: a boolean column has few values, so the values are the operators.
+ * The user picks "true", "false", "empty" or "not empty", and the filter is
+ * complete.
+ */
 function getBooleanOperators(column: Lib.ColumnMetadata): DraftOperator[] {
+  const getOperator = (
+    key: "true" | "false" | "is-null" | "not-null",
+    label: string,
+    isValue = false,
+  ): DraftOperator => ({
+    key,
+    label,
+    pillValueLabel: isValue ? label : undefined,
+    group: isValue ? 0 : 1,
+    valueKind: "none",
+    isNumeric: false,
+    getFilterClause: () => getBooleanFilterClause(column, key),
+  });
   return [
-    {
-      key: "=",
-      label: t`is`,
-      valueKind: "single",
-      isNumeric: false,
-      options: [
-        { value: "true", label: t`True` },
-        { value: "false", label: t`False` },
-      ],
-      getFilterClause: ([value]) =>
-        value === "true" || value === "false"
-          ? getBooleanFilterClause(column, value)
-          : undefined,
-    },
-    {
-      key: "is-null",
-      label: t`is empty`,
-      valueKind: "none",
-      isNumeric: false,
-      getFilterClause: () => getBooleanFilterClause(column, "is-null"),
-    },
-    {
-      key: "not-null",
-      label: t`is not empty`,
-      valueKind: "none",
-      isNumeric: false,
-      getFilterClause: () => getBooleanFilterClause(column, "not-null"),
-    },
+    getOperator("true", t`true`, true),
+    getOperator("false", t`false`, true),
+    getOperator("is-null", t`empty`),
+    getOperator("not-null", t`not empty`),
   ];
+}
+
+/**
+ * Prototype: the operators of a date column are the shortcuts of the date
+ * picker, like "previous 30 days", and the pickers for the other filters, like
+ * "Fixed date range…". A shortcut is a complete filter. A picker opens in the
+ * pill, and its value is the `DatePickerValue` as JSON.
+ */
+function getDateOperators(column: Lib.ColumnMetadata): DraftOperator[] {
+  const shortcutOperators = SHORTCUT_OPTION_GROUPS.flatMap((options, group) =>
+    options.map((option): DraftOperator => {
+      const label = option.label.toLowerCase();
+      return {
+        key: option.shortcut,
+        label,
+        pillValueLabel: label,
+        hasNoPillOperator: true,
+        group,
+        valueKind: "none",
+        isNumeric: false,
+        getFilterClause: () => getDateFilterClause(column, option.value),
+      };
+    }),
+  );
+  const pickerOperators = TYPE_OPTIONS.map(
+    ({ type, label }): DraftOperator => ({
+      key: type,
+      label,
+      hasNoPillOperator: true,
+      group: SHORTCUT_OPTION_GROUPS.length,
+      valueKind: "date-picker",
+      datePickerType:
+        type === "specific" || type === "relative" ? type : "exclude",
+      isNumeric: false,
+      formatValue: (json) => {
+        const value = parseDatePickerValue(json);
+        return value != null ? formatDatePickerValue(value) : null;
+      },
+      getFilterClause: ([json]) => {
+        const value = parseDatePickerValue(json);
+        return value?.type === type
+          ? getDateFilterClause(column, value)
+          : undefined;
+      },
+    }),
+  );
+  return [...shortcutOperators, ...pickerOperators];
+}
+
+const LOCAL_DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
+
+/**
+ * The value of a date picker as a draft value. The dates of a specific date
+ * filter are local dates, so they are stored as local date-times: JSON would
+ * store them in UTC, and a date before UTC midnight would become the day
+ * before.
+ */
+export function stringifyDatePickerValue(value: DatePickerValue) {
+  return JSON.stringify(
+    value.type === "specific"
+      ? {
+          ...value,
+          values: value.values.map((date) =>
+            dayjs(date).format(LOCAL_DATE_TIME_FORMAT),
+          ),
+        }
+      : value,
+  );
+}
+
+export function parseDatePickerValue(
+  json: string | undefined,
+): DatePickerValue | undefined {
+  if (json == null) {
+    return undefined;
+  }
+  try {
+    const value: DatePickerValue = JSON.parse(json);
+    return value.type === "specific"
+      ? {
+          ...value,
+          values: value.values.map((date) => dayjs(date).toDate()),
+        }
+      : value;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The value of a date filter in the pill, in lower case after the column, like
+ * "before Jan 20". A range starts with a date, so it keeps its case.
+ */
+function formatDatePickerValue(value: DatePickerValue) {
+  const text = getDateFilterDisplayName(value, { withPrefix: true });
+  return value.type === "specific" && value.operator === "between"
+    ? text
+    : text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+/** The shortcut of the date picker that makes the same filter, if any. */
+function getDateShortcutKey(value: RelativeDatePickerValue) {
+  const option = SHORTCUT_OPTION_GROUPS.flat().find(
+    (option) =>
+      option.value.value === value.value &&
+      option.value.unit === value.unit &&
+      value.offsetValue == null &&
+      !value.options?.includeCurrent,
+  );
+  return option?.shortcut;
+}
+
+/** The date column of a date filter that the date picker can edit. */
+function getDateFilterColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  filter: Lib.FilterClause,
+) {
+  return (
+    Lib.specificDateFilterParts(query, stageIndex, filter)?.column ??
+    Lib.relativeDateFilterParts(query, stageIndex, filter)?.column ??
+    Lib.excludeDateFilterParts(query, stageIndex, filter)?.column
+  );
 }
 
 function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
@@ -139,8 +273,12 @@ function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
     return getBooleanOperators(column);
   }
 
-  if (Lib.isTime(column) || Lib.isDateOrDateTime(column)) {
+  if (Lib.isTime(column)) {
     return undefined;
+  }
+
+  if (Lib.isDateOrDateTime(column)) {
+    return getDateOperators(column);
   }
 
   if (Lib.isNumeric(column)) {
@@ -246,6 +384,8 @@ export function getMaxValueCount(valueKind: ValueKind): number {
       return 2;
     case "multi":
       return Infinity;
+    case "date-picker":
+      return 1;
   }
 }
 
@@ -260,13 +400,18 @@ export function getDraftFilterClause({
   const isComplete =
     operator.valueKind === "range"
       ? valueCount === 2
-      : operator.valueKind === "none"
-        ? valueCount === 0
-        : valueCount > 0;
+      : operator.valueKind === "date-picker"
+        ? valueCount === 1
+        : operator.valueKind === "none"
+          ? valueCount === 0
+          : valueCount > 0;
   return isComplete ? operator.getFilterClause(values) : undefined;
 }
 
 export function isValidValue(operator: DraftOperator, value: string) {
+  if (operator.valueKind === "date-picker") {
+    return parseDatePickerValue(value)?.type === operator.key;
+  }
   if (operator.options != null) {
     return operator.options.some((option) => option.value === value);
   }
@@ -284,6 +429,18 @@ export function getDraftStateFromFilter(
   stageIndex: number,
   filter: Lib.FilterClause,
 ): DraftState | undefined {
+  const dateColumn = getDateFilterColumn(query, stageIndex, filter);
+  const dateValue = getDatePickerValue(query, stageIndex, filter);
+  if (dateColumn != null && dateValue != null) {
+    const shortcutKey =
+      dateValue.type === "relative" ? getDateShortcutKey(dateValue) : undefined;
+    return shortcutKey != null
+      ? getDraftState(query, stageIndex, dateColumn, shortcutKey, [])
+      : getDraftState(query, stageIndex, dateColumn, dateValue.type, [
+          stringifyDatePickerValue(dateValue),
+        ]);
+  }
+
   const coordinateParts = Lib.coordinateFilterParts(query, stageIndex, filter);
   if (coordinateParts != null) {
     return coordinateParts.longitudeColumn == null
@@ -319,14 +476,16 @@ export function getDraftStateFromFilter(
     );
   }
 
+  // "Is Bot = true" is the operator "true" with no values.
   const booleanParts = Lib.booleanFilterParts(query, stageIndex, filter);
   if (booleanParts != null) {
+    const [value] = booleanParts.values;
     return getDraftState(
       query,
       stageIndex,
       booleanParts.column,
-      booleanParts.operator,
-      booleanParts.values.map(String),
+      booleanParts.operator === "=" ? String(value) : booleanParts.operator,
+      [],
     );
   }
 
@@ -364,6 +523,12 @@ export function formatDraftValue(operator: DraftOperator, value: string) {
 
 /** The operator as the pill shows it in a sentence, like "is between". */
 export function getPillOperatorLabel(operator: DraftOperator) {
+  if (operator.hasNoPillOperator) {
+    return "";
+  }
+  if (operator.pillValueLabel != null) {
+    return t`is`;
+  }
   const label = operator.label.toLowerCase();
   if (label === "not empty") {
     return t`is not empty`;

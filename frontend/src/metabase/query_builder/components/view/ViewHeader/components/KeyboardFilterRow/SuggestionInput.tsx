@@ -238,6 +238,9 @@ export function SuggestionInput({
       <Combobox.Option
         key={option.value}
         value={option.value}
+        className={cx({
+          [S.selectedOption]: !isMultiSelect && option.isChecked,
+        })}
         active={option.isChecked}
         disabled={option.disabled}
       >
@@ -348,6 +351,9 @@ export function SuggestionInput({
                           onToggle={toggleSection}
                         />
                       )}
+                    {group.hasDivider && groupIndex > 0 && (
+                      <div className={S.groupDivider} />
+                    )}
                     {!isCollapsed(group.section) && (
                       <Combobox.Group label={group.label}>
                         <div

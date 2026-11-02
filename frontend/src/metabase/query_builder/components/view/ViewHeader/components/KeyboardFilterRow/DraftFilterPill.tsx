@@ -11,6 +11,14 @@ import {
   useSearchFieldValuesQuery,
 } from "metabase/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { ExcludeDatePicker } from "metabase/querying/common/components/DatePicker/ExcludeDatePicker";
+import { RelativeDatePicker } from "metabase/querying/common/components/DatePicker/RelativeDatePicker";
+import { SpecificDatePicker } from "metabase/querying/common/components/DatePicker/SpecificDatePicker";
+import {
+  DATE_PICKER_DIRECTIONS,
+  DATE_PICKER_OPERATORS,
+} from "metabase/querying/common/constants";
+import type { DatePickerValue } from "metabase/querying/common/types";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import {
   canListFieldValues,
@@ -24,6 +32,7 @@ import {
   useNumberColumnStats,
   useValueCounts,
 } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberColumnStats";
+import { getDatePickerUnits } from "metabase/querying/filters/utils/dates";
 import { Icon, Loader, Popover, Stack, Tooltip } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
@@ -48,7 +57,12 @@ import {
   useColumnSuggestions,
 } from "./column-picker";
 import { useSemanticColumnMatches } from "./semantic-column-search";
-import type { DraftOperator, DraftState, SuggestionGroup } from "./types";
+import type {
+  DraftColumn,
+  DraftOperator,
+  DraftState,
+  SuggestionGroup,
+} from "./types";
 import {
   type ColumnGroup,
   changeDraftColumn,
@@ -59,6 +73,8 @@ import {
   getOperatorAliases,
   getPillOperatorLabel,
   isValidValue,
+  parseDatePickerValue,
+  stringifyDatePickerValue,
 } from "./utils";
 import {
   SELECT_ALL_VALUE,
@@ -528,26 +544,31 @@ export function DraftFilterPill({
         ) : (
           columnSegment
         )}
-        {step !== "operator" && operator != null && (
+        {step !== "operator" &&
+          operator != null &&
+          !operator.hasNoPillOperator && (
+            <button
+              className={`${S.segment} ${S.operatorSegment}`}
+              onClick={() => editPart("operator")}
+            >
+              {getPillOperatorLabel(operator)}
+            </button>
+          )}
+        {step !== "operator" && operator?.pillValueLabel != null && (
           <button
-            className={`${S.segment} ${S.operatorSegment}`}
+            className={`${S.segment} ${S.valuesSegment}`}
             onClick={() => editPart("operator")}
           >
-            {getPillOperatorLabel(operator)}
+            <span className={S.value}>{operator.pillValueLabel}</span>
           </button>
         )}
         {step === "operator" && column?.operators != null && (
           <SuggestionInput
             inputRef={inputRef}
-            groups={[
-              {
-                options: column.operators.map((operator) => ({
-                  value: operator.key,
-                  label: operator.label,
-                  aliases: getOperatorAliases(operator),
-                })),
-              },
-            ]}
+            groups={getOperatorGroups(column, operator)}
+            // The date operators are a long list, and it fits without a
+            // scrollbar.
+            optionsMaxHeight={COLUMN_OPTIONS_MAX_HEIGHT}
             text={text}
             placeholder={operator?.label ?? t`Operator`}
             isFirstOptionHighlighted
@@ -564,7 +585,31 @@ export function DraftFilterPill({
           />
         )}
         {step === "value" &&
+          column != null &&
+          operator?.datePickerType != null && (
+            <DatePickerValueInput
+              query={query}
+              stageIndex={stageIndex}
+              column={column.column}
+              type={operator.datePickerType}
+              value={parseDatePickerValue(values[0])}
+              label={
+                values[0] != null ? formatDraftValue(operator, values[0]) : null
+              }
+              onChange={(value) => {
+                const filter = operator.getFilterClause([
+                  stringifyDatePickerValue(value),
+                ]);
+                if (filter != null) {
+                  onSubmit(filter);
+                }
+              }}
+              onBack={() => editPart("operator")}
+            />
+          )}
+        {step === "value" &&
           operator != null &&
+          operator.valueKind !== "date-picker" &&
           isFixedValueCount(operator) && (
             <FixedValuesInput
               query={query}
@@ -580,6 +625,7 @@ export function DraftFilterPill({
         {step === "value" &&
           column != null &&
           operator != null &&
+          operator.valueKind !== "date-picker" &&
           !isFixedValueCount(operator) && (
             <ValueInput
               inputRef={inputRef}
@@ -1129,6 +1175,78 @@ interface NumberHistogramPopoverProps {
   children: ReactNode;
 }
 
+interface DatePickerValueInputProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
+  type: "specific" | "relative" | "exclude";
+  value: DatePickerValue | undefined;
+  /** The value as the pill shows it, or null for a new filter. */
+  label: string | null;
+  onChange: (value: DatePickerValue) => void;
+  onBack: () => void;
+}
+
+/**
+ * Prototype: a date picker of the filter picker, like the fixed date range
+ * picker, under the pill. Its back button goes back to the list of the date
+ * operators.
+ */
+function DatePickerValueInput({
+  query,
+  stageIndex,
+  column,
+  type,
+  value,
+  label,
+  onChange,
+  onBack,
+}: DatePickerValueInputProps) {
+  const availableUnits = useMemo(
+    () => getDatePickerUnits(query, stageIndex, column),
+    [query, stageIndex, column],
+  );
+  const pickerProps = {
+    availableOperators: DATE_PICKER_OPERATORS,
+    availableUnits,
+    onBack,
+  };
+
+  return (
+    <Popover opened position="bottom-start" withinPortal={false} shadow="md">
+      <Popover.Target>
+        <span className={`${S.segment} ${S.valuesSegment}`}>
+          <span className={S.value}>{label ?? "…"}</span>
+        </span>
+      </Popover.Target>
+      <Popover.Dropdown>
+        {type === "specific" && (
+          <SpecificDatePicker
+            {...pickerProps}
+            value={value?.type === "specific" ? value : undefined}
+            onChange={onChange}
+          />
+        )}
+        {type === "relative" && (
+          <RelativeDatePicker
+            {...pickerProps}
+            availableDirections={DATE_PICKER_DIRECTIONS}
+            value={value?.type === "relative" ? value : undefined}
+            onChange={onChange}
+          />
+        )}
+        {type === "exclude" && (
+          <ExcludeDatePicker
+            {...pickerProps}
+            value={value?.type === "exclude" ? value : undefined}
+            onChange={onChange}
+          />
+        )}
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
 /**
  * Prototype: the histogram and the slider from the filter widgets prototype,
  * under the number inputs. It shows on fast data, and on slow data for a query
@@ -1194,6 +1312,32 @@ function NumberHistogramPopover({
 }
 
 const NO_GROUPS: SuggestionGroup[] = [];
+
+/**
+ * The operators to pick from, with a divider between the groups of the
+ * operators, like the values and the empty checks of a boolean column. The
+ * current operator is checked.
+ */
+function getOperatorGroups(
+  column: DraftColumn,
+  currentOperator: DraftOperator | undefined,
+): SuggestionGroup[] {
+  const groups: SuggestionGroup[] = [];
+  let lastGroup: number | undefined;
+  for (const operator of column.operators ?? []) {
+    if (groups.length === 0 || operator.group !== lastGroup) {
+      groups.push({ hasDivider: groups.length > 0, options: [] });
+      lastGroup = operator.group;
+    }
+    groups[groups.length - 1].options.push({
+      value: operator.key,
+      label: operator.label,
+      aliases: getOperatorAliases(operator),
+      isChecked: operator.key === currentOperator?.key,
+    });
+  }
+  return groups;
+}
 
 function getValuePlaceholder(operator: DraftOperator, values: string[]) {
   if (operator.valueKind === "multi" && values.length > 0) {

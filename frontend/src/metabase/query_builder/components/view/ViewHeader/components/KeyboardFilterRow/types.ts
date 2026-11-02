@@ -30,6 +30,8 @@ export type SuggestionGroup = {
   /** Shown before the section header, like a table or a foreign key icon. */
   sectionIcon?: IconName;
   label?: string;
+  /** A line above the group, between it and the group before. */
+  hasDivider?: boolean;
   /** The text of the input does not filter the options of this group. */
   isUnfiltered?: boolean;
   options: SuggestionOption[];
@@ -40,9 +42,11 @@ export type SuggestionGroup = {
  * - `none`: the operator needs no values, so selecting it applies the filter;
  * - `single`: one value;
  * - `range`: exactly two values, like `between`;
- * - `multi`: one or more values, separated with commas.
+ * - `multi`: one or more values, separated with commas;
+ * - `date-picker`: one value from a date picker, like a fixed date range. The
+ *   value is the `DatePickerValue` as JSON.
  */
-export type ValueKind = "none" | "single" | "range" | "multi";
+export type ValueKind = "none" | "single" | "range" | "multi" | "date-picker";
 
 export type DraftOperator = {
   key: string;
@@ -53,13 +57,27 @@ export type DraftOperator = {
   numberOperator?: Lib.NumberFilterOperator;
   /** The label of a value, like a country name for a country code. */
   formatValue?: (value: string) => string | null;
+  /**
+   * For an operator that is also the value, like "true" of a boolean column:
+   * the pill shows "is" and this label as the value.
+   */
+  pillValueLabel?: string;
+  /** The pill shows no operator, like "Created At previous 30 days". */
+  hasNoPillOperator?: boolean;
+  /**
+   * Operators with different groups are split by a divider in the list, like
+   * the values and the empty checks of a boolean column.
+   */
+  group?: number;
+  /** For `date-picker` operators: the picker to show. */
+  datePickerType?: "specific" | "relative" | "exclude";
   /** The values to pick from, when the column has a fixed set of them. */
   options?: { value: string; label: string }[];
   getFilterClause: (values: string[]) => Lib.ExpressionClause | undefined;
 };
 
 /** Columns of the same kind have the same operators. */
-export type ColumnKind = "boolean" | "number" | "string" | "other";
+export type ColumnKind = "boolean" | "number" | "string" | "date" | "other";
 
 export type DraftColumn = {
   column: Lib.ColumnMetadata;
