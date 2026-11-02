@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+scripts=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+temp=$(cd "$(mktemp -d "${TMPDIR:-/tmp}/i18n-test.XXXXXX")" && pwd -P)
+trap 'chmod -R u+w "$temp"; rm -rf "$temp"' EXIT
+
+export GIT_AUTHOR_NAME=Test GIT_AUTHOR_EMAIL=test@example.com
+export GIT_COMMITTER_NAME=Test GIT_COMMITTER_EMAIL=test@example.com
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+snapshot() {
+  local pin="$1" content="$2"
+  local catalogs="$root/catalogs-$content"
+  mkdir -p "$catalogs" "$remote/$(dirname "$pin")"
+  echo original > "$catalogs/metabase.po"
+  echo "$content" > "$catalogs/fr.po"
+  (cd "$catalogs" && COPYFILE_DISABLE=1 tar -czf "$remote/$pin.tar.gz" -- *.po)
+}
+
+setup() {
+  root="$temp/$1"
+  project="$root/metabase"
+  remote="$root/remote"
+  pin="$project/locales/translations.pin"
+  first="latest/$(printf '1%.0s' {1..40})"
+  second="latest/$(printf '2%.0s' {1..40})"
+  export METABASE_I18N_URL="file://$remote"
+  mkdir -p "$project/locales" "$project/bin" "$project/stubs"
+  cp -R "$scripts" "$project/bin/i18n"
+  printf '#!/usr/bin/env bash\nexit 1\n' > "$project/stubs/aws"
+  chmod +x "$project/stubs/aws"
+  export PATH="$project/stubs:$PATH"
+  snapshot "$first" original
+  snapshot "$second" newer
+  echo "$first" > "$pin"
+  cd "$project"
+  git init --quiet
+  git commit --quiet --allow-empty -m initial
+}
+
+test_invalid_pins_fail() {
+  setup invalid
+  for bad in ../escape latest/abc "v66/$(printf '0%.0s' {1..40})"; do
+    echo "$bad" > "$pin"
+    ! bin/i18n/fetch-translations > /dev/null 2>&1 || fail "accepted $bad"
+  done
+  [ -z "$(ls locales/metabase-i18n 2>/dev/null)" ] || fail "cached a bad pin"
+}
+
+test_cache_reuse() {
+  setup offline
+  catalog=$(bin/i18n/fetch-translations)
+  [ "$catalog" = "$project/locales/metabase-i18n/${first/\//-}" ] || fail "unexpected catalog $catalog"
+  [ "$(cat "$catalog/fr.po")" = original ] || fail "wrong snapshot"
+  METABASE_I18N_URL="file://$root/unavailable" bin/i18n/fetch-translations > /dev/null || fail "cache not reused"
+}
+
+test_pin_change_replaces_snapshot() {
+  setup snapshots
+  first_catalog=$(bin/i18n/fetch-translations)
+  echo "$second" > "$pin"
+  second_catalog=$(bin/i18n/fetch-translations)
+  [ ! -e "$first_catalog" ] || fail "old snapshot kept"
+  [ "$(cat "$second_catalog/fr.po")" = newer ] || fail "second snapshot wrong"
+}
+
+test_failed_upload_keeps_pin() {
+  setup failed-upload
+  checkout=$(bin/i18n/prepare-translation-update)
+  echo updated > "$checkout/locales/fr.po"
+  ! bin/i18n/publish-translations "$checkout" > /dev/null 2>&1 || fail "publish succeeded"
+  [ "$(cat "$pin")" = "$first" ] || fail "pin advanced"
+}
+
+test_unchanged_skips_upload() {
+  setup unchanged
+  checkout=$(bin/i18n/prepare-translation-update)
+  bin/i18n/publish-translations "$checkout" > /dev/null 2>&1 || fail "publish failed"
+  [ "$(cat "$pin")" = "$first" ] || fail "pin changed"
+}
+
+test_stale_update_is_rejected() {
+  setup stale
+  checkout=$(bin/i18n/prepare-translation-update)
+  echo updated > "$checkout/locales/fr.po"
+  echo "$second" > "$pin"
+  ! bin/i18n/publish-translations "$checkout" > /dev/null 2>&1 || fail "stale update published"
+  [ "$(cat "$pin")" = "$second" ] || fail "pin changed"
+}
+
+for test in $(declare -F | awk '$3 ~ /^test_/ { print $3 }'); do
+  ( "$test" ) || exit 1
+  echo "ok $test"
+done
