@@ -122,8 +122,9 @@
                        (project-columns columns))}))
       (catch Throwable e
         (log/warnf e "Failed to run referenced %s %s" entity-type id)
-        {:status "failed"
-         :error  (or (ex-message e) (tru "Failed to run referenced query"))}))))
+        (cond-> {:status "failed"
+                 :error  (or (ex-message e) (tru "Failed to run referenced query"))}
+          (= 404 (:status-code (ex-data e))) (assoc :error_type "not-found"))))))
 
 (defn- dedupe-specs
   "One spec per entity. Results are keyed by entity, so a client naming the same one twice would otherwise run it
