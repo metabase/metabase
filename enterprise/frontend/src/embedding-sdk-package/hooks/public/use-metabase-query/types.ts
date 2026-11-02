@@ -16,7 +16,6 @@ import type {
   InferSchema,
   MetricSchema,
   QueryData,
-  QuestionSchema,
   SchemaColumn,
   SchemaJavaScriptType,
   SchemaValue,
@@ -447,6 +446,12 @@ type StageClauses<TDimension, TAggregation, TFilter> = {
 type TableQueryBase<TTable> = {
   source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
   fields?: readonly FieldReference<TTable>[];
+  /**
+   * The entity ID of this query's question in the app's collection. A
+   * production build runs that question, which holds the query's clauses; the
+   * dev preview runs the table query itself.
+   */
+  entityId?: string;
 } & StageClauses<
   FieldReference<TTable>,
   AnyAggregation<TTable>,
@@ -532,12 +537,21 @@ type RequireDynamicOrderByNames<TEntity, TQuery, TDynamic> =
       >;
 
 /**
- * A saved question run as is, typed by its result columns. A data app's typed
- * schema defines each of its questions this way. Its static clauses are the
- * question's own.
+ * The saved question a data app built against an older SDK runs, by its
+ * entity ID.
+ *
+ * @deprecated A data app defines a query on a table of its schema, with `entityId`.
  */
-type QuestionQuery = {
-  source: QuestionSchema;
+export type LegacyQuestionSource = { type: "card"; entityId: string };
+
+/**
+ * A query of a data app built against an older SDK, which runs the saved
+ * question its `source` names.
+ *
+ * @deprecated A data app defines a query on a table of its schema, with `entityId`.
+ */
+type LegacyQuestionQuery = {
+  source: LegacyQuestionSource;
   enabled?: boolean;
   fields?: never;
   filters?: never;
@@ -549,7 +563,7 @@ type QuestionQuery = {
 
 export type MetabaseQueryOptions<TEntity = unknown, _TSchema = unknown> =
   | TableQuery<TEntity>
-  | QuestionQuery;
+  | LegacyQuestionQuery;
 
 type EmptyRow = Record<never, never>;
 
