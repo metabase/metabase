@@ -11,6 +11,7 @@ import {
 } from "embedding-sdk-package/constants/error-messages";
 import { useApplicationName } from "embedding-sdk-package/hooks/public/use-application-name";
 import { useCurrentUser } from "embedding-sdk-package/hooks/public/use-current-user";
+import { useDateFormatter } from "embedding-sdk-package/hooks/public/use-date-formatter";
 import { useMetabaseAuthStatus } from "embedding-sdk-package/hooks/public/use-metabase-auth-status";
 import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
 import { defineQuery } from "embedding-sdk-package/hooks/public/use-metabase-query/define-query";
@@ -46,6 +47,12 @@ function OrdersQueryError() {
   const { error } = useMetabaseQuery(ORDERS_QUERY);
 
   return <p>{error instanceof Error ? error.message : "no error"}</p>;
+}
+
+function DateRangeLabel() {
+  const { formatDateRange } = useDateFormatter();
+
+  return <p>{formatDateRange(["2024-01-01", "2024-01-31"])}</p>;
 }
 
 function NewDashboardFlow() {
@@ -131,6 +138,14 @@ describe("MetabaseTestProvider", () => {
 
     expect(
       await screen.findByText("Acme Analytics loading Ada"),
+    ).toBeInTheDocument();
+  });
+
+  it("joins date range for date formatter hook", async () => {
+    setup({ children: <DateRangeLabel /> });
+
+    expect(
+      await screen.findByText("2024-01-01 - 2024-01-31"),
     ).toBeInTheDocument();
   });
 

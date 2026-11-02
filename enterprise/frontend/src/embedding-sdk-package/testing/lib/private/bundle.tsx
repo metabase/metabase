@@ -123,7 +123,7 @@ export function createMockSdkBundle({
     useInitData: () => throwNoMock("useInitData"),
     useLogVersionInfo: () => throwNoMock("useLogVersionInfo"),
     validateFunctionSchema: () => throwNoMock("validateFunctionSchema"),
-    formatDate: () => throwNoMock("formatDate"),
-    formatDateRange: () => throwNoMock("formatDateRange"),
+    formatDate: (value) => value ?? "",
+    formatDateRange: (value) => value?.join(" - ") ?? "",
   };
 }
