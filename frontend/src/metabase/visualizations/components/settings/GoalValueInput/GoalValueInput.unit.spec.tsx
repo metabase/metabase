@@ -848,7 +848,7 @@ describe("GoalValueInput", () => {
     expect(screen.queryByText(/Other question/)).not.toBeInTheDocument();
   });
 
-  it("searches questions and metrics, but not models, when the instance has no measures", async () => {
+  it("searches questions, but not models, when the instance has no measures or metrics", async () => {
     setupEntityPicker([
       createMockSearchResult({ id: 15, model: "card", name: "Other question" }),
     ]);
@@ -863,7 +863,7 @@ describe("GoalValueInput", () => {
     const url = new URL(
       checkNotNull(fetchMock.callHistory.lastCall("path:/api/search")).url,
     );
-    expect(url.searchParams.getAll("models")).toEqual(["card", "metric"]);
+    expect(url.searchParams.getAll("models")).toEqual(["card"]);
     expect(url.searchParams.get("limit")).toBe("5");
     expect(url.searchParams.has("ids")).toBe(false);
   });
