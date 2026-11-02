@@ -24,7 +24,7 @@ export function MetadataRow({ icon, children, muted }: MetadataRowProps) {
       >
         <Icon name={icon} size={12} c={color} />
       </Center>
-      <Text component="span" c={color}>
+      <Text component="span" c={color} className={S.text}>
         {children}
       </Text>
     </Group>

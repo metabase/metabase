@@ -1,5 +1,7 @@
+import cx from "classnames";
 import { t } from "ttag";
 
+import { CopyButton } from "metabase/common/components/CopyButton";
 import { Markdown } from "metabase/common/components/Markdown";
 import { AboutSidebar } from "metabase/common/data-studio/components/AboutSidebar";
 import { AboutHeader } from "metabase/common/data-studio/components/AboutSidebar/AboutHeader";
@@ -7,12 +9,17 @@ import { AboutSubSection } from "metabase/common/data-studio/components/AboutSid
 import { MetadataCard } from "metabase/common/data-studio/components/AboutSidebar/MetadataCard";
 import { MetadataRow } from "metabase/common/data-studio/components/AboutSidebar/MetadataRow";
 import { MetadataRowLink } from "metabase/common/data-studio/components/AboutSidebar/MetadataRowLink";
+import CS from "metabase/css/core/index.css";
+import { useSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { useGetDataAppGroupsQuery } from "metabase-enterprise/api";
+import {
+  useGetDataAppGroupsQuery,
+  useGetDataAppRepoStatusQuery,
+} from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
-import { isDataAppOpenable } from "../../../utils";
+import { getDataAppSourceLocation, isDataAppOpenable } from "../../../utils";
 
 type DataAppAboutSidebarProps = {
   app: DataApp;
@@ -49,6 +56,7 @@ export function DataAppAboutSidebar({ app }: DataAppAboutSidebarProps) {
           </MetadataRow>
         </MetadataCard>
       </AboutSubSection>
+      <DataAppRepositorySection slug={app.name} />
       <AboutSubSection title={t`Group access`} mt="xxl">
         <MetadataCard>
           {groups.length > 0 ? (
@@ -69,5 +77,66 @@ export function DataAppAboutSidebar({ app }: DataAppAboutSidebarProps) {
         </MetadataCard>
       </AboutSubSection>
     </AboutSidebar>
+  );
+}
+
+type DataAppRepositorySectionProps = {
+  slug: string;
+};
+
+function DataAppRepositorySection({ slug }: DataAppRepositorySectionProps) {
+  const { data: repoStatus, isLoading } = useGetDataAppRepoStatusQuery();
+
+  if (isLoading) {
+    return null;
+  }
+
+  return (
+    <AboutSubSection title={t`Repository`} mt="xxl">
+      <MetadataCard>
+        {repoStatus === undefined ? (
+          <MetadataRow icon="warning" muted>
+            {t`Couldn't load the repository`}
+          </MetadataRow>
+        ) : (
+          <DataAppRepositoryRow repoUrl={repoStatus.url} slug={slug} />
+        )}
+      </MetadataCard>
+    </AboutSubSection>
+  );
+}
+
+type DataAppRepositoryRowProps = {
+  repoUrl: string | null;
+  slug: string;
+};
+
+function DataAppRepositoryRow({ repoUrl, slug }: DataAppRepositoryRowProps) {
+  const branch = useSetting("remote-sync-branch");
+
+  if (repoUrl === null) {
+    return (
+      <MetadataRow icon="git_branch" muted>
+        {t`No repository connected`}
+      </MetadataRow>
+    );
+  }
+
+  const location = getDataAppSourceLocation({ repoUrl, branch, slug });
+
+  return (
+    <MetadataRow icon="git_branch">
+      {location.type === "link" ? (
+        <MetadataRowLink href={location.url}>{location.url}</MetadataRowLink>
+      ) : (
+        <>
+          {location.text}{" "}
+          <CopyButton
+            value={location.text}
+            className={cx(CS.textBrandHover, CS.verticalAlignMiddle)}
+          />
+        </>
+      )}
+    </MetadataRow>
   );
 }
