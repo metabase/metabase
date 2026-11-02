@@ -332,7 +332,7 @@ jobs:
         TOKEN_1: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN_2 }}
         HTTP_PATH_1: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH_2 }}
       run: | # sh
-        shard=1  # TEMP: shard 0's workspace has an auth issue unrelated to this PR; pin to shard 1 for WIF diagnosis. REVERT BEFORE MERGE.
+        shard=$(( GITHUB_RUN_NUMBER % TOTAL_SHARDS ))
         echo "Using Databricks workspace shard $(( shard + 1 )) of $TOTAL_SHARDS"
         for name in HOST HTTP_PATH TOKEN; do
           var="${name}_${shard}"
@@ -353,7 +353,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-          :fail-fast? false
+          :fail-fast? true
         runner-index: ${{ matrix.runner-index }}
         runner-count: ${{ strategy.job-total }}
         jvms-per-runner: '2'
