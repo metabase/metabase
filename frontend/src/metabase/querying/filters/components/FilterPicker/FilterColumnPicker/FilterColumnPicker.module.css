@@ -1,3 +1,60 @@
 .StyledAccordionList {
   color: var(--mb-color-core-filter);
 }
+
+/* Prototype: one row with the column name, a dot, and the table name. */
+.FrequentItemName {
+  display: inline-flex;
+  align-items: center;
+}
+
+.FrequentItemSeparator {
+  flex-shrink: 0;
+  width: 3px;
+  height: 3px;
+  margin: 0 0.5rem;
+  border-radius: 50%;
+  background-color: var(--mb-color-text-secondary);
+}
+
+.FrequentItemTableName {
+  font-weight: normal;
+  color: var(--mb-color-text-secondary);
+}
+
+[data-element-id="list-item"]:hover .FrequentItemSeparator,
+[data-element-id="list-item"][aria-selected="true"] .FrequentItemSeparator,
+[data-element-id="list-item"][data-hascursor="true"] .FrequentItemSeparator,
+[data-element-id="list-item"]:hover .FrequentItemTableName,
+[data-element-id="list-item"][aria-selected="true"] .FrequentItemTableName,
+[data-element-id="list-item"][data-hascursor="true"] .FrequentItemTableName {
+  opacity: 0.7;
+  color: var(--mb-color-text-primary-inverse);
+}
+
+[data-element-id="list-item"]:hover .FrequentItemSeparator,
+[data-element-id="list-item"][aria-selected="true"] .FrequentItemSeparator,
+[data-element-id="list-item"][data-hascursor="true"] .FrequentItemSeparator {
+  background-color: var(--mb-color-text-primary-inverse);
+}
+
+/* Prototype: a sub-header of an LLM field category inside a table section. */
+.CategoryHeaderItem {
+  pointer-events: none;
+  margin-top: 0.5rem;
+}
+
+.CategoryHeaderItem [data-element-id="list-item-title"] {
+  margin-left: 0;
+}
+
+/* Between the item size (14px) and the table section title size (17px), so that users can scan the categories. */
+.CategoryHeader {
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--mb-color-text-primary);
+}
+
+.CategorizedItem {
+  padding-left: 1rem;
+}

@@ -4,6 +4,7 @@ import * as Lib from "metabase-lib";
 
 import { FilterColumnPicker } from "../FilterColumnPicker";
 import { FilterPickerBody } from "../FilterPickerBody";
+import { NaturalLanguageFilter } from "../NaturalLanguageFilter";
 import type {
   ColumnListItem,
   FilterChangeOpts,
@@ -70,13 +71,17 @@ export function MultiStageFilterPicker({
 
   if (!selectedItem) {
     return (
-      <FilterColumnPicker
-        query={query}
-        stageIndexes={stageIndexes}
-        withCustomExpression={false}
-        onColumnSelect={setSelectedItem}
-        onSegmentSelect={handleSegmentChange}
-      />
+      <>
+        {/* Prototype: describe the filters in natural language. */}
+        <NaturalLanguageFilter query={initialQuery} onChange={onChange} />
+        <FilterColumnPicker
+          query={query}
+          stageIndexes={stageIndexes}
+          withCustomExpression={false}
+          onColumnSelect={setSelectedItem}
+          onSegmentSelect={handleSegmentChange}
+        />
+      </>
     );
   }
 
