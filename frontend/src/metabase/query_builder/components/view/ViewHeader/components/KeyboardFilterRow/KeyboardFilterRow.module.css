@@ -205,14 +205,10 @@
   padding: var(--mantine-spacing-sm);
 }
 
-.presets,
 .optionGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--mantine-spacing-sm);
-}
-
-.optionGrid {
   padding: var(--mantine-spacing-xs);
 }
 
@@ -245,14 +241,6 @@
   &[aria-pressed="true"][data-combobox-selected] {
     background-color: var(--mb-color-background_surface-brand-subtle-hover);
   }
-}
-
-.flag {
-  flex-shrink: 0;
-  width: 21px;
-  height: 16px;
-  border-radius: 3px;
-  object-fit: cover;
 }
 
 .optionLabel {
@@ -359,11 +347,13 @@
   min-width: 0;
 }
 
-/* The list fills the height of the panel, and the footer stays at the
-   bottom. */
+/* The list is 220px wide, the panel gets the rest of the width. The list fills
+   the height of the panel, and the footer stays at the bottom. */
 .dropdownWithAside .dropdownMain {
   display: flex;
+  flex: none;
   flex-direction: column;
+  width: 13.75rem;
   height: 32.5rem;
 }
 
@@ -375,10 +365,11 @@
 
 .dropdownAside {
   display: flex;
-  flex: none;
+  flex: 1;
+  min-width: 0;
   align-items: center;
   justify-content: center;
-  padding: var(--mantine-spacing-lg);
+  padding: var(--mantine-spacing-lg) var(--mantine-spacing-xs);
   border-left: 1px solid var(--mb-color-border-neutral);
   background-color: var(--mb-color-background_page-secondary);
 }

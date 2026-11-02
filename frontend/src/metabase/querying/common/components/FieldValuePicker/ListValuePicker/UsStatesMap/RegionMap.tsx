@@ -26,10 +26,8 @@ interface Region {
 
 interface Props extends RegionMapProps {
   regions: Region[];
-  getProjection: (
-    width: number,
-    collection: FeatureCollection<Geometry>,
-  ) => d3.GeoProjection;
+  /** The projection of the map, before it is fitted to the width. */
+  getProjection: () => d3.GeoProjection;
 }
 
 /**
@@ -51,7 +49,7 @@ export function RegionMap({
       type: "FeatureCollection",
       features: regions.map((region) => region.feature),
     };
-    const path = d3.geoPath(getProjection(width, collection));
+    const path = d3.geoPath(getProjection().fitWidth(width, collection));
     const [, [, bottom]] = path.bounds(collection);
     return {
       paths: regions.map(({ code, name, feature }) => ({

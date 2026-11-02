@@ -18,10 +18,7 @@ const STATES =
     feature,
   }));
 
-const getProjection = (
-  width: number,
-  collection: FeatureCollection<Geometry>,
-) => d3.geoAlbersUsa().fitWidth(width, collection);
+const getProjection = () => d3.geoAlbersUsa();
 
 export function UsStatesMap(props: RegionMapProps) {
   return (

@@ -10,18 +10,12 @@ import {
   Stack,
   Text,
   TextInput,
-  UnstyledButton,
 } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 
 import S from "./ListValuePicker.module.css";
 import { UsStatesMap } from "./UsStatesMap";
-import {
-  type ContinentPreset,
-  getContinentPresets,
-  getCountryName,
-  getFlagUrl,
-} from "./countries";
+import { getCountryName } from "./countries";
 import { getStateName } from "./states";
 import { getEffectiveOptions, searchOptions } from "./utils";
 
@@ -238,76 +232,5 @@ function StateListPicker(props: ListValuePickerProps) {
 }
 
 function CountryListPicker(props: ListValuePickerProps) {
-  const { fieldValues, selectedValues, onChange } = props;
-  const presets = useMemo(
-    () => getContinentPresets(fieldValues.map(([value]) => String(value))),
-    [fieldValues],
-  );
-
-  return (
-    <CheckboxListPicker
-      {...props}
-      header={
-        presets.length > 0 && (
-          <ContinentPresets
-            presets={presets}
-            selectedValues={selectedValues}
-            onChange={onChange}
-          />
-        )
-      }
-      renderLabel={({ value, label }) => (
-        <Flex align="center" gap="sm" miw={0}>
-          <img className={S.flag} src={getFlagUrl(value)} alt="" />
-          <span className={S.label} title={label}>
-            {label}
-          </span>
-        </Flex>
-      )}
-    />
-  );
-}
-
-interface ContinentPresetsProps {
-  presets: ContinentPreset[];
-  selectedValues: string[];
-  onChange: (newValues: string[]) => void;
-}
-
-function ContinentPresets({
-  presets,
-  selectedValues,
-  onChange,
-}: ContinentPresetsProps) {
-  const selectedValuesSet = new Set(selectedValues);
-
-  // A preset adds its countries. When all of them are selected, it removes
-  // them.
-  const handleClick = (preset: ContinentPreset) => {
-    const isSelected = preset.values.every((value) =>
-      selectedValuesSet.has(value),
-    );
-    const newValuesSet = new Set(selectedValues);
-    preset.values.forEach((value) =>
-      isSelected ? newValuesSet.delete(value) : newValuesSet.add(value),
-    );
-    onChange(Array.from(newValuesSet));
-  };
-
-  return (
-    <SimpleGrid cols={2} spacing="sm">
-      {presets.map((preset) => (
-        <UnstyledButton
-          key={preset.name}
-          className={S.tile}
-          aria-pressed={preset.values.every((value) =>
-            selectedValuesSet.has(value),
-          )}
-          onClick={() => handleClick(preset)}
-        >
-          <span className={S.label}>{preset.name}</span>
-        </UnstyledButton>
-      ))}
-    </SimpleGrid>
-  );
+  return <CheckboxListPicker {...props} />;
 }

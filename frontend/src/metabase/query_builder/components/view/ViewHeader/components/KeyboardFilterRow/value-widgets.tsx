@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
@@ -7,28 +6,22 @@ import {
   UsStatesMap,
   WorldMap,
 } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/UsStatesMap";
-import {
-  type ContinentPreset,
-  getContinentPresets,
-  getCountryName,
-  getFlagUrl,
-} from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/countries";
+import { getCountryName } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/countries";
 import { getStateName } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/states";
-import { Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import S from "./KeyboardFilterRow.module.css";
 import type { DraftOperator, SuggestionGroup } from "./types";
 
 const TILES_DROPDOWN_WIDTH = 360;
+/**
+ * The size of the dropdowns with a map. The list on the left of the map is
+ * 220px wide, and the map gets the rest of the width.
+ */
+const MAP_DROPDOWN_HEIGHT = 340;
 const STATES_DROPDOWN_WIDTH = 680;
-const STATES_DROPDOWN_HEIGHT = 340;
 const STATES_MAP_WIDTH = 425;
-const COUNTRIES_LIST_WIDTH = 340;
-const MIN_WORLD_MAP_WIDTH = 380;
-const MAX_WORLD_MAP_WIDTH = 650;
-/** The padding and the border of the map panel. */
-const MAP_PANEL_INSET = 49;
+const COUNTRIES_DROPDOWN_WIDTH = 760;
+const WORLD_MAP_WIDTH = 525;
 
 /** The value of the option that selects all the values, or none. */
 export const SELECT_ALL_VALUE = "__prototype_select_all__";
@@ -55,11 +48,6 @@ interface UseValueWidgetOpts {
   values: string[];
   /** The share of the rows with each value, when it is known. */
   getShare?: (value: string) => number;
-  /** True when the shares are estimates from a sample. */
-  isShareEstimate?: boolean;
-  /** The widest dropdown that fits in the window. */
-  maxDropdownWidth?: number;
-  onValuesChange: (values: string[]) => void;
   onToggleValue: (value: string) => void;
 }
 
@@ -78,9 +66,8 @@ export function hasValueShares(
 
 /**
  * Prototype: the dropdown under the value input, with the widgets of the
- * filter widgets prototype: tiles for operator options, flags and continent
- * presets for countries, and a map for US states. Other columns get a
- * checkbox list.
+ * filter widgets prototype: tiles for operator options, and a map for
+ * countries and US states. Other columns get a checkbox list.
  */
 export function useValueWidget({
   column,
@@ -88,9 +75,6 @@ export function useValueWidget({
   fieldValues,
   values,
   getShare,
-  isShareEstimate = false,
-  maxDropdownWidth = Infinity,
-  onValuesChange,
   onToggleValue,
 }: UseValueWidgetOpts): ValueWidget {
   const isCountry = Lib.isCountry(column);
@@ -123,14 +107,6 @@ export function useValueWidget({
   }
 
   if (countryValues != null) {
-    // The map grows up to its max width when the window has space for it.
-    const worldMapWidth = Math.max(
-      MIN_WORLD_MAP_WIDTH,
-      Math.min(
-        MAX_WORLD_MAP_WIDTH,
-        maxDropdownWidth - COUNTRIES_LIST_WIDTH - MAP_PANEL_INSET,
-      ),
-    );
     return {
       groups: [
         {
@@ -139,23 +115,11 @@ export function useValueWidget({
             ...countryValues.map(([value, label]) => ({
               value,
               label,
-              leftSection: (
-                <img className={S.flag} src={getFlagUrl(value)} alt="" />
-              ),
               isChecked: isChecked(value),
             })),
           ],
         },
       ],
-      header: operator.valueKind === "multi" && (
-        <ContinentPresets
-          values={countryValues.map(([value]) => value)}
-          selectedValues={values}
-          getShare={getShare}
-          isShareEstimate={isShareEstimate}
-          onChange={onValuesChange}
-        />
-      ),
       aside: (
         <WorldMap
           valuesByCode={
@@ -164,14 +128,15 @@ export function useValueWidget({
             )
           }
           selectedValues={values}
-          width={worldMapWidth}
+          width={WORLD_MAP_WIDTH}
           getShare={getShare}
           onToggle={onToggleValue}
         />
       ),
       isTiles: false,
       columns: 1,
-      dropdownWidth: COUNTRIES_LIST_WIDTH + worldMapWidth + MAP_PANEL_INSET,
+      dropdownWidth: COUNTRIES_DROPDOWN_WIDTH,
+      dropdownHeight: MAP_DROPDOWN_HEIGHT,
     };
   }
 
@@ -203,7 +168,7 @@ export function useValueWidget({
       isTiles: false,
       columns: 1,
       dropdownWidth: STATES_DROPDOWN_WIDTH,
-      dropdownHeight: STATES_DROPDOWN_HEIGHT,
+      dropdownHeight: MAP_DROPDOWN_HEIGHT,
     };
   }
 
@@ -273,83 +238,10 @@ function getNamedValues(
     : null;
 }
 
-interface ContinentPresetsProps {
-  values: string[];
-  selectedValues: string[];
-  getShare?: (value: string) => number;
-  isShareEstimate: boolean;
-  onChange: (values: string[]) => void;
-}
-
-function ContinentPresets({
-  values,
-  selectedValues,
-  getShare,
-  isShareEstimate,
-  onChange,
-}: ContinentPresetsProps) {
-  const presets = useMemo(() => getContinentPresets(values), [values]);
-  const selectedValuesSet = new Set(selectedValues);
-  const isPresetSelected = (preset: ContinentPreset) =>
-    preset.values.every((value) => selectedValuesSet.has(value));
-
-  // A preset adds its countries. When all of them are selected, it removes
-  // them.
-  const handleClick = (preset: ContinentPreset) => {
-    const isSelected = isPresetSelected(preset);
-    const newValuesSet = new Set(selectedValues);
-    preset.values.forEach((value) =>
-      isSelected ? newValuesSet.delete(value) : newValuesSet.add(value),
-    );
-    onChange(Array.from(newValuesSet));
-  };
-
-  if (presets.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className={S.presets}>
-      {presets.map((preset) => {
-        const isSelected = isPresetSelected(preset);
-        // The share of a continent is the sum of the shares of its countries.
-        const share =
-          getShare != null
-            ? preset.values.reduce((sum, value) => sum + getShare(value), 0)
-            : undefined;
-        return (
-          <button
-            key={preset.name}
-            className={cx(S.tile, { [S.shareTile]: share != null })}
-            style={share != null ? getTileShareStyle(share) : undefined}
-            aria-pressed={isSelected}
-            onClick={() => handleClick(preset)}
-          >
-            <Flex align="center" gap="sm" miw={0}>
-              {isSelected && <Icon name="check" />}
-              <span className={S.optionLabel}>{preset.name}</span>
-            </Flex>
-            {share != null && (
-              <span className={S.tileShare}>
-                {formatShare(share, isShareEstimate)}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /** A share as a percent, like "34%", or "~34%" for an estimate. */
 export function formatShare(share: number, isEstimate: boolean) {
   const percent = share * 100;
   const label =
     percent > 0 && percent < 0.5 ? "<1%" : `${Math.round(percent)}%`;
   return isEstimate ? `~${label}` : label;
-}
-
-/** The fill of a tile, as wide as the share. */
-export function getTileShareStyle(share: number): Record<string, string> {
-  return { "--tile-share": `${share * 100}%` };
 }

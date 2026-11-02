@@ -19,10 +19,9 @@ const COUNTRIES =
       feature,
     }));
 
-const getProjection = (
-  width: number,
-  collection: FeatureCollection<Geometry>,
-) => d3.geoNaturalEarth1().fitWidth(width, collection);
+// The map splits the Pacific at the Bering Strait, so that the land fills the
+// width.
+const getProjection = () => d3.geoNaturalEarth1().rotate([-11, 0]);
 
 export function WorldMap(props: RegionMapProps) {
   return (
