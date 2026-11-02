@@ -117,6 +117,8 @@ const BookmarkItem = ({
             <button
               className={cx(S.removeButton, CS.cursorPointer)}
               aria-label={t`Remove bookmark`}
+              // The tooltip repeats the accessible name, so it mustn't also describe it.
+              aria-describedby={undefined}
               onClick={onRemove}
             >
               <Icon name={iconName} />
