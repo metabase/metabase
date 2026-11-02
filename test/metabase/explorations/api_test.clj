@@ -2969,6 +2969,39 @@
                (t2/select-one-fn :data_access_token :model/StoredResult :id (:stored-result-id result)))
             "the composite carries the same lens its sources were computed under")))))
 
+(deftest composite-snapshot-stamps-every-sources-resolved-source-ids-test
+  (testing "A multi-query composite is stamped with the union of its sources' resolved source ids, under its own
+            query's digest, so the read gate holds a viewer to every source's tables without a live preprocess"
+    (mt/with-temp [:model/User u {:email "composite-sources@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
+            doc       (t2/select-one :model/Document :id document-id)
+            [sr-1 sr-2] (map #(t2/select-one :model/StoredResult
+                                             :id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                                                   :exploration_query_id %))
+                             query-ids)
+            checkins-q (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
+                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                                (lib/aggregate (lib/count)))))]
+        ;; The first source carries a verified stamp naming an extra table, so only a read of the stamp (not a
+        ;; live resolve) puts `products` in the union; the second has no stamp and reads a different table.
+        (t2/update! :model/StoredResult :id (:id sr-1)
+                    {:resolved_source_ids (query-perms/stamped-resolved-source-ids
+                                           (:dataset_query sr-1)
+                                           {:table-ids #{(mt/id :venues) (mt/id :products)}})})
+        (t2/update! :model/StoredResult :id (:id sr-2) {:dataset_query checkins-q :resolved_source_ids nil})
+        (let [result    (combine-with-perms-stubbed!
+                         query-ids document-id (:collection_id doc) u
+                         {:display "bar" :visualization-settings {}})
+              composite (t2/select-one :model/StoredResult :id (:stored-result-id result))
+              verified  (query-perms/verified-resolved-source-ids (:dataset_query composite)
+                                                                  (:resolved_source_ids composite))]
+          (is (some? verified)
+              "the stamp verifies against the composite row's own query")
+          (is (= #{(mt/id :venues) (mt/id :products) (mt/id :checkins)}
+                 (:table-ids verified))
+              "and covers the first source's stamped tables plus the unstamped second source's resolved table"))))))
+
 (deftest composite-refuses-to-blend-different-data-access-lenses-test
   (testing "Sources computed under different lenses have no single honest stamp, so the combine is refused
             rather than persisted under one of them"
