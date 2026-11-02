@@ -177,16 +177,6 @@
                          :else      ctx)
                        f))))))
 
-(defn- measure-definition [db-id table-id field-id]
-  (let [mp (lib-be/application-database-metadata-provider db-id)]
-    (lib/aggregate (lib/query mp (lib.metadata/table mp table-id))
-                   (lib/sum (lib.metadata/field mp field-id)))))
-
-(defn- segment-definition [db-id table-id field-id value]
-  (let [mp (lib-be/application-database-metadata-provider db-id)]
-    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
-                (lib/> (lib.metadata/field mp field-id) value))))
-
 (defn- table-field
   "Resolve one of `table-key`'s created Field ids by name, for a measure/segment definition."
   [ctx table-key field-name]
@@ -194,6 +184,32 @@
       (throw (ex-info (str "Corpus references unknown field " (pr-str field-name)
                            " on table " table-key)
                       {:table table-key :field field-name}))))
+
+(defn- filter-clauses [mp ctx table filters]
+  (mapv (fn [{:keys [field op value]}]
+          (let [field (lib.metadata/field mp (table-field ctx table field))]
+            (case op
+              := (lib/= field value)
+              :> (lib/> field value)
+              (throw (ex-info "Unsupported corpus filter" {:op op})))))
+        filters))
+
+(defn- measure-definition [db-id table-id field-id ctx table filters]
+  (let [mp      (lib-be/application-database-metadata-provider db-id)
+        field   (lib.metadata/field mp field-id)
+        clauses (filter-clauses mp ctx table filters)
+        ;; Measure stages cannot have filters; conditional aggregation expresses the same restriction.
+        agg     (if (seq clauses)
+                  (lib/sum-where field (if (next clauses) (apply lib/and clauses) (first clauses)))
+                  (lib/sum field))]
+    (lib/aggregate (lib/query mp (lib.metadata/table mp table-id)) agg)))
+
+(defn- segment-definition [db-id table-id field-id value ctx table filters]
+  (let [mp      (lib-be/application-database-metadata-provider db-id)
+        query   (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                            (lib/> (lib.metadata/field mp field-id) value))
+        clauses (filter-clauses mp ctx table filters)]
+    (reduce lib/filter query clauses)))
 
 (defn- entity-specs
   "The ordered [[create-rows!]] specs for `corpus`: tables, their fields, cards, then measures/segments
@@ -236,7 +252,8 @@
                          :creator_id  (mt/user->id :crowberto)
                          :definition  (measure-definition
                                        db-id table-id
-                                       (table-field ctx table (:aggregate-field entity)))}))})
+                                       (table-field ctx table (:aggregate-field entity))
+                                       ctx table (:filters entity))}))})
      (for [{:keys [corpus-key table entity]} segments]
        {:model      :model/Segment
         :corpus-key corpus-key
@@ -248,7 +265,8 @@
                          :definition  (segment-definition
                                        db-id table-id
                                        (table-field ctx table (:filter-field entity))
-                                       (:filter-value entity))}))}))))
+                                       (:filter-value entity)
+                                       ctx table (:filters entity))}))}))))
 
 (defn- corpus-ids
   "`{corpus-key -> {:entity_type _ :entity_local_id _}}` for the created instances — a Card's type is
