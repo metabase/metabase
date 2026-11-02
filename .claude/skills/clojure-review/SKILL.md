@@ -132,6 +132,7 @@ Quick scan for common issues:
 | `update-db`, `save-model`                    | Missing `!` for a mutation of shared state: `update-db!`, `save-model!` |
 | `check-input!`, `throw-unsupported!`         | Throwing is not a side effect; drop the `!`: `check-input`, `throw-unsupported` |
 | `snake_case_var`                             | Should use kebab-case                                       |
+| `(into {} (map f xs))`                       | Lazy seq where a transducer would do: `(into {} (map f) xs)`; same for `filter`, `keep`, `map-indexed`, `remove`, `distinct` |
 | Public var without docstring                 | Add docstring explaining purpose                            |
 | `;; TODO fix this`                           | Missing author/date: `;; TODO (Name 2025-01-01) -- description` |
 | `(defn foo ...)` in namespace used elsewhere | Should be `(defn ^:private foo ...)`                        |
