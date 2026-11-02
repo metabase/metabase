@@ -12,14 +12,13 @@ describe("internal analytics", () => {
     cy.visit("/");
 
     cy.window().then((win: any) => {
-      // Send more than flush-buffer-size (50) events to trigger an immediate flush.
-      // See metabase.analytics.impl/flush-buffer-size.
+      // The buffer flushes on a timer, not on size: see metabase.analytics.impl/flush-interval-ms.
       for (let i = 0; i < 51; i++) {
         win.__internalAnalytics.inc("e2e-test/counter", { test: "true" }, 1);
       }
     });
 
-    cy.wait("@internalAnalytics").then((interception) => {
+    cy.wait("@internalAnalytics", { timeout: 15000 }).then((interception) => {
       expect(interception.response?.statusCode).to.equal(204);
       expect(interception.request.body.events).to.be.an("array");
       expect(interception.request.body.events.length).to.be.greaterThan(0);
