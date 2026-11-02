@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { findRequests } from "__support__/server-mocks";
+import { findRequestBodies } from "__support__/server-mocks";
 import { setupGroupsEndpoint } from "__support__/server-mocks/group";
 import {
   setupMetabotGroupPermissionsEndpoint,
@@ -99,11 +99,11 @@ function getPermissionRow(groupName: string) {
   });
 }
 
-async function getPermissionUpdateBodies(): Promise<unknown[]> {
-  const requests = await findRequests("PUT");
-  return requests
-    .filter(({ url }) => url.endsWith("/api/ee/ai-controls/permissions"))
-    .map(({ body }): unknown => body);
+function getPermissionUpdateBodies() {
+  return findRequestBodies({
+    method: "PUT",
+    urlSuffix: "/api/ee/ai-controls/permissions",
+  });
 }
 
 function getSwitchModeButton() {

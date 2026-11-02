@@ -613,6 +613,10 @@ describe("metabot > ui", () => {
   });
 
   describe("conversation history", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it("lists past conversations when opened, falling back to a placeholder for untitled ones", async () => {
       setup({
         conversations: [

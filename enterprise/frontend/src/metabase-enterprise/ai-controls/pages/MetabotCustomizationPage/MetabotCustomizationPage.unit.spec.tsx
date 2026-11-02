@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  findRequests,
+  findRequestBodies,
   setupSettingsEndpoints,
   setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -40,13 +40,11 @@ function setup({
   });
 }
 
-async function getSettingUpdateBodies(
-  settingKey: EnterpriseSettingKey,
-): Promise<unknown[]> {
-  const requests = await findRequests("PUT");
-  return requests
-    .filter(({ url }) => url.endsWith(`/api/setting/${settingKey}`))
-    .map(({ body }): unknown => body);
+function getSettingUpdateBodies(settingKey: EnterpriseSettingKey) {
+  return findRequestBodies({
+    method: "PUT",
+    urlSuffix: `/api/setting/${settingKey}`,
+  });
 }
 
 // jsdom does not decode images, so fire the load event that a browser fires

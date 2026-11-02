@@ -65,14 +65,6 @@ const TEST_CARD = createMockCard({
   }),
 });
 
-const OTHER_DB_CARD = createMockCard({
-  id: 2,
-  dataset_query: createMockNativeDatasetQuery({
-    database: OTHER_DB.id,
-    native: { query: "SELECT 1" },
-  }),
-});
-
 const CODE_EDIT_RESPONSE: SSEEvent[] = [
   {
     type: "data-code_edit",
@@ -124,6 +116,7 @@ const OTHER_CONVERSATION_REASONING = (
 );
 
 function TestEditor({ question }: { question: Question }) {
+  const [currentQuestion, setCurrentQuestion] = useState(question);
   const {
     extensions,
     portalElement,
@@ -132,8 +125,7 @@ function TestEditor({ question }: { question: Question }) {
     proposedQuestion,
     handleAcceptProposed,
     handleRejectProposed,
-  } = useInlineSQLPrompt(question, "qb");
-  const [currentQuestion, setCurrentQuestion] = useState(question);
+  } = useInlineSQLPrompt(currentQuestion, "qb");
   const query = checkNotNull(currentQuestion.legacyNativeQuery());
 
   return (
@@ -172,20 +164,12 @@ function TestEditor({ question }: { question: Question }) {
   );
 }
 
-function TestPage({
-  questions,
-}: {
-  questions: { initial: Question; otherDatabase: Question };
-}) {
-  const [question, setQuestion] = useState(questions.initial);
+function TestPage({ question }: { question: Question }) {
   const [pageKey, setPageKey] = useState(0);
 
   return (
     <>
       <TestEditor key={pageKey} question={question} />
-      <button onClick={() => setQuestion(questions.otherDatabase)}>
-        Switch database
-      </button>
       <button onClick={() => setPageKey((key) => key + 1)}>
         Open new SQL page
       </button>
@@ -214,18 +198,15 @@ function setup({ isMetabotEnabled = true, otherContent }: SetupOpts = {}) {
     currentUser: createMockUser(),
     entities: createMockEntitiesState({
       databases: [TEST_DB, OTHER_DB],
-      questions: [TEST_CARD, OTHER_DB_CARD],
+      questions: [TEST_CARD],
     }),
   });
   const metadata = createMockMetadataFromState(state);
-  const questions = {
-    initial: checkNotNull(metadata.question(TEST_CARD.id)),
-    otherDatabase: checkNotNull(metadata.question(OTHER_DB_CARD.id)),
-  };
+  const question = checkNotNull(metadata.question(TEST_CARD.id));
 
   renderWithProviders(
     <MetabotProvider>
-      <TestPage questions={questions} />
+      <TestPage question={question} />
       {otherContent}
     </MetabotProvider>,
     { storeInitialState: state },
@@ -580,8 +561,10 @@ describe("useInlineSQLPrompt", () => {
     );
     await openPrompt();
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Switch database" }),
+    await userEvent.click(screen.getByTestId("selected-database"));
+    await userEvent.click(await screen.findByText(OTHER_DB.name));
+    expect(screen.getByTestId("selected-database")).toHaveTextContent(
+      OTHER_DB.name,
     );
     expect(screen.getByTestId("metabot-inline-sql-prompt")).toBeInTheDocument();
 

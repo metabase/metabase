@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  findRequests,
+  findRequestBodies,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -53,19 +53,18 @@ async function setup({
   await screen.findByText("How do you want to limit AI usage?");
 }
 
-async function getPutBodies(urlSuffix: string): Promise<unknown[]> {
-  const requests = await findRequests("PUT");
-  return requests
-    .filter(({ url }) => url.endsWith(urlSuffix))
-    .map(({ body }): unknown => body);
-}
-
 function getSettingUpdateBodies(settingKey: EnterpriseSettingKey) {
-  return getPutBodies(`/api/setting/${settingKey}`);
+  return findRequestBodies({
+    method: "PUT",
+    urlSuffix: `/api/setting/${settingKey}`,
+  });
 }
 
 function getInstanceLimitUpdateBodies() {
-  return getPutBodies("/api/ee/ai-controls/usage/instance");
+  return findRequestBodies({
+    method: "PUT",
+    urlSuffix: "/api/ee/ai-controls/usage/instance",
+  });
 }
 
 describe("GeneralLimitsSettingsSection", () => {
