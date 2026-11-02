@@ -995,9 +995,10 @@
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
         (with-temp-card [card {:enable_embedding       true
                                :display                :scalar
-                               :visualization_settings {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
-                                                                           :max   nil
-                                                                           :color "red"}]}}]
+                               :visualization_settings
+                               {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
+                                                   :max   nil
+                                                   :color "red"}]}}]
           (is (= [[1000]]
                  (-> (client/client :get 202 (card-query-url card ""))
                      (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
@@ -1008,9 +1009,10 @@
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
                                        :card {:display                :scalar
-                                              :visualization_settings {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
-                                                                                          :max   nil
-                                                                                          :color "red"}]}}}]
+                                              :visualization_settings
+                                              {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
+                                                                  :max   nil
+                                                                  :color "red"}]}}}]
           (is (= [[1000]]
                  (-> (client/client :get 202 (dashcard-url dashcard))
                      (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
