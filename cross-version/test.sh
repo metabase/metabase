@@ -22,6 +22,8 @@ HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
 GRACE_PERIOD="${GRACE_PERIOD:-3}"
 CYPRESS_FAILURES_RECORDED=0
+HEAD_IMAGE=""
+HEAD_JAR="/tmp/metabase-head-jar/metabase.jar"
 
 # Colors for output
 RED='\033[0;31m'
@@ -149,13 +151,53 @@ wait_for_health() {
   done
 }
 
+# The HEAD Docker image has version "vUNKNOWN" in its version.properties,
+# which causes `migrate down` to fail with a NullPointerException when trying
+# to determine the current major version. To work around this, we extract the
+# JAR, replace version.properties with the upcoming version, and mount the
+# modified JAR.
+#
+# HEAD is the next major version (CURRENT_VERSION + 1).
+#
+# See DEV-1636 for a potential backend fix that would make this unnecessary.
+patch_head_jar() {
+  local image="$1"
+  if [[ -z "${CURRENT_VERSION:-}" ]]; then
+    error "CURRENT_VERSION must be set when testing HEAD"
+    exit 1
+  fi
+  local next_version=$((CURRENT_VERSION + 1))
+  local upcoming_version="v1.${next_version}.0"
+  local work_dir="/tmp/metabase-head-jar"
+
+  log "HEAD JAR needs patching (version.properties says 'vUNKNOWN', setting to $upcoming_version)"
+  rm -rf "$work_dir"
+  mkdir -p "$work_dir"
+
+  # Extract JAR from container (copy to host with proper permissions)
+  docker create --name metabase-jar-extract "$image" >/dev/null
+  docker cp metabase-jar-extract:/app/metabase.jar "$HEAD_JAR"
+  docker rm metabase-jar-extract >/dev/null
+
+  # Create version.properties with upcoming version and update the JAR
+  echo "tag=$upcoming_version" > "$work_dir/version.properties"
+  echo "hash=HEAD" >> "$work_dir/version.properties"
+  echo "date=$(date +%Y-%m-%d)" >> "$work_dir/version.properties"
+  (cd "$work_dir" && zip -u metabase.jar version.properties >/dev/null)
+
+  log "HEAD JAR patched"
+}
+
 # Start Metabase with a specific image
 start_metabase() {
   local image="$1"
   log "Starting Metabase with image: $image"
 
+  local compose_files=(-f docker-compose.yml)
+  [[ -n "$HEAD_IMAGE" && "$image" == "$HEAD_IMAGE" ]] && compose_files+=(-f docker-compose.head.yml)
+
   METABASE_IMAGE="$image" METABASE_PORT="$METABASE_PORT" \
-    docker compose up -d --quiet-pull
+    docker compose "${compose_files[@]}" up -d --quiet-pull
 }
 
 # Docker deletes a container's logs when the container is removed, and both
@@ -210,44 +252,9 @@ migrate_down_step() {
   local output
   local exit_code=0
 
-  # The HEAD Docker image has version "vUNKNOWN" in its version.properties,
-  # which causes `migrate down` to fail with a NullPointerException when trying
-  # to determine the current major version. To work around this, we extract the
-  # JAR, replace version.properties with the upcoming version, and mount the
-  # modified JAR.
-  #
-  # HEAD is the next major version (CURRENT_VERSION + 1).
-  #
-  # See DEV-1636 for a potential backend fix that would make this unnecessary.
   if [[ "$is_head" == "true" ]]; then
-    if [[ -z "$CURRENT_VERSION" ]]; then
-      error "CURRENT_VERSION must be set when testing HEAD downgrades"
-      return 1
-    fi
-    local next_version=$((CURRENT_VERSION + 1))
-    local upcoming_version="v1.${next_version}.0"
-    local work_dir="/tmp/metabase-head-jar"
-    local modified_jar="$work_dir/metabase.jar"
-
-    log "HEAD JAR needs patching (version.properties says 'vUNKNOWN', setting to $upcoming_version)"
-    rm -rf "$work_dir"
-    mkdir -p "$work_dir"
-
-    # Extract JAR from container (copy to host with proper permissions)
-    docker create --name metabase-jar-extract "$image" >/dev/null
-    docker cp metabase-jar-extract:/app/metabase.jar "$modified_jar"
-    docker rm metabase-jar-extract >/dev/null
-
-    # Create version.properties with upcoming version and update the JAR
-    echo "tag=$upcoming_version" > "$work_dir/version.properties"
-    echo "hash=HEAD" >> "$work_dir/version.properties"
-    echo "date=$(date +%Y-%m-%d)" >> "$work_dir/version.properties"
-    (cd "$work_dir" && zip -u metabase.jar version.properties >/dev/null)
-
-    log "HEAD JAR patched - proceeding with migrate down"
-
     output=$(METABASE_IMAGE="$image" docker compose run --rm --quiet-pull \
-      -v "$modified_jar:/app/metabase.jar:ro" \
+      -v "$HEAD_JAR:/app/metabase.jar:ro" \
       metabase "migrate down" 2>&1) || exit_code=$?
   else
     output=$(METABASE_IMAGE="$image" docker compose run --rm --quiet-pull metabase "migrate down" 2>&1) || exit_code=$?
@@ -499,6 +506,13 @@ main() {
   log "Checking if Docker images exist..."
   check_image_exists "$source_image"
   check_image_exists "$target_image"
+
+  if [[ "$SOURCE_VERSION" == "HEAD" ]]; then
+    HEAD_IMAGE="$source_image"
+  elif [[ "$TARGET_VERSION" == "HEAD" ]]; then
+    HEAD_IMAGE="$target_image"
+  fi
+  [[ -n "$HEAD_IMAGE" ]] && patch_head_jar "$HEAD_IMAGE"
 
   log "============================================"
   log "Cross-Version Migration Test"
