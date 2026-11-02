@@ -28,6 +28,7 @@ priority: 50
 **Limitations:**
 - Creates new queries only (use edit_sql_query for modifying existing queries)
 - Requires valid database_id for the target database
+- The SQL runs on the database in `database_id`, so use only that database's tables and the models and saved questions built on it. Don't try to reach another database from the SQL, whether with one of its models, its name in front of a table name, or a database link.
 - SQL must be compatible with the target database's SQL engine
 - When using tables, always use fully qualified table names (include namespace / schema / catalog).
 
