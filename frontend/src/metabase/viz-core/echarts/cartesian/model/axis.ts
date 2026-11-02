@@ -778,8 +778,8 @@ export function getTimeSeriesXAxisModel(
     // which Day.js relies on. To avoid runtime exceptions, we manually adjust the time
     // when an offset is provided. Otherwise, we use Day.js timezone conversion.
     return offsetMinutes != null
-      ? date.add(offsetMinutes, "minute").format()
-      : date.tz(timezone).format("YYYY-MM-DDTHH:mm:ss[Z]");
+      ? date.add(offsetMinutes, "minute").format("YYYY-MM-DDTHH:mm:ss.SSSZ")
+      : date.tz(timezone).format("YYYY-MM-DDTHH:mm:ss.SSS[Z]");
   };
   const fromEChartsAxisValue = (rawValue: number) => {
     return dayjs.utc(rawValue);
