@@ -14,13 +14,14 @@
 ;;
 ;; ## `codeowners`:
 ;;
-;; Set it to `true` to make the module's team a required reviewer for the module's src and test code in
-;; `.github/CODEOWNERS`. Ownership goes to the team's `codeowner` handle in `.github/team.json`, which the team must
-;; have. Run `./bin/mage update-codeowners` after changing it. Leave it out for modules whose team has not agreed to
-;; review them.
+;; Set it to `true` to request reviews from the module's team, or to a team name string to request another team.
+;; This generates `.github/CODEOWNERS` rules for the module's src and test code without changing its `:team`.
+;; The review team must have a `codeowner` handle in `.github/team.json`. Run `./bin/mage update-codeowners` after
+;; changing it. Leave it out for modules whose review team has not agreed to review them.
 ;;
 ;; It is not inherited, but it covers the module's directories. A nested module inside them that does not set it keeps
-;; its own team if an opted-in module around it has that team, and is left unowned otherwise. A nested module with an
+;; its own review team if an opted-in module around it has that review team, and is left unowned otherwise.
+;; Its review team defaults to its module team; a parent's review override is not inherited. A nested module with an
 ;; `:ns-prefix` outside its parent's directories needs its own, and so does an `enterprise/X` module: it is `X`'s child
 ;; but lives under `enterprise/backend`, as `enterprise/search` does beside `search`. Plugin code under
 ;; `modules/<plugin>/src` is not supported: give it an owner by hand.
@@ -29,6 +30,8 @@
 ;;    {:team       "Metabot"
 ;;     :codeowners true
 ;;     ...}
+;;
+;; A review override: dependencies {:team "Graphy", :codeowners "Data Apps"}.
 ;;
 ;; ## `api`:
 ;;
@@ -884,8 +887,8 @@
                     :model/User}}
 
   data-apps
-  {:team       "Data Apps"
-   :codeowners true
+  {:team       "Embedding"
+   :codeowners "Data Apps"
    :api #{metabase.data-apps.core metabase.data-apps.schema}
    :uses #{actions
            analytics
@@ -921,8 +924,8 @@
    :uses #{lib.schema premium-features}}
 
   dependencies
-  {:team       "Data Apps"
-   :codeowners true
+  {:team       "Graphy"
+   :codeowners "Data Apps"
    :api  #{metabase.dependencies.hooks}
    :uses #{premium-features}}
 
@@ -2436,8 +2439,8 @@
    :uses #{models util}}
 
   remote-sync
-  {:team       "Data Apps"
-   :codeowners true
+  {:team       "UX West"
+   :codeowners "Data Apps"
    :api  #{metabase.remote-sync.core
            metabase.remote-sync.init}
    :uses #{api
@@ -3864,8 +3867,7 @@
    :model-exports #{:model/CustomVizPlugin}}
 
   enterprise/data-apps
-  {:team       "Data Apps"
-   :codeowners true
+  {:codeowners "Data Apps"
    :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{actions
            api
@@ -3942,8 +3944,7 @@
    :model-imports #{:model/Database :model/Transform}}
 
   enterprise/dependencies
-  {:team       "Data Apps"
-   :codeowners true
+  {:codeowners "Data Apps"
    :module-exports #{enterprise/dependencies.replacement}
    :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
    :uses #{actions
@@ -4332,8 +4333,7 @@
    :uses #{premium-features}}
 
   enterprise/remote-sync
-  {:team       "Data Apps"
-   :codeowners true
+  {:codeowners "Data Apps"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
            metabase-enterprise.remote-sync.init}
