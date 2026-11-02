@@ -111,6 +111,7 @@ export const GoalValueInput = ({
   const [fetchCard] = useLazyGetCardQuery();
   const [fetchMeasure] = useLazyGetMeasureQuery();
   const numberInputRef = useRef<HTMLInputElement>(null);
+  const menuDropdownRef = useRef<HTMLDivElement>(null);
 
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
   const numericSelfColumns = showSelfColumns
@@ -236,15 +237,26 @@ export const GoalValueInput = ({
     if (selfColumns.length === 1) {
       selectSelfColumn(selfColumns[0].name);
     } else {
-      setMenuLevel("self");
+      goToMenuLevel("self");
     }
   };
+
+  function goToMenuLevel(level: MenuLevel) {
+    // the focused item unmounts with its level, and Mantine closes the menu on any keydown outside of it
+    menuDropdownRef.current?.focus();
+    setMenuLevel(level);
+  }
 
   const openEntityPicker = () => {
     closeMenu();
     setHasOpenedEntityPicker(true);
     entityPicker.open();
   };
+
+  function goBackFromEntityPicker() {
+    entityPicker.close();
+    openMenuFromTrigger();
+  }
 
   // Resolves with the column when entity only has 1 column - null otherwise
   const fetchSoleColumn = async (
@@ -369,6 +381,7 @@ export const GoalValueInput = ({
         </Menu.Target>
 
         <Menu.Dropdown
+          ref={menuDropdownRef}
           miw={
             menuLevel === "root" ? ROOT_MENU_MIN_WIDTH : COLUMN_MENU_MIN_WIDTH
           }
@@ -399,7 +412,7 @@ export const GoalValueInput = ({
                 c="text-secondary"
                 fz="sm"
                 leftSection={<Icon name="chevronleft" size={12} />}
-                onClick={() => setMenuLevel("root")}
+                onClick={() => goToMenuLevel("root")}
               >
                 {t`Value from this question`}
               </Menu.Item>
@@ -425,7 +438,7 @@ export const GoalValueInput = ({
                 c="text-secondary"
                 fz="sm"
                 leftSection={<Icon name="chevronleft" size={12} />}
-                onClick={() => setMenuLevel("root")}
+                onClick={openEntityPicker}
               >
                 {entityName ?? t`Value from another question`}
               </Menu.Item>
@@ -464,6 +477,7 @@ export const GoalValueInput = ({
       <GoalEntityPickers
         hasOpened={hasOpenedEntityPicker}
         opened={isEntityPickerOpen}
+        onBack={goBackFromEntityPicker}
         onChange={handleEntityPicked}
         onClose={entityPicker.close}
       />

@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { ComponentProps, ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -6,10 +7,12 @@ import {
   MiniPicker,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
+import type { MenuDropdownProps } from "metabase/ui";
 
 import type { PickedItem } from "../types";
 import { useEntityPickerSearch } from "../use-entity-picker-search";
 
+import { GoalEntityPickerBackItem } from "./GoalEntityPickerBackItem";
 import S from "./GoalEntityPickers.module.css";
 
 const BROWSE_ALL_MODELS: OmniPickerItem["model"][] = [
@@ -28,13 +31,20 @@ const SELECTABLE_BROWSE_MODELS: OmniPickerItem["model"][] = [
 type Props = {
   hasOpened: boolean;
   opened: boolean;
+  onBack: () => void;
   onChange: (item: PickedItem) => void;
   onClose: () => void;
+};
+
+type DropdownPropsWithRoot = MenuDropdownProps & {
+  // MenuDropdownProps does not declare renderRoot, but Menu.Dropdown passes it to Mantine's Box
+  renderRoot: (rootProps: ComponentProps<"div">) => ReactNode;
 };
 
 export function GoalEntityPickers({
   hasOpened,
   opened,
+  onBack,
   onChange,
   onClose,
 }: Props) {
@@ -52,11 +62,23 @@ export function GoalEntityPickers({
     onChange(item);
   };
 
+  const menuDropdownProps: DropdownPropsWithRoot = {
+    renderRoot({ children, ...rootProps }) {
+      return (
+        <div {...rootProps}>
+          <GoalEntityPickerBackItem onClick={onBack} />
+          {children}
+        </div>
+      );
+    },
+  };
+
   return (
     <>
       <MiniPicker
         className={S.entityPicker}
         forceSearch
+        menuDropdownProps={menuDropdownProps}
         menuProps={{
           position: "bottom-start",
         }}

@@ -167,6 +167,209 @@ describe("GoalValueInput", () => {
     expect(onChange).toHaveBeenCalledWith("sum");
   });
 
+  it("keeps the menu open when navigating to the column level with the keyboard (GDGT-3278)", async () => {
+    setup();
+
+    await openMenuWithKeyboard();
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("menuitem", { name: /Sum of Total/ }),
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: /Count/ })).toHaveFocus();
+  });
+
+  it("keeps the menu open when navigating back to the root level with the keyboard (GDGT-3278)", async () => {
+    setup();
+
+    await openMenuWithKeyboard();
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("menuitem", { name: /Sum of Total/ });
+
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /Value from another question/,
+      }),
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toHaveFocus();
+  });
+
+  it("returns to the entity picker when navigating back from another question's columns with the keyboard (GDGT-3278)", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "Other question" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        result_metadata: [
+          createMockField({ name: "total", base_type: "type/Integer" }),
+          createMockField({
+            name: "avg",
+            display_name: "Average",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setupCardDatasetWithReferencedEntities({});
+    setup({ value: { type: "card", id: 9, column: "total" } });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+    await screen.findByRole("menuitem", { name: /Average/ });
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: /Orders/ })).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("menuitem", { name: /Other question/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Average/ }),
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText("Search…")).toHaveFocus(),
+    );
+  });
+
+  it("returns to the entity picker when navigating back from a question picked in the search list with the keyboard (GDGT-3278)", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        result_metadata: [
+          createMockField({ name: "total", base_type: "type/Integer" }),
+          createMockField({
+            name: "avg",
+            display_name: "Average",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setupCardDatasetWithReferencedEntities({});
+    setup();
+
+    await openMenuWithKeyboard();
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Enter}");
+    const searchResult = await screen.findByRole("menuitem", {
+      name: /Orders/,
+    });
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText("Search…")).toHaveFocus(),
+    );
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(getEntityPickerBackItem()).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(searchResult).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("menuitem", { name: /Average/ });
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: /Orders/ })).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText("Search…")).toHaveFocus(),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: /Orders/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Average/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("returns to the root menu from the entity picker with the keyboard (GDGT-3278)", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "Other question" }),
+    ]);
+    setup();
+
+    await openMenuWithKeyboard();
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText("Search…")).toHaveFocus(),
+    );
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(getEntityPickerBackItem()).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("menuitem", { name: /Value from this question/ });
+    expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toHaveFocus();
+  });
+
+  it("goes back step by step from a picked question's columns to the root menu", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        result_metadata: [
+          createMockField({ name: "total", base_type: "type/Integer" }),
+          createMockField({
+            name: "avg",
+            display_name: "Average",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setupCardDatasetWithReferencedEntities({});
+    setup();
+
+    await openMenu();
+    await pickEntity("Orders");
+    await screen.findByRole("menuitem", { name: /Average/ });
+
+    await userEvent.click(screen.getByRole("menuitem", { name: /Orders/ }));
+    expect(await screen.findByPlaceholderText("Search…")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Average/ }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(getEntityPickerBackItem());
+    expect(
+      await screen.findByRole("menuitem", { name: /Value from this question/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
+  });
+
   it("selects the sole numeric column directly from the root menu", async () => {
     const { onChange } = setup({
       data: createMockDatasetData({
@@ -1396,8 +1599,24 @@ async function pickEntity(name: string) {
   await userEvent.click(await screen.findByText(name));
 }
 
+function getEntityPickerBackItem() {
+  return within(screen.getByTestId("mini-picker")).getByRole("menuitem", {
+    name: /Value from another question/,
+  });
+}
+
 async function openMenu() {
   await userEvent.click(
     screen.getByRole("button", { name: "Pick a dynamic value" }),
   );
+}
+
+async function openMenuWithKeyboard() {
+  await userEvent.click(screen.getByRole("textbox", { name: "Min" }));
+  await userEvent.tab();
+  const trigger = screen.getByRole("button", { name: "Pick a dynamic value" });
+  expect(trigger).toHaveFocus();
+  await userEvent.keyboard("{Enter}");
+  await screen.findByRole("menu");
+  await waitFor(() => expect(trigger).not.toHaveFocus());
 }
