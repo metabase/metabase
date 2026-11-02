@@ -392,6 +392,44 @@
         (is (= ["alpha" "payload.user.id" "zeta"]
                (:field-names (first (spec/hydrate :osi-context [entity])))))))))
 
+(deftest effective-table-settings-control-membership-test
+  (mt/with-premium-features #{:library}
+    (collections.tu/with-library [{data :data}]
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {included :id} {:db_id db-id, :name "included", :is_published false}
+                     :model/Table {excluded :id} {:db_id db-id, :name "excluded", :is_published true
+                                                   :collection_id (:id data)}
+                     :model/Segment {segment-id :id} {:table_id included, :name "Child"
+                                                      :definition {:source-table included, :filter [:= 1 1]}}]
+        (t2/insert! :model/TableUserSettings {:table_id included, :is_published true, :collection_id (:id data)
+                                               :display_name "User name", :description "User description"
+                                               :description_set true})
+        (t2/insert! :model/TableUserSettings {:table_id excluded, :is_published false})
+        (doseq [projection [:library-index :osi-context]]
+          (let [all (spec/member-entities projection)
+                ids (set (map (juxt :entity_type :entity_local_id) all))
+                one (spec/member-entity projection "table" included)]
+            (is (contains? ids ["table" included]))
+            (is (not (contains? ids ["table" excluded])))
+            (is (= "User name" (:display_name one)))
+            (is (= "User description" (:description one)))
+            (is (nil? (spec/member-entity projection "table" excluded)))
+            (is (contains? ids ["segment" segment-id]))
+            (is (some? (spec/member-entity projection "segment" segment-id)))))))))
+
+(deftest effective-field-settings-control-hydration-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table {table-id :id} {:db_id db-id}
+                 :model/Field {hidden-id :id} {:table_id table-id, :name "hidden_by_user"}
+                 :model/Field {visible-id :id} {:table_id table-id, :name "visible_by_user", :visibility_type :sensitive}
+                 :model/Field {path-id :id} {:table_id table-id, :name "leaf", :nfc_path ["raw" "leaf"]}]
+    (t2/insert! :model/FieldUserSettings {:field_id hidden-id, :visibility_type :sensitive})
+    (t2/insert! :model/FieldUserSettings {:field_id visible-id, :visibility_type :normal})
+    (t2/insert! :model/FieldUserSettings {:field_id path-id, :nfc_path ["user" "leaf"]})
+    (let [entity {:entity_type "table", :entity_local_id table-id, :id table-id}]
+      (is (= ["user.leaf" "visible_by_user"]
+             (:field-names (first (spec/hydrate :osi-context [entity]))))))))
+
 (deftest via-parent-without-parent-projection-test
   (testing "a via-parent model whose parent declares no projection has no members: member-entity agrees
            with member-entities instead of degenerating to 'a parent row with this id exists'"

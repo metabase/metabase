@@ -13,12 +13,11 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
-   [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.osi.db :as osi.db]
    [metabase.osi.schema]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -147,6 +146,9 @@
   (-> (t2/changes row) validate-data-source! validate-ai-context!)
   row)
 
+;; Toucan's after-update hook has no argument for the pipeline's changes map. The binding keeps nested
+;; updates and concurrent transactions isolated while passing that map to the hook.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *update-changes*
   "The columns an in-flight update is setting, published by the pipeline method below for the
   after-update hook. Nil outside an update."
@@ -336,5 +338,5 @@
                                                    :basis nil
                                                    :rewrite_requested_at nil
                                                    :generator_version nil))]
-    (osi.db/update-ai-context! (:entity_type local) (:entity_local_id local) (update ingested :ai_context ->ai-context)))
+    (osi.db/update-ai-context! (:entity_type local) (:entity_local_id local) (cond-> ingested (contains? ingested :ai_context) (update :ai_context ->ai-context))))
   (osi.db/ai-context (:entity_type local) (:entity_local_id local)))

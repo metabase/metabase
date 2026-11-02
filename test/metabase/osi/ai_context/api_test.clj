@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.osi.ai-context.api :as osi.api]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
-   [metabase.osi.ai-context.api :as osi.api]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -357,8 +357,7 @@
                                                                      :entity_type     entity-type
                                                                      :entity_local_id entity-local-id))
                                       nil)]
-          (t2/update! :model/OsiAiContext
-                      {:entity_type "table" :entity_local_id 4242}
+          (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 4242
                       {:ai_context {:synonyms ["after"]}}))
         (is (= {:synonyms ["after"]} @seen)))
       (finally
@@ -375,9 +374,41 @@
     (try
       (is (= #{["table" 7001] ["table" 7002]}
              (set (spying-on-nudges!
-                   #(t2/update! :model/OsiAiContext
-                                {:entity_type "table" :data_source :human}
+                   #(t2/update! :model/OsiAiContext :entity_type "table"
+                                :entity_local_id [:in [7001 7002]] :data_source :human
                                 {:ai_context {:synonyms ["after"]}})))))
       (finally
         (doseq [id [7001 7002]]
           (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id id))))))
+
+(deftest nudge-waits-for-commit-and-is-discarded-on-rollback-test
+  (let [entity {:entity_type "table", :entity_local_id 9245}]
+    (try
+      (let [nudges (atom [])]
+        (mt/with-dynamic-fn-redefs [mirror/request-entity-sync! (fn [entity-type entity-id]
+                                                                  (swap! nudges conj [entity-type entity-id]))]
+          (testing "insert and update notify only after the transaction commits"
+            (doseq [write! [#(t2/insert! :model/OsiAiContext (assoc entity :ai_context {:synonyms ["old"]}))
+                            #(t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 9245 {:ai_context {:synonyms ["new"]}})]]
+              (reset! nudges [])
+              (t2/with-transaction [_ nil]
+                (write!)
+                (is (= [] @nudges)))
+              (is (= [["table" 9245]] @nudges))))
+          (testing "rolled-back inserts, updates, and deletes never notify"
+            (reset! nudges [])
+            (t2/with-transaction [_ nil {:rollback-only true}]
+              (t2/insert! :model/OsiAiContext (assoc entity :entity_local_id 9246 :ai_context {}))
+              (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 9245 {:ai_context {:synonyms ["rolled back"]}})
+              (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 9245)
+              (is (= [] @nudges)))
+            (is (= [] @nudges))
+            (is (= {:synonyms ["new"]} (:ai_context (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id 9245)))))
+          (testing "delete also waits for commit"
+            (t2/with-transaction [_ nil]
+              (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 9245)
+              (is (= [] @nudges)))
+            (is (= [["table" 9245]] @nudges)))))
+      (finally
+        (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 9245)
+        (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 9246)))))

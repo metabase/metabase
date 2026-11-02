@@ -23,6 +23,7 @@
    [malli.error :as me]
    [metabase.collections.core :as collections]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.search.entity-retrieval.db :as entity-retrieval.db]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
@@ -227,8 +228,8 @@
             (assoc row
                    :entity_type     (row-entity-type src row)
                    :entity_local_id (:id row)))
-          (t2/select (into [model] fields)
-                     {:where (if (= 1 (count clauses)) (first clauses) (into [:and] clauses))}))))
+          (entity-retrieval.db/member-rows model fields
+                                           (if (= 1 (count clauses)) (first clauses) (into [:and] clauses))))))
 
 (defn member-entities
   "Every entity currently in the library under `projection-key`'s membership, as maps of the declared
@@ -281,7 +282,7 @@
           ;; A parent that declares no projection has no members, so neither does this model — the same
           ;; answer [[member-entities]] gives, which skips a via-parent model with no parent results.
           (when (projection projection-key parent)
-            (when-let [parent-id (t2/select-one-fn fk model :id entity-local-id)]
+            (when-let [parent-id (entity-retrieval.db/parent-id model fk entity-local-id)]
               (when (seq (member-rows projection-key parent lib-ids {:id parent-id}))
                 (first (member-rows projection-key model lib-ids {:id entity-local-id, :parent-ids [parent-id]})))))
           (first (member-rows projection-key model lib-ids {:id entity-local-id})))))))
@@ -317,11 +318,7 @@
     (into []
           (mapcat (fn [[entity-type ids]]
                     (mapcat (fn [id-chunk]
-                              (t2/query {:select [:entity_type :entity_local_id :ai_context]
-                                         :from   [:osi_ai_context]
-                                         :where  [:and
-                                                  [:= :entity_type entity-type]
-                                                  [:in :entity_local_id (vec id-chunk)]]}))
+                              (entity-retrieval.db/raw-ai-context-rows entity-type id-chunk))
                             (partition-all hydration-query-chunk-size ids))))
           ids-by-type)))
 

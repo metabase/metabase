@@ -594,3 +594,13 @@
                                              :limit    1} :r]
                           [:= :r.moderated_item_id :c.id]]
               :where     [:in :c.id card-ids]}))
+
+(mu/defn reducible-active-field-paths
+  "Stream active, non-sensitive field names and paths for the given tables on `conn`."
+  [conn :- (ms/InstanceOfClass java.sql.Connection), table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/reducible-select :conn conn
+                       [:model/Field :table_id :name :nfc_path]
+                       :table_id [:in (vec table-ids)]
+                       :active true
+                       :visibility_type [:not-in ["sensitive" "retired"]]
+                       {:from [(warehouse-schema-overlay/field-query)]}))

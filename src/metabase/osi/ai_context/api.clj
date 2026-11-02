@@ -5,15 +5,12 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as app-db]
-   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.osi.db :as osi.db]
    [metabase.osi.models.osi-ai-context :as osi-ai-context]
-   [metabase.osi.schema :as osi.schema]
    [metabase.request.core :as request]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private writable-entity-types
   "Entity types accepted on writes — the real types callers name. Card flavors (metric/model) are stored
@@ -91,7 +88,7 @@
    [:entity-local-id ms/PositiveInt]])
 
 (api.macros/defendpoint :get "/"
-  :- [:map
+  :- [:map {:closed true}
       [:data   [:sequential Entry]]
       [:total  :int]
       [:limit  :int]
@@ -126,9 +123,9 @@
   `updated_at` records the human edit; `generated_at` stays unchanged."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params
-   ;; Accept the object as-is (`ms/Map` is open) so unknown keys reach the handler: the api layer strips keys a
+   ;; Accept the object as-is (a map-of is open) so unknown keys reach the handler: the api layer strips keys a
    ;; closed request schema doesn't declare, which would silently drop a mistyped field instead of rejecting it.
-   {:keys [ai_context]} :- [:map [:ai_context [:or :string ms/Map]]]]
+   {:keys [ai_context]} :- [:map {:closed true} [:ai_context ms/RingRequestBody]]]
   (api/check-superuser)
   (check-writable-entity-type! entity-type)
   (let [ai-context (osi-ai-context/->ai-context ai_context)]
@@ -139,11 +136,7 @@
     ;; (savepoint + single retry) centrally.
     ;; Leave `basis` untouched because it describes the generator's last write.
     (let [stored-type (entity-retrieval/normalize-entity-type entity-type)]
-      (app-db/update-or-insert! :model/OsiAiContext
-                                {:entity_type     stored-type
-                                 :entity_local_id entity-local-id}
-                                (constantly {:ai_context  ai-context
-                                             :data_source :human}))
+      (osi.db/upsert-ai-context! stored-type entity-local-id ai-context)
       (get-entry entity-type entity-local-id))))
 
 (api.macros/defendpoint :post "/:entity-type/:entity-local-id/regenerate"
@@ -176,9 +169,8 @@
         (cond
           ;; Keep `data_source` unchanged until generated content actually replaces the row. Changing it when
           ;; the rewrite is merely requested would immediately hide human-approved instructions from the agent.
-          (pos? (t2/update! :model/OsiAiContext
-                            (assoc conditions :updated_at (:updated_at entry))
-                            {:rewrite_requested_at stamp}))
+          (pos? (osi.db/update-if-unchanged! (:entity_type conditions) (:entity_local_id conditions)
+                                       (:updated_at entry) stamp))
           (get-entry entity-type entity-local-id)
 
           (< attempt 4)
@@ -189,12 +181,12 @@
                           {:status-code 409})))))))
 
 (api.macros/defendpoint :post "/reconcile"
-  :- [:map
-      [:index     [:map
+  :- [:map {:closed true}
+      [:index     [:map {:closed true}
                    [:inserted  :int]
                    [:deleted   :int]
                    [:unchanged :int]]]
-      [:execution [:map
+      [:execution [:map {:closed true}
                    [:waited_ms :int]
                    [:ran_ms    :int]]]]
   "Force a reconcile of the library entity index against the application database, blocking until a
