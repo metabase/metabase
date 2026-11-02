@@ -124,11 +124,12 @@
              cause)))
 
 (defn unrecoverable!
-  "Throw an unrecoverable ToolError with `code`, ending the turn.
+  "Throw an unrecoverable ToolError with `code`, ending the turn for any code a tool passes.
 
   Always throws; never returns. Tool code passes a qualified keyword, so the log and the
   model-facing template both say which namespace gave up; the runtime's own codes are an
-  unqualified closed set (`metabase.metabot.tools.runtime/runtime-codes`).
+  unqualified closed set (`metabase.metabot.tools.runtime/runtime-codes`). Among those, the agent
+  loop can let a turn go on after `:internal`, the code of a failure no tool declared.
 
     (unrecoverable! ::no-sql-permission)
     (unrecoverable! ::no-sql-permission

@@ -14,8 +14,10 @@
   checks it.
 
   Codes come in two flavours. Tool code uses qualified keywords, so a code says which namespace
-  raised it. The runtime's own codes are a closed, unqualified vocabulary — [[runtime-codes]] — and
-  the agent loop adds one more (`:repeated-error`)."
+  raised it. The runtime's own codes are a closed, unqualified vocabulary, [[runtime-codes]].
+  Every unrecoverable failure ends the turn except `:internal`, the code of a failure no tool
+  declared: the agent loop lets a turn survive one of those, or none when its profile requires a
+  tool call."
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
@@ -43,7 +45,7 @@
   "Every error code the runtime itself produces, with the class each one takes.
 
   Written down as data so the agent loop, the adapters and the tests share one list rather than
-  three sets of literal keywords. `:repeated-error` is the agent loop's and is not raised here."
+  three sets of literal keywords."
   {:unknown-tool       :validation
    :invalid-arguments  :validation
    :scope-denied       :unrecoverable
