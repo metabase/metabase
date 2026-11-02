@@ -231,7 +231,9 @@ describe("scenarios > native > snippets", () => {
     H.NativeEditor.clear();
     H.NativeEditor.type("select count(*) from {{snippet: orders-card}}");
     H.runNativeQuery();
-    cy.findByTestId("scalar-value").should("have.text", "18,760");
+    cy.findByTestId("query-visualization-root")
+      .findByText("18,760")
+      .should("be.visible");
 
     cy.log("A snippet variable changed to a field filter");
     H.NativeEditor.clear();
