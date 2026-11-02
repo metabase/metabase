@@ -2961,7 +2961,11 @@
 ;;; query, and its returned columns both type the string refs and check every join-alias ref
 ;;; against what the join actually returns. A concrete-column ref to a column a grouped join
 ;;; doesn't return, or a string ref the LLM typed itself with a name the join doesn't return,
-;;; passes lib and only fails in SQL, so both are caught here too. A ref whose alias
+;;; passes lib and only fails in SQL, so both are caught here too. A plain table join returns
+;;; every column of its table, so it is resolved only for a concrete-column ref to another table,
+;;; which lib would otherwise compile against the joined table's column of the same name.
+;;; The refs in a join's own `fields` get its alias first, so they are typed and checked the same way.
+;;; A ref whose alias
 ;;; names no join on its stage is a previous-stage ref, typed and checked by Passes 4.5 / 5 / 5.7;
 ;;; refs whose join or field can't be resolved are left for the resolver to report.
 ;;; ============================================================
@@ -3615,7 +3619,9 @@
        `base-type` before that stage can be mini-resolved as part of a later stage's prefix.
     4.7. infer `base-type` / `effective-type` on join-alias string field references from the
        referenced join's own resolved returned columns, and raise an `:agent-error?` for a
-       join-alias ref naming a column its join doesn't return. Runs before Pass 5 so a stage
+       join-alias ref naming a column its join doesn't return, including a concrete-column ref
+       to another table through a plain table join. The refs in a join's own `fields` get the
+       join's alias first, so they are checked too. Runs before Pass 5 so a stage
        carrying such a ref can still be mini-resolved as a prefix.
     5. infer `base-type` / `effective-type` on cross-stage field references
        (`[\"field\" {} \"<column-name>\"]` in a non-first stage), by mini-resolving the
