@@ -8,7 +8,7 @@ import {
 
 import { AppShell } from "./AppShell";
 import { withChunkFallback } from "./lazy-page";
-import { type ChunkErrorFallback, withChunkErrorRecovery } from "./lazy-route";
+import { type ChunkErrorFallback, chunkErrorRecovery } from "./lazy-route";
 import { setRouter, setRouterExpected } from "./navigator";
 
 export type MemoryTestRouter = DataRouter;
@@ -47,12 +47,10 @@ function withAppShell(
     {
       element: <AppShell />,
       hydrateFallbackElement: loadingFallback,
-      // Recovery sits closest to the loader, so a retry is a fresh request.
-      // `withChunkFallback` holds the first one for the life of the page.
-      children: withChunkFallback(
-        withChunkErrorRecovery(routes, chunkErrorFallback),
-        loadingFallback,
-      ),
+      children: withChunkFallback(routes, {
+        fallback: loadingFallback,
+        recovery: chunkErrorFallback && chunkErrorRecovery(chunkErrorFallback),
+      }),
     },
   ];
 }

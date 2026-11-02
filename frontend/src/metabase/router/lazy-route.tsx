@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
-import type { RouteObject } from "react-router";
 
 import { redirect, reload } from "metabase/utils/dom";
+import { delay } from "metabase/utils/promise";
 import { retry } from "metabase/utils/retry";
 
 import { getPendingNavigationHref } from "./navigator";
@@ -16,12 +16,31 @@ export type ChunkErrorFallback = ComponentType<{
   hasUnsavedChanges: boolean;
 }>;
 
-type LazyRouteFn = Extract<
-  NonNullable<RouteObject["lazy"]>,
-  (...args: never[]) => unknown
->;
+/**
+ * What to put in the slot of a page whose chunk never arrived.
+ *
+ * `after` is a full page load already on its way. Nothing renders until it
+ * resolves, and it only resolves while this document is still here, which means
+ * the load was cancelled.
+ */
+export type ChunkRecovery = {
+  Component: ComponentType;
+  after?: Promise<void>;
+};
 
-type LazyRouteGuards = WeakMap<LazyRouteFn, LazyRouteFn>;
+/**
+ * The policy a code-split page follows when its chunk does not arrive: how long
+ * to keep asking, and what to do once asking is done.
+ *
+ * Handed to the caching layer rather than wrapped around the loader, so one
+ * walk of the route tree covers both and a page that recovered is not cached as
+ * a page that loaded.
+ */
+export type ChunkErrorRecovery = {
+  retry: <T>(load: () => Promise<T>) => Promise<T>;
+  /** `null` for a failure that is not a missing chunk, which the app reports. */
+  recover: (error: unknown) => ChunkRecovery | null;
+};
 
 // A chunk is one request against one instance, so a retry is a fresh pick from
 // whatever is behind the load balancer. During a rolling deploy a pick lands on
@@ -43,6 +62,12 @@ const RETRY_JITTER_MS = 100;
 // the same tab still recovers.
 const RELOAD_INTERVAL_MS = 10_000;
 const RELOAD_STAMP_KEY = "metabase-chunk-reload-at";
+
+// How long a full page load gets before this document is treated as staying.
+// The browser acts on the load at once, so a document that is still here after
+// this was kept: an unload prompt answered with Stay, or a navigation the
+// browser refused.
+const RELOAD_GRACE_MS = 2000;
 
 const CHUNK_ERROR_PATTERN =
   /loading chunk|loading css chunk|failed to fetch dynamically imported module|error loading dynamically imported module/i;
@@ -112,8 +137,6 @@ function canReloadNow(): boolean {
   }
 }
 
-const Blank = () => null;
-
 /**
  * Recover from a page whose chunk could not be loaded.
  *
@@ -121,135 +144,61 @@ const Blank = () => null;
  * being served, so the hashed chunk it asks for is missing. A full page load
  * fixes it, because the HTML comes back naming chunks that exist.
  *
- * Resolving with a component rather than rejecting is what keeps that safe.
- * A rejected `lazy` completes the navigation with an error and renders the
- * nearest `errorElement`, unmounting whatever that boundary covers. Resolving
- * puts the fallback in the route's own slot instead, so the page the user is on
- * is never touched. The fallback draws itself over that page, and dismissing it
- * returns to it.
+ * The page is only replaced when there is nothing to lose. The leave guards
+ * answer for what they hold rather than for where this navigation is going, so
+ * a page that keeps unsaved work through an in-page navigation still counts as
+ * dirty, and a page whose guard has already agreed to be left does not.
  *
- * So the page is only replaced when there is nothing to lose. The leave guards
- * answer for a navigation that leaves the page, but they exempt one that stays
- * within it, and those navigate to their own chunks too.
+ * Everything else keeps the current page and draws the error over it. That is
+ * what resolving a component rather than rejecting buys: a rejected `lazy`
+ * completes the navigation with an error and renders the nearest
+ * `errorElement`, unmounting whatever that boundary covers.
  */
-function recoverFromChunkError(Fallback: ChunkErrorFallback) {
+function recoverFromChunkError(Fallback: ChunkErrorFallback): ChunkRecovery {
   const isDirty = hasUnsavedChanges();
+  const Component = function ChunkErrorPage() {
+    return <Fallback hasUnsavedChanges={isDirty} />;
+  };
 
   // `canReloadNow` records the attempt, so it is asked last: a page load that
   // is not going to happen must not spend the one that is allowed.
-  if (!isDirty && !isOffline() && canReloadNow()) {
-    const href = getPendingNavigationHref();
-    // No pending navigation means the destination is already the current URL,
-    // either because this is the first load of the page or because the router
-    // committed the location without waiting for the chunk.
-    if (href) {
-      redirect(href);
-    } else {
-      reload();
-    }
-    return { Component: Blank };
+  if (isDirty || isOffline() || !canReloadNow()) {
+    return { Component };
   }
 
-  return {
-    Component: function ChunkErrorRoute() {
-      return <Fallback hasUnsavedChanges={isDirty} />;
-    },
-  };
+  const href = getPendingNavigationHref();
+  // No pending navigation means the destination is already the current URL,
+  // either because this is the first load of the page or because the router
+  // committed the location without waiting for the chunk.
+  if (href) {
+    redirect(href);
+  } else {
+    reload();
+  }
+
+  return { Component, after: delay(RELOAD_GRACE_MS) };
 }
 
 /**
- * One wrapper per loader, so the routes that share a chunk still share one.
+ * How a code-split page recovers from a chunk that never arrives.
  *
- * `withChunkFallback` caches the component it stands up against the loader it
- * is handed, which is this wrapper. A wrapper per route would give the dozen
- * routes that mount the query builder a component type each, and react-router
- * renders `route.Component` without a key, so moving between two of them would
- * remount the page.
+ * `Fallback` is supplied by the app rather than imported: the error pages live
+ * above this module's tier, the same reason `hydrateFallback` is passed in to
+ * `createAppRouter`.
  */
-function guardLazyRoute(
-  load: LazyRouteFn,
+export function chunkErrorRecovery(
   Fallback: ChunkErrorFallback,
-  guards: LazyRouteGuards,
-): LazyRouteFn {
-  const shared = guards.get(load);
-  if (shared) {
-    return shared;
-  }
-
-  const guard = recoverLazyRoute(load, Fallback);
-  guards.set(load, guard);
-  return guard;
-}
-
-function recoverLazyRoute(
-  load: LazyRouteFn,
-  Fallback: ChunkErrorFallback,
-): LazyRouteFn {
-  return async (...args: Parameters<LazyRouteFn>) => {
-    try {
-      return await retry(() => load(...args), {
+): ChunkErrorRecovery {
+  return {
+    retry: (load) =>
+      retry(load, {
         maxRetries: MAX_RETRIES,
         shouldRetry: isWorthRetrying,
         // Jittered, so that every tab that a deploy breaks at once does not ask
         // again in step.
         delayMs: () => RETRY_DELAY_MS + Math.random() * RETRY_JITTER_MS,
-      });
-    } catch (error) {
-      if (!isChunkLoadError(error)) {
-        throw error;
-      }
-      return recoverFromChunkError(Fallback);
-    }
-  };
-}
-
-/**
- * Wraps every `lazy` in the tree so a missing chunk recovers instead of
- * rendering nothing.
- *
- * Applied to the assembled tree rather than at each `lazy:` site, so a route
- * added later is covered without anyone remembering to. It also has to be the
- * route object that is wrapped and not the loader function: `registerPagePrefetch`
- * holds the same functions, and a hover must not be able to load the page.
- */
-export function withChunkErrorRecovery(
-  routes: RouteObject[],
-  Fallback: ChunkErrorFallback | undefined,
-): RouteObject[] {
-  if (!Fallback) {
-    return routes;
-  }
-  // One map for the whole tree, so two routes that share a loader share a
-  // wrapper however far apart in it they sit.
-  return guardRoutes(routes, Fallback, new WeakMap());
-}
-
-function guardRoutes(
-  routes: RouteObject[],
-  Fallback: ChunkErrorFallback,
-  guards: LazyRouteGuards,
-): RouteObject[] {
-  return routes.map((route): RouteObject => {
-    // react-router also accepts an object `lazy`, which splits a route by
-    // property rather than by module. Nothing here uses that form, and it has no
-    // single module to recover.
-    const { lazy } = route;
-    const recovering =
-      typeof lazy === "function"
-        ? { lazy: guardLazyRoute(lazy, Fallback, guards) }
-        : null;
-
-    // An index route carries no children, and the two shapes are only
-    // assignable to `RouteObject` when they are built apart.
-    if (route.index) {
-      return { ...route, ...recovering };
-    }
-    return {
-      ...route,
-      ...recovering,
-      ...(route.children && {
-        children: guardRoutes(route.children, Fallback, guards),
       }),
-    };
-  });
+    recover: (error) =>
+      isChunkLoadError(error) ? recoverFromChunkError(Fallback) : null,
+  };
 }

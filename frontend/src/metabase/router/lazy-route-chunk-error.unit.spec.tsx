@@ -209,6 +209,51 @@ describe("a route whose chunk fails to load", () => {
     onLine.mockRestore();
   });
 
+  // Committing a location into a document that is leaving buys nothing, and the
+  // page being left is better to look at than a fallback for a page that will
+  // never render.
+  it("keeps the page being left on screen while the page load runs", async () => {
+    const load = jest.fn().mockRejectedValue(chunkLoadTimeout());
+
+    renderRoutesWithFallback(homeAndSplit(load), "/");
+    expect(await screen.findByTestId("home")).toBeInTheDocument();
+
+    act(() => {
+      navigate("/split");
+    });
+
+    await waitFor(() => expect(redirect).toHaveBeenCalledWith("/split"));
+
+    // Past the point where the wait would otherwise have run out.
+    await expect(
+      screen.findByTestId("loading", undefined, {
+        timeout: CHUNK_WAIT_MS + 500,
+      }),
+    ).rejects.toThrow();
+    expect(screen.getByTestId("home")).toBeInTheDocument();
+  });
+
+  // The browser acts on a full page load at once, so a document still here
+  // afterwards was kept: an unload prompt answered with Stay, or a load the
+  // browser refused. Leaving the route empty would strand the user there.
+  it("shows the error page when the page load it asked for does not happen", async () => {
+    const load = jest.fn().mockRejectedValue(chunkLoadTimeout());
+
+    renderRoutesWithFallback(homeAndSplit(load), "/");
+    expect(await screen.findByTestId("home")).toBeInTheDocument();
+
+    act(() => {
+      navigate("/split");
+    });
+
+    // `redirect` is mocked, so this document stays, which is what a cancelled
+    // load leaves behind.
+    await waitFor(() => expect(redirect).toHaveBeenCalledWith("/split"));
+    expect(
+      await screen.findByTestId("chunk-error", undefined, { timeout: 5000 }),
+    ).toBeInTheDocument();
+  });
+
   it("shows the error page instead of loading again within the interval", async () => {
     const load = jest.fn().mockRejectedValue(chunkLoadError());
 
@@ -360,6 +405,40 @@ describe("a chunk that fails while the page holds unsaved work", () => {
       await screen.findByTestId("chunk-error", undefined, { timeout: 5000 }),
     ).toHaveTextContent("dirty");
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  // The error is this route's component only for as long as the route is open.
+  // A deploy that was mid-rollout has usually finished by the next visit, and a
+  // route that never asks again shows the error for the rest of the session.
+  it("asks for the chunk again the next time the route is opened", async () => {
+    const load = jest
+      .fn()
+      .mockRejectedValueOnce(chunkLoadTimeout())
+      .mockResolvedValue({ Component: Split });
+
+    renderRoutesWithFallback(routes(load), "/doc");
+    expect(await screen.findByTestId("editor")).toBeInTheDocument();
+
+    act(() => {
+      navigate("/doc/comments");
+    });
+
+    expect(
+      await screen.findByTestId("chunk-error", undefined, { timeout: 5000 }),
+    ).toHaveTextContent("dirty");
+    expect(load).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      navigate("/doc");
+    });
+    expect(await screen.findByTestId("doc")).toBeInTheDocument();
+
+    act(() => {
+      navigate("/doc/comments");
+    });
+
+    expect(await screen.findByTestId("split")).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(2);
   });
 
   it("keeps the page mounted rather than replacing it", async () => {
