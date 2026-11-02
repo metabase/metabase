@@ -69,7 +69,7 @@
 (def ^:private task-detail-key-rank
   (zipmap [:outcome :reason :credentials_source :message :exception_class :summary
            :candidates :generated :already-approved :restamped :skipped :errors :pending
-           :usage :llm-calls :reconcile :entity-type :entity-local-id :duration-ms
+           :usage :llm-call-count :llm-calls-truncated :llm-calls :reconcile :entity-type :entity-local-id :duration-ms
            :input-tokens :output-tokens :index :execution
            :inserted :deleted :unchanged :waited_ms :ran_ms]
           (range)))
@@ -93,7 +93,12 @@
   [history result]
   (assoc history
          :status (if (= :failed (:outcome result)) :failed :success)
-         :task_details (canonical-task-details result)))
+         :task_details (canonical-task-details
+                        (if-let [calls (get-in result [:summary :llm-calls])]
+                          (-> result
+                              (assoc-in [:summary :llm-call-count] (count calls))
+                              (assoc-in [:summary :llm-calls-truncated] (> (count calls) 50)))
+                          result))))
 
 (defn- run-with-history!
   []

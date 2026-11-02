@@ -156,9 +156,7 @@
 (defn- llm-call-summary
   [candidate outcome {:keys [duration-ms usage]}]
   (when (some? duration-ms)
-    (let [[entity-type entity-local-id] (entity-retrieval/entity-class
-                                         (get-in candidate [:entity :entity_type])
-                                         (get-in candidate [:entity :entity_local_id]))]
+    (let [{entity-type :entity_type, entity-local-id :entity_local_id} (:entity candidate)]
       {:entity-type     entity-type
        :entity-local-id entity-local-id
        :outcome         outcome
