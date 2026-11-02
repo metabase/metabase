@@ -48,7 +48,8 @@
                                       :ai_context {:synonyms ["military orders"]}}})
         system   (get-in messages [0 :content])
         user     (get-in messages [1 :content])]
-    (is (str/includes? system "name and description define its intended business meaning"))
+    (is (str/includes? system "display name and description define its intended business meaning"))
+    (is (str/includes? system "Prefer the display name over the raw table name when present"))
     (is (str/includes? system "response replaces the existing metadata"))
     (is (str/includes? system "Explicitly carry forward existing synonyms"))
     (is (str/includes? user "Description (primary business meaning"))

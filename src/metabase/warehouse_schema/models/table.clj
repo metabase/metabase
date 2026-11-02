@@ -756,38 +756,34 @@
   evidence for the parent table, so a long one must not crowd out the rest of the table's context."
   500)
 
+(defn- keep-first-children
+  [acc {:keys [id name description]}]
+  (let [child [name (some-> description (u.str/limit-chars max-child-description-len)) id]
+        acc   (conj acc child)]
+    (if (> (count acc) max-table-children)
+      (disj acc (first (rseq acc)))
+      acc)))
+
 (defn- table-children
   "Batch `:measures`/`:segments` hydration for the Table `:osi-context` projection: map of
-  [[entity-retrieval.spec/hydration-key]] -> the table's unarchived `model` rows (`:model/Measure` or
-  `:model/Segment`) as `{:name s :description s}`, ordered by name, capped at [[max-table-children]]
-  with each description capped at [[max-child-description-len]].
-  Like every `:osi-context` hydration the value is deterministic and bounded, and nothing downstream
-  trims what it puts in the prompt or in the stored `osi_ai_context.basis`."
+  [[entity-retrieval.spec/hydration-key]] -> unarchived children, ordered by name and description,
+  capped at [[max-table-children]] with descriptions capped at [[max-child-description-len]]."
   [model tables]
   (when-let [ids (not-empty (into [] (keep :id) tables))]
     (into {}
           (mapcat (fn [id-chunk]
                     (update-vals
-                     (group-by #(entity-retrieval.spec/hydration-key "table" (:table_id %))
-                               (warehouse-schema.db/table-child-summaries model (vec id-chunk)))
+                     ;; Truncation preserves the order of distinguishable output descriptions. IDs retain
+                     ;; duplicate summaries without making the stored value depend on database collation.
+                     (u/group-by #(entity-retrieval.spec/hydration-key "table" (:table_id %))
+                                 identity keep-first-children (sorted-set)
+                                 (app-db/streaming-reducible
+                                  (fn [conn]
+                                    (warehouse-schema.db/table-child-summaries conn model (vec id-chunk)))))
                      (fn [rows]
-                       (into []
-                             (comp (map (fn [{child-name :name, description :description}]
-                                          {:name        child-name
-                                           :description (some-> description
-                                                                (u.str/limit-chars max-child-description-len))}))
-                                   (take max-table-children))
-                             ;; The order is part of the stored value: it goes into the basis and is diffed
-                             ;; against the previous run, so an order that shifts on its own reads as an
-                             ;; authored change and regenerates every library table for nothing. The query
-                             ;; cannot own it — it fetches a chunk of tables at once, so a per-table cap
-                             ;; there needs a window function, and which rows that cap keeps would then
-                             ;; rest on tie and NULL ordering that varies by dialect, and on the app db's
-                             ;; collation, which an H2-to-Postgres move changes. Ties sort on the whole
-                             ;; summary because two children of one table can share a name.
-                             (sort-by (juxt :name :description) rows))))))
-          ;; Chunked for the app db's bind-parameter limit, by table id so every child of a table lands in
-          ;; the one chunk holding its id and no partial entry can clobber a full one.
+                       (mapv (fn [[child-name description _id]]
+                               {:name child-name, :description description})
+                             rows)))))
           (partition-all entity-retrieval.spec/hydration-query-chunk-size ids))))
 
 (defn- table-measures
