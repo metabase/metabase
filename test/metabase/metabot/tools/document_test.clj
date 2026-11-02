@@ -97,6 +97,14 @@
                  (:error result)))
           (is (str/includes? (:output result) text)))))))
 
+(deftest document-schema-collect-non-positive-database-id-test
+  (testing "a `database_id` below 1 is a validation error that the model can correct"
+    (doseq [database-id [0 -1]]
+      (testing database-id
+        (is (=? {:class :validation}
+                (:error (invoke-document-tool "document_schema_collect" {:database_id database-id}
+                                              (mentions {})))))))))
+
 (deftest document-schema-collect-unavailable-database-test
   (testing "a database that doesn't exist or that the user can't read"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]

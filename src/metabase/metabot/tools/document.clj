@@ -158,7 +158,7 @@
      :scope                scope/agent-document-read
      :metabot/capabilities #{:permission-write-sql-queries}
      :args                 [:map {:closed true}
-                            [:database_id {:optional true} [:maybe :int]]]})
+                            [:database_id {:optional true} [:maybe [:int {:min 1}]]]]})
   (handle [_ {:keys [database_id]} ctx]
     (let [db          (chosen-database ctx database_id)
           database-id (:id db)
