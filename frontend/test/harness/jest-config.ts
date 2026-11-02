@@ -18,6 +18,7 @@ type ProjectOptions = {
   transform?: Record<string, unknown>;
   transformIgnorePatterns?: string[];
   globals?: Record<string, unknown>;
+  testEnvironment?: string;
 };
 
 type JestConfig = {
@@ -41,6 +42,10 @@ export type Project = {
   transform: RegExp[];
   transformIgnorePatterns: RegExp[];
   globals: Record<string, unknown>;
+  /**
+   * jest's default, "node", gives the specs no DOM.
+   */
+  environment: "jsdom" | "node";
 };
 
 /**
@@ -152,5 +157,8 @@ function readProject(project: ProjectOptions): Project {
       (pattern) => new RegExp(fromRoot(pattern)),
     ),
     globals: project.globals ?? {},
+    environment: (project.testEnvironment ?? "node").includes("jsdom")
+      ? "jsdom"
+      : "node",
   };
 }
