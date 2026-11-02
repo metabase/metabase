@@ -2962,7 +2962,8 @@
 ;;; against what the join actually returns. A concrete-column ref to a column a grouped join
 ;;; doesn't return, or a string ref the LLM typed itself with a name the join doesn't return,
 ;;; passes lib and only fails in SQL, so both are caught here too. A plain table join returns
-;;; every column of its table, so it is resolved only for a concrete-column ref to another table.
+;;; every column of its table, so a concrete-column ref resolves it only when the ref names another
+;;; table's column. A string ref resolves it as it would any join.
 ;;; Lib compiles such a ref against the joined table's column of the same name if there is one,
 ;;; giving a wrong answer, and the database rejects it otherwise.
 ;;; The refs in a join's own `fields` get its alias first, so they are typed and checked the same way.
@@ -3065,7 +3066,8 @@
                                      :cols       cols
                                      :named-refs named-refs
                                      :path-refs  path-refs
-                                     :plain?     plain?}))
+                                     :plain?     plain?
+                                     :field-refs (set (when (sequential? (get join "fields")) (get join "fields")))}))
         alias->cols          (into {} (map (juxt :alias :cols)) checks)]
     {:stage    (cond->> stage
                  (seq alias->cols)
@@ -3075,27 +3077,31 @@
                                        (alias->cols (get (nth node 1) "join-alias")))]
                       (maybe-fill-cross-stage-types node cols)
                       node))))
-     :problems (vec (for [{:keys [alias cols named-refs path-refs plain?]} checks
+     :problems (vec (for [{:keys [alias cols named-refs path-refs plain? field-refs]} checks
                           :let  [{bad-named :named, bad-path :path}
                                  (bad-join-alias-refs mp cols named-refs path-refs import-resolver)
                                  bad (into bad-named bad-path)]
                           :when (seq bad)]
-                      {:stage        (repr/original-stage-index query idx)
-                       :join-alias   alias
-                       :clauses      bad
-                       :columns      (vec (distinct (map #(field-target-name mp (nth % 2)) bad)))
-                       :available    (mapv :name cols)
-                       :named?       (boolean (seq bad-named))
-                       :plain?       plain?
-                       ;; a plain table join's path refs are all to other tables, see `path-refs` above
-                       :other-table? (boolean (and plain? (seq bad-path)))}))}))
+                      ;; a plain table join's path refs are all to other tables, see `path-refs` above
+                      {:stage                  (repr/original-stage-index query idx)
+                       :join-alias             alias
+                       :clauses                bad
+                       :columns                (vec (distinct (map #(field-target-name mp (nth % 2)) bad)))
+                       :available              (mapv :name cols)
+                       :named?                 (boolean (seq bad-named))
+                       :plain?                 plain?
+                       :other-table?           (boolean (and plain? (some (complement field-refs) bad-path)))
+                       :other-table-in-fields? (boolean (and plain? (some field-refs bad-path)))}))}))
 
 (defn- unresolved-join-alias-fields-error
   "The `:agent-error?` for `problems`, the join-alias refs naming columns their joins don't return.
-  Its message lists them, then gives the advice each problem's `:named?`, `:plain?` and `:other-table?` call for."
+  Its message lists them, then gives the advice each problem's `:named?`, `:plain?`, `:other-table?` and
+  `:other-table-in-fields?` call for."
   [problems]
   ;; Only the advice that applies: a ref to another table through a plain table join has nothing to do with display
-  ;; labels or grouped joins.
+  ;; labels or grouped joins. Outside the join, repair routes that ref through a foreign key once `join-alias` goes, or
+  ;; lib does when given both `source-field` options. A join's own `fields` can't take another table's column at all:
+  ;; repair puts the alias back, and lib rejects an implicitly joined column there.
   (ex-info
    (str (format "Some join column references name a column their join doesn't return: %s."
                 (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
@@ -3109,10 +3115,14 @@
                " display label like `Min of X`)."))
         (when (some (complement :plain?) problems)
           " Reference only columns the join returns: a grouped join returns just its breakouts and aggregations.")
+        (when (some #(or (:other-table? %) (:other-table-in-fields? %)) problems)
+          " A join of a single table returns only that table's columns.")
         (when (some :other-table? problems)
-          (str " A join of a single table returns only that table's columns. To use another table's column, drop"
-               " `join-alias`, or set `source-field-join-alias` to the join's alias to reach that table through the"
-               " join's foreign key.")))
+          (str " To use another table's column, drop `join-alias` so the table is reached through a foreign key, or set"
+               " both `source-field` (the foreign key column on the joined table) and `source-field-join-alias` (the"
+               " join's alias)."))
+        (when (some :other-table-in-fields? problems)
+          " To show another table's column, add a join on that table and list the column in that join's `fields`."))
    {:agent-error? true
     :error        :unresolved-join-alias-field
     :problems     problems}))
@@ -3121,8 +3131,8 @@
   "Pass 4.7: type the join-alias string field refs of every stage from the referenced joins' returned columns.
   Raises one `:agent-error?` listing every join-alias ref, across all stages, that names a column its join doesn't
   return.
-  Only joins named by a string ref or a concrete-column ref are resolved, and a [[plain-table-join?]] only when such
-  a ref names another table's column."
+  Only joins named by a string ref or a concrete-column ref are resolved.
+  A concrete-column ref resolves a [[plain-table-join?]] only when it names another table's column."
   [query mp content-store]
   (if-not (and mp (map? query) (vector? (get query "stages")))
     query

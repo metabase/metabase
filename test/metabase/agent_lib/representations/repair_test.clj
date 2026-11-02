@@ -4365,17 +4365,18 @@
                         "filters" [["not-null" {} (join-ref "Plain" target)]]})))
 
 (defn- advice-flags
-  "The flags on each problem in the join-alias error `q`'s repair raises, which pick the advice in its message."
+  "The flags set on each problem in the join-alias error `q`'s repair raises, which pick the advice in its message."
   [q]
-  (mapv #(select-keys % [:named? :plain? :other-table?]) (:problems (repair-error q))))
+  (mapv #(set (filter % [:named? :plain? :other-table? :other-table-in-fields?])) (:problems (repair-error q))))
+
+(defn- plain-join-fields [target]
+  (query (orders-stage {"joins" [(assoc plain-join "fields" [["field" {} target]])]})))
 
 (deftest ^:parallel plain-table-join-other-table-path-ref-test
   (testing "a path ref through a plain table join to another table's column of the same name raises"
-    (is (= [[0 "Plain" ["PEOPLE.ID"]]] (join-problems (plain-filtering people-id))))
-    (is (= [{:named? false, :plain? true, :other-table? true}] (advice-flags (plain-filtering people-id)))))
+    (is (= [[0 "Plain" ["PEOPLE.ID"]]] (join-problems (plain-filtering people-id)))))
   (testing "a path ref there in the join's own fields raises too"
-    (is (= [[0 "Plain" ["PEOPLE.ID"]]]
-           (join-problems (query (orders-stage {"joins" [(assoc plain-join "fields" [["field" {} people-id]])]}))))))
+    (is (= [[0 "Plain" ["PEOPLE.ID"]]] (join-problems (plain-join-fields people-id)))))
   (testing "a path ref to the joined table's own column is accepted"
     (is (nil? (repair-error (plain-filtering (conj orders "ID"))))))
   (testing "a path ref to a column of a join nested in the joined stage is accepted"
@@ -4389,23 +4390,30 @@
 (deftest ^:parallel join-alias-field-advice-test
   (let [message (comp :message repair-error)]
     (testing "a ref to another table through a plain table join is told how to reach that table, and nothing else"
-      (let [m (message (plain-filtering people-id))]
-        (is (str/includes? m "set `source-field-join-alias` to the join's alias"))
-        (is (not-any? #(str/includes? m %) ["display label" "grouped join"]))))
+      (let [q (plain-filtering people-id)
+            m (message q)]
+        (is (= [#{:plain? :other-table?}] (advice-flags q)))
+        (is (str/includes? m "drop `join-alias`"))
+        (is (str/includes? m "set both `source-field`"))
+        (is (not-any? #(str/includes? m %) ["display label" "grouped join" "add a join"]))))
+    (testing "a ref to another table in a plain table join's own fields is told to join that table"
+      (let [q (plain-join-fields people-id)
+            m (message q)]
+        (is (= [#{:plain? :other-table-in-fields?}] (advice-flags q)))
+        (is (str/includes? m "add a join on that table"))
+        (is (not-any? #(str/includes? m %) ["drop `join-alias`" "display label" "grouped join"]))))
     (testing "a bad name through a plain table join gets only the advice about names"
       (let [q (plain-filtering "nope")
             m (message q)]
-        (is (= [{:named? true, :plain? true, :other-table? false}] (advice-flags q)))
+        (is (= [#{:named? :plain?}] (advice-flags q)))
         (is (str/includes? m "display label"))
-        (is (not-any? #(str/includes? m %) ["grouped join" "source-field-join-alias"]))))
+        (is (not-any? #(str/includes? m %) ["grouped join" "source-field"]))))
     (testing "problems in a grouped and a plain table join get the advice for each"
       (let [q (query (orders-stage {"joins"   [(join "First" [first-orders-stage]) plain-join]
                                     "filters" [["not-null" {} (join-ref "First" "nope")]
                                                ["not-null" {} (join-ref "Plain" people-id)]]}))]
-        (is (= [{:named? true, :plain? false, :other-table? false}
-                {:named? false, :plain? true, :other-table? true}]
-               (advice-flags q)))
-        (is (every? #(str/includes? (message q) %) ["display label" "grouped join" "source-field-join-alias"]))))))
+        (is (= [#{:named?} #{:plain? :other-table?}] (advice-flags q)))
+        (is (every? #(str/includes? (message q) %) ["display label" "grouped join" "set both `source-field`"]))))))
 
 (deftest ^:parallel join-alias-field-type-idempotent-test
   (let [once (repair* first-order-query)]
