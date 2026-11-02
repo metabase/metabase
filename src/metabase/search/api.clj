@@ -301,15 +301,18 @@
     :display-type                        (set display-type)}))
 
 (defn- data-app-search-params
-  "`query-params` narrowed, for a data-app `request`, to the Library's content; without a Library, the search looks for
-  tables in the Trash, which holds none."
+  "`query-params` narrowed, for a data-app `request`, to the Library's tables and metrics among the models it asks for;
+  without a Library or such a model, the search looks for tables in the Trash, which holds none."
   [request query-params]
   (if (data-apps/request-data-app request)
-    (if-let [library (collections/library-collection)]
-      (assoc query-params :collection (:id library))
-      (-> query-params
-          (dissoc :ids)
-          (assoc :models ["table"] :collection (collections/trash-collection-id))))
+    (let [models  (cond->> ["table" "metric"]
+                    (seq (:models query-params)) (filterv (set (:models query-params))))
+          library (when (seq models) (collections/library-collection))]
+      (if library
+        (assoc query-params :models models :collection (:id library))
+        (-> query-params
+            (dissoc :ids)
+            (assoc :models ["table"] :collection (collections/trash-collection-id)))))
     query-params))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case

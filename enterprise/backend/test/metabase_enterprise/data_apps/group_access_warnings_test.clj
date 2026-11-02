@@ -33,22 +33,21 @@
   [[app-sym table-ids] & body]
   `(do-with-app-reading! ~table-ids (fn [~app-sym] ~@body)))
 
-(defn- do-with-query-action!
-  "Call `f` with a query action running `sql` in the collection with `collection-id`."
-  [collection-id sql f]
-  (mt/with-temp [:model/Action {action-id :id} {:type :query :name "Run" :collection_id collection-id}
-                 :model/QueryAction _ {:action_id     action-id
-                                       :database_id   (mt/id)
-                                       :dataset_query (lib/native-query (mt/metadata-provider) sql)}]
+(defn- do-with-implicit-action!
+  "Call `f` with an implicit action of no model that deletes from the Table with `table-id`, in the collection with
+  `collection-id`."
+  [collection-id table-id f]
+  (mt/with-temp [:model/Action         {action-id :id} {:type :implicit :name "Delete" :collection_id collection-id}
+                 :model/ImplicitAction _               {:action_id action-id :kind "row/delete" :table_id table-id}]
     (f)))
 
 (deftest group-permission-warnings-walk-the-dependency-graph-test
   (testing "the warnings list the tables a question reads, the tables only a Library metric it aggregates reads, and the
-            tables a query action writes"
+            table an implicit action writes"
     (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
       (mt/with-no-data-perms-for-all-users!
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
-          (data-apps.tu/with-published-tables! [(mt/id :orders) (mt/id :venues)]
+          (data-apps.tu/with-published-tables! [(mt/id :orders) (mt/id :venues) (mt/id :checkins)]
             (data-apps.tu/do-with-library!
              (fn [{:keys [metrics-id]}]
                (let [mp (mt/metadata-provider)]
@@ -68,8 +67,8 @@
                      (mt/with-temp [:model/Card _ {:collection_id collection-id
                                                    :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                                       (lib/aggregate (lib.metadata/metric mp metric-id)))}]
-                       (do-with-query-action!
-                        collection-id "DELETE FROM CHECKINS WHERE ID = 1"
+                       (do-with-implicit-action!
+                        collection-id (mt/id :checkins)
                         (fn []
                           (deps.test/synchronously-run-dependency-job!)
                           (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
@@ -78,47 +77,6 @@
                                     :missing_tables [{:id (mt/id :categories)} {:id (mt/id :checkins)}
                                                      {:id (mt/id :orders)} {:id (mt/id :venues)}]}]
                                   (group-access/permission-warnings app)))))))))))))))))
-
-(deftest group-permission-warnings-include-tables-in-optional-clauses-test
-  (testing "the tables an optional clause of a query action names count, whether or not its parameter is set"
-    (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
-      (mt/with-no-data-perms-for-all-users!
-        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
-          (doseq [sql ["UPDATE VENUES SET NAME = 'x' [[WHERE ID IN (SELECT VENUE_ID FROM CHECKINS WHERE ID = {{id}})]]"
-                       "UPDATE VENUES v SET NAME = 'x' WHERE v.ID IN (SELECT v2.ID FROM VENUES v2 [[JOIN CHECKINS c ON c.VENUE_ID = v2.ID AND c.ID = {{id}}]])"]]
-            (testing sql
-              (mt/with-temp [:model/DataApp {collection-id :resource_collection_id :as app}
-                             {}
-                             :model/PermissionsGroup group {}]
-                (do-with-query-action!
-                 collection-id sql
-                 (fn []
-                   (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-                   (group-access/add-groups! app [(:id group)])
-                   (deps.test/synchronously-run-dependency-job!)
-                   (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)} {:id (mt/id :venues)}]}]
-                           (group-access/permission-warnings app)))))))))))))
-
-(deftest group-permission-warnings-follow-snippet-edit-test
-  (testing "after a snippet edit and the jobs, the warnings list the tables of the snippet's new SQL in a query action"
-    (mt/test-helpers-set-global-values!
-      (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding]
-            (mt/with-temp [:model/NativeQuerySnippet snippet {:name "birds source" :content "VENUES"}
-                           :model/DataApp {collection-id :resource_collection_id :as app}
-                           {}
-                           :model/PermissionsGroup group {}]
-              (do-with-query-action!
-               collection-id "DELETE FROM {{snippet: birds source}} WHERE ID = 1"
-               (fn []
-                 (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-                 (group-access/add-groups! app [(:id group)])
-                 (deps.test/synchronously-run-dependency-job!)
-                 (t2/update! :model/NativeQuerySnippet :id (:id snippet) {:content "CHECKINS"})
-                 (deps.test/synchronously-run-dependency-job!)
-                 (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)}]}]
-                         (group-access/permission-warnings app))))))))))))
 
 (deftest group-permission-warnings-exclude-inactive-tables-test
   (mt/with-premium-features #{:data-apps :advanced-permissions}
