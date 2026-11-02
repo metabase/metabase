@@ -4246,6 +4246,46 @@
       (is (=? {:error :unresolved-cross-stage-field, :clause ["field" {"join-alias" "Prev"} "TOTAL"]}
               (repair-error (filtered-on ["field" {"join-alias" "Prev"} "TOTAL"])))))))
 
+(deftest ^:parallel previous-stage-join-alias-deduplicated-aggregation-test
+  (let [min-ref (join-ref "Prev" "min")
+        q       (query min-total-by-user-stage
+                       (stage {"joins" [(assoc (join "Prev" [first-orders-stage] :lhs user-id-by-name)
+                                               "fields" "all")]})
+                       (stage {"filters" [["not-null" {} min-ref]]
+                               "joins"   [(assoc-in (join "Next" [first-orders-stage] :lhs min-ref)
+                                                    ["conditions" 0 3] (join-ref "Next" "min"))]}))
+        out     (repair* q)]
+    (testing "a deduplicated join column is typed through its alias in filters and join conditions"
+      (doseq [path [["filters" 0 2] ["joins" 0 "conditions" 0 2]]]
+        (is (=? (typed min-ref "type/Date")
+                (get-in out (into ["stages" 2] path))))))
+    (testing "a quoted name is unquoted without adding the join prefix to the ref"
+      (is (= out (repair* (assoc-in q ["stages" 2 "filters" 0 2 2] "\"min\"")))))
+    (is (= out (repair* out)))))
+
+(deftest ^:parallel previous-stage-join-alias-prefixed-name-precedence-test
+  (let [joined (update first-orders-stage "aggregation" conj ["max" {"name" "min_2"} (orders-col "TOTAL")])
+        q      (query min-total-by-user-stage
+                      (stage {"joins" [(assoc (join "Prev" [joined] :lhs user-id-by-name) "fields" "all")]})
+                      (stage {"filters" [["not-null" {} (join-ref "Prev" "min_2")]]}))]
+    (testing "the joined min_2 is a Float, even though the joined Date min is deduplicated to min_2"
+      (is (= "type/Float" (base-type (get-in (repair* q) ["stages" 2 "filters" 0 2])))))))
+
+(deftest ^:parallel previous-stage-join-alias-custom-display-name-test
+  (let [joined (assoc-in prev-joined-stage ["joins" 0 "stages" 0 "breakout" 0 1 "display-name"] "Account key")
+        q      (query joined (stage {"filters" [["not-null" {} (join-ref "Prev" "USER_ID")]]}))]
+    (is (= "type/Integer" (base-type (get-in (repair* q) ["stages" 1 "filters" 0 2]))))))
+
+(deftest ^:parallel previous-stage-join-alias-nested-column-test
+  (let [self-joined [(orders-stage {"joins" [(assoc (join "Self" [(orders-stage {})]) "fields" "all")]})]
+        field-ref   (join-ref "Outer" "Self__TOTAL")
+        q           (query (orders-stage {"joins" [(assoc (join "Outer" self-joined) "fields" "all")]})
+                           (stage {"filters" [["not-null" {} field-ref]]}))
+        out         (repair* q)]
+    (is (=? (typed field-ref "type/Float")
+            (get-in out ["stages" 1 "filters" 0 2])))
+    (is (= out (repair* out)))))
+
 (deftest ^:parallel unresolved-cross-stage-ref-with-no-columns-test
   (testing "a ref without a join alias is reported when the previous stage returns no columns"
     (is (= ["field" {} "nope"]

@@ -2823,24 +2823,29 @@
        wrote with the UI label (`\"Max of Instance Has SC\"`) recovers the machine name (`max`).
 
   Genuine ambiguity (more than one loose hit) is left unmatched at each layer.
-  A column whose name legitimately needs quotes (vanishingly rare) is never clobbered."
-  [cols col-name]
-  (let [stripped  (strip-surrounding-double-quotes col-name)
-        find-on   (fn [k n] (some #(when (= n (k %)) %) cols))
-        lib-match (fn [n] (some #(find-on % n) [:desired-alias :deduplicated-name :name]))
-        loose-on  (fn [key-fn raw]
-                    (let [target (normalize-col-key raw)
-                          hits   (when target
-                                   (filter #(= target (normalize-col-key (key-fn %))) cols))]
-                      (when (= 1 (count hits))
-                        (first hits))))]
-    (if-let [[spelling match] (or (some->> (lib-match col-name) (vector col-name))
-                                  (when (not= stripped col-name)
-                                    (some->> (lib-match stripped) (vector stripped))))]
-      [spelling (:types match)]
-      (when-let [match (or (loose-on :name stripped)
-                           (loose-on :display-name stripped))]
-        [(:name match) (:types match)]))))
+  A column whose name legitimately needs quotes (vanishingly rare) is never clobbered.
+  With `join-alias`, each exact match tries `join-alias__name` before the name itself, keeping the ref's spelling."
+  ([cols col-name]
+   (match-cross-stage-column cols col-name nil))
+  ([cols col-name join-alias]
+   (let [stripped  (strip-surrounding-double-quotes col-name)
+         find-on   (fn [k n] (some #(when (= n (k %)) %) cols))
+         exact     (fn [n] (some #(find-on % n) [:desired-alias :deduplicated-name :name]))
+         lib-match (fn [n] (or (when join-alias (exact (str join-alias "__" n)))
+                               (exact n)))
+         loose-on  (fn [key-fn raw]
+                     (let [target (normalize-col-key raw)
+                           hits   (when target
+                                    (filter #(= target (normalize-col-key (key-fn %))) cols))]
+                       (when (= 1 (count hits))
+                         (first hits))))]
+     (if-let [[spelling match] (or (some->> (lib-match col-name) (vector col-name))
+                                   (when (not= stripped col-name)
+                                     (some->> (lib-match stripped) (vector stripped))))]
+       [spelling (:types match)]
+       (when-let [match (or (loose-on :name stripped)
+                            (loose-on :display-name stripped))]
+         [(:name match) (:types match)])))))
 
 (defn- maybe-fill-cross-stage-types
   "Given a cross-stage field clause and a name→types map, return the clause with its column name
@@ -2848,22 +2853,25 @@
   column) and `base-type` / `effective-type` filled in (when missing and known).
 
   Idempotent: once the name is canonical it matches exactly on the next pass (no rename), and
-  once `base-type` is present it is left alone."
-  [clause cols]
-  (let [opts     (nth clause 1)
-        col-name (nth clause 2)]
-    (if-let [[canonical-name types] (match-cross-stage-column cols col-name)]
-      (cond-> clause
-        ;; Canonicalise the name when quote-stripping / display-name recovery was needed to
-        ;; match. A bare `base-type` stamp without this would leave the ref pointing at a
-        ;; non-existent column.
-        (not= canonical-name col-name)
-        (assoc 2 canonical-name)
-        ;; Stamp inferred types only when the LLM didn't author a `base-type` already and the
-        ;; matched column actually exposes one.
-        (and types (not (contains? opts "base-type")))
-        (assoc 1 (merge opts types)))
-      clause)))
+  once `base-type` is present it is left alone.
+  The optional `join-alias` enables previous-stage join lookup in [[match-cross-stage-column]]."
+  ([clause cols]
+   (maybe-fill-cross-stage-types clause cols nil))
+  ([clause cols join-alias]
+   (let [opts     (nth clause 1)
+         col-name (nth clause 2)]
+     (if-let [[canonical-name types] (match-cross-stage-column cols col-name join-alias)]
+       (cond-> clause
+         ;; Canonicalise the name when quote-stripping / display-name recovery was needed to
+         ;; match. A bare `base-type` stamp without this would leave the ref pointing at a
+         ;; non-existent column.
+         (not= canonical-name col-name)
+         (assoc 2 canonical-name)
+         ;; Stamp inferred types only when the LLM didn't author a `base-type` already and the
+         ;; matched column actually exposes one.
+         (and types (not (contains? opts "base-type")))
+         (assoc 1 (merge opts types)))
+       clause))))
 
 (defn- cols-through-alias
   "Return the columns in `cols` that `field-ref` can name: those that came through its join alias, or all of them
@@ -2885,7 +2893,7 @@
      (fn [node]
        (if-let [ref-cols (when (string-cross-stage-field-clause? aliases node)
                            (cols-through-alias cols node))]
-         (maybe-fill-cross-stage-types node ref-cols)
+         (maybe-fill-cross-stage-types node ref-cols (get-in node [1 "join-alias"]))
          node))
      stage)))
 
@@ -3131,7 +3139,7 @@
     (match/match-one (without-join-stages stage)
       (node :guard (and (unstamped-cross-stage-ref? aliases node)
                         (when-let [ref-cols (cols-through-alias cols node)]
-                          (nil? (match-cross-stage-column ref-cols (nth node 2))))))
+                          (nil? (match-cross-stage-column ref-cols (nth node 2) (get-in node [1 "join-alias"]))))))
       node)))
 
 (defn- assert-cross-stage-refs-resolved*
