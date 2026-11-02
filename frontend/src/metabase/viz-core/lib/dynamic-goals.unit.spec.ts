@@ -162,6 +162,26 @@ describe("resolveGoalValue", () => {
     ).toBe("source-not-found");
   });
 
+  it("errors when the referenced query returned no rows", () => {
+    const data = {
+      cols: [],
+      rows: [],
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed" as const,
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [] },
+          },
+        },
+      },
+    };
+
+    expect(
+      resolveGoalValue(data, { type: "card", id: 9, column: "goal" }).error
+        ?.reason,
+    ).toBe("not-a-number");
+  });
+
   it("errors with too-many-rows when the referenced query returned more than one row", () => {
     const data = createMockDatasetData({
       cols,
