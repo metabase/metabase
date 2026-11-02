@@ -678,9 +678,9 @@
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
                                                llm-mini-model       "waiting/mini"]
-          (is (=? {:message (str "Invalid Bedrock model \"bedrock/openai.gpt-oss-120b\". "
+          (is (= (str "Invalid Bedrock model \"bedrock/openai.gpt-oss-120b\". "
                                  "Supported model IDs use the anthropic.* or openai.* prefix; "
-                                 "openai.gpt-oss* is not supported.")}
+                                 "openai.gpt-oss* is not supported.")
                   (mt/user-http-request :crowberto :post 400 "llm/providers"
                                         {:type   "bedrock"
                                          :config {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
@@ -1196,9 +1196,9 @@
         (mt/with-temporary-setting-values [llm-providers [original]]
           (mt/with-temporary-raw-setting-values [llm-metabot-provider "bedrock/anthropic.claude-opus-4-8"
                                                  llm-mini-model       "bedrock/anthropic.claude-haiku-4-5"]
-            (is (=? {:message (str "Invalid Bedrock model \"bedrock/openai.gpt-oss-120b\". "
+            (is (= (str "Invalid Bedrock model \"bedrock/openai.gpt-oss-120b\". "
                                    "Supported model IDs use the anthropic.* or openai.* prefix; "
-                                   "openai.gpt-oss* is not supported.")}
+                                   "openai.gpt-oss* is not supported.")
                     (mt/user-http-request :crowberto :put 400 "llm/providers/bedrock"
                                           {:name   "Changed"
                                            :config {:region "eu-west-1"}
