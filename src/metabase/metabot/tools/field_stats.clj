@@ -133,20 +133,24 @@
                        "Choose another data source.")
                :uses #{}}]})
 
-(defn- distinct-by-field-id
-  "Keep the first column of each field ID in `columns`, a list of columns a query can use. Two columns of such a list
-  with one field ID are paths to one field, not two result columns, so a later one gets no alias ID."
+(defn- usable-columns
+  "Keep the columns of `columns`, a list of columns a query can use, that the current user can see, and of these the
+  first column of each field ID. Two columns of such a list with one field ID are paths to one field, not two result
+  columns, so a later one gets no alias ID.
+
+  The permission filter runs first, because it decides per FK path: the first path to a field can be hidden while a
+  later path is visible."
   [columns]
-  (m/distinct-by metabot.tools.u/column-field-id columns))
+  (m/distinct-by metabot.tools.u/column-field-id (entity-details/permission-filter-columns columns)))
 
 (defn- field-column
+  "Find the column of `field-id` in `columns`. The caller removes the columns that the current user cannot see."
   [entity-type entity-id field-id columns]
-  (let [columns (entity-details/permission-filter-columns columns)]
-    (or (metabot.tools.u/find-column-by-field-id field-id columns)
-        (let [available-ids (into [] (distinct) (metabot.tools.u/column-field-ids columns))]
-          (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
-                           :available-ids (vec (take max-suggested-field-ids available-ids))
-                           :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))})))))
+  (or (metabot.tools.u/find-column-by-field-id field-id columns)
+      (let [available-ids (into [] (distinct) (metabot.tools.u/column-field-ids columns))]
+        (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
+                         :available-ids (vec (take max-suggested-field-ids available-ids))
+                         :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))}))))
 
 (defn- check-curated-field-owner!
   "Under [[shared/curated-only?]], require that the Field behind `col`, a result column of the card `card-id`, belongs
@@ -163,7 +167,7 @@
 (defn- table-field-stats
   [table-id field-id limit]
   (let [query (metabot.tools.u/table-query table-id)
-        col (field-column "table" table-id field-id (distinct-by-field-id (lib/visible-columns query)))]
+        col (field-column "table" table-id field-id (usable-columns (lib/visible-columns query)))]
     (field-metadata-output query col field-id limit)))
 
 (defn- card-field-stats
@@ -175,16 +179,15 @@
         query    (if (shared/curated-only?)
                    (metabot.tools.u/card-results-query card-id (keyword entity-type))
                    (metabot.tools.u/card-query card-id (keyword entity-type)))
-        returned (lib/returned-columns query)
+        returned (entity-details/permission-filter-columns (lib/returned-columns query))
         ;; Result columns keep their own field IDs, see `column-field-ids`. A visible column adds a field ID only
         ;; when no result column has it.
         columns  (if (= entity-type "question")
                    returned
                    (let [returned-ids (set (metabot.tools.u/column-field-ids returned))]
                      (concat returned
-                             (->> (lib/visible-columns query)
-                                  (remove (comp returned-ids metabot.tools.u/column-field-id))
-                                  distinct-by-field-id))))
+                             (->> (usable-columns (lib/visible-columns query))
+                                  (remove (comp returned-ids metabot.tools.u/column-field-id))))))
         col      (field-column entity-type card-id field-id columns)]
     (check-curated-field-owner! card-id col)
     (field-metadata-output query col field-id limit)))
@@ -192,7 +195,7 @@
 (defn- metric-field-stats
   [metric-id field-id limit]
   (let [query (metabot.tools.u/metric-query metric-id)
-        col (field-column "metric" metric-id field-id (distinct-by-field-id (lib/filterable-columns query)))]
+        col (field-column "metric" metric-id field-id (usable-columns (lib/filterable-columns query)))]
     (check-curated-field-owner! metric-id col)
     (field-metadata-output query col field-id limit)))
 
