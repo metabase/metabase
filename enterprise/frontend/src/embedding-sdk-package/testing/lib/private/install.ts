@@ -4,6 +4,8 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 
+import { TEST_PROVIDER_NAME } from "./constants";
+
 type MockSdkStore = {
   getState: () => undefined;
   subscribe: (listener: () => void) => () => void;
@@ -30,8 +32,7 @@ export function installMockSdk(bundle: MetabaseEmbeddingSdkBundleExports) {
 
   if (win.METABASE_EMBEDDING_SDK_BUNDLE) {
     throw new Error(
-      // eslint-disable-next-line metabase/no-literal-metabase-strings -- developer-facing error naming SDK components
-      "An SDK bundle is already installed. Render one MetabaseTestProvider at a time.",
+      `An SDK bundle is already installed. Render one ${TEST_PROVIDER_NAME} at a time.`,
     );
   }
 
