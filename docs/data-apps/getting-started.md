@@ -194,7 +194,7 @@ An app can also add, edit, and delete rows in your database, with actions. Actio
 > **The preview changes production data:** The preview runs the app's actions against the database that your production Metabase connects to. Try out the form on rows that you add for testing.
 
 1. On your production Metabase, [turn on data actions](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database) for the database.
-2. Do the steps in [Change the app](#change-the-app), and ask your agent for the form. For example:
+2. Do the steps in [Edit the app](#edit-the-app), and ask your agent for the form. For example:
 
    ```text
    Add a form to the app that lets people add a product.
