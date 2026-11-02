@@ -1,21 +1,38 @@
 import type { ReactNode } from "react";
-import { useId } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import {
+  DetailsRow,
+  DetailsTable,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
+import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Ellipsified, Group, Stack, Text } from "metabase/ui";
+import { Code } from "metabase/ui";
 import { dependencyGraph } from "metabase/urls/dependencies";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { Table } from "metabase-types/api";
 
 interface Props {
   table: Table;
+  readOnly: boolean;
+  onNameChange: (name: string) => void;
+  onDescriptionChange: (description: string) => void;
 }
 
-export function TableMetadata({ table }: Props) {
+// Pulls EditableText's own padding and border into the row's padding so its
+// text lines up with the plain values in the other rows
+const EDITABLE_TEXT_OFFSET = "-0.3125rem";
+
+export function TableMetadata({
+  table,
+  readOnly,
+  onNameChange,
+  onDescriptionChange,
+}: Props) {
   const formatNumber = useNumberFormatter();
   const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;
 
@@ -25,26 +42,70 @@ export function TableMetadata({ table }: Props) {
       type: "table",
     });
 
+  const handleNameChange = (value: string) => {
+    const name = value.trim();
+    if (name.length > 0 && name !== table.display_name) {
+      onNameChange(name);
+    }
+  };
+
+  const handleDescriptionChange = (value: string) => {
+    const description = value.trim();
+    if (description !== (table.description ?? "")) {
+      onDescriptionChange(description);
+    }
+  };
+
   return (
-    <Stack gap="lg">
-      <MetadataRow label={t`Name in the database`} value={table.name} />
-      <MetadataRow
-        label={t`Last updated at`}
-        value={<DateTime value={table.updated_at} />}
-      />
-      <MetadataRow
-        label={t`View count`}
-        value={formatNumber(table.view_count)}
-      />
-      {!isNullOrUndefined(table.estimated_row_count) ? (
-        <MetadataRow
-          label={t`Est. row count`}
-          value={formatNumber(table.estimated_row_count)}
+    <SidebarSection title={t`Metadata`}>
+      <DetailsTable>
+        <DetailsRow
+          label={t`Display name`}
+          value={
+            <EditableText
+              initialValue={table.display_name}
+              placeholder={t`Give this table a name`}
+              maxLength={254}
+              isDisabled={readOnly}
+              fw="bold"
+              m={EDITABLE_TEXT_OFFSET}
+              onChange={handleNameChange}
+              data-testid="table-display-name-input"
+            />
+          }
         />
-      ) : null}
-      {isDependenciesEnabled && (
-        <>
-          <MetadataRow
+        <DetailsRow label={t`Raw name`} value={<Code>{table.name}</Code>} />
+        <DetailsRow
+          label={t`Description`}
+          value={
+            <EditableText
+              initialValue={table.description}
+              placeholder={t`No description`}
+              isMultiline
+              isOptional
+              isDisabled={readOnly}
+              m={EDITABLE_TEXT_OFFSET}
+              onChange={handleDescriptionChange}
+              data-testid="table-description-input"
+            />
+          }
+        />
+        <DetailsRow
+          label={t`Last updated at`}
+          value={<DateTime value={table.updated_at} />}
+        />
+        <DetailsRow
+          label={t`View count`}
+          value={formatNumber(table.view_count)}
+        />
+        {!isNullOrUndefined(table.estimated_row_count) && (
+          <DetailsRow
+            label={t`Est. row count`}
+            value={formatNumber(table.estimated_row_count)}
+          />
+        )}
+        {isDependenciesEnabled && (
+          <DetailsRow
             label={t`Dependencies`}
             value={
               <DependencyLink tableId={Number(table.id)}>
@@ -52,7 +113,9 @@ export function TableMetadata({ table }: Props) {
               </DependencyLink>
             }
           />
-          <MetadataRow
+        )}
+        {isDependenciesEnabled && (
+          <DetailsRow
             label={t`Dependents`}
             value={
               <DependencyLink tableId={Number(table.id)}>
@@ -60,9 +123,9 @@ export function TableMetadata({ table }: Props) {
               </DependencyLink>
             }
           />
-        </>
-      )}
-    </Stack>
+        )}
+      </DetailsTable>
+    </SidebarSection>
   );
 }
 
@@ -78,37 +141,9 @@ function DependencyLink({
       to={dependencyGraph({
         entry: { id: tableId, type: "table" },
       })}
-      variant="brand"
-      style={{
-        fontWeight: "bold",
-      }}
+      variant="brandBold"
     >
       {children}
     </Link>
-  );
-}
-
-function MetadataRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number | null | undefined | ReactNode;
-}) {
-  const id = useId();
-  return (
-    <Group justify="space-between" gap="xl" wrap="nowrap">
-      <Text size="md" c="text-primary" id={id} flex="1 0 auto">
-        {label}
-      </Text>
-      <Ellipsified
-        size="md"
-        c="text-primary"
-        aria-labelledby={id}
-        tooltipProps={{ maw: "unset" }}
-      >
-        {value}
-      </Ellipsified>
-    </Group>
   );
 }

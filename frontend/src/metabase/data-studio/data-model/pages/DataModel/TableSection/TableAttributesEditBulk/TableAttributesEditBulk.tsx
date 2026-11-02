@@ -16,13 +16,14 @@ import {
 } from "metabase/metadata/components";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack } from "metabase/ui";
 import type {
   TableDataLayer,
   TableDataSource,
   UserId,
 } from "metabase-types/api";
 
+import { DetailPanelHeader } from "../../DetailPanel";
 import { useSelection } from "../../contexts/SelectionContext";
 import S from "../TableAttributes.module.css";
 import { TableSectionGroup } from "../TableSectionGroup";
@@ -33,6 +34,7 @@ type TableAttributesEditBulkProps = {
   canPublish: boolean;
   hasLibrary: boolean;
   onUpdate: () => void;
+  onClose: () => void;
 };
 
 type TableModalType = "library" | "publish" | "unpublish" | "sync";
@@ -41,6 +43,7 @@ export function TableAttributesEditBulk({
   canPublish,
   hasLibrary,
   onUpdate,
+  onClose,
 }: TableAttributesEditBulkProps) {
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
@@ -173,137 +176,120 @@ export function TableAttributesEditBulk({
 
   return (
     <>
-      <Stack gap="lg">
-        <Group
-          align="center"
-          c="text-secondary"
-          gap={10}
-          flex="1"
-          fs="lg"
-          lh="normal"
-          wrap="nowrap"
-          px="xl"
-          pt="xl"
-          justify="space-between"
-        >
-          <Title
-            order={4}
-            c="text-primary"
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-          >
-            <Icon name="collection2" size={20} />
-            {hasOnlyTablesSelected
+      <Stack gap="xl">
+        <DetailPanelHeader
+          icon="collection2"
+          label={t`Bulk edit`}
+          title={
+            hasOnlyTablesSelected
               ? t`${selectedItemsCount} tables selected`
-              : t`Multiple tables selected`}
-          </Title>
-        </Group>
+              : t`Multiple tables selected`
+          }
+          onClose={onClose}
+        />
 
-        <Box px="xl">
-          <Group gap="sm">
-            {canPublish && !remoteSyncReadOnly && (
-              <Button
-                flex={1}
-                leftSection={<Icon name="publish" />}
-                onClick={() => setModalType(hasLibrary ? "publish" : "library")}
-              >
-                {t`Publish`}
-              </Button>
-            )}
-            {canPublish && !remoteSyncReadOnly && hasLibrary && (
-              <Button
-                flex={1}
-                leftSection={<Icon name="unpublish" />}
-                onClick={() => setModalType("unpublish")}
-              >
-                {t`Unpublish`}
-              </Button>
-            )}
+        <Group gap="sm">
+          {canPublish && !remoteSyncReadOnly && (
             <Button
               flex={1}
-              leftSection={<Icon name="settings" />}
-              onClick={() => {
-                trackDataStudioBulkSyncSettingsClicked();
-                setModalType("sync");
-              }}
+              leftSection={<Icon name="publish" />}
+              onClick={() => setModalType(hasLibrary ? "publish" : "library")}
             >
-              {t`Sync settings`}
+              {t`Publish`}
             </Button>
-          </Group>
-        </Box>
+          )}
+          {canPublish && !remoteSyncReadOnly && hasLibrary && (
+            <Button
+              flex={1}
+              leftSection={<Icon name="unpublish" />}
+              onClick={() => setModalType("unpublish")}
+            >
+              {t`Unpublish`}
+            </Button>
+          )}
+          <Button
+            flex={1}
+            leftSection={<Icon name="settings" />}
+            onClick={() => {
+              trackDataStudioBulkSyncSettingsClicked();
+              setModalType("sync");
+            }}
+          >
+            {t`Sync settings`}
+          </Button>
+        </Group>
 
-        <Box px="xl">
-          <TableSectionGroup title={t`Attributes`}>
-            <Box className={S.container}>
-              <UserInput
-                email={email}
-                label={t`Owner`}
-                userId={userId}
-                onEmailChange={(newEmail) => {
-                  handleSubmit({ email: newEmail });
-                }}
-                onUserIdChange={(newUserId) => {
-                  handleSubmit({ userId: newUserId });
-                }}
-                className={S.gridLabelInput}
-                styles={{
-                  label: {
-                    gridColumn: 1,
-                  },
-                  input: {
-                    gridColumn: 2,
-                  },
-                }}
-              />
+        <TableSectionGroup title={t`Attributes`}>
+          <Box className={S.container}>
+            <UserInput
+              email={email}
+              label={t`Owner`}
+              userId={userId}
+              onEmailChange={(newEmail) => {
+                handleSubmit({ email: newEmail });
+              }}
+              onUserIdChange={(newUserId) => {
+                handleSubmit({ userId: newUserId });
+              }}
+              className={S.gridLabelInput}
+              styles={{
+                label: {
+                  gridColumn: 1,
+                },
+                input: {
+                  gridColumn: 2,
+                },
+              }}
+            />
 
-              <LayerInput
-                value={dataLayer}
-                onChange={(newDataLayer) =>
-                  handleSubmit({ dataLayer: newDataLayer })
-                }
-                className={S.gridLabelInput}
-                styles={{
-                  label: {
-                    gridColumn: 1,
-                  },
-                  input: {
-                    gridColumn: 2,
-                  },
-                }}
-              />
+            <LayerInput
+              value={dataLayer}
+              onChange={(newDataLayer) =>
+                handleSubmit({ dataLayer: newDataLayer })
+              }
+              className={S.gridLabelInput}
+              styles={{
+                label: {
+                  gridColumn: 1,
+                },
+                input: {
+                  gridColumn: 2,
+                },
+              }}
+            />
 
-              <EntityTypeInput
-                value={entityType}
-                onChange={(entityType) => handleSubmit({ entityType })}
-                styles={{
-                  label: {
-                    gridColumn: 1,
-                  },
-                  input: {
-                    gridColumn: 2,
-                  },
-                }}
-                className={S.gridLabelInput}
-              />
+            <EntityTypeInput
+              value={entityType}
+              onChange={(entityType) => handleSubmit({ entityType })}
+              styles={{
+                label: {
+                  gridColumn: 1,
+                },
+                input: {
+                  gridColumn: 2,
+                },
+              }}
+              className={S.gridLabelInput}
+            />
 
-              <DataSourceInput
-                disabled={dataSource === "metabase-transform"}
-                value={dataSource}
-                onChange={(newDataSource) =>
-                  handleSubmit({ dataSource: newDataSource })
-                }
-                className={S.gridLabelInput}
-                styles={{
-                  label: {
-                    gridColumn: 1,
-                  },
-                  input: {
-                    gridColumn: 2,
-                  },
-                }}
-              />
-            </Box>
-          </TableSectionGroup>
-        </Box>
+            <DataSourceInput
+              disabled={dataSource === "metabase-transform"}
+              value={dataSource}
+              onChange={(newDataSource) =>
+                handleSubmit({ dataSource: newDataSource })
+              }
+              className={S.gridLabelInput}
+              styles={{
+                label: {
+                  gridColumn: 1,
+                },
+                input: {
+                  gridColumn: 2,
+                },
+              }}
+            />
+          </Box>
+        </TableSectionGroup>
       </Stack>
 
       <PLUGIN_LIBRARY.CreateLibraryModal
