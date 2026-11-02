@@ -66,6 +66,8 @@ Your agent uses the [Metabase CLI](../installation-and-operation/metabase-cli.md
 npm install -g @metabase/cli
 ```
 
+If you already have the CLI, run `mb upgrade` to get the latest version.
+
 Then log the CLI in to your development Metabase. Use your development Metabase's URL:
 
 ```sh
@@ -97,7 +99,23 @@ Your agent works in this folder. The agent stops if the folder isn't a clone of 
 
 ## Build the app
 
-### 8. Ask your agent for the app
+### 8. Create a branch for the app
+
+Your agent ships the app to the branch that your development Metabase tracks. So give the app its own branch: the app then gets to production only when you merge the branch.
+
+1. On your development Metabase, go to **Admin** > **Settings** > **Remote sync**.
+2. Under **Sync branch**, click the current branch.
+3. Type a name for the branch, like `orders-overview`, and click **Create branch "orders-overview"**. Metabase creates the branch in your repository, and switches to it.
+4. In your clone, switch to the same branch:
+
+   ```sh
+   git fetch
+   git switch orders-overview
+   ```
+
+The agent stops if your clone isn't on the branch that your development Metabase tracks.
+
+### 9. Ask your agent for the app
 
 Start your agent in the folder of your clone, and describe the app. For example:
 
@@ -107,34 +125,34 @@ Create a Metabase data app that shows our orders by month, and a table of the la
 
 The agent:
 
-- Publishes the tables that the app reads, if they aren't [published](../data-modeling/semantic-layer/published-tables.md) yet. For apps that people rely on, use published tables that you trust.
-- Creates the app on your development Metabase, and saves the questions that the app runs to the [app's collection](./build.md#what-a-data-app-can-read-and-write).
-- Writes the app's code in `data_apps/<slug>/`, where `<slug>` is the app's short name.
+- Publishes the tables that the app reads on your development Metabase, if they aren't [published](../data-modeling/semantic-layer/published-tables.md) yet. For apps that people rely on, use published tables that you trust.
+- Writes the app's code in `data_apps/<slug>/`, where `<slug>` is the app's short name. The code includes the questions that the app runs.
+- Generates the [app's collection](./build.md#what-a-data-app-can-read-and-write) in `collections/data_apps/` from the app's questions.
 - Starts a preview of the app.
 
 The agent runs commands on your computer, like `mb`, `npm`, and `git`, and it might ask for your permission first.
 
-### 9. Preview the app
+### 10. Preview the app
 
 The agent starts the preview at a `localhost` address on your computer. Open the preview in your browser, and keep the tab open while the agent works: the agent reads the app's errors from the open preview.
 
 Ask your agent for changes until the app looks the way you want. The preview shows what an admin can see, not what the app's viewers can see. For more on the preview, see [Preview the app on your computer](./build.md#preview-the-app-on-your-computer).
 
-### 10. Ship the app to your development Metabase
+### 11. Ship the app to your development Metabase
 
 When the app is ready, ask your agent:
 
 ```text
-Ship the app on a new branch.
+Ship the app to my development Metabase.
 ```
 
-The agent pushes the app's collection from your development Metabase to a new branch in your repository, and commits the app's source code and bundle to the same branch. Then the agent pulls the branch into your development Metabase.
+If the agent published tables on your development Metabase, it first pushes them to the app's branch. Then the agent builds the app, commits the app's source code, bundle, and collection to the app's branch, and pushes the branch. Last, the agent pulls the branch into your development Metabase.
 
 Open the app on your development Metabase at `/apps/<slug>`, for example `https://dev-metabase.example.com/apps/orders-overview`. On your development Metabase, only admins can open the app.
 
 ## Ship the app to production
 
-### 11. Connect your production Metabase to the repository
+### 12. Connect your production Metabase to the repository
 
 You do this step once.
 
@@ -145,14 +163,14 @@ In Read-only mode, your production Metabase gets its [Library](../data-modeling/
 3. In **Repository URL**, enter the same repository URL as on your development Metabase.
 4. Select **Read-only**.
 5. In **Access Token**, paste the token.
-6. Turn on **Auto-sync with git**. Your production Metabase then pulls changes from your main branch every five minutes. So always ship apps on a new branch: an app that ships on your main branch goes to production without review.
+6. Turn on **Auto-sync with git**. Your production Metabase then pulls changes from your main branch every five minutes. That's why each app gets its own branch in [step 8](#8-create-a-branch-for-the-app): an app that your agent ships to your main branch goes to production without review.
 7. Click **Set up remote sync**.
 
-### 12. Merge the app's branch
+### 13. Merge the app's branch
 
 Merge the app's branch into your main branch, for example with a [pull request](../data-modeling/semantic-layer/remote-sync.md#step-4-create-a-pull-request). Your production Metabase pulls the app within five minutes.
 
-### 13. Let people open the app
+### 14. Let people open the app
 
 1. On your production Metabase, click the **grid** icon in the upper right, and select **Data studio**.
 2. Click **Data apps**, and click the app.
@@ -165,28 +183,30 @@ People in those groups can now open the app at `/apps/<slug>` on your production
 An app can also add, edit, and delete rows in your database, with actions. Actions only work on [PostgreSQL and MySQL](../data-modeling/data-actions.md#databases-that-support-data-actions) databases.
 
 1. On your development Metabase, [turn on data actions](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database) for the database.
-2. In your clone, switch to your main branch, and pull the latest changes:
+2. On your development Metabase, [switch to your main branch](../data-modeling/semantic-layer/remote-sync.md#switching-branches), and [pull the latest changes](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git). Then create a new branch for the form, like `orders-overview-form`, the same way as in [step 8](#8-create-a-branch-for-the-app).
+3. In your clone, pull the latest changes, and switch to the new branch:
 
    ```sh
-   git checkout main
+   git switch main
    git pull
+   git switch orders-overview-form
    ```
 
-3. Ask your agent for the form. For example:
+4. Ask your agent for the form. For example:
 
    ```text
    Add a form to the app that lets people add a product.
    ```
 
-4. Try out the form in the preview. The preview's actions change real data in the database that your development Metabase connects to, so try them out on test rows.
-5. When the form works, ask your agent:
+5. Try out the form in the preview. The preview's actions change real data in the database that your development Metabase connects to, so try them out on test rows.
+6. When the form works, ask your agent:
 
    ```text
-   Ship the app on a new branch.
+   Ship the app to my development Metabase.
    ```
 
-6. On your production Metabase, turn on data actions for the same database.
-7. Merge the branch into your main branch.
+7. On your production Metabase, turn on data actions for the same database.
+8. Merge the branch into your main branch.
 
 For the rules that an app's actions follow, see [What a data app can read and write](./build.md#what-a-data-app-can-read-and-write).
 

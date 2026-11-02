@@ -28,9 +28,9 @@ Before you let more people open an app, check which data the app reads and write
 
 ![Data app Overview tab](./images/data-apps-overview-tab.png)
 
-These tabs don't show everything that the app can read. The **Questions** tab doesn't list the app's metrics. And the app can also read your published tables, and the metrics and dashboards in your Library. See [what a data app can read and write](./build.md#what-a-data-app-can-read-and-write).
+These tabs don't show everything that the app can read. The app can also read your published tables, and the metrics in your Library. See [what a data app can read and write](./build.md#what-a-data-app-can-read-and-write).
 
-To see what a question or action depends on, open the question or action, and go to its **Dependencies** tab. To see the whole app, including its metrics, look up the app in the [dependency graph](../data-modeling/tools/graph.md).
+To see what a question or action depends on, open the question or action, and go to its **Dependencies** tab. To see the whole app, look up the app in the [dependency graph](../data-modeling/tools/graph.md).
 
 To see the questions and actions that your apps run, who runs them, and what fails, check out [Data app analytics](../monitor/data-app-analytics.md) in Monitor.
 
@@ -73,10 +73,12 @@ To fix the group's access:
 
 ## Delete a data app
 
-Data Studio doesn't have an option to delete apps. Delete the app on your development Metabase: ask your agent, or [log the CLI in](../installation-and-operation/metabase-cli.md#authenticate-the-cli) as an admin and run:
+Data Studio doesn't have an option to delete apps. To delete an app, ask your agent, or delete these from your Git repository on a branch:
 
-```sh
-mb data-app delete <slug>
-```
+- `data_apps/<slug>/`
+- `collections/data_apps/data_app__<slug>.yaml`
+- `collections/data_apps/data_app__<slug>/`
 
-Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access. To delete the app on production too, [push the change](../data-modeling/semantic-layer/remote-sync.md#pushing-changes-to-git) to your branch, merge the branch, and pull the changes on your production Metabase.
+Then merge the branch into the branch that your production Metabase pulls from, and [pull the changes](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git) into each Metabase that has the app.
+
+Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access. To take an app offline without deleting it, [make it a draft](#make-an-app-live-or-a-draft).

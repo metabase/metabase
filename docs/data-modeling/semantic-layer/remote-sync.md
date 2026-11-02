@@ -43,7 +43,7 @@ Your repository can't change users, groups, or permissions, because those [don't
 ### Remote sync has two modes for different roles
 
 - **Read-write mode for your development Metabase**: Create and edit Library content and transforms. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabases can connect in Read-write mode, each working on [different branches](#branch-management).
-- **Read-only mode for your production Metabase**: Read-only Metabases only [pull](#pulling-changes-from-git) changes, typically from your main branch. In Read-only mode, you can't edit Library content, create segments or measures on published tables, edit transforms, or create, edit, or delete [data apps](../../data-apps/build.md#ship-the-app-to-production). You can set up [auto-sync](#pulling-changes-automatically) to pull approved changes every five minutes. Keep your production Metabase in Read-only mode so that every change goes through Git.
+- **Read-only mode for your production Metabase**: Read-only Metabases only [pull](#pulling-changes-from-git) changes, typically from your main branch. In Read-only mode, you can't edit Library content, create segments or measures on published tables, or edit transforms. You can set up [auto-sync](#pulling-changes-automatically) to pull approved changes every five minutes. Keep your production Metabase in Read-only mode so that every change goes through Git.
 
 ### Content is stored as YAML files
 
@@ -323,7 +323,7 @@ Remote sync uses the same serialization format as the [Metabase CLI serializatio
 - Metrics
 - Dashboards and their cards
 - Documents
-- [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase syncs the app's manifest, bundle, and collection, not the app's source code. You (or your agent) must commit the source code to the same repository, so that you can change the app later.
+- [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase pulls the app's manifest, bundle, and collection, but never pushes them, and ignores the app's source code. You (or your agent) commit all of these to the same repository.
 - SQL snippets
 - [Data actions](../data-actions.md)
 - The glossary
