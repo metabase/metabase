@@ -9,10 +9,20 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn database :- [:maybe ::warehouses.schema/database]
-  "The ::warehouses.schema/database with `database-id`, or nil."
+(mu/defn router-database-id
+  "The router Database id of the Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one-fn :router_database_id :model/Database :id database-id))
+
+(mu/defn database
+  "The Database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one :model/Database :id [:auto/param database-id]))
+  (t2/select-one :model/Database :id database-id))
+
+(mu/defn non-destination-database
+  "The Database with `database-id` if it is not a routing destination, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id :router_database_id nil))
 
 (mu/defn databases
   "The Databases with `database-ids`."
@@ -28,13 +38,13 @@
   "Set the connection details of the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    details     :- ::warehouses.schema/database.details]
-  (t2/update! :model/Database database-id {:details details}))
+  (t2/update! :model/Database :id database-id {:details details}))
 
 (mu/defn set-database-provider-name!
   "Set the provider name of the Database with `database-id`, returning the number updated."
   [database-id    :- ::lib.schema.id/database
    provider-name  :- :string]
-  (t2/update! :model/Database database-id {:provider_name provider-name}))
+  (t2/update! :model/Database :id database-id {:provider_name provider-name}))
 
 (mu/defn health-check-candidate-ids
   "The `:id` of the lowest-id non-audit, non-sample, non-stub, non-destination Database of each engine."

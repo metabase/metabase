@@ -174,7 +174,8 @@
   "Apply `entity`'s `:row` (a column diff) to `entity`'s `:model` row with `id`, returning the number updated."
   [id     :- [:or :int :string]
    entity :- ::model-row]
-  (t2/update! (:model entity) id (:row entity)))
+  ;; `entity`'s model is any model, so match on its own primary key, which may not be `:id`.
+  (t2/update! (:model entity) :toucan/pk id (:row entity)))
 
 (mu/defn insert-entity!
   "Insert `entity`'s `:row` into `entity`'s `:model` and return the inserted instance."
@@ -195,7 +196,8 @@
   "Delete the `model` row with `id`, returning the number deleted."
   [model :- [:or :keyword symbol?]
    id    :- [:maybe [:or :int :string]]]
-  (t2/delete! model id))
+  ;; `model` is any model, so match on its own primary key, which may not be `:id`.
+  (t2/delete! model :toucan/pk id))
 
 (mu/defn delete-entities-with-ids!
   "Delete the `model` rows whose `id-column` is one of `ids`, returning the number deleted."

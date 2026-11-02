@@ -64,6 +64,12 @@
     (driver/hosts-from-details {:db db} [:db])
     []))
 
+;; H2's only connection detail, `:db`, is the whole connection string (`file:/path/to/db;OPTION=...`), passed through
+;; as-is, so it is not a value spliced into a URL Metabase builds
+(defmethod driver/url-building-detail-keys :h2
+  [_driver]
+  [])
+
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
 
@@ -720,8 +726,8 @@
   [driver db-id table-name column-definitions & opts]
   ;; H2 doesn't support altering multiple columns at a time, so we break it up into individual ALTER TABLE statements
   (let [f (get-method driver/alter-table-columns! :sql-jdbc)]
-    (doseq [[k v] column-definitions]
-      (apply f driver db-id table-name {k v} opts))))
+    (perf/run! (fn [[k v]] (apply f driver db-id table-name {k v} opts))
+               column-definitions)))
 
 (defmethod driver/allowed-promotions :h2
   [_driver]

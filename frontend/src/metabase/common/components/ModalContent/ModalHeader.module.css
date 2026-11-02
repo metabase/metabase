@@ -25,16 +25,12 @@
 }
 
 .actionIcon {
-  color: var(--mb-color-text-disabled);
+  composes: textSecondaryHoverPrimary from "style";
   cursor: pointer;
-
-  &:hover {
-    color: var(--mb-color-text-secondary);
-  }
 }
 
 .backButton {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
 
   &:hover {
     color: var(--mb-color-core-brand);

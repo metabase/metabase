@@ -45,7 +45,6 @@
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
-   [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -623,8 +622,8 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id like-pattern limit published-only?]
-  (warehouses-rest.db/autocomplete-tables db-id like-pattern limit published-only?))
+(defn- autocomplete-tables [db-id like-pattern limit]
+  (warehouses-rest.db/autocomplete-tables db-id like-pattern limit))
 
 (defn- autocomplete-cards
   "Returns cards that match the search string in the given database, ordered by id.
@@ -637,8 +636,8 @@
   [database-id search-card-slug include-dashboard-questions?]
   (warehouses-rest.db/autocomplete-cards database-id search-card-slug include-dashboard-questions?))
 
-(defn- autocomplete-fields [db-id like-pattern limit published-only?]
-  (warehouses-rest.db/autocomplete-fields db-id like-pattern limit published-only?))
+(defn- autocomplete-fields [db-id like-pattern limit]
+  (warehouses-rest.db/autocomplete-fields db-id like-pattern limit))
 
 (defn- autocomplete-results [tables fields limit]
   (let [tbl-count   (count tables)
@@ -656,11 +655,11 @@
 
 (defn- autocomplete-suggestions
   "`like-pattern` is a `LIKE` right-hand side (see [[h2x/like-substring]] and [[h2x/like-prefix]]) matched against
-  lowercased table and field names; only published tables and their fields when `published-only?`."
-  [db-id like-pattern published-only?]
+  lowercased table and field names."
+  [db-id like-pattern]
   (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id like-pattern limit published-only?))
-        fields (readable-fields-only (autocomplete-fields db-id like-pattern limit published-only?))]
+        tables (filter mi/can-read? (autocomplete-tables db-id like-pattern limit))
+        fields (readable-fields-only (autocomplete-fields db-id like-pattern limit))]
     (autocomplete-results tables fields limit)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -680,31 +679,27 @@
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [prefix substring]} :- [:map {:closed true}
                                   [:prefix    {:optional true} [:maybe ms/NonBlankString]]
-                                  [:substring {:optional true} [:maybe ms/NonBlankString]]]
-   _body
-   request]
+                                  [:substring {:optional true} [:maybe ms/NonBlankString]]]]
   (api/read-check (warehouses/get-database id))
   (when (and (str/blank? prefix) (str/blank? substring))
     (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
-  (let [published-only? (some? (data-apps/request-data-app request))]
-    (try
-      {:status  200
-       ;; Presumably user will repeat same prefixes many times writing the query,
-       ;; so let them cache response to make autocomplete feel fast. 60 seconds
-       ;; is not enough to be a nuisance when schema or permissions change. Cache
-       ;; is user-specific since we're checking for permissions.
-       :headers {"Cache-Control" "public, max-age=60"
-                 "Vary"          "Cookie, X-Metabase-Client"}
-       :body    (cond
-                  substring (autocomplete-suggestions id (h2x/like-substring substring) published-only?)
-                  prefix    (autocomplete-suggestions id (h2x/like-prefix prefix) published-only?))}
-      (catch Throwable e
-        (log/warnf "Error with autocomplete: %s" (ex-message e))))))
+  (try
+    {:status  200
+     ;; Presumably user will repeat same prefixes many times writing the query,
+     ;; so let them cache response to make autocomplete feel fast. 60 seconds
+     ;; is not enough to be a nuisance when schema or permissions change. Cache
+     ;; is user-specific since we're checking for permissions.
+     :headers {"Cache-Control" "public, max-age=60"
+               "Vary"          "Cookie"}
+     :body    (cond
+                substring (autocomplete-suggestions id (h2x/like-substring substring))
+                prefix    (autocomplete-suggestions id (h2x/like-prefix prefix)))}
+    (catch Throwable e
+      (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -720,23 +715,18 @@
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [query include_dashboard_questions]} :- [:map {:closed true}
                                                    [:query                       ms/NonBlankString]
-                                                   [:include_dashboard_questions {:optional true} ms/BooleanValue]]
-   _body
-   request]
+                                                   [:include_dashboard_questions {:optional true} ms/BooleanValue]]]
   (api/read-check (warehouses/get-database id))
-  (if (some? (data-apps/request-data-app request))
-    []
-    (try
-      (->> (autocomplete-cards id query include_dashboard_questions)
-           (filter mi/can-read?)
-           (map #(select-keys % [:id :name :type :collection_name])))
-      (catch Throwable e
-        (log/warnf "Error with autocomplete: %s" (ex-message e))))))
+  (try
+    (->> (autocomplete-cards id query include_dashboard_questions)
+         (filter mi/can-read?)
+         (map #(select-keys % [:id :name :type :collection_name])))
+    (catch Throwable e
+      (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 
@@ -915,7 +905,7 @@
                                                          [:details ms/DatabaseDetails]
                                                          [:id {:optional true} [:maybe ms/PositiveInt]]]]]]
   (api/check-superuser)
-  (let [database         (when id (api/write-check (warehouses.db/database id)))
+  (let [database         (when id (api/write-check (warehouses-rest.db/database id)))
         details-or-error (if database
                            (test-existing-database-details database engine details)
                            (warehouses/test-connection-details engine details))]
@@ -1018,7 +1008,7 @@
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
                     {:status-code 400})))
-  (let [existing-database               (api/write-check (warehouses.db/database id))
+  (let [existing-database               (api/write-check (warehouses-rest.db/database id))
         ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
         ;; table editing), so the guard is lifted when test endpoints are enabled
         _                               (when (and (:is_sample existing-database)
@@ -1112,7 +1102,7 @@
         ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
           (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl}))
-        (let [db (warehouses.db/database id)]
+        (let [db (warehouses-rest.db/database id)]
           ;; the details in db and existing-database have been normalized so they are the same here
           ;; we need to pass through details-changed? which is calculated before detail normalization
           ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
@@ -1139,7 +1129,7 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
-    (api/let-404 [db (warehouses.db/database id)]
+    (api/let-404 [db (warehouses-rest.db/database id)]
       (api/check-403 (mi/can-write? db))
       (warehouses-rest.db/delete-destination-databases! id)
       (database-routing/delete-associated-database-router! id)
@@ -1451,7 +1441,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    {:keys [connection-type]} :- [:map {:closed true} [:connection-type {:optional true} ::driver.conn/connection-type]]]
   (api/check-superuser)
-  (let [{:as database :keys [engine]} (api/check-404 (warehouses.db/database id))
+  (let [{:as database :keys [engine]} (api/check-404 (warehouses-rest.db/database id))
         connection-type               (or connection-type :default)
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))

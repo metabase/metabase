@@ -45,9 +45,14 @@
   [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/Action :id action-id))
 
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id))
+
 (mu/defn set-action-public-uuid!
   "Set the public uuid of the Action with `action-id` and the User who made it public."
   [action-id         :- ::lib.schema.id/action
    public-uuid       :- [:maybe :string]
    made-public-by-id :- [:maybe ::lib.schema.id/user]]
-  (t2/update! :model/Action action-id {:public_uuid public-uuid, :made_public_by_id made-public-by-id}))
+  (t2/update! :model/Action :id action-id {:public_uuid public-uuid, :made_public_by_id made-public-by-id}))

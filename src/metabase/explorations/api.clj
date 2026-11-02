@@ -8,7 +8,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
-   [metabase.documents.db :as documents.db]
    [metabase.events.core :as events]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.core :as explorations]
@@ -20,12 +19,10 @@
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.metrics.core :as metrics]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
-   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -276,6 +273,17 @@
       (explorations.queues/start-thread! thread-id)
       true)))
 
+(defn- stringify-dim-types
+  "Prepare a block's `:dimensions` for re-insertion. The model's read transform keywordizes
+  `:effective-type`/`:semantic-type` (e.g. `:type/Date`); the JSON write transform would
+  otherwise drop the namespace on a bare keyword, so stringify them first."
+  [dimensions]
+  (mapv (fn [dim]
+          (cond-> dim
+            (keyword? (:effective-type dim)) (update :effective-type u/qualified-name)
+            (keyword? (:semantic-type dim))  (update :semantic-type u/qualified-name)))
+        dimensions))
+
 (defn- format-explore-filter-for-thread-name
   "Format one explore filter for a thread name. `:display_value` is FE-authored and is the
   sole source of truth for the value label."
@@ -348,8 +356,8 @@
   [:map {:closed true :decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
+   [:effective-type {:optional true} [:maybe :string]]
+   [:semantic-type  {:optional true} [:maybe :string]]])
 
 (def ^:private BlockSelection
   "One Research-plan area on the FE — a metric plus its chosen dimensions. Persisted verbatim as
@@ -677,10 +685,10 @@
    {:keys [page_id explore_filters]} :- ExploreFurther]
   (let [exploration (get-exploration-or-404 id)]
     (api/write-check exploration)
-    (let [page          (api/check-404 (explorations.db/exploration-page page_id))
-          block         (api/check-404 (explorations.db/exploration-block (:exploration_block_id page)))
+    (let [page          (api/check-404 (explorations.db/page page_id))
+          block         (api/check-404 (explorations.db/block (:exploration_block_id page)))
           src-thread-id (:exploration_thread_id block)
-          src-thread    (explorations.db/exploration-thread src-thread-id)
+          src-thread    (explorations.db/thread src-thread-id)
           ;; The clicked page must live in *this* exploration — a page keys off a block off a
           ;; thread off an exploration, and "Explore further" only ever drills a chart the caller
           ;; is already viewing here. Reject anything else with a 404: without this check a caller
@@ -694,7 +702,7 @@
           metric-selection  (first metric-selections)
           cards         (mapv (fn [{:keys [card_id]}]
                                 (api/read-check
-                                 (api/check-404 (when card_id (queries.db/card card_id)))))
+                                 (api/check-404 (when card_id (explorations.db/card card_id)))))
                               metric-selections)
           card          (api/check-404 (first cards))
           card-name     (:name card)
@@ -721,7 +729,7 @@
               tid    (:id thread)]
           (explorations.db/insert-blocks! {:exploration_thread_id tid
                                            :metrics               metrics'
-                                           :dimensions            (:dimensions block)
+                                           :dimensions            (stringify-dim-types (:dimensions block))
                                            :position              0})
           (insert-thread-timelines! tid timeline-ids)
           ;; Stamp `started_at` last — it's the signal the planning worker claims on.
@@ -813,12 +821,12 @@
 
 (defn- get-exploration-page-or-404
   [page-id]
-  (api/check-404 (explorations.db/exploration-page page-id)))
+  (api/check-404 (explorations.db/page page-id)))
 
 (defn- get-thread-or-404
   "Fetch the thread, or 404."
   [thread-id]
-  (api/check-404 (explorations.db/exploration-thread thread-id)))
+  (api/check-404 (explorations.db/thread thread-id)))
 
 (defn- write-check-thread [thread-id]
   (let [thread (get-thread-or-404 thread-id)]
@@ -878,13 +886,13 @@
       (let [pending-ids (explorations.db/lock-pending-query-ids-for-thread thread-id)]
         (when (seq pending-ids)
           (explorations.db/cancel-queries! pending-ids)))))
-  (select-keys (explorations.db/exploration-thread thread-id) [:id :canceled_at :completed_at]))
+  (explorations.db/thread-terminal-state thread-id))
 
 (defn- get-exploration-query-or-404
   "Fetch an `ExplorationQuery` by id and read-check it. The model's `can-read?` delegates up
   through `ExplorationThread` to the parent `Exploration`."
   [query-id]
-  (api/read-check (api/check-404 (explorations.db/exploration-query query-id))))
+  (api/read-check (api/check-404 (explorations.db/query query-id))))
 
 (defn- stream-stored-result
   "Replay a worker-serialized QP result (gzipped+nippy bytes from `:model/StoredResult.result_data`)
@@ -919,7 +927,7 @@
         ;; creator included, whose own permissions may have narrowed since the snapshot — against the
         ;; stored data-access token (sandbox/impersonation/routing) + basic data perms.
         (queries/assert-can-view-cached-result! sr)
-        (stream-stored-result format (queries.db/stored-result-data (:id sr))))
+        (stream-stored-result format (:result_data sr)))
 
       ;; Pending / errored: no result blob exists. The status payload (id/status/timestamps) rides
       ;; the exploration's collection perms (already enforced by `get-exploration-query-or-404`'s
@@ -969,16 +977,14 @@
 (defn- document-summary
   "Project a Document onto the `::ExplorationDocument` wire shape."
   [doc-id]
-  (some-> (documents.db/document doc-id)
-          (select-keys [:id :name :exploration_id :creator_id :content_type
-                        :created_at :updated_at :archived :is_placeholder])))
+  (explorations.db/summary-document-columns doc-id))
 
 (defn- page-explore-filters
   "Hydrated explore-further filters on the block that owns `page-id`, or nil
   when the page is unfiltered."
   [page-id]
-  (when-let [block-id (:exploration_block_id (explorations.db/exploration-page page-id))]
-    (-> (:metrics (explorations.db/exploration-block block-id))
+  (when-let [block-id (explorations.db/page-block-id page-id)]
+    (-> (explorations.db/block-metrics block-id)
         first
         :explore_filters
         not-empty)))

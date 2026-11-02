@@ -17,6 +17,16 @@
   []
   (t2/select-one :model/Database :uploads_enabled true))
 
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id))
+
+(mu/defn database-is-attached-dwh?
+  "Whether the Database with `database-id` is an attached data warehouse."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one-fn :is_attached_dwh :model/Database :id [:auto/param database-id]))
+
 (mu/defn disable-uploads-for-all-databases!
   "Disable uploads on every Database that has them enabled."
   []
@@ -29,9 +39,9 @@
   [database-id  :- ::lib.schema.id/database
    schema-name  :- [:maybe :string]
    table-prefix :- [:maybe :string]]
-  (t2/update! :model/Database database-id {:uploads_enabled      true
-                                           :uploads_schema_name  schema-name
-                                           :uploads_table_prefix table-prefix}))
+  (t2/update! :model/Database :id database-id {:uploads_enabled      true
+                                               :uploads_schema_name  schema-name
+                                               :uploads_table_prefix table-prefix}))
 
 (mu/defn active-fields-for-table
   "The active Fields of the Table with `table-id`."
@@ -62,21 +72,21 @@
                                                                  [:in [:lower :name] (keys name->display-name)]]}))
             :let  [lower-name (u/lower-case-en name)]
             :when (= display_name (humanization/name->human-readable-name lower-name))]
-      (t2/update! :model/Field id {:display_name (name->display-name lower-name)}))))
+      (t2/update! :model/Field :id id {:display_name (name->display-name lower-name)}))))
 
 (mu/defn mark-table-upload!
   "Flag the Table with `table-id` as an authoritative, writable upload table."
   [table-id :- ::lib.schema.id/table]
-  (t2/update! :model/Table table-id {:is_upload      true
-                                     :data_authority :authoritative
-                                     :data_source    :upload
-                                     :is_writable    true}))
+  (t2/update! :model/Table :id table-id {:is_upload      true
+                                         :data_authority :authoritative
+                                         :data_source    :upload
+                                         :is_writable    true}))
 
 (mu/defn set-field-display-name!
   "Set the display name of the Field with `field-id`."
   [field-id     :- ::lib.schema.id/field
    display-name :- :string]
-  (t2/update! :model/Field field-id {:display_name display-name}))
+  (t2/update! :model/Field :id field-id {:display_name display-name}))
 
 (mu/defn unarchived-models-for-table
   "The query-relevant columns of the unarchived model Cards of the Table with `table-id`."
@@ -98,7 +108,7 @@
   "Set the result metadata of the Card with `card-id`."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata}))
+  (t2/update! :model/Card :id card-id {:result_metadata result-metadata}))
 
 (mu/defn deactivate-table!
   "Mark the Table with `table-id` inactive."
@@ -109,6 +119,11 @@
   "Archive the unarchived Cards of the Table with `table-id`, returning their ids."
   [table-id :- ::lib.schema.id/table]
   (t2/update-returning-pks! :model/Card {:table_id table-id :archived false} {:archived true}))
+
+(mu/defn table
+  "The Table with `table-id`, or nil."
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."

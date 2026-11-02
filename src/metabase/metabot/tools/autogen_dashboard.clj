@@ -7,14 +7,14 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.queries.db :as queries.db]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.xrays.core :as xrays]))
 
 (set! *warn-on-reflection* true)
@@ -60,16 +60,18 @@
                :text "Call `search` to find a table, model, metric or saved question to X-ray instead."}]})
 
 (defn- readable-source
-  "The `kind` entity with `id` and its X-ray path, if the current user can read it and it is still in use."
+  "The `kind` entity with `id` and its X-ray path, if the current user can read it, it is still in use, and it
+  is curated when the Metabot is curated-only."
   [kind id]
   (let [entity (tools/with-entity {:kind kind :id id}
                  (api/read-check (if (= :table kind)
-                                   (warehouse-schema.db/table id)
-                                   (let [card (queries.db/card id)]
-                                     (when (= kind (:type card))
-                                       card)))))]
+                                   (metabot.db/table id)
+                                   (metabot.db/card-of-type id kind))))]
     (when (or (:archived entity) (false? (:active entity)))
       (unavailable-source! {:kind kind :id id}))
+    (when (shared/curated-only?)
+      (curation/check-curated-subject! (str (name kind) " " id)
+                                       [(case kind :table "table" :metric "metric" "card") id]))
     {:entity entity
      ;; X-ray has no page for metrics, but its question page accepts any card type
      :path   (str "/auto/dashboard/" (name (if (= :metric kind) :question kind)) "/" id)}))
@@ -124,6 +126,9 @@
                        (xrays/adhoc-query-read-check {:dataset_query query}))]
           (when (lib/native? mbql-query)
             (unsupported-native-query! {:query-id query_id}))
+          ;; a query the conversation holds may come from the user's viewing context, which nothing judged
+          (when (shared/curated-only?)
+            (curation/check-curated-query! (str "query " query_id) query))
           {:entity entity
            :path   (str "/auto/dashboard/adhoc/" (xrays/encode-base64-json query))})))))
 

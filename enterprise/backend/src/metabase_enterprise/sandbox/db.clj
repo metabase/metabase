@@ -15,10 +15,10 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn sandbox :- [:maybe ::sandbox.schema/sandbox]
-  "The ::sandbox.schema/sandbox with `sandbox-id`, or nil."
+(mu/defn sandbox
+  "The Sandbox with `sandbox-id`, or nil."
   [sandbox-id :- ::lib.schema.id/sandbox]
-  (t2/select-one :model/Sandbox :id [:auto/param sandbox-id]))
+  (t2/select-one :model/Sandbox :id sandbox-id))
 
 (mu/defn sandboxes
   "Every Sandbox, in ID order."
@@ -103,7 +103,7 @@
   "Apply `changes` to the Sandbox with `sandbox-id`, returning the number updated."
   [sandbox-id :- ::lib.schema.id/sandbox
    changes    :- (mut/select-keys ::sandbox.schema/sandbox.update [:card_id :attribute_remappings])]
-  (t2/update! :model/Sandbox sandbox-id changes))
+  (t2/update! :model/Sandbox :id sandbox-id changes))
 
 (mu/defn delete-sandbox!
   "Delete the Sandbox with `sandbox-id`, returning the number deleted."
@@ -134,7 +134,7 @@
   "Set the login attributes of the User with `user-id`, returning the number of rows updated."
   [user-id          :- ::lib.schema.id/user
    login-attributes :- [:maybe users.schema/LoginAttributes]]
-  (t2/update! :model/User user-id {:login_attributes login-attributes}))
+  (t2/update! :model/User :id user-id {:login_attributes login-attributes}))
 
 (mu/defn user-attributes-reducible
   "Reducible merged JWT and login attribute maps of the Users that have any."
@@ -149,6 +149,11 @@
                                    [:and
                                     [:not= :login_attributes nil]
                                     [:not= :login_attributes "{}"]]]}))
+
+(mu/defn table
+  "The Table with `table-id`, or nil."
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables-of-database
   "The `:id`, `:db_id`, and `:schema` of the Tables of the Database with `db-id`, restricted to `schema` when
@@ -187,6 +192,11 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (queries/cards-queries-info card-ids))
 
+(mu/defn card-result-metadata
+  "The result metadata of the Card with `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :result_metadata :model/Card :id card-id))
+
 (mu/defn sandboxing-cards
   "The `:id`, `:dataset_query`, and `:database_id` of the Cards Sandboxes are built on."
   []
@@ -203,4 +213,4 @@
   "Set the result metadata of the Card with `card-id`, returning the number updated."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata}))
+  (t2/update! :model/Card :id card-id {:result_metadata result-metadata}))

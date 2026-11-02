@@ -3,7 +3,6 @@ export * from "./e2e-action-helpers";
 export * from "./e2e-ad-hoc-question-helpers";
 export * from "./e2e-api-key-helpers";
 export * from "./e2e-bi-basics-helpers";
-export * from "./e2e-boolean-helpers";
 export * from "./e2e-browser-helpers";
 export * from "./e2e-caching-helpers";
 export * from "./e2e-cloud-helpers";

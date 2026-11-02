@@ -1286,56 +1286,66 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
-      "metabase-enterprise.data-apps.schema.allowed-host" : {
-        "description" : "An origin a data app's sandboxed bundle may fetch: scheme, host with an optional `*.` subdomain wildcard, and an\n   optional port.",
+      "metabase-enterprise.action-v2.execute-form.action-description" : {
+        "type" : "object",
+        "properties" : {
+          "parameters" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.action-v2.execute-form.describe-param"
+            }
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "title", "parameters" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.action-v2.execute-form.describe-param" : {
+        "type" : "object",
+        "properties" : {
+          "readonly" : {
+            "type" : "boolean"
+          },
+          "database_default" : { },
+          "optional" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "value_options" : {
+            "type" : "array",
+            "items" : { }
+          },
+          "input_type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.action-v2.execute-form.input-type"
+          },
+          "value" : { },
+          "semantic_type" : {
+            "type" : "string"
+          },
+          "human_readable_field_id" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "nullable" : {
+            "type" : "boolean"
+          },
+          "field_id" : {
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "id", "display_name", "input_type", "optional", "readonly" ]
+      },
+      "metabase-enterprise.action-v2.execute-form.input-type" : {
         "type" : "string",
-        "pattern" : "\\Ahttps?://(\\*\\.)?[a-z0-9-]+(\\.[a-z0-9-]+)*(:\\d+)?\\z"
-      },
-      "metabase-enterprise.data-apps.schema.allowed-hosts" : {
-        "description" : "The origins a data app's sandboxed bundle may fetch, `[]` when nil.",
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-host"
-        }
-      },
-      "metabase-enterprise.data-apps.schema.bundle-path" : {
-        "description" : "The path of a data app's bundle, relative to the app's directory and inside it.",
-        "type" : "string",
-        "minLength" : 1
-      },
-      "metabase-enterprise.data-apps.schema.bundle-text" : {
-        "description" : "The text of a data app's bundle file.",
-        "type" : "string",
-        "maxLength" : 10485760
-      },
-      "metabase-enterprise.data-apps.schema.description" : {
-        "description" : "A data app's optional one-line summary, nil when blank.",
-        "oneOf" : [ {
-          "type" : "string",
-          "maxLength" : 255
-        }, {
-          "type" : "null"
-        } ]
-      },
-      "metabase-enterprise.data-apps.schema.display-name" : {
-        "description" : "A data app's display name.",
-        "type" : "string",
-        "minLength" : 1
-      },
-      "metabase-enterprise.data-apps.schema.slug" : {
-        "description" : "A data app's slug: lowercase letters and numbers separated by single dashes, at most 100 characters.",
-        "allOf" : [ {
-          "type" : "string",
-          "maxLength" : 100
-        }, {
-          "type" : "string",
-          "pattern" : "\\A[a-z0-9]+(?:-[a-z0-9]+)*\\z"
-        } ]
-      },
-      "metabase-enterprise.data-apps.schema.version" : {
-        "description" : "The data app contract version an app was built for, 1 when it declares none.",
-        "type" : "integer",
-        "minimum" : 1
+        "enum" : [ "boolean", "date", "datetime", "dropdown", "float", "integer", "text", "textarea", "time" ]
       },
       "metabase-enterprise.data-complexity-score.api.node" : {
         "anyOf" : [ {
@@ -8910,6 +8920,57 @@
         "minLength" : 1,
         "maxLength" : 10,
         "type" : "string"
+      },
+      "metabase.data-apps.schema.allowed-host" : {
+        "description" : "An origin a data app's sandboxed bundle may fetch: scheme, host with an optional `*.` subdomain wildcard, and an\n   optional port.",
+        "type" : "string",
+        "pattern" : "\\Ahttps?://(\\*\\.)?[a-z0-9-]+(\\.[a-z0-9-]+)*(:\\d+)?\\z"
+      },
+      "metabase.data-apps.schema.allowed-hosts" : {
+        "description" : "The origins a data app's sandboxed bundle may fetch, `[]` when nil.",
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.data-apps.schema.allowed-host"
+        }
+      },
+      "metabase.data-apps.schema.bundle-path" : {
+        "description" : "The path of a data app's bundle, relative to the app's directory and inside it.",
+        "type" : "string",
+        "minLength" : 1
+      },
+      "metabase.data-apps.schema.bundle-text" : {
+        "description" : "The text of a data app's bundle file.",
+        "type" : "string",
+        "maxLength" : 10485760
+      },
+      "metabase.data-apps.schema.description" : {
+        "description" : "A data app's optional one-line summary, nil when blank.",
+        "oneOf" : [ {
+          "type" : "string",
+          "maxLength" : 255
+        }, {
+          "type" : "null"
+        } ]
+      },
+      "metabase.data-apps.schema.display-name" : {
+        "description" : "A data app's display name.",
+        "type" : "string",
+        "minLength" : 1
+      },
+      "metabase.data-apps.schema.slug" : {
+        "description" : "A data app's slug: lowercase letters and numbers separated by single dashes, at most 100 characters.",
+        "allOf" : [ {
+          "type" : "string",
+          "maxLength" : 100
+        }, {
+          "type" : "string",
+          "pattern" : "\\A[a-z0-9]+(?:-[a-z0-9]+)*\\z"
+        } ]
+      },
+      "metabase.data-apps.schema.version" : {
+        "description" : "The data app contract version an app was built for, 1 when it declares none.",
+        "type" : "integer",
+        "minimum" : 1
       },
       "metabase.data-studio.api.table.bulk-table-info" : {
         "description" : "Schema for table info in bulk operations. Matches frontend BulkTableInfo type.",
@@ -23029,7 +23090,7 @@
         "additionalProperties" : false
       },
       "metabase.metabot.schema.query" : {
-        "description" : "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn state.",
+        "description" : "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn\n  state. Normalizing repairs a structured query that lost its `:lib/*` keys, so every tool reads a valid MBQL 5 query;\n  see [[query-repair/repair-stripped-query]].",
         "$ref" : "#/components/schemas/metabase.lib.util.query-like"
       },
       "metabase.metabot.schema.row-value" : {
@@ -30757,6 +30818,11 @@
         "required" : [ "schedule_type" ],
         "additionalProperties" : false
       },
+      "metabase.warehouse-schema-rest.api.table.data-authority-read" : {
+        "description" : "Schema for returning a table data authority type.",
+        "type" : "string",
+        "enum" : [ "computed", "unknown", "authoritative", "unconfigured", "ingested" ]
+      },
       "metabase.warehouse-schema-rest.api.table.data-authority-write" : {
         "description" : "Schema for writing a valid table data authority.",
         "type" : "string",
@@ -30898,6 +30964,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/action" ]
       },
       "post" : {
@@ -30996,6 +31073,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/action" ]
@@ -34011,6 +34099,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/card" ]
       }
     },
@@ -34045,6 +34144,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/card" ]
@@ -34311,6 +34421,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/card" ]
@@ -34649,6 +34770,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/card" ]
       }
     },
@@ -34682,6 +34814,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/card" ]
@@ -35502,6 +35645,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/collection" ]
       },
       "post" : {
@@ -35984,6 +36138,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/collection" ]
       }
     },
@@ -36302,6 +36467,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/collection" ]
       }
     },
@@ -36342,6 +36518,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/collection" ]
@@ -36665,6 +36852,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/collection" ]
@@ -37268,6 +37466,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/dashboard" ]
@@ -38427,6 +38636,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/dashboard" ]
       },
       "delete" : {
@@ -39009,6 +39229,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/dashboard" ]
       }
     },
@@ -39054,6 +39285,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/dashboard" ]
       }
     },
@@ -39089,6 +39331,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/dashboard" ]
@@ -39199,6 +39452,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/dashboard" ]
@@ -39608,6 +39872,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/database" ]
       },
       "post" : {
@@ -39847,6 +40122,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/database" ]
@@ -40091,6 +40377,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/database" ]
       }
     },
@@ -40133,6 +40430,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/database" ]
@@ -40503,6 +40811,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/database" ]
       }
     },
@@ -40586,6 +40905,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/database" ]
       }
     },
@@ -40658,6 +40988,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/database" ]
@@ -42017,7 +42358,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.action-v2.execute-form.action-description"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -43433,25 +43781,25 @@
                 "type" : "object",
                 "properties" : {
                   "allowed_hosts" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-hosts"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.allowed-hosts"
                   },
                   "bundle_path" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-path"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.bundle-path"
                   },
                   "description" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.description"
                   },
                   "display_name" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.display-name"
                   },
                   "enabled" : {
                     "type" : "boolean"
                   },
                   "name" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.slug"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.slug"
                   },
                   "version" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.version"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.version"
                   }
                 },
                 "required" : [ "name" ],
@@ -43625,22 +43973,22 @@
                 "type" : "object",
                 "properties" : {
                   "allowed_hosts" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-hosts"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.allowed-hosts"
                   },
                   "bundle_path" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-path"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.bundle-path"
                   },
                   "description" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.description"
                   },
                   "display_name" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.display-name"
                   },
                   "enabled" : {
                     "type" : "boolean"
                   },
                   "version" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.version"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.version"
                   }
                 },
                 "additionalProperties" : false
@@ -43899,7 +44247,7 @@
                 "type" : "object",
                 "properties" : {
                   "bundle" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-text"
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.bundle-text"
                   }
                 },
                 "required" : [ "bundle" ],
@@ -47777,7 +48125,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-backfill-status",
         "summary" : "GET /api/ee/dependencies/backfill-status",
-        "description" : "Whether no entity awaits the computation of its dependencies, as `complete`, for superusers.",
+        "description" : "Whether no entity awaits the computation of its dependencies, as `complete`, and the entities whose dependencies\n  the job gave up computing until they change, as `failed`, for superusers. Those don't count as awaiting, so the\n  graph is only whole when `complete` is true and `failed` is empty.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -47789,9 +48137,26 @@
                   "properties" : {
                     "complete" : {
                       "type" : "boolean"
+                    },
+                    "failed" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "type" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+                          }
+                        },
+                        "required" : [ "type", "id" ]
+                      }
                     }
                   },
-                  "required" : [ "complete" ]
+                  "required" : [ "complete", "failed" ]
                 }
               }
             }
@@ -50068,8 +50433,10 @@
           "name" : "model_id",
           "required" : true,
           "schema" : {
-            "type" : "string"
-          }
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
         }, {
           "in" : "query",
           "name" : "action_type",
@@ -52640,12 +53007,14 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "type" : "string"
+              "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_%][A-Za-z0-9._%-]{0,254}$"
             }, {
               "type" : "null"
             } ]
           },
-          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"
+          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -"
         }, {
           "in" : "query",
           "name" : "collection",
@@ -56723,6 +57092,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/field" ]
       },
       "put" : {
@@ -57011,6 +57391,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/field" ]
       }
     },
@@ -57055,6 +57446,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/field" ]
@@ -57132,6 +57534,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/field" ]
       }
     },
@@ -57161,6 +57574,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/field" ]
       }
     },
@@ -57188,6 +57612,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/field" ]
@@ -64755,7 +65190,7 @@
       "post" : {
         "operationId" : "post-api-premium-features-token-refresh",
         "summary" : "POST /api/premium-features/token/refresh",
-        "description" : "Clear all token caches and re-check the premium features token against the MetaStore.\n  Returns the fresh token status. Useful for the frontend after a purchase so that new features\n  are recognized without waiting for the cache TTL.",
+        "description" : "Re-check the premium features token against the MetaStore and return the fresh token status. Useful for the\n  frontend after a purchase so that new features are recognized without waiting for the next scheduled refresh.\n\n  When the check fails, returns an unvalidated status whose `:error-details` says why, so the caller knows the check\n  failed. The status this instance holds is left as it was, so feature checks keep using it.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -67686,6 +68121,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/search" ]
       }
     },
@@ -69826,7 +70272,7 @@
       "put" : {
         "operationId" : "put-api-table",
         "summary" : "PUT /api/table",
-        "description" : "Update all `Table` in `ids`.\n\n  Deprecated, should use PUT /table/edit from now on.",
+        "description" : "Update all `Table` in `ids`.\n\n  Deprecated: use `POST /api/data-studio/table/edit`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -69911,6 +70357,15 @@
                       "type" : "null"
                     } ]
                   },
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "data_source" : {
                     "oneOf" : [ {
                       "type" : "string"
@@ -69928,6 +70383,14 @@
                   "entity_type" : {
                     "oneOf" : [ {
                       "description" : "value must be a valid entity type (keyword or string)."
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "field_order" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "enum" : [ "alphabetical", "custom", "database", "smart" ]
                     }, {
                       "type" : "null"
                     } ]
@@ -70004,6 +70467,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/table" ]
       }
     },
@@ -70035,13 +70509,37 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data_authority" : {
+                      "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-read"
+                    }
+                  },
+                  "required" : [ "data_authority" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/table" ]
@@ -70382,6 +70880,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/table" ]
       }
     },
@@ -70445,6 +70954,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/table" ]
@@ -70841,7 +71361,17 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -71602,7 +72132,7 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : "false",
+            "default" : false,
             "type" : "boolean"
           }
         }, {
@@ -77337,6 +77867,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/user-key-value" ]
       },
       "delete" : {
@@ -77369,6 +77910,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/user-key-value" ]

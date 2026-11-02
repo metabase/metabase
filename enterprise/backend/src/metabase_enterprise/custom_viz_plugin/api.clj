@@ -225,7 +225,7 @@
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Remove a custom visualization plugin and evict its on-disk cache."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (let [plugin (api/write-check (custom-viz-plugin.db/custom-viz-plugin id))]
+  (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
     (custom-viz-plugin.db/delete-plugin! id)
     (cache/purge-plugin-cache! plugin)
     (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
@@ -238,11 +238,11 @@
    _query-params
    body :- [:map {:closed true}
             [:enabled {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check (custom-viz-plugin.db/custom-viz-plugin id))
+  (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
         updates  (select-keys body [:enabled])]
     (when (seq updates)
       (custom-viz-plugin.db/update-plugin! id updates))
-    (let [result (custom-viz-plugin.db/custom-viz-plugin id)]
+    (let [result (custom-viz-plugin.db/non-blob-plugin id)]
       (events/publish-event! :event/custom-viz-plugin-update {:object          result
                                                               :previous-object existing
                                                               :user-id         api/*current-user-id*})
@@ -257,7 +257,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [file]} :- BundleUploadParts]
-  (let [existing (api/write-check (custom-viz-plugin.db/custom-viz-plugin id))
+  (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
         _        (api/check-400 (nil? (manifest/identifier-error (:identifier existing)))
                                 (format (str "This plugin's identifier (\"%s\") contains \":\", which is no longer allowed. "
                                              "Delete the plugin and upload the bundle under a name without \":\".")
@@ -288,7 +288,7 @@
    respond
    raise]
   (try
-    (let [plugin  (api/read-check (custom-viz-plugin.db/custom-viz-plugin id))
+    (let [plugin  (api/read-check (custom-viz-plugin.db/non-blob-plugin id))
           dev-url (cache/resolve-dev-bundle id)
           entry   (cache/resolve-bundle plugin)]
       (if entry
@@ -321,7 +321,7 @@
    respond
    raise]
   (try
-    (let [plugin       (api/read-check (custom-viz-plugin.db/custom-viz-plugin id))
+    (let [plugin       (api/read-check (custom-viz-plugin.db/non-blob-plugin id))
           content-type (or (manifest/asset-content-type path)
                            (throw (ex-info "Unsupported asset type" {:status-code 404})))
           dev?         (cache/resolve-dev-bundle id)
@@ -349,7 +349,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map {:closed true} [:dev_bundle_url [:maybe :string]]]]
-  (api/write-check (custom-viz-plugin.db/custom-viz-plugin id))
+  (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
   (check-dev-mode-enabled!)
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
@@ -397,7 +397,7 @@
    plugins this is a no-op — to update an upload-backed plugin, PUT a new bundle
    to `/:id/bundle`."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (let [plugin (api/write-check (custom-viz-plugin.db/custom-viz-plugin id))]
+  (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
     (api/check-400 (dev-only-plugin? plugin)
                    "Refresh is only supported for dev-only plugins; upload a new bundle to update an upload-backed plugin.")
     (let [dev-url      (or (cache/resolve-dev-bundle id)
@@ -410,7 +410,7 @@
                                             :icon             (:icon manifest)
                                             :manifest         manifest
                                             :metabase_version version-str})
-      (let [result (custom-viz-plugin.db/custom-viz-plugin id)]
+      (let [result (custom-viz-plugin.db/non-blob-plugin id)]
         (events/publish-event! :event/custom-viz-plugin-update {:object          result
                                                                 :previous-object plugin
                                                                 :user-id         api/*current-user-id*})

@@ -2,7 +2,6 @@
   "Native query snippet (/api/native-query-snippet) endpoints."
   (:require
    [clojure.data :as data]
-   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
@@ -31,7 +30,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
-  {:scope api-scope/data-app}
   [_route-params
    {:keys [archived]} :- [:map {:closed true}
                           [:archived {:default false} [:maybe ms/BooleanValue]]]]
@@ -40,7 +38,7 @@
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   "Fetch native query snippet with ID and hydrate creator."
   [id :- ms/PositiveInt]
-  (-> (api/read-check (native-query-snippets.db/native-query-snippet id))
+  (-> (api/read-check (native-query-snippets.db/snippet id))
       (t2/hydrate :creator :is_remote_synced)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -87,7 +85,7 @@
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
   [id body]
-  (let [snippet     (native-query-snippets.db/native-query-snippet id)
+  (let [snippet     (native-query-snippets.db/snippet id)
         body-fields (u/select-keys-when body
                                         :present #{:description :collection_id}
                                         :non-nil #{:archived :content :name})

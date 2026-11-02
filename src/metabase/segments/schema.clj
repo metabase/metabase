@@ -29,17 +29,16 @@
             (nil? (lib/current-limit query))))]]])
 
 (mr/def ::segment.definition
-  "The `:definition` a Segment create or update accepts: an MBQL query, possibly legacy, never empty."
+  "The `:definition` column of a Segment, decoded."
   ::lib-be.schema/maybe-legacy-query)
 
 (mr/def ::segment
-  "A Segment as selected from the app DB: every column of `:segment`, with an unreadable `:definition` read back as an
-  empty query, plus `:creator` and `:table` some callers hydrate onto it."
+  "A Segment as selected from the app DB: every column of `:segment`, plus `:creator` and `:table` some callers
+  hydrate onto it."
   [:merge
    ::segment.update
    [:map {:closed true}
     [:id                      ms/PositiveInt]
-    [:definition              {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
     [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
     [:table                   {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 

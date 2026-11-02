@@ -206,6 +206,22 @@ describe("NumberFilterPicker", () => {
         expect(getNextFilterColumnName()).toBe("Total");
       });
 
+      it("should keep only the first number of a comma-separated input (metabase#9339)", async () => {
+        const { getNextFilterParts } = setup();
+
+        await setOperator("Greater than");
+        const input = screen.getByPlaceholderText("Enter a number");
+        await userEvent.type(input, "9339,1234");
+        await userEvent.tab();
+
+        expect(input).toHaveValue("9339");
+        await userEvent.click(screen.getByText("Add filter"));
+        expect(getNextFilterParts()).toMatchObject({
+          operator: ">",
+          values: [9339],
+        });
+      });
+
       it("should add a filter with a big integer value", async () => {
         const query = createQuery();
         const columns = Lib.filterableColumns(query, -1);
@@ -320,6 +336,25 @@ describe("NumberFilterPicker", () => {
         expect(getNextFilterColumnName()).toBe("Total");
       });
 
+      it.each([
+        { placeholder: "Min", operator: ">=" },
+        { placeholder: "Max", operator: "<=" },
+      ])(
+        "should add a $operator filter when only $placeholder is set",
+        async ({ placeholder, operator }) => {
+          const { getNextFilterParts } = setup();
+
+          await userEvent.type(screen.getByPlaceholderText(placeholder), "50");
+          await userEvent.click(screen.getByText("Add filter"));
+
+          expect(getNextFilterParts()).toMatchObject({
+            operator,
+            column: expect.anything(),
+            values: [50],
+          });
+        },
+      );
+
       it("should add a filter via keyboard", async () => {
         const { onChange, getNextFilterParts, getNextFilterColumnName } =
           setup();
@@ -359,6 +394,26 @@ describe("NumberFilterPicker", () => {
           values: [-5, 10],
         });
         expect(getNextFilterColumnName()).toBe("Total");
+      });
+
+      it("should add a primary key filter with comma-separated values", async () => {
+        const query = createQuery();
+        const columns = Lib.filterableColumns(query, 0);
+        const column = columnFinder(query, columns)("ORDERS", "ID");
+        const { getNextFilterParts, getNextFilterColumnName } = setup({
+          query,
+          column,
+        });
+
+        await userEvent.type(screen.getByLabelText("Filter value"), "17,18");
+        await userEvent.click(screen.getByText("Add filter"));
+
+        expect(getNextFilterParts()).toMatchObject({
+          operator: "=",
+          column: expect.anything(),
+          values: [17, 18],
+        });
+        expect(getNextFilterColumnName()).toBe("ID");
       });
     });
 

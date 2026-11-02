@@ -10,7 +10,6 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
-   [metabase.collections.db :as collections.db]
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -39,7 +38,7 @@
                      {:namespace (if (and (map? collection) (contains? collection :namespace))
                                    (:namespace collection)
                                    ;; the root collection has no ID, and nothing in it is synced
-                                   (some-> (u/id collection) collections.db/collection :namespace))}))))))
+                                   (some-> (u/id collection) remote-sync.db/collection-namespace))}))))))
 
 (defenterprise collection-syncable?
   "Whether `collection` can be remote-synced: a Collection of a namespace remote sync syncs, the Library and every Collection inside it, and any other once custom collections are on."
@@ -464,10 +463,6 @@
                                                            (remote-sync.db/collections sync-on)))
                                        (update :sync-off #(when-let [sync-off (seq %)]
                                                             (remote-sync.db/collections sync-off))))]
-    ;; a data app's collection is synced with its app, and a pull refuses its file once it says remote-synced
-    (when (some spec/data-apps-namespace-collection? sync-on)
-      (throw (ex-info (tru "A data app''s collection is synced with its app and can''t be marked as synced.")
-                      {:status-code 400})))
     (doseq [collection sync-on
             :when (not (:is_remote_synced collection))]
       (collections/assert-remote-syncable (assoc collection :is_remote_synced true)))

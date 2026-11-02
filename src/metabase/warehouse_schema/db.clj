@@ -18,10 +18,10 @@
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
 
-(mu/defn field :- [:maybe ::warehouse-schema.schema/field]
+(mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-in-path
   "The ::warehouse-schema.schema/field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
@@ -45,12 +45,23 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
+(mu/defn field-table-id
+  "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
+  [field-id :- ::lib.schema.id/field]
+  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+
 (mu/defn field-id-by-name
   "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    parent-id  :- [:maybe ms/PositiveInt]
    field-name :- :string]
   (t2/select-one-pk :model/Field :name field-name :parent_id parent-id :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+
+(mu/defn field-values-eligibility
+  "The columns deciding whether the ::warehouse-schema.schema/field with `field-id` should have FieldValues, or nil."
+  [field-id :- ::lib.schema.id/field]
+  (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id
+                 {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-ids-for-table
   "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id`."
@@ -108,7 +119,7 @@
   "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
    changes  :- (mut/select-keys ::warehouse-schema.schema/field.update [:position])]
-  (t2/update! :model/Field field-id changes))
+  (t2/update! :model/Field :id field-id changes))
 
 (mu/defn clear-fk-targets-to-field!
   "Clear the FK semantic type and target of every ::warehouse-schema.schema/field targeting the ::warehouse-schema.schema/field with `field-id`, returning the number
@@ -162,7 +173,7 @@
   "Set the display name of the ::warehouse-schema.schema/field with `id`, returning the number updated."
   [id           :- ::lib.schema.id/field
    display-name :- :string]
-  (t2/update! :model/Field id {:display_name display-name}))
+  (t2/update! :model/Field :id id {:display_name display-name}))
 
 ;;; -------------------------------------------- FieldUserSettings --------------------------------------------
 
@@ -175,7 +186,7 @@
 (mu/defn field-user-settings-exist?
   "Whether the ::warehouse-schema.schema/field with `field-id` has a FieldUserSettings row."
   [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldUserSettings field-id))
+  (t2/exists? :model/FieldUserSettings :field_id field-id))
 
 (def ^:private field-user-settings-update-keys
   "The columns an insert or update of a FieldUserSettings accepts."
@@ -216,7 +227,7 @@
   "Apply `changes` to the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
    changes  :- (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]
-  (t2/update! :model/FieldUserSettings field-id changes))
+  (t2/update! :model/FieldUserSettings :field_id field-id changes))
 
 (mu/defn field-ids-with-user-settings :- [:set ::lib.schema.id/field]
   "The ids, among `field-ids`, of the Fields that have a FieldUserSettings row."
@@ -260,7 +271,7 @@
 (mu/defn table-user-settings-exist?
   "Whether the ::warehouse-schema.schema/table with `table-id` has a TableUserSettings row."
   [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/TableUserSettings table-id))
+  (t2/exists? :model/TableUserSettings :table_id table-id))
 
 (mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
   "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."
@@ -283,7 +294,7 @@
   number updated."
   [table-id :- ::lib.schema.id/table
    changes  :- (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]
-  (t2/update! :model/TableUserSettings table-id changes))
+  (t2/update! :model/TableUserSettings :table_id table-id changes))
 
 (mu/defn delete-table-user-settings!
   "Delete the TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, returning the number deleted."
@@ -374,7 +385,7 @@
   "Apply `changes` to the FieldValues with `field-values-id`, returning the number updated."
   [field-values-id :- ms/PositiveInt
    changes         :- (mut/select-keys ::warehouse-schema.schema/field-values.update [:has_more_values :values :human_readable_values])]
-  (t2/update! :model/FieldValues field-values-id changes))
+  (t2/update! :model/FieldValues :id field-values-id changes))
 
 (mu/defn find-or-insert-full-field-values!
   "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, inserting one with `has-more-values`, `values`, and no
@@ -390,7 +401,7 @@
 (mu/defn touch-field-values!
   "Stamp `last_used_at` on the FieldValues with `field-values-id`, returning the number updated."
   [field-values-id :- ms/PositiveInt]
-  (t2/update! :model/FieldValues field-values-id {:last_used_at :%now}))
+  (t2/update! :model/FieldValues :id field-values-id {:last_used_at :%now}))
 
 (mu/defn delete-field-values!
   "Delete the FieldValues with `field-values-ids`, returning the number deleted."
@@ -410,10 +421,10 @@
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
-(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
+(mu/defn table
   "The ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
@@ -426,6 +437,16 @@
    schema      :- [:maybe :string]
    table-name  :- :string]
   (t2/select-one :model/Table :name table-name :db_id database-id :schema schema {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn table-name-and-schema
+  "The name and schema of the ::warehouse-schema.schema/table with `table-id`."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one [:model/Table :name :schema] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+
+(mu/defn table-database-id
+  "The ::warehouses.schema/database ID of the ::warehouse-schema.schema/table with `table-id`."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
@@ -512,14 +533,29 @@
   "Set the display name of the ::warehouse-schema.schema/table with `id`, returning the number updated."
   [id           :- ::lib.schema.id/table
    display-name :- :string]
-  (t2/update! :model/Table id {:display_name display-name}))
+  (t2/update! :model/Table :id id {:display_name display-name}))
 
 ;;; ------------------------------------------------ ::warehouses.schema/database ------------------------------------------------
+
+(mu/defn database
+  "The ::warehouses.schema/database with `database-id`, or nil."
+  [database-id :- [:maybe ::lib.schema.id/database]]
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn databases-by-id
   "A map of ID to ::warehouses.schema/database for `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
   (t2/select-pk->fn identity :model/Database :id [:in database-ids]))
+
+(mu/defn database-engine
+  "The engine of the ::warehouses.schema/database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one-fn :engine :model/Database :id database-id))
+
+(mu/defn database-name
+  "The name of the ::warehouses.schema/database with `database-id`."
+  [database-id :- [:maybe ::lib.schema.id/database]]
+  (t2/select-one-fn :name :model/Database :id database-id))
 
 (mu/defn database-id-by-name
   "The ID of the ::warehouses.schema/database named `database-name`, or nil."

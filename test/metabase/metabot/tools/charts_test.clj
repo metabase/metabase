@@ -379,7 +379,7 @@
                           {}))))))))
 
 (deftest chart-tools-undeclared-failure-test
-  (testing "a failure that no error declares ends the turn instead of reaching the model"
+  (testing "a failure that no error declares is `:internal`, so its text never reaches the model"
     (mt/with-dynamic-fn-redefs [create-chart-tools/create-chart (fn [_] (throw (ex-info "boom" {})))
                                 edit-chart-tools/edit-chart     (fn [_] (throw (ex-info "boom" {})))]
       (is (=? {:error {:class :unrecoverable :code :internal}}

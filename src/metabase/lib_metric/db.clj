@@ -4,6 +4,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -13,6 +14,16 @@
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+
+(mu/defn card-table-and-database-id
+  "The `:table_id` and `:database_id` of the Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one [:model/Card :table_id :database_id] :id [:auto/param card-id]))
+
+(mu/defn table-database-id
+  "The Database id of the Table with `table-id`, or nil."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (defn- metric-where
   "The `:where` map for the metric Cards picked out by `metadata-spec` (its `:id`, `:name`,
@@ -36,7 +47,7 @@
                      [:name      {:optional true} [:maybe [:set :string]]]
                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]
                      [:card-ids  {:optional true} [:maybe [:set ::lib.schema.id/card]]]]]
-  (t2/select :metadata/metric (metric-where metadata-spec)))
+  (t2/select :metadata/metric (h2x/assert-map-or-nil! (metric-where metadata-spec))))
 
 (defn- measure-where
   "The `:where` map for the `:metadata/measure` rows picked out by `metadata-spec` (its `:id`, `:name`, and
@@ -57,4 +68,4 @@
                      [:id        {:optional true} [:maybe [:set ms/PositiveInt]]]
                      [:name      {:optional true} [:maybe [:set :string]]]
                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]]]
-  (t2/select :metadata/measure (measure-where metadata-spec)))
+  (t2/select :metadata/measure (h2x/assert-map-or-nil! (measure-where metadata-spec))))

@@ -156,7 +156,7 @@
   "The hydrated-and-redacted handlers of the persisted notification `notification-id`, as the
    current user sees them."
   [notification-id]
-  (-> (t2/select-one :model/Notification notification-id)
+  (-> (t2/select-one :model/Notification :id notification-id)
       redaction/hydrate-and-redact-notification
       :handlers))
 

@@ -160,11 +160,6 @@
    field-id->type-info :- [:maybe ::column-id-or-name->type-info]]
   (letfn [(datetime-but-not-time? [field-id]
             (some-> field-id field-id->type-info date-or-datetime-clause?))
-          ;; Following function copies type extraction logic from [[unbucketed-fields->field-id->type-info]],
-          ;; to conform original schema.
-          (expression-opts->type-info [{:keys [base-type effective-type]}] :- ::column-id-or-name->type-info
-            {:base-type base-type
-             :effective-type (or effective-type base-type)})
           (wrap-clauses [x]
             (match/replace x
               ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
@@ -176,7 +171,10 @@
               [:field _opts (_id-or-name :guard datetime-but-not-time?)]
               (lib/with-temporal-bucket &match :day)
 
-              [:expression (opts :guard (date-or-datetime-clause? (expression-opts->type-info opts))) _name]
+              [:expression
+               (opts :guard (date-or-datetime-clause? {:base-type      (:base-type opts)
+                                                       :effective-type (:effective-type opts)}))
+               _name]
               (lib/with-temporal-bucket &match :day)))
           (rewrite-clause [stage clause-to-rewrite]
             (m/update-existing stage clause-to-rewrite wrap-clauses))]

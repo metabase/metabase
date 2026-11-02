@@ -25,6 +25,8 @@
    [metabase.test :as mt]
    [metabase.warehouses.core :as warehouses]))
 
+(set! *warn-on-reflection* true)
+
 (defn- invoke-document-tool
   "Call `tool-name` from the Documents profile through the runtime, with `memory` as the agent's memory."
   ([tool-name args]

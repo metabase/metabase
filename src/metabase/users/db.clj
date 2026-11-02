@@ -14,11 +14,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn user :- [:maybe ::users.schema/user]
-  "The ::users.schema/user with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id [:auto/param user-id]))
-
 (defn- status-clause
   "Figure out what `where` clause to add to the user query when we get a fiddly status and include_deactivated
   query.
@@ -113,7 +108,7 @@
 (mu/defn set-user-last-login-now!
   "Set `last_login` of the User with `user-id` to now."
   [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/User user-id {:last_login :%now}))
+  (t2/update! :model/User :id user-id {:last_login :%now}))
 
 (mu/defn user-settings
   "The `:settings` of the User with `user-id`, or nil."

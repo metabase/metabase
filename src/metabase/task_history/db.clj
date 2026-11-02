@@ -95,19 +95,20 @@
    limit          :- [:maybe ms/PositiveInt]
    offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/TaskRun
-             (cond-> (merge (run-where filters) (runs-order-by sort-column sort-direction))
-               limit  (assoc :limit limit)
-               offset (assoc :offset offset))))
+             (h2x/assert-map-or-nil!
+              (cond-> (merge (run-where filters) (runs-order-by sort-column sort-direction))
+                limit  (assoc :limit limit)
+                offset (assoc :offset offset)))))
 
 (mu/defn task-run-count
   "The number of TaskRuns matching `filters` (see [[run-where]] for the supported keys)."
   [filters :- RunFilters]
-  (t2/count :model/TaskRun (or (run-where filters) {})))
+  (t2/count :model/TaskRun (h2x/assert-map-or-nil! (or (run-where filters) {}))))
 
-(mu/defn task-run :- [:maybe ::task-history.schema/task-run]
-  "The ::task-history.schema/task-run with `id`, or nil."
+(mu/defn task-run
+  "The TaskRun with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TaskRun :id [:auto/param id]))
+  (t2/select-one :model/TaskRun :id id))
 
 (mu/defn tasks-for-run
   "The TaskHistory rows of the TaskRun with `run-id`, oldest first."
@@ -192,7 +193,7 @@
   "Apply `changes` to the TaskHistory row with `id`."
   [id      :- ms/PositiveInt
    changes :- ::task-history.schema/task-history.update]
-  (t2/update! :model/TaskHistory id changes))
+  (t2/update! :model/TaskHistory :id id changes))
 
 (mu/defn insert-task-history!
   "Insert the TaskHistory `row` and return its id."

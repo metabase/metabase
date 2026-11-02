@@ -5,6 +5,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
+   [metabase.metabot.query-repair :as query-repair]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -34,12 +35,15 @@
   [:string {:decode/normalize lib.schema.common/normalize-string-key}])
 
 (mr/def ::query
-  "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn state."
-  ::lib.util/query-like)
+  "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn
+  state. Normalizing repairs a structured query that lost its `:lib/*` keys, so every tool reads a valid MBQL 5 query;
+  see [[query-repair/repair-stripped-query]]."
+  [:schema {:decode/normalize query-repair/repair-stripped-query}
+   ::lib.util/query-like])
 
 (mr/def ::todo
-  "One todo item of persisted turn state; only `:id` is guaranteed, since state can hold a partial item
-  between the turn that creates it and the turn that fills in its details."
+  "A todo item in conversation state persisted while Metabot had todo tools. `:todos` stays in [[::state]], a
+  closed map, so those conversations still validate."
   [:map {:closed true}
    [:id :string]
    [:content  {:optional true} [:maybe :string]]

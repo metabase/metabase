@@ -24,7 +24,6 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.core :as collections]
-   [metabase.collections.db :as collections.db]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -106,23 +105,6 @@
                                    :status            "create"
                                    :status_changed_at timestamp}
                                   (spec/build-sync-object-fields action-spec action))))]
-    (when (seq rows)
-      (remote-sync.db/insert-rsos! rows))
-    (count rows)))
-
-(defn backfill-data-app-tracking!
-  "Insert a 'create' ledger row for every published DataApp that has none, returning the number of rows inserted."
-  []
-  (let [data-app-spec (spec/spec-for-model-key :model/DataApp)
-        tracked       (remote-sync.db/tracked-model-ids "DataApp")
-        timestamp     (t/offset-date-time)
-        rows          (for [app (remote-sync.db/instances-where :model/DataApp (:conditions data-app-spec))
-                            :when (not (contains? tracked (:id app)))]
-                        (merge {:model_type        "DataApp"
-                                :model_id          (:id app)
-                                :status            "create"
-                                :status_changed_at timestamp}
-                               (spec/build-sync-object-fields data-app-spec app)))]
     (when (seq rows)
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
@@ -474,8 +456,7 @@
 (defn- hydrate-collection-details
   "Hydrates details for a Collection."
   [id]
-  (when-let [collection (collections.db/collection id)]
-    {:name (:name collection) :collection_id (:id collection)}))
+  (remote-sync.db/collection-name-and-id id))
 
 (defn- handle-library-sync-status-change!
   "When the Library collection's is_remote_synced status changes, trigger Library content sync tracking.

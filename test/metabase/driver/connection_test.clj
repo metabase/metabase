@@ -70,7 +70,7 @@
 (deftest effective-details-refuses-database-instance-test
   (testing "effective-details takes only the Lib metadata of a Database, so a Database instance fails fast"
     (is (thrown? clojure.lang.ExceptionInfo
-                 (driver.conn/effective-details (t2/select-one :model/Database (mt/id)))))))
+                 (driver.conn/effective-details (t2/select-one :model/Database :id (mt/id)))))))
 
 (deftest connection-telemetry-info-test
   (testing "connection-telemetry-info describes the current connection context as prose, for logging only"

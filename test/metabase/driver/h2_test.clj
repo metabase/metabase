@@ -303,12 +303,12 @@
     (let [trigger-creation-attempt (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
                                                    "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                                                    "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
-      (is (thrown? clojure.lang.ExceptionInfo
-                   #"DDL commands are not allowed to be used with h2."
-                   (#'h2/check-action-commands-allowed
-                    {:database (mt/id)
-                     :engine :h2
-                     :native {:query trigger-creation-attempt}}))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"DDL commands are not allowed to be used with H2."
+                            (#'h2/check-action-commands-allowed
+                             {:database (mt/id)
+                              :engine :h2
+                              :native {:query trigger-creation-attempt}}))))))
 
 (defn- check-read-only-statements [query]
   (mt/with-metadata-provider (mt/id)
