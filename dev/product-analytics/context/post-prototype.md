@@ -51,6 +51,16 @@ An event table is one table, but some sources split their events across several:
 
 Outside Metabase, people usually model these into one events table first: a view or dbt model that unions `tracks` and `pages` (pageviews as an event named for the page), stitches `anonymous_id` to `user_id` through `identifies`, and for GA4 reads the wildcard. Here that means a view in the warehouse, or a model once the table picker accepts models. Recognizing a source should then mean recognizing the modelled table, and not offering the raw pieces.
 
+### Recognize tables when sync finds them
+
+Detection runs in `classify-table!`, which is part of sync's analyze phase. Scheduled syncs skip that phase when the database's `is_full_sync` is off. The admin form turns it off when "Choose when syncs and scans happen" is on and "Scanning for filter values" is set to anything but "Regularly, on a schedule". Admins often do that so Metabase doesn't query their warehouse.
+
+On those databases, a new table shows up in the table picker but is never recognized as an event table. Recognition waits for a manual database sync, which needs database write permission. For example, someone builds a view on the raw events that filters them or adds properties, and keeps the column names. Detection would recognize it, but it never runs. Without permission to edit table metadata, they're stuck until an admin runs a sync or sets the table up by hand.
+
+Detection doesn't need the analyze phase. It reads only column names and types, which the metadata phase has already stored in the app DB, so it never queries the warehouse. Move table classification to the end of the metadata phase, outside the `is_full_sync` check. Field classification depends on fingerprints, which do query the warehouse, so it should stay in analysis. Then a table is recognized as soon as the picker shows it, however the admin configured scanning.
+
+Users without metadata permissions will still need another way to set columns in some cases: GA4, whose timestamp is never detected; columns that were renamed; and columns whose types don't match the schema.
+
 ## Cleaning URL paths
 
 Paths that name pageviews by their URL need the URLs cleaned first. Without cleaning, real data turns into a long tail of nodes that each appear once:
