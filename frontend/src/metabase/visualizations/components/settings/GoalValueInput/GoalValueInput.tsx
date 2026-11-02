@@ -457,10 +457,7 @@ export const GoalValueInput = ({
                 .otherwise(({ columns, kind }) => (
                   <>
                     {hasTooManyRows && (
-                      <Menu.Label
-                        c="feedback-negative"
-                        maw={COLUMN_MENU_MIN_WIDTH}
-                      >
+                      <Menu.Label c="feedback-negative">
                         {getTooManyRowsMessage(kind)}
                       </Menu.Label>
                     )}
