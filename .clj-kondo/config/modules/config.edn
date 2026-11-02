@@ -1526,6 +1526,8 @@
               metabase.metabot.settings
               metabase.metabot.tools
               metabase.metabot.tools.construct
+              metabase.metabot.tools.core
+              metabase.metabot.tools.entity-retrieval
               metabase.metabot.tools.search
               metabase.metabot.usage-controls}
    :module-exports #{metabot.agent-api
@@ -1915,7 +1917,7 @@
 
   osi
   {:team "Metabot"
-   :api  #{metabase.osi.ai-context.api}
+   :api  #{metabase.osi.ai-context.api metabase.osi.models.osi-ai-context}
    :uses #{api
            app-db
            models
@@ -4217,13 +4219,18 @@
            metabot
            metabot.llm
            osi
+           permissions
            premium-features
+           search
            search.entity-retrieval
            settings
            task
+           task.history
            util
+           util.config
+           enterprise/search.entity-retrieval
            enterprise/search.semantic}
-   :model-imports #{:model/OsiAiContext}}
+   :model-imports #{:model/OsiAiContext :model/TaskHistory}}
 
   enterprise/permissions
   {:team "Security Engineering"
@@ -4406,7 +4413,10 @@
 
   enterprise/search.entity-retrieval
   {:team "Metabot"
-   :api #{metabase-enterprise.search.entity-retrieval.init}
+   :api #{metabase-enterprise.search.entity-retrieval.core
+          metabase-enterprise.search.entity-retrieval.index-table
+          metabase-enterprise.search.entity-retrieval.init
+          metabase-enterprise.search.entity-retrieval.reconcile}
    :uses #{analytics.interface
            app-db
            health-inspector

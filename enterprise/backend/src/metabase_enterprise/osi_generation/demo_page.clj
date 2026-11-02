@@ -37,5 +37,5 @@
   (resource-response "metabase_enterprise/osi_generation/demo/osi_generation.js" "application/javascript; charset=utf-8"))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/dev/osi-generation` browser routes."
+  "Browser routes for the OSI generation demo."
   (api.macros/ns-handler *ns* +auth))

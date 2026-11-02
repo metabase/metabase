@@ -1,22 +1,19 @@
 (ns metabase-enterprise.osi-generation.demo-api
   "Superuser-only control surface packaged on the OSI demo branch for PR-environment demos."
   (:require
-   [metabase-enterprise.search.entity-retrieval.core :as entity-retrieval.ee]
-   [metabase-enterprise.search.entity-retrieval.index-table :as entity-retrieval.index-table]
-   [metabase-enterprise.search.entity-retrieval.reconcile :as entity-retrieval.reconcile]
    [metabase-enterprise.osi-generation.core :as generation]
    [metabase-enterprise.osi-generation.db :as demo.db]
    [metabase-enterprise.osi-generation.prompt :as generation.prompt]
    [metabase-enterprise.osi-generation.settings :as generation.settings]
    [metabase-enterprise.osi-generation.task.generate :as generation.task]
+   [metabase-enterprise.search.entity-retrieval.core :as entity-retrieval.ee]
+   [metabase-enterprise.search.entity-retrieval.index-table :as entity-retrieval.index-table]
+   [metabase-enterprise.search.entity-retrieval.reconcile :as entity-retrieval.reconcile]
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.config.core :as config]
-   [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.search.entity-retrieval.mirror :as entity-retrieval.mirror]
-   [metabase.search.entity-retrieval.spec :as spec]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
@@ -24,6 +21,9 @@
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.search.entity-retrieval.mirror :as entity-retrieval.mirror]
+   [metabase.search.entity-retrieval.spec :as spec]
    [metabase.settings.core :as setting]
    [metabase.task.core :as task]
    [metabase.util :as u]
@@ -364,10 +364,10 @@
 (api.macros/defendpoint :get "/index/vector" :- :any
   "Return the encoded vector for one index document."
   [_route-params
-   {:keys [doc_id]} :- [:map {:closed true} [:doc_id ms/NonBlankString]]]
+   {:keys [doc-id]} :- [:map {:closed true} [:doc-id ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (entity-retrieval.ee/available?) "Library retrieval is unavailable.")
-  (library-index-vector doc_id))
+  (library-index-vector doc-id))
 
 (api.macros/defendpoint :get "/search/:engine" :- :any
   "Run the real AppDB, semantic, or Library-retrieval search path without persisting an engine override in

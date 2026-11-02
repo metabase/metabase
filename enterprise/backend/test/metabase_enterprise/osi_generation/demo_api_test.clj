@@ -1,23 +1,27 @@
 (ns metabase-enterprise.osi-generation.demo-api-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.search.entity-retrieval.index-table :as entity-retrieval.index-table]
-   [metabase-enterprise.search.entity-retrieval.reconcile :as entity-retrieval.reconcile]
    [metabase-enterprise.osi-generation.core :as generation]
    [metabase-enterprise.osi-generation.demo-api :as osi-generation]
    [metabase-enterprise.osi-generation.demo-page :as osi-generation-page]
+   [metabase-enterprise.search.entity-retrieval.core :as entity-retrieval.ee]
+   [metabase-enterprise.search.entity-retrieval.index-table :as entity-retrieval.index-table]
+   [metabase-enterprise.search.entity-retrieval.reconcile :as entity-retrieval.reconcile]
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
-   [metabase.search.entity-retrieval.mirror :as entity-retrieval.mirror]
-   [metabase.search.entity-retrieval.spec :as spec]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
+   [metabase.search.entity-retrieval.mirror :as entity-retrieval.mirror]
+   [metabase.search.entity-retrieval.spec :as spec]
+   [metabase.server.routes :as server.routes]
    [metabase.task.core :as task]
    [next.jdbc :as jdbc]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest demo-requires-development-or-explicit-opt-in-test
   (with-redefs [config/dev-available? false
@@ -256,18 +260,19 @@
                @search-context))))))
 
 (deftest library-retrieval-search-test
-  (with-redefs [tools/handle
-                (fn [tool input context]
-                  (is (= tools.entity-retrieval/retrieve-library-entities-tool tool))
-                  (is (= {} context))
-                  (is (= {:user_search_prompt "monthly revenue", :limit 10} input))
-                  {:structured-output {:total_count 1
-                                       :weak_match  false
-                                       :data        [{:type             "metric"
-                                                      :id               7
-                                                      :name             "Revenue"
-                                                      :matched_doc_type "synonym"
-                                                      :matched_text     "sales"}]}})]
+  (with-redefs [tools.entity-retrieval/retrieve-library-entities-tool
+                (reify tools/Tool
+                  (declaration [_] {})
+                  (handle [_ input context]
+                    (is (= {} context))
+                    (is (= {:user_search_prompt "monthly revenue", :limit 10} input))
+                    {:structured-output {:total_count 1
+                                         :weak_match  false
+                                         :data        [{:type             "metric"
+                                                        :id               7
+                                                        :name             "Revenue"
+                                                        :matched_doc_type "synonym"
+                                                        :matched_text     "sales"}]}}))]
     (is (= {:engine     :library-retrieval
             :total      1
             :weak_match false
@@ -287,6 +292,34 @@
                              (is (= [:not= :started] status-filter))
                              3)]
     (is (= {:deleted 3} (#'osi-generation/delete-generation-runs!)))))
+
+(deftest vector-endpoint-decodes-document-id-test
+  (let [result (promise)
+        called (atom nil)]
+    (with-redefs-fn {#'config/config-bool (constantly true)
+                     #'api/check-superuser (constantly nil)
+                     #'entity-retrieval.ee/available? (constantly true)
+                     #'osi-generation/library-index-vector (fn [id] (reset! called id) {:vector "AQ=="})}
+      #(osi-generation/routes {:request-method :get
+                               :uri "/index/vector"
+                               :metabase-user-id 1
+                               :query-params {"doc-id" "a/b+c="}}
+                              (fn [response] (deliver result response))
+                              (fn [error] (deliver result error))))
+    (is (= "a/b+c=" @called))
+    (is (= {:vector "AQ=="} (:body @result)))))
+
+(deftest demo-bare-route-redirects-to-gated-page-test
+  (let [pass-through (fn [_ respond _] (respond nil))
+        handler      (server.routes/make-routes {:api        pass-through
+                                                  :auth       pass-through
+                                                  :oauth      pass-through
+                                                  :well-known pass-through})]
+    (doseq [uri ["/dev/osi-generation" "/dev/osi-generation/"]]
+      (let [result (promise)]
+        (handler {:request-method :get, :uri uri} #(deliver result %) #(deliver result %))
+        (is (= 302 (:status @result)))
+        (is (= "/api/ee/osi-generation-demo-page/" (get-in @result [:headers "Location"])))))))
 
 (deftest resources-are-packaged-test
   (with-redefs [api/check-superuser (constantly nil)]
@@ -344,6 +377,9 @@
                   (is (= {:busy true, :data []} (#'osi-generation/library-index-entries 0)))
                   (finally
                     (jdbc/execute! writer [(format "SELECT pg_advisory_unlock(%d)" lock-id)])))))
+            ;; A legacy meta table may not have the optional freshness column.
+            (jdbc/execute! ds [(format "ALTER TABLE %s DROP COLUMN reconciled_at"
+                                       (entity-retrieval.index-table/meta-table-sql))])
             (is (= {:deleted 56} (entity-retrieval.reconcile/clear-index! ds)))
             (is (= :missing (entity-retrieval.index-table/index-status ds model)))
             (let [full-runs (atom 0)]

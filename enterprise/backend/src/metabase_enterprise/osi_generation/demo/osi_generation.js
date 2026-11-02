@@ -457,7 +457,7 @@ async function showVectorTooltip(target) {
   els.vectorTooltip.textContent = "Loading…";
   try {
     if (!target.dataset.vector) {
-      const result = await request(`${apiBase}/index/vector?doc_id=${encodeURIComponent(target.dataset.docId)}`);
+      const result = await request(`${apiBase}/index/vector?doc-id=${encodeURIComponent(target.dataset.docId)}`);
       target.dataset.vector = result.vector;
     }
     if (!target.matches(":hover") && document.activeElement !== target) return;
@@ -707,6 +707,7 @@ async function refreshAfterIndexMutation(entity) {
       await new Promise((resolve) => window.setTimeout(resolve, delay));
       await refreshIndexEntries();
     }
+    els.indexSummary.textContent += " · Sync may still be running; refresh to check";
     return;
   }
   const path = `${apiBase}/index/settled/${encodeURIComponent(entity.entity_type)}/${entity.entity_local_id}`;

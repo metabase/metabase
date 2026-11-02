@@ -261,6 +261,28 @@ describe("OSI generation page polling", () => {
     ).toBe(false);
   });
 
+  it("shows that a bulk index sync may still be running after bounded refreshes", async () => {
+    window.confirm = jest.fn(() => true);
+    global.fetch = jest.fn(async (requestPath, options) => {
+      if (requestPath.endsWith("/contexts") && options.method === "DELETE")
+        return response({ deleted: 1 });
+      if (requestPath.endsWith("/entities")) return response({ data: [] });
+      if (requestPath.includes("/index?offset="))
+        return response({ busy: false, data: [] });
+      if (requestPath.endsWith("/runs")) return response({ data: [] });
+      if (requestPath.endsWith("/status")) return response(statusResponse);
+      throw new Error(`Unexpected request: ${requestPath}`);
+    });
+    window.eval(fs.readFileSync(scriptPath, "utf8"));
+    await flushPromises();
+    document.querySelector("#delete-contexts").click();
+    await flushPromises();
+    await jest.advanceTimersByTimeAsync(30000);
+    expect(document.querySelector("#index-summary")).toHaveTextContent(
+      "Sync may still be running",
+    );
+  });
+
   it("does not let an older refresh replace newer Library content", async () => {
     let resolveOldEntities;
     let entityRequests = 0;
