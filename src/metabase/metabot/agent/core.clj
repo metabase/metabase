@@ -443,9 +443,8 @@
   `query-id` is the ID that seed-state stores the chart's query under, or nil if it stores no query for the chart."
   [chart-id query-id {:keys [query timeline_events] :as chart-config}]
   {:chart_id chart-id
-   ;; :query_id lets edit_chart carry a query-id through (see extract-charts below) instead of leaving charts
-   ;; seeded this way uncaptured. It is never the ID of a saved card: a query that edit_chart stores under a
-   ;; card ID would make run_query run that query in place of the saved card.
+   ;; edit_chart carries :query_id through (see extract-charts). It is never a card ID: run_query runs the saved
+   ;; card by that ID.
    :query_id query-id
    :queries [query]
    :timeline_events (or timeline_events [])
@@ -470,7 +469,7 @@
                            (juxt :chart_id identity)
                            ;; The ID of a saved card is an integer, and the chart tools get charts by a string ID.
                            (partial chart-config->chart
-                                    (some-> id str)
+                                    (str id)
                                     (first (extract-query-from-context-item item)))))
                      chart_configs))))
    state
@@ -484,7 +483,6 @@
   [context]
   (let [seeded (-> {} (seed-state context) (seed-charts context))]
     (into (set (keys (:queries seeded)))
-          (map str)
           (keys (:charts seeded)))))
 
 ;;; Main loop
