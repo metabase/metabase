@@ -411,18 +411,24 @@ check_downgrade_refused() {
       return 1
     fi
 
+    local status=$(docker compose ps -a metabase --format '{{.Status}}' 2>/dev/null || echo "")
+
     # Check container logs for downgrade error
     local logs=$(docker compose logs metabase 2>&1 || true)
 
-    if grep -qi "migrate.*down\|downgrade\|database.*newer" <<<"$logs"; then
+    if grep -q "Downgrade detected" <<<"$logs"; then
       log "Metabase correctly detected downgrade scenario"
       return 0
     fi
 
-    local status=$(docker compose ps metabase --format '{{.Status}}' 2>/dev/null || echo "")
     if [[ "$status" =~ [Ee]xit ]]; then
-      log "Metabase container exited (expected for downgrade)"
-      return 0
+      error "Metabase container exited without a downgrade error"
+      return 1
+    fi
+
+    if [[ "$(curl -sf "http://localhost:${METABASE_PORT}/api/health" 2>/dev/null)" == '{"status":"ok"}' ]]; then
+      error "Metabase started on a newer app DB instead of refusing the downgrade"
+      return 1
     fi
 
     sleep 2
