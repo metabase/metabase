@@ -113,17 +113,14 @@
   nil)
 
 (defenterprise-schema check-adhoc-action :- :nil
-  "Throws a 400 unless `data-app` is a dev preview and the ad-hoc `action` is an implicit action of no model on a table,
-  after a read check of the table."
+  "Throws a 400 unless `data-app` is a dev preview and the ad-hoc `action` is an implicit action of no model on a table."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app-info
    action   :- ::actions.schema/action.adhoc]
   (when-not (preview? data-app)
     (throw (data-app-error (tru "A data app can run only the actions in its own collection, not ad-hoc ones."))))
-  (let [table-id (:table_id action)]
-    (when-not (and (= :implicit (keyword (:type action))) (nil? (:model_id action)) table-id)
-      (throw (data-app-error (tru "A data app''s dev preview can run only implicit actions on a table."))))
-    (api/read-check :model/Table table-id))
+  (when-not (and (= :implicit (keyword (:type action))) (nil? (:model_id action)) (:table_id action))
+    (throw (data-app-error (tru "A data app''s dev preview can run only implicit actions on a table."))))
   nil)
 
 (defenterprise-schema data-app-actions :- [:sequential ::actions.schema/action]
