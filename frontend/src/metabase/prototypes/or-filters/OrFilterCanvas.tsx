@@ -27,6 +27,7 @@ import {
 import type { SummaryPlacement } from "./directions/expression-bar-unified/settings";
 import { ImplicitAndContext } from "./directions/iteration-4-in-place/settings";
 import {
+  DEFAULT_STAGE_SEPARATOR,
   type StageSeparator,
   StageSeparatorContext,
   isStageSeparator,
@@ -148,7 +149,9 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
   const [implicitAnd, setImplicitAnd] = useState(
     direction.hasImplicitAndSetting ?? false,
   );
-  const [stageSeparator, setStageSeparator] = useState<StageSeparator>("dash");
+  const [stageSeparator, setStageSeparator] = useState<StageSeparator>(
+    DEFAULT_STAGE_SEPARATOR,
+  );
   const [saved, setSaved] = useState<SavedQuestion>();
   const [areFiltersHidden, setAreFiltersHidden] = useState(false);
   const [areDrillsOpen, setAreDrillsOpen] = useState(false);

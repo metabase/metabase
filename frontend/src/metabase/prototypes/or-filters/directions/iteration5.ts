@@ -39,7 +39,7 @@ export const ITERATION_5_DIRECTIONS: FilterDirection[] = [
       return t`Draft`;
     },
     get description() {
-      return t`A copy of "Without AND": a dash splits the filters on rows from the filters on the summary, the filter popover looks like the app's, and a summary filter that would land inside an "or" can't be picked there.`;
+      return t`A copy of "Without AND": a "then" splits the filters on rows from the filters on the summary, the filter popover looks like the app's, and a summary filter that would land inside an "or" can't be picked there.`;
     },
     Component: ExpressionBarSplitPrototype,
     Canvas: (props) =>

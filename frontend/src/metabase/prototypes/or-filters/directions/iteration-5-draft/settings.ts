@@ -12,7 +12,11 @@ export const STAGE_SEPARATORS = [
 
 export type StageSeparator = (typeof STAGE_SEPARATORS)[number];
 
-export const StageSeparatorContext = createContext<StageSeparator>("dash");
+export const DEFAULT_STAGE_SEPARATOR: StageSeparator = "then";
+
+export const StageSeparatorContext = createContext<StageSeparator>(
+  DEFAULT_STAGE_SEPARATOR,
+);
 
 export function isStageSeparator(value: string): value is StageSeparator {
   return STAGE_SEPARATORS.some((separator) => separator === value);
