@@ -3354,7 +3354,6 @@
            api-scope
            app-db
            collections
-           data-apps
            database-routing
            driver
            events
@@ -3867,7 +3866,6 @@
                     :model/Database
                     :model/Field
                     :model/Measure
-                    :model/Segment
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
@@ -4258,7 +4256,6 @@
            api-scope
            app-db
            audit-app
-           data-apps
            driver
            lib
            lib.be
