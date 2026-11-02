@@ -1,20 +1,10 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
-import ShieldImage from "assets/img/shield-96x96.svg";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import {
-  Accordion,
-  Badge,
-  Card,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
-import type { HealthCheck, HealthCheckStatus } from "metabase-types/api";
+import { Group, Stack, Title } from "metabase/ui";
+import type { HealthCheck } from "metabase-types/api";
 
 import {
   trackHealthCheckRecheckClicked,
@@ -25,87 +15,15 @@ import {
   useRecheckHealthChecksMutation,
 } from "../../api";
 
-import { HealthCheckCard } from "./HealthCheckCard";
-import S from "./HealthChecksPage.module.css";
+import { HealthCheckGroup } from "./HealthCheckGroup";
+import { HealthChecksSummary } from "./HealthChecksSummary";
 import { RecheckButton } from "./RecheckButton";
 import { useRecheckErrorToast } from "./use-recheck-error-toast";
 import {
   HEALTH_CHECK_STATUSES,
   RECHECK_ALL_CACHE_KEY,
   getChecksByStatus,
-  getStatusInfo,
 } from "./utils";
-
-type HealthCheckGroupProps = {
-  status: HealthCheckStatus;
-  checks: HealthCheck[];
-};
-
-const HealthCheckGroup = ({ status, checks }: HealthCheckGroupProps) => {
-  if (checks.length === 0) {
-    return null;
-  }
-
-  const { label, badgeColor } = getStatusInfo(status);
-
-  return (
-    <Accordion
-      defaultValue={status === "fail" ? status : null}
-      transitionDuration={0}
-      classNames={{ content: S.groupContent }}
-    >
-      <Accordion.Item value={status}>
-        <Accordion.Control
-          icon={
-            <Badge color={badgeColor} size="sm">
-              {checks.length}
-            </Badge>
-          }
-        >
-          {label}
-        </Accordion.Control>
-        <Accordion.Panel>
-          <Stack gap="lg">
-            {checks.map((check) => (
-              <HealthCheckCard key={check.id} check={check} />
-            ))}
-          </Stack>
-        </Accordion.Panel>
-      </Accordion.Item>
-    </Accordion>
-  );
-};
-
-type HealthChecksSummaryProps = {
-  checks: HealthCheck[];
-};
-
-const HealthChecksSummary = ({ checks }: HealthChecksSummaryProps) => {
-  const passedCount = checks.filter((check) => check.status === "pass").length;
-  const isAllClear = passedCount === checks.length;
-
-  if (isAllClear) {
-    return (
-      <Card p="xxl" withBorder>
-        <Stack align="center" gap="lg">
-          <img src={ShieldImage} alt="" />
-          <Text fw="bold">{t`All security checks pass`}</Text>
-        </Stack>
-      </Card>
-    );
-  }
-
-  const { icon, iconColor } = getStatusInfo("fail");
-
-  return (
-    <Card p="lg" withBorder>
-      <Group gap="sm">
-        <Icon name={icon} c={iconColor} />
-        <Text fw="bold">{t`${passedCount} of ${checks.length} checks pass`}</Text>
-      </Group>
-    </Card>
-  );
-};
 
 type HealthChecksContentProps = {
   checks: HealthCheck[];
