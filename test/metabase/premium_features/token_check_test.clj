@@ -345,3 +345,23 @@
               :error-details "Token should be 64 hexadecimal characters."}
              (api-error/response-data data)))
       (is (= 400 (:status-code data))))))
+
+(deftest set-premium-embedding-token-busts-stale-cache-test
+  (testing "re-entering a token after renewal revalidates with the store instead of a cached expired verdict (EMB-2341)"
+    (let [token (tu/random-token)
+          state (atom :expired)]
+      (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                           (case @state
+                                                             :expired {:status 403
+                                                                       :body   "{\"valid\":false,\"status\":\"Token is expired.\"}"}
+                                                             :renewed {:status 200
+                                                                       :body   "{\"valid\":true,\"status\":\"Token is valid.\",\"features\":[\"sso\"]}"}))]
+        (try
+          ;; prime the cache with the expired verdict
+          (is (=? {:valid false} (token-check/check-token token)))
+          (reset! state :renewed)
+          (mt/with-temporary-setting-values [premium-embedding-token nil]
+            (token-check/-set-premium-embedding-token! token)
+            (is (= token (premium-features/premium-embedding-token))))
+          (finally
+            (token-check/clear-cache!)))))))
