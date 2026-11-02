@@ -235,7 +235,6 @@ export function ViewTitleHeader({
           expanded={areFiltersExpanded}
           question={question}
           draftKey={draftFilterKey}
-          onAddDraft={addDraftFilter}
           onRemoveDraft={removeDraftFilter}
           updateQuestion={updateQuestion}
         />

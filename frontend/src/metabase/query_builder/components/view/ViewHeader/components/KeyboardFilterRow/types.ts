@@ -20,11 +20,15 @@ export type SuggestionOption = {
   isSelectAll?: boolean;
   /** The share of the rows with this value, shown on a tile. */
   share?: { value: number; label: string };
+  /** Shown but not pickable, like a column that can't go where the caret is. */
+  disabled?: boolean;
 };
 
 export type SuggestionGroup = {
   /** A header above this group and the next groups with the same section. */
   section?: string;
+  /** Shown before the section header, like a table or a foreign key icon. */
+  sectionIcon?: IconName;
   label?: string;
   /** The text of the input does not filter the options of this group. */
   isUnfiltered?: boolean;

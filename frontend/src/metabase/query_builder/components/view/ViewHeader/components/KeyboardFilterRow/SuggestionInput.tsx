@@ -11,6 +11,7 @@ import {
   TextInput,
   useCombobox,
 } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./KeyboardFilterRow.module.css";
 import { UNSCORED, getOptionScores } from "./fuzzy-search";
@@ -238,6 +239,7 @@ export function SuggestionInput({
         key={option.value}
         value={option.value}
         active={option.isChecked}
+        disabled={option.disabled}
       >
         {isMultiSelect ? (
           <Checkbox
@@ -285,7 +287,8 @@ export function SuggestionInput({
           value={text}
           placeholder={placeholder}
           autoFocus
-          size={Math.max(text.length, placeholder.length, 4)}
+          size={Math.max(text.length, placeholder.length, placeholder ? 4 : 1)}
+          data-empty={(text === "" && placeholder === "") || undefined}
           onChange={(event) => {
             onTextChange(event.currentTarget.value);
             combobox.openDropdown();
@@ -338,6 +341,7 @@ export function SuggestionInput({
                         filteredGroups[groupIndex - 1]?.section && (
                         <SectionHeader
                           section={group.section}
+                          icon={group.sectionIcon}
                           isCollapsed={isCollapsed(group.section)}
                           isCollapsible={!isSearching}
                           hasDivider={groupIndex > 0}
@@ -383,6 +387,7 @@ export function SuggestionInput({
 
 interface SectionHeaderProps {
   section: string;
+  icon?: IconName;
   isCollapsed: boolean;
   isCollapsible: boolean;
   hasDivider: boolean;
@@ -392,6 +397,7 @@ interface SectionHeaderProps {
 /** A header of a section, like a table. A click collapses the section. */
 function SectionHeader({
   section,
+  icon,
   isCollapsed,
   isCollapsible,
   hasDivider,
@@ -399,7 +405,12 @@ function SectionHeader({
 }: SectionHeaderProps) {
   const className = cx(S.sectionHeader, { [S.sectionDivider]: hasDivider });
   if (!isCollapsible) {
-    return <div className={className}>{section}</div>;
+    return (
+      <Flex className={className} align="center" gap="sm">
+        {icon && <Icon name={icon} />}
+        {section}
+      </Flex>
+    );
   }
   return (
     <button
@@ -410,7 +421,10 @@ function SectionHeader({
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => onToggle(section)}
     >
-      <span className={S.sectionTitle}>{section}</span>
+      <Flex align="center" gap="sm" miw={0}>
+        {icon && <Icon name={icon} />}
+        <span className={S.sectionTitle}>{section}</span>
+      </Flex>
       <Icon name={isCollapsed ? "chevronright" : "chevrondown"} size={12} />
     </button>
   );

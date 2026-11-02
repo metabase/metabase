@@ -57,7 +57,7 @@ export function getColumnGroups(
   });
 }
 
-function getDraftColumn(
+export function getDraftColumn(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,

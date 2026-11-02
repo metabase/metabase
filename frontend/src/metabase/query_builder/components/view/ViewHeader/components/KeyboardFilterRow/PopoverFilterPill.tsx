@@ -1,4 +1,5 @@
-import { useState } from "react";
+import type { KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
@@ -11,8 +12,16 @@ interface PopoverFilterPillProps {
   query: Lib.Query;
   stageIndex: number;
   filter: Lib.FilterClause;
-  filterIndex: number;
-  onChange: (query: Lib.Query) => void;
+  className?: string;
+  /** The pill's attributes in the bar, like its index for the arrow keys. */
+  pillAttributes?: Record<string, number | string>;
+  /** The user picked a new filter in place of this one. */
+  onSelect: (filter: Lib.Filterable) => void;
+  onRemove: () => void;
+  /** The picker opened or closed. */
+  onOpenedChange?: (isOpened: boolean) => void;
+  /** Left or Right pressed on the focused pill. */
+  onLeave?: (isLeft: boolean) => void;
 }
 
 /**
@@ -23,19 +32,55 @@ export function PopoverFilterPill({
   query,
   stageIndex,
   filter,
-  filterIndex,
-  onChange,
+  className,
+  pillAttributes,
+  onSelect,
+  onRemove,
+  onOpenedChange,
+  onLeave,
 }: PopoverFilterPillProps) {
-  const [isOpened, setIsOpened] = useState(false);
+  const [isOpened, setIsOpenedState] = useState(false);
   const { columnName, rest } = getNameParts(query, stageIndex, filter);
 
-  const handleSelect = (newFilter: Lib.Clause | Lib.SegmentMetadata) => {
-    onChange(Lib.replaceClause(query, stageIndex, filter, newFilter));
-    setIsOpened(false);
+  const setIsOpened = (value: boolean) => {
+    if (value !== isOpened) {
+      onOpenedChange?.(value);
+    }
+    setIsOpenedState(value);
   };
 
-  const handleRemove = () => {
-    onChange(Lib.removeClause(query, stageIndex, filter));
+  // Opened from the keyboard, the pill takes the focus back once its editor
+  // closes, unless a click already moved it elsewhere.
+  const pillRef = useRef<HTMLDivElement>(null);
+  const isOpenedFromKeyRef = useRef(false);
+  useEffect(() => {
+    if (!isOpened && isOpenedFromKeyRef.current) {
+      isOpenedFromKeyRef.current = false;
+      const isFocusLost =
+        document.activeElement == null ||
+        document.activeElement === document.body;
+      if (isFocusLost) {
+        pillRef.current?.focus();
+      }
+    }
+  }, [isOpened]);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      isOpenedFromKeyRef.current = true;
+      setIsOpened(true);
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      onLeave?.(event.key === "ArrowLeft");
+    }
+  };
+
+  const handleSelect = (newFilter: Lib.Filterable) => {
+    onSelect(newFilter);
     setIsOpened(false);
   };
 
@@ -48,9 +93,13 @@ export function PopoverFilterPill({
     >
       <Popover.Target>
         <div
-          className={S.pill}
+          ref={pillRef}
+          className={className ?? S.pill}
           data-testid="filter-pill"
-          onClick={() => setIsOpened((isOpened) => !isOpened)}
+          tabIndex={-1}
+          onClick={() => setIsOpened(!isOpened)}
+          onKeyDown={handleKeyDown}
+          {...pillAttributes}
         >
           {columnName != null && (
             <span className={S.columnSegment}>{columnName}</span>
@@ -64,7 +113,7 @@ export function PopoverFilterPill({
             aria-label={t`Remove filter`}
             onClick={(event) => {
               event.stopPropagation();
-              handleRemove();
+              onRemove();
             }}
           />
         </div>
@@ -74,7 +123,6 @@ export function PopoverFilterPill({
           query={query}
           stageIndex={stageIndex}
           filter={filter}
-          filterIndex={filterIndex}
           onSelect={handleSelect}
           onClose={() => setIsOpened(false)}
         />
