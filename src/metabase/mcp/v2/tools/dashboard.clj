@@ -444,9 +444,9 @@
   (merge {:id nil :dashcards [] :tabs [] :parameters []} attrs))
 
 (registry/deftool dashboard-write
-  "Create or update a dashboard and edit its layout with ordered ops. Each call is atomic — nothing is
-  written unless every op succeeds, so a failed call leaves the dashboard untouched (or, for create, creates
-  nothing), and a retry cannot double-add.
+  "Create or update a dashboard and edit its layout with ordered ops. Dashboard changes and ops are saved
+  atomically, create included. Rejected ops leave the dashboard untouched (or, for create, create nothing).
+  Errors after commit do not undo the save, so check the dashboard before retrying an uncertain result.
   method: \"create\" requires name; \"update\" requires id and accepts archived (true trashes,
   false restores — there is no hard delete). Give each new card or tab its own negative id (-1, -2, …); later
   ops in the same call reference it, and the server assigns real ids on save. Ops: add_card, add_text,
