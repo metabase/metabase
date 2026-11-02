@@ -63,6 +63,7 @@ export type IconName =
   | "cloud_filled"
   | "collection2"
   | "compare"
+  | "compass"
   | "combine"
   | "company"
   | "comment"

@@ -13,20 +13,18 @@ import type {
   QueryBuilderMode,
   QueryModalType,
 } from "metabase/redux/store";
-import { Box, Button, Flex, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
+import { getGalleryTableId } from "../../../TableFlow/utils";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { canExploreResults } from "../../utils";
 import { ExploreResultsLink } from "../ExploreResultsLink";
-import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
-import { QuestionNotebookButton } from "../QuestionNotebookButton";
-import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
 import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
 
 import { QuestionSharingMenu } from "./QuestionSharingMenu/QuestionSharingMenu";
@@ -41,7 +39,8 @@ interface ViewTitleHeaderRightSideProps {
   isRunnable: boolean;
   isRunning: boolean;
   isNativeEditorOpen: boolean;
-  isShowingSummarySidebar: boolean;
+  isGalleryOpen?: boolean;
+  onToggleGallery?: () => void;
   isDirty: boolean;
   isResultDirty: boolean;
   isActionListVisible: boolean;
@@ -52,8 +51,6 @@ interface ViewTitleHeaderRightSideProps {
   }) => void;
   cancelQuery: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
-  editSummary: () => void;
-  onCloseSummary: () => void;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
     opts?: {
@@ -61,14 +58,10 @@ interface ViewTitleHeaderRightSideProps {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  areFiltersExpanded: boolean;
-  onExpandFilters: () => void;
-  onCollapseFilters: () => void;
   toggleBookmark: () => void;
   onOpenQuestionInfo: () => void;
   onCloseQuestionInfo: () => void;
   isShowingQuestionInfoSidebar: boolean;
-  isObjectDetail: boolean;
 }
 
 export function ViewTitleHeaderRightSide({
@@ -81,24 +74,19 @@ export function ViewTitleHeaderRightSide({
   isRunnable,
   isRunning,
   isNativeEditorOpen,
-  isShowingSummarySidebar,
+  isGalleryOpen = false,
+  onToggleGallery,
   isDirty,
   isResultDirty,
   isActionListVisible,
   runQuestionQuery,
   cancelQuery,
   onOpenModal,
-  editSummary,
-  onCloseSummary,
   setQueryBuilderMode,
-  areFiltersExpanded,
-  onExpandFilters,
-  onCollapseFilters,
   toggleBookmark,
   onOpenQuestionInfo,
   onCloseQuestionInfo,
   isShowingQuestionInfoSidebar,
-  isObjectDetail,
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
@@ -143,7 +131,10 @@ export function ViewTitleHeaderRightSide({
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
-  const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
+  const hasGalleryButton =
+    onToggleGallery != null &&
+    !isShowingNotebook &&
+    getGalleryTableId(question) != null;
   const saveTooltip = getSaveTooltip(question);
 
   useRegisterShortcut(
@@ -159,47 +150,32 @@ export function ViewTitleHeaderRightSide({
     [isRunning, isShowingNotebook, hasRunButton],
   );
 
+  useRegisterShortcut(
+    hasGalleryButton
+      ? [{ id: "query-builder-toggle-explore", perform: onToggleGallery }]
+      : [],
+    // the toggle closes over the open state, so it re-registers with it
+    [hasGalleryButton, isGalleryOpen],
+  );
+
   return (
     <Flex
       className={ViewTitleHeaderS.ViewHeaderActionPanel}
       data-testid="qb-header-action-panel"
     >
-      {FilterHeaderButton.shouldRender({
-        question,
-        queryBuilderMode,
-        isObjectDetail,
-        isActionListVisible,
-      }) && (
-        <FilterHeaderButton
-          question={question}
-          isExpanded={areFiltersExpanded}
-          onExpand={onExpandFilters}
-          onCollapse={onCollapseFilters}
-        />
+      {hasGalleryButton && (
+        <Tooltip label={t`Explore`}>
+          <ActionIcon
+            size="lg"
+            variant={isGalleryOpen ? "filled" : "viewHeader"}
+            aria-label={t`Explore`}
+            aria-pressed={isGalleryOpen}
+            onClick={onToggleGallery}
+          >
+            <Icon name="compass" />
+          </ActionIcon>
+        </Tooltip>
       )}
-      {QuestionSummarizeWidget.shouldRender({
-        question,
-        queryBuilderMode,
-        isObjectDetail,
-        isActionListVisible,
-      }) && (
-        <QuestionSummarizeWidget
-          isShowingSummarySidebar={isShowingSummarySidebar}
-          editSummary={editSummary}
-          onCloseSummary={onCloseSummary}
-        />
-      )}
-      {QuestionNotebookButton.shouldRender({
-        question,
-        isActionListVisible,
-        isBrandNew,
-      }) && (
-        <QuestionNotebookButton
-          isShowingNotebook={isShowingNotebook}
-          setQueryBuilderMode={setQueryBuilderMode}
-        />
-      )}
-      <Box className={ViewTitleHeaderS.Divider} />
       {ToggleNativeQueryPreview.shouldRender({
         question,
         queryBuilderMode,

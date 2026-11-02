@@ -1,5 +1,6 @@
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import { type ComponentProps, forwardRef } from "react";
+import { type ComponentProps, forwardRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -37,6 +38,7 @@ import { SIDEBAR_SIZES } from "../../../../constants";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
+import { XrayEditsProvider } from "../../TableFlow/xray-edits";
 import { ViewSidebar } from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
@@ -94,6 +96,9 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
   function ViewInnerImpl(propsIn, ref) {
     const dispatch = useDispatch();
     const setCollection = useSetCollection();
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+    const { ref: rootRef, height: rootHeight } = useElementSize();
+    const { ref: headerRef, height: headerHeight } = useElementSize();
     const props: ViewProps = {
       ...propsIn,
       onMove: async (question, newCollection) => {
@@ -241,73 +246,95 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
     const isNotebookContainerOpen =
       isNewQuestion || queryBuilderMode === "notebook";
 
+    const isShowingStructuredSummarySidebar =
+      !isNative && isShowingSummarySidebar;
     const showLeftSidebar =
       isShowingChartSettingsSidebar || isShowingChartTypeSidebar;
     const showRightSidebar =
       isShowingTimelineSidebar ||
       isShowingQuestionInfoSidebar ||
       isShowingQuestionSettingsSidebar ||
-      (!isNative && isShowingSummarySidebar) ||
+      isShowingStructuredSummarySidebar ||
       (isNative &&
         (isShowingTemplateTagsEditor ||
           isShowingDataReference ||
           isShowingSnippetSidebar));
 
     const rightSidebarWidth = match({
+      isShowingStructuredSummarySidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
       isShowingQuestionSettingsSidebar,
     })
+      .with(
+        { isShowingStructuredSummarySidebar: true },
+        () => SIDEBAR_SIZES.SUMMARIZE,
+      )
       .with({ isShowingTimelineSidebar: true }, () => SIDEBAR_SIZES.TIMELINE)
       .with({ isShowingQuestionInfoSidebar: true }, () => 0)
       .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
       .otherwise(() => SIDEBAR_SIZES.NORMAL);
     return (
       <div className={CS.fullHeight} ref={ref}>
-        <Flex
-          className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
-          data-testid="query-builder-root"
-        >
-          {isHeaderVisible && <ViewHeaderContainer {...props} />}
-
-          <Flex className={S.QueryBuilderContentContainer}>
-            {!isNative && (
-              <NotebookContainer
-                isOpen={isNotebookContainerOpen}
-                updateQuestion={updateQuestion}
-                reportTimezone={reportTimezone}
-                readOnly={readOnly}
-                question={question}
-                isDirty={isDirty}
-                isRunnable={isRunnable}
-                isResultDirty={isResultDirty}
-                hasVisualizeButton={hasVisualizeButton}
-                runQuestionQuery={runQuestionQuery}
-                setQueryBuilderMode={setQueryBuilderMode}
-              />
+        <XrayEditsProvider>
+          <Flex
+            className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
+            data-testid="query-builder-root"
+            ref={rootRef}
+          >
+            {isHeaderVisible && (
+              <div ref={headerRef}>
+                <ViewHeaderContainer
+                  {...props}
+                  isGalleryOpen={isGalleryOpen}
+                  onToggleGallery={() => setIsGalleryOpen(!isGalleryOpen)}
+                />
+              </div>
             )}
-            <ViewSidebar side="left" isOpen={showLeftSidebar}>
-              <ViewLeftSidebarContainer
-                question={question}
-                result={result}
-                isShowingChartSettingsSidebar={isShowingChartSettingsSidebar}
-                isShowingChartTypeSidebar={isShowingChartTypeSidebar}
+
+            <Flex className={S.QueryBuilderContentContainer}>
+              {!isNative && (
+                <NotebookContainer
+                  isOpen={isNotebookContainerOpen}
+                  updateQuestion={updateQuestion}
+                  reportTimezone={reportTimezone}
+                  readOnly={readOnly}
+                  question={question}
+                  isDirty={isDirty}
+                  isRunnable={isRunnable}
+                  isResultDirty={isResultDirty}
+                  hasVisualizeButton={hasVisualizeButton}
+                  runQuestionQuery={runQuestionQuery}
+                  setQueryBuilderMode={setQueryBuilderMode}
+                />
+              )}
+              <ViewSidebar side="left" isOpen={showLeftSidebar}>
+                <ViewLeftSidebarContainer
+                  question={question}
+                  result={result}
+                  isShowingChartSettingsSidebar={isShowingChartSettingsSidebar}
+                  isShowingChartTypeSidebar={isShowingChartTypeSidebar}
+                />
+              </ViewSidebar>
+              <ViewMainContainer
+                {...props}
+                showLeftSidebar={showLeftSidebar}
+                showRightSidebar={showRightSidebar}
+                isGalleryOpen={isGalleryOpen}
+                viewportHeight={
+                  rootHeight - (isHeaderVisible ? headerHeight : 0)
+                }
               />
-            </ViewSidebar>
-            <ViewMainContainer
-              {...props}
-              showLeftSidebar={showLeftSidebar}
-              showRightSidebar={showRightSidebar}
-            />
-            <ViewSidebar
-              side="right"
-              isOpen={showRightSidebar}
-              width={rightSidebarWidth}
-            >
-              <ViewRightSidebarContainer {...props} />
-            </ViewSidebar>
+              <ViewSidebar
+                side="right"
+                isOpen={showRightSidebar}
+                width={rightSidebarWidth}
+              >
+                <ViewRightSidebarContainer {...props} />
+              </ViewSidebar>
+            </Flex>
           </Flex>
-        </Flex>
+        </XrayEditsProvider>
 
         {isShowingNewbModal && (
           <SavedQuestionIntroModal
