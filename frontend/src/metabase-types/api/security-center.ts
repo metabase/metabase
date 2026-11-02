@@ -58,7 +58,18 @@ export type SendTestNotificationRequest = {
   slackChannel: string | null;
 };
 
-export type HealthCheckId = string;
+export type HealthCheckId =
+  | "supported-version"
+  | "encryption-secret-key"
+  | "session-secret-key"
+  | "legacy-startup-encryption"
+  | "https-site-url"
+  | "https-redirect"
+  | "sso-login"
+  | "scim-provisioning"
+  | "mfa-required"
+  | "read-only-connections"
+  | "all-users-permissions";
 
 export type HealthCheckStatus = "pass" | "fail" | "unknown";
 

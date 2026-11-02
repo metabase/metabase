@@ -14,12 +14,18 @@ import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { Route } from "metabase/router";
-import type { HealthCheck, HealthCheckItem } from "metabase-types/api";
+import { defer } from "metabase/utils/promise";
+import type {
+  HealthCheck,
+  HealthCheckId,
+  HealthCheckItem,
+} from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockVersion,
@@ -137,12 +143,18 @@ describe("HealthChecksPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not show all clear when there are no checks", async () => {
+  it("shows an empty state when no checks apply", async () => {
     await setup({ checks: [] });
 
     expect(
+      screen.getByText("No health checks apply to this instance."),
+    ).toBeInTheDocument();
+    expect(
       screen.queryByText("All security checks pass"),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "sync icon Re-check all" }),
+    ).toBeDisabled();
   });
 
   it("opens failing checks and collapses the other groups", async () => {
@@ -159,15 +171,30 @@ describe("HealthChecksPage", () => {
   it("sorts checks by severity inside a group", async () => {
     await setup({
       checks: [
-        { ...FAILING_CHECK, id: "low", title: "Low", severity: "low" },
-        { ...FAILING_CHECK, id: "medium", title: "Medium", severity: "medium" },
         {
           ...FAILING_CHECK,
-          id: "critical",
+          id: "scim-provisioning",
+          title: "Low",
+          severity: "low",
+        },
+        {
+          ...FAILING_CHECK,
+          id: "sso-login",
+          title: "Medium",
+          severity: "medium",
+        },
+        {
+          ...FAILING_CHECK,
+          id: "supported-version",
           title: "Critical",
           severity: "critical",
         },
-        { ...FAILING_CHECK, id: "high", title: "High", severity: "high" },
+        {
+          ...FAILING_CHECK,
+          id: "session-secret-key",
+          title: "High",
+          severity: "high",
+        },
       ],
     });
 
@@ -190,6 +217,23 @@ describe("HealthChecksPage", () => {
 
     expect(screen.queryByText("How to fix")).not.toBeInTheDocument();
     expect(screen.queryByText("Requires a restart")).not.toBeInTheDocument();
+  });
+
+  it("does not show how to fix a check that couldn't run", async () => {
+    await setup({
+      checks: [
+        { ...UNKNOWN_CHECK, id: "https-site-url", requires_restart: true },
+      ],
+    });
+
+    await openGroup(/Couldn't check/);
+
+    expect(screen.getByText("No version info")).toBeInTheDocument();
+    expect(screen.queryByText("How to fix")).not.toBeInTheDocument();
+    expect(screen.queryByText("Requires a restart")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Open settings" }),
+    ).not.toBeInTheDocument();
   });
 
   it("lists failing items first and keeps passed items collapsed", async () => {
@@ -218,7 +262,7 @@ describe("HealthChecksPage", () => {
     expect(getItemTexts()).toEqual(["Broken", "Unsure", "Fine"]);
   });
 
-  it.each<{ checkId: string; item: HealthCheckItem; href: string }>([
+  it.each<{ checkId: HealthCheckId; item: HealthCheckItem; href: string }>([
     {
       checkId: "read-only-connections",
       item: {
@@ -262,7 +306,7 @@ describe("HealthChecksPage", () => {
     },
   );
 
-  it.each<{ checkId: string; href: string }>([
+  it.each<{ checkId: HealthCheckId; href: string }>([
     { checkId: "https-site-url", href: "/admin/settings/general" },
     { checkId: "https-redirect", href: "/admin/settings/general" },
     { checkId: "sso-login", href: "/admin/settings/authentication" },
@@ -301,7 +345,6 @@ describe("HealthChecksPage", () => {
       checks: [
         {
           ...FAILING_CHECK,
-          id: "some-other-check",
           items: [
             createMockHealthCheckItem({
               status: "fail",
@@ -357,6 +400,60 @@ describe("HealthChecksPage", () => {
     expect(await screen.findByText("2 of 2 checks pass")).toBeInTheDocument();
     expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith(FAILING_CHECK.id);
+  });
+
+  it("lists every item even when several items name the same object", async () => {
+    const createAllUsersItem = (message: string) =>
+      createMockHealthCheckItem({
+        status: "fail",
+        entity_type: "group",
+        entity_id: 1,
+        entity_name: "All Users",
+        message,
+      });
+    await setup({
+      checks: [
+        {
+          ...FAILING_CHECK,
+          id: "all-users-permissions",
+          items: [
+            createAllUsersItem("Can query Warehouse"),
+            createAllUsersItem("Can query Analytics"),
+          ],
+        },
+      ],
+    });
+
+    expect(
+      screen
+        .getAllByTestId("health-check-item")
+        .map((item) => item.textContent),
+    ).toEqual(["All UsersCan query Warehouse", "All UsersCan query Analytics"]);
+  });
+
+  it("disables re-check all while a check is re-checked", async () => {
+    const recheckResponse = defer<HealthCheck>();
+    fetchMock.post(
+      `path:/api/ee/security-center/health-checks/${FAILING_CHECK.id}/recheck`,
+      () => recheckResponse.promise,
+    );
+    await setup({ checks: [FAILING_CHECK] });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "sync icon Re-check" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "sync icon Re-check all" }),
+    ).toBeDisabled();
+
+    recheckResponse.resolve(FAILING_CHECK);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "sync icon Re-check all" }),
+      ).toBeEnabled(),
+    );
   });
 
   it("re-checks all checks and shows the returned results", async () => {

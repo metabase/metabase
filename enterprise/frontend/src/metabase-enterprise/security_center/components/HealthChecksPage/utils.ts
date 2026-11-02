@@ -50,7 +50,9 @@ export const getHealthCheckItemUrl = (
     .otherwise(() => null);
 
 export const getHealthCheckItemKey = (item: HealthCheckItem, index: number) =>
-  item.entity_type ? `${item.entity_type}-${item.entity_id}` : String(index);
+  item.entity_type
+    ? `${item.entity_type}-${item.entity_id}-${index}`
+    : String(index);
 
 export const getHealthCheckSettingsUrl = (checkId: HealthCheckId) =>
   match(checkId)

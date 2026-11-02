@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { useDocsUrl, useToast } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import {
   Anchor,
   Badge,
@@ -27,13 +27,6 @@ import type {
   HealthCheckStatus,
   IconName,
 } from "metabase-types/api";
-
-import { trackHealthCheckRecheckClicked } from "../../analytics";
-import {
-  RECHECK_ALL_HEALTH_CHECKS_CACHE_KEY,
-  useRecheckHealthCheckMutation,
-  useRecheckHealthChecksMutation,
-} from "../../api";
 
 import {
   getHealthCheckItemKey,
@@ -154,42 +147,37 @@ const HealthCheckItems = ({ check }: HealthCheckItemsProps) => {
 
 type HealthCheckCardProps = {
   check: HealthCheck;
+  isRechecking: boolean;
+  isRecheckDisabled: boolean;
+  onRecheck: (checkId: HealthCheckId) => void;
 };
 
-export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
-  const [recheck, { isLoading: isRechecking }] =
-    useRecheckHealthCheckMutation();
-  const [, { isLoading: isRecheckingAll }] = useRecheckHealthChecksMutation({
-    fixedCacheKey: RECHECK_ALL_HEALTH_CHECKS_CACHE_KEY,
-  });
+export const HealthCheckCard = ({
+  check,
+  isRechecking,
+  isRecheckDisabled,
+  onRecheck,
+}: HealthCheckCardProps) => {
   const settingsUrl = getHealthCheckSettingsUrl(check.id);
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(check.docs.page, {
     anchor: check.docs.anchor,
   });
-  const [sendToast] = useToast();
-  const isPassing = check.status === "pass";
-
-  const handleRecheck = async () => {
-    trackHealthCheckRecheckClicked(check.id);
-    try {
-      await recheck(check.id).unwrap();
-    } catch {
-      sendToast({
-        variant: "negative",
-        message: t`Failed to re-check. Please try again.`,
-      });
-    }
-  };
+  const isFailing = check.status === "fail";
 
   return (
-    <Card p="xl" withBorder data-testid="health-check-card">
+    <Card
+      p="xl"
+      withBorder
+      data-testid="health-check-card"
+      data-check-id={check.id}
+    >
       <Stack gap="md">
         <Group gap="sm" justify="space-between" align="flex-start">
           <Group gap="sm">
             <Badge color={STATUS_BADGE_COLOR[check.status]} size="sm">
               {getStatusLabel(check.status)}
             </Badge>
-            {check.requires_restart && !isPassing && (
+            {check.requires_restart && isFailing && (
               <Badge color="neutral" size="sm">{t`Requires a restart`}</Badge>
             )}
           </Group>
@@ -200,7 +188,7 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
         <Title order={4}>{check.title}</Title>
         <Text c="text-secondary">{check.description}</Text>
         <HealthCheckItems check={check} />
-        {!isPassing && (
+        {isFailing && (
           <Box>
             <Text fw="bold" mb="xs">{t`How to fix`}</Text>
             <Text c="text-secondary">{check.remediation}</Text>
@@ -217,8 +205,8 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
             leftSection={
               isRechecking ? <Loader size="xs" /> : <Icon name="sync" />
             }
-            disabled={isRechecking || isRecheckingAll}
-            onClick={handleRecheck}
+            disabled={isRecheckDisabled}
+            onClick={() => onRecheck(check.id)}
           >
             {t`Re-check`}
           </Button>

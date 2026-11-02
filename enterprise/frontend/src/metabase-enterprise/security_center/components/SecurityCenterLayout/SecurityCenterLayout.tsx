@@ -17,7 +17,7 @@ const SecurityCenterNav = () => (
     <AdminNavItem
       label={t`Health checks`}
       path="/admin/security-center/health-checks"
-      icon="check_filled"
+      icon="pulse"
     />
   </AdminNavWrapper>
 );

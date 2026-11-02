@@ -270,4 +270,44 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
         });
     });
   });
+
+  describe("health checks", () => {
+    const healthCheckCard = (checkId: string) =>
+      cy.get(`[data-check-id="${checkId}"]`);
+
+    it("should open health checks from the sidebar and group the checks", () => {
+      H.updateSetting("site-url", "http://localhost:4000");
+      cy.visit("/admin/security-center");
+      cy.findByRole("link", { name: /Health checks/ }).click();
+
+      cy.url().should("include", "/admin/security-center/health-checks");
+      cy.findByTestId("health-checks-page").within(() => {
+        cy.findByText(/checks pass/).should("be.visible");
+        cy.findByRole("region", { name: "Failing" }).within(() => {
+          healthCheckCard("https-site-url").should("be.visible");
+        });
+      });
+    });
+
+    it("should move a check fixed in settings to Passed after Re-check", () => {
+      H.updateSetting("site-url", "http://localhost:4000");
+      cy.visit("/admin/security-center/health-checks");
+
+      cy.findByRole("region", { name: "Failing" }).within(() => {
+        healthCheckCard("https-site-url").should("be.visible");
+      });
+
+      H.updateSetting("site-url", "https://metabase.example.com");
+
+      healthCheckCard("https-site-url")
+        .findByRole("button", { name: /Re-check/ })
+        .click();
+
+      healthCheckCard("https-site-url").should("not.exist");
+      cy.findByRole("region", { name: "Passed" }).within(() => {
+        cy.findByRole("button", { name: /Passed/ }).click();
+        healthCheckCard("https-site-url").should("be.visible");
+      });
+    });
+  });
 });

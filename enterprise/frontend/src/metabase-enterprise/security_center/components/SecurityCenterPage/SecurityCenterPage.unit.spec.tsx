@@ -1,12 +1,19 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
+import {
+  setupRecentViewsAndSelectionsEndpoints,
+  setupSettingEndpoint,
+} from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { act, renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { Advisory } from "metabase-types/api";
-import { createMockVersion } from "metabase-types/api/mocks";
+import type { Advisory, VersionInfo } from "metabase-types/api";
+import {
+  createMockMajorVersionSupport,
+  createMockVersion,
+  createMockVersionInfo,
+} from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
 
 import * as notificationHook from "../../hooks/use-notification-config";
@@ -23,10 +30,12 @@ function setup(
     lastCheckedAt = null,
     initialRoute = "/",
     isError = false,
+    versionInfo = createMockVersionInfo(),
   }: {
     lastCheckedAt?: string | null;
     initialRoute?: string;
     isError?: boolean;
+    versionInfo?: VersionInfo;
   } = {},
 ) {
   jest.spyOn(advisoriesHook, "useSecurityAdvisories").mockReturnValue({
@@ -39,6 +48,10 @@ function setup(
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: versionInfo,
+  });
   jest.spyOn(notificationHook, "useNotificationConfigState").mockReturnValue({
     config: {
       email: {
@@ -416,6 +429,19 @@ describe("SecurityCenterPage", () => {
 
     it("does not show the upgrade banner when there are no advisories", async () => {
       setup([]);
+
+      expect(screen.queryByTestId("upgrade-banner")).not.toBeInTheDocument();
+    });
+
+    it("does not show the upgrade banner when the version is past end of life", async () => {
+      setup([], {
+        versionInfo: createMockVersionInfo({
+          major_version_support: [
+            createMockMajorVersionSupport({ major: 59, eol: "2000-06-01" }),
+          ],
+        }),
+      });
+      await act(() => fetchMock.callHistory.flush(true));
 
       expect(screen.queryByTestId("upgrade-banner")).not.toBeInTheDocument();
     });
