@@ -1,12 +1,10 @@
-accept = ["200..=204", "429"]
+# Sites behind Cloudflare (npm, OpenAI, claude.ai) answer CI runners with a 403 challenge; a dead page answers 404.
+accept = ["200..=204", "403", "429"]
+# npm pages are behind that challenge, but the registry answers 404 for a missing package.
+remap = ["^https://www\\.npmjs\\.com/package/(.+)$ https://registry.npmjs.org/$1"]
 exclude = [
   # Liquid templates ({{page.version}}) in docs/embedding/sdk are rendered by the docs site, not here.
   "%7B%7B",
-  # Bot-blocked: 403 for anything that isn't a browser.
-  "^https://(www|dev)\\.mysql\\.com/",
-  "^https://platform\\.deepseek\\.com/",
-  "^https://console\\.x\\.ai/",
-  "^https://www\\.oreilly\\.com/",
   # API base URLs the docs give as values: they answer API requests, not page loads.
   "^https://ollama\\.com/v1$",
   # Login-walled: redirects forever between console and auth.
