@@ -30,7 +30,7 @@
    [metabase.util.performance :as perf])
   (:import
    (java.sql Connection ResultSet ResultSetMetaData SQLException Types)
-   (java.time LocalTime OffsetTime ZoneOffset)))
+   (java.time LocalDateTime LocalTime OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -238,6 +238,15 @@
 (defmethod driver/dynamic-database-types-lookup :motherduck
   [_driver _database _database-types]
   nil)
+
+;; The endpoint names DuckDB-only types `duckdb_*`, which Postgres doesn't know. Enums compare with text and read as
+;; strings. TIMESTAMP_NS works with the same SQL as TIMESTAMP, and its values are read below.
+(defmethod sql-jdbc.sync/database-type->base-type :motherduck
+  [driver database-type]
+  (case database-type
+    :duckdb_enum         :type/Text
+    :duckdb_timestamp_ns :type/DateTime
+    ((get-method sql-jdbc.sync/database-type->base-type :postgres) driver database-type)))
 
 ;; Read primary key columns directly from duckdb_constraints() instead of pgjdbc's joins across
 ;; Postgres catalog views. The column list preserves the key's declaration order.
@@ -504,6 +513,22 @@
           (catch SQLException e
             (or (parse-float-array (.getString rs i) coerce)
                 (throw e)))))
+      parent-thunk)))
+
+;; The endpoint sends DuckDB-only types as JDBC DISTINCT, which the inherited reader returns as the endpoint's text.
+;; Parse TIMESTAMP_NS text to keep it a timestamp, reading infinities the way pgjdbc reads them for TIMESTAMP.
+(defn- parse-timestamp-ns [^String s]
+  (case s
+    "infinity"  LocalDateTime/MAX
+    "-infinity" LocalDateTime/MIN
+    (LocalDateTime/parse (str/replace s " " "T"))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:motherduck Types/DISTINCT]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk :postgres) driver rs rsmeta i)]
+    (if (= "duckdb_timestamp_ns" (.getColumnTypeName rsmeta i))
+      (fn []
+        (some-> (.getString rs i) parse-timestamp-ns))
       parent-thunk)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

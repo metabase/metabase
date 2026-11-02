@@ -35,7 +35,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql Connection ResultSet ResultSetMetaData SQLException Types)
-   (java.time OffsetTime)))
+   (java.time LocalDateTime OffsetTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -143,6 +143,22 @@
       (is (thrown-with-msg? SQLException #"Bad value"
                             (read-unparseable jdbc-type type-name s))
           s))))
+
+(deftest ^:parallel duckdb-only-base-types-test
+  (are [database-type base-type] (= base-type (sql-jdbc.sync/database-type->base-type :motherduck database-type))
+    :duckdb_enum         :type/Text
+    :duckdb_timestamp_ns :type/DateTime
+    :timestamp           :type/DateTime
+    :duckdb_struct       nil))
+
+(deftest ^:parallel read-timestamp-ns-test
+  (are [s expected] (= expected (read-unparseable Types/DISTINCT "duckdb_timestamp_ns" s))
+    nil                             nil
+    "2024-03-05 12:34:56.123456789" (LocalDateTime/of 2024 3 5 12 34 56 123456789)
+    "1999-12-31 23:59:59"           (LocalDateTime/of 1999 12 31 23 59 59)
+    "1700-01-01 00:00:00.5"         (LocalDateTime/of 1700 1 1 0 0 0 500000000)
+    "infinity"                      LocalDateTime/MAX
+    "-infinity"                     LocalDateTime/MIN))
 
 (deftest ^:parallel connection-spec-verifies-the-server-test
   (let [details {:host     "pg.us-east-1-aws.motherduck.com"
@@ -278,6 +294,56 @@
 (mt/defdataset pk-leak-b
   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
 
+(defn- exec!
+  "Execute `statements` against the database whose spec is passed as the first param."
+  [spec statements]
+  (sql-jdbc.execute/do-with-connection-with-options
+   :motherduck spec {:write? true}
+   (fn [^Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
+       (doseq [^String statement statements]
+         (.execute stmt statement))))))
+
+;; The endpoint names DuckDB-only types `duckdb_*` and sends their values as text.
+(deftest duckdb-only-types-test
+  (mt/test-driver :motherduck
+    (let [details (mt/dbdef->connection-details :motherduck :db {:database-name "duckdb_only_types_test"})]
+      (tx/drop-if-exists-and-create-db! :motherduck "duckdb_only_types_test")
+      (exec! (sql-jdbc.conn/connection-details->spec :motherduck details)
+             ["CREATE TYPE mood AS ENUM ('sad', 'happy');"
+              "CREATE TABLE duckdb_types (id INTEGER, m mood, ts TIMESTAMP_NS);"
+              (str "INSERT INTO duckdb_types VALUES (1, 'happy', '2024-03-05 12:34:56.123456789'),"
+                   " (2, 'sad', '1999-12-31 23:59:59'), (3, NULL, NULL);")])
+      (mt/with-temp [:model/Database database {:engine :motherduck, :details details}]
+        (mt/with-db database
+          (sync/sync-database! (:id database))
+          (testing "ENUM syncs as text and TIMESTAMP_NS as a timestamp"
+            (is (= {"id" :type/Integer, "m" :type/Text, "ts" :type/DateTime}
+                   (t2/select-fn->fn :name :base_type :model/Field :table_id (mt/id :duckdb_types)))))
+          (let [mp    (mt/metadata-provider)
+                query (lib/query mp (lib.metadata/table mp (mt/id :duckdb_types)))
+                m     (lib.metadata/field mp (mt/id :duckdb_types :m))
+                ts    (lib.metadata/field mp (mt/id :duckdb_types :ts))
+                run   #(mt/rows (qp/process-query %))]
+            (testing "values read as strings and timestamps, keeping nanoseconds"
+              (is (= [[1 "happy" "2024-03-05T12:34:56.123456789Z"]
+                      [2 "sad" "1999-12-31T23:59:59Z"]
+                      [3 nil nil]]
+                     (run (lib/order-by query (lib.metadata/field mp (mt/id :duckdb_types :id)))))))
+            (testing "filters compare enums with text and TIMESTAMP_NS with timestamps"
+              (is (= [[1]]
+                     (run (-> query (lib/filter (lib/= m "happy")) (lib/aggregate (lib/count))))))
+              (is (= [[1]]
+                     (run (-> query (lib/filter (lib/> ts "2000-01-01")) (lib/aggregate (lib/count)))))))
+            (testing "TIMESTAMP_NS buckets by month"
+              (is (= [["1999-12-01T00:00:00Z" 1]
+                      ["2024-03-01T00:00:00Z" 1]
+                      [nil 1]]
+                     (run (-> query
+                              (lib/aggregate (lib/count))
+                              (lib/breakout (lib/with-temporal-bucket ts :month)))))))))))))
+
 (defn- execute-statements! [& statements]
   (with-pooled-connection
     (fn [^Connection conn]
@@ -339,17 +405,6 @@
 
 ;; MotherDuck inherits this behaviour from `:postgres`, but these tests need different SQL, setup or expectations
 ;; here, so they're copies of tests in `metabase.driver.postgres-test` rather than shared with it.
-
-(defn- exec!
-  "Execute `statements` against the database whose spec is passed as the first param."
-  [spec statements]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :motherduck spec {:write? true}
-   (fn [^Connection conn]
-     (with-open [stmt (.createStatement conn)]
-       ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
-       (doseq [^String statement statements]
-         (.execute stmt statement))))))
 
 (deftest default-schema-test
   (mt/test-driver :motherduck
