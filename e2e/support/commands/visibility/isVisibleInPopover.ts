@@ -1,11 +1,19 @@
 import { POPOVER_ELEMENT } from "e2e/support/helpers";
 
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      isVisibleInPopover(): Cypress.Chainable<JQuery<HTMLElement>>;
+    }
+  }
+}
+
 Cypress.Commands.add(
   "isVisibleInPopover",
   {
     prevSubject: true,
   },
-  (subject) => {
+  (subject: JQuery<HTMLElement>) => {
     cy.wrap(subject)
       .closest(POPOVER_ELEMENT)
       .then(($popover) => {
@@ -14,7 +22,7 @@ Cypress.Commands.add(
          *  1. Obtains the value of element's computed property, but it always returns it in px (for example: "12px")
          *  2. Returns that value as a floating point number (strips away the "px") which enables us to use it in later calculations
          */
-        function getElementPropertyValue(property) {
+        function getElementPropertyValue(property: string) {
           const propertyValue = window
             .getComputedStyle(subject[0], null)
             .getPropertyValue(property); /* [1] */
