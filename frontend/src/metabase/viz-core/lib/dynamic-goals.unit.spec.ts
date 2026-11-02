@@ -10,7 +10,7 @@ import {
   createMockReferencedEntityResult,
 } from "metabase-types/api/mocks";
 
-import type { GoalCard } from "../types";
+import type { GoalCard, GoalRefError } from "../types";
 
 import {
   getGoalErrorMessage,
@@ -144,6 +144,22 @@ describe("resolveGoalValue", () => {
         message: "boom",
       },
     });
+  });
+
+  it("errors with source-not-found when the referenced entity no longer exists", () => {
+    const data = {
+      cols: [],
+      rows: [],
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        error: "Not found.",
+        error_type: "not-found",
+      }),
+    };
+
+    expect(
+      resolveGoalValue(data, { type: "card", id: 9, column: "goal" }).error
+        ?.reason,
+    ).toBe("source-not-found");
   });
 
   it("errors with too-many-rows when the referenced query returned more than one row", () => {
@@ -497,6 +513,37 @@ describe("getGoalErrorMessage", () => {
     expect(getGoalErrorMessage({ ...REF, reason: "query-failed" })).toBe(
       "Couldn't load this value",
     );
+  });
+
+  it("names the kind of a source that no longer exists", () => {
+    const error: GoalRefError = {
+      ...REF,
+      reason: "source-not-found",
+      message: "Not found.",
+    };
+
+    expect(getGoalErrorMessage(error, "question")).toBe(
+      "This question no longer exists",
+    );
+    expect(getGoalErrorMessage(error, "model")).toBe(
+      "This model no longer exists",
+    );
+    expect(getGoalErrorMessage(error, "metric")).toBe(
+      "This metric no longer exists",
+    );
+    expect(getGoalErrorMessage(error, "measure")).toBe(
+      "This measure no longer exists",
+    );
+  });
+
+  it("falls back to a generic message for a missing source of an unknown kind", () => {
+    expect(
+      getGoalErrorMessage({
+        ...REF,
+        reason: "source-not-found",
+        message: "Not found.",
+      }),
+    ).toBe("This source no longer exists");
   });
 
   it("explains a missing column regardless of the server message", () => {

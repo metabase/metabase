@@ -646,6 +646,43 @@ describe("GoalValueInput", () => {
     expect(within(pill).getByText("—")).toBeInTheDocument();
   });
 
+  it("explains that a referenced question no longer exists", async () => {
+    setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockFailedReferencedEntitiesResults({
+          error: "Not found.",
+          error_type: "not-found",
+        }),
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
+
+    expect(
+      await screen.findByText("This question no longer exists"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Not found.")).not.toBeInTheDocument();
+  });
+
+  it("explains that a deleted card, which can't tell its kind, no longer exists", async () => {
+    setupDeletedCard();
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockFailedReferencedEntitiesResults({
+          error: "Not found.",
+          error_type: "not-found",
+        }),
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
+
+    expect(
+      await screen.findByText("This source no longer exists"),
+    ).toBeInTheDocument();
+  });
+
   it("exposes the menu relationship on the pill for a11y", () => {
     setup({ value: "sum" });
 
@@ -1711,6 +1748,10 @@ function setupCardDatasetWithReferencedEntities(
       data: createMockDatasetData({ referenced_entities: referencedEntities }),
     },
   });
+}
+
+function setupDeletedCard() {
+  fetchMock.get("path:/api/card/9", 404);
 }
 
 function setupMultiRowEntity({ type }: { type: CardType }) {
