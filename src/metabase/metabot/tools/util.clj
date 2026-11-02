@@ -81,12 +81,33 @@
     (when-let [tgt (lib.metadata/field query tgt-id)]
       (column-portable-fk query tgt))))
 
+(defn- column-alias
+  [column]
+  (or (:lib/desired-column-alias column)
+      (:lib/source-column-alias column)))
+
 (defn column-field-id
   "Return the physical field ID or column alias used as a column's `field_id`."
   [column]
   (or (:id column)
-      (:lib/desired-column-alias column)
-      (:lib/source-column-alias column)))
+      (column-alias column)))
+
+(defn column-field-ids
+  "Return the `field_id` of each column of `columns`, in order. The ids are unique in the list when the columns have
+  aliases.
+
+  Two columns can come from one physical field, for example a breakout of `CREATED_AT` by month and by year. The
+  first of these columns keeps the field ID. Each later one gets its column alias, as a virtual column does."
+  [columns]
+  (first
+   (reduce (fn [[ids seen] column]
+             (let [id (column-field-id column)
+                   id (if (seen id)
+                        (or (column-alias column) id)
+                        id)]
+               [(conj ids id) (conj seen id)]))
+           [[] #{}]
+           columns)))
 
 (defn ->result-column
   "Return tool result column for `column` of `query`.
@@ -96,46 +117,60 @@
   Also includes a `:portable_fk` key with the portable foreign-key path
   `[db-name, schema, table-name, field-name …]` when the column maps to a real database field.
   The representations-format notebook query tool expects fields to be referenced by this path
-  rather than by numeric id."
-  [query column]
-  (let [base-type         (some-> (:base-type column) u/qualified-name)
-        effective-type    (some-> (:effective-type column) u/qualified-name)
-        semantic-type     (some-> (:semantic-type column) u/qualified-name)
-        coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)
-        field-id          (column-field-id column)
-        portable-fk       (try (column-portable-fk query column)
-                               (catch Exception _ nil))
-        fk-target-fk      (try (fk-target-portable-fk query column)
-                               (catch Exception _ nil))]
-    (-> {:field_id field-id
-         :name (or (:lib/desired-column-alias column)
-                   (:lib/source-column-alias column))
-         :display_name (lib/display-name query column)
-         :type (convert-field-type column)}
-        (m/assoc-some :description (:description column)
-                      :base_type base-type
-                      :effective_type (when (not= effective-type base-type) effective-type)
-                      :semantic_type semantic-type
-                      :database_type (:database-type column)
-                      :coercion_strategy coercion-strategy
-                      :field_values (:field-values column)
-                      :portable_fk portable-fk
-                      :fk_target_portable_fk fk-target-fk
-                      :table_reference (table-reference query column)))))
+  rather than by numeric id.
+
+  The 3-arity uses `field-id` as the `field_id`, see [[->result-columns]]."
+  ([query column]
+   (->result-column query column (column-field-id column)))
+  ([query column field-id]
+   (let [base-type         (some-> (:base-type column) u/qualified-name)
+         effective-type    (some-> (:effective-type column) u/qualified-name)
+         semantic-type     (some-> (:semantic-type column) u/qualified-name)
+         coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)
+         portable-fk       (try (column-portable-fk query column)
+                                (catch Exception _ nil))
+         fk-target-fk      (try (fk-target-portable-fk query column)
+                                (catch Exception _ nil))]
+     (-> {:field_id field-id
+          :name (column-alias column)
+          :display_name (lib/display-name query column)
+          :type (convert-field-type column)}
+         (m/assoc-some :description (:description column)
+                       :base_type base-type
+                       :effective_type (when (not= effective-type base-type) effective-type)
+                       :semantic_type semantic-type
+                       :database_type (:database-type column)
+                       :coercion_strategy coercion-strategy
+                       :field_values (:field-values column)
+                       :portable_fk portable-fk
+                       :fk_target_portable_fk fk-target-fk
+                       :table_reference (table-reference query column))))))
+
+(defn ->result-columns
+  "Return tool result columns for `columns` of `query`, with a unique `field_id` for each column. See
+  [[column-field-ids]]."
+  [query columns]
+  (mapv #(->result-column query %1 %2) columns (column-field-ids columns)))
 
 (defn find-column-by-field-id
   "Find a column by its emitted field ID, returning nil if no column matches.
 
-  Accepts physical field IDs as integers or numeric strings, and aliases for virtual columns."
+  Accepts physical field IDs as integers or numeric strings, and aliases for virtual columns and for later columns of
+  one physical field. Matches the ids of [[column-field-ids]]."
   [field-id columns]
   (when (some? field-id)
     (let [numeric-id (cond
                        (int? field-id) field-id
-                       (string? field-id) (parse-long field-id))]
-      (or (m/find-first #(= (column-field-id %) field-id) columns)
+                       (string? field-id) (parse-long field-id))
+          id-columns (map vector (column-field-ids columns) columns)
+          find-by-id (fn [id]
+                       (some (fn [[column-id column]]
+                               (when (= column-id id) column))
+                             id-columns))]
+      (or (find-by-id field-id)
           (when numeric-id
             (m/find-first #(= (:id %) numeric-id) columns))
-          (m/find-first #(= (column-field-id %) (str field-id)) columns)))))
+          (find-by-id (str field-id))))))
 
 (defn schedule->schedule-map
   "Convert a tool schedule map to the schedule-map format used by cron and pulse channels.

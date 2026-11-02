@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.field-stats
   (:require
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.metabot.db :as metabot.db]
@@ -127,11 +128,17 @@
                        "Choose another data source.")
                :uses #{}}]})
 
+(defn- distinct-by-field-id
+  "Keep the first column of each field ID in `columns`, a list of columns a query can use. Two columns of such a list
+  with one field ID are paths to one field, not two result columns, so a later one gets no alias ID."
+  [columns]
+  (m/distinct-by metabot.tools.u/column-field-id columns))
+
 (defn- field-column
   [entity-type entity-id field-id columns]
   (let [columns (entity-details/permission-filter-columns columns)]
     (or (metabot.tools.u/find-column-by-field-id field-id columns)
-        (let [available-ids (into [] (comp (map metabot.tools.u/column-field-id) (distinct)) columns)]
+        (let [available-ids (into [] (distinct) (metabot.tools.u/column-field-ids columns))]
           (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
                            :available-ids (vec (take max-suggested-field-ids available-ids))
                            :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))})))))
@@ -151,7 +158,7 @@
 (defn- table-field-stats
   [table-id field-id limit]
   (let [query (metabot.tools.u/table-query table-id)
-        col (field-column "table" table-id field-id (lib/visible-columns query))]
+        col (field-column "table" table-id field-id (distinct-by-field-id (lib/visible-columns query)))]
     (field-metadata-output query col field-id limit)))
 
 (defn- card-field-stats
@@ -160,20 +167,27 @@
         ;; which is what `construct_notebook_query` lets a curated card cover (see
         ;; `metabase.metabot.curation`). The definition of a question reads more: a verified `count` over a raw
         ;; table would otherwise serve every column of that table.
-        query   (if (shared/curated-only?)
-                  (metabot.tools.u/card-results-query card-id (keyword entity-type))
-                  (metabot.tools.u/card-query card-id (keyword entity-type)))
-        columns (if (= entity-type "question")
-                  (lib/returned-columns query)
-                  (distinct (concat (lib/returned-columns query) (lib/visible-columns query))))
-        col     (field-column entity-type card-id field-id columns)]
+        query    (if (shared/curated-only?)
+                   (metabot.tools.u/card-results-query card-id (keyword entity-type))
+                   (metabot.tools.u/card-query card-id (keyword entity-type)))
+        returned (lib/returned-columns query)
+        ;; Result columns keep their own field IDs, see `column-field-ids`. A visible column adds a field ID only
+        ;; when no result column has it.
+        columns  (if (= entity-type "question")
+                   returned
+                   (let [returned-ids (set (metabot.tools.u/column-field-ids returned))]
+                     (concat returned
+                             (->> (lib/visible-columns query)
+                                  (remove (comp returned-ids metabot.tools.u/column-field-id))
+                                  distinct-by-field-id))))
+        col      (field-column entity-type card-id field-id columns)]
     (check-curated-field-owner! card-id col)
     (field-metadata-output query col field-id limit)))
 
 (defn- metric-field-stats
   [metric-id field-id limit]
   (let [query (metabot.tools.u/metric-query metric-id)
-        col (field-column "metric" metric-id field-id (lib/filterable-columns query))]
+        col (field-column "metric" metric-id field-id (distinct-by-field-id (lib/filterable-columns query)))]
     (check-curated-field-owner! metric-id col)
     (field-metadata-output query col field-id limit)))
 

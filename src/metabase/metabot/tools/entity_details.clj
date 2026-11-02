@@ -664,7 +664,7 @@
                    (related-tables card-query with-fields? field-values-fn))]
      (-> {:id id
           :type card-type
-          :fields (mapv #(metabot.tools.u/->result-column card-query %) returned-fields)
+          :fields (metabot.tools.u/->result-columns card-query returned-fields)
           :name (:name base)
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
@@ -984,7 +984,7 @@
     {:type :query
      :query-id query-id
      :query normalized-query
-     :result-columns (mapv #(metabot.tools.u/->result-column query %) returned-cols)}))
+     :result-columns (metabot.tools.u/->result-columns query returned-cols)}))
 
 (defn get-query-details
   "Get the details of a query (supports both MBQL v4 and v5)."

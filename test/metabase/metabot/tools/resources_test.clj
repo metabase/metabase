@@ -534,6 +534,26 @@
                   (read-uris
                    {:uris ["metabase://table/99999"]}))))))))
 
+(deftest read-question-fields-of-one-physical-field-test
+  (testing "Two breakouts of one field get different field IDs, and each one resolves to its own column"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:type          :question
+                                                :dataset_query (mt/mbql-query orders
+                                                                 {:aggregation [[:count]]
+                                                                  :breakout    [!month.created_at
+                                                                                !year.created_at]})}]
+        (let [created-at-id (mt/id :orders :created_at)
+              {:keys [resources]} (read-uris {:uris [(str "metabase://question/" card-id "/fields")]})
+              fields (get-in resources [0 :content :structured-output :fields])]
+          (is (= [created-at-id "CREATED_AT_2" "count"]
+                 (map :field_id fields)))
+          (testing "a drill-in on each field ID returns that column"
+            (are [field-id] (=? {:structured-output {:field_id field-id}}
+                                (field-stats/field-values {:entity-type "question" :entity-id card-id
+                                                           :field-id field-id :limit 5}))
+              created-at-id
+              "CREATED_AT_2")))))))
+
 (deftest read-dashboard-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-name :name}

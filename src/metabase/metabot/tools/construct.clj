@@ -864,7 +864,7 @@
   [mbql5-query metadata-provider]
   (let [query (lib/query metadata-provider mbql5-query)
         cols  (lib/returned-columns query)]
-    (mapv #(tools.u/->result-column query %) cols)))
+    (tools.u/->result-columns query cols)))
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
