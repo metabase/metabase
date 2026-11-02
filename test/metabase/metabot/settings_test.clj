@@ -461,14 +461,20 @@
                                                       :secret-access-key "test-secret"})]
     (testing "accepts models served by each mantle request route"
       (doseq [model-ref ["bedrock/anthropic.claude-opus-4-8"
-                         "bedrock/openai.gpt-5.5"]]
+                         "bedrock/openai.gpt-5.5"
+                         "bedrock/eu.anthropic.claude-sonnet-4-6"
+                         "bedrock/anthropic.claude-haiku-4-5-20251001-v1:0"
+                         "bedrock/arn:aws:bedrock:eu-central-1:123456789012:inference-profile/eu.anthropic.claude-sonnet-4-6"]]
         (mt/with-temporary-setting-values [llm-metabot-provider model-ref]
           (is (= model-ref (metabot.settings/llm-metabot-provider))))))
     (testing "rejects catalog models mantle cannot invoke through those routes"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid Bedrock model .*openai\.gpt-oss\* is not supported\."
-           (metabot.settings/llm-metabot-provider! "bedrock/openai.gpt-oss-120b"))))))
+           (metabot.settings/llm-metabot-provider! "bedrock/openai.gpt-oss-120b")))
+      (doseq [model-ref ["bedrock/anthropic." "bedrock/openai."]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Bedrock model"
+                              (metabot.settings/llm-metabot-provider! model-ref)))))))
 
 (deftest validate-metabot-provider-accepts-a-second-connection-of-the-same-type-test
   (testing "a model can be selected on a second connection of a type the instance already has"

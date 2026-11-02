@@ -4205,6 +4205,11 @@
            util}
    :model-imports #{:model/NativeQuerySnippet}}
 
+  enterprise/osi-generation
+  {:team "Metabot"
+   :api #{metabase-enterprise.osi-generation.init}
+   :uses #{metabot metabot.llm settings util}}
+
   enterprise/permissions
   {:team "Security Engineering"
    :ns-prefix "metabase-enterprise.advanced-permissions"

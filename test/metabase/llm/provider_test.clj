@@ -732,6 +732,13 @@
       (is (= "my-google/anthropic/claude-haiku-4-5"
              (llm.provider/canonical-model-ref "my-google/anthropic/claude-haiku-4-5@20251001"))))))
 
+(deftest canonical-bedrock-runtime-ref-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "bedrock" "bedrock" {})]]
+    (doseq [model-ref ["bedrock/eu.anthropic.claude-sonnet-4-6"
+                       "bedrock/anthropic.claude-haiku-4-5-20251001-v1:0"
+                       "bedrock/arn:aws:bedrock:eu-central-1:123456789012:inference-profile/eu.anthropic.claude-sonnet-4-6"]]
+      (is (= model-ref (llm.provider/canonical-model-ref model-ref))))))
+
 (deftest ^:parallel retired-models-map-straight-to-a-current-model-test
   (testing (str "a retired model's successor is never itself retired: a model ref resolves through a single "
                 "lookup, so a chain would leave a saved selection naming a retired id")

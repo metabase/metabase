@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: kz72om
+      author: christruter
+      comment: Update AI usage view to name library metadata generation
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v7/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v7/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v7/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v6/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v6/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v6/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: gt64hx
+      author: christruter
+      comment: Update conversations view to name library metadata generation
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v9/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v9/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v9/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v8/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v8/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v8/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
