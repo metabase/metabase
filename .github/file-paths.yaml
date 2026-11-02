@@ -52,6 +52,7 @@ frontend_configs: &frontend_configs
   - ".nvmrc"
 
 frontend_sources: &frontend_sources
+  - "enterprise/backend/src/metabase_enterprise/osi_generation/demo/**"
   - *shared_sources
   - *frontend_configs
   - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
@@ -62,6 +63,7 @@ frontend_embedding_sdk_package_sources:
   - "enterprise/frontend/src/embedding-sdk-package/**/!(*.spec).{js,jsx,ts,tsx,css}"
 
 frontend_specs: &frontend_specs
+  - "dev/test/dev/osi_generation_page.unit.spec.js"
   - *shared_specs
   - "frontend/test/**"
   - "frontend/**/tests/**"
@@ -89,6 +91,8 @@ frontend_loki_ci: &frontend_loki_ci
   - ".storybook/**"
 
 frontend_unit_infra: &frontend_unit_infra
+  - "enterprise/backend/src/metabase_enterprise/osi_generation/demo/**"
+  - "dev/test/dev/osi_generation_page.unit.spec.js"
   - *frontend_configs
   - *frontend_ci
   - "jest.config.js"

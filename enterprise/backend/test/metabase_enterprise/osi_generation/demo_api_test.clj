@@ -206,7 +206,7 @@
                                   (is (= ::connection connection))
                                   rows)]
       (is (= {:busy false, :data [(first rows)]}
-             (#'osi-generation/library-index-entries))))))
+             (#'osi-generation/library-index-entries 0))))))
 
 (deftest comparison-search-test
   (let [search-context (atom nil)]
@@ -256,10 +256,12 @@
            (#'osi-generation/library-retrieval-search "monthly revenue")))))
 
 (deftest delete-generation-runs-test
-  (with-redefs [t2/delete! (fn [model field value]
+  (with-redefs [t2/delete! (fn [model field value status-field status-filter]
                              (is (= :model/TaskHistory model))
                              (is (= :task field))
                              (is (= "osi-generation" value))
+                             (is (= :status status-field))
+                             (is (= [:not= :started] status-filter))
                              3)]
     (is (= {:deleted 3} (#'osi-generation/delete-generation-runs!)))))
 
