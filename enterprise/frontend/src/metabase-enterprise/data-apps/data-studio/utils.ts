@@ -26,8 +26,9 @@ type DataAppSourceLocation =
 /**
  * Where a data app's folder is in the Remote Sync repository. Links to the
  * folder on GitHub and GitLab, the only hosts whose folder URLs are known.
- * Otherwise gives text: the folder's path in a local repository, which a
- * browser can't open, or the repository URL without credentials.
+ * Otherwise gives text: the folder in a local repository, which a browser
+ * can't open, written like the repository's `file://` URL or path, or the
+ * repository URL without credentials.
  */
 export function getDataAppSourceLocation({
   repoUrl,
@@ -41,11 +42,9 @@ export function getDataAppSourceLocation({
   const folder = `${DATA_APPS_DIR}/${slug}`;
 
   if (!WEB_URL_PATTERN.test(repoUrl)) {
-    const repoPath = repoUrl.replace(/^file:\/\//i, "").replace(/\/+$/, "");
-
     return {
       type: "text",
-      text: `${repoPath}/${folder}`,
+      text: `${repoUrl.replace(/\/+$/, "")}/${folder}`,
     };
   }
 

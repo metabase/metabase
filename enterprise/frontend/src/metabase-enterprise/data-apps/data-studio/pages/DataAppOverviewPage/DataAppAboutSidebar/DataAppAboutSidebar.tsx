@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
@@ -9,7 +8,6 @@ import { AboutSubSection } from "metabase/common/data-studio/components/AboutSid
 import { MetadataCard } from "metabase/common/data-studio/components/AboutSidebar/MetadataCard";
 import { MetadataRow } from "metabase/common/data-studio/components/AboutSidebar/MetadataRow";
 import { MetadataRowLink } from "metabase/common/data-studio/components/AboutSidebar/MetadataRowLink";
-import CS from "metabase/css/core/index.css";
 import { useSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -124,19 +122,20 @@ function DataAppRepositoryRow({ repoUrl, slug }: DataAppRepositoryRowProps) {
 
   const location = getDataAppSourceLocation({ repoUrl, branch, slug });
 
-  return (
-    <MetadataRow icon="git_branch">
-      {location.type === "link" ? (
+  if (location.type === "link") {
+    return (
+      <MetadataRow icon="git_branch">
         <MetadataRowLink href={location.url}>{location.url}</MetadataRowLink>
-      ) : (
-        <>
-          {location.text}{" "}
-          <CopyButton
-            value={location.text}
-            className={cx(CS.textBrandHover, CS.verticalAlignMiddle)}
-          />
-        </>
-      )}
+      </MetadataRow>
+    );
+  }
+
+  return (
+    <MetadataRow
+      icon="git_branch"
+      rightSection={<CopyButton value={location.text} />}
+    >
+      {location.text}
     </MetadataRow>
   );
 }

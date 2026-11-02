@@ -52,18 +52,20 @@ describe("DataAppAboutSidebar", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 
-  it("shows the app folder's path in a local repository, to copy", async () => {
+  it("shows the app folder in a local repository, to copy", async () => {
     const user = userEvent.setup();
     setup({
       repoStatus: { configured: true, url: "file:///srv/git/metabase" },
     });
 
-    const path = "/srv/git/metabase/data_apps/sales";
-    expect(await screen.findByText(path)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: path })).not.toBeInTheDocument();
+    const folder = "file:///srv/git/metabase/data_apps/sales";
+    expect(await screen.findByText(folder)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: folder }),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Copy" }));
-    expect(await navigator.clipboard.readText()).toBe(path);
+    expect(await navigator.clipboard.readText()).toBe(folder);
   });
 
   it("says when no repository is connected", async () => {

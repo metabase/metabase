@@ -135,14 +135,20 @@ describe("getDataAppSourceLocation", () => {
   );
 
   it.each([
-    { repoUrl: "file:///srv/git/metabase" },
-    { repoUrl: "/srv/git/metabase/" },
+    {
+      repoUrl: "file:///srv/git/metabase",
+      text: "file:///srv/git/metabase/data_apps/sales",
+    },
+    {
+      repoUrl: "/srv/git/metabase/",
+      text: "/srv/git/metabase/data_apps/sales",
+    },
   ])(
-    "gives the folder's path in the local repository $repoUrl",
-    ({ repoUrl }) => {
+    "gives the folder in the local repository $repoUrl, written like the repository",
+    ({ repoUrl, text }) => {
       expect(
         getDataAppSourceLocation({ repoUrl, branch: "main", slug: "sales" }),
-      ).toEqual({ type: "text", text: "/srv/git/metabase/data_apps/sales" });
+      ).toEqual({ type: "text", text });
     },
   );
 
