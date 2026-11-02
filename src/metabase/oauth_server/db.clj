@@ -6,27 +6,24 @@
    [metabase.oauth-server.schema :as oauth-server.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.toucan2 :as t2x]
    [toucan2.core :as t2]))
 
 (defn- client-event-where
-  "The `:where` clause for OAuthClientEvents narrowed by `client-id` and/or `event-type`, or nil for no
-  narrowing."
+  "The `:where` clause for OAuthClientEvents narrowed by `client-id` and/or `event-type`."
   [client-id event-type]
-  (let [clauses (cond-> []
-                  client-id  (conj [:= :c.client_id client-id])
-                  event-type (conj [:= :e.event_type event-type]))]
-    (when (seq clauses)
-      (into [:and] clauses))))
+  (t2x/fragment [:and
+                 (when client-id (t2x/fragment [:= :c.client_id client-id]))
+                 (when event-type (t2x/fragment [:= :e.event_type event-type]))]))
 
 (mu/defn client-event-count
   "The number of OAuthClientEvents matching `client-id` and/or `event-type` (all of them when both nil)."
   [client-id  :- [:maybe :string]
    event-type :- [:maybe :string]]
-  (let [where (client-event-where client-id event-type)]
-    (t2/query (cond-> {:select    [[[:count :*] :count]]
-                       :from      [[:oauth_client_event :e]]
-                       :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]]}
-                where (assoc :where where)))))
+  (t2x/query {:select    [[[:count :*] :count]]
+              :from      [[:oauth_client_event :e]]
+              :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]]
+              :where     (client-event-where client-id event-type)}))
 
 (mu/defn client-events
   "Up to `limit` OAuthClientEvents from `offset` matching `client-id` and/or `event-type` (all of them when
@@ -35,24 +32,23 @@
    event-type :- [:maybe :string]
    limit      :- ms/PositiveInt
    offset     :- ms/IntGreaterThanOrEqualToZero]
-  (let [where (client-event-where client-id event-type)]
-    (t2/query (cond-> {:select     [:e.id :e.oauth_client_id :e.user_id :e.event_type :e.created_at
-                                    [:c.client_id :client_id]
-                                    [:c.client_name :client_name]
-                                    [:c.client_uri :client_uri]
-                                    [:c.registration_type :registration_type]
-                                    [:c.application_type :application_type]
-                                    [:c.redirect_uris :redirect_uris]
-                                    [:u.email :user_email]
-                                    [:u.first_name :user_first_name]
-                                    [:u.last_name :user_last_name]]
-                       :from       [[:oauth_client_event :e]]
-                       :left-join  [[:oauth_client :c] [:= :e.oauth_client_id :c.id]
-                                    [:core_user :u]    [:= :e.user_id :u.id]]
-                       :order-by   [[:e.created_at :desc] [:e.id :desc]]
-                       :limit      limit
-                       :offset     offset}
-                where (assoc :where where)))))
+  (t2x/query {:select    [:e.id :e.oauth_client_id :e.user_id :e.event_type :e.created_at
+                          [:c.client_id :client_id]
+                          [:c.client_name :client_name]
+                          [:c.client_uri :client_uri]
+                          [:c.registration_type :registration_type]
+                          [:c.application_type :application_type]
+                          [:c.redirect_uris :redirect_uris]
+                          [:u.email :user_email]
+                          [:u.first_name :user_first_name]
+                          [:u.last_name :user_last_name]]
+              :from      [[:oauth_client_event :e]]
+              :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]
+                          [:core_user :u]    [:= :e.user_id :u.id]]
+              :where     (client-event-where client-id event-type)
+              :order-by  [[:e.created_at :desc] [:e.id :desc]]
+              :limit     limit
+              :offset    offset}))
 
 (mu/defn active-user-exists?
   "Whether an active User with `user-id` exists."
