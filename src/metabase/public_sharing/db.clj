@@ -47,6 +47,11 @@
   [prefix :- :string]
   (t2/select :model/Document :public_uuid_prefix [:auto/param prefix] :archived false))
 
+(mu/defn database-name
+  "The name of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one-fn :name :model/Database :id [:auto/param database-id]))
+
 (mu/defn publicly-shared-card-ids :- [:maybe [:set ::lib.schema.id/card]]
   "The ids of the unarchived Cards carrying a public link, or nil when there are none."
   []
