@@ -4310,3 +4310,28 @@
           (t2/insert! :osi_ai_context (assoc row :entity_local_id 424243 :entity_id (u/generate-nano-id)))
           (is (= "human" (t2/select-one-fn :data_source :osi_ai_context
                                            :entity_type "table" :entity_local_id 424243))))))))
+
+(deftest osi-generation-analytics-views-test
+  (impl/test-migrations ["kz72om" "gt64hx"] [migrate!]
+    (let [user-id (t2/insert-returning-pk! :core_user {:email "osi-analytics@example.com"
+                                                        :first_name "Test"
+                                                        :last_name "User"
+                                                        :password "unused"
+                                                        :date_joined :%now
+                                                        :entity_id (subs (str (random-uuid)) 0 21)})
+          conversation-id (str (random-uuid))]
+      (t2/insert! :metabot_conversation {:id conversation-id, :user_id user-id})
+      (t2/insert! :ai_usage_log {:source            "osi-generation"
+                                 :model             "test-model"
+                                 :conversation_id   conversation-id
+                                 :prompt_tokens     1
+                                 :completion_tokens 2
+                                 :total_tokens      3})
+      (is (= "osi-generation" (:source_name (t2/select-one :v_ai_usage_log :source "osi-generation"))))
+      (is (= "osi-generation" (:source_name (t2/select-one :v_metabot_conversations
+                                                           :conversation_id conversation-id))))
+      (migrate!)
+      (is (= "Library Metadata Generation"
+             (:source_name (t2/select-one :v_ai_usage_log :source "osi-generation"))))
+      (is (= "Library Metadata Generation"
+             (:source_name (t2/select-one :v_metabot_conversations :conversation_id conversation-id)))))))
