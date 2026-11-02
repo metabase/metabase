@@ -427,7 +427,7 @@
   (try
     (thunk)
     (catch Throwable e
-      (if (and (not (contains? (ex-data e) tools.error/error-key))
+      (if (and (not (tools.error/declared? e))
                (contains? refusal-status-codes (:status-code (ex-data e))))
         (tools.error/throw-recoverable! ::recoverable.common/not-found
                                         (cond-> {} kind (assoc :kind kind) (some? id) (assoc :id id))
@@ -471,12 +471,12 @@
   (try
     (thunk)
     (catch Throwable e
-      (let [{:keys [agent-error? status-code error humanized] :as data} (ex-data e)
+      (let [{:keys [agent-error? status-code error humanized]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
           ;; Its payload and recovery steps are more specific than anything below would rebuild. A declared
           ;; not-found carries a 404, and a declared recoverable carries `:agent-error?`, so both would match.
-          (contains? data tools.error/error-key)
+          (tools.error/declared? e)
           (throw e)
 
           ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
