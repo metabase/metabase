@@ -4,7 +4,10 @@ import type {
   AcknowledgeAdvisoriesResponse,
   AcknowledgeAdvisoryResponse,
   AdvisoryId,
+  HealthCheck,
+  HealthCheckId,
   ListAdvisoriesResponse,
+  ListHealthChecksResponse,
   SendTestNotificationRequest,
 } from "metabase-types/api";
 
@@ -55,6 +58,57 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
         },
       }),
     }),
+    listHealthChecks: builder.query<ListHealthChecksResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/security-center/health-checks",
+      }),
+      providesTags: [listTag("security-health-check")],
+    }),
+    recheckHealthCheck: builder.mutation<HealthCheck, HealthCheckId>({
+      query: (checkId) => ({
+        method: "POST",
+        url: `/api/ee/security-center/health-checks/${checkId}/recheck`,
+      }),
+      onQueryStarted: async (checkId, { dispatch, queryFulfilled }) => {
+        try {
+          const { data: recheckedCheck } = await queryFulfilled;
+          dispatch(
+            securityCenterApi.util.updateQueryData(
+              "listHealthChecks",
+              undefined,
+              ({ checks }) => ({
+                checks: checks.map((check) =>
+                  check.id === checkId ? recheckedCheck : check,
+                ),
+              }),
+            ),
+          );
+        } catch {
+          return;
+        }
+      },
+    }),
+    recheckHealthChecks: builder.mutation<ListHealthChecksResponse, void>({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/security-center/health-checks/recheck",
+      }),
+      onQueryStarted: async (_arg, { dispatch, queryFulfilled }) => {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            securityCenterApi.util.updateQueryData(
+              "listHealthChecks",
+              undefined,
+              () => data,
+            ),
+          );
+        } catch {
+          return;
+        }
+      },
+    }),
   }),
 });
 
@@ -64,4 +118,7 @@ export const {
   useAcknowledgeAdvisoriesMutation,
   useSyncSecurityAdvisoriesMutation,
   useSendTestNotificationMutation,
+  useListHealthChecksQuery,
+  useRecheckHealthCheckMutation,
+  useRecheckHealthChecksMutation,
 } = securityCenterApi;

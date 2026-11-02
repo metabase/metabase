@@ -74,7 +74,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     seedAllAdvisories();
     cy.visit("/admin/security-center");
     securityCenterContent().within(() => {
-      cy.findByText("Security Center").should("be.visible");
+      cy.findByText("Security advisories").should("be.visible");
       cy.findByTestId("current-version").should("be.visible");
     });
 
@@ -115,7 +115,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     seedAllAdvisories();
     cy.visit("/admin/security-center");
     securityCenterContent().within(() => {
-      cy.findByText("Security Center").should("be.visible");
+      cy.findByText("Security advisories").should("be.visible");
     });
 
     cy.intercept("POST", "/api/ee/security-center/*/acknowledge").as(
@@ -175,7 +175,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     });
     cy.url().should("include", "/admin/security-center");
     securityCenterContent().within(() => {
-      cy.findByText("Security Center").should("be.visible");
+      cy.findByText("Security advisories").should("be.visible");
     });
   });
 
@@ -184,7 +184,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     H.setupSMTP();
     cy.visit("/admin/security-center");
     securityCenterContent().within(() => {
-      cy.findByText("Security Center").should("be.visible");
+      cy.findByText("Security advisories").should("be.visible");
     });
 
     // Open modal and verify contents
@@ -214,7 +214,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     cy.intercept("POST", "/api/ee/security-center/sync").as("sync");
     cy.visit("/admin/security-center");
     securityCenterContent().within(() => {
-      cy.findByText("Security Center").should("be.visible");
+      cy.findByText("Security advisories").should("be.visible");
     });
     H.expectUnstructuredSnowplowEvent({
       event: "security_center_page_viewed",

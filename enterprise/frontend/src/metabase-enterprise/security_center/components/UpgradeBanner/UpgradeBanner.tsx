@@ -1,9 +1,7 @@
 import { c, t } from "ttag";
 
-import { getEolReachedMessage } from "metabase/admin/settings/components/widgets/VersionUpdateNotice/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import { useEolDate } from "metabase/settings";
 import { Anchor, Flex, Icon, Text } from "metabase/ui";
 
 import S from "./UpgradeBanner.module.css";
@@ -18,18 +16,13 @@ interface UpgradeBannerProps {
 
 export function UpgradeBanner({ targetVersion }: UpgradeBannerProps) {
   const isSmallScreen = useIsSmallScreen();
-  const { isEol } = useEolDate();
 
-  const message = targetVersion
-    ? c("{0} is a version number like v0.59.4")
-        .t`A security update is available. Update to ${targetVersion} or later to resolve known issues.`
-    : isEol
-      ? getEolReachedMessage()
-      : null;
-
-  if (!message) {
+  if (!targetVersion) {
     return null;
   }
+
+  const message = c("{0} is a version number like v0.59.4")
+    .t`A security update is available. Update to ${targetVersion} or later to resolve known issues.`;
 
   return (
     <Flex

@@ -29,6 +29,11 @@ const SEVERITY_ORDER: Record<AdvisorySeverity, number> = {
   low: 3,
 };
 
+export const compareBySeverity = (
+  a: { severity: AdvisorySeverity },
+  b: { severity: AdvisorySeverity },
+) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+
 export function isAffected(advisory: Advisory): boolean {
   return (
     advisory.match_status === "active" || advisory.match_status === "error"
@@ -81,7 +86,7 @@ export interface SortedAdvisories {
 }
 
 function sortBySeverityAndDate(a: Advisory, b: Advisory): number {
-  const severityDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+  const severityDiff = compareBySeverity(a, b);
   if (severityDiff !== 0) {
     return severityDiff;
   }
