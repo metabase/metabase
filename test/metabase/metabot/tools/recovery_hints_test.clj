@@ -13,7 +13,7 @@
          (recovery-hints/recovery-hint {:error :ambiguous-field}))))
 
 (deftest ^:parallel cross-database-hint-test
-  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment]]
+  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table]]
     (testing error
       (is (= (str "Neither a notebook query nor a SQL query can combine data from two databases. Tell the user "
                   "that one query cannot combine data from these two databases, and say what you can do instead.")

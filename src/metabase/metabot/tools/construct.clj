@@ -306,7 +306,7 @@
         (tree-seq coll? seq parsed-query)))
 
 (def ^:private unresolved-table-fk-errors
-  #{:unknown-table :ambiguous-table})
+  #{:unknown-table :ambiguous-table :cross-database-table})
 
 ;;; ----- the numeric-id boundary contract -------------------------------------------------
 ;;;

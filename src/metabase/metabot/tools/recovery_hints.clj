@@ -107,7 +107,7 @@
     (:unknown-segment :unknown-segment-id)
     "Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
 
-    (:cross-database-card :cross-database-measure :cross-database-segment)
+    (:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table)
     (:text recoverable.pipeline/cross-database-step)
 
     :unknown-database

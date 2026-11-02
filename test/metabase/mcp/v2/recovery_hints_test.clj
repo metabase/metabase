@@ -12,7 +12,7 @@
          (some-> (recovery-hints/recovery-hint {:error :ambiguous-field}) message/render))))
 
 (deftest ^:parallel cross-database-hint-test
-  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment]]
+  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table]]
     (testing error
       (is (= (str "A query can only reference saved questions, models, metrics, measures and segments "
                   "from its own database. Use one from that database, or change the source to a table "

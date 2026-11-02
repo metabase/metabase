@@ -287,6 +287,24 @@
   (str "Neither a notebook query nor a SQL query can combine data from two databases. Tell the user that one "
        "query cannot combine data from these two databases, and say what you can do instead."))
 
+(deftest table-in-another-database-recovery-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {other-db :name} {:name "Other Database"}]
+      (let [db           (:name (mt/db))
+            by-user-name (fn [users-db]
+                           {"source-table" [db "PUBLIC" "ORDERS"]
+                            "aggregation"  [["count" {}]]
+                            "breakout"     [["field" {} [users-db "PUBLIC" "USERS" "NAME"]]]})]
+        (testing "a column of a table in another database tells the agent that no query can combine the two"
+          (is (= {:code ::pipeline/cross-database-table
+                  :text (str "Portable table FK " (pr-str [other-db "PUBLIC" "USERS"]) " references database "
+                             (pr-str other-db) ", but this query targets database " (pr-str db) ". "
+                             "Cross-database queries are not supported.\n"
+                             cross-database-recovery)}
+                 (select-keys (construct-failure (by-user-name other-db)) [:code :text]))))
+        (testing "a database name that names no database is an unknown table"
+          (is (= ::pipeline/unknown-table (:code (construct-failure (by-user-name "Othr Database"))))))))))
+
 (deftest both-surfaces-name-the-same-ids-test
   (testing "for every pipeline code, the Agent API hint names an id exactly when Metabot's payload carries it"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -375,7 +393,7 @@
                  :unknown-field :unknown-field-id :ambiguous-field :ambiguous-fk :no-fk-path
                  :unknown-card :unknown-card-id :unknown-measure :unknown-measure-id
                  :unknown-segment :unknown-segment-id :unknown-database :ambiguous-database-name
-                 :cross-database-card :cross-database-measure :cross-database-segment
+                 :cross-database-card :cross-database-measure :cross-database-segment :cross-database-table
                  :missing-source-in-first-stage]]
       (doseq [code codes]
         (testing code
@@ -405,7 +423,7 @@
          (pipeline-error-text! :ambiguous-field))))
 
 (deftest ^:parallel cross-database-recovery-test
-  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment]]
+  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table]]
     (testing error
       (is (= (str "Query failed.\n" cross-database-recovery)
              (pipeline-error-text! error))))))

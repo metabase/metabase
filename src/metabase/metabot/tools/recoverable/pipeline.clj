@@ -219,6 +219,10 @@
                               "available tables and retry with a more specific portable FK.")}
                   (with-id database-id))]})
 
+(defpipeline-error cross-database-table!
+  "A portable table FK names a different database than the query's."
+  [cross-database-step])
+
 ;;; Database resolution
 
 (defpipeline-error unknown-database!
