@@ -353,7 +353,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-          :fail-fast? true
+          :fail-fast? false
         runner-index: ${{ matrix.runner-index }}
         runner-count: ${{ strategy.job-total }}
         jvms-per-runner: '2'
