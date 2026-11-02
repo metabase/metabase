@@ -221,6 +221,11 @@ export function ExpressionBar({
     ),
   );
   const hasGroups = nesting >= ROWS_FROM_NESTING;
+  // ANDs stay implicit while they are the only connector. Next to an OR they
+  // show, so the reader sees which connector joins which pills.
+  const hasOr = tokens.some((token) => isOpToken(token, "or"));
+  const isHiddenAnd = (token: Token | undefined) =>
+    !hasOr && isOpToken(token, "and");
   const rowStart = (index: number) => {
     if (!isExpanded || !hasGroups) {
       return [];
@@ -234,13 +239,11 @@ export function ExpressionBar({
         />,
       ];
     }
-    // ANDs are hidden, so the row after a group starts at the next visible token.
-    if (isOpToken(tokens[index], "and")) {
+    // A hidden AND takes no room, so the row after a group starts at the next visible token.
+    if (isHiddenAnd(tokens[index])) {
       return [];
     }
-    const closeIndex = isOpToken(tokens[index - 1], "and")
-      ? index - 2
-      : index - 1;
+    const closeIndex = isHiddenAnd(tokens[index - 1]) ? index - 2 : index - 1;
     if (isParenToken(tokens[closeIndex], "close")) {
       return [
         <RowBreak
@@ -255,19 +258,19 @@ export function ExpressionBar({
 
   // A hidden AND takes no room, so the caret steps over it with its neighbor.
   const caretLeftOf = (index: number) =>
-    isOpToken(tokens[index - 1], "and") && index > 1 ? index - 2 : index - 1;
+    isHiddenAnd(tokens[index - 1]) && index > 1 ? index - 2 : index - 1;
   const caretRightOf = (index: number) =>
-    isOpToken(tokens[index], "and") && index + 1 < tokens.length
+    isHiddenAnd(tokens[index]) && index + 1 < tokens.length
       ? index + 2
       : index + 1;
 
   // Between caret positions, the arrow keys stop on the filter pill they pass.
   const pillLeftOf = (index: number) => {
-    const at = isOpToken(tokens[index - 1], "and") ? index - 2 : index - 1;
+    const at = isHiddenAnd(tokens[index - 1]) ? index - 2 : index - 1;
     return tokens[at]?.type === "filter" ? at : undefined;
   };
   const pillRightOf = (index: number) => {
-    const at = isOpToken(tokens[index], "and") ? index + 1 : index;
+    const at = isHiddenAnd(tokens[index]) ? index + 1 : index;
     return tokens[at]?.type === "filter" ? at : undefined;
   };
 
@@ -949,6 +952,7 @@ export function ExpressionBar({
                 stageIndex={stageIndex}
                 token={token}
                 depth={parenDepths[index]}
+                isAndHidden={!hasOr}
                 hasError={index === errorPosition}
                 isFlashed={
                   token.type === "filter" &&
@@ -1281,6 +1285,8 @@ type TokenViewProps = {
   stageIndex: number;
   token: Token;
   depth: number;
+  /** ANDs are implicit: nothing drawn between the pills they join. */
+  isAndHidden: boolean;
   hasError: boolean;
   isFlashed: boolean;
   onReplace: (token: Token) => void;
@@ -1296,6 +1302,7 @@ function TokenView({
   stageIndex,
   token,
   depth,
+  isAndHidden,
   hasError,
   isFlashed,
   onReplace,
@@ -1306,18 +1313,18 @@ function TokenView({
 }: TokenViewProps) {
   const errorClass = hasError ? S.tokenError : undefined;
 
-  // ANDs stay implicit: just the gaps around them, like pills side by side.
-  if (token.type === "op" && token.op === "and") {
+  if (token.type === "op" && token.op === "and" && isAndHidden) {
     return null;
   }
 
   if (token.type === "op") {
+    const isAnd = token.op === "and";
     return (
       <button
         type="button"
-        className={cx(S.op, errorClass)}
-        title={t`Click to remove`}
-        onClick={() => onReplace(opToken("and"))}
+        className={cx(S.op, { [S.opAnd]: isAnd }, errorClass)}
+        title={isAnd ? t`Switch to "or"` : t`Switch to "and"`}
+        onClick={() => onReplace(opToken(isAnd ? "or" : "and"))}
       >
         {token.op}
       </button>

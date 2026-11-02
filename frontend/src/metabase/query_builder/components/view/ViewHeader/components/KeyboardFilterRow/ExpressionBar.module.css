@@ -62,6 +62,11 @@
   background-color: var(--mb-color-background_page-secondary);
 }
 
+/* AND, shown only beside an OR: the same circle in the quieter text colour. */
+.opAnd {
+  color: var(--mb-color-text-secondary);
+}
+
 /* Parentheses: tall, light brackets in the filter color that wrap the pills they group. */
 .paren {
   margin: 0 0.0625rem;
