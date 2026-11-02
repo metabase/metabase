@@ -263,6 +263,20 @@ function ValidTypeFixtures() {
 
   void scalarAggregationValue;
 
+  const latestOrderResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [
+        aggregations.max(TEST_SCHEMA.tables.orders.fields.createdAt),
+      ],
+    }),
+  );
+
+  const latestOrderCreatedAt: string | null | undefined =
+    latestOrderResult.data?.rows[0]?.max;
+
+  void latestOrderCreatedAt;
+
   const namedAggregationResult = useMetabaseQuery(
     defineQuery({
       source: TEST_SCHEMA.tables.orders,

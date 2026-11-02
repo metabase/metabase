@@ -1,44 +1,75 @@
+import type {
+  TestAggregationSpec,
+  TestBreakoutSpec,
+  TestColumnSpec,
+} from "metabase-types/api";
+
 import {
-  type AggregationInput,
   type DynamicQueryInput,
   type QueryInput,
+  isMeasureReference,
+  isMetricReference,
   isNamedAggregation,
   isTableInput,
 } from "./input-guards";
-import type { QuestionSchema, TableSchema } from "./schema";
+import type {
+  QuestionSchema,
+  SchemaJavaScriptType,
+  TableSchema,
+} from "./schema";
 
-export function isCountAggregation(aggregation: AggregationInput) {
-  return (
-    !isNamedAggregation(aggregation) &&
-    aggregation.type === "operator" &&
-    aggregation.operator === "count" &&
-    aggregation.args?.length === 0
-  );
+const ORDERABLE_JAVASCRIPT_TYPES: readonly SchemaJavaScriptType[] = [
+  "string",
+  "number",
+  "boolean",
+  "Date",
+];
+
+export function getAggregationResultColumnDefaultName(
+  operator: string,
+): string {
+  return operator === "distinct" ? "count" : operator;
+}
+
+export function getAggregationResultColumnJavaScriptType(
+  operator: string,
+  dimensionJavaScriptType: SchemaJavaScriptType | undefined,
+): SchemaJavaScriptType {
+  const isOrderableDimension =
+    dimensionJavaScriptType !== undefined &&
+    ORDERABLE_JAVASCRIPT_TYPES.includes(dimensionJavaScriptType);
+
+  return (operator === "min" || operator === "max") && isOrderableDimension
+    ? dimensionJavaScriptType
+    : "number";
 }
 
 export function getAggregationResultColumnNames(
-  aggregations: readonly AggregationInput[] = [],
+  aggregations: readonly TestAggregationSpec[] = [],
 ): string[] {
   return aggregations.flatMap((aggregation) => {
     if (isNamedAggregation(aggregation)) {
       return [aggregation.name];
     }
 
-    // Metrics and Measures also carry a `name`, but it is their title, not a
-    // result column name.
-    if (aggregation.type === "operator" && aggregation.name !== undefined) {
-      return [aggregation.name];
+    if (isMeasureReference(aggregation) || isMetricReference(aggregation)) {
+      return (aggregation.columns ?? []).map(({ name }) => name);
     }
 
-    if (isCountAggregation(aggregation)) {
-      return ["count"];
+    if (aggregation.type === "operator") {
+      return [
+        aggregation.name ??
+          getAggregationResultColumnDefaultName(aggregation.operator),
+      ];
     }
 
-    return (aggregation.columns ?? []).map(({ name }) => name);
+    return [];
   });
 }
 
-function getSourceColumnNames(source: TableSchema | QuestionSchema): string[] {
+function getSourceResultColumnNames(
+  source: TableSchema | QuestionSchema,
+): string[] {
   const columns =
     source.columns ??
     (source.type === "table" ? Object.values(source.fields ?? {}) : []);
@@ -46,7 +77,19 @@ function getSourceColumnNames(source: TableSchema | QuestionSchema): string[] {
   return columns.map(({ name }) => name);
 }
 
-function getStageColumnNames(
+function getBreakoutResultColumnNames(
+  breakouts: readonly TestBreakoutSpec[],
+): string[] {
+  return breakouts.flatMap(({ name }) => name ?? []);
+}
+
+function getFieldResultColumnNames(
+  fields: readonly TestColumnSpec[],
+): string[] {
+  return fields.flatMap(({ name }) => name ?? []);
+}
+
+function getStageResultColumnNames(
   stage: QueryInput | DynamicQueryInput | undefined,
   inputNames: string[],
 ): string[] {
@@ -58,13 +101,13 @@ function getStageColumnNames(
 
   if (breakouts.length > 0 || aggregations.length > 0) {
     return [
-      ...breakouts.flatMap(({ name }) => name ?? []),
+      ...getBreakoutResultColumnNames(breakouts),
       ...getAggregationResultColumnNames(aggregations),
     ];
   }
 
   const fieldNames = isTableInput(stage)
-    ? (stage.fields ?? []).flatMap(({ name }) => name ?? [])
+    ? getFieldResultColumnNames(stage.fields ?? [])
     : [];
 
   return fieldNames.length > 0 ? fieldNames : inputNames;
@@ -74,8 +117,8 @@ export function getQueryResultColumnNames(
   query: QueryInput,
   dynamicQuery?: DynamicQueryInput,
 ): string[] {
-  return getStageColumnNames(
+  return getStageResultColumnNames(
     dynamicQuery,
-    getStageColumnNames(query, getSourceColumnNames(query.source)),
+    getStageResultColumnNames(query, getSourceResultColumnNames(query.source)),
   );
 }

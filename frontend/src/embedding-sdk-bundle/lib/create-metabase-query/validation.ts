@@ -1,24 +1,22 @@
 import {
-  type AggregationInput,
   type DynamicQueryInput,
   type QueryInput,
   type QuestionQueryInput,
   type TableQueryInput,
+  isCountAggregation,
   isMeasureReference,
   isMetricReference,
   isNamedBreakout,
   isSegmentReference,
   unwrapNamedAggregation,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
-import {
-  getAggregationResultColumnNames,
-  isCountAggregation,
-} from "embedding-sdk-shared/lib/create-metabase-query/result-columns";
+import { getAggregationResultColumnNames } from "embedding-sdk-shared/lib/create-metabase-query/result-columns";
 import type {
   MetricSchema,
   QuestionSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import * as Lib from "metabase-lib";
+import type { TestAggregationSpec } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 // `satisfies` ties the list to the input type, so a renamed or mistyped clause
@@ -318,7 +316,7 @@ function getFirstOperatorArg(value: unknown) {
 }
 
 type GroupingClauses = {
-  aggregations?: readonly AggregationInput[];
+  aggregations?: readonly TestAggregationSpec[];
   breakouts?: readonly unknown[];
 };
 
@@ -332,7 +330,7 @@ function isGroupedQuery(input: GroupingClauses) {
 }
 
 function isAggregationResultReference(
-  aggregations: readonly AggregationInput[] | undefined,
+  aggregations: readonly TestAggregationSpec[] | undefined,
   value: unknown,
 ) {
   if (

@@ -1,22 +1,25 @@
 import {
-  isAggregationInput,
+  isAggregationSpec,
   isNamedBreakout,
   isUnaryOperator,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { getAggregationResultColumnNames } from "embedding-sdk-shared/lib/create-metabase-query/result-columns";
 import type { TemporalUnit } from "metabase-types/api";
 
-import type { SchemaColumn } from "../data-schema";
-
 import type {
   AggregationResultColumnName,
   BetweenFilterOperatorForDimension,
   BreakoutOptionsArgument,
+  CountAggregation,
+  FieldAggregation,
   FilterForOperator,
   FilterLiteralValue,
   FilterOperator,
+  MeasureReference,
   MetabaseOrderByDirection,
+  MetricReference,
   NamedBreakout,
+  NamedSavedAggregation,
   TimeIntervalFilterOperatorForDimension,
   UnaryFilterOperatorForDimension,
   ValueFilterOperatorForDimension,
@@ -148,7 +151,12 @@ export function orderBy<const TName extends string>(
 };
 
 export function orderBy<
-  TAggregation extends { columns?: readonly SchemaColumn[] },
+  TAggregation extends
+    | CountAggregation
+    | FieldAggregation
+    | NamedSavedAggregation
+    | MeasureReference
+    | MetricReference,
 >(
   aggregation: TAggregation,
   direction?: MetabaseOrderByDirection,
@@ -178,7 +186,7 @@ export function orderBy<TDimension>(
     };
   }
 
-  const [aggregationName] = isAggregationInput(dimension)
+  const [aggregationName] = isAggregationSpec(dimension)
     ? getAggregationResultColumnNames([dimension])
     : [];
 

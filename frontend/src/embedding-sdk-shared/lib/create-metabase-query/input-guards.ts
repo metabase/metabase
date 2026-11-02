@@ -13,7 +13,6 @@ import type {
   MeasureSchema,
   MetricSchema,
   QuestionSchema,
-  SchemaColumn,
   SegmentSchema,
   TableSchema,
 } from "./schema";
@@ -45,10 +44,6 @@ export type QuestionQueryInput = DynamicQueryInput & {
 };
 
 export type QueryInput = TableQueryInput | QuestionQueryInput;
-
-export type AggregationInput = TestAggregationSpec & {
-  columns?: readonly SchemaColumn[];
-};
 
 export const isTableInput = (input: unknown): input is TableQueryInput =>
   isObject(input) && "source" in input && isTableReference(input.source);
@@ -100,11 +95,19 @@ const isOperator = (value: unknown): value is TestOperatorSpec =>
   value.type === "operator" &&
   typeof value.operator === "string";
 
-export const isAggregationInput = (value: unknown): value is AggregationInput =>
+export const isAggregationSpec = (
+  value: unknown,
+): value is TestAggregationSpec =>
   isOperator(value) ||
   isNamedAggregation(value) ||
   isMetricReference(value) ||
   isMeasureReference(value);
+
+export const isCountAggregation = (aggregation: TestAggregationSpec) =>
+  !isNamedAggregation(aggregation) &&
+  aggregation.type === "operator" &&
+  aggregation.operator === "count" &&
+  aggregation.args?.length === 0;
 
 export const isUnaryOperator = (operator: string) =>
   operator === "is-empty" ||
