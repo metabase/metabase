@@ -14,7 +14,6 @@
    [metabase.driver :as driver]
    ;; Register the parent before registering :motherduck.
    [metabase.driver.postgres]
-   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.quoting :as sql-jdbc.quoting]
@@ -58,6 +57,8 @@
 ;; lasts for the session. Metabase qualifies tables with only the schema, so later queries and syncs that reuse the
 ;; pooled connection would read the other database. Switch back to the connection's own database at every checkout.
 ;; `getCatalog` is the database the connection opened with, whatever SQL has switched to since.
+;; Downloads stay read-only here: `sql-jdbc.execute/set-default-connection-options!` exempts only `:postgres` itself,
+;; not its children, and the endpoint enforces read-only mode, so a native download that writes fails.
 (defmethod sql-jdbc.execute/do-with-connection-with-options :motherduck
   [driver db-or-id-or-spec options f]
   ((get-method sql-jdbc.execute/do-with-connection-with-options :postgres)
@@ -66,14 +67,6 @@
      (with-open [stmt (.createStatement conn)]
        (.execute stmt (str "USE " (sql.u/quote-name driver :database (.getCatalog conn)))))
      (f conn))))
-
-;; The endpoint reports a DuckDB catalog error without Postgres SQLSTATE 42P01. Match the message
-;; so `driver/table-exists?` returns false for a missing table instead of propagating the exception.
-(defmethod sql-jdbc/impl-table-known-to-not-exist? :motherduck
-  [_driver e]
-  (boolean (re-find #"(?i)catalog error.*does not exist"
-                    (or (.getMessage ^java.sql.SQLException e)
-                        ""))))
 
 ;; The endpoint's messages for a bad token or database name don't match Postgres's, so map them here to highlight the
 ;; field in the connection form.
@@ -117,6 +110,8 @@
                  ;; generated. The field preprocessor below removes this unreliable value.
                  :describe-is-generated
                  :uploads
+                 ;; Uploads only. DuckDB has no BIGSERIAL, and the endpoint doesn't implement `GENERATED ... AS IDENTITY`.
+                 :upload-with-auto-pk
                  :persist-models
                  ;; Before enabling: the inherited SET ROLE quotes role names on the server with Postgres's
                  ;; `quote_ident(?)`. Check that DuckDB's quote_ident escapes identically, or SET ROLE is injectable.
@@ -124,7 +119,10 @@
                  ;; MotherDuck uses token authentication rather than Postgres roles and row-level security.
                  :test/rls-impersonation
                  :test/column-impersonation
-                 ;; Transforms are not supported at all.
+                 ;; Transforms are not supported at all. The rename flags are read only by transforms; the endpoint can
+                 ;; rename tables, so turn them back on with transforms.
+                 :atomic-renames
+                 :rename
                  :transforms/table
                  :transforms/python
                  :transforms/index-ddl
