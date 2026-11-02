@@ -128,8 +128,13 @@
 (defn- exec!
   "Execute a sequence of statements against the database whose spec is passed as the first param."
   [spec statements]
-  (doseq [statement statements]
-    (jdbc/execute! spec [statement])))
+  ;; `Statement.execute` rather than `jdbc/execute!`'s `executeUpdate`: MotherDuck returns a result set for DROP.
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver/*driver* spec {:write? true}
+   (fn [^Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       (doseq [^String statement statements]
+         (.execute stmt statement))))))
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
@@ -213,45 +218,48 @@
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
 (deftest ^:synchronized edge-case-identifiers-test
-  (mt/test-driver :postgres
-    (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
-      (mt/dataset dots-in-names
-        (is (= {:columns ["id" "dotted.name"]
-                :rows    [[1 "toucan_cage"]
-                          [2 "four_loko"]
-                          [3 "ouija_board"]]}
-               (mt/rows+column-names (mt/run-mbql-query objects.stuff))))))
-    (testing "make sure schema/table/field names with hyphens in them work correctly (#8766)"
-      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
-            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        ;; create the postgres DB
-        (tx/drop-if-exists-and-create-db! driver/*driver* "hyphen-names-test")
-        ;; create the DB object
-        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
-          (let [sync! #(sync/sync-database! (:id database))]
-            ;; populate the DB and create a view
-            (exec! spec ["CREATE SCHEMA \"x-mas\";"
-                         "CREATE TABLE \"x-mas\".\"presents-and-gifts\" (\"gift-description\" TEXT NOT NULL);"
-                         "INSERT INTO \"x-mas\".\"presents-and-gifts\" (\"gift-description\") VALUES ('Bird Hat');;"])
-            (sync!)
-            (is (= [["Bird Hat"]]
+  (mt/test-drivers #{:postgres :motherduck}
+    ;; Each section queries another database as Rasta, and dev mode limits the permission cache misses in one user scope.
+    ;; Start a new scope for each driver.
+    (mt/with-test-user :rasta
+      (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
+        (mt/dataset dots-in-names
+          (is (= {:columns ["id" "dotted.name"]
+                  :rows    [[1 "toucan_cage"]
+                            [2 "four_loko"]
+                            [3 "ouija_board"]]}
+                 (mt/rows+column-names (mt/run-mbql-query objects.stuff))))))
+      (testing "make sure schema/table/field names with hyphens in them work correctly (#8766)"
+        (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "hyphen-names-test"})
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          ;; create the postgres DB
+          (tx/drop-if-exists-and-create-db! driver/*driver* "hyphen-names-test")
+          ;; create the DB object
+          (mt/with-temp [:model/Database database {:engine driver/*driver*, :details details}]
+            (let [sync! #(sync/sync-database! (:id database))]
+              ;; populate the DB and create a view
+              (exec! spec ["CREATE SCHEMA \"x-mas\";"
+                           "CREATE TABLE \"x-mas\".\"presents-and-gifts\" (\"gift-description\" TEXT NOT NULL);"
+                           "INSERT INTO \"x-mas\".\"presents-and-gifts\" (\"gift-description\") VALUES ('Bird Hat');;"])
+              (sync!)
+              (is (= [["Bird Hat"]]
+                     (mt/rows (qp/process-query
+                               {:database (u/the-id database)
+                                :type     :query
+                                :query    {:source-table (t2/select-one-pk :model/Table :name "presents-and-gifts")}}))))))))
+      (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
+        (mt/with-empty-db
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+            (doseq [stmt ["CREATE SCHEMA \"my\\schema\";"
+                          "CREATE TABLE \"my\\schema\".\"my\\table\" (\"my\\field\" INTEGER);"
+                          "INSERT INTO \"my\\schema\".\"my\\table\" (\"my\\field\") VALUES (42);"]]
+              (jdbc/execute! conn-spec stmt))
+            (sync/sync-database! (mt/id) {:scan :schema})
+            (is (= [[42]]
                    (mt/rows (qp/process-query
-                             {:database (u/the-id database)
+                             {:database (mt/id)
                               :type     :query
-                              :query    {:source-table (t2/select-one-pk :model/Table :name "presents-and-gifts")}}))))))))
-    (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
-      (mt/with-empty-db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
-          (doseq [stmt ["CREATE SCHEMA \"my\\schema\";"
-                        "CREATE TABLE \"my\\schema\".\"my\\table\" (\"my\\field\" INTEGER);"
-                        "INSERT INTO \"my\\schema\".\"my\\table\" (\"my\\field\") VALUES (42);"]]
-            (jdbc/execute! conn-spec stmt))
-          (sync/sync-database! (mt/id) {:scan :schema})
-          (is (= [[42]]
-                 (mt/rows (qp/process-query
-                           {:database (mt/id)
-                            :type     :query
-                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (mt/id))}})))))))))
+                              :query    {:source-table (t2/select-one-pk :model/Table :db_id (mt/id))}}))))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -264,7 +272,7 @@
     [["Cam" 1]]]])
 
 (deftest duplicate-names-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (testing "Make sure that duplicate column names (e.g. caused by using a FK) still return both columns"
       (mt/dataset duplicate-names
         (is (= {:columns ["name" "name_2"]
@@ -696,7 +704,7 @@
                    (str/split-lines (driver/prettify-native-form :postgres sql))))))))))
 
 (deftest nested-field-pivot-e2e-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (mt/dataset json
       (testing "pivot with a nested-field (JSON-unfolded) breakout executes end-to-end and the native path agrees with the multi-query path"
         (let [mp        (mt/metadata-provider)
@@ -835,7 +843,7 @@
      [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]]])
 
 (deftest uuid-columns-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (mt/dataset with-uuid
       (testing "Check that we can load a Postgres Database with a :type/UUID"
         (is (= [{:name "id", :base_type :type/Integer}
@@ -1558,7 +1566,7 @@
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
 (deftest timezone-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (letfn [(get-timezone-with-report-timezone [report-timezone]
               (mt/with-temporary-setting-values [report-timezone report-timezone]
                 (ffirst
@@ -1596,19 +1604,19 @@
                  (mt/rows (qp/process-query query)))))))))
 
 (deftest fingerprint-time-fields-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (testing "Make sure we're able to fingerprint TIME fields (#5911)"
       (tx/drop-if-exists-and-create-db! driver/*driver* "time_field_test")
-      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "time_field_test"})]
-        (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
-                       [(str "CREATE TABLE toucan_sleep_schedule ("
-                             "  start_time TIME WITHOUT TIME ZONE NOT NULL, "
-                             "  end_time TIME WITHOUT TIME ZONE NOT NULL, "
-                             "  reason VARCHAR(256) NOT NULL"
-                             ");"
-                             "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
-                             "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
-        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
+      (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "time_field_test"})]
+        (exec! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+               [(str "CREATE TABLE toucan_sleep_schedule ("
+                     "  start_time TIME WITHOUT TIME ZONE NOT NULL, "
+                     "  end_time TIME WITHOUT TIME ZONE NOT NULL, "
+                     "  reason VARCHAR(256) NOT NULL"
+                     ");")
+                (str "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
+                     "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
+        (mt/with-temp [:model/Database database {:engine driver/*driver*, :details details}]
           (sync/sync-database! (:id database))
           (let [fingerprints  (t2/select-fn->fn :name :fingerprint :model/Field
                                                 :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
@@ -1793,20 +1801,19 @@
 
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (tx/drop-if-exists-and-create-db! driver/*driver* "composite-pks-test")
       (with-redefs [table-rows-sample/nested-field-sample-limit 4]
         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
               spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
-          (doseq [statement (concat ["CREATE TABLE PUBLIC.json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]
-                                    (for [[first-id second-id json] [[1 1 "{\"int_turn_string\":1}"]
-                                                                     [2 2 "{\"int_turn_string\":2}"]
-                                                                     [3 3 "{\"int_turn_string\":3}"]
-                                                                     [4 4 "{\"int_turn_string\":4}"]
-                                                                     [4 5 "{\"int_turn_string\":\"x\"}"]
-                                                                     [4 6 "{\"int_turn_string\":5}"]]]
-                                      (format "INSERT INTO PUBLIC.json_table (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json)))]
-            (jdbc/execute! spec [statement]))
+          (exec! spec (concat ["CREATE TABLE json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]
+                              (for [[first-id second-id json] [[1 1 "{\"int_turn_string\":1}"]
+                                                               [2 2 "{\"int_turn_string\":2}"]
+                                                               [3 3 "{\"int_turn_string\":3}"]
+                                                               [4 4 "{\"int_turn_string\":4}"]
+                                                               [4 5 "{\"int_turn_string\":\"x\"}"]
+                                                               [4 6 "{\"int_turn_string\":5}"]]]
+                                (format "INSERT INTO json_table (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json))))
           (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
             (mt/with-db database
               (sync-tables/sync-tables-and-database! (driver.u/lib-database (:id database)))
@@ -1818,7 +1825,7 @@
                         :visibility-type   :normal
                         :nfc-path          [:json_val "int_turn_string"]}}
                      (sql-jdbc.sync/describe-nested-field-columns
-                      :postgres
+                      driver/*driver*
                       (driver.u/lib-database (:id database))
                       (t2/select-one :model/Table :db_id (mt/id) :name "json_table")))))))))))
 
@@ -2399,7 +2406,7 @@
 
 (deftest ^:parallel arrays-have-base-type
   (testing "queries with pg arrays have a base type on column metadata (#63909)"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (is (=? [{:name "id"
                 :database_type "int4"
                 :base_type :type/Integer}
@@ -2534,7 +2541,7 @@
 
 (deftest bytea-column-not-truncated-test
   (testing "fix for #30671"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset (mt/dataset-definition
                    "bytea_dataset"
                    [["bytea_table"

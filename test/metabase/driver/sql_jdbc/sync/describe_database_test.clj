@@ -268,7 +268,8 @@
 (deftest sync-table-with-backslash-test
   ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-  (mt/test-drivers #{:postgres}
+  ;; MotherDuck has its own PK and FK queries
+  (mt/test-drivers #{:postgres :motherduck}
     (testing "table with backslash in name, PKs, FKS are correctly synced"
       (mt/with-temp-test-data [["human\\race"
                                 [{:field-name "humanraceid" :base-type :type/Integer :pk? true}

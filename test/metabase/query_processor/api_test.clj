@@ -727,7 +727,7 @@
 (deftest report-timezone-test
   ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (testing "expected (desired) and actual timezone should be returned as part of query results"
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [results (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query checkins

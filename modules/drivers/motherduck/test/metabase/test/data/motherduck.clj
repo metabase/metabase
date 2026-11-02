@@ -314,6 +314,23 @@
          (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" db-name))))
      (reset! created-databases #{}))))
 
+;; For tests that create their own database. `dbdef->connection-details` prefixes the name, so create it under the
+;; prefixed name too, and register it for cleanup. The inherited method ends other sessions with
+;; `pg_terminate_backend`, which the endpoint doesn't have.
+(defmethod tx/drop-if-exists-and-create-db! :motherduck
+  [driver db-name & [just-drop]]
+  (let [db-name (qualified-db-name db-name)]
+    (swap! created-databases conj db-name)
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     (spec/dbdef->spec driver :server nil)
+     {:write? true}
+     (fn [^Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" db-name))
+         (when-not (= just-drop :just-drop)
+           (.execute stmt (format "CREATE DATABASE \"%s\";" db-name))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Orphan GC                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+

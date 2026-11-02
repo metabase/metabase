@@ -2,19 +2,37 @@
   "SQL compilation and connection tests for the MotherDuck driver."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    ;; Register the driver before testing its methods.
    [metabase.driver.motherduck]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.pivot :as lib.pivot]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
+   [metabase.sync.core :as sync]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection ResultSet ResultSetMetaData SQLException Types)
    (java.time OffsetTime)))
@@ -281,3 +299,343 @@
                      (driver/describe-fields :motherduck
                                              (lib.metadata/database (mt/metadata-provider))
                                              :table-names ["both_pk" "diff_pk" "only_b_pk"]))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                MotherDuck copies of Postgres-only tests                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; MotherDuck inherits this behaviour from `:postgres`, but these tests need different SQL, setup or expectations
+;; here, so they're copies of tests in `metabase.driver.postgres-test` rather than shared with it.
+
+(defn- exec!
+  "Execute `statements` against the database whose spec is passed as the first param."
+  [spec statements]
+  (sql-jdbc.execute/do-with-connection-with-options
+   :motherduck spec {:write? true}
+   (fn [^Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
+       (doseq [^String statement statements]
+         (.execute stmt statement))))))
+
+(deftest default-schema-test
+  (mt/test-driver :motherduck
+    ;; Unlike Postgres, `currentSchema` can't be set in the additional options: the endpoint refuses the startup
+    ;; option with "FATAL: option is not allowed: search_path".
+    (is (= "main"
+           (driver.sql/default-schema :motherduck (lib.metadata/database (mt/metadata-provider)))))))
+
+(deftest recreated-views-test
+  (mt/test-driver :motherduck
+    (testing (str "make sure that if a view is dropped and recreated that the original Table object is marked active "
+                  "rather than a new one being created (#3331)")
+      (let [details (mt/dbdef->connection-details :motherduck :db {:database-name "dropped_views_test"})
+            spec    (sql-jdbc.conn/connection-details->spec :motherduck details)]
+        (tx/drop-if-exists-and-create-db! :motherduck "dropped_views_test")
+        (mt/with-temp [:model/Database database {:engine :motherduck, :details details}]
+          (let [sync! #(sync/sync-database! (:id database))]
+            (exec! spec ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
+                         "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Parroty');"
+                         "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"])
+            (sync!)
+            (exec! spec ["DROP VIEW angry_birds;"])
+            (sync!)
+            (exec! spec ["CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"])
+            (sync!)
+            ;; there should be only one Table for the view
+            (is (= [{:name "angry_birds", :active true}]
+                   (map (partial into {})
+                        (t2/select [:model/Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
+
+(defn- describe-trivial-json-table!
+  "Create `schema`.`table` with a JSON column in a new database, sync it, and describe its nested JSON fields."
+  [db-name schema table]
+  (tx/drop-if-exists-and-create-db! :motherduck db-name)
+  (let [details (mt/dbdef->connection-details :motherduck :db {:database-name db-name, :json-unfolding true})
+        quoted  (str (sql.u/quote-name :motherduck :schema schema) "." (sql.u/quote-name :motherduck :table table))]
+    (exec! (sql-jdbc.conn/connection-details->spec :motherduck details)
+           [(str "CREATE SCHEMA " (sql.u/quote-name :motherduck :schema schema) ";")
+            (str "CREATE TABLE " quoted " (trivial_json JSON NOT NULL);")
+            (str "INSERT INTO " quoted " (trivial_json) VALUES ('{\"a\": 1}');")])
+    (mt/with-temp [:model/Database database {:engine :motherduck, :details details}]
+      (mt/with-db database
+        (sync-tables/sync-tables-and-database! (driver.u/lib-database (:id database)))
+        (sql-jdbc.sync/describe-nested-field-columns
+         :motherduck
+         (driver.u/lib-database (:id database))
+         {:schema schema :name table :id (mt/id table)})))))
+
+(def ^:private trivial-json-nested-fields
+  #{{:name              "trivial_json → a",
+     :database-type     "decimal",
+     :base-type         :type/Integer,
+     :database-position 0,
+     :json-unfolding    false,
+     :visibility-type   :normal,
+     :nfc-path          [:trivial_json "a"]}})
+
+(deftest describe-nested-field-columns-identifier-test
+  (mt/test-driver :motherduck
+    (testing "sync goes and runs with identifier if there is a schema other than the default one"
+      (is (= trivial-json-nested-fields
+             (describe-trivial-json-table! "describe-json-with-schema-test" "bobdobbs" "describe_json_table"))))))
+
+(deftest describe-funky-name-table-nested-field-columns-test
+  (mt/test-driver :motherduck
+    (testing "sync goes and still works with funky schema and table names, including caps and special chars (#23026, #23027)"
+      (is (= trivial-json-nested-fields
+             (describe-trivial-json-table! "describe-json-funky-names-test" "AAAH_#" "dESCribe_json_table_%"))))))
+
+(deftest query-canceled?-test
+  (mt/test-driver :motherduck
+    (testing "Recognizes timeout exceptions"
+      ;; DuckDB has no pg_sleep; counting 10^11 rows takes far longer than the timeout
+      (sql-jdbc.execute/do-with-connection-with-options
+       :motherduck (mt/id) nil
+       (fn [^Connection conn]
+         (with-open [stmt (.prepareStatement conn "SELECT count(*) FROM range(100000000000)")]
+           (try (doto stmt
+                  (.setQueryTimeout 1)
+                  (.execute))
+                (throw (ex-info "Query successfully executed. Should run for longer than the timeout of 1s" {}))
+                (catch Throwable e
+                  (is (driver/query-canceled? :motherduck e))))))))))
+
+(deftest ^:synchronized reducible-query-streams-large-result-set-test
+  (mt/test-driver :motherduck
+    (testing "reducible-query streams large result sets via a server-side cursor (autoCommit=false)"
+      ;; The range table function streams ~2.1 billion rows (DuckDB's generate_series in the SELECT list returns one
+      ;; list instead). Pulling just the first few is fast only if reducible-query streams and stops early.
+      (let [result (sql-jdbc.execute/reducible-query
+                    (lib.metadata/database (mt/metadata-provider))
+                    [(format "SELECT range AS i FROM range(1, %d)" Integer/MAX_VALUE)])]
+        (testing "only the first rows are pulled, not all ~2 billion"
+          (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))
+
+;;; JSON unfolding: MotherDuck extracts with `json_extract_string` and an inlined JSON Pointer, where Postgres uses
+;;; `#>>` with the path keys as parameters.
+
+(deftest ^:parallel json-field-test
+  (mt/test-driver :motherduck
+    (testing "Deal with complicated identifier (#22967)"
+      (mt/with-metadata-provider (lib.tu/mock-metadata-provider
+                                  {:database (assoc meta/database :engine :motherduck, :id 1)
+                                   :tables   [(merge (meta/table-metadata :venues)
+                                                     {:id     1
+                                                      :db-id  1
+                                                      :name   "complicated_identifiers"
+                                                      :schema nil})]
+                                   :fields   [(merge (meta/field-metadata :venues :id)
+                                                     {:id            1
+                                                      :table-id      1
+                                                      :nfc-path      ["jsons" "values" "qty"]
+                                                      :database-type "integer"})]})
+        (let [field-clause [:field
+                            {:lib/uuid (str (random-uuid))
+                             :binning
+                             {:strategy  :num-bins
+                              :num-bins  100
+                              :min-value 0.75
+                              :max-value 54.0
+                              :bin-width 0.75}}
+                            1]]
+          (is (= ["((FLOOR(((CAST(JSON_EXTRACT_STRING(complicated_identifiers.jsons, '/values/qty') AS integer) - 0.75) / 0.75)) * 0.75) + 0.75)"]
+                 (sql/format-expr (sql.qp/->honeysql :motherduck field-clause) {:nested true}))))))))
+
+(def ^:private json-alias-mock-metadata-provider
+  (lib.tu/mock-metadata-provider
+   {:database (assoc meta/database :engine :motherduck, :id 1)
+    :tables   [(merge (meta/table-metadata :venues)
+                      {:id     1
+                       :db-id  1
+                       :name   "json_alias_test"
+                       :schema nil})]
+    :fields   [(merge (meta/field-metadata :venues :id)
+                      {:id            1
+                       :table-id      1
+                       :name          "json_alias_test"
+                       :nfc-path      ["bob"
+                                       "injection' OR 1=1--' AND released = 1"
+                                       "injection' OR 1=1--' AND released = 1"]
+                       :database-type "VARCHAR"})]}))
+
+(defn- compile-lines [query]
+  (let [{sql :query, params :params} (qp.compile/compile (lib.convert/->mbql5 query))]
+    {:lines  (str/split-lines (driver/prettify-native-form :motherduck sql))
+     :params params}))
+
+(deftest ^:parallel json-alias-test
+  (mt/test-driver :motherduck
+    (testing "json breakouts and order bys have alias coercion"
+      (mt/with-metadata-provider json-alias-mock-metadata-provider
+        ;; a function, to avoid a duplicate `:lib/uuid`
+        (let [field-bucketed-fn (fn []
+                                  [:field
+                                   {:temporal-unit                                              :month
+                                    :metabase.query-processor.util.add-alias-info/source-table  1
+                                    :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
+                                    :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
+                                    :metabase.query-processor.util.add-alias-info/position      1}
+                                   1])]
+          (is (= {:lines  ["SELECT"
+                           "  DATE_TRUNC("
+                           "    'month',"
+                           "    CAST("
+                           "      CAST("
+                           "        JSON_EXTRACT_STRING("
+                           "          \"json_alias_test\".\"bob\","
+                           "          '/injection'' OR 1=1--'' AND released = 1/injection'' OR 1=1--'' AND released = 1'"
+                           "        ) AS VARCHAR"
+                           "      ) AS timestamp"
+                           "    )"
+                           "  ) AS \"json_alias_test\","
+                           "  COUNT(*) AS \"count\""
+                           "FROM"
+                           "  \"json_alias_test\""
+                           "GROUP BY"
+                           "  \"json_alias_test\""
+                           "ORDER BY"
+                           "  \"json_alias_test\" ASC"]
+                  ;; the path is an escaped literal, not parameters
+                  :params nil}
+                 (compile-lines {:database 1
+                                 :type     :query
+                                 :query    {:source-table 1
+                                            :aggregation  [[:count]]
+                                            :breakout     [(field-bucketed-fn)]
+                                            :order-by     [[:asc (field-bucketed-fn)]]}}))))))))
+
+(deftest ^:parallel json-alias-test-2
+  (mt/test-driver :motherduck
+    (testing "json breakouts and order bys have alias coercion"
+      (mt/with-metadata-provider json-alias-mock-metadata-provider
+        (is (= ["SELECT"
+                "  CAST("
+                "    JSON_EXTRACT_STRING("
+                "      \"json_alias_test\".\"bob\","
+                "      '/injection'' OR 1=1--'' AND released = 1/injection'' OR 1=1--'' AND released = 1'"
+                "    ) AS VARCHAR"
+                "  ) AS \"json_alias_test\""
+                "FROM"
+                "  \"json_alias_test\""
+                "ORDER BY"
+                "  \"json_alias_test\" ASC"
+                "LIMIT"
+                "  1048575"]
+               (:lines (compile-lines {:database 1
+                                       :type     :query
+                                       :query    {:source-table 1
+                                                  :order-by     [[:asc [:field {} 1]]]}}))))))))
+
+(def ^:private json-alias-in-model-mock-metadata-provider
+  (providers.mock/mock-metadata-provider
+   json-alias-mock-metadata-provider
+   {:cards [{:name          "Model with JSON"
+             :id            123
+             :database-id   1
+             :dataset-query {:database 1
+                             :type     :query
+                             :query    {:source-table 1
+                                        :aggregation  [[:count]]
+                                        :breakout     [[:field 1 nil]]}}}]}))
+
+(deftest ^:parallel json-breakout-in-model-test
+  (mt/test-driver :motherduck
+    (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
+      (mt/with-metadata-provider json-alias-in-model-mock-metadata-provider
+        (is (= ["WITH \"__mb_stage_0\" AS ("
+                "  SELECT"
+                "    CAST("
+                "      JSON_EXTRACT_STRING("
+                "        \"json_alias_test\".\"bob\","
+                "        '/injection'' OR 1=1--'' AND released = 1/injection'' OR 1=1--'' AND released = 1'"
+                "      ) AS VARCHAR"
+                "    ) AS \"json_alias_test\","
+                "    COUNT(*) AS \"count\""
+                "  FROM"
+                "    \"json_alias_test\""
+                "  GROUP BY"
+                "    \"json_alias_test\""
+                "  ORDER BY"
+                "    \"json_alias_test\" ASC"
+                ")"
+                "SELECT"
+                "  \"__mb_source\".\"json_alias_test\" AS \"json_alias_test\","
+                "  \"__mb_source\".\"count\" AS \"count\""
+                "FROM"
+                "  \"__mb_stage_0\" AS \"__mb_source\""]
+               (:lines (compile-lines {:database (meta/id)
+                                       :type     :query
+                                       :query    {:source-table "card__123"}}))))))))
+
+(deftest ^:parallel nested-field-pivot-compile-test
+  (mt/test-driver :motherduck
+    (testing "Pivot with a nested-field (JSON-unfolded) breakout compiles to a derived table that pre-computes the JSON path expression and references plain identifiers in GROUPING SETS / GROUPING"
+      (let [mp       (lib.tu/mock-metadata-provider
+                      {:database (assoc meta/database :engine :motherduck :id 1)
+                       :tables   [(merge (meta/table-metadata :venues)
+                                         {:id 1 :db-id 1 :name "json_table" :schema nil})]
+                       :fields   [(merge (meta/field-metadata :venues :id)
+                                         {:id             1
+                                          :table-id       1
+                                          :name           "category"
+                                          :nfc-path       ["payload" "category"]
+                                          :base-type      :type/Text
+                                          :effective-type :type/Text
+                                          :database-type  "text"})
+                                  (merge (meta/field-metadata :venues :name)
+                                         {:id 2 :table-id 1 :name "region"})]})
+            base     (-> (lib/query mp (lib.metadata/table mp 1))
+                         (lib/breakout (lib.metadata/field mp 1))
+                         (lib/breakout (lib.metadata/field mp 2))
+                         (lib/aggregate (lib/count)))
+            bks      (lib/breakouts base)
+            pivot-q  (lib.pivot/with-pivot base
+                       {:rows               [(lib.options/uuid (first bks))]
+                        :columns            [(lib.options/uuid (second bks))]
+                        :show-row-totals    true
+                        :show-column-totals true})]
+        (mt/with-metadata-provider mp
+          (is (= ["WITH \"__mb_stage_0\" AS ("
+                  "  SELECT"
+                  "    CAST("
+                  "      JSON_EXTRACT_STRING(\"json_table\".\"payload\", '/category') AS text"
+                  "    ) AS \"category\","
+                  "    \"json_table\".\"region\" AS \"region\","
+                  "    CAST("
+                  "      JSON_EXTRACT_STRING(\"json_table\".\"payload\", '/category') AS text"
+                  "    ) AS \"__mb_pivot_nfc\""
+                  "  FROM"
+                  "    \"json_table\""
+                  ")"
+                  "SELECT"
+                  "  \"__mb_source\".\"__mb_pivot_nfc\" AS \"__mb_pivot_nfc\","
+                  "  \"__mb_source\".\"region\" AS \"region\","
+                  "  GROUPING("
+                  "    \"__mb_source\".\"region\","
+                  "    \"__mb_source\".\"__mb_pivot_nfc\""
+                  "  ) AS \"pivot-grouping\","
+                  "  COUNT(*) AS \"count\""
+                  "FROM"
+                  "  \"__mb_stage_0\" AS \"__mb_source\""
+                  "GROUP BY"
+                  "  GROUPING SETS ("
+                  "    ("
+                  "      \"__mb_source\".\"__mb_pivot_nfc\","
+                  "      \"__mb_source\".\"region\""
+                  "    ),"
+                  "    (\"__mb_source\".\"region\"),"
+                  "    (\"__mb_source\".\"__mb_pivot_nfc\"),"
+                  "    ()"
+                  "  )"
+                  "ORDER BY"
+                  "  GROUPING("
+                  "    \"__mb_source\".\"region\","
+                  "    \"__mb_source\".\"__mb_pivot_nfc\""
+                  "  ) DESC,"
+                  "  \"__mb_source\".\"__mb_pivot_nfc\" ASC,"
+                  "  \"__mb_source\".\"region\" ASC"]
+                 (str/split-lines
+                  (driver/prettify-native-form
+                   :motherduck
+                   (:query (qp.compile/compile (nest-for-pivot/wrap-nested-field-breakouts pivot-q))))))))))))
