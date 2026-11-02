@@ -1,7 +1,9 @@
 import {
+  isAggregationInput,
   isNamedBreakout,
   isUnaryOperator,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import { getAggregationResultColumnNames } from "embedding-sdk-shared/lib/create-metabase-query/result-columns";
 import type { TemporalUnit } from "metabase-types/api";
 
 import type { SchemaColumn } from "../data-schema";
@@ -176,12 +178,14 @@ export function orderBy<TDimension>(
     };
   }
 
-  const aggregationColumn = getAggregationResultColumn(dimension);
+  const [aggregationName] = isAggregationInput(dimension)
+    ? getAggregationResultColumnNames([dimension])
+    : [];
 
-  if (aggregationColumn) {
+  if (aggregationName) {
     return {
       type: "column",
-      name: aggregationColumn.name,
+      name: aggregationName,
       ...(direction ? { direction } : undefined),
     };
   }
@@ -196,31 +200,6 @@ export function orderBy<TDimension>(
     ...orderableDimension,
     ...(direction ? { direction } : undefined),
   };
-}
-
-function getAggregationResultColumn(value: unknown): SchemaColumn | undefined {
-  if (value == null || typeof value !== "object" || !("columns" in value)) {
-    return undefined;
-  }
-
-  const { columns } = value;
-
-  if (!Array.isArray(columns)) {
-    return undefined;
-  }
-
-  const [column] = columns;
-
-  return isSchemaColumn(column) ? column : undefined;
-}
-
-function isSchemaColumn(value: unknown): value is SchemaColumn {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    "name" in value &&
-    typeof value.name === "string"
-  );
 }
 
 function toFilterLiteral(value: unknown): {

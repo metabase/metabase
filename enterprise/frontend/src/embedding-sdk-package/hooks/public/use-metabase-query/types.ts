@@ -734,6 +734,14 @@ export type UseMetabaseQueryResult<
   refetch: () => Promise<void>;
 };
 
+export type MetabaseQueryRow<TQuery, TDynamic = undefined> = NonNullable<
+  UseMetabaseQueryResult<
+    QueryEntity<undefined, TQuery>,
+    TQuery,
+    TDynamic
+  >["data"]
+>["rows"][number];
+
 /**
  * Marks a query as declared through `defineQuery`. The query hooks accept only
  * marked queries, so an inline query object is a compile-time error.
@@ -743,6 +751,16 @@ export type UseMetabaseQueryResult<
 export declare class DefinedQuery {
   private readonly definedWithDefineQuery: true;
 }
+
+export type DynamicQueryArgument<TEntity, TQuery, TDynamic> = TDynamic &
+  (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
+    ? RequireAggregationsForBreakouts<TDynamic> &
+        RequireDynamicOrderByNames<
+          QueryEntity<TEntity, TQuery>,
+          TQuery,
+          TDynamic
+        >
+    : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>);
 
 export type UseMetabaseQuery = <
   TEntity extends TableSchema | undefined = undefined,
@@ -758,15 +776,7 @@ export type UseMetabaseQuery = <
             RequireGroupedOrderByNames<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
-  dynamicQuery?: TDynamic &
-    (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
-      ? RequireAggregationsForBreakouts<TDynamic> &
-          RequireDynamicOrderByNames<
-            QueryEntity<TEntity, TQuery>,
-            TQuery,
-            TDynamic
-          >
-      : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>),
+  dynamicQuery?: DynamicQueryArgument<TEntity, TQuery, TDynamic>,
 ) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery, TDynamic>;
 
 export type UseMetabaseQueryObject = <
@@ -783,15 +793,7 @@ export type UseMetabaseQueryObject = <
             RequireGroupedOrderByNames<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
-  dynamicQuery?: TDynamic &
-    (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
-      ? RequireAggregationsForBreakouts<TDynamic> &
-          RequireDynamicOrderByNames<
-            QueryEntity<TEntity, TQuery>,
-            TQuery,
-            TDynamic
-          >
-      : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>),
+  dynamicQuery?: DynamicQueryArgument<TEntity, TQuery, TDynamic>,
 ) => UseMetabaseQueryObjectResult;
 
 export type UseMetabaseQueryObjectResult = {

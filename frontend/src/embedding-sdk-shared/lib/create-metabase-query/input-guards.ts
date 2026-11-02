@@ -3,6 +3,7 @@ import type {
   TestBreakoutWithNameSpec,
   TestExpressionSpec,
   TestNamedAggregationSpec,
+  TestOperatorSpec,
   TestStageSpec,
   TestStageWithSourceSpec,
 } from "metabase-types/api";
@@ -12,6 +13,7 @@ import type {
   MeasureSchema,
   MetricSchema,
   QuestionSchema,
+  SchemaColumn,
   SegmentSchema,
   TableSchema,
 } from "./schema";
@@ -43,6 +45,10 @@ export type QuestionQueryInput = DynamicQueryInput & {
 };
 
 export type QueryInput = TableQueryInput | QuestionQueryInput;
+
+export type AggregationInput = TestAggregationSpec & {
+  columns?: readonly SchemaColumn[];
+};
 
 export const isTableInput = (input: unknown): input is TableQueryInput =>
   isObject(input) && "source" in input && isTableReference(input.source);
@@ -88,6 +94,17 @@ export const isQuestionReference = (value: unknown): value is QuestionSchema =>
 
 export const isQueryInput = (input: unknown): input is QueryInput =>
   isTableInput(input) || isQuestionInput(input);
+
+const isOperator = (value: unknown): value is TestOperatorSpec =>
+  isObject(value) &&
+  value.type === "operator" &&
+  typeof value.operator === "string";
+
+export const isAggregationInput = (value: unknown): value is AggregationInput =>
+  isOperator(value) ||
+  isNamedAggregation(value) ||
+  isMetricReference(value) ||
+  isMeasureReference(value);
 
 export const isUnaryOperator = (operator: string) =>
   operator === "is-empty" ||
