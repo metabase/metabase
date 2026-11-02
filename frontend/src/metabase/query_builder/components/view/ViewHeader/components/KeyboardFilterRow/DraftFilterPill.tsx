@@ -33,7 +33,7 @@ import {
   useValueCounts,
 } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberColumnStats";
 import { getDatePickerUnits } from "metabase/querying/filters/utils/dates";
-import { Icon, Loader, Popover, Stack, Tooltip } from "metabase/ui";
+import { Flex, Icon, Kbd, Loader, Popover, Tooltip } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 
@@ -51,11 +51,7 @@ import {
   isAiFiltersPrompt,
   useAiFilters,
 } from "./ai-filters";
-import {
-  type ColumnPickerMode,
-  ColumnPickerModeControl,
-  useColumnSuggestions,
-} from "./column-picker";
+import { useColumnSuggestions } from "./column-picker";
 import { useSemanticColumnMatches } from "./semantic-column-search";
 import type {
   DraftColumn,
@@ -761,30 +757,16 @@ function ColumnInput({
   onAskAi,
   onKeyDown,
 }: ColumnInputProps) {
-  const [mode, setMode] = useState<ColumnPickerMode>("auto");
   const columnInputRef = useRef<HTMLInputElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const focusedInputRef = useRef<HTMLInputElement | null>(null);
-
-  const handleModeChange = (newMode: ColumnPickerMode) => {
-    setMode(newMode);
-    // The mode control takes the focus, but typing goes to the input that
-    // had the focus before.
-    requestAnimationFrame(() =>
-      (focusedInputRef.current ?? columnInputRef.current)?.focus(),
-    );
-  };
 
   const columnGroups = useMemo(
     () => getColumnGroups(query, stageIndex),
     [query, stageIndex],
   );
-  const { groups: modeGroups, getItem } = useColumnSuggestions(
+  const { groups: columnSuggestionGroups, getItem } = useColumnSuggestions(
     query,
     stageIndex,
     columnGroups,
-    mode,
-    text.trim().length > 0,
   );
   const relatedGroup = useRelatedColumnGroup(
     columnGroups,
@@ -794,7 +776,7 @@ function ColumnInput({
   const groups = useMemo(() => {
     const searchGroups = [
       ...leadingGroups,
-      ...modeGroups,
+      ...columnSuggestionGroups,
       ...(relatedGroup != null ? [relatedGroup] : []),
       ...trailingGroups,
     ];
@@ -821,7 +803,7 @@ function ColumnInput({
       : [...searchGroups, aiGroup];
   }, [
     leadingGroups,
-    modeGroups,
+    columnSuggestionGroups,
     relatedGroup,
     trailingGroups,
     text,
@@ -849,34 +831,38 @@ function ColumnInput({
     <SuggestionInput
       groups={isAiMode ? NO_GROUPS : groups}
       inputRef={columnInputRef}
-      searchInputRef={searchInputRef}
-      withSearchBox={!isAiMode}
-      header={
-        isAiMode ? undefined : (
-          <Stack
-            gap="sm"
-            onMouseDownCapture={() => {
-              focusedInputRef.current =
-                document.activeElement === searchInputRef.current
-                  ? searchInputRef.current
-                  : columnInputRef.current;
-            }}
-          >
-            <ColumnPickerModeControl value={mode} onChange={handleModeChange} />
-          </Stack>
-        )
-      }
+      footer={isAiMode ? undefined : <LogicOperatorsHint />}
       dropdownWidth={COLUMN_DROPDOWN_WIDTH}
       optionsMaxHeight={COLUMN_OPTIONS_MAX_HEIGHT}
       text={text}
       placeholder={placeholder}
-      emptyMessage={
-        mode === "popular" ? t`No popular columns yet` : t`No results`
-      }
+      emptyMessage={t`No results`}
       onTextChange={onTextChange}
       onOptionSubmit={handleSelect}
       onKeyDown={onKeyDown}
     />
+  );
+}
+
+/**
+ * Prototype: a bar under the column list that tells the user that the filter
+ * bar takes AND, OR and parentheses, from the boolean expression prototype.
+ */
+function LogicOperatorsHint() {
+  const operators = ["AND", "OR", "(", ")"];
+  return (
+    <Flex className={S.logicHint} align="center" gap="sm">
+      <Icon name="info" size={12} />
+      <span>{t`Logic operators available`}</span>
+      <Flex className={S.logicHintKeys} align="center">
+        {operators.map((operator, index) => (
+          <Fragment key={operator}>
+            {index > 0 && ", "}
+            <Kbd className={S.logicHintKey}>{operator}</Kbd>
+          </Fragment>
+        ))}
+      </Flex>
+    </Flex>
   );
 }
 

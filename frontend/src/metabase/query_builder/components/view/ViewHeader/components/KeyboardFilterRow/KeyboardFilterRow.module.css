@@ -189,6 +189,15 @@
   padding: 0.25rem var(--mantine-spacing-sm);
 }
 
+/* Prototype: the table icon is blue, also in a collapsible header, whose
+   icons are grey. */
+.sectionIcon,
+.sectionHeader .sectionIcon,
+.sectionToggle:hover .sectionIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-core-brand);
+}
+
 .sectionHeader {
   padding: var(--mantine-spacing-md) var(--mantine-spacing-sm)
     var(--mantine-spacing-xs);
@@ -196,8 +205,15 @@
   font-weight: bold;
 }
 
-.sectionDivider {
+/* The list has a padding of `md`, so the line spans the whole width, and the
+   header text stays where it is. With `.sectionHeader`, it wins over the
+   width of `.sectionToggle`. */
+.sectionHeader.sectionDivider {
   margin-top: var(--mantine-spacing-sm);
+  box-sizing: border-box;
+  width: calc(100% + 2 * var(--mantine-spacing-md));
+  margin-inline: calc(-1 * var(--mantine-spacing-md));
+  padding-inline: calc(var(--mantine-spacing-sm) + var(--mantine-spacing-md));
   border-top: 1px solid var(--mb-color-border-neutral);
 }
 
@@ -381,6 +397,29 @@
 
 /* The footer lines up with the options: the padding of the option list
    (0.75rem) and of the option grid. */
+.logicHint {
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.logicHintKeys {
+  gap: 0.125rem;
+  margin-left: auto;
+  white-space: pre;
+}
+
+.logicHintKey {
+  padding: 0 0.25rem;
+  border: none;
+  border-radius: 2px;
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-primary);
+  font-family: inherit;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
 .dropdownFooter {
   --footer-inset: calc(0.75rem + var(--mantine-spacing-xs));
 

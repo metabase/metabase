@@ -3,21 +3,14 @@ import { t } from "ttag";
 
 import {
   type PrototypeFieldCategories,
-  type PrototypeFilterUsage,
   useListPrototypeFieldCategoriesQuery,
-  useListPrototypeFilterUsageQuery,
 } from "metabase/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { SegmentedControl } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { FieldId } from "metabase-types/api";
 
 import type { DraftColumn, SuggestionGroup } from "./types";
 import type { ColumnGroup } from "./utils";
-
-const POPULAR_LIMIT = 15;
-
-export type ColumnPickerMode = "auto" | "popular" | "alphabetical";
 
 export type ColumnPickerItem =
   | { type: "column"; column: DraftColumn }
@@ -29,22 +22,16 @@ interface ColumnSuggestions {
 }
 
 /**
- * Prototype: the options of the column step, in one of three modes, from the
- * AI filters prototype:
- * - auto: the columns of each table in the LLM categories of their fields,
- *   or in table order for tables without categories;
- * - popular: the columns that saved questions filter on most often;
- * - alphabetical: the columns of each table from A to Z.
+ * Prototype: the options of the column step, from the AI filters prototype:
+ * the columns of each table in the LLM categories of their fields, or in table
+ * order for tables without categories.
  */
 export function useColumnSuggestions(
   query: Lib.Query,
   stageIndex: number,
   columnGroups: ColumnGroup[],
-  mode: ColumnPickerMode,
-  isSearching: boolean,
 ): ColumnSuggestions {
   const { data: fieldCategories } = useListPrototypeFieldCategoriesQuery();
-  const { data: filterUsage } = useListPrototypeFilterUsageQuery();
 
   return useMemo(() => {
     const items = new Map<string, ColumnPickerItem>();
@@ -63,6 +50,7 @@ export function useColumnSuggestions(
       (group, groupIndex): SuggestionGroup[] => {
         const segmentGroup: SuggestionGroup = {
           section: group.label,
+          sectionIcon: "table" as const,
           options: group.segments.map((segment, segmentIndex) => {
             const key = `segment:${groupIndex}:${segmentIndex}`;
             items.set(key, { type: "segment", segment });
@@ -78,18 +66,6 @@ export function useColumnSuggestions(
           column,
         }));
 
-        if (mode === "alphabetical") {
-          return [
-            segmentGroup,
-            {
-              section: group.label,
-              options: [...keyedColumns]
-                .sort((a, b) => a.column.label.localeCompare(b.column.label))
-                .map(({ key, column }) => columnOption(key, column)),
-            },
-          ];
-        }
-
         const categories = getCategories(
           keyedColumns.map(({ column }) => fieldIdOf(column)),
           fieldCategories,
@@ -99,6 +75,7 @@ export function useColumnSuggestions(
             segmentGroup,
             {
               section: group.label,
+              sectionIcon: "table" as const,
               options: keyedColumns.map(({ key, column }) =>
                 columnOption(key, column),
               ),
@@ -109,6 +86,7 @@ export function useColumnSuggestions(
           segmentGroup,
           ...categories.map((category) => ({
             section: group.label,
+            sectionIcon: "table" as const,
             label: category.name,
             options: keyedColumns
               .filter(({ column }) => {
@@ -123,32 +101,8 @@ export function useColumnSuggestions(
       },
     );
 
-    if (mode !== "popular" || isSearching) {
-      return { groups: tableGroups, getItem: (key) => items.get(key) };
-    }
-
-    return {
-      groups: [
-        {
-          options: getPopularColumns(columnGroups, filterUsage, fieldIdOf).map(
-            ({ key, column, tableLabel }) => ({
-              ...columnOption(key, column),
-              description: tableLabel,
-            }),
-          ),
-        },
-      ],
-      getItem: (key) => items.get(key),
-    };
-  }, [
-    query,
-    stageIndex,
-    columnGroups,
-    mode,
-    isSearching,
-    fieldCategories,
-    filterUsage,
-  ]);
+    return { groups: tableGroups, getItem: (key) => items.get(key) };
+  }, [query, stageIndex, columnGroups, fieldCategories]);
 }
 
 type Category = { name: string; fieldIds: Set<FieldId>; isOther: boolean };
@@ -179,64 +133,4 @@ function getCategories(
   return hasOther
     ? categories
     : [...categories, { name: t`Other`, fieldIds: new Set(), isOther: true }];
-}
-
-function getPopularColumns(
-  columnGroups: ColumnGroup[],
-  filterUsage: PrototypeFilterUsage[] | undefined,
-  fieldIdOf: (column: DraftColumn) => FieldId | null,
-) {
-  const ratioByFieldId = new Map(
-    (filterUsage ?? []).map((usage) => [usage.field_id, usage.ratio]),
-  );
-  return columnGroups
-    .flatMap((group, groupIndex) =>
-      group.columns.flatMap((column, columnIndex) => {
-        const fieldId = fieldIdOf(column);
-        const ratio = fieldId != null ? ratioByFieldId.get(fieldId) : undefined;
-        return ratio != null
-          ? [
-              {
-                key: `column:${groupIndex}:${columnIndex}`,
-                column,
-                tableLabel: group.label,
-                ratio,
-              },
-            ]
-          : [];
-      }),
-    )
-    .sort((a, b) => b.ratio - a.ratio)
-    .slice(0, POPULAR_LIMIT);
-}
-
-interface ColumnPickerModeControlProps {
-  value: ColumnPickerMode;
-  onChange: (value: ColumnPickerMode) => void;
-}
-
-export function ColumnPickerModeControl({
-  value,
-  onChange,
-}: ColumnPickerModeControlProps) {
-  return (
-    <SegmentedControl
-      fullWidth
-      value={value}
-      data={[
-        { value: "auto", label: t`Auto` },
-        { value: "popular", label: t`Popular` },
-        { value: "alphabetical", label: t`A to Z` },
-      ]}
-      onChange={(newValue) => {
-        if (
-          newValue === "auto" ||
-          newValue === "popular" ||
-          newValue === "alphabetical"
-        ) {
-          onChange(newValue);
-        }
-      }}
-    />
-  );
 }
