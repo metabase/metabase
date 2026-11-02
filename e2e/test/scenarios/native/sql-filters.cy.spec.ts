@@ -86,7 +86,7 @@ describe("scenarios > filters > sql filters", () => {
 
     filterInput().should("not.be.visible");
 
-    cy.button("1 active filter").click();
+    cy.button(/1 active filter/).click();
     filterInput().should("be.visible").and("have.value", "Gizmo");
 
     cy.button("Close").click();
