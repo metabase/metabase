@@ -147,13 +147,23 @@ type Tree =
 
 export type ParseResult =
   | { ok: true; tree: Tree | undefined }
-  | { ok: false; error: string; position: number };
+  | {
+      ok: false;
+      error: string;
+      /** The token the parser stopped at. */
+      position: number;
+      /** Every token to mark: both filters, when a connector is missing between them. */
+      positions: number[];
+    };
+
+const missingConnectorError = () =>
+  t`Two filters need an "and" or "or" between them`;
 
 class ParseError extends Error {
-  position: number;
-  constructor(message: string, position: number) {
+  positions: number[];
+  constructor(message: string, positions: number[]) {
     super(message);
-    this.position = position;
+    this.positions = positions;
   }
 }
 
@@ -168,8 +178,8 @@ export function parseTokens(tokens: readonly Token[]): ParseResult {
   let position = 0;
 
   const peek = () => tokens[position];
-  const fail = (error: string): never => {
-    throw new ParseError(error, position);
+  const fail = (error: string, positions = [position]): never => {
+    throw new ParseError(error, positions);
   };
 
   const parseOr = (): Tree => {
@@ -206,7 +216,7 @@ export function parseTokens(tokens: readonly Token[]): ParseResult {
       }
       const inner = parseOr();
       if (startsOperand(peek())) {
-        return fail(t`Two filters need an "and" or "or" between them`);
+        return fail(missingConnectorError(), [position - 1, position]);
       }
       if (!isParenToken(peek(), "close")) {
         return fail(t`Missing closing parenthesis`);
@@ -224,19 +234,29 @@ export function parseTokens(tokens: readonly Token[]): ParseResult {
     const tree = parseOr();
     if (position < tokens.length) {
       const token = tokens[position];
-      return {
-        ok: false,
-        position,
-        error:
-          token.type === "paren"
-            ? t`Unexpected closing parenthesis`
-            : t`Two filters need an "and" or "or" between them`,
-      };
+      return token.type === "paren"
+        ? {
+            ok: false,
+            position,
+            positions: [position],
+            error: t`Unexpected closing parenthesis`,
+          }
+        : {
+            ok: false,
+            position,
+            positions: [position - 1, position],
+            error: missingConnectorError(),
+          };
     }
     return { ok: true, tree };
   } catch (error) {
     if (error instanceof ParseError) {
-      return { ok: false, error: error.message, position: error.position };
+      return {
+        ok: false,
+        error: error.message,
+        position: error.positions[error.positions.length - 1],
+        positions: error.positions,
+      };
     }
     throw error;
   }

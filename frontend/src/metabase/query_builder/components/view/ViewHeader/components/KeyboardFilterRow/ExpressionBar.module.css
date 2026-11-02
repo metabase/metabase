@@ -16,10 +16,6 @@
   cursor: text;
 }
 
-.barInvalid {
-  box-shadow: inset 0 -2px 0 var(--mb-color-feedback-negative);
-}
-
 /* The bar's own wrapper around a filter pill: the focus ring of the arrow keys. */
 .filterToken {
   display: inline-flex;
@@ -161,15 +157,16 @@
   }
 }
 
-/* Two operands with no connector between them: the slot keeps a connector's
-   worth of room, so the pills never touch. Wins over the zero-width caret rules. */
+/* Two operands with no connector between them: the slot keeps the room a pill
+   has beside a connector (gap plus connector margin), so the pills never touch.
+   Wins over the zero-width caret rules. */
 .gap.slotWide,
 .caretSlot.slotWide,
 .caretSlotMid.slotWide:has([data-testid="draft-filter-pill"] input[data-empty]),
 .caretSlotMid.slotWide:has(> .typingIdle:not(.typingText)) {
   width: auto;
-  min-width: 1.75rem;
-  padding: 0 var(--mantine-spacing-xs);
+  min-width: var(--mantine-spacing-xs);
+  padding: 0;
 }
 
 /* The caret's input: bare text while it could be `or` or a paren. */

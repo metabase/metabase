@@ -116,7 +116,12 @@ describe("parseTokens", () => {
     });
   });
 
-  it.each<{ name: string; tokens: Token[]; position: number }>([
+  it.each<{
+    name: string;
+    tokens: Token[];
+    position: number;
+    positions?: number[];
+  }>([
     { name: "a dangling operator", tokens: [a, opToken("or")], position: 2 },
     { name: "a leading operator", tokens: [opToken("or"), a], position: 0 },
     {
@@ -138,19 +143,25 @@ describe("parseTokens", () => {
       name: "two filters without an operator",
       tokens: [a, b],
       position: 1,
+      positions: [0, 1],
     },
     {
       name: "two filters without an operator inside a group",
       tokens: [OPEN_PAREN, a, b, CLOSE_PAREN],
       position: 2,
+      positions: [1, 2],
     },
-  ])("rejects $name at the offending position", ({ tokens, position }) => {
-    expect(parseTokens(tokens)).toMatchObject({
-      ok: false,
-      position,
-      error: expect.stringMatching(/./),
-    });
-  });
+  ])(
+    "rejects $name at the offending position",
+    ({ tokens, position, positions = [position] }) => {
+      expect(parseTokens(tokens)).toMatchObject({
+        ok: false,
+        position,
+        positions,
+        error: expect.stringMatching(/./),
+      });
+    },
+  );
 });
 
 describe("insertToken", () => {

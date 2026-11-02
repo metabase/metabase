@@ -220,8 +220,10 @@ export function ExpressionBar({
   const ownError = parsed.ok ? undefined : parsed.error;
   const error = ownError ?? trailingError;
   const shownError = isValidating ? error : undefined;
-  const shownErrorPosition =
-    isValidating && !parsed.ok ? parsed.position : undefined;
+  const shownErrorPositions = useMemo(
+    () => new Set(isValidating && !parsed.ok ? parsed.positions : []),
+    [isValidating, parsed],
+  );
   useEffect(() => {
     onErrorChange?.(ownError);
   }, [ownError, onErrorChange]);
@@ -915,7 +917,6 @@ export function ExpressionBar({
       <Box
         ref={barRef}
         className={cx(S.bar, {
-          [S.barInvalid]: shownError != null && !isNested,
           [S.barExpanded]: isExpanded && hasGroups,
           [S.barNested]: isNested,
         })}
@@ -995,7 +996,7 @@ export function ExpressionBar({
                 token={token}
                 depth={parenDepths[index]}
                 isAndHidden={!hasOr}
-                hasError={index === shownErrorPosition}
+                hasError={shownErrorPositions.has(index)}
                 isFlashed={
                   token.type === "filter" &&
                   flashed.has(getFilterLabel(query, stageIndex, token.clause))
