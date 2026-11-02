@@ -402,8 +402,9 @@
       (let [tables (into {}
                          (map (juxt :id identity))
                          (mapcat (fn [id-chunk]
-                                   (t2/select [:model/Table :id :name :display_name :description]
-                                              :id [:in (vec id-chunk)]))
+                                   (entity-retrieval.db/member-rows :model/Table
+                                                                    [:id :name :display_name :description]
+                                                                    [:in :id (vec id-chunk)]))
                                  (partition-all hydration-query-chunk-size ids)))]
         (into {}
               (keep (fn [entity]

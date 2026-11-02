@@ -6,8 +6,8 @@
    [metabase-enterprise.osi-generation.generate :as generate]
    [metabase-enterprise.osi-generation.prompt :as prompt]
    [metabase-enterprise.osi-generation.settings :as settings]
-   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.self :as self]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)

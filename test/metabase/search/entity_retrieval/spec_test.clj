@@ -495,7 +495,19 @@
         (testing "and it reaches the projection"
           (is (= {:entity-type "measure" :name "Revenue" :description nil :table parent}
                  (spec/project :osi-context (merge (first hydrated)
-                                                   {:name "Revenue" :description nil}))))))))
+                                                   {:name "Revenue" :description nil})))))
+        (testing "authored table settings override raw metadata, including an explicitly cleared description"
+          (t2/insert! :model/TableUserSettings {:table_id        table-id
+                                                :display_name    "Customer invoices"
+                                                :description     "Curated description"
+                                                :description_set true})
+          (let [children [{:entity_type "measure", :entity_local_id measure-id, :table_id table-id}
+                          {:entity_type "segment", :entity_local_id segment-id, :table_id table-id}]
+                parent   {:name "invoices", :display-name "Customer invoices", :description "Curated description"}]
+            (is (= [parent parent] (mapv :table (spec/hydrate :osi-context children))))
+            (t2/update! :model/TableUserSettings :table_id table-id {:description nil})
+            (is (= [(assoc parent :description nil) (assoc parent :description nil)]
+                   (mapv :table (spec/hydrate :osi-context children)))))))))
   (testing "a child whose parent table is gone hydrates to nil rather than throwing"
     (is (= [nil]
            (mapv :table (spec/hydrate :osi-context
