@@ -1,12 +1,20 @@
 (ns metabase-enterprise.metabot.tools.sql-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
+   [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db :plugins))
 
 (deftest sandboxed-user-has-no-native-query-access-test
   (sandbox.tu/with-gtaps! {:gtaps {:checkins {}}}
@@ -17,3 +25,42 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You do not have permissions to run this query"
                           (qp/process-query (lib/native-query (mt/metadata-provider) "SELECT 1"))))
     (is (false? (sql.common/native-query-access? (mt/id))))))
+
+(defn- run-query-as-admin!
+  "Call Chat's `run_query` on query `q1` as crowberto, with `query` as `q1` and SQL execution turned on.
+   Return the tool's result, or `{:output <the text the model reads> :error {:class :code}}` on failure."
+  [query]
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                       metabot-sql-execution-enabled?   true]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
+          (let [memory  {:conversation-id conversation-id, :state {:queries {"q1" query}}}
+                entries (tools/->entries [#'tools/run-query-tool
+                                          #'tools/construct-notebook-query-tool
+                                          #'tools/create-sql-query-tool]
+                                         (atom memory) nil :internal)]
+            ((:fn (get entries "run_query")) {:query_id "q1"})))))))
+
+(deftest audit-db-sql-test
+  (audit-test/with-audit-db-restoration!
+    (mt/with-premium-features #{:audit-app}
+      (testing "the QP refuses SQL on the audit database even for an admin, so Metabot may not run SQL there"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (true? (sql.common/native-query-access? (mt/id))))
+          (is (false? (sql.common/native-query-access? audit/audit-db-id)))))
+      (testing "`run_query` refuses SQL on the audit database with a step the model can take"
+        (is (= {:class :recoverable, :code ::run-query/no-sql-permission}
+               (:error (run-query-as-admin! {:database audit/audit-db-id
+                                             :type     :native
+                                             :native   {:query "SELECT * FROM v_audit_log"}})))))
+      (testing "the QP's refusal of a table that is not an audit view reaches the model"
+        (mt/with-temp [:model/Table table {:db_id audit/audit-db-id}
+                       :model/Field _     {:table_id (:id table)}]
+          (let [result (run-query-as-admin! {:database audit/audit-db-id
+                                             :type     :query
+                                             :query    {:source-table (:id table)}})]
+            (is (= {:class :recoverable, :code ::sql.common/query-failed}
+                   (:error result)))
+            (is (re-find #"Audit queries are only allowed on audit views" (:output result)))))))))
