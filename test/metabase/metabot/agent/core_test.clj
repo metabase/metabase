@@ -459,6 +459,16 @@
               (is (= :terminal-error (:finish-reason (last parts))))
               (is (some #(= "Something went wrong." (:text %)) parts)))))))))
 
+(deftest a-jvm-error-or-an-interrupt-ends-the-turn-at-once-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [throwable [(StackOverflowError.) (InterruptedException.)]]
+      (testing (.getSimpleName (class throwable))
+        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query (fn [_] (throw throwable))]
+          (let [{:keys [llm-calls parts]} (run-sql-turn! :internal (mt/id))]
+            (is (= 1 llm-calls))
+            (is (= :terminal-error (:finish-reason (last parts))))
+            (is (some #(= "Something went wrong." (:text %)) parts))))))))
+
 (deftest the-turn-stops-when-the-client-leaves-during-a-tool-call-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [create-sql-query (mt/original-fn #'create-sql-query-tools/create-sql-query)]

@@ -83,6 +83,14 @@
         (fn [_ _] (throw (ex-info "SELECT * FROM secrets failed: clojure.lang.ExceptionInfo at line 1"
                                   {:password "hunter2"})))))
 
+(def ^:private jvm-failing-tool
+  (tool {:name "jvm_failure" :description "Overflows its stack or gets interrupted."
+         :args [:map {:closed true} [:kind [:enum "overflow" "interrupt"]]]}
+        (fn [{:keys [kind]} _]
+          (throw (case kind
+                   "overflow"  (StackOverflowError.)
+                   "interrupt" (InterruptedException.))))))
+
 (def ^:private bad-shape-tool
   (tool {:name "bad_shape" :description "Returns something that is not a result."
          :args [:map {:closed true}]}
@@ -119,7 +127,7 @@
 
 (def ^:private entries
   (tools/entries [happy-tool recoverable-tool unrecoverable-tool silent-unrecoverable-tool
-                  crashing-tool bad-shape-tool scoped-tool memory-tool multi-item-tool]))
+                  crashing-tool jvm-failing-tool bad-shape-tool scoped-tool memory-tool multi-item-tool]))
 
 (def ^:private all-tool-names
   (into #{"search" "read_resource"} (keys entries)))
@@ -397,16 +405,20 @@
     (is (= {:unknown-tool      :validation
             :invalid-arguments :validation
             :scope-denied      :unrecoverable
-            :internal          :unrecoverable}
+            :internal          :unrecoverable
+            :jvm-error         :unrecoverable
+            :interrupted       :unrecoverable}
            tools.runtime/runtime-codes))
     (testing "and every one of them is reachable through invoke"
       ;; The scoped case needs a ctx that grants nothing; the rest run under the default
       ;; unrestricted one.
-      (is (= #{:unknown-tool :invalid-arguments :scope-denied :internal}
+      (is (= #{:unknown-tool :invalid-arguments :scope-denied :internal :jvm-error :interrupted}
              (set (keep (fn [[tool-name args overrides]]
                           (get-in (tools.runtime/invoke entries (ctx overrides) tool-name args)
                                   [:error :code]))
                         [["nope" {}]
                          ["happy" {:m 1}]
                          ["scoped" {} {:user-scope #{}}]
-                         ["crash" {}]])))))))
+                         ["crash" {}]
+                         ["jvm_failure" {:kind "overflow"}]
+                         ["jvm_failure" {:kind "interrupt"}]])))))))

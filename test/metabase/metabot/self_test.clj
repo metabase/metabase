@@ -672,6 +672,18 @@
                             :error  {:class :unrecoverable :code :internal}}}
               (last result))))))
 
+(deftest ^:parallel escaped-jvm-errors-keep-their-code-test
+  (testing "a JVM error or an interrupt that escapes a tool is reported with its own code"
+    (doseq [[throwable code] [[(StackOverflowError.) :jvm-error]
+                              [(InterruptedException.) :interrupted]]]
+      (let [tools  {"fail" {:tool-name "fail"
+                            :doc       "Throws."
+                            :schema    [:=> [:cat [:map {:closed true}]] :any]
+                            :fn        (fn [_] (throw throwable))}}
+            chunks (test-util/parts->aisdk-chunks [{:type :tool-input :id "call-1" :function "fail" :arguments {}}])]
+        (is (=? {:result {:error {:class :unrecoverable :code code}}}
+                (last (into [] (self.core/tool-executor-xf tools) chunks))))))))
+
 (def ^:private failing-tool-exception
   "What `failing-tool` throws. An atom so the tool can be a real var, which is what `adapt` accepts."
   (atom nil))

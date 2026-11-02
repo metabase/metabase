@@ -15,9 +15,9 @@
 
   Codes come in two flavours. Tool code uses qualified keywords, so a code says which namespace
   raised it. The runtime's own codes are a closed, unqualified vocabulary, [[runtime-codes]].
-  Every unrecoverable failure ends the turn except `:internal`, the code of a failure no tool
-  declared: the agent loop lets a turn survive one of those, or none when its profile requires a
-  tool call."
+  Every unrecoverable failure ends the turn except `:internal`, the code of an ordinary exception no
+  tool declared: the agent loop lets a turn survive one of those, or none when its profile requires
+  a tool call."
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
@@ -49,7 +49,9 @@
   {:unknown-tool       :validation
    :invalid-arguments  :validation
    :scope-denied       :unrecoverable
-   :internal           :unrecoverable})
+   :internal           :unrecoverable
+   :jvm-error          :unrecoverable
+   :interrupted        :unrecoverable})
 
 ;;; ------------------------------------------------ Schemas -------------------------------------------------------
 
@@ -157,8 +159,8 @@
 (defn- unrecoverable-output
   "What the model is told about an unrecoverable failure, which never includes the failure's own text.
 
-  `:internal` is a failure no tool declared. The agent loop can carry on after one, so the model is
-  told to try another way rather than make the same call again.
+  `:internal` is an ordinary exception that no tool declared. The agent loop can carry on after one,
+  so the model is told to try another way rather than make the same call again.
 
   For any other code the user is shown the real error on another channel, so the model's job is to
   stop rather than to explain. The code is safe to include because it is ours, a closed vocabulary
