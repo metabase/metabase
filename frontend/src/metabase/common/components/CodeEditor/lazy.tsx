@@ -1,4 +1,6 @@
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
+
+import { lazyChunk } from "metabase/utils/lazy-chunk";
 
 import type { CodeEditorProps } from "./CodeEditor";
 
@@ -22,7 +24,7 @@ const importCodeEditor = () =>
  */
 export const loadCodeEditor = () => importCodeEditor();
 
-const LazyCodeEditor = lazy(() =>
+const LazyCodeEditor = lazyChunk(() =>
   importCodeEditor().then(({ CodeEditor }) => ({ default: CodeEditor })),
 );
 

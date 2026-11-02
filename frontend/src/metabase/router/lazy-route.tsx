@@ -1,8 +1,8 @@
 import type { ComponentType } from "react";
 
 import { redirect, reload } from "metabase/utils/dom";
+import { isChunkLoadError, retryChunkLoad } from "metabase/utils/lazy-chunk";
 import { delay } from "metabase/utils/promise";
-import { retry } from "metabase/utils/retry";
 
 import { getPendingNavigationHref } from "./navigator";
 import { hasUnsavedChanges } from "./route-leave-guards";
@@ -42,20 +42,6 @@ export type ChunkErrorRecovery = {
   recover: (error: unknown) => ChunkRecovery | null;
 };
 
-// A chunk is one request against one instance, so a retry is a fresh pick from
-// whatever is behind the load balancer. During a rolling deploy a pick lands on
-// a instance that still serves this build about as often as that build is still
-// running, so the chance that every attempt misses falls away quickly.
-//
-// Five attempts inside a second. The alternative is a full page load, which
-// costs more than a second on its own and throws away the state of the tab, so
-// a second spent avoiding it is cheap. It is also the cost paid for nothing once
-// a deploy is finished and no instance has the file, which is the more common
-// case, and that caps how long this is worth trying for.
-const MAX_RETRIES = 4;
-const RETRY_DELAY_MS = 150;
-const RETRY_JITTER_MS = 100;
-
 // A full page load only fixes this when it lands on a build that has the chunk.
 // Mid-rollout it can land on the same instance again, so the recovery is capped
 // rather than counted: a stamp, not a flag, so a genuine second deploy later in
@@ -68,47 +54,6 @@ const RELOAD_STAMP_KEY = "metabase-chunk-reload-at";
 // this was kept: an unload prompt answered with Stay, or a navigation the
 // browser refused.
 const RELOAD_GRACE_MS = 2000;
-
-const CHUNK_ERROR_PATTERN =
-  /loading chunk|loading css chunk|failed to fetch dynamically imported module|error loading dynamically imported module/i;
-
-/**
- * Whether the module failed to arrive, rather than failing once it did.
- *
- * Only a missing chunk is worth recovering from by loading the page again. A
- * module whose own top-level code throws would throw again just as reliably, and
- * reloading for it is an endless loop.
- */
-export function isChunkLoadError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    (error.name === "ChunkLoadError" || CHUNK_ERROR_PATTERN.test(error.message))
-  );
-}
-
-/**
- * Whether the request ran out of time rather than failing outright.
- *
- * The chunk loading runtime gives up on a request after
- * `output.chunkLoadTimeout`, two minutes by default, and names that failure
- * `timeout`. Every other failure comes back in milliseconds.
- */
-function isChunkLoadTimeout(error: unknown): boolean {
-  return error instanceof Error && "type" in error && error.type === "timeout";
-}
-
-/**
- * Whether asking for the chunk again is worth the wait.
- *
- * A retry is cheap against a request that failed at once, and it is a fresh
- * pick of instance, so it can land on one that still has the file. A request
- * that timed out has already spent two minutes against a connection that is
- * still there, so asking again costs another two before anything changes on
- * screen. Recover from it instead.
- */
-function isWorthRetrying(error: unknown): boolean {
-  return isChunkLoadError(error) && !isChunkLoadTimeout(error);
-}
 
 /**
  * Whether the browser says it has no network at all.
@@ -190,14 +135,7 @@ export function chunkErrorRecovery(
   Fallback: ChunkErrorFallback,
 ): ChunkErrorRecovery {
   return {
-    retry: (load) =>
-      retry(load, {
-        maxRetries: MAX_RETRIES,
-        shouldRetry: isWorthRetrying,
-        // Jittered, so that every tab that a deploy breaks at once does not ask
-        // again in step.
-        delayMs: () => RETRY_DELAY_MS + Math.random() * RETRY_JITTER_MS,
-      }),
+    retry: retryChunkLoad,
     recover: (error) =>
       isChunkLoadError(error) ? recoverFromChunkError(Fallback) : null,
   };
