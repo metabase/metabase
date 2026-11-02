@@ -105,7 +105,7 @@
         ;; `:event/user-credentials-revoked`, whose handler deletes the user's sessions outright (SEC-863). Going
         ;; through the model would leave nothing for `[:= :user.is_active true]` to reject, and this test would pass
         ;; with that predicate deleted.
-        (t2/update! (t2/table-name :model/User) user-id {:is_active false})
+        (t2/update! (t2/table-name :model/User) :id user-id {:is_active false})
         (is (t2/exists? (t2/table-name :model/Session) :id id)
             "the session row survives deactivation; it is the predicate that must reject it")
         (is (= #{} (listed-ids lp :user-id user-id)))

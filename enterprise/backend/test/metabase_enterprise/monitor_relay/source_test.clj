@@ -396,7 +396,7 @@
                    :model/Field    _       {:table_id (:id other), :name "c"}]
       (with-change-log
         (testing "a table rename sends the table, and the fields of that table only, with the new name"
-          (let [logged (logged-by #(t2/update! :model/Table (:id renamed) {:name "relay_after"}))
+          (let [logged (logged-by #(t2/update! :model/Table :id (:id renamed) {:name "relay_after"}))
                 state  (relay.source/change-state logged)]
             (is (=? [{:table_name "metabase_table", :row_id (:id renamed), :action "update"}] logged))
             (is (= [:field :table] (keys state)))
@@ -420,7 +420,7 @@
                      :field               {:rows [{:id (:id f1), :data_sensitivity "PII"}], :gone []}}
                     (relay.source/change-state logged)))))
         (testing "a user clearing the last value deletes the row: it is gone, and the field's own value is back"
-          (let [logged (logged-by #(t2/update! :model/FieldUserSettings (:id f1) {:data_sensitivity nil}))]
+          (let [logged (logged-by #(t2/update! :model/FieldUserSettings :field_id (:id f1) {:data_sensitivity nil}))]
             (is (=? {:field_user_settings {:rows [], :gone [(:id f1)]}
                      :field               {:rows [{:id (:id f1), :data_sensitivity "PUBLIC"}], :gone []}}
                     (relay.source/change-state logged)))))))
@@ -434,9 +434,9 @@
           (is (=? {:user                    {:rows [{:id (:id user), :email "relay-after@example.com"}], :gone []}
                    :pulse_channel_recipient {:rows [{:id (:id pcr), :email "relay-after@example.com"}], :gone []}}
                   (relay.source/change-state
-                   (logged-by #(t2/update! :model/User (:id user) {:email "relay-after@example.com"}))))))
+                   (logged-by #(t2/update! :model/User :id (:id user) {:email "relay-after@example.com"}))))))
         (testing "a deleted group is gone"
-          (let [logged (logged-by #(t2/delete! :model/PermissionsGroup (:id group)))]
+          (let [logged (logged-by #(t2/delete! :model/PermissionsGroup :id (:id group)))]
             (is (=? [{:table_name "permissions_group", :row_id (:id group), :action "delete"}] logged))
             (is (= {:group {:rows [], :gone [(:id group)]}}
                    (relay.source/change-state logged)))))
@@ -448,7 +448,7 @@
   (when (app-db?)
     (mt/with-temp [:model/PermissionsGroup group {}]
       (with-change-log
-        (let [[entry] (logged-by #(t2/update! :model/PermissionsGroup (:id group) {:name "relay-renamed"}))
+        (let [[entry] (logged-by #(t2/update! :model/PermissionsGroup :id (:id group) {:name "relay-renamed"}))
               page    (relay.source/page :change {:next_from (dec (:id entry))} false 100)]
           (testing "a change page carries its log rows, its sequence value, and the state rows they touch"
             (is (=? {:rows     [{:id (:id entry), :table_name "permissions_group", :row_id (:id group)

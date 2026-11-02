@@ -282,6 +282,18 @@
           (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
           (is (= "metabase://database/<numeric id>/tables" (recovery-uri text))))))))
 
+(deftest both-surfaces-name-the-same-ids-test
+  (testing "for every pipeline code, the Agent API hint names an id exactly when Metabot's payload carries it"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [data {:table-id 424242 :source-table 424242 :database-id (mt/id)}]
+        (doseq [code  (pipeline-codes)
+                :let  [{:keys [table-id database-id]} (pipeline/payload code (ex-info "" (assoc data :error code)))
+                       hint (v1-hints/recovery-hint (assoc data :error code))]
+                :when hint]
+          (testing code
+            (is (= (some? table-id) (str/includes? hint "metabase://table/424242/")))
+            (is (= (some? database-id) (str/includes? hint (str "metabase://database/" (mt/id) "/"))))))))))
+
 (deftest ^:parallel structural-paths-payload-test
   (doseq [[paths expected-class] [["stages[0].filters: invalid type" :recoverable]
                                   [nil :unrecoverable]

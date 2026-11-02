@@ -10,9 +10,16 @@
    Keep every sentence inside v1's own vocabulary — `read_resource`, `metabase://` URIs,
    portable FKs and `portable_entity_id`. An error key with no entry here yields no sentence,
    which is the intended failure mode: a missing hint reads as terse, a wrong one sends the
-   agent at a tool it does not have."
+   agent at a tool it does not have.
+
+   The hints for an unknown or ambiguous table, an unknown column and an ambiguous foreign key name
+   the real id when the `ex-data` carries one. For example, such a hint names
+   `metabase://database/1/tables` instead of `metabase://database/<numeric id>/tables`. A database id
+   appears only when the current user can read that database."
   (:require
-   [metabase.agent-lib.representations :as repr]))
+   [clojure.string :as str]
+   [metabase.agent-lib.representations :as repr]
+   [metabase.metabot.tools.recoverable.pipeline :as recoverable.pipeline]))
 
 (set! *warn-on-reflection* true)
 
@@ -50,8 +57,11 @@
     (when (seq paths)
       (format "Invalid at %s. Fix the named paths." paths))))
 
-(defn recovery-hint
-  "The v1 recovery sentence for an agent error's `ex-data`, or nil when it has none."
+(defn- placeholder-hint
+  "The v1 recovery sentence for an agent error's `ex-data`, or nil.
+
+  Some hints keep a `<numeric id>` placeholder. [[recovery-hint]] fills it only when
+  [[recoverable.pipeline/error-ids]] reads a `pos-int?` id for the code from `data`."
   [{:keys [error entity-type entity-id humanized] :as data}]
   (case error
     :invalid-representations-query
@@ -110,3 +120,24 @@
     "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an entity_id string."
 
     nil))
+
+(defn- hint-id
+  "The id that the hint for `data` names, or nil when its code names none or the id is not a `pos-int?`."
+  [{:keys [error] :as data}]
+  (let [{:keys [table-id database-id]} (recoverable.pipeline/error-ids error data)]
+    (some #(when (pos-int? %) %) [table-id database-id])))
+
+(defn- with-id
+  "`hint` with its `<numeric id>` replaced by `id`, or unchanged when either is nil."
+  [hint id]
+  (cond-> hint
+    (and hint id) (str/replace "<numeric id>" (str id))))
+
+(defn recovery-hint
+  "The v1 recovery sentence for an agent error's `ex-data`, or nil when it has none.
+
+  For example, `{:error :unknown-field :table-id 5}` gives a sentence that names
+  `metabase://table/5/fields`, and `{:error :unknown-field}` one that names
+  `metabase://table/<numeric id>/fields`."
+  [data]
+  (with-id (placeholder-hint data) (hint-id data)))

@@ -344,7 +344,7 @@
                                                          :pulse_channel_id pc-id}]
             (notification.tu/with-javascript-visualization-stub
               (pulse.tu/with-captured-channel-send-messages!
-                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))
+                (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))
             (let [run (t2/select-one :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
               (is (some? run) "task run was created")
               (is (= :subscription (:run_type run)))
@@ -372,7 +372,7 @@
                                                           (throw (ex-info "second channel failed" {}))))
                           channel/send!               (constantly nil)]
               (is (thrown? clojure.lang.ExceptionInfo
-                           (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))))
+                           (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))))
           (let [run (t2/select-one :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
             (is (= {:success 1 :failed 1}
                    (frequencies (t2/select-fn-vec :status :model/TaskHistory :run_id (:id run) :task "notification-send"))))

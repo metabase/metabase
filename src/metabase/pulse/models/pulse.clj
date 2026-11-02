@@ -39,6 +39,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Pulse [_model] :pulse)

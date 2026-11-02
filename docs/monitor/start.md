@@ -47,6 +47,7 @@ The AI auditing tabs are only available on [Pro and Enterprise plans](https://ww
 - **[Conversations](../ai/usage-auditing.md#conversations)**: Review people's conversations with Metabot.
 - **MCP analytics**: See usage of the [Metabase MCP server](../ai/mcp.md).
 - **[CLI analytics](./cli-analytics.md)**: See which operations the [Metabase CLI](../installation-and-operation/metabase-cli.md) runs against your Metabase.
+- **[Data app analytics](./data-app-analytics.md)**: See the questions and actions that your [data apps](../data-apps/start.md) run.
 
 ## Permissions for Monitor
 
@@ -54,6 +55,6 @@ Who can see each Monitor page depends on their group:
 
 - **Admin group** can view every page.
 - **[Data Analysts](../people-and-groups/managing.md#data-analysts) group** can view Dependency diagnostics.\*
-- **Groups with [Monitoring access](../permissions/application.md#monitoring-access)** can view every page except Dependency diagnostics, Alerts management, and API key usage.\*
+- **Groups with [Monitoring access](../permissions/application.md#monitoring-access)** can view every page except Dependency diagnostics, Alerts management, Session management, API key usage, and the [AI auditing](#ai-auditing) pages.\*
 
 \* On OSS, only admins can view Monitor. The Data Analysts group and the Monitoring access permission are only available on [Pro and Enterprise plans](https://www.metabase.com/pricing).

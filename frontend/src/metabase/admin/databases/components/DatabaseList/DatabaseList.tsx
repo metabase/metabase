@@ -122,7 +122,7 @@ export const DatabaseList = ({
                 })}
               >
                 {isAddingSampleDatabase ? (
-                  <span className={cx(CS.textLight, CS.noDecoration)}>
+                  <span className={cx(CS.textSecondary, CS.noDecoration)}>
                     {t`Restoring the sample database...`}
                   </span>
                 ) : (

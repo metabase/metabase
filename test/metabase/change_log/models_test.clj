@@ -60,23 +60,23 @@
                                                                                      :name          "f"
                                                                                      :base_type     :type/Text
                                                                                      :database_type "TEXT"}))
-                                   (t2/update! :model/Field @id {:name "g"})
-                                   (t2/delete! :model/Field @id)))]
+                                   (t2/update! :model/Field :id @id {:name "g"})
+                                   (t2/delete! :model/Field :id @id)))]
           (is (= [["metabase_field" @id "insert"] ["metabase_field" @id "update"] ["metabase_field" @id "delete"]]
                  rows))))
       (testing "an update logs the rows it matches, also when before-update leaves them as they were and Toucan sends no
                 UPDATE: a reader reads them again"
         (is (= [["metabase_table" (:id t) "update"]]
-               (logged-by #(t2/update! :model/Table (:id t) {:name (:name t)})))))
+               (logged-by #(t2/update! :model/Table :id (:id t) {:name (:name t)})))))
       (testing "an update on a model without a before-update logs the rows it matches, also when its UPDATE sets the
                 value a row holds: a reader reads it again"
         (mt/with-temp [:model/Pulse     pulse {}
                        :model/Card      card  {:database_id (:id db)}
                        :model/PulseCard pc    {:pulse_id (:id pulse), :card_id (:id card), :include_csv false}]
           (is (= [["pulse_card" (:id pc) "update"]]
-                 (logged-by #(t2/update! :model/PulseCard (:id pc) {:include_csv false}))))))
+                 (logged-by #(t2/update! :model/PulseCard :id (:id pc) {:include_csv false}))))))
       (testing "an update that matches no row logs nothing"
-        (is (= [] (logged-by #(t2/update! :model/Table Integer/MAX_VALUE {:name "none"})))))
+        (is (= [] (logged-by #(t2/update! :model/Table :id Integer/MAX_VALUE {:name "none"})))))
       (testing "an insert that returns no keys logs the rows it inserts, and returns its count"
         (let [names #{"f1" "f2"}
               n     (atom nil)
@@ -102,8 +102,8 @@
         (let [card (atom nil)
               rows (logged-by #(do (reset! card (t2/insert-returning-instance! :model/Card
                                                                                (mt/with-temp-defaults :model/Card)))
-                                   (t2/update! :model/Card (:id @card) {:name "renamed"})
-                                   (t2/delete! :model/Card (:id @card))))]
+                                   (t2/update! :model/Card :id (:id @card) {:name "renamed"})
+                                   (t2/delete! :model/Card :id (:id @card))))]
           (is (= (for [action ["insert" "update" "delete"]] ["report_card" (:id @card) action])
                  rows))
           (testing "timestamped: the update set updated_at"
@@ -117,7 +117,7 @@
                      :model/Field    f1 {:table_id (:id t), :base_type :type/Text, :effective_type :type/Text}
                      :model/Field    f2 {:table_id (:id t), :base_type :type/Text, :effective_type :type/Text}]
         ;; before-update moves f2's effective_type back to its base_type, so the two rows get different changes
-        (t2/update! :metabase_field (:id f2) {:effective_type "type/Integer"})
+        (t2/update! :metabase_field :id (:id f2) {:effective_type "type/Integer"})
         (is (= [["metabase_field" (:id f1) "update"] ["metabase_field" (:id f2) "update"]]
                (sort (logged-by #(t2/update! :model/Field {:table_id (:id t)} {:description "x"})))))))))
 
@@ -127,11 +127,11 @@
       (testing "a write rolled back takes its log row with it"
         (is (= [] (logged-by #(try
                                 (t2/with-transaction [_conn]
-                                  (t2/update! :model/PermissionsGroup (:id group) {:name "rolled back"})
+                                  (t2/update! :model/PermissionsGroup :id (:id group) {:name "rolled back"})
                                   (throw (ex-info "boom" {})))
                                 (catch Exception _))))))
       (testing "a write that bypasses the model is not logged"
-        (is (= [] (logged-by #(t2/update! :permissions_group (:id group) {:name "raw"}))))))))
+        (is (= [] (logged-by #(t2/update! :permissions_group :id (:id group) {:name "raw"}))))))))
 
 (deftest raw-write-test
   (testing "the writes that bypass the models log their rows themselves"
@@ -150,7 +150,7 @@
         (testing "the classifier's sensitivity reset, of a table and of a database"
           (is (= [["metabase_field" (:id f) "update"]]
                  (logged-by #(sync.db/reset-classifier-data-sensitivity-for-table! (:id t)))))
-          (t2/update! :metabase_field (:id f) {:data_sensitivity "PII"})
+          (t2/update! :metabase_field :id (:id f) {:data_sensitivity "PII"})
           (is (= [["metabase_field" (:id f) "update"]]
                  (logged-by #(sync.db/reset-classifier-data-sensitivity-for-database! (:id db))))))
         (testing "every tenant deactivated in one update"
@@ -220,7 +220,7 @@
                    :model/Field             fk      {:table_id (:id other-t), :fk_target_field_id (:id f)}]
       (testing "a delete logs the rows the database deletes through ON DELETE CASCADE, at any depth, and the rows it
                 updates through ON DELETE SET NULL"
-        (let [logged (set (logged-by #(t2/delete! :model/Database (:id db))))]
+        (let [logged (set (logged-by #(t2/delete! :model/Database :id (:id db))))]
           (is (contains? logged ["metabase_database" (:id db) "delete"]))
           (is (contains? logged ["metabase_table" (:id t) "delete"]))
           (is (contains? logged ["metabase_field" (:id f) "delete"]))
@@ -229,8 +229,8 @@
           (is (contains? logged ["metabase_field" (:id fk) "update"]))
           (is (not-any? #(= (:id other-t) (second %)) (filter #(= "metabase_table" (first %)) logged)))
           (testing "and the database did as the log says"
-            (is (nil? (t2/select-one :model/Field (:id f))))
-            (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field (:id fk))))))))))
+            (is (nil? (t2/select-one :model/Field :id (:id f))))
+            (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field :id (:id fk))))))))))
 
 (deftest cascade-from-unlogged-model-test
   (is (not (isa? :model/DashboardCard :hook/change-log)))
@@ -243,8 +243,8 @@
       (testing "removing a card from a dashboard, a model that is not logged, logs the subscription's card that the
                 database deletes with it"
         (is (= [["pulse_card" (:id pc) "delete"]]
-               (logged-by #(t2/delete! :model/DashboardCard (:id dc)))))
-        (is (nil? (t2/select-one :model/PulseCard (:id pc))))))))
+               (logged-by #(t2/delete! :model/DashboardCard :id (:id dc)))))
+        (is (nil? (t2/select-one :model/PulseCard :id (:id pc))))))))
 
 (defn- call-counts
   "The app-DB calls of an insert, an update and a delete of a permissions group."
@@ -254,10 +254,10 @@
                (reset! id (t2/insert-returning-pk! :model/PermissionsGroup {:name (str (random-uuid))}))
                (calls))
      :update (t2/with-call-count [calls]
-               (t2/update! :model/PermissionsGroup @id {:name (str (random-uuid))})
+               (t2/update! :model/PermissionsGroup :id @id {:name (str (random-uuid))})
                (calls))
      :delete (t2/with-call-count [calls]
-               (t2/delete! :model/PermissionsGroup @id)
+               (t2/delete! :model/PermissionsGroup :id @id)
                (calls))}))
 
 (deftest call-count-test
@@ -290,12 +290,12 @@
       (mt/with-premium-features licensed
         (mt/with-temporary-setting-values [change-log-enabled false]
           (is (false? (change-log/enabled?)))
-          (is (= [] (logged-by #(t2/update! :model/PermissionsGroup (:id group) {:name "off"})))))))
+          (is (= [] (logged-by #(t2/update! :model/PermissionsGroup :id (:id group) {:name "off"})))))))
     (testing "without the licence's feature, nothing is logged"
       (mt/with-premium-features #{}
         (mt/with-temporary-setting-values [change-log-enabled true]
           (is (false? (change-log/enabled?)))
-          (is (= [] (logged-by #(t2/update! :model/PermissionsGroup (:id group) {:name "unlicensed"})))))))))
+          (is (= [] (logged-by #(t2/update! :model/PermissionsGroup :id (:id group) {:name "unlicensed"})))))))))
 
 (defn- new-process!
   "Forgets what this process saw of logging, as a process that just started."

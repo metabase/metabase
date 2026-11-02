@@ -373,7 +373,7 @@
       (perms/set-database-permission! (perms-group/all-users) builder-db :perms/create-queries :query-builder)
       (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
       (mt/with-current-user (mt/user->id :rasta)
-        (testing ":sql forbids the model from answering in text, so the loop stops on the denial"
+        (testing ":sql has no notebook builder to fall back to, so the loop stops on the denial"
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql builder-db)]
             (is (= 1 llm-calls)
                 "one call, not the profile's 20 iterations")
@@ -384,19 +384,20 @@
                 "the refusal is emitted as assistant text — a tool result is not rendered to the user")
             (is (some #(= :data (:type %)) parts)
                 "state data part still closes the turn")))
-        (testing (str ":internal stops on the same denial. The class decides, not the profile: only "
-                      "the user can grant this permission, so there is nothing for the agent to do "
-                      "with the turn. This used to continue, and the model paraphrased the refusal "
-                      "in its own words — nicer wording, bought with an extra LLM call, a profile "
-                      "exception, and a model that might have said something else entirely.")
+        (testing (str ":internal has the notebook builder, so the agent is told to build the question "
+                      "there and the turn continues")
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal builder-db)]
-            (is (= 1 llm-calls)
-                "one call, where the profile gate used to allow a second")
-            (is (= :terminal-error (:finish-reason (last parts))))
-            (is (some #(and (= :text (:type %))
-                            (str/includes? (:text %) "do not have permission"))
-                      parts)
-                "the tool's own `:user-message`, which is authored and specific")))
+            (is (= 2 llm-calls))
+            (is (=? {:type   :tool-output
+                     :result {:error  {:class :recoverable}
+                              :output #"(?s).*Build the question with `construct_notebook_query`.*"}}
+                    (some #(when (= :tool-output (:type %)) %) parts)))
+            (is (not= :terminal-error (:finish-reason (last parts))))))
+        (testing ":internal-sql is :internal without the notebook builder, so the turn stops on the denial"
+          (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+            (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal-sql builder-db)]
+              (is (= 1 llm-calls))
+              (is (= :terminal-error (:finish-reason (last parts)))))))
         (testing "a database the user cannot read at all stops the turn the same way"
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql unreadable-db)]
             (is (= 1 llm-calls)
@@ -410,7 +411,8 @@
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
 
 (deftest blank-replacement-after-edit-test
-  (mt/as-admin
+  ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
+  (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
       (mt/with-temporary-setting-values [llm-providers llm.tu/default-connections
                                          llm-metabot-provider test-provider]
@@ -473,11 +475,10 @@
                                                       (reset! captured llm-opts)
                                                       (mut/mock-llm-response
                                                        [{:type :text :text "Hello"}]))]
-            (into [] (run-agent-loop
-                      {:messages   [{:role :user :content "Hi"}]
-                       :state      {}
-                       :profile-id :sql
-                       :context    {}}))
+            (run-agent-loop! {:messages   [{:role :user :content "Hi"}]
+                              :state      {}
+                              :profile-id :sql
+                              :context    {}})
             (is (= {:tool-choice "required"} @captured)))))
       (testing "runs agent loop with tool execution"
         (let [call-count (atom 0)]
@@ -992,7 +993,7 @@
                                           claude/claude
                                           (fn [opts]
                                             (if (= 1 (count (swap! requests conj (claude/claude-request-body opts))))
-                                              (do (t2/update! :model/Dashboard dashboard-id {:name "Ops updated"})
+                                              (do (t2/update! :model/Dashboard :id dashboard-id {:name "Ops updated"})
                                                   (metabot.settings/metabot-chat-system-prompt! "Use American spelling.")
                                                   (reset! semantic-search false)
                                                   (mut/mock-llm-response [{:type      :tool-input
@@ -1000,12 +1001,11 @@
                                                                            :function  "load_skill"
                                                                            :arguments {:ids ["read-resource"]}}]))
                                               (mut/mock-llm-response [{:type :text :text "Done."}])))]
-                (into [] (run-agent-loop
-                          {:messages   [{:role :user :content "Help me with this dashboard."}]
-                           :state      {}
-                           :profile-id :internal
-                           :context    {:current_user_time "2026-10-05T12:00:00Z"
-                                        :user_is_viewing   [{:type "dashboard" :id dashboard-id}]}}))
+                (run-agent-loop! {:messages   [{:role :user :content "Help me with this dashboard."}]
+                                  :state      {}
+                                  :profile-id :internal
+                                  :context    {:current_user_time "2026-10-05T12:00:00Z"
+                                               :user_is_viewing   [{:type "dashboard" :id dashboard-id}]}})
                 (let [[{system-1 :system tools-1 :tools messages-1 :messages}
                        {system-2 :system tools-2 :tools messages-2 :messages}] @requests]
                   (is (str/includes? (pr-str system-1) "Use British spelling."))
@@ -1520,8 +1520,12 @@
                                   :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000002"}})
                 (let [events (snowplow-test/pop-event-data-and-user-id!)
                       tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
-                  (is (=? [{:data {"event"  "agent_used_tool"
-                                   "result" "error"}}]
+                  (is (=? [{:data {"event"         "agent_used_tool"
+                                   "result"        "error"
+                                   "event_details" {"tool_name"   "search"
+                                                    "step"        1
+                                                    "error_class" "validation"
+                                                    "error_code"  "invalid-arguments"}}}]
                           tool-events)))))))))))
 
 (deftest token-usage-snowplow-test

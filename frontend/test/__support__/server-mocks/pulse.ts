@@ -5,6 +5,7 @@ import type {
   ChannelApiResponse,
   DashboardId,
   DashboardSubscription,
+  UnsubscribeResponse,
 } from "metabase-types/api";
 
 export const setupNotificationChannelsEndpoints = (
@@ -26,4 +27,10 @@ export const setupListSubscriptionsEndpoint = (
 
 export const setupNotificationChannelsEndpointError = () => {
   fetchMock.get("path:/api/pulse/form_input", 500);
+};
+
+export const setupUnsubscribeFromPulseEndpoint = (
+  response: UnsubscribeResponse,
+) => {
+  fetchMock.post("path:/api/pulse/unsubscribe", response);
 };

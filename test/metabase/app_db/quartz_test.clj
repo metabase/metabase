@@ -179,6 +179,7 @@
     "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
     "metabase_enterprise.dependencies.task.result_metadata.UpdateResultMetadata"
     "metabase_enterprise.entity_retrieval.task.sync.OsiAiContextSync"
+    "metabase_enterprise.impersonation.task.query_cache_cleanup.ImpersonationQueryCacheCleanup"
     "metabase_enterprise.mcp.task.mcp_usage_trimmer.McpUsageTrimmer"
     "metabase_enterprise.metabot.task.ai_usage_trimmer.AiUsageTrimmer"
     "metabase_enterprise.monitor_relay.task.relay.MonitorRelay"

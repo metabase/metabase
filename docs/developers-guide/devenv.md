@@ -466,6 +466,10 @@ mage lint-migrations
 # Load every namespace we ship, failing on reflection warnings
 clojure -M:ee:drivers:load-namespaces
 
+# Run Eastwood on the source, then on the tests
+clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
+clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+
 # Run the namespace checker
 clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
 ```

@@ -863,6 +863,21 @@
           (is (= :filter (:mode (ex-data e))))
           (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
 
+(deftest aggregation-without-aggregation-function-explained-test
+  (testing "an aggregation with no aggregation function in it is explained, with how to fix it"
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["+" {} 1 2]]}]})]
+          (is (= :query-not-runnable (:error (ex-data e))))
+          (is (str/ends-with? (ex-message e)
+                              (str ": Aggregations should contain at least one aggregation function. Wrap the "
+                                   "calculation in one, such as `sum` or `count`, or move a per-row calculation "
+                                   "to `expressions:`."))))))))
+
 (deftest editor-rejection-between-message-test
   (with-mp-and-stubs!
     (fn []
@@ -2772,7 +2787,7 @@
                    :model/Card {two-stage-id :id, two-stage-eid :entity_id}
                    {:name "Two-stage count" :type :metric
                     :dataset_query (-> (card-query c1-id) lib/append-stage (lib/aggregate (lib/count)))}]
-      (t2/update! :model/Card c1-id {:dataset_query (table-query :products)})
+      (t2/update! :model/Card :id c1-id {:dataset_query (table-query :products)})
       (mt/with-current-user (mt/user->id :crowberto)
         (let [mp      (mt/metadata-provider)
               rows    (fn [source metric-eid]
@@ -2811,7 +2826,7 @@
                     :type          :metric
                     :dataset_query (lib/aggregate (table-query :products) (lib/count))}]
       ;; Straight to the table: the model's `:in` transform would not store a blank query.
-      (t2/update! (t2/table-name :model/Card) metric-id {:dataset_query "{}"})
+      (t2/update! (t2/table-name :model/Card) :id metric-id {:dataset_query "{}"})
       (mt/with-current-user (mt/user->id :crowberto)
         (let [mp    (lib-be/application-database-metadata-provider (mt/id))
               query (assoc-in (lib/query mp (lib.metadata/table mp (mt/id :products)))

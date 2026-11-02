@@ -141,7 +141,7 @@
             ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
             ;; revisions for an instance, so let's clear everything to make it easier to test
             (t2/delete! :model/Revision :model "Card" :model_id (:id card))
-            (t2/update! :model/Card (:id card) changes)
+            (t2/update! :model/Card :id (:id card) changes)
             (create-card-revision! (:id card) false)
             (testing (format "we should track when %s changes" col)
               (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
@@ -178,7 +178,7 @@
       [:model/Card card card-info]
       (let [before  (select-keys card [:result_metadata])
             changes (update before :result_metadata drop-last)]
-        (t2/update! :model/Card (:id card) changes)
+        (t2/update! :model/Card :id (:id card) changes)
         (create-card-revision! (:id card) false)
         (testing "we should track when :result_metadata changes on model"
           (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
