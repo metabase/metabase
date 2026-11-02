@@ -3327,6 +3327,23 @@
           (is (=? {:agent-error? true :error :query-not-runnable :status-code 400} (ex-data e)))
           (is (str/includes? (ex-message e) "could not be resolved")))))))
 
+(deftest nested-expression-unresolved-reference-explained-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [q {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "expressions"  {"Broken" ["+" {}
+                                                      ["length" {}
+                                                       ["replace" {}
+                                                        ["substring" {} ["field" {"join-alias" "Nope"} "NAME"] 1 10]
+                                                        "-" ""]]
+                                                      1]}}]}
+            e (editor-rejection q)]
+        (is (=? {:agent-error? true, :error :query-not-runnable} (ex-data e)))
+        (is (re-find #"Failing paths: [^;]+could not be resolved" (ex-message e)))))))
+
 (deftest path-ref-to-dropped-join-column-rejected-before-sql-test
   (testing "a path ref to a column the grouped join drops fails in repair, not in the database"
     (with-mp-and-stubs!

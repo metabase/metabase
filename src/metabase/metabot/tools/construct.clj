@@ -958,11 +958,11 @@
 
 (defn- problem-rank
   "Return where `error` sorts among the listed problems: 0 when [[not-runnable-problem]] states its cause,
-  1 for Malli's own message, and 2 when it can only offer the usual cause of a missing key."
+  1 for Malli's own message, and 2 for a missing `base-type`."
   [error]
   (cond
     (and (= :malli.core/missing-key (:type error))
-         (contains? #{:lib/uuid :base-type} (peek (:in error)))) 2
+         (= :base-type (peek (:in error))))                       2
     (not-runnable-problem error)                                 0
     :else                                                        1))
 
