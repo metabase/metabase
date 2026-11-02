@@ -65,11 +65,15 @@ export function getStatsBase(
     return findStatsColumn(newQuery, stageIndex, column);
   }
 
-  // A filter on a summarized stage can use the summary columns, which are in
-  // the next stage, or the columns from before the summary.
+  // A filter on a summarized stage can use the columns from before the
+  // summary, or the summary columns, which are in the next stage. The columns
+  // from before the summary go first: for a breakout column, like State in
+  // "Count by State", the stats then count the rows of the data, not the rows
+  // of the result, which have one row for each state. Aggregation columns,
+  // like Count, exist only after the summary.
   return (
-    findStatsColumn(Lib.appendStage(newQuery), stageIndex + 1, column) ??
-    findStatsColumn(removeSummary(newQuery, stageIndex), stageIndex, column)
+    findStatsColumn(removeSummary(newQuery, stageIndex), stageIndex, column) ??
+    findStatsColumn(Lib.appendStage(newQuery), stageIndex + 1, column)
   );
 }
 
@@ -243,58 +247,6 @@ export function getSliderRange(min: number, max: number, step: number) {
   const start = roundToStep(min, step, Math.floor);
   const end = roundToStep(max, step, Math.ceil);
   return { min: start, max: end > start ? end : start + step };
-}
-
-export interface MatchFilterParts {
-  operator: Lib.NumberFilterOperator;
-  values: number[];
-}
-
-/**
- * The filter that the slider makes now, or null when it does not filter yet.
- * A range with one end only is a filter on that end.
- */
-export function getMatchFilterParts(
-  operator: Lib.NumberFilterOperator,
-  values: (number | null)[],
-): MatchFilterParts | null {
-  if (operator === "between") {
-    const [start = null, end = null] = values;
-    if (start != null && end != null) {
-      return { operator, values: [start, end] };
-    }
-    if (start != null) {
-      return { operator: ">=", values: [start] };
-    }
-    if (end != null) {
-      return { operator: "<=", values: [end] };
-    }
-    return null;
-  }
-  const numbers = values.filter((value) => value != null);
-  return numbers.length > 0 ? { operator, values: numbers } : null;
-}
-
-/** The count of the rows that the filter of the slider keeps. */
-export function getMatchCountQuery(
-  { query, stageIndex, column }: StatsBase,
-  { operator, values }: MatchFilterParts,
-): Lib.Query | null {
-  const newQuery = Lib.filter(
-    query,
-    stageIndex,
-    Lib.numberFilterClause({ operator, column, values }),
-  );
-  return aggregate(newQuery, stageIndex, null, "count");
-}
-
-/** A rounded count that looks like an estimate: 2 significant digits. */
-export function roundEstimate(count: number) {
-  if (count < 100) {
-    return Math.round(count);
-  }
-  const magnitude = 10 ** (Math.floor(Math.log10(count)) - 1);
-  return Math.round(count / magnitude) * magnitude;
 }
 
 /** The row count of each value of the column, with the most common first. */

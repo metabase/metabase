@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import S from "./UsStatesMap.module.css";
 
@@ -63,6 +63,9 @@ export function RegionMap({
     };
   }, [regions, getProjection, width]);
 
+  const [hoveredCode, setHoveredCode] = useState<string | null>(null);
+  const hoveredPath = paths.find(({ code }) => code === hoveredCode);
+
   const selectedValuesSet = new Set(selectedValues);
   // The region with the largest share gets the darkest shade. The square root
   // keeps small shares visible next to one large share.
@@ -95,11 +98,20 @@ export function RegionMap({
             data-available={value != null}
             data-selected={value != null && selectedValuesSet.has(value)}
             onClick={value != null ? () => onToggle(value) : undefined}
+            onMouseEnter={
+              value != null ? () => setHoveredCode(code) : undefined
+            }
+            onMouseLeave={() => setHoveredCode(null)}
           >
             <title>{name}</title>
           </path>
         );
       })}
+      {/* SVG paints in document order, so the outline of the hovered region
+          goes last. Otherwise the regions next to it cover its border. */}
+      {hoveredPath != null && (
+        <path className={S.hoverOutline} d={hoveredPath.d} />
+      )}
     </svg>
   );
 }

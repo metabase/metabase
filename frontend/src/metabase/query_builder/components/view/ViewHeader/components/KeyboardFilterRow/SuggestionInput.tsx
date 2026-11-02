@@ -38,6 +38,8 @@ interface SuggestionInputProps {
   /** Number of option columns in the list. */
   columns?: number;
   dropdownWidth?: number;
+  /** The height of a dropdown with an aside panel, in place of the default. */
+  dropdownHeight?: number;
   /** Max height of the scrolling list of options, like "20rem". */
   optionsMaxHeight?: string;
   /** Content above the options, like presets or a map. */
@@ -77,6 +79,7 @@ export function SuggestionInput({
   isTiles = false,
   columns = 1,
   dropdownWidth = DEFAULT_DROPDOWN_WIDTH,
+  dropdownHeight,
   optionsMaxHeight,
   header,
   footer,
@@ -294,7 +297,10 @@ export function SuggestionInput({
       </Combobox.Target>
       {hasSuggestions && (
         <Combobox.Dropdown className={cx({ [S.dropdownWithAside]: aside })}>
-          <div className={S.dropdownMain}>
+          <div
+            className={S.dropdownMain}
+            style={aside != null ? { height: dropdownHeight } : undefined}
+          >
             {header != null && (
               // Clicks in the header keep the focus in the input, except
               // clicks in a text input of the header.

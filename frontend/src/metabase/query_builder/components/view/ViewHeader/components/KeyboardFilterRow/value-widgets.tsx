@@ -21,8 +21,9 @@ import S from "./KeyboardFilterRow.module.css";
 import type { DraftOperator, SuggestionGroup } from "./types";
 
 const TILES_DROPDOWN_WIDTH = 360;
-const STATES_DROPDOWN_WIDTH = 720;
-const STATES_MAP_WIDTH = 400;
+const STATES_DROPDOWN_WIDTH = 680;
+const STATES_DROPDOWN_HEIGHT = 340;
+const STATES_MAP_WIDTH = 425;
 const COUNTRIES_LIST_WIDTH = 340;
 const MIN_WORLD_MAP_WIDTH = 380;
 const MAX_WORLD_MAP_WIDTH = 650;
@@ -42,6 +43,8 @@ export interface ValueWidget {
   isTiles: boolean;
   columns: number;
   dropdownWidth?: number;
+  /** The height of a dropdown with an aside panel. */
+  dropdownHeight?: number;
 }
 
 interface UseValueWidgetOpts {
@@ -200,6 +203,7 @@ export function useValueWidget({
       isTiles: false,
       columns: 1,
       dropdownWidth: STATES_DROPDOWN_WIDTH,
+      dropdownHeight: STATES_DROPDOWN_HEIGHT,
     };
   }
 

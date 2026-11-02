@@ -1,6 +1,16 @@
 .map {
   display: block;
   margin-inline: auto;
+  overflow: visible;
+}
+
+/* The border of the region under the pointer, on top of all regions. */
+.hoverOutline {
+  fill: none;
+  stroke: var(--mb-color-text-secondary);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  pointer-events: none;
 }
 
 .state {
@@ -33,10 +43,6 @@
       var(--mb-color-core-summarize) calc(12% + var(--state-shade) * 0.68),
       var(--mb-color-background_page-primary)
     );
-
-    &:hover {
-      stroke: var(--mb-color-core-summarize);
-    }
   }
 
   &[data-selected="true"],

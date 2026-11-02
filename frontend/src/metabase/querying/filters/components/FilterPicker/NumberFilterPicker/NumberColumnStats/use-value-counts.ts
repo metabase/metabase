@@ -5,9 +5,7 @@ import type * as Lib from "metabase-lib";
 
 import { useGetPrototypeStatsQueryQuery } from "./api";
 import {
-  MIN_SAMPLE_MATCHES,
   MIN_SAMPLE_ROWS,
-  type NumberMatchCount,
   useStableJsQuery,
   useStatsSource,
 } from "./use-number-column-stats";
@@ -33,21 +31,16 @@ export type ValueCounts =
       type: "counts";
       /** The share of the rows with each value, from 0 to 1. */
       getShare: (value: string) => number;
-      /**
-       * The rows that have one of the values, or with `isNegated`, the rows
-       * that have none of them.
-       */
-      getMatchCount: (values: string[], isNegated: boolean) => NumberMatchCount;
       isEstimate: boolean;
     };
 
 const NO_COUNTS: ValueCounts = { type: "none" };
 
 /**
- * Prototype: how many rows of the query have each value of a column with a few
- * values. The other filters of the query apply. On fast data, queries count
- * the data. On slow data, a query counts the sample of its table, and the
- * counts are estimates.
+ * Prototype: the share of the rows of the query with each value of a column
+ * with a few values. The other filters of the query apply. On fast data,
+ * queries count the data. On slow data, a query counts the sample of its
+ * table, and the shares are estimates.
  */
 export function useValueCounts({
   query,
@@ -80,26 +73,10 @@ export function useValueCounts({
     if (isSample && total < MIN_SAMPLE_ROWS) {
       return { type: "unavailable" };
     }
-    // Each row of the sample stands for this many rows of the table.
-    const scale =
-      source.type === "sample" ? source.rowCount / source.sampleCount : 1;
-    const countOf = (values: string[]) =>
-      Array.from(new Set(values)).reduce(
-        (sum, value) => sum + (counts.get(value) ?? 0),
-        0,
-      );
     return {
       type: "counts",
       getShare: (value) => (total > 0 ? (counts.get(value) ?? 0) / total : 0),
-      getMatchCount: (values, isNegated) => {
-        const count = isNegated ? total - countOf(values) : countOf(values);
-        return {
-          count: count * scale,
-          isEstimate: isSample,
-          isFew: isSample && count < MIN_SAMPLE_MATCHES,
-        };
-      },
       isEstimate: isSample,
     };
-  }, [source, isSample, countsQuery, rows]);
+  }, [isSample, countsQuery, rows]);
 }

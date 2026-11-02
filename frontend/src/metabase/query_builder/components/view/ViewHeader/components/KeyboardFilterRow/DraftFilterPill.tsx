@@ -17,7 +17,6 @@ import {
 } from "metabase/querying/filters/components/FilterPicker/FilterValuePicker/utils";
 import { HistogramSlider } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/HistogramSlider";
 import {
-  MatchCount,
   SampleNote,
   UnavailableNote,
   type ValueCounts,
@@ -904,14 +903,11 @@ function ValueInput({
         groups={isAiPromptText ? NO_GROUPS : groups}
         header={isAiPromptText ? undefined : widget.header}
         aside={isAiPromptText ? undefined : widget.aside}
-        footer={
-          isAiPromptText
-            ? undefined
-            : getValueCountsFooter(valueCounts, operator, values)
-        }
+        footer={isAiPromptText ? undefined : getValueCountsFooter(valueCounts)}
         isTiles={widget.isTiles}
         columns={widget.columns}
         dropdownWidth={widget.dropdownWidth}
+        dropdownHeight={widget.dropdownHeight}
         text={text}
         placeholder={getValuePlaceholder(operator, values)}
         isMultiSelect={isMultiSelect}
@@ -923,8 +919,6 @@ function ValueInput({
     </>
   );
 }
-
-const MATCH_COUNT_OPERATORS = new Set(["=", "!="]);
 
 const VIEWPORT_MARGIN = 16;
 
@@ -946,33 +940,14 @@ function useMaxDropdownWidth(
   return viewportWidth - pillLeft - VIEWPORT_MARGIN;
 }
 
-/** The match count and the notes under the options, or null for none. */
-function getValueCountsFooter(
-  valueCounts: ValueCounts,
-  operator: DraftOperator,
-  values: string[],
-) {
+/** The notes under the options, or null for none. */
+function getValueCountsFooter(valueCounts: ValueCounts) {
   if (valueCounts.type === "unavailable") {
     return <UnavailableNote />;
   }
-  if (valueCounts.type !== "counts") {
-    return null;
-  }
-  const hasMatchCount =
-    values.length > 0 && MATCH_COUNT_OPERATORS.has(operator.key);
-  if (!hasMatchCount && !valueCounts.isEstimate) {
-    return null;
-  }
-  return (
-    <>
-      {hasMatchCount && (
-        <MatchCount
-          matchCount={valueCounts.getMatchCount(values, operator.key === "!=")}
-        />
-      )}
-      {valueCounts.isEstimate && <SampleNote />}
-    </>
-  );
+  return valueCounts.type === "counts" && valueCounts.isEstimate ? (
+    <SampleNote />
+  ) : null;
 }
 
 interface ValueTokensProps {
@@ -1121,13 +1096,11 @@ function NumberHistogramPopover({
     const number = parseNumber(value);
     return typeof number === "number" ? number : null;
   });
-  const { result, isUnavailable, matchCount } = useNumberColumnStats({
+  const { result, isUnavailable } = useNumberColumnStats({
     query,
     stageIndex,
     column,
     filter,
-    operator: numberOperator,
-    values: numberValues,
   });
 
   return (
@@ -1160,7 +1133,6 @@ function NumberHistogramPopover({
             values={numberValues}
             onChange={(newValues) => onChange(newValues.map(String))}
           />
-          {matchCount != null && <MatchCount matchCount={matchCount} />}
           {result.isEstimate && <SampleNote />}
         </Popover.Dropdown>
       )}

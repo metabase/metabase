@@ -1,7 +1,6 @@
 import { useMemo, useRef } from "react";
 
 import { skipToken, useGetPrototypeSamplesQuery } from "metabase/api";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useIsSlowData } from "metabase/prototype";
 import { useSetting } from "metabase/settings";
 import * as Lib from "metabase-lib";
@@ -9,11 +8,8 @@ import * as Lib from "metabase-lib";
 import { useGetPrototypeStatsQueryQuery } from "./api";
 import {
   BUCKET_COUNT,
-  type MatchFilterParts,
   type NumberColumnStats,
   getHistogramQuery,
-  getMatchCountQuery,
-  getMatchFilterParts,
   getSliderRange,
   getSliderStep,
   getStatsBase,
@@ -27,18 +23,6 @@ interface UseNumberColumnStatsProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter: Lib.Filterable | undefined;
-  /** The filter of the slider, to count the rows that it keeps. */
-  operator?: Lib.NumberFilterOperator;
-  values?: (number | null)[];
-}
-
-/** The rows that the filter of the slider keeps. */
-export interface NumberMatchCount {
-  count: number;
-  /** True when the count comes from a sample, on slow data. */
-  isEstimate: boolean;
-  /** True when so few rows of the sample match that the count is a guess. */
-  isFew: boolean;
 }
 
 export interface NumberColumnStatsResult {
@@ -59,17 +43,10 @@ interface UseNumberColumnStatsResult {
   result: NumberColumnStatsResult | null;
   /** True when too few rows of the sample match the other filters. */
   isUnavailable: boolean;
-  matchCount: NumberMatchCount | null;
 }
 
 /** Rows of the sample below which an estimate is not reliable. */
 export const MIN_SAMPLE_ROWS = 100;
-
-/** Matching rows of the sample below which the count is only "a few". */
-export const MIN_SAMPLE_MATCHES = 5;
-
-/** The slider changes the values quickly, so the count waits for a pause. */
-const MATCH_COUNT_DELAY_MS = 150;
 
 export type StatsSource =
   | { type: "none" }
@@ -164,8 +141,6 @@ export function useNumberColumnStats({
   stageIndex,
   column,
   filter,
-  operator,
-  values,
 }: UseNumberColumnStatsProps): UseNumberColumnStatsResult {
   const source = useStatsSource(query);
   const hasStats = source.type !== "none";
@@ -275,44 +250,9 @@ export function useNumberColumnStats({
   const isUnavailable =
     isSample && stats != null && stats.count < MIN_SAMPLE_ROWS;
 
-  // The parts as a string, so that the debounce sees equal values as equal.
-  const matchPartsKey = useDebouncedValue(
-    operator != null && values != null
-      ? JSON.stringify(getMatchFilterParts(operator, values))
-      : "null",
-    MATCH_COUNT_DELAY_MS,
-  );
-  const matchCountQuery = useMemo(() => {
-    const parts: MatchFilterParts | null = JSON.parse(matchPartsKey);
-    return base != null && parts != null && !isUnavailable
-      ? getMatchCountQuery(base, parts)
-      : null;
-  }, [base, matchPartsKey, isUnavailable]);
-  const matchCountJsQuery = useStableJsQuery(matchCountQuery);
-  const { data: matchCountDataset } = useGetPrototypeStatsQueryQuery(
-    matchCountJsQuery != null
-      ? { query: matchCountJsQuery, isSample }
-      : skipToken,
-  );
-  const matchCountValue = matchCountDataset?.data?.rows?.[0]?.[0];
-  const matchCount = useMemo((): NumberMatchCount | null => {
-    if (matchCountQuery == null || typeof matchCountValue !== "number") {
-      return null;
-    }
-    if (source.type !== "sample") {
-      return { count: matchCountValue, isEstimate: false, isFew: false };
-    }
-    return {
-      count: (matchCountValue * source.rowCount) / source.sampleCount,
-      isEstimate: true,
-      isFew: matchCountValue < MIN_SAMPLE_MATCHES,
-    };
-  }, [source, matchCountQuery, matchCountValue]);
-
   return {
     hasStats,
     result: isUnavailable ? null : result,
     isUnavailable,
-    matchCount,
   };
 }

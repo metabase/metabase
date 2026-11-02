@@ -18,10 +18,8 @@ import { useReportDraftFilter } from "../use-report-draft-filter";
 import { HistogramSlider, getHistogramWidth } from "./HistogramSlider";
 import {
   BUCKET_COUNT,
-  MatchCount,
   NumberColumnStats,
   type NumberColumnStatsResult,
-  type NumberMatchCount,
   UnavailableNote,
   useNumberColumnStats,
 } from "./NumberColumnStats";
@@ -73,14 +71,11 @@ export function NumberFilterPicker({
     hasStats,
     result: columnStats,
     isUnavailable,
-    matchCount,
   } = useNumberColumnStats({
     query,
     stageIndex,
     column,
     filter,
-    operator,
-    values: values.map(toNumber),
   });
 
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
@@ -136,7 +131,6 @@ export function NumberFilterPicker({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           columnStats={columnStats}
-          matchCount={matchCount}
           onChange={setValues}
         />
         {columnStats != null && (
@@ -172,7 +166,6 @@ interface NumberValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   columnStats: NumberColumnStatsResult | null;
-  matchCount: NumberMatchCount | null;
   onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
@@ -186,7 +179,6 @@ function NumberValueInput({
   valueCount,
   hasMultipleValues,
   columnStats,
-  matchCount,
   onChange,
 }: NumberValueInputProps) {
   const inputCount = hasMultipleValues ? 1 : valueCount;
@@ -205,7 +197,6 @@ function NumberValueInput({
         min={columnStats.range.min}
         max={columnStats.range.max}
         step={columnStats.step}
-        matchCount={matchCount}
         onChange={onChange}
       />
     );
@@ -273,7 +264,6 @@ interface SliderValueInputProps {
   min: number;
   max: number;
   step: number;
-  matchCount: NumberMatchCount | null;
   onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
@@ -288,7 +278,6 @@ function SliderValueInput({
   min,
   max,
   step,
-  matchCount,
   onChange,
 }: SliderValueInputProps) {
   const numberValues = Array.from({ length: inputCount }, (_, index) =>
@@ -340,7 +329,6 @@ function SliderValueInput({
           values={numberValues}
           onChange={onChange}
         />
-        {matchCount != null && <MatchCount matchCount={matchCount} />}
       </Box>
     </Box>
   );

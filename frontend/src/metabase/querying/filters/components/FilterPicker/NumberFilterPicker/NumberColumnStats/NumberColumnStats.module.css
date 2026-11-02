@@ -34,11 +34,3 @@
   font-size: var(--mantine-font-size-sm);
   line-height: 1.3;
 }
-
-.matchCount {
-  padding-top: var(--mantine-spacing-sm);
-  color: var(--mb-color-text-primary);
-  font-size: var(--mantine-font-size-sm);
-  font-weight: bold;
-  line-height: 1.3;
-}

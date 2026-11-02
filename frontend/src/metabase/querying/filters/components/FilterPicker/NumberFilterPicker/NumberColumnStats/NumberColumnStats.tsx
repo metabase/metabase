@@ -1,11 +1,10 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import { Box } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting/numbers";
 
 import S from "./NumberColumnStats.module.css";
-import type { NumberMatchCount } from "./use-number-column-stats";
-import { type NumberColumnStats as Stats, roundEstimate } from "./utils";
+import type { NumberColumnStats as Stats } from "./utils";
 
 interface NumberColumnStatsProps {
   stats: Stats;
@@ -40,23 +39,6 @@ export function NumberColumnStats({
       ))}
       {isEstimate && <SampleNote />}
     </Box>
-  );
-}
-
-export function MatchCount({ matchCount }: { matchCount: NumberMatchCount }) {
-  const { count, isEstimate, isFew } = matchCount;
-  const value = isEstimate ? roundEstimate(count) : count;
-  const formatted = (isEstimate ? "~" : "") + formatNumber(value);
-  return (
-    <div className={S.matchCount} data-testid="number-filter-match-count">
-      {isFew
-        ? t`Matches very few rows`
-        : ngettext(
-            msgid`Matches ${formatted} row`,
-            `Matches ${formatted} rows`,
-            value,
-          )}
-    </div>
   );
 }
 
