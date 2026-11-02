@@ -3,7 +3,11 @@
    render, so the "view"/"utils" naming convention doesn't apply. */
 import ReactDOMServer from "react-dom/server";
 
-import { DYNAMIC_GOAL_CARTESIAN_DISPLAYS } from "__support__/dynamic-goals";
+import {
+  DYNAMIC_GOAL_CARTESIAN_DISPLAYS,
+  PATHS_PER_GOAL_LINE,
+  queryAllEChartsGoalLines,
+} from "__support__/dynamic-goals";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type {
   DatasetData,
@@ -95,6 +99,43 @@ describe.each(["bar", "area"] as const)(
     });
   },
 );
+
+describe("static line chart with multiple series and a dynamic goal", () => {
+  // each panel has its own y-axis, so unlike multiple y-axes the goal isn't tied to the first series
+  it("draws the goal line in each split panel", () => {
+    const svg = toSvg(
+      createSeries(
+        "line",
+        createMockReferencedEntitiesResults({ column: "goal", value: 250 }),
+        { "graph.metrics": ["count", "sum"], "graph.split_panels": true },
+      ),
+    );
+
+    expect(getGoalLines(svg)).toHaveLength(2 * PATHS_PER_GOAL_LINE);
+  });
+
+  it("draws one goal line with multiple y-axes", () => {
+    const svg = toSvg(
+      createSeries(
+        "line",
+        createMockReferencedEntitiesResults({ column: "goal", value: 250 }),
+        {
+          "graph.metrics": ["count", "sum"],
+          series_settings: { sum: { axis: "right" } },
+        },
+      ),
+    );
+
+    expect(getGoalLines(svg)).toHaveLength(PATHS_PER_GOAL_LINE);
+    expect(svg).toContain(">250<");
+  });
+});
+
+function getGoalLines(svg: string) {
+  const root = document.createElement("div");
+  root.innerHTML = svg;
+  return queryAllEChartsGoalLines(root);
+}
 
 function getTickY(svg: string, label: string) {
   const match = svg.match(

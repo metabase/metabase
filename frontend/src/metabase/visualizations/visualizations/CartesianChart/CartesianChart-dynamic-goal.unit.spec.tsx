@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import {
   DYNAMIC_GOAL_CARTESIAN_DISPLAYS,
+  PATHS_PER_GOAL_LINE,
   queryAllEChartsGoalLines,
   queryEChartsGoalLine,
 } from "__support__/dynamic-goals";
@@ -57,9 +58,6 @@ const MULTI_SERIES_ROWS = [
 ];
 
 const GOAL_LABEL = "Target";
-
-// echarts draws the line over a white halo
-const PATHS_PER_GOAL_LINE = 2;
 
 const ANSWERED = createMockReferencedEntitiesResults({
   column: "goal",
