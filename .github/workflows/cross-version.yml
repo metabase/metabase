@@ -71,6 +71,7 @@ jobs:
             console.log("matrix:", matrix);
 
   test:
+    name: cross-version test ${{ matrix.source }} → ${{ matrix.target }}
     needs: generate-test-matrix
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
@@ -78,6 +79,14 @@ jobs:
       matrix: ${{ fromJson(needs.generate-test-matrix.outputs.matrix) }}
       fail-fast: false
     env:
+      QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
+      CROSS_VERSION_JUNIT_FILE: ${{ github.workspace }}/target/cross-version-junit/cross-version.xml
+      CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
+      CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+      CI_CONDUCTOR_TEST_SUITE: cross-version-${{ matrix.source }}-${{ matrix.target }}
+      REPO_ID: ${{ github.event.repository.id }}
+      COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
       # Number of days we don't fail a cross version test that is missing a migration that was recently merged to master
       # but targets a different version. For example: a migration for v63 is added to master but master is on v66. Cross
       # version tests will fail until that is backported and released on v63 but we should give people time to do that.
@@ -111,6 +120,8 @@ jobs:
         if: steps.prebuilt-cljs.outcome != 'success'
         run: bun run build-pure:cljs
 
+      - uses: ./.github/actions/resolve-job-id
+
       - name: Run cross-version test
         id: run-test
         env:
@@ -120,6 +131,28 @@ jobs:
         run: |
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
+        continue-on-error: true
+
+      - name: Report results to ci-conductor
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 3
+        uses: ./.github/actions/report-failures-to-ci-conductor
+        env:
+          JEST_JUNIT_OUTPUT_DIR: ${{ github.workspace }}/target/cross-version-junit
+          JEST_JUNIT_OUTPUT_NAME: cross-version.xml
+        with:
+          adapter: frontend
+          test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
+
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: e2e
+          test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
+          enforce-quarantine: "true"
 
       - name: Notify Slack about migrations that need a backport or a release
         continue-on-error: true
@@ -162,7 +195,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Show logs on failure
-        if: failure()
+        if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
         run: |
           for f in cross-version/logs/*.log; do
             [ -e "$f" ] || continue

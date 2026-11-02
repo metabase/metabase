@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
+   [metabase.data-apps.core :as data-apps]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -123,13 +124,11 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id"
+  ;; partial schema only
+  :- [:map {:closed false}
+      [:data_authority ::data-authority-read]]
   "Get `Table` with ID."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
@@ -137,9 +136,6 @@
    {:keys [include_editable_data_model]}
    :- [:map {:closed true}
        [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
-  ;; partial schema only
-  :- [:map {:closed false}
-      [:data_authority ::data-authority-read]]
   (let [api-perm-check-fn (if include_editable_data_model
                             schema.table/check-data-model-perms
                             api/read-check)]
@@ -180,10 +176,9 @@
                                (fn [response]
                                  (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
-(def ^:private TableUpdateBodySingle
-  "Body of `PUT /api/table/:id`."
-  [:map {:closed true}
-   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
+(def ^:private table-update-entries
+  "User-settable Table columns, as optional `:map` entries."
+  [[:display_name            {:optional true} [:maybe ms/NonBlankString]]
    [:entity_type             {:optional true} [:maybe EntityType]]
    [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
    [:description             {:optional true} [:maybe :string]]
@@ -198,22 +193,15 @@
    [:owner_user_id           {:optional true} [:maybe :int]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
 
+(def ^:private TableUpdateBodySingle
+  "Body of `PUT /api/table/:id`."
+  (into [:map {:closed true}] table-update-entries))
+
 (def ^:private TableUpdateBodyBulk
   "Body of the deprecated `PUT /api/table/`."
-  [:map {:closed true}
-   [:ids                                      [:sequential ms/PositiveInt]]
-   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-   [:entity_type             {:optional true} [:maybe EntityType]]
-   [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
-   [:description             {:optional true} [:maybe :string]]
-   [:caveats                 {:optional true} [:maybe :string]]
-   [:points_of_interest      {:optional true} [:maybe :string]]
-   [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-   [:data_source             {:optional true} [:maybe :string]]
-   [:data_layer              {:optional true} [:maybe :string]]
-   [:owner_email             {:optional true} [:maybe :string]]
-   [:owner_user_id           {:optional true} [:maybe :int]]])
+  (into [:map {:closed true}
+         [:ids [:sequential ms/PositiveInt]]]
+        table-update-entries))
 
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -301,7 +289,7 @@
 (api.macros/defendpoint :put "/"
   "Update all `Table` in `ids`.
 
-  Deprecated, should use PUT /table/edit from now on."
+  Deprecated: use `POST /api/data-studio/table/edit`."
   [_route-params
    _query-params
    {:keys [ids], :as body} :- TableUpdateBodyBulk]
@@ -353,7 +341,11 @@
   "Return metadata for the 'virtual' table for a Card."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-card id))
   (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -534,7 +526,7 @@
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
+  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

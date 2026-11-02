@@ -54,7 +54,7 @@ describe(
 
     [{ strictMode: false }, { strictMode: true }].forEach(({ strictMode }) => {
       describe(`Common cases ${strictMode ? "with" : "without"} strict mode`, () => {
-        it("should display an SDK question", () => {
+        it("should display an SDK question", { tags: "@prerelease" }, () => {
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             { strictMode },

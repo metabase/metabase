@@ -685,6 +685,8 @@ jobs:
       MB_ORACLE_TEST_HOST: localhost
       MB_ORACLE_TEST_USER: '${{ matrix.version.env.user }}'
       MB_ORACLE_TEST_SERVICE_NAME: XEPDB1
+      # second PDB (created by ORACLE_DATABASE below) for the database routing tests
+      MB_ORACLE_TEST_SERVICE_NAME_ROUTING: MBROUTE
       # Only the non-SSL 18.4 tests specify password as an env var; the SSL 21.3 tests get it from the keystore I guess
       MB_ORACLE_TEST_PASSWORD: '${{ matrix.version.env.password }}'
       # These are ignored for the 18.4 tests which do not test SSL
@@ -703,6 +705,7 @@ jobs:
         image: ${{ matrix.version.image }}
         env:
           ORACLE_PASSWORD: password
+          ORACLE_DATABASE: MBROUTE
         ports:
           - "1521:${{ matrix.version.port }}"
     name: ${{ matrix.version.name }}
@@ -1014,6 +1017,22 @@ jobs:
       MB_SNOWFLAKE_TEST_WIF_USER:      ${{ github.event_name == 'pull_request' && 'METABASE WIF' || (github.ref == 'refs/heads/master' && 'METABASE WIF MAIN' || 'skip') }}
       MB_SNOWFLAKE_TEST_WIF_DB:        SNOWFLAKE_SAMPLE_DATA
       MB_SNOWFLAKE_TEST_WIF_ROLE:      PUBLIC
+
+      # OAuth client-credentials live test. The driver fetches a JWT from the IdP (e.g. AWS
+      # Cognito) and submits it to a Snowflake EXTERNAL_OAUTH integration. USER opts out via
+      # 'skip' on contexts without the OAuth secrets available (forks, release branches).
+      MB_SNOWFLAKE_TEST_OAUTH_CC_ACCOUNT:           ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_OAUTH_CC_WAREHOUSE:         ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      MB_SNOWFLAKE_TEST_OAUTH_CC_USER:              ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/master') && 'METABASE OAUTH CC' || 'skip' }}
+      MB_SNOWFLAKE_TEST_OAUTH_CC_DB:                SNOWFLAKE_SAMPLE_DATA
+      MB_SNOWFLAKE_TEST_OAUTH_CC_ROLE:              PUBLIC
+      MB_SNOWFLAKE_TEST_OAUTH_CC_CLIENT_ID:         ${{ secrets.MB_SNOWFLAKE_TEST_OAUTH_CC_CLIENT_ID }}
+      MB_SNOWFLAKE_TEST_OAUTH_CC_CLIENT_SECRET:     ${{ secrets.MB_SNOWFLAKE_TEST_OAUTH_CC_CLIENT_SECRET }}
+      MB_SNOWFLAKE_TEST_OAUTH_CC_TOKEN_REQUEST_URL: ${{ secrets.MB_SNOWFLAKE_TEST_OAUTH_CC_TOKEN_REQUEST_URL }}
+      # Cognito resource server scope. Driver sends this to the IdP's token endpoint; without it the
+      # JDBC driver falls back to deriving a `session:role:<role>` scope from `:role`, which Cognito
+      # rejects (not an allowed scope on the app client).
+      MB_SNOWFLAKE_TEST_OAUTH_CC_SCOPE:             default-m2m-resource-server-c8qxtq/read
     name: Snowflake Driver Tests ${{ matrix.runner-index }}
     steps:
     - uses: actions/checkout@v7

@@ -19,6 +19,8 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
+(set! *warn-on-reflection* true)
+
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]

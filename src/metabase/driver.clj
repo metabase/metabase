@@ -286,10 +286,11 @@
   as connection properties. Typically parameters whose value the client loads and instantiates as a Java class. Defaults
   to none.
 
-  Matched case-insensitively, and as substrings, so a name here also catches its longer spellings (`socketFactory`
-  covers `socketFactoryClass`). Enforced by [[metabase.driver.util/validate-connection-parameters!]], which runs when a
-  connection is tested, a connection pool is created, and a Database is saved. Extend a parent's list rather than
-  replacing it:
+  Matched as substrings of `:additional-options` and of each detail key, after normalization: case folded, percent
+  escapes decoded once, and `_ . - +` and whitespace ignored. So a name here also catches its longer and disguised
+  spellings (`socketFactory` covers `socketFactoryClass` and `SOCKET_FACTORY`). Enforced by
+  [[metabase.driver.util/validate-connection-parameters!]], which runs when a connection is tested, a connection pool
+  is created, and a Database is saved. Extend a parent's list rather than replacing it:
 
     (defmethod driver/disallowed-connection-parameters :mysql
       [driver]
@@ -301,6 +302,21 @@
 (defmethod disallowed-connection-parameters :default
   [_driver]
   [])
+
+(defmulti url-building-detail-keys
+  "The connection-detail keys whose values this driver splices into its connection URL.
+  [[metabase.driver.util/validate-connection-parameters!]] refuses a value of one of these that contains a URL
+  separator, even percent-encoded, so it cannot start a client parameter of its own.
+
+  Defaults to `[:host :port :db :dbname :catalog :account]`. Override it when one of those keys is not spliced into a
+  URL, such as one holding a whole connection string or a file path."
+  {:added "0.66.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod url-building-detail-keys :default
+  [_driver]
+  [:host :port :db :dbname :catalog :account])
 
 (def default-host-detail-keys
   "Detail keys that hold a warehouse host across the drivers we ship. `:host` is the near-universal one;
@@ -1249,9 +1265,9 @@
 ;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
 ;; effects? issue: https://github.com/metabase/metabase/issues/39367
 (defmulti notify-database-updated
-  "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
-  specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
-  release ALL related resources when this is called."
+  "Notify the driver that the attributes of `database`, the Lib metadata of a Database, have changed, or that it was
+  deleted. This is specifically relevant in the event that the driver was doing some caching or connection pooling;
+  the driver should release ALL related resources when this is called."
   {:added "0.32.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1413,10 +1429,9 @@
   update the value for `:details`. The default implementation is essentially `identity` (i.e returns `database`
   unchanged). This multimethod will only be called if `:details` is actually present in the `database` map.
 
-  Implementations should normalize `:details`, `:write-data-details`, and `:admin-details` (each if present),
-  since `:write-data-details` and `:admin-details` are merged on top of `:details` by
-  [[metabase.driver.connection/effective-details]] under their respective contexts. Un-normalized fields in
-  the overlay maps can leak through to the merged result. See [[metabase.driver.connection]] for more
+  Implementations should normalize `:details` and `:write-data-details` (each if present), since
+  `:write-data-details` is merged on top of `:details` by [[metabase.driver.connection/effective-details]] in a
+  write context. Un-normalized fields in the overlay map can leak through to the merged result. See [[metabase.driver.connection]] for more
   information."
   {:added "0.41.0" :arglists '([driver database])}
   dispatch-on-initialized-driver

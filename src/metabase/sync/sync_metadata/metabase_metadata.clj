@@ -81,10 +81,15 @@
   [driver                  :- :keyword
    database                :- i/DatabaseInstance
    metabase-metadata-table :- i/DatabaseMetadataTable]
-  (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
-    (sync-util/with-error-handling (format "Error handling metabase metadata entry: set %s -> %s" keypath value)
-      (or (set-property! database (parse-keypath keypath) value)
-          (log/error (u/format-color 'red "Error syncing _metabase_metadata: no matching keypath, or property not settable: %s" keypath))))))
+  (let [unmatched (volatile! [])]
+    (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
+      (sync-util/with-error-handling (format "Error handling metabase metadata entry: set %s -> %s" keypath value)
+        (when-not (set-property! database (parse-keypath keypath) value)
+          (vswap! unmatched conj keypath))))
+    ;; usually stale rows for tables that no longer exist, so one line per sync rather than one per row
+    (when-let [keypaths (seq @unmatched)]
+      (log/warnf "Ignoring %d _metabase_metadata row(s) whose keypath matches nothing or isn't settable: %s"
+                 (count keypaths) (str/join ", " (take 20 keypaths))))))
 
 (mu/defn is-metabase-metadata-table?
   "Is this TABLE the special `_metabase_metadata` table?"

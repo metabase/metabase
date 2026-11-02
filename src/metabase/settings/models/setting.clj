@@ -1499,9 +1499,9 @@
         setting-definition-symbol (gensym "setting-")]
     `(let [setting-options#          (merge (merge-base ~options) ~setting-metadata)
            ~setting-definition-symbol (register-setting! setting-options#)]
-       ~(when maybe-i18n-exception
-          `(when (#'requires-i18n? ~setting-definition-symbol)
-             (throw ~maybe-i18n-exception)))
+       ~@(when maybe-i18n-exception
+           [`(when (#'requires-i18n? ~setting-definition-symbol)
+               (throw ~maybe-i18n-exception))])
        (-> (def ~setting-getter-fn-symbol (setting-fn :getter ~setting-definition-symbol))
            (alter-meta! merge (setting-fn-metadata :getter ~setting-definition-symbol)))
        ;; unfortunately we can't evaluate this condition at compile time, as the options might contain runtime forms.

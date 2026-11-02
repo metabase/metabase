@@ -216,11 +216,7 @@
                           :user-id api/*current-user-id*})
   {:outputs (execute!* action scope params inputs)})
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/execute-form"
+(api.macros/defendpoint :post "/execute-form" :- ::data-editing.execute-form/action-description
   "Temporary endpoint for describing an actions parameters
   such that they can be presented correctly in a modal ahead of execution."
   [{}
@@ -231,7 +227,6 @@
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:input {:optional true} ::action-value-map]]]
-  :- :metabase-enterprise.action-v2.execute-form/action-description
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)

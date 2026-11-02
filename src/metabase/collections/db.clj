@@ -8,6 +8,7 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -292,7 +293,7 @@
   builders like `visible-collection-filter-clause`, which live in `metabase.collections.models.collection` and so
   can't be called from here without a require cycle (that namespace already requires this one)."
   [query]
-  (t2/select :model/Collection query))
+  (t2/select :model/Collection (h2x/assert-map-or-nil! query)))
 
 ;;; ---------------------------------------------- Collection writes ----------------------------------------------
 
@@ -305,7 +306,7 @@
   "Apply `changes` to the ::collections.schema/collection with `collection-id`, returning the number updated."
   [collection-id :- ::lib.schema.id/collection
    changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
-  (t2/update! :model/Collection collection-id changes))
+  (t2/update! :model/Collection :id collection-id changes))
 
 (mu/defn clear-remote-synced-flags!
   "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
@@ -685,7 +686,7 @@
 (mu/defn user-type
   "The type of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :type :model/User user-id))
+  (t2/select-one-fn :type :model/User :id user-id))
 
 (mu/defn user-name-parts-by-id
   "A map of ID to the first name, last name, and email of the Users with `user-ids`."

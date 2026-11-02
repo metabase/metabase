@@ -62,6 +62,21 @@
         (mt/with-dynamic-fn-redefs [qp/process-query (constantly {:status :failed, :error "Column FOO not found"})]
           (is (=? {:error :query-failed, :permissions-error? false} (failure))))))))
 
+(deftest caller-facing-failure-test
+  (testing "a failure of the query or its database is the caller's to see, and a failure inside Metabase is not"
+    (doseq [[expected failure] [[true  {:error_type :invalid-query}]
+                                [true  {:error_type :missing-required-permissions}]
+                                [true  {:error_type :connection-pool-checkout-timeout}]
+                                [true  {:error_type :db}]
+                                [true  {:error_type :timed-out}]
+                                [true  {:ex-data {:status-code 404}}]
+                                [false {:error_type :qp}]
+                                [false {:error_type :driver}]
+                                [false {:ex-data {:status-code 500}}]
+                                [false {}]]]
+      (is (= expected (query-execution/caller-facing-failure? (assoc failure :status :failed :error "Failed")))
+          (pr-str failure)))))
+
 (defn- received
   "The value `chan` delivers within 5 seconds, or nil."
   [chan]

@@ -76,7 +76,7 @@
    "oracle.net.ssl_server_dn_match" "oracle.net.wallet_location" "server"])
 
 (doseq [[feature supported?] {:convert-timezone                 true
-                              :database-routing                 false
+                              :database-routing                 true
                               :datetime-diff                    true
                               :describe-default-expr            true
                               :describe-is-generated            true

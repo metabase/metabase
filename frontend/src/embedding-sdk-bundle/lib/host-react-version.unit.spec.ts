@@ -5,8 +5,8 @@ import {
   logUnsupportedReactVersionOnce,
 } from "./host-react-version";
 
-// MINIMUM_SUPPORTED_REACT_MAJOR_VERSION is 18, so React 17 stands in for an
-// unsupported host throughout. When it moves to 19, move these versions up by one.
+// MINIMUM_SUPPORTED_REACT_MAJOR_VERSION is 19, so React 18 stands in for an
+// unsupported host throughout. When it moves to 20, move these versions up by one.
 let mockReactVersion: string | undefined;
 
 jest.mock("react", () => ({
@@ -35,16 +35,10 @@ describe("getHostReactMajorVersion", () => {
 });
 
 describe("isHostReactVersionSupported", () => {
-  it("does not support React 17", () => {
-    mockReactVersion = "17.0.2";
-
-    expect(isHostReactVersionSupported()).toBe(false);
-  });
-
-  it("supports React 18", () => {
+  it("does not support React 18", () => {
     mockReactVersion = "18.3.1";
 
-    expect(isHostReactVersionSupported()).toBe(true);
+    expect(isHostReactVersionSupported()).toBe(false);
   });
 
   it("supports React 19", () => {
@@ -62,17 +56,17 @@ describe("isHostReactVersionSupported", () => {
 
 describe("getUnsupportedReactVersionMessage", () => {
   it("names the required and the detected React major versions", () => {
-    mockReactVersion = "17.0.2";
+    mockReactVersion = "18.3.1";
 
     expect(getUnsupportedReactVersionMessage()).toBe(
-      "The Metabase modular embedding SDK requires React 18 or newer, but this application is running React 17. Upgrade your application to React 18 to display embedded content.",
+      "The Metabase modular embedding SDK requires React 19 or newer, but this application is running React 18. Upgrade your application to React 19 to display embedded content.",
     );
   });
 });
 
 describe("logUnsupportedReactVersionOnce", () => {
   it("logs the unsupported React message once across calls", () => {
-    mockReactVersion = "17.0.2";
+    mockReactVersion = "18.3.1";
     const consoleError = jest
       .spyOn(console, "error")
       .mockImplementation(() => {});
@@ -82,7 +76,7 @@ describe("logUnsupportedReactVersionOnce", () => {
 
     expect(consoleError).toHaveBeenCalledTimes(1);
     expect(consoleError).toHaveBeenCalledWith(
-      "The Metabase modular embedding SDK requires React 18 or newer, but this application is running React 17. Upgrade your application to React 18 to display embedded content.",
+      "The Metabase modular embedding SDK requires React 19 or newer, but this application is running React 18. Upgrade your application to React 19 to display embedded content.",
     );
 
     consoleError.mockRestore();

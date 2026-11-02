@@ -10,6 +10,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -71,7 +73,13 @@
                   :schema-filters-patterns session-schema}
         details* (merge details*
                         (truststore-details)
-                        (keystore-details))]
+                        (keystore-details))
+        ;; database routing needs a second database whose tables have the same owner and names; on Oracle that is a
+        ;; second PDB, reached by service name on the same host
+        details* (cond-> details*
+                   tx/*use-routing-details*
+                   (assoc :sid          nil
+                          :service-name (tx/db-test-env-var-or-throw :oracle :service-name-routing "MBROUTE")))]
     ;; if user or password are not set and we cannot possibly be using SSL auth, set the defaults
     (cond-> details*
       (and (nil? (:user details*)) (not (:ssl-use-keystore details*)))
@@ -269,6 +277,20 @@
   (drop-user! session-schema)
   (create-user! session-schema))
 
+(def ^:private routing-session-user
+  "[[tx/before-run]] only creates the session user in the main database. The routing database gets its own, once per
+  process, the first time a dataset is created there."
+  (delay
+    (binding [tx/*use-routing-details* true]
+      (drop-user! session-schema)
+      (create-user! session-schema))))
+
+(defmethod tx/create-db! :oracle
+  [driver dbdef & options]
+  (when tx/*use-routing-details*
+    @routing-session-user)
+  (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options))
+
 (defmethod tx/aggregate-column-info :oracle
   ([driver ag-type]
    (merge
@@ -334,7 +356,7 @@
                  "airports_region"}
                (into #{}
                      (map :name)
-                     (:tables (driver/describe-database :oracle (mt/db))))))))))
+                     (:tables (driver/describe-database :oracle (lib.metadata/database (mt/metadata-provider)))))))))))
 
 (defmethod tx/drop-view! :oracle
   [driver database view-name {:keys [materialized?]}]
@@ -342,7 +364,7 @@
         qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))]
     (u/ignore-exceptions
       ;; If exists does not exist in oracle
-      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                      (sql/format
                       {(if materialized? :drop-materialized-view :drop-view) [[[:raw qualified-view]]]}
                       :dialect (sql.qp/quote-style driver))

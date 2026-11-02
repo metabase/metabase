@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-10-21 11:44+0000\n"
+"POT-Creation-Date: 2026-10-21 12:51+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Indonesian\n"
 "Language: id_ID\n"
-"PO-Revision-Date: 2026-10-21 12:42\n"
+"PO-Revision-Date: 2026-10-22 12:55\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -10298,7 +10298,8 @@ msgstr "dan"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "tabel"
+msgid_plural "tables"
+msgstr[0] ""
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -18842,6 +18843,7 @@ msgstr "Apa nama dokumen Anda?"
 #: frontend/src/metabase/common/components/EmojiPicker/EmojiPicker.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextAssetLink.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextEditedInfo.tsx
+#: frontend/src/metabase/common/components/ItemsTable/ItemsTable.tsx
 #: frontend/src/metabase/dashboard/components/Dashboard/components/Grid.tsx
 #: frontend/src/metabase/dashboard/components/DashboardGridSkeleton/DashboardGridSkeleton.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopoverContent.tsx
@@ -19885,7 +19887,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "{0} Menit"
 
 #: frontend/src/metabase/common/components/SendTestPulse/SendTestPulse.tsx

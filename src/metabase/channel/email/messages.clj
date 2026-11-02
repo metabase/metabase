@@ -167,11 +167,11 @@
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
-  [new-user & {:keys [google-auth?]}]
+  [new-user & {:keys [sso-auth?]}]
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
     (send-email-with-logo!
-     {:subject      (str (if google-auth?
+     {:subject      (str (if sso-auth?
                            (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
                            (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
       :recipients   recipients
@@ -183,7 +183,7 @@
                                                                   :site_url             (system/site-url)}
                                               :payload           {:style {:color_text_dark channel.render/color-text-dark}}
                                               :joinedUserName    (or (:first_name new-user) (:email new-user))
-                                              :joinedViaSSO      google-auth?
+                                              :joinedViaSSO      sso-auth?
                                               :joinedUserEmail   (:email new-user)
                                               :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
                                               :joinedUserEditUrl (str (system/site-url) "/admin/people")})})))

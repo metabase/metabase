@@ -29005,11 +29005,13 @@
             "type" : "integer"
           }
         }, {
+          "description" : "value must be an integer greater than zero.",
           "in" : "query",
           "name" : "model_id",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "minimum" : 1,
+            "type" : "integer"
           }
         }, {
           "in" : "query",
@@ -29020,6 +29022,17 @@
             "type" : "string"
           }
         } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "additionalProperties" : false,
+                "properties" : { },
+                "type" : "object"
+              }
+            }
+          }
+        },
         "responses" : {
           "2XX" : {
             "content" : {
@@ -31150,12 +31163,14 @@
         "description" : "Serialize and retrieve Metabase instance.\n\n  Outputs `.tar.gz` file with serialization results and an `export.log` file.\n  On error outputs serialization logs directly.",
         "operationId" : "post-api-ee-serialization-export",
         "parameters" : [ {
-          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)",
+          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -",
           "in" : "query",
           "name" : "dirname",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
+              "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -",
+              "pattern" : "^[A-Za-z0-9_%][A-Za-z0-9._%-]{0,254}$",
               "type" : "string"
             }, {
               "type" : "null"
@@ -31189,7 +31204,7 @@
         }, {
           "in" : "query",
           "name" : "all_collections",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -31197,7 +31212,7 @@
         }, {
           "in" : "query",
           "name" : "settings",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -31205,7 +31220,7 @@
         }, {
           "in" : "query",
           "name" : "data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -31213,15 +31228,7 @@
         }, {
           "in" : "query",
           "name" : "field_values",
-          "required" : true,
-          "schema" : {
-            "default" : false,
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
-          "name" : "database_secrets",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -31229,7 +31236,7 @@
         }, {
           "in" : "query",
           "name" : "continue_on_error",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -31237,7 +31244,7 @@
         }, {
           "in" : "query",
           "name" : "full_stacktrace",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -43000,17 +43007,27 @@
         "tags" : [ "/api/table" ]
       },
       "put" : {
-        "description" : "Update all `Table` in `ids`.\n\n  Deprecated, should use PUT /table/edit from now on.",
+        "description" : "Update all `Table` in `ids`.\n\n  Deprecated: use `POST /api/data-studio/table/edit`.",
         "operationId" : "put-api-table",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
             "application/json" : {
               "schema" : {
+                "additionalProperties" : false,
                 "properties" : {
                   "caveats" : {
                     "oneOf" : [ {
                       "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
                     }, {
                       "type" : "null"
                     } ]
@@ -43054,6 +43071,14 @@
                   "entity_type" : {
                     "oneOf" : [ {
                       "description" : "value must be a valid entity type (keyword or string)."
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "field_order" : {
+                    "oneOf" : [ {
+                      "enum" : [ "alphabetical", "custom", "database", "smart" ],
+                      "type" : "string"
                     }, {
                       "type" : "null"
                     } ]
@@ -45332,9 +45357,9 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
-            "default" : "false",
+            "default" : false,
             "type" : "boolean"
           }
         }, {

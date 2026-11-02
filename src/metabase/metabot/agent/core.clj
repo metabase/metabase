@@ -16,6 +16,7 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.capabilities :as capabilities]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
@@ -24,6 +25,7 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.self.schema :as self.schema]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
    [metabase.util.i18n :refer [tru]]
@@ -186,18 +188,6 @@
   (and (= (:type part) :tool-output)
        (nil? (get-in part [:result :error]))))
 
-(def ^:private legacy-terminal-tool-names
-  #{"document_construct_sql_chart" "document_construct_model_chart"})
-
-(defn- answer-producing?
-  "Return whether a tool output contains a successful answer.
-
-  Legacy terminal tools must return structured output to distinguish answers from failures."
-  [tool-name part]
-  (and (successful-tool-output? part)
-       (or (not (contains? legacy-terminal-tool-names tool-name))
-           (some? (get-in part [:result :structured-output])))))
-
 (defn- terminal-tool-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
   tool-name strings). This lets a profile end the turn as soon as it produces its answer (e.g. the
@@ -205,8 +195,7 @@
   forcing the model to keep emitting tool calls under `:required-tool-call?`.
 
   Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
-  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct; see
-  [[answer-producing?]] for how a failure is recognised while these tools are unconverted."
+  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct."
   [terminal-tools parts]
   (boolean
    (when (seq terminal-tools)
@@ -214,7 +203,7 @@
        (some (fn [p]
                (and (= (:type p) :tool-input)
                     (contains? terminal-tools (:function p))
-                    (answer-producing? (:function p) (get outputs (:id p)))))
+                    (successful-tool-output? (get outputs (:id p)))))
              parts)))))
 
 (defn- truncated?
@@ -231,19 +220,41 @@
   [parts]
   (some #(= (:type %) :error) parts))
 
-(defn- terminal-error-message
-  "The user-facing message from a tool failure no retry can fix, or nil if there was none.
+(def ^:private max-undeclared-failures
+  "How many ordinary exceptions that no tool declared a turn survives when its model can answer in text. The next one
+  ends it, which stops a retry loop."
+  1)
 
-  An unrecoverable failure is one only the user can act on — a permission denial, a server fault —
-  so the turn ends. The message is the `:user-message` the tool chose; a tool that set none gets the
-  generic one, because `:output` is written for the model and says only that the call failed."
-  [parts]
-  (some (fn [part]
-          (when (and (= (:type part) :tool-output)
-                     (= :unrecoverable (get-in part [:result :error :class])))
-            (or (not-empty (get-in part [:result :error :user-message]))
-                (tru "Something went wrong."))))
-        parts))
+(defn- undeclared-failure?
+  "Whether `part` is a tool call that failed with an ordinary exception no tool declared. A tool that writes reports
+  one as `:unconfirmed-write` instead, which ends the turn (see `tools.runtime/invoke`)."
+  [part]
+  (and (= (:type part) :tool-output)
+       (tools.runtime/undeclared? (get-in part [:result :error :code]))))
+
+(defn- terminal-error-message
+  "The user-facing message that ends the turn after this iteration's tool calls, or nil if the turn goes on.
+
+  An unrecoverable failure ends the turn: one only the user can act on, such as a permission denial
+  or a failed write that may have been saved, or one the model can't work around, such as a JVM
+  error. The message is the error's `:user-message`; an error without one gets the generic one,
+  because `:output` is written for the model and says only that the call failed.
+
+  An ordinary exception that no tool declared ([[undeclared-failure?]]) ends the turn only when
+  `undeclared-failures`, the turn's count of them with this iteration's included, passes
+  [[max-undeclared-failures]]. In a `profile` that requires a tool call the first one ends it,
+  because that model can't answer in text after it. The message is then the generic one."
+  [profile parts undeclared-failures]
+  (let [terminal (some (fn [part]
+                         (when (and (= (:type part) :tool-output)
+                                    (= :unrecoverable (get-in part [:result :error :class]))
+                                    (not (undeclared-failure? part)))
+                           (get-in part [:result :error])))
+                       parts)
+        allowed  (if (:required-tool-call? profile) 0 max-undeclared-failures)]
+    (when (or terminal (< allowed undeclared-failures))
+      (or (not-empty (:user-message terminal))
+          (tru "Something went wrong.")))))
 
 (defn- should-continue?
   "Determine if agent should continue iterating."
@@ -525,13 +536,14 @@
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        ;; Where other people can read the conversation, or there is no conversation or user to check, run_query would
-        ;; refuse every call, so it is not offered and the prompt does not promise results. The tool checks again, for
-        ;; someone who joins mid-turn.
+        ;; Where run_query would refuse every call, it is not offered and the prompt does not promise results: where
+        ;; other people can read the conversation, where there is no conversation or user to check, and for the
+        ;; embedded Metabot, whatever profile the request names. The tool checks again, for someone who joins mid-turn.
         offered      (profiles/profile->tools profile capabilities)
         base-tools   (cond-> offered
                        (and (contains? offered "run_query")
                             (or (not (and conversation-id api/*current-user-id*))
+                                (= (:entity_id metabot) metabot.config/embedded-metabot-id)
                                 (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*)))
                        (dissoc "run_query"))
         seeded       (-> (or state {})
@@ -572,16 +584,30 @@
                                                      :permission/metabot)}
                            tracking-opts)}))
 
+(defn- stop-recording-rf
+  "Wrap `rf` so that `stopped?` turns true once `rf` returns `reduced`.
+
+  The loop can't learn that its consumer stopped from what an iteration returns: the eductions an iteration reduces
+  unwrap a `reduced` before they return."
+  [rf stopped?]
+  (fn [acc part]
+    (u/prog1 (rf acc part)
+      (when (reduced? <>)
+        (vreset! stopped? true)))))
+
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
   [agent rf init usage-atom]
-  {:agent      agent
-   :rf         rf
-   :result     init
-   :iteration  1
-   :status     :continue
-   :usage-atom usage-atom
-   :sent-parts []})
+  (let [consumer-stopped? (volatile! false)]
+    {:agent               agent
+     :rf                  (stop-recording-rf rf consumer-stopped?)
+     :consumer-stopped?   consumer-stopped?
+     :result              init
+     :iteration           1
+     :status              :continue
+     :usage-atom          usage-atom
+     :sent-parts          []
+     :undeclared-failures 0}))
 
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
@@ -623,7 +649,7 @@
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom sent-parts] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom sent-parts undeclared-failures consumer-stopped?] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
@@ -670,15 +696,16 @@
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
-          ;; Every profile, not just the `:required-tool-call?` ones. An unrecoverable failure is
-          ;; defined as one only the user can act on, so the class is the decision and the profile
-          ;; is not part of it. A tool that wants the agent to carry on past a failure declares it
+          ;; Every profile, not just the `:required-tool-call?` ones. The failure decides, and for an
+          ;; ordinary exception that no tool declared, so do the profile and the turn's count of them.
+          ;; A tool that wants the agent to carry on past a failure every time declares it
           ;; recoverable, which is a choice made at the error, where the reason for it is visible.
-          (let [terminal-error (terminal-error-message parts)]
+          (let [undeclared-failures (+ undeclared-failures (count (filter undeclared-failure? parts)))
+                terminal-error      (terminal-error-message profile parts undeclared-failures)]
             (cond
-              (reduced? result')
+              @consumer-stopped?
               ;; consumer signalled early termination (e.g. client disconnect / cancellation)
-              (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
+              (assoc loop-state :status :reduced :finish-reason :reduced :result (unreduced result'))
 
               terminal-error
               (let [result'' (rf result' (terminal-error-text-part terminal-error))]
@@ -691,7 +718,11 @@
                              :result (rf result'' (final-state-part @memory-atom))))))
 
               (should-continue? iteration max-iter terminal-tools parts)
-              (assoc loop-state :result result' :iteration (inc iteration) :sent-parts input-parts)
+              (assoc loop-state
+                     :result result'
+                     :iteration (inc iteration)
+                     :sent-parts input-parts
+                     :undeclared-failures undeclared-failures)
 
               :else
               (let [reason (finish-reason iteration max-iter terminal-tools parts)]
@@ -815,12 +846,11 @@
                                               :ai/state      (:state opts)}
                           (let [agent      (init-agent opts)
                                 usage-atom (atom {})
-                                {result        :result
-                                 iteration     :iteration
-                                 finish-reason :finish-reason} (->> (initial-loop-state agent rf init usage-atom)
-                                                                    (iterate loop-step)
-                                                                    (drop-while #(= :continue (:status %)))
-                                                                    first)]
+                                {:keys [result iteration finish-reason consumer-stopped?]}
+                                (->> (initial-loop-state agent rf init usage-atom)
+                                     (iterate loop-step)
+                                     (drop-while #(= :continue (:status %)))
+                                     first)]
                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
                             ;; Materialized turn-level outputs for evals: token usage, why the loop
                             ;; stopped, and the final agent state (link registry / generated entities).
@@ -828,8 +858,9 @@
                               (ait/record! {:ai/finish-reason finish-reason
                                             :ai/usage         @usage-atom
                                             :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
-                            ;; A :reduced stop (client disconnect / cancellation) has already terminated
-                            ;; the reducing fn — stepping it again would violate the transducer contract.
+                            ;; A consumer that stopped (client disconnect / cancellation) has terminated the
+                            ;; reducing fn, at whichever write it stopped, and stepping it again would violate
+                            ;; the transducer contract.
                             ;; Append trailing parts only on a normal finish: the debug log, the
                             ;; loop's finish reason, and the eval-session pointer that lets the
                             ;; harness locate the per-session `<session-id>.jsonl` (it reads that
@@ -838,8 +869,8 @@
                             ;; in-process `capture-reducible`/`capturing` path is capture-active but
                             ;; deliberately file-less (session id nil, read `:trace`), so emitting a
                             ;; pointer there would name a `<nil>.jsonl` that never exists.
-                            (if (= :reduced finish-reason)
-                              result
+                            (if @consumer-stopped?
+                              (unreduced result)
                               (-> result
                                   (cond->
                                    (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
