@@ -31,7 +31,6 @@
 ;; for MotherDuck would fail because clojure.core/derive rejects a redundant ancestor.
 
 (doseq [[feature supported?] {::describe-table-test/describe-materialized-view-fields false ; MotherDuck has no materialized views
-                              :test/cannot-destroy-db true
                               ;; The driver adds an explicit ESCAPE clause to LIKE; run the shared escaping tests.
                               :test/escaping-like-metacharacters true
                               ;; This pooling test invalidates the user name. The endpoint authenticates
