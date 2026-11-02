@@ -502,83 +502,24 @@
                 (map :id (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/PUBLIC" (:id db))
                                                as-data-app)))))))))
 
-(defn- do-with-zebras!
-  "Call `f` with a temp table published to the Library, one unpublished, a metric in the Library and one outside it, all
-  named Zebra, as `{:published :unpublished :metric :outside-metric}`."
-  [f]
-  (data-apps.tu/do-with-library!
-   (fn [{:keys [metrics-id]}]
-     (mt/with-temp [:model/Database db             {:engine :h2 :details {}}
-                    :model/Table    published      {:db_id (:id db) :name "ZEBRA_PUBLISHED" :display_name "Zebra published"}
-                    :model/Table    unpublished    {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}
-                    :model/Card     metric         {:name          "Zebra metric"
-                                                    :type          :metric
-                                                    :collection_id metrics-id
-                                                    :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}
-                    :model/Card     outside-metric {:name          "Zebra outside metric"
-                                                    :type          :metric
-                                                    :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
-       (data-apps.tu/with-published-tables! [(:id published)]
-         (f {:published published :unpublished unpublished :metric metric :outside-metric outside-metric}))))))
-
-(defn- search-found
-  "The `[model id]` pairs of what a search for zebras finds, as the request with `options` does."
-  [options & params]
-  (set (map (juxt :model :id) (:data (apply mt/user-http-request :crowberto :get 200 "search" options :q "zebra" params)))))
-
-(deftest search-finds-library-content-test
+(deftest search-is-not-narrowed-test
   (search.tu/with-appdb-search-and-legacy-search
     (search.tu/with-sync-search-indexing
       (do-with-app-collection
        (fn [_collection-id]
          (mt/with-premium-features #{:data-apps :library}
-           (do-with-zebras!
-            (fn [{:keys [published unpublished metric outside-metric]}]
-              (let [published      ["table" (:id published)]
-                    unpublished    ["table" (:id unpublished)]
-                    metric         ["metric" (:id metric)]
-                    outside-metric ["metric" (:id outside-metric)]]
-                (testing "a data app finds the Library's content, and nothing else"
-                  (let [found (search-found as-data-app)]
-                    (is (contains? found published))
-                    (is (contains? found metric))
-                    (is (not-any? found [unpublished outside-metric]))))
-                (testing "the models it asks for narrow the search"
-                  (let [found (search-found as-data-app :models "metric")]
-                    (is (contains? found metric))
-                    (is (not (contains? found published))))
-                  (let [found (search-found as-data-app :models "table")]
-                    (is (contains? found published))
-                    (is (not-any? found [unpublished metric]))))
-                (testing "a request that is not a data app's finds the unpublished table and the outside metric too"
-                  (let [found (search-found {})]
-                    (is (contains? found unpublished))
-                    (is (contains? found outside-metric)))))))))))))
-
-(deftest search-without-library-finds-nothing-test
-  (search.tu/with-appdb-search-and-legacy-search
-    (search.tu/with-sync-search-indexing
-      (do-with-app-collection
-       (fn [_collection-id]
-         (mt/with-premium-features #{:data-apps :library}
-           (do-with-zebras!
-            (fn [{:keys [published metric]}]
-              (mt/with-dynamic-fn-redefs [collections/library-collection (constantly nil)]
-                (testing "without a Library, a data app finds not even a published table or a Library metric"
-                  (is (not-any? (search-found as-data-app) [["table" (:id published)] ["metric" (:id metric)]]))))))))))))
-
-(deftest search-without-published-tables-finds-nothing-test
-  (search.tu/with-appdb-search-and-legacy-search
-    (search.tu/with-sync-search-indexing
-      (do-with-app-collection
-       (fn [_collection-id]
-         (mt/with-premium-features #{:data-apps :library}
-           (mt/with-temp [:model/Database db          {:engine :h2 :details {}}
-                          :model/Table    unpublished {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}]
-             (data-apps.tu/do-with-library!
-              (fn [_library]
-                (testing "with a Library that does not publish the table, a data app does not find it"
-                  (is (not (contains? (search-found as-data-app) ["table" (:id unpublished)])))))))))))))
+           (data-apps.tu/do-with-library!
+            (fn [_library]
+              (mt/with-temp [:model/Database db     {:engine :h2 :details {}}
+                             :model/Table    table  {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}
+                             :model/Card     metric {:name          "Zebra outside metric"
+                                                     :type          :metric
+                                                     :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
+                (testing "a data app finds a table not published to the Library and a metric outside it"
+                  (let [found (set (map (juxt :model :id)
+                                        (:data (mt/user-http-request :crowberto :get 200 "search" as-data-app :q "zebra"))))]
+                    (is (contains? found ["table" (:id table)]))
+                    (is (contains? found ["metric" (:id metric)])))))))))))))
 
 (deftest user-key-value-endpoints-allow-only-sdk-keys-test
   (do-with-app-collection

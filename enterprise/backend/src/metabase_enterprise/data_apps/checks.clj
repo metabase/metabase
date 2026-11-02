@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-apps.checks
   "The checks that hold a data app's requests to the Library and its own collection. A dev preview, which has no app on
-  the instance, reads the Library alone and runs ad-hoc implicit actions; an app may also use the cards and run the
-  actions in its collection."
+  the instance, uses Library metrics but no saved card and runs ad-hoc implicit actions; an app may also use the cards
+  and run the actions in its collection."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
