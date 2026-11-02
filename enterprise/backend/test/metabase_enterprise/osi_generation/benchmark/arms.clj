@@ -8,8 +8,8 @@
     `data_source :metabot`. Scoring an arm never calls an LLM: the snapshot is captured once, committed,
     and passed by path or inline, so a scored comparison is always against a reproducible artifact.
 
-  [[apply-arm!]] is a plain `t2/insert!` — `osi_ai_context` has no write hooks, so a
-  per-arm batch write queues no targeted reconciles; the runner reconciles its isolated index itself."
+  [[apply-arm!]] writes `osi_ai_context` rows through Toucan. The corpus wrapper suppresses targeted
+  index nudges while the runner reconciles its isolated index itself."
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
@@ -24,12 +24,12 @@
    [metabase-enterprise.osi-generation.benchmark.corpus :as corpus]
    [metabase-enterprise.osi-generation.generate :as generate]
    [metabase-enterprise.osi-generation.settings :as settings]
-   [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.search.entity-retrieval.spec :as spec]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.core :as metabot.core]
    [metabase.metabot.self.google :as metabot.google]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.search.entity-retrieval.spec :as spec]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -56,21 +56,34 @@
    "metabase/metabot/self.clj"
    "metabase/metabot/self/core.clj"
    "metabase/metabot/self/schema.clj"
+   "metabase/metabot/self/adapter.clj"
    "metabase/metabot/self/azure.clj"
    "metabase/metabot/self/bedrock.clj"
    "metabase/metabot/self/claude.clj"
    "metabase/metabot/self/deepseek.clj"
    "metabase/metabot/self/google.clj"
+   "metabase/metabot/self/google/models.clj"
    "metabase/metabot/self/google/raw_predict.clj"
    "metabase/metabot/self/google/stream_generate_content.clj"
    "metabase/metabot/self/mistral.clj"
    "metabase/metabot/self/moonshot.clj"
+   "metabase/metabot/self/ollama.clj"
+   "metabase/metabot/self/ollama/capabilities.clj"
+   "metabase/metabot/self/ollama/connection.clj"
+   "metabase/metabot/self/ollama/forced_calls.clj"
    "metabase/metabot/self/openai.clj"
    "metabase/metabot/self/openai/chat_completions.clj"
+   "metabase/metabot/self/openai_compatible.clj"
    "metabase/metabot/self/openrouter.clj"
+   "metabase/metabot/self/registry.clj"
    "metabase/metabot/self/vllm.clj"
+   "metabase/metabot/self/xai.clj"
    "metabase/metabot/self/zai.clj"
-   "metabase/entity_retrieval/spec.clj"
+   "metabase/search/entity_retrieval/core.clj"
+   "metabase/search/entity_retrieval/db.clj"
+   "metabase/search/entity_retrieval/spec.clj"
+   "metabase/warehouse_schema/db.clj"
+   "metabase/warehouse_schema_overlay/core.clj"
    "metabase/queries/models/card.clj"
    "metabase/warehouse_schema/models/table.clj"
    "metabase/measures/models/measure.clj"

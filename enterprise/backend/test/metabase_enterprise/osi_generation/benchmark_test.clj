@@ -26,14 +26,13 @@
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
-   [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.search.entity-retrieval.spec :as spec]
    [metabase.lib.core :as lib]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.osi.ai-context.api :as osi-api]
    [metabase.search.core :as search]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.search.entity-retrieval.spec :as spec]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.thread-local :as tu.thread-local]
@@ -488,7 +487,7 @@
   (testing "availability is checked before calling the tool"
     (mt/with-dynamic-fn-redefs
       [entity-retrieval/entity-retrieval-available? (constantly false)
-       tools.entity-retrieval/retrieve-library-entities-tool
+       runner/invoke-retrieval-tool
        (fn [& _] (throw (AssertionError. "tool called while unavailable")))]
       (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"became unavailable"
                                     (#'runner/run-query {:id :q :prompt "query"} {})))]
@@ -496,7 +495,7 @@
   (testing "structured empty results from a populated benchmark index fail instead of scoring zero"
     (mt/with-dynamic-fn-redefs
       [entity-retrieval/entity-retrieval-available? (constantly true)
-       tools.entity-retrieval/retrieve-library-entities-tool
+       runner/invoke-retrieval-tool
        (constantly {:structured-output {:data [] :total_count 0}})]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"populated benchmark index"
                             (#'runner/run-query {:id :q :prompt "query"} {}))))))
@@ -691,11 +690,12 @@
         provenance    {:corpus-sha {}, :git-state {:sha "abc", :dirty? false}}]
     (mt/with-dynamic-fn-redefs
       [semantic.db.datasource/pgvector-configured? (constantly true)
-       semantic-settings/openai-api-key             (constantly "secret-key")
-       semantic-settings/openai-api-base-url        (fn []
-                                                      (if (= 1 (swap! base-url-reads inc))
-                                                        "https://first.openai.example"
-                                                        "https://second.openai.example"))
+       llm.provider/connection                     (fn [_]
+                                                     {:type "openai"
+                                                      :config {:api-key "secret-key"
+                                                               :base-url (if (= 1 (swap! base-url-reads inc))
+                                                                           "https://first.openai.example"
+                                                                           "https://second.openai.example")}})
        runner/benchmark-provenance                   (constantly provenance)
        runner/run-arm!                              (fn [_corpus _arm opts]
                                                       (swap! seen-routing conj (:embedding-routing opts))
@@ -720,8 +720,7 @@
                            :vector-dimensions 1536}
           attempt         (fn [base-url opts]
                             (mt/with-dynamic-fn-redefs
-                              [semantic-settings/openai-api-key      (constantly "secret-key")
-                               semantic-settings/openai-api-base-url (constantly base-url)
+                              [llm.provider/connection (fn [_] {:type "openai", :config {:api-key "secret-key", :base-url base-url}})
                                semantic.embedding/get-embeddings-batch
                                (fn [& _]
                                  (swap! embedding-calls inc)
@@ -1121,8 +1120,9 @@
 (deftest ^:synchronized explicit-query-prefix-still-prepares-model-and-routing-test
   (testing "an explicit prefix does not bypass model resolution or endpoint pinning"
     (mt/with-dynamic-fn-redefs
-      [semantic-settings/openai-api-key      (constantly "secret-key")
-       semantic-settings/openai-api-base-url (constantly "https://tenant-secret.openai.example/v2")]
+      [llm.provider/connection (fn [_] {:type "openai"
+                                         :config {:api-key "secret-key"
+                                                  :base-url "https://tenant-secret.openai.example/v2"}})]
       (let [opts     (#'runner/prepared-opts {:model                 {:provider          "openai"
                                                                       :model-name        "text-embedding-3-small"
                                                                       :vector-dimensions 1536}

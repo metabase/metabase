@@ -615,6 +615,9 @@
     (string? s) (-> (str/trim)
                     (str/replace #"/+$" ""))))
 
+;; A benchmark binds routing across index and query calls, which cross provider and worker APIs that
+;; otherwise resolve settings independently. Dynamic scope keeps concurrent runs isolated.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *openai-compatible-routing*
   "A request-routing map pinned by callers that need a series of OpenAI-compatible embedding calls to
   stay on one endpoint. The map contains credentials and must never be logged or persisted. Nil makes
@@ -702,7 +705,7 @@
   [{:keys [provider]}]
   (case provider
     "ai-service" (assoc (embedding-service-resolve-config!) :provider provider)
-    "openai" (let [connection-key (openai-connection-key)
+    "openai" (let [connection-key     (openai-connection-key)
                     [endpoint api-key] (openai-resolve-config! connection-key)]
                 {:provider provider, :connection-key connection-key, :endpoint endpoint, :api-key api-key})
     nil))
@@ -754,10 +757,6 @@
       :instance-token?      instance-token?})))
 
 ;;;; OpenAI provider
-
-
-
-
 
 
 

@@ -362,8 +362,7 @@
                               {:data  [{:embedding (encode-floats-to-base64 [1.0 2.0 3.0 4.0])}]
                                :usage {:total_tokens 1}})}]
       (mt/with-dynamic-fn-redefs
-        [semantic.settings/openai-api-base-url (fn [] @base-url)
-         semantic.settings/openai-api-key      (fn [] @api-key)
+        [llm.provider/connection (fn [_] {:type "openai", :config {:base-url @base-url, :api-key @api-key}})
          http/post                              (fn [url opts]
                                                   (swap! requested conj
                                                          {:url           url
@@ -380,6 +379,37 @@
                 {:url           "https://first.openai.example/v1/embeddings"
                  :authorization "Bearer first-key"}]
                @requested))))))
+
+(deftest pinned-routing-preserves-credential-policy-test
+  (testing "deployment routing retains the instance-token and private-network policy"
+    (mt/with-temp-env-var-value! [mb-ee-embedding-service-base-url "https://embed.example.com"]
+      (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-api-key (constantly nil)]
+        (let [routing (embedding/resolve-openai-compatible-routing! {:provider "ai-service"})]
+          (is (= "https://embed.example.com/v1/embeddings" (:endpoint routing)))
+          (is (true? (:instance-token? routing)))
+          (is (= :allow-private (:network-policy-floor routing)))))))
+  (testing "a database endpoint without a key remains forbidden"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "https://embed.example.com"
+                                       ee-embedding-service-api-key nil]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"set in the application database and has no API key"
+                            (embedding/resolve-openai-compatible-routing! {:provider "ai-service"}))))))
+
+(deftest pinned-routing-uses-the-selected-named-connection-test
+  (let [selected (atom "named")
+        seen     (atom [])]
+    (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-provider (fn [] @selected)
+                                llm.provider/connection (fn [key]
+                                                          (swap! seen conj key)
+                                                          {:type "openai"
+                                                           :config {:base-url (str "https://" key ".example")
+                                                                    :api-key (str key "-key")}})]
+      (let [routing (embedding/resolve-openai-compatible-routing! {:provider "openai"})]
+        (reset! selected "other")
+        (binding [embedding/*openai-compatible-routing* routing]
+          (is (= "https://named.example/v1/embeddings"
+                 (embedding/embedder-circuit-endpoint {:provider "openai"}))))
+        (is (= ["named"] @seen))
+        (is (= "named" (:connection-key routing)))))))
 
 (deftest test-get-embedding
   (mt/with-temporary-setting-values [llm-openai-api-key              "sk-mock-openai-api-key"

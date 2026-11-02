@@ -24,18 +24,19 @@
    [clojure.java.shell :as shell]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase-enterprise.search.entity-retrieval.index-table :as index-table]
-   [metabase-enterprise.search.entity-retrieval.reconcile :as reconcile]
    [metabase-enterprise.osi-generation.benchmark.arms :as arms]
    [metabase-enterprise.osi-generation.benchmark.corpus :as corpus]
    [metabase-enterprise.osi-generation.benchmark.metrics :as metrics]
    [metabase-enterprise.osi-generation.generate :as generate]
+   [metabase-enterprise.search.entity-retrieval.index-table :as index-table]
+   [metabase-enterprise.search.entity-retrieval.reconcile :as reconcile]
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.search.semantic.embedding :as semantic.embedding]
+   [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.search.entity-retrieval.spec :as spec]
-   [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
@@ -299,6 +300,12 @@
 
 ;;; -------------------------------------------------- Scoring ----------------------------------------------------
 
+(defn- invoke-retrieval-tool
+  [query limit]
+  (tools/handle tools.entity-retrieval/retrieve-library-entities-tool
+                {:user_search_prompt query, :limit limit}
+                nil))
+
 (defn- run-query
   "Run one benchmark query through the production tool and return its `:structured-output`.
   Throws when the tool reports the search unavailable (no structured output) — an outage must fail the
@@ -307,9 +314,7 @@
   (when-not (entity-retrieval/entity-retrieval-available?)
     (throw (ex-info "Library retrieval became unavailable during the benchmark"
                     {:reason :retrieval-unavailable, :query (:id query)})))
-  (let [result     (tools.entity-retrieval/retrieve-library-entities-tool
-                    {:user_search_prompt (:prompt query)
-                     :limit              (:tool-limit opts)})
+  (let [result     (invoke-retrieval-tool (:prompt query) (:tool-limit opts))
         structured (or (:structured-output result)
                        (throw (ex-info "Retrieval tool returned no structured output — search unavailable mid-run"
                                        {:reason :retrieval-unavailable
