@@ -55,6 +55,7 @@
     {
       "name": "Metabot",
       "label": ".Team/Metabot",
+      "codeowner": "@metabase/metabot",
       "members": [
         "retro",
         "sloansparger",
