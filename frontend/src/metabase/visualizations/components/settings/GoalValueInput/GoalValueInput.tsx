@@ -253,6 +253,11 @@ export const GoalValueInput = ({
     entityPicker.open();
   };
 
+  function goBackFromEntityPicker() {
+    entityPicker.close();
+    openMenuFromTrigger();
+  }
+
   // Resolves with the column when entity only has 1 column - null otherwise
   const fetchSoleColumn = async (
     type: ReferencedEntityType,
@@ -433,7 +438,7 @@ export const GoalValueInput = ({
                 c="text-secondary"
                 fz="sm"
                 leftSection={<Icon name="chevronleft" size={12} />}
-                onClick={() => goToMenuLevel("root")}
+                onClick={openEntityPicker}
               >
                 {entityName ?? t`Value from another question`}
               </Menu.Item>
@@ -472,6 +477,7 @@ export const GoalValueInput = ({
       <GoalEntityPickers
         hasOpened={hasOpenedEntityPicker}
         opened={isEntityPickerOpen}
+        onBack={goBackFromEntityPicker}
         onChange={handleEntityPicked}
         onClose={entityPicker.close}
       />
