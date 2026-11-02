@@ -434,7 +434,7 @@
               (is (not (str/includes? output "Common issues to check:")))
               (is (nil? (:structured-output result))))))))))
 
-(deftest unclosed-template-tag-test
+(deftest invalid-template-syntax-test
   (mt/with-current-user (mt/user->id :crowberto)
     (doseq [engine [:postgres :h2]]
       (mt/with-temp [:model/Database {db-id :id :as db} {:engine engine}]
@@ -444,12 +444,13 @@
             (testing (str engine " / " profile " / " tool-name)
               (let [result (invoke-with-proposed-sql profile tool-name db-id "SELECT * FROM t [[WHERE x = {{x}}")
                     output (:output result)]
-                (is (= {:class :recoverable :code ::sql.common/unclosed-template-tag} (:error result)))
-                (is (str/includes? output "with no matching `]]` or `}}`"))
+                (is (= {:class :recoverable :code ::sql.common/invalid-template-syntax} (:error result)))
+                (is (str/includes? output "invalid Metabase `{{...}}` or `[[...]]` syntax"))
+                (is (str/includes? output "Parser details: \"Invalid query: found '[[' or '{{' with no matching"))
                 (is (str/includes? output "No changes were saved."))
                 (is (nil? (:structured-output result)))))))))))
 
-(deftest edit-elsewhere-in-sql-with-unclosed-template-tag-test
+(deftest edit-elsewhere-in-sql-with-invalid-template-syntax-test
   (testing "An edit that leaves an existing unclosed tag in place returns a recoverable error, and an edit that closes it succeeds"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [memory (assoc editor-memory :state {:queries {"q1" {:database (mt/id)
@@ -457,7 +458,7 @@
                                                                 :native   {:query "SELECT * FROM venues [[WHERE id = {{id}}"}}}})]
         (doseq [profile [:internal :sql]]
           (testing profile
-            (is (= {:class :recoverable :code ::sql.common/unclosed-template-tag}
+            (is (= {:class :recoverable :code ::sql.common/invalid-template-syntax}
                    (:error (invoke-sql-tool profile memory "edit_sql_query"
                                             {:edits [{:old_string "*" :new_string "name"}]}))))
             (let [result (invoke-sql-tool profile memory "edit_sql_query"

@@ -62,16 +62,20 @@
   (boolean (and (string? sql)
                 (re-find #"\{\{|\[\[" sql))))
 
-(defn- unclosed-template-tag?
-  "Whether `sql` has a `[[` or `{{` with no matching `]]` or `}}`. `lib/recognize-template-tags` throws only for an
-  unclosed tag."
+(defn- template-syntax-error
+  "The parser message for `{{...}}` or `[[...]]` syntax in `sql` that Metabase rejects, or `nil`.
+
+  This is the strict parse that SQL drivers do before each run. The parser marks its syntax errors with
+  `:type :invalid-query`, and other exceptions are not about the SQL, so they propagate."
   [sql]
-  (and (contains-template-tags? sql)
-       (try
-         (lib/recognize-template-tags sql)
-         false
-         (catch clojure.lang.ExceptionInfo _
-           true))))
+  (when (contains-template-tags? sql)
+    (try
+      (lib/parse-parameters sql)
+      nil
+      (catch clojure.lang.ExceptionInfo e
+        (if (= :invalid-query (:type (ex-data e)))
+          (ex-message e)
+          (throw e))))))
 
 (mr/def ::validation-result
   [:map
@@ -84,8 +88,8 @@
 (mu/defn validate-sql :- ::validation-result
   "Validate sql query.
 
-  For every dialect, sql with a `[[` or `{{` that has no matching `]]` or `}}` is not valid, with `:reason`
-  `:unclosed-template-tag`. Metabase cannot make a query from such sql.
+  For every dialect, sql with `{{...}}` or `[[...]]` syntax that Metabase rejects is not valid, with `:reason`
+  `:invalid-template-syntax` and the parser message in `:error-message`. Metabase cannot run such sql.
 
   Otherwise validation is short-circuited and query is considered valid for following cases:
   - sql string is empty,
@@ -101,12 +105,14 @@
   with the Python ai-service."
   [dialect :- [:maybe :string]
    sql :- :string]
-  (let [mapped-dialect (get dialect-mapping dialect)]
+  (let [mapped-dialect (get dialect-mapping dialect)
+        template-error (template-syntax-error sql)]
     (cond
-      (unclosed-template-tag? sql)
+      template-error
       {:valid? false
        :dialect dialect
-       :reason :unclosed-template-tag}
+       :reason :invalid-template-syntax
+       :error-message template-error}
 
       (or (nil? dialect)
           (str/blank? sql)
