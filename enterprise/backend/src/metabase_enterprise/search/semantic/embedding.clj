@@ -706,8 +706,8 @@
   (case provider
     "ai-service" (assoc (embedding-service-resolve-config!) :provider provider)
     "openai" (let [connection-key     (openai-connection-key)
-                    [endpoint api-key] (openai-resolve-config! connection-key)]
-                {:provider provider, :connection-key connection-key, :endpoint endpoint, :api-key api-key})
+                   [endpoint api-key] (openai-resolve-config! connection-key)]
+               {:provider provider, :connection-key connection-key, :endpoint endpoint, :api-key api-key})
     nil))
 
 (defn- active-openai-compatible-routing!
@@ -721,7 +721,6 @@
        (let [[endpoint api-key] (openai-resolve-config! connection-key)]
          {:provider provider, :connection-key connection-key, :endpoint endpoint, :api-key api-key})
        (resolve-openai-compatible-routing! embedding-model)))))
-
 
 (defmethod embedder-circuit-endpoint "ai-service" [_]
   (:endpoint (active-openai-compatible-routing! {:provider "ai-service"})))
@@ -757,10 +756,6 @@
       :instance-token?      instance-token?})))
 
 ;;;; OpenAI provider
-
-
-
-
 
 (defmethod embedder-circuit-endpoint "openai" [_]
   (:endpoint (active-openai-compatible-routing! {:provider "openai"})))

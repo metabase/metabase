@@ -1121,8 +1121,8 @@
   (testing "an explicit prefix does not bypass model resolution or endpoint pinning"
     (mt/with-dynamic-fn-redefs
       [llm.provider/connection (fn [_] {:type "openai"
-                                         :config {:api-key "secret-key"
-                                                  :base-url "https://tenant-secret.openai.example/v2"}})]
+                                        :config {:api-key "secret-key"
+                                                 :base-url "https://tenant-secret.openai.example/v2"}})]
       (let [opts     (#'runner/prepared-opts {:model                 {:provider          "openai"
                                                                       :model-name        "text-embedding-3-small"
                                                                       :vector-dimensions 1536}
