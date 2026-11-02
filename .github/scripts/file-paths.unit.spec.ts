@@ -356,7 +356,6 @@ describe("file-paths.yaml", () => {
     ".github/actions/create-backport/kondo-ratchets.sh",
     ".github/actions/create-backport/create-backport-test.sh",
   ])("lints and tests %s", (file) => {
-    expect(matches("shell_scripts", file)).toBe(true);
     expect(matches("ci_scripts", file)).toBe(true);
   });
 });

@@ -359,9 +359,6 @@ build_uberjar:
   - *embedding_sdk_host_sample_apps
   - *workflows
 
-shell_scripts:
-  - ".github/actions/create-backport/*.sh"
-
 yaml:
   - "**/*.yml"
   - "**/*.yaml"
