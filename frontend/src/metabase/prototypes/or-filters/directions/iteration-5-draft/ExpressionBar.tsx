@@ -843,7 +843,7 @@ export function ExpressionBar({
               <CaretSlot
                 key="caret"
                 index={caretIndex}
-                isAtEnd={caretIndex === tokens.length}
+                isAtEnd={caretIndex === tokens.length && !canExitRight}
               >
                 {caretView}
               </CaretSlot>
@@ -886,7 +886,7 @@ export function ExpressionBar({
             <CaretSlot
               key="caret"
               index={caretIndex}
-              isAtEnd={caretIndex === tokens.length}
+              isAtEnd={caretIndex === tokens.length && !canExitRight}
             >
               {caretView}
             </CaretSlot>
