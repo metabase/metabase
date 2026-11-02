@@ -31,6 +31,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -447,9 +448,8 @@
     (let [parent     (h2x/identifier :field "public" "test_table" "data")
           nfc-field  {:nfc-path ["data" "key"] :database-type "text"}
           [json-sql] (sql/format-expr (#'sql.qp/json-query :postgres parent nfc-field))
-          stage      {:lib/type :mbql.stage/native :native (str "SELECT " json-sql " AS k FROM t")}
-          out-sql    (-> (driver.sql/validate-impersonated-query* :postgres {:stages [stage]})
-                         :stages first :native)]
+          query      (lib/native-query meta/metadata-provider (str "SELECT " json-sql " AS k FROM t"))
+          out-sql    (lib/raw-native-query (driver.sql/validate-impersonated-query* :postgres query))]
       ;; The broken reconstruction looks like `CAST(parent #>> array[?] AS TEXT[])` — i.e.
       ;; the cast wraps the entire `#>>` expression instead of just the path argument.
       (is (not (re-find #"(?i)#>>\s+array\s*\[\?\]\s+AS\s+TEXT\s*\[\s*\]" out-sql))
@@ -2619,3 +2619,13 @@
                     (mt/db) [(format "SELECT generate_series(1, %d) AS i" n)])]
         (testing "only the first rows are pulled, not all ~2 billion"
           (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 5432 :user "u" :db "a?b"}
+                   {:host "localhost:5432/d?b" :port 5432 :user "u" :db "d"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :postgres details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

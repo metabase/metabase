@@ -5,15 +5,32 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
+
+(defn- validates-native-queries?
+  "Does `driver` supply its own `driver/validate-impersonated-query`?"
+  [driver]
+  (not= (get-method driver/validate-impersonated-query driver)
+        (get-method driver/validate-impersonated-query :default)))
+
+(defn- assert-native-validation-supported
+  "Refuse a native query on a driver whose validation resolves to the `:default` no-op, rather than running
+  it unchecked. MBQL stages are compiler-generated, so they pass through — only native SQL is checked."
+  [driver query]
+  (when (and (lib/any-native-stage? query)
+             (not (validates-native-queries? driver)))
+    (throw (ex-info (tru "Connection impersonation does not support native queries on this database.")
+                    {:type qp.error-type/invalid-query}))))
 
 (mu/defn- validate-native-stage :- ::lib.schema/stage.native
   "Validate the native `stage` of `query` for `driver` on its own, through the impersonation query cache."
@@ -35,14 +52,16 @@
                  :native)))))
 
 (defn- validate-impersonated-query
-  "Enforce the single-statement rule on every native stage of `query` for `driver`."
-  [driver query]
-  (update query :stages (fn [stages]
-                          (mapv (fn [stage]
-                                  (if (lib/native-stage? stage)
-                                    (validate-native-stage driver query stage)
-                                    stage))
-                                stages))))
+  "Enforce the single-statement rule on every native stage of `query` for `driver`, including stages nested in joins."
+  [driver database query]
+  (if (driver.u/supports? driver :connection-impersonation database)
+    (do (assert-native-validation-supported driver query)
+        (lib/walk-stages
+         query
+         (fn [_query _path stage]
+           (when (lib/native-stage? stage)
+             (validate-native-stage driver query stage)))))
+    query))
 
 (defenterprise apply-impersonation
   "Pre-processing middleware. Validates that native queries on impersonated databases are single SELECT statements,
@@ -61,7 +80,7 @@
         impersonation-enabled?
         (as-> q
               (do (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
-                  (validate-impersonated-query driver/*driver* q)))
+                  (validate-impersonated-query driver/*driver* database q)))
         ;; Only assign the role for non-admin impersonated users
         role
         (assoc :impersonation/role role)))))

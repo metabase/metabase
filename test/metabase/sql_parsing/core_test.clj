@@ -761,6 +761,41 @@
       (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
       (is (=? {:errors #{}} (sql-parsing/field-references "postgres" sql))))))
 
+;;; ------------------------------------------- validate-executable-stmt -------------------------------------------
+
+(deftest ^:parallel validate-executable-stmt-test
+  (testing "whether a query is one statement of the kind asked for, which is what tells a caller the rest is unread"
+    (are [sql stmt-type expected] (=? expected (sql-parsing/validate-executable-stmt "postgres" sql stmt-type))
+      "SELECT * FROM orders"                              "read"  {:verdict :allowed    :single-stmt? true}
+      "SELECT * FROM orders; DELETE FROM people"          "read"  {:verdict :disallowed :single-stmt? false}
+      "SELECT * FROM orders;"                             "read"  {:verdict :allowed    :single-stmt? true}
+      "SELECT * FROM orders WHERE note = 'a; b'"          "read"  {:verdict :allowed    :single-stmt? true}
+      "DELETE FROM people WHERE id = 1"                   "read"  {:verdict :disallowed :single-stmt? true}
+      "DELETE FROM people WHERE id = 1"                   "write" {:verdict :allowed    :single-stmt? true}
+      "WITH c AS (SELECT id FROM people) SELECT * FROM c" "read"  {:verdict :allowed    :single-stmt? true}))
+  (testing "SQL the dialect cannot parse is unchecked, not disallowed"
+    (is (=? {:verdict :unknown, :reason "unparseable", :error some?}
+            (sql-parsing/validate-executable-stmt "postgres" "SELECT (" "read"))))
+  (testing "an unknown dialect is unchecked rather than parsed generically"
+    (is (= {:verdict :unknown, :reason "unknown-dialect", :sql "SELECT 1"}
+           (sql-parsing/validate-executable-stmt nil "SELECT 1" "read"))))
+  (testing "never answers about a stripped rewrite"
+    ;; Analysis can read a stripped query because it only needs the shape. This answer has to hold for the
+    ;; string the caller will execute, so it parses the original and reports SQL over its ceiling as
+    ;; unchecked rather than answering about a rewrite.
+    (let [under (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 150)) ")")
+          over  (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 20000)) ")")]
+      (testing "a list the analysis threshold would strip still validates as one statement"
+        (is (=? {:verdict :allowed} (sql-parsing/validate-executable-stmt "postgres" under "read"))))
+      (testing "a list past the ceiling comes back unchecked, not stripped and vouched for"
+        (is (= {:verdict :unknown, :reason "large-literal-list", :sql over}
+               (sql-parsing/validate-executable-stmt "postgres" over "read"))))))
+  (testing "a second statement hidden in a comment inside an oversized list is refused, not run"
+    (let [sql (str "SELECT * FROM (VALUES " (str/join ", " (repeat 2001 "(1)"))
+                   " -- ), (1)) AS v(x); SET ROLE NONE; SELECT 1 AS x\n) AS v(x)")]
+      (is (=? {:verdict :unknown, :reason "large-literal-list", :sql sql}
+              (sql-parsing/validate-executable-stmt "postgres" sql "read"))))))
+
 (deftest ^:parallel large-values-referenced-tables-test
   (testing "referenced-tables works on queries with massive VALUES clauses"
     (let [tuples (str/join ", " (map #(format "(%d, %d)" % (mod % 100)) (range 20000)))

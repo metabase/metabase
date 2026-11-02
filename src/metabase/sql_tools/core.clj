@@ -226,7 +226,16 @@
   (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
                                 sql from-dialect to-dialect))
 
-(defn is-single-stmt-of-type?
-  "Wrapper around `sql-parsing/is-single-stmt-of-type?`."
+(defn validate-executable-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that will
+  **execute** the `:sql` the verdict carries: `\"read\"` = SELECT, `\"write\"` = INSERT, UPDATE, or
+  DELETE.
+
+  The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
+  parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk a GraalPy
+  OOM) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
+  original one. Only `:verdict :allowed` is permission to proceed.
+
+  See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape."
   [driver sql stmt-type]
-  (sql-parsing/is-single-stmt-of-type? (sqlglot/driver->dialect driver) sql stmt-type))
+  (sql-parsing/validate-executable-stmt (sqlglot/driver->dialect driver) sql stmt-type))

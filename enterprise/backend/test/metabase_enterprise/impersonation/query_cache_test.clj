@@ -24,6 +24,7 @@
 (deftest refusal-with-result-is-cached-test
   (mt/with-model-cleanup [:model/ImpersonationQueryCache]
     (doseq [[result allow-write? reason message] [[:unparseable   false nil                  #"Unable to parse native query"]
+                                                  [:unvalidatable false "large-literal-list" #"Unable to validate this native query"]
                                                   [:invalid       false nil                  #"Must be a single select statement"]
                                                   [:invalid       true  nil                  #"Must be a single insert, update, or delete statement"]]]
       (testing (str result " allow-write? " allow-write?)

@@ -209,6 +209,7 @@
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      ;; only inspects a details map and throws; the `!` is for the throw, not for a mutation
      metabase.driver/validate-db-details!
+     metabase.driver.util/validate-connection-parameters!
      metabase.mcp.usage/record-mcp-session!
      metabase.mcp.usage/record-mcp-session-end!
      metabase.mcp.usage/record-mcp-tool-call!

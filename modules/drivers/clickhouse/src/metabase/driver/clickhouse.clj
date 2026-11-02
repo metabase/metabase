@@ -66,6 +66,10 @@
                               :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          true
+                              ;; The JDBC driver sends the query timeout as the `max_execution_time` server setting,
+                              ;; which fails for users with `readonly = 1` (#85850). Long running queries will still
+                              ;; be cancelled by `schedule-query-timeout-cancel!`.
+                              :jdbc/set-query-timeout           false
                               :left-join                        (not driver-api/is-test?)
                               :metadata/key-constraints         false
                               :native-pivot-tables              true
