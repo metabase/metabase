@@ -695,9 +695,9 @@
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
-          ;; Every profile, not just the `:required-tool-call?` ones. A declared unrecoverable failure
-          ;; is defined as one only the user can act on, so the error is the decision and the profile
-          ;; is not part of it. A tool that wants the agent to carry on past a failure declares it
+          ;; Every profile, not just the `:required-tool-call?` ones. The failure decides, and for an
+          ;; ordinary exception that no tool declared, so do the profile and the turn's count of them.
+          ;; A tool that wants the agent to carry on past a failure every time declares it
           ;; recoverable, which is a choice made at the error, where the reason for it is visible.
           (let [undeclared-failures (+ undeclared-failures (count (filter undeclared-failure? parts)))
                 terminal-error      (terminal-error-message profile parts undeclared-failures)]
