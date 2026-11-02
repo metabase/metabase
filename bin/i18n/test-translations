@@ -78,6 +78,17 @@ test_failed_upload_keeps_pin() {
   [ "$(cat "$pin")" = "$first" ] || fail "pin advanced"
 }
 
+test_relative_checkout_publishes() {
+  setup relative
+  printf '#!/usr/bin/env bash\nwhile [ $# -gt 0 ]; do [ "$1" = --body ] && cp "$2" "%s/uploaded.tar.gz"; shift; done\n' "$root" > "$project/stubs/aws"
+  checkout=$(bin/i18n/prepare-translation-update)
+  case "$checkout" in /*) fail "checkout is not relative" ;; esac
+  echo updated > "$checkout/locales/fr.po"
+  bin/i18n/publish-translations "$checkout" > /dev/null 2>&1 || fail "publish failed"
+  [ "$(cat "$pin")" = "latest/$(git rev-parse HEAD)" ] || fail "pin not advanced"
+  [ "$(tar -xzOf "$root/uploaded.tar.gz" fr.po)" = updated ] || fail "wrong upload"
+}
+
 test_unchanged_skips_upload() {
   setup unchanged
   checkout=$(bin/i18n/prepare-translation-update)
