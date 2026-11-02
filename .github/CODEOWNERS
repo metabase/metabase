@@ -81,20 +81,12 @@ modules/embedder @metabase/metabot
 # .github/workflows/release-custom-viz.yml @metabase/devex @metabase/gadget
 
 # @metabase/data-apps
-# TODO (Chris 2026-10-30) -- This reviewer group spans teams, so these lines stay hand-written.
-# Each backend line names its module and the :team the module config gives it.
-# Once each module's :team and this group cover the same people, delete these lines and opt the modules in.
-enterprise/backend/src/metabase_enterprise/data_apps @metabase/data-apps # enterprise/data-apps (Embedding)
-enterprise/backend/src/metabase_enterprise/dependencies @metabase/data-apps # enterprise/dependencies (Graphy)
-enterprise/backend/src/metabase_enterprise/remote_sync @metabase/data-apps # enterprise/remote-sync (UX West)
+# Backend modules are in the generated block below.
 enterprise/frontend/src/metabase-enterprise/data-apps @metabase/data-apps
 enterprise/frontend/src/metabase-enterprise/dependencies @metabase/data-apps
 enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics @metabase/data-apps
 enterprise/frontend/src/metabase-enterprise/remote_sync @metabase/data-apps
 frontend/src/metabase/monitor/dependency-diagnostics @metabase/data-apps
-src/metabase/data_apps @metabase/data-apps # data-apps (Embedding)
-src/metabase/dependencies @metabase/data-apps # dependencies (Graphy)
-src/metabase/remote_sync @metabase/data-apps # remote-sync (UX West)
 
 # ===== BEGIN generated module ownership (./bin/mage update-codeowners) =====
 #
@@ -104,11 +96,47 @@ src/metabase/remote_sync @metabase/data-apps # remote-sync (UX West)
 # Exceptions inside these paths go below the END marker: lines above this block lose to it.
 #
 
+# enterprise/data-apps (Data Apps)
+enterprise/backend/src/metabase_enterprise/data_apps @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/data_apps.* @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/data_apps @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/data_apps_test.* @metabase/data-apps
+
+# enterprise/dependencies (Data Apps)
+enterprise/backend/src/metabase_enterprise/dependencies @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/dependencies.* @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/dependencies @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/dependencies_test.* @metabase/data-apps
+
+# enterprise/remote-sync (Data Apps)
+enterprise/backend/src/metabase_enterprise/remote_sync @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/remote_sync.* @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/remote_sync @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/remote_sync_test.* @metabase/data-apps
+
 # enterprise/search (Metabot)
 enterprise/backend/src/metabase_enterprise/search @metabase/metabot
 enterprise/backend/src/metabase_enterprise/search.* @metabase/metabot
 enterprise/backend/test/metabase_enterprise/search @metabase/metabot
 enterprise/backend/test/metabase_enterprise/search_test.* @metabase/metabot
+
+# data-apps (Data Apps)
+src/metabase/data_apps @metabase/data-apps
+src/metabase/data_apps.* @metabase/data-apps
+test/metabase/data_apps @metabase/data-apps
+test/metabase/data_apps_test.* @metabase/data-apps
+
+# dependencies (Data Apps)
+src/metabase/dependencies @metabase/data-apps
+src/metabase/dependencies.* @metabase/data-apps
+test/metabase/dependencies @metabase/data-apps
+test/metabase/dependencies_test.* @metabase/data-apps
+
+# remote-sync (Data Apps)
+src/metabase/remote_sync @metabase/data-apps
+src/metabase/remote_sync.* @metabase/data-apps
+test/metabase/remote_sync @metabase/data-apps
+test/metabase/remote_sync_test.* @metabase/data-apps
 
 # search (Metabot)
 src/metabase/search @metabase/metabot
