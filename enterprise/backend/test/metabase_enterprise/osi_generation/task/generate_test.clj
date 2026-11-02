@@ -77,8 +77,10 @@
                              :errors 0, :already-approved 4, :generated 2, :candidates 6}
                    :outcome :completed}))]
     (is (= [:outcome :summary] (vec (keys details))))
-    (is (= [:candidates :generated :already-approved :errors :usage :llm-calls :reconcile]
+    (is (= [:candidates :generated :already-approved :errors :usage :llm-call-count :llm-calls-truncated :llm-calls :reconcile]
            (vec (keys (:summary details)))))
+    (is (= 1 (get-in details [:summary :llm-call-count])))
+    (is (false? (get-in details [:summary :llm-calls-truncated])))
     (is (= [:input-tokens :output-tokens] (vec (keys (get-in details [:summary :usage])))))
     (is (= [:index :execution] (vec (keys (get-in details [:summary :reconcile])))))
     (is (= [:inserted :deleted :unchanged]

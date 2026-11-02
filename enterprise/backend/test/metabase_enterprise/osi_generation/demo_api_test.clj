@@ -1,22 +1,28 @@
 (ns metabase-enterprise.osi-generation.demo-api-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.search.entity-retrieval.index-table :as entity-retrieval.index-table]
-   [metabase-enterprise.search.entity-retrieval.reconcile :as entity-retrieval.reconcile]
    [metabase-enterprise.osi-generation.core :as generation]
    [metabase-enterprise.osi-generation.demo-api :as osi-generation]
    [metabase-enterprise.osi-generation.demo-page :as osi-generation-page]
+   [metabase-enterprise.search.entity-retrieval.core :as entity-retrieval.ee]
+   [metabase-enterprise.search.entity-retrieval.index-table :as entity-retrieval.index-table]
+   [metabase-enterprise.search.entity-retrieval.reconcile :as entity-retrieval.reconcile]
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
-   [metabase.search.entity-retrieval.mirror :as entity-retrieval.mirror]
-   [metabase.search.entity-retrieval.spec :as spec]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
+   [metabase.search.entity-retrieval.mirror :as entity-retrieval.mirror]
+   [metabase.search.entity-retrieval.spec :as spec]
+   [metabase.server.routes :as server.routes]
    [metabase.task.core :as task]
+   [metabase.test :as mt]
    [next.jdbc :as jdbc]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest demo-requires-development-or-explicit-opt-in-test
   (with-redefs [config/dev-available? false
@@ -26,7 +32,6 @@
                 config/config-bool  (constantly true)]
     (is (true? (#'osi-generation/enabled?)))))
 
-#_{:clj-kondo/ignore [:metabase/tests-must-live-in-known-modules]}
 (deftest library-entities-test
   (let [context {:entity_type     "card"
                  :entity_local_id 7
@@ -64,8 +69,8 @@
 
 (deftest approved-context-state-test
   (let [entity {:name "Current name"}]
-    (with-redefs [spec/entity-basis (fn [_projection value]
-                                      (select-keys value [:name]))]
+    (mt/with-dynamic-fn-redefs [spec/entity-basis (fn [_projection value]
+                                                    (select-keys value [:name]))]
       (is (= :approved
              (#'osi-generation/context-state entity {:data_source :human, :basis {:name "Current name"}})))
       (is (= :approved
@@ -76,8 +81,8 @@
              (#'osi-generation/context-state entity {:data_source :metabot, :basis nil}))))))
 
 (deftest generated-context-state-changes-when-description-changes-test
-  (with-redefs [spec/entity-basis (fn [_projection value]
-                                    (select-keys value [:description]))]
+  (mt/with-dynamic-fn-redefs [spec/entity-basis (fn [_projection value]
+                                                  (select-keys value [:description]))]
     (is (= :invalidated
            (#'osi-generation/context-state
             {:description "Current description"}
@@ -182,10 +187,10 @@
     (is (= {:deleted 4} (#'osi-generation/delete-all-contexts!)))))
 
 (deftest clear-library-index-test
-  (with-redefs [semantic.db.datasource/ensure-initialized-data-source! (constantly ::pgvector)
-                entity-retrieval.reconcile/clear-index! (fn [datasource]
-                                                          (is (= ::pgvector datasource))
-                                                          {:deleted 46})]
+  (mt/with-dynamic-fn-redefs [semantic.db.datasource/ensure-initialized-data-source! (constantly ::pgvector)
+                              entity-retrieval.reconcile/clear-index! (fn [datasource]
+                                                                        (is (= ::pgvector datasource))
+                                                                        {:deleted 46})]
     (is (= {:deleted 46} (#'osi-generation/clear-library-index!)))))
 
 (deftest library-index-entries-test
@@ -206,9 +211,9 @@
                                   rows)]
       (is (= {:busy false, :data rows} (#'osi-generation/library-index-entries 50)))))
   (testing "busy index never scans membership"
-    (with-redefs [semantic.db.datasource/ensure-initialized-data-source! (constantly ::pgvector)
-                  entity-retrieval.reconcile/with-index-read-lock (fn [_ _] nil)
-                  spec/member-entities (fn [& _] (throw (ex-info "unexpected scan" {})))]
+    (mt/with-dynamic-fn-redefs [semantic.db.datasource/ensure-initialized-data-source! (constantly ::pgvector)
+                                entity-retrieval.reconcile/with-index-read-lock (fn [_ _] nil)
+                                spec/member-entities (fn [& _] (throw (ex-info "unexpected scan" {})))]
       (is (= {:busy true, :data []} (#'osi-generation/library-index-entries 0))))))
 
 (deftest index-entity-settled-test
@@ -233,12 +238,12 @@
     (binding [api/*current-user-id*              42
               api/*current-user-permissions-set* (delay #{"/"})
               api/*is-superuser?*                true]
-      (with-redefs [perms/impersonated-user? (constantly false)
-                    perms/sandboxed-user?    (constantly false)
-                    search/search-context    identity
-                    search/search            (fn [context]
-                                               (reset! search-context context)
-                                               {:engine :search.engine/semantic, :total 0, :data []})]
+      (mt/with-dynamic-fn-redefs [perms/impersonated-user? (constantly false)
+                                  perms/sandboxed-user?    (constantly false)
+                                  search/search-context    identity
+                                  search/search            (fn [context]
+                                                             (reset! search-context context)
+                                                             {:engine :search.engine/semantic, :total 0, :data []})]
         (is (= {:engine :search.engine/semantic, :total 0, :data []}
                (#'osi-generation/comparison-search "semantic" "customer trends")))
         (is (= {:context               :api
@@ -256,15 +261,18 @@
 
 (deftest library-retrieval-search-test
   (with-redefs [tools.entity-retrieval/retrieve-library-entities-tool
-                (fn [input]
-                  (is (= {:user_search_prompt "monthly revenue", :limit 10} input))
-                  {:structured-output {:total_count 1
-                                       :weak_match  false
-                                       :data        [{:type             "metric"
-                                                      :id               7
-                                                      :name             "Revenue"
-                                                      :matched_doc_type "synonym"
-                                                      :matched_text     "sales"}]}})]
+                (reify tools/Tool
+                  (declaration [_] {})
+                  (handle [_ input context]
+                    (is (= {} context))
+                    (is (= {:user_search_prompt "monthly revenue", :limit 10} input))
+                    {:structured-output {:total_count 1
+                                         :weak_match  false
+                                         :data        [{:type             "metric"
+                                                        :id               7
+                                                        :name             "Revenue"
+                                                        :matched_doc_type "synonym"
+                                                        :matched_text     "sales"}]}}))]
     (is (= {:engine     :library-retrieval
             :total      1
             :weak_match false
@@ -285,8 +293,36 @@
                              3)]
     (is (= {:deleted 3} (#'osi-generation/delete-generation-runs!)))))
 
+(deftest vector-endpoint-decodes-document-id-test
+  (let [result (promise)
+        called (atom nil)]
+    (with-redefs-fn {#'config/config-bool (constantly true)
+                     #'api/check-superuser (constantly nil)
+                     #'entity-retrieval.ee/available? (constantly true)
+                     #'osi-generation/library-index-vector (fn [id] (reset! called id) {:vector "AQ=="})}
+      #(osi-generation/routes {:request-method :get
+                               :uri "/index/vector"
+                               :metabase-user-id 1
+                               :query-params {"doc-id" "a/b+c="}}
+                              (fn [response] (deliver result response))
+                              (fn [error] (deliver result error))))
+    (is (= "a/b+c=" @called))
+    (is (= {:vector "AQ=="} (:body @result)))))
+
+(deftest demo-bare-route-redirects-to-gated-page-test
+  (let [pass-through (fn [_ respond _] (respond nil))
+        handler      (server.routes/make-routes {:api        pass-through
+                                                 :auth       pass-through
+                                                 :oauth      pass-through
+                                                 :well-known pass-through})]
+    (doseq [uri ["/dev/osi-generation" "/dev/osi-generation/"]]
+      (let [result (promise)]
+        (handler {:request-method :get, :uri uri} #(deliver result %) #(deliver result %))
+        (is (= 302 (:status @result)))
+        (is (= "/api/ee/osi-generation-demo-page/" (get-in @result [:headers "Location"])))))))
+
 (deftest resources-are-packaged-test
-  (with-redefs [api/check-superuser (constantly nil)]
+  (mt/with-dynamic-fn-redefs [api/check-superuser (constantly nil)]
     (doseq [[path content-type expected]
             [["metabase_enterprise/osi_generation/demo/osi_generation.html"
               "text/html"
@@ -301,3 +337,57 @@
         (is (= 200 (:status response)))
         (is (= content-type (get-in response [:headers "Content-Type"])))
         (is (re-find (re-pattern expected) (:body response)))))))
+
+(deftest ^:synchronized pgvector-index-inspection-and-clear-test
+  (when (semantic.db.datasource/dedicated-url-configured?)
+    (let [suffix (System/nanoTime)
+          ds (semantic.db.datasource/ensure-initialized-data-source!)
+          model {:provider "mock", :model-name "demo", :vector-dimensions 4, :embedding-space-id "demo-test"}
+          tables {:vectors (str "osi_demo_vectors_" suffix)
+                  :meta    (str "osi_demo_meta_" suffix)}
+          legacy {:vectors (str "osi_demo_legacy_vectors_" suffix)
+                  :meta    (str "osi_demo_legacy_meta_" suffix)}]
+      (binding [entity-retrieval.index-table/*tables* tables]
+        (try
+          (with-redefs [entity-retrieval.index-table/legacy-tables legacy
+                        spec/member-entities (constantly [{:entity_type "metric", :entity_local_id 7}])]
+            (is (= :created (entity-retrieval.index-table/ensure-tables! ds model)))
+            (doseq [n (range 55)]
+              (jdbc/execute! ds [(format (str "INSERT INTO %s "
+                                              "(doc_id, entity_type, entity_local_id, doc_type, doc_text, doc_embedding) "
+                                              "VALUES (?, 'metric', 7, 'name', ?, '[1,2,3,4]'::vector)")
+                                         (entity-retrieval.index-table/vectors-table-sql))
+                                 (format "doc%03d" n) (format "name%03d" n)]))
+            (jdbc/execute! ds [(format (str "INSERT INTO %s "
+                                            "(doc_id, entity_type, entity_local_id, doc_type, doc_text, doc_embedding) "
+                                            "VALUES ('excluded', 'table', 999, 'name', 'outside', '[1,2,3,4]'::vector)")
+                                       (entity-retrieval.index-table/vectors-table-sql))])
+            (let [first-page (#'osi-generation/library-index-entries 0)
+                  next-page  (#'osi-generation/library-index-entries 50)
+                  vector     (#'osi-generation/library-index-vector "doc000")]
+              (is (= 51 (count (:data first-page))))
+              (is (= 5 (count (:data next-page))))
+              (is (= "doc050" (:doc_id (first (:data next-page)))))
+              (is (every? #(not (contains? % :vector_base64)) (:data first-page)))
+              (is (seq (:vector vector))))
+            (with-open [writer (jdbc/get-connection ds)]
+              (let [lock-id (var-get #'entity-retrieval.reconcile/reconcile-lock-id)]
+                (jdbc/execute! writer [(format "SELECT pg_advisory_lock(%d)" lock-id)])
+                (try
+                  (is (= {:busy true, :data []} (#'osi-generation/library-index-entries 0)))
+                  (finally
+                    (jdbc/execute! writer [(format "SELECT pg_advisory_unlock(%d)" lock-id)])))))
+            ;; A legacy meta table may not have the optional freshness column.
+            (jdbc/execute! ds [(format "ALTER TABLE %s DROP COLUMN reconciled_at"
+                                       (entity-retrieval.index-table/meta-table-sql))])
+            (is (= {:deleted 56} (entity-retrieval.reconcile/clear-index! ds)))
+            (is (= :missing (entity-retrieval.index-table/index-status ds model)))
+            (let [full-runs (atom 0)]
+              (with-redefs-fn {#'entity-retrieval.reconcile/reconcile-against-appdb!
+                               (fn [_ _] (swap! full-runs inc) {:inserted 0, :deleted 0, :unchanged 0})}
+                #(entity-retrieval.reconcile/reconcile-entity! ds (constantly model) "metric" 7))
+              (is (= 1 @full-runs) "the next targeted sync must rebuild the full index")))
+          (finally
+            (jdbc/execute! ds [(format "DROP TABLE IF EXISTS %s, %s"
+                                       (entity-retrieval.index-table/vectors-table-sql)
+                                       (entity-retrieval.index-table/meta-table-sql))])))))))

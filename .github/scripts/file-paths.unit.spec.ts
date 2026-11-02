@@ -35,6 +35,14 @@ describe("file-paths.yaml", () => {
   // other entries - it matches every path they don't, turning the filter permanently on. Excluding
   // a path means writing the exclusion inside one pattern, the way backend_sources keeps
   // ratchet files out with ".clj-kondo/**/!(ratchets.edn)".
+  it.each([
+    "enterprise/backend/src/metabase_enterprise/osi_generation/demo/osi_generation.js",
+    "dev/test/dev/osi_generation_page.unit.spec.js",
+  ])("runs the demo unit spec when %s changes", (file) => {
+    expect(matches("frontend_all", file)).toBe(true);
+    expect(matches("frontend_unit_infra", file)).toBe(true);
+  });
+
   it("never excludes a path with a standalone negation", () => {
     const negated = Object.entries(filters).flatMap(([name, filter]) =>
       patterns(filter)

@@ -1,35 +1,36 @@
 (ns metabase-enterprise.osi-generation.demo-api
   "Superuser-only control surface packaged on the OSI demo branch for PR-environment demos."
   (:require
-   [metabase-enterprise.search.entity-retrieval.core :as entity-retrieval.ee]
-   [metabase-enterprise.search.entity-retrieval.index-table :as entity-retrieval.index-table]
-   [metabase-enterprise.search.entity-retrieval.reconcile :as entity-retrieval.reconcile]
    [metabase-enterprise.osi-generation.core :as generation]
+   [metabase-enterprise.osi-generation.db :as demo.db]
    [metabase-enterprise.osi-generation.prompt :as generation.prompt]
    [metabase-enterprise.osi-generation.settings :as generation.settings]
    [metabase-enterprise.osi-generation.task.generate :as generation.task]
+   [metabase-enterprise.search.entity-retrieval.core :as entity-retrieval.ee]
+   [metabase-enterprise.search.entity-retrieval.index-table :as entity-retrieval.index-table]
+   [metabase-enterprise.search.entity-retrieval.reconcile :as entity-retrieval.reconcile]
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.config.core :as config]
-   [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.search.entity-retrieval.mirror :as entity-retrieval.mirror]
-   [metabase.search.entity-retrieval.spec :as spec]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.osi.models.osi-ai-context :as osi-ai-context]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.search.entity-retrieval.mirror :as entity-retrieval.mirror]
+   [metabase.search.entity-retrieval.spec :as spec]
    [metabase.settings.core :as setting]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2])
+   [next.jdbc.result-set :as jdbc.rs])
   (:import
    (java.time OffsetDateTime)
    (org.quartz Scheduler)))
@@ -95,9 +96,9 @@
      :job                 {:registered job-registered
                            :info       (when job-registered
                                          (task/job-info generation/generation-job-key))}
-     :contexts            {:total     (t2/count :model/OsiAiContext)
-                           :generated (t2/count :model/OsiAiContext :data_source :metabot)
-                           :approved  (t2/count :model/OsiAiContext :data_source :human)}}))
+     :contexts            {:total     (demo.db/context-count nil)
+                           :generated (demo.db/context-count :metabot)
+                           :approved  (demo.db/context-count :human)}}))
 
 (defn- library-entities
   []
@@ -105,7 +106,7 @@
         entities-by-class (u/for-map [entity entities]
                             [(spec/hydration-key entity) entity])
         contexts          (u/for-map [{:keys [entity_type entity_local_id] :as context}
-                                      (t2/select context-api-model)]
+                                      (demo.db/contexts context-api-model)]
                             [(entity-retrieval/entity-class entity_type entity_local_id) context])]
     (->> entities
          (map spec/entity-summary)
@@ -123,7 +124,7 @@
   [entity-type entity-local-id description]
   (let [entity (api/check-404 (spec/member-entity :osi-context entity-type entity-local-id))
         model  (api/check-404 (spec/entity-type->model (:entity_type entity)))
-        updated (t2/update! model :id (:entity_local_id entity) {:description description})]
+        updated (demo.db/update-description! model (:entity_local_id entity) description)]
     (api/check-500 (= 1 updated))
     ;; Source description changes bypass the OsiAiContext model hooks, so request the same targeted
     ;; reconciliation those hooks use. This demo endpoint should not leave its visible index stale until
@@ -138,9 +139,7 @@
                           (spec/hydrate :osi-context)
                           first)
         entity-class (spec/hydration-key entity)
-        context      (t2/select-one context-api-model
-                                    :entity_type (first entity-class)
-                                    :entity_local_id (second entity-class))
+        context      (demo.db/context context-api-model (first entity-class) (second entity-class))
         basis        (spec/entity-basis :osi-context entity)
         diff         (when (:basis context)
                        (spec/basis-diff (:basis context) basis))]
@@ -160,13 +159,11 @@
             (:reason task_details)  (assoc :reason (:reason task_details))
             (:summary task_details) (assoc :summary (:summary task_details))
             (:message task_details) (assoc :message (:message task_details))))
-        (t2/select generation-run-columns
-                   :task generation.task/generation-task-history-name
-                   {:limit 25, :order-by [[:started_at :desc] [:id :desc]]})))
+        (demo.db/generation-runs generation-run-columns generation.task/generation-task-history-name)))
 
 (defn- delete-all-contexts!
   []
-  {:deleted (t2/delete! :model/OsiAiContext)})
+  {:deleted (demo.db/delete-contexts!)})
 
 (defn- clear-library-index!
   []
@@ -234,6 +231,19 @@
               {:busy false, :settled (= (set (map :doc_id desired)) (set (map :doc_id stored)))})))
         {:busy true, :settled false})))
 
+(defn- library-index-vector
+  [doc-id]
+  (let [datasource (semantic.db.datasource/ensure-initialized-data-source!)]
+    (or (entity-retrieval.reconcile/with-index-read-lock
+          datasource
+          (fn [conn]
+            (api/check-404
+             (jdbc/execute-one! conn
+                                [(format "SELECT encode(vector_send(doc_embedding), 'base64') AS vector FROM %s WHERE doc_id = ?"
+                                         (entity-retrieval.index-table/vectors-table-sql)) doc-id]
+                                {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+        (throw (ex-info "Index is busy." {:status-code 503})))))
+
 (defn- comparison-search
   [engine query]
   (search/search
@@ -253,7 +263,9 @@
 (defn- library-retrieval-search
   [query]
   (let [{:keys [output structured-output]}
-        (tools.entity-retrieval/retrieve-library-entities-tool {:user_search_prompt query, :limit 10})]
+        (tools/handle tools.entity-retrieval/retrieve-library-entities-tool
+                      {:user_search_prompt query, :limit 10}
+                      {})]
     (if structured-output
       {:engine     :library-retrieval
        :total      (:total_count structured-output)
@@ -263,8 +275,7 @@
 
 (defn- delete-generation-runs!
   []
-  {:deleted (t2/delete! :model/TaskHistory :task generation.task/generation-task-history-name
-                         :status [:not= :started])})
+  {:deleted (demo.db/delete-finished-runs! generation.task/generation-task-history-name)})
 
 (defn- ensure-generation-job!
   []
@@ -306,7 +317,7 @@
   "Toggle automatic OSI metadata generation."
   [_route-params
    _query-params
-   {:keys [enabled]} :- [:map [:enabled :boolean]]]
+   {:keys [enabled]} :- [:map {:closed true} [:enabled :boolean]]]
   (api/check-superuser)
   (generation.settings/osi-generation-enabled! enabled)
   {:enabled (setting/get-value-of-type :boolean :osi-generation-enabled)})
@@ -335,7 +346,7 @@
 (api.macros/defendpoint :get "/index" :- :any
   "List a page of Library index documents."
   [_route-params
-   {:keys [offset]} :- [:map [:offset {:optional true} [:int {:min 0}]]]]
+   {:keys [offset]} :- [:map {:closed true} [:offset {:optional true} [:int {:min 0}]]]]
   (api/check-superuser)
   (api/check-400 (entity-retrieval.ee/available?)
                  "Library retrieval is unavailable; check its pgvector and embedding configuration.")
@@ -343,7 +354,7 @@
 
 (api.macros/defendpoint :get "/index/settled/:entity-type/:entity-local-id" :- :any
   "Check whether a single entity's current documents have reached the index."
-  [{:keys [entity-type entity-local-id]} :- [:map
+  [{:keys [entity-type entity-local-id]} :- [:map {:closed true}
                                              [:entity-type [:string {:api/regex #"[a-z-]+"}]]
                                              [:entity-local-id ms/PositiveInt]]]
   (api/check-superuser)
@@ -353,25 +364,16 @@
 (api.macros/defendpoint :get "/index/vector" :- :any
   "Return the encoded vector for one index document."
   [_route-params
-   {:keys [doc_id]} :- [:map [:doc_id ms/NonBlankString]]]
+   {:keys [doc-id]} :- [:map {:closed true} [:doc-id ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (entity-retrieval.ee/available?) "Library retrieval is unavailable.")
-  (let [datasource (semantic.db.datasource/ensure-initialized-data-source!)]
-    (or (entity-retrieval.reconcile/with-index-read-lock
-          datasource
-          (fn [conn]
-            (api/check-404
-             (jdbc/execute-one! conn
-                                [(format "SELECT encode(vector_send(doc_embedding), 'base64') AS vector FROM %s WHERE doc_id = ?"
-                                         (entity-retrieval.index-table/vectors-table-sql)) doc_id]
-                                {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
-        (throw (ex-info "Index is busy." {:status-code 503})))))
+  (library-index-vector doc-id))
 
 (api.macros/defendpoint :get "/search/:engine" :- :any
   "Run the real AppDB, semantic, or Library-retrieval search path without persisting an engine override in
   the browser."
-  [{:keys [engine]} :- [:map [:engine [:enum "appdb" "semantic" "library"]]]
-   {:keys [q]} :- [:map [:q ms/NonBlankString]]]
+  [{:keys [engine]} :- [:map {:closed true} [:engine [:enum "appdb" "semantic" "library"]]]
+   {:keys [q]} :- [:map {:closed true} [:q ms/NonBlankString]]]
   (api/check-superuser)
   (if (= engine "library")
     (do
@@ -385,17 +387,17 @@
   "Edit a Library entity's source description, which is part of the generation basis and makes generated
   context eligible for regeneration. Human-approved context remains protected until regeneration is
   explicitly requested."
-  [{:keys [entity-type entity-local-id]} :- [:map
+  [{:keys [entity-type entity-local-id]} :- [:map {:closed true}
                                              [:entity-type [:string {:api/regex #"[a-z-]+"}]]
                                              [:entity-local-id ms/PositiveInt]]
    _query-params
-   {:keys [description]} :- [:map [:description [:maybe :string]]]]
+   {:keys [description]} :- [:map {:closed true} [:description [:maybe :string]]]]
   (api/check-superuser)
   (update-library-description! entity-type entity-local-id description))
 
 (api.macros/defendpoint :get "/entities/:entity-type/:entity-local-id/prompt" :- :any
   "Render the exact generation prompt for one current Library entity without calling the LLM."
-  [{:keys [entity-type entity-local-id]} :- [:map
+  [{:keys [entity-type entity-local-id]} :- [:map {:closed true}
                                              [:entity-type [:string {:api/regex #"[a-z-]+"}]]
                                              [:entity-local-id ms/PositiveInt]]
    _query-params]

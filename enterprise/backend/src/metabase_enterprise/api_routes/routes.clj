@@ -35,6 +35,7 @@
    [metabase-enterprise.mfa.routes]
    [metabase-enterprise.osi-generation.api]
    [metabase-enterprise.osi-generation.demo-api]
+   [metabase-enterprise.osi-generation.demo-page]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
@@ -161,6 +162,7 @@
    "/mfa"                          metabase-enterprise.mfa.routes/routes
    "/osi-generation"               (premium-handler metabase-enterprise.osi-generation.api/routes :library-retrieval)
    "/osi-generation-demo"          metabase-enterprise.osi-generation.demo-api/routes
+   "/osi-generation-demo-page"     metabase-enterprise.osi-generation.demo-page/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    "/transform-test"               (premium-handler metabase-enterprise.transform-testing.api/routes :transforms-testing)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
