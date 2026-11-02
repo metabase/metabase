@@ -17,7 +17,7 @@
      :headers {"Content-Type"                 content-type
                "Cache-Control"                "no-store"
                "X-Content-Type-Options"       "nosniff"
-               "Content-Security-Policy"      "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'self'"
+               "Content-Security-Policy"      "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'self'"
                "Cross-Origin-Resource-Policy" "same-origin"}
      :body    (slurp resource)}))
 
