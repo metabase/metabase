@@ -1,0 +1,21 @@
+.trail {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-weight: bold;
+}
+
+.trailItem {
+  color: inherit;
+  font-weight: inherit;
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--mb-color-text-brand);
+  }
+}
+
+.trailSeparator {
+  color: var(--mb-color-text-tertiary);
+}

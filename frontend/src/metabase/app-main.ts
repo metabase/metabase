@@ -1,11 +1,14 @@
 // Enables hot reload in development and noop in production
 // MUST be imported BEFORE `react` and `react-dom`
 import "metabase-dev";
+import { lazy } from "react";
+
 import { Api } from "metabase/api";
 import { PLUGIN_API, api } from "metabase/api/client";
 import { init } from "metabase/app";
 import { getUser, loadCurrentUser } from "metabase/current-user";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
+import { PLUGIN_QUERY_BUILDER } from "metabase/query_builder";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { navigate, prefetchRegisteredPages } from "metabase/router";
@@ -15,6 +18,13 @@ import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 // Let embedded children detect that their parent is a Metabase instance.
 window.METABASE = true;
+
+// The query builder's "Compare" sheet embeds the metrics explorer, loaded with its page's chunk.
+PLUGIN_QUERY_BUILDER.MetricsExplorer = lazy(() =>
+  import(
+    /* webpackChunkName: "metrics-viewer" */ "metabase/metrics-viewer"
+  ).then(({ MetricsExplorer }) => ({ default: MetricsExplorer })),
+);
 
 // If any of these receives a 403, we should display the "not authorized" page.
 const NOT_AUTHORIZED_TRIGGERS = [

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { measureApi, metricApi, segmentApi } from "metabase/api";
 import { selectMetricMetadataProvider } from "metabase/metadata-store";
 import { useDispatch, useStore } from "metabase/redux";
-import { useLocation } from "metabase/router";
+import { useLocation, useNavigate } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { getObjectEntries } from "metabase/utils/objects";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -86,10 +87,42 @@ async function loadMeasureDefinition(
   return LibMetric.fromMeasureMetadata(provider, meta);
 }
 
-export function useViewerState(): UseViewerStateResult {
-  const location = useLocation();
+export interface EmbeddedViewerStateOptions {
+  /** Encoded viewer state to start from. Read once, on mount. */
+  initialHash: string;
+  /** Receives the encoded state whenever it changes, instead of the page URL. */
+  onHashChange: (hash: string) => void;
+}
+
+/**
+ * The metrics viewer state. Synced with the page URL by default; with `embedded`, it starts
+ * from `embedded.initialHash` and reports changes to `embedded.onHashChange` instead.
+ */
+export function useViewerState(
+  embedded?: EmbeddedViewerStateOptions,
+): UseViewerStateResult {
+  const routerLocation = useLocation();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const store = useStore();
+
+  const [embeddedLocation] = useState(() =>
+    embedded ? { hash: `#${embedded.initialHash}`, search: "" } : null,
+  );
+  const location = embeddedLocation ?? routerLocation;
+  const embeddedOnHashChangeRef = useRef(embedded?.onHashChange);
+  embeddedOnHashChangeRef.current = embedded?.onHashChange;
+  const handleHashChange = useCallback(
+    (hash: string) => {
+      const embeddedOnHashChange = embeddedOnHashChangeRef.current;
+      if (embeddedOnHashChange) {
+        embeddedOnHashChange(hash);
+      } else {
+        navigate(Urls.metricsViewer(hash), { replace: !window.location.hash });
+      }
+    },
+    [navigate],
+  );
 
   const [state, setState] = useState<MetricsViewerPageState>(
     getInitialMetricsViewerPageState,
@@ -646,6 +679,7 @@ export function useViewerState(): UseViewerStateResult {
     location,
     setFormulaEntities,
     setInitialLoadComplete,
+    handleHashChange,
   );
 
   const derivedData = useViewerDerivedData({
