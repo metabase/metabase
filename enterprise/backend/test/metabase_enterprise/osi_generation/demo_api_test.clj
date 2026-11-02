@@ -189,12 +189,7 @@
     (is (= {:deleted 46} (#'osi-generation/clear-library-index!)))))
 
 (deftest library-index-entries-test
-  (let [rows [{:doc_id "metric-name", :entity_type "metric", :entity_local_id 7
-               :doc_type "name", :doc_text "Revenue", :vector_dimensions 1024
-               :vector_hash "852f", :vector_base64 "AAE="}
-              {:doc_id "other-table", :entity_type "table", :entity_local_id 7
-               :doc_type "name", :doc_text "Orders", :vector_dimensions 1024
-               :vector_hash "61aa", :vector_base64 "AAI="}]]
+  (let [rows [{:doc_id "metric-name", :entity_type "metric", :entity_local_id 7}]]
     (with-redefs [semantic.db.datasource/ensure-initialized-data-source! (constantly ::pgvector)
                   spec/member-entities (constantly [{:entity_type "metric", :entity_local_id 7}])
                   entity-retrieval.reconcile/with-index-read-lock (fn [datasource f]
@@ -202,11 +197,36 @@
                                                                     (f ::connection))
                   entity-retrieval.index-table/vectors-table-exists? (constantly true)
                   entity-retrieval.index-table/vectors-table-sql (constantly "library-index")
-                  jdbc/execute! (fn [connection [_sql] _options]
+                  jdbc/execute! (fn [connection [sql members offset] _options]
                                   (is (= ::connection connection))
+                                  (is (re-find #"LIMIT 51 OFFSET \?" sql))
+                                  (is (re-find #"jsonb_to_recordset" sql))
+                                  (is (= "[{\"entity_type\":\"card\",\"entity_local_id\":7}]" members))
+                                  (is (= 50 offset))
                                   rows)]
-      (is (= {:busy false, :data [(first rows)]}
-             (#'osi-generation/library-index-entries 0))))))
+      (is (= {:busy false, :data rows} (#'osi-generation/library-index-entries 50)))))
+  (testing "busy index never scans membership"
+    (with-redefs [semantic.db.datasource/ensure-initialized-data-source! (constantly ::pgvector)
+                  entity-retrieval.reconcile/with-index-read-lock (fn [_ _] nil)
+                  spec/member-entities (fn [& _] (throw (ex-info "unexpected scan" {})))]
+      (is (= {:busy true, :data []} (#'osi-generation/library-index-entries 0))))))
+
+(deftest index-entity-settled-test
+  (let [stored (atom [{:doc_id "old"}])]
+    (with-redefs [semantic.db.datasource/ensure-initialized-data-source! (constantly ::pgvector)
+                  entity-retrieval.reconcile/with-index-read-lock (fn [_ f] (f ::connection))
+                  entity-retrieval.index-table/vectors-table-exists? (constantly true)
+                  entity-retrieval.index-table/vectors-table-sql (constantly "library-index")
+                  spec/member-entity (fn [_ _ _] {:entity_type "metric", :entity_local_id 7})
+                  spec/hydrate (fn [_ entities] entities)
+                  spec/project (fn [_ _] [{:doc_id "new"}])
+                  jdbc/execute! (fn [_ [_ id types] _]
+                                  (is (= 7 id))
+                                  (is (= "[\"card\",\"question\",\"metric\",\"model\"]" types))
+                                  @stored)]
+      (is (= {:busy false, :settled false} (#'osi-generation/index-entity-settled? "metric" 7)))
+      (reset! stored [{:doc_id "new"}])
+      (is (= {:busy false, :settled true} (#'osi-generation/index-entity-settled? "metric" 7))))))
 
 (deftest comparison-search-test
   (let [search-context (atom nil)]

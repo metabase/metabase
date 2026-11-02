@@ -457,7 +457,7 @@ async function showVectorTooltip(target) {
   els.vectorTooltip.textContent = "Loading…";
   try {
     if (!target.dataset.vector) {
-      const result = await request(`${apiBase}/index/vector/${encodeURIComponent(target.dataset.docId)}`);
+      const result = await request(`${apiBase}/index/vector?doc_id=${encodeURIComponent(target.dataset.docId)}`);
       target.dataset.vector = result.vector;
     }
     if (!target.matches(":hover") && document.activeElement !== target) return;
@@ -698,12 +698,31 @@ function parsedContext() {
   }
 }
 
-async function refreshAfterIndexMutation() {
+async function refreshAfterIndexMutation(entity) {
   await refreshStatus();
-  if (state.status?.index_available) {
-    await request("/api/osi/ai-context/reconcile", { method: "POST" });
-    await refreshIndexEntries();
+  if (!state.status?.index_available) return;
+  if (!entity) {
+    // Bulk deletion queues one targeted sync per context; refresh a few times as the queue drains.
+    for (const delay of [2000, 4000, 8000, 16000]) {
+      await new Promise((resolve) => window.setTimeout(resolve, delay));
+      await refreshIndexEntries();
+    }
+    return;
   }
+  const path = `${apiBase}/index/settled/${encodeURIComponent(entity.entity_type)}/${entity.entity_local_id}`;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 2000));
+    const result = await request(path);
+    if (result.settled) {
+      await refreshIndexEntries();
+      return;
+    }
+  }
+  showToast("Index sync is still pending; refresh the index later", true);
+}
+
+function watchIndexMutation(entity) {
+  refreshAfterIndexMutation(entity).catch((error) => showToast(`Index refresh failed: ${error.message}`, true));
 }
 
 async function saveContext(context, message) {
@@ -712,7 +731,8 @@ async function saveContext(context, message) {
     method: "PUT",
     body: JSON.stringify({ ai_context: context }),
   });
-  await Promise.all([refreshEntities(), refreshAfterIndexMutation()]);
+  await Promise.all([refreshEntities(), refreshStatus()]);
+  watchIndexMutation(entity);
   els.editor.close();
   showToast(message);
 }
@@ -890,7 +910,8 @@ els.deleteContexts.addEventListener("click", async () => {
   setBusy(els.deleteContexts, true, "Deleting…");
   try {
     const result = await mutate(["status", "entities", "index"], `${apiBase}/contexts`, { method: "DELETE" });
-    await Promise.all([refreshEntities(), refreshAfterIndexMutation()]);
+    await Promise.all([refreshEntities(), refreshStatus()]);
+    watchIndexMutation();
     showToast(`Deleted ${result.deleted} AI context${result.deleted === 1 ? "" : "s"}`);
   } catch (error) {
     showToast(error.message, true);
@@ -969,7 +990,8 @@ els.saveDescription.addEventListener("click", async () => {
       method: "PUT",
       body: JSON.stringify({ description: els.sourceDescription.value }),
     });
-    await Promise.all([refreshEntities(), refreshAfterIndexMutation()]);
+    await refreshEntities();
+    watchIndexMutation(entity);
     const refreshed = state.entities.find((candidate) =>
       candidate.entity_type === entity.entity_type && candidate.entity_local_id === entity.entity_local_id
     );
@@ -982,7 +1004,7 @@ els.saveDescription.addEventListener("click", async () => {
     if (els.promptDisclosure.open) await loadRenderedPrompt();
     showToast(entityStatus(refreshed).startsWith("approved")
       ? "Source updated; approved context remains protected and index sync was requested"
-      : "Source updated; context is eligible for regeneration and index sync completed");
+      : "Source updated; context is eligible for regeneration and index sync was requested");
   } catch (error) {
     showToast(error.message, true);
   } finally {

@@ -1385,8 +1385,7 @@
               metabase.metabot.metadata-perms
               metabase.metabot.self
               metabase.metabot.settings
-              metabase.metabot.tools.entity-details
-              metabase.metabot.tools.entity-retrieval}
+              metabase.metabot.tools.entity-details}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics
@@ -1631,7 +1630,7 @@
 
   osi
   {:team "Metabot"
-   :api  #{metabase.osi.ai-context.api metabase.osi.models.osi-ai-context}
+   :api  #{metabase.osi.ai-context.api}
    :uses #{api
            app-db
            entity-retrieval
@@ -2222,7 +2221,6 @@
            users
            util
            enterprise/custom-viz-plugin
-           enterprise/osi-generation
            enterprise/sso}
    :model-imports #{:model/Session}}
 
@@ -3398,10 +3396,7 @@
 
   enterprise/entity-retrieval
   {:team "Metabot"
-   :api  #{metabase-enterprise.entity-retrieval.core
-           metabase-enterprise.entity-retrieval.index-table
-           metabase-enterprise.entity-retrieval.init
-           metabase-enterprise.entity-retrieval.reconcile}
+   :api  #{metabase-enterprise.entity-retrieval.init}
    :uses #{analytics-interface
            app-db
            entity-retrieval
@@ -3568,25 +3563,22 @@
    :uses #{analytics-interface
            api
            app-db
-           config
            entity-retrieval
            llm
            metabot
            osi
-           permissions
            premium-features
            search
            settings
            task
            task-history
            util
-           enterprise/entity-retrieval
            enterprise/semantic-search}
    :api #{metabase-enterprise.osi-generation.api
           metabase-enterprise.osi-generation.demo-api
           metabase-enterprise.osi-generation.demo-page
           metabase-enterprise.osi-generation.init}
-   :model-imports #{:model/OsiAiContext :model/TaskHistory}}
+   :model-imports #{:model/OsiAiContext}}
 
   enterprise/permission-debug
   {:team "UX West"
