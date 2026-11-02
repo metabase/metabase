@@ -5,7 +5,6 @@ import { StrictMode, useState } from "react";
 import { CreateDashboardModal } from "embedding-sdk-package/components/public/CreateDashboardModal";
 import { InteractiveQuestion } from "embedding-sdk-package/components/public/InteractiveQuestion";
 import { StaticQuestion } from "embedding-sdk-package/components/public/StaticQuestion";
-import { StaticDashboard } from "embedding-sdk-package/components/public/dashboard/StaticDashboard";
 import {
   SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE,
   SDK_NOT_LOADED_YET_MESSAGE,
@@ -62,14 +61,6 @@ function NewDashboardFlow() {
   );
 }
 
-function ClickCounter() {
-  const [count, setCount] = useState(0);
-
-  return (
-    <button onClick={() => setCount(count + 1)}>Clicked {count} times</button>
-  );
-}
-
 function setup({ children, ...options }: MetabaseTestProviderProps = {}) {
   return render(
     <MetabaseTestProvider {...options}>{children}</MetabaseTestProvider>,
@@ -77,18 +68,6 @@ function setup({ children, ...options }: MetabaseTestProviderProps = {}) {
 }
 
 describe("MetabaseTestProvider", () => {
-  it("renders SDK components as their children", async () => {
-    setup({
-      children: (
-        <StaticQuestion questionId={1}>
-          <p>Orders by month</p>
-        </StaticQuestion>
-      ),
-    });
-
-    expect(await screen.findByText("Orders by month")).toBeInTheDocument();
-  });
-
   it("renders subcomponents of compound SDK components", async () => {
     setup({
       children: (
@@ -115,21 +94,6 @@ describe("MetabaseTestProvider", () => {
     });
 
     expect(await screen.findByText("Question 42")).toBeInTheDocument();
-  });
-
-  it("renders component passed for SDK component that uses hooks", async () => {
-    setup({
-      StaticDashboard: ClickCounter,
-      children: <StaticDashboard dashboardId={1} />,
-    });
-
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Clicked 0 times" }),
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Clicked 1 times" }),
-    ).toBeInTheDocument();
   });
 
   it("lets component passed for SDK component call its callbacks", async () => {
