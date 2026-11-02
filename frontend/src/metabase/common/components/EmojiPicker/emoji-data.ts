@@ -1,5 +1,7 @@
 import type { EmojiData, EmojiDataResolver } from "frimousse";
 
+import { throwIfSignalAborted } from "metabase/utils/retry";
+
 type EmojiSupport = {
   emojiVersion: number;
   countryFlags: boolean;
@@ -115,7 +117,9 @@ export const resolveEmojiData: EmojiDataResolver = async (
   const { default: data } = await import(
     /* webpackChunkName: "emoji-data" */ "./emojibase/en.json"
   );
-  signal?.throwIfAborted();
+  if (signal) {
+    throwIfSignalAborted(signal);
+  }
 
   detectedSupport ??= detectEmojiSupport(data.emojis);
 

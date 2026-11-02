@@ -168,6 +168,80 @@ describe("retry", () => {
     expect(fn).not.toHaveBeenCalled();
   });
 
+  describe("when AbortSignal.throwIfAborted is unavailable", () => {
+    function signalWithoutThrowIfAborted(): {
+      controller: AbortController;
+      signal: AbortSignal;
+    } {
+      const controller = new AbortController();
+      Object.defineProperty(controller.signal, "throwIfAborted", {
+        configurable: true,
+        value: undefined,
+      });
+      return { controller, signal: controller.signal };
+    }
+
+    it("throws before calling fn when the signal is already aborted", async () => {
+      const { controller, signal } = signalWithoutThrowIfAborted();
+      controller.abort();
+      const fn = jest.fn().mockResolvedValue("ok");
+
+      await expect(
+        retry(fn, {
+          maxRetries: 0,
+          shouldRetry: () => false,
+          signal,
+        }),
+      ).rejects.toBeInstanceOf(DOMException);
+
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("preserves a custom abort reason", async () => {
+      const { controller, signal } = signalWithoutThrowIfAborted();
+      const customReason = new Error("custom reason");
+      controller.abort(customReason);
+      const fn = jest.fn().mockResolvedValue("ok");
+
+      await expect(
+        retry(fn, {
+          maxRetries: 0,
+          shouldRetry: () => false,
+          signal,
+        }),
+      ).rejects.toBe(customReason);
+
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it("ends the backoff early when aborted during a retry wait", async () => {
+      const { controller, signal } = signalWithoutThrowIfAborted();
+      const error = new Error("flaky");
+      const fn = jest.fn().mockRejectedValue(error);
+
+      const promise = retry(fn, {
+        maxRetries: 5,
+        shouldRetry: () => true,
+        delayMs: () => 1000,
+        signal,
+      });
+      const resultPromise = promise.catch((e: unknown) => e);
+
+      // First attempt fails and schedules a 1000ms backoff.
+      await Promise.resolve();
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      controller.abort();
+      await jest.runAllTimersAsync();
+
+      const result = await resultPromise;
+      expect(result).toBeInstanceOf(DOMException);
+      // AbortError name check — reason falls back to DOMException
+      expect((result as DOMException).name).toBe("AbortError");
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("waits delayMs(attempt) between attempts", async () => {
     const fn = jest
       .fn()
