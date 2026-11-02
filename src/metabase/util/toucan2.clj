@@ -19,13 +19,6 @@
     (integer? x)  x
     :else         [:auto/param x]))
 
-(defn query-arg
-  "`x` as the trailing query arg: a [[Fragment]] unwrapped, anything else as is."
-  [x]
-  (if (fragment? x)
-    (.-form ^Fragment x)
-    x))
-
 (defn- dynamic? [form]
   (or (symbol? form) (seq? form)))
 
@@ -45,15 +38,20 @@
   `(->Fragment ~(wrap-dynamic form)))
 
 (defn- wrap-args
-  "`[modelable & args]` with the kv-arg values and the trailing query handled by [[wrap-dynamic]] or [[query]]."
+  "`[modelable & args]` with the kv-arg values and the trailing query map handled by [[wrap-dynamic]]; throws when the
+  trailing arg is not a literal map, since Toucan runs a string or vector there as raw SQL."
   [[modelable & args]]
   (let [[kvs tail] (if (odd? (count args))
                      [(butlast args) [(last args)]]
-                     [args []])
-        tail       (map #(cond (map? %) (wrap-dynamic %) (dynamic? %) (list `query-arg %) :else %) tail)]
+                     [args []])]
+    (doseq [q tail]
+      (when-not (map? q)
+        (throw (ex-info (str "The trailing arg must be a literal query map; write a primary key as `:id <value>`: "
+                             (pr-str q))
+                        {:form q}))))
     (concat [modelable]
             (mapcat (fn [[k v]] [k (wrap-dynamic v)]) (partition 2 kvs))
-            tail)))
+            (map wrap-dynamic tail))))
 
 (defmacro select
   "`t2/select` with every runtime value bound."

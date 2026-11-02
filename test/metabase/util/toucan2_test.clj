@@ -30,6 +30,26 @@
   (is (= '(toucan2.core/insert! :model/User {:email email})
          (macroexpand-1 '(metabase.util.toucan2/insert! :model/User {:email email})))))
 
+(defn- expansion-error
+  "The message of the error thrown while macroexpanding `form`, or an empty string when it expands."
+  [form]
+  (try
+    (str (macroexpand-1 form) "")
+    (catch Exception e
+      (ex-message (or (ex-cause e) e)))))
+
+(deftest ^:parallel trailing-arg-must-be-literal-map-test
+  (doseq [form ['(metabase.util.toucan2/select-one :model/User id)
+                '(metabase.util.toucan2/select-one :model/User (str "SELECT " x))
+                '(metabase.util.toucan2/select-one :model/User 1)
+                '(metabase.util.toucan2/select :model/User :is_active true ["SELECT 1"])]]
+    (testing (pr-str form)
+      (is (re-find #"The trailing arg must be a literal query map" (expansion-error form))))))
+
+(deftest update-positional-pk-rejected-test
+  (is (re-find #"The trailing arg must be a literal query map"
+               (expansion-error '(metabase.util.toucan2/update! :model/User id {:first_name "x"})))))
+
 (deftest ^:parallel string-value-bound-test
   (let [email "x' OR 1=1 --"]
     (is (= ["SELECT * FROM \"CORE_USER\" WHERE \"EMAIL\" = ?" "x' OR 1=1 --"]
