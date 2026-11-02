@@ -329,6 +329,39 @@ export function removePillAt(tokens: readonly Token[], index: number): Token[] {
   return next;
 }
 
+/** The index of the parenthesis that closes or opens the one at `index`, if any. */
+export function findParenPair(
+  tokens: readonly Token[],
+  index: number,
+): number | undefined {
+  const token = tokens[index];
+  if (token?.type !== "paren") {
+    return undefined;
+  }
+  const step = token.side === "open" ? 1 : -1;
+  let depth = 0;
+  for (let at = index; at >= 0 && at < tokens.length; at += step) {
+    const other = tokens[at];
+    if (other.type !== "paren") {
+      continue;
+    }
+    depth += other.side === token.side ? 1 : -1;
+    if (depth === 0) {
+      return at;
+    }
+  }
+  return undefined;
+}
+
+/** Removes a parenthesis with its pair, so the group's pills stay where they are. */
+export function removeParenPair(
+  tokens: readonly Token[],
+  index: number,
+): Token[] {
+  const pair = findParenPair(tokens, index);
+  return tokens.filter((_, at) => at !== index && at !== pair);
+}
+
 export function replaceTokenAt(
   tokens: readonly Token[],
   index: number,

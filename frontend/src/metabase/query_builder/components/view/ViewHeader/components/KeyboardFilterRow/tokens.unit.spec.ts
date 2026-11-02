@@ -17,6 +17,7 @@ import {
   opToken,
   parseTokens,
   readTokens,
+  removeParenPair,
   removePillAt,
   toFilterClause,
   writeTokens,
@@ -193,6 +194,64 @@ describe("removePillAt", () => {
     expect(
       removePillAt([OPEN_PAREN, a, opToken("or"), b, CLOSE_PAREN], 1),
     ).toEqual([OPEN_PAREN, b, CLOSE_PAREN]);
+  });
+});
+
+describe("removeParenPair", () => {
+  const a = filterToken(numberFilter(createQuery(), "TOTAL", ">", 100));
+  const b = filterToken(numberFilter(createQuery(), "TAX", ">", 2));
+  const c = filterToken(numberFilter(createQuery(), "QUANTITY", ">", 3));
+  const group = [
+    OPEN_PAREN,
+    a,
+    opToken("or"),
+    b,
+    CLOSE_PAREN,
+    opToken("and"),
+    c,
+  ];
+
+  it("removes an opening parenthesis with its closing one", () => {
+    expect(removeParenPair(group, 0)).toEqual([
+      a,
+      opToken("or"),
+      b,
+      opToken("and"),
+      c,
+    ]);
+  });
+
+  it("removes a closing parenthesis with its opening one", () => {
+    expect(removeParenPair(group, 4)).toEqual([
+      a,
+      opToken("or"),
+      b,
+      opToken("and"),
+      c,
+    ]);
+  });
+
+  it("matches nested pairs by depth", () => {
+    const nested = [
+      OPEN_PAREN,
+      OPEN_PAREN,
+      a,
+      CLOSE_PAREN,
+      opToken("or"),
+      b,
+      CLOSE_PAREN,
+    ];
+    expect(removeParenPair(nested, 0)).toEqual([
+      OPEN_PAREN,
+      a,
+      CLOSE_PAREN,
+      opToken("or"),
+      b,
+    ]);
+  });
+
+  it("removes a lone parenthesis on its own", () => {
+    expect(removeParenPair([a, CLOSE_PAREN], 1)).toEqual([a]);
   });
 });
 

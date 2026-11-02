@@ -33,64 +33,75 @@
   outline-offset: 1px;
 }
 
-/* OR: a small bordered circle between the pills, close to them. */
-.op {
+/* AND, OR and parentheses, as in the Figma: a small grey pill in monospace. */
+.connector {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin: 0 0.25rem;
-  padding: 0;
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: 50%;
-  background: none;
-  color: var(--mb-color-core-filter);
-  font-family: inherit;
-  font-weight: 600;
-  font-size: 0.5rem;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition:
-    background-color 120ms,
-    color 120ms;
+  margin: 0 var(--mantine-spacing-xxs);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-xs);
+  border-radius: var(--mantine-radius-md);
+  outline: none;
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-monospace-font-family);
+  font-weight: 500;
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.15;
+  white-space: nowrap;
+  user-select: none;
+  transition: background-color 120ms;
 }
 
-.op:hover {
-  background-color: var(--mb-color-background_page-secondary);
+.connectorParen {
+  padding: var(--mantine-spacing-xxs);
 }
 
-/* AND, shown only beside an OR: the same circle in the quieter text colour. */
-.opAnd {
-  color: var(--mb-color-text-secondary);
-}
-
-/* Parentheses: tall, light brackets in the filter color that wrap the pills they group. */
-.paren {
-  margin: 0 0.0625rem;
-  padding: 0;
-  border: none;
-  border-radius: 0.25rem;
-  background: none;
-  color: var(--mb-color-core-filter);
-  font-family: inherit;
-  font-weight: 300;
-  font-size: 1.625rem;
-  line-height: 1.5rem;
-  transform: scaleY(1.1);
+/* Hovered, the whole connector is a close button: the label gives way to the icon. */
+.connectorRemovable {
   cursor: pointer;
 }
 
-.paren:hover {
-  color: var(--mb-color-feedback-negative);
+.connectorRemovable:hover {
+  background-color: var(--mb-color-background_surface-secondary-hover);
+}
+
+.connectorRemovable:hover .connectorLabel {
+  visibility: hidden;
+}
+
+.connectorIcon {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.connectorRemovable:hover .connectorIcon {
+  display: inline-flex;
+}
+
+/* Landed on from the keyboard: the same ring as the draft pill. The reset
+   draws its own outline on [role="button"]:focus-visible; this ring replaces it. */
+.connector:focus-visible,
+.connector[role="button"]:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-core-filter);
 }
 
 .tokenError {
   outline: 2px solid var(--mb-color-feedback-negative);
   outline-offset: 1px;
   border-radius: 1rem;
+}
+
+/* A connector in error keeps its own, smaller radius. */
+.connector.tokenError {
+  border-radius: var(--mantine-radius-md);
 }
 
 /* Click targets between tokens: clicking one puts the caret there. */

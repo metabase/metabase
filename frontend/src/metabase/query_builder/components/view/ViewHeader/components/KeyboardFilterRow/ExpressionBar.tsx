@@ -1,5 +1,6 @@
 import cx from "classnames";
 import {
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -48,6 +49,7 @@ import {
   opToken,
   parseTokens,
   readTokens,
+  removeParenPair,
   removePillAt,
   removeTokenAt,
   replaceTokenAt,
@@ -265,14 +267,15 @@ export function ExpressionBar({
       ? index + 2
       : index + 1;
 
-  // Between caret positions, the arrow keys stop on the filter pill they pass.
+  // Between caret positions, the arrow keys stop on the token they pass: a
+  // pill, a connector or a parenthesis. A hidden AND is stepped over.
   const pillLeftOf = (index: number) => {
     const at = isHiddenAnd(tokens[index - 1]) ? index - 2 : index - 1;
-    return tokens[at]?.type === "filter" ? at : undefined;
+    return tokens[at] != null && !isHiddenAnd(tokens[at]) ? at : undefined;
   };
   const pillRightOf = (index: number) => {
     const at = isHiddenAnd(tokens[index]) ? index + 1 : index;
-    return tokens[at]?.type === "filter" ? at : undefined;
+    return tokens[at] != null && !isHiddenAnd(tokens[at]) ? at : undefined;
   };
 
   // Two operators can't sit side by side, so next to one the logic row offers none.
@@ -726,8 +729,9 @@ export function ExpressionBar({
     const isOnControl =
       target instanceof Element &&
       (!currentTarget.contains(target) ||
-        target.closest(`button, input, .${S.filterToken}, [${SLOT_ATTR}]`) !=
-          null);
+        target.closest(
+          `button, input, .${S.filterToken}, .${S.connector}, [${SLOT_ATTR}]`,
+        ) != null);
     if (isOnControl) {
       return;
     }
@@ -979,7 +983,17 @@ export function ExpressionBar({
                 }
                 onLeave={(isLeft) => moveCaret(isLeft ? index : index + 1)}
                 onRemove={() => {
-                  const next = removePillAt(tokens, index);
+                  // An AND leaves a gap for the OR that replaces it: the caret
+                  // goes there, open, and the stream stays a draft until then.
+                  if (isOpToken(token, "and")) {
+                    setTokens(removeTokenAt(tokens, index));
+                    moveCaret(index);
+                    return;
+                  }
+                  const next =
+                    token.type === "paren"
+                      ? removeParenPair(tokens, index)
+                      : removePillAt(tokens, index);
                   setTokens(next);
                   setCaret(Math.min(caretIndex, next.length));
                 }}
@@ -1332,28 +1346,28 @@ function TokenView({
   if (token.type === "op") {
     const isAnd = token.op === "and";
     return (
-      <button
-        type="button"
-        className={cx(S.op, { [S.opAnd]: isAnd }, errorClass)}
-        title={isAnd ? t`Switch to "or"` : t`Switch to "and"`}
-        onClick={() => onReplace(opToken(isAnd ? "or" : "and"))}
-      >
-        {token.op}
-      </button>
+      <Connector
+        index={index}
+        label={token.op.toUpperCase()}
+        className={errorClass}
+        // Removing an OR leaves the implicit AND; removing an AND leaves the gap open.
+        onRemove={isAnd ? onRemove : () => onReplace(opToken("and"))}
+        onToggle={() => onReplace(opToken(isAnd ? "or" : "and"))}
+        onLeave={onLeave}
+      />
     );
   }
 
   if (token.type === "paren") {
     return (
-      <button
-        type="button"
-        className={cx(S.paren, errorClass)}
+      <Connector
+        index={index}
+        label={token.side === "open" ? "(" : ")"}
+        className={cx(S.connectorParen, errorClass)}
         style={{ opacity: Math.max(1 - depth * 0.25, 0.5) }}
-        title={t`Click to remove`}
-        onClick={onRemove}
-      >
-        {token.side === "open" ? "(" : ")"}
-      </button>
+        onRemove={onRemove}
+        onLeave={onLeave}
+      />
     );
   }
 
@@ -1421,6 +1435,73 @@ function TokenView({
         }}
       />
     </div>
+  );
+}
+
+type ConnectorProps = {
+  index: number;
+  label: string;
+  className?: string;
+  style?: CSSProperties;
+  /** Hovering turns the connector into a close button; a click removes it. */
+  onRemove?: () => void;
+  /** Enter on the focused connector: AND to OR and back. */
+  onToggle?: () => void;
+  /** Left or Right pressed on the focused connector. */
+  onLeave: (isLeft: boolean) => void;
+};
+
+/**
+ * AND, OR or a parenthesis, as in the Figma: a small grey pill in monospace.
+ * Hovered, it is all close button. The arrow keys land on it like on a pill.
+ */
+function Connector({
+  index,
+  label,
+  className,
+  style,
+  onRemove,
+  onToggle,
+  onLeave,
+}: ConnectorProps) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
+    if (event.key === "Enter" && onToggle) {
+      event.preventDefault();
+      onToggle();
+    } else if (
+      (event.key === "Backspace" || event.key === "Delete") &&
+      onRemove
+    ) {
+      event.preventDefault();
+      onRemove();
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      onLeave(event.key === "ArrowLeft");
+    }
+  };
+
+  return (
+    <span
+      className={cx(
+        S.connector,
+        { [S.connectorRemovable]: onRemove != null },
+        className,
+      )}
+      style={style}
+      role={onRemove ? "button" : undefined}
+      aria-label={onRemove ? t`Remove ${label}` : undefined}
+      tabIndex={-1}
+      onClick={onRemove}
+      onKeyDown={handleKeyDown}
+      {...{ [PILL_ATTR]: index }}
+    >
+      <span className={S.connectorLabel}>{label}</span>
+      {onRemove && (
+        <span className={S.connectorIcon} aria-hidden>
+          <Icon name="close" size={12} />
+        </span>
+      )}
+    </span>
   );
 }
 
