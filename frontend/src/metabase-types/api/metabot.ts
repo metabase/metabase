@@ -247,6 +247,17 @@ export const METABOT_ISSUE_TYPE_VALUES = [
 
 export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
 
+export type SuggestCustomColumnNameRequest = {
+  /** Custom expression source, e.g. `[Price] * [Quantity]`. */
+  expression: string;
+  table_name?: string | null;
+};
+
+export type SuggestCustomColumnNameResponse = {
+  /** `null` when no LLM is available to the current user. */
+  name: string | null;
+};
+
 export type MetabotFeedback = {
   message_id: string;
   freeform_feedback?: string;
