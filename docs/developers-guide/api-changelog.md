@@ -6,6 +6,12 @@ title: API changelog
 
 ## Metabase 0.66.0
 
+- The Security Center advisory endpoints moved under `/api/ee/security-center/advisories`: `GET /api/ee/security-center`
+  is now `GET /api/ee/security-center/advisories`, and `POST /api/ee/security-center/:advisory-id/acknowledge`,
+  `POST /api/ee/security-center/acknowledge`, `POST /api/ee/security-center/sync` and
+  `POST /api/ee/security-center/test-notification` take the same `/advisories` prefix. The old paths return
+  `404 Not Found`. Request and response bodies are unchanged.
+
 - The `can-write-metadata` query parameter of `GET /api/database`, `GET /api/database/:id/schemas`,
   `GET /api/database/:id/schema/:schema` and `GET /api/database/:id/schema/`, and the `can-write` query parameter of
   `GET /api/table`, have been removed and are ignored. To list only what the current user can edit the data model of,

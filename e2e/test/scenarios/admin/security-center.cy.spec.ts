@@ -118,7 +118,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       cy.findByText("Security Center").should("be.visible");
     });
 
-    cy.intercept("POST", "/api/ee/security-center/*/acknowledge").as(
+    cy.intercept("POST", "/api/ee/security-center/advisories/*/acknowledge").as(
       "acknowledge",
     );
 
@@ -145,7 +145,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     cy.findAllByTestId("advisory-card").should("have.length", 2);
 
     // Dismiss all non-affecting advisories
-    cy.intercept("POST", "/api/ee/security-center/acknowledge").as(
+    cy.intercept("POST", "/api/ee/security-center/advisories/acknowledge").as(
       "acknowledgeAll",
     );
     securityCenterContent().findByText("Dismiss all").click();
@@ -211,7 +211,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
   it("should send a page viewed event and trigger sync when clicking Check now", () => {
     H.resetSnowplow();
     H.enableTracking();
-    cy.intercept("POST", "/api/ee/security-center/sync").as("sync");
+    cy.intercept("POST", "/api/ee/security-center/advisories/sync").as("sync");
     cy.visit("/admin/security-center");
     securityCenterContent().within(() => {
       cy.findByText("Security Center").should("be.visible");
@@ -248,7 +248,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       H.seedSecurityAdvisories([DOWNLOADABLE_ADVISORY]);
 
       cy.log("The backend stores and returns download_jar_urls");
-      cy.request("GET", "/api/ee/security-center").then(({ body }) => {
+      cy.request("GET", "/api/ee/security-center/advisories").then(({ body }) => {
         const advisory = body.advisories.find(
           (a: { advisory_id: string }) => a.advisory_id === "TEST-DL",
         );

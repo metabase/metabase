@@ -13,14 +13,14 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
     listSecurityAdvisories: builder.query<ListAdvisoriesResponse, void>({
       query: () => ({
         method: "GET",
-        url: "/api/ee/security-center",
+        url: "/api/ee/security-center/advisories",
       }),
       providesTags: [listTag("security-advisory")],
     }),
     acknowledgeAdvisory: builder.mutation<AcknowledgeAdvisoryResponse, string>({
       query: (advisoryId) => ({
         method: "POST",
-        url: `/api/ee/security-center/${advisoryId}/acknowledge`,
+        url: `/api/ee/security-center/advisories/${advisoryId}/acknowledge`,
       }),
       invalidatesTags: [listTag("security-advisory")],
     }),
@@ -30,7 +30,7 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
     >({
       query: (advisoryIds) => ({
         method: "POST",
-        url: "/api/ee/security-center/acknowledge",
+        url: "/api/ee/security-center/advisories/acknowledge",
         body: { advisory_ids: advisoryIds },
       }),
       invalidatesTags: [listTag("security-advisory")],
@@ -38,7 +38,7 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
     syncSecurityAdvisories: builder.mutation<void, void>({
       query: () => ({
         method: "POST",
-        url: "/api/ee/security-center/sync",
+        url: "/api/ee/security-center/advisories/sync",
       }),
       invalidatesTags: [listTag("security-advisory")],
     }),
@@ -48,7 +48,7 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ emailRecipients, slackChannel }) => ({
         method: "POST",
-        url: "/api/ee/security-center/test-notification",
+        url: "/api/ee/security-center/advisories/test-notification",
         body: {
           email_recipients: emailRecipients,
           slack_channel: slackChannel,

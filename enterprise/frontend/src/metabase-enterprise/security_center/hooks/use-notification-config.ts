@@ -64,7 +64,7 @@ function isAdminGroupRecipient(r: NotificationRecipient): boolean {
 
 /**
  * Flatten the modal's config into a serializable shape used by both
- * POST /api/ee/security-center/test-notification (for unsaved test sends)
+ * POST /api/ee/security-center/advisories/test-notification (for unsaved test sends)
  * and PUT /api/setting/security-center-email-recipients (for saving).
  */
 export function serializeNotificationConfig(
