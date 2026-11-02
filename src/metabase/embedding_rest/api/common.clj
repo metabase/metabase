@@ -20,6 +20,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.parameters.must-apply :as must-apply]
    [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
@@ -88,6 +89,27 @@
   (or (not (string? v))
       (not (str/blank? v))))
 
+(defn- check-locked-value!
+  "Throw a 400 unless `value`, from the JWT, is a single value or a list of single values (`[]` turns the filter off).
+  The list may also hold nils, as long as it holds a value too. The query processor reads a list of only nils, like
+  `[nil]`, as no value at all, which would drop the locked filter."
+  [param value]
+  (when-not (or (must-apply/single-value? value)
+                (and (sequential? value)
+                     (every? #(or (nil? %) (must-apply/single-value? %)) value)
+                     (or (empty? value)
+                         (some must-apply/single-value? value))))
+    (throw (ex-info (tru "Invalid value for locked parameter {0}." (name param))
+                    {:status-code 400}))))
+
+(defn- check-locked-param!
+  "Throw a 400 unless the JWT `token-values` (keyed by slug string) has a valid value for locked parameter `param`."
+  [token-values param]
+  (let [value (get token-values (name param))]
+    (api/check (some? value)
+               [400 (tru "You must specify a value for {0} in the JWT." (keyword param))])
+    (check-locked-value! param value)))
+
 (defn- check-params-are-allowed
   "Check that the conditions specified by `object-embedding-params` are satisfied."
   [object-embedding-params token-params user-params]
@@ -106,9 +128,10 @@
         "enabled"  (api/check (not (contains? duplicated-params param))
                               [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
         ;; locked means JWT must specify param
-        "locked"   (api/check
-                    (some? (get token-values param))          [400 (tru "You must specify a value for {0} in the JWT." (keyword param))]
-                    (not (contains? user-param-names param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
+        "locked"   (do
+                     (check-locked-param! token-values param)
+                     (api/check (not (contains? user-param-names param))
+                                [400 (tru "You can only specify a value for {0} in the JWT." param)]))))))
 
 (defn- check-params-exist
   "Make sure all the params specified are specified in `object-embedding-params`."
@@ -149,6 +172,22 @@
   "Runs check-embedding-enabled-for-object for a pre-loaded Dashboard entity."
   check-embedding-enabled-for-object)
 
+(defn- locked-slugs
+  "The slugs, as strings, of the parameters `embedding-params` marks \"locked\"."
+  [embedding-params]
+  (into #{}
+        (keep (fn [[slug status]]
+                (when (= status "locked")
+                  (name slug))))
+        embedding-params))
+
+(defn- mark-must-apply
+  "Mark `param` as must-apply if it is locked and has a value, so the query processor throws rather than skip it. A
+  locked value of `[]` has become nil by now: it turns the filter off on purpose."
+  [param locked slug value]
+  (cond-> param
+    (and (contains? locked slug) (some? value)) (assoc :lib/must-apply? true)))
+
 (defn- resolve-card-parameters
   "Returns the combined `:parameters` (including template-tag parameters) for a pre-loaded `card` entity."
   [card]
@@ -161,23 +200,26 @@
   "Given a pre-loaded `dashboard` entity and parameters map in the format `slug->value`, return a sequence of
   parameters with `:id`s that can be passed to various functions in the [[metabase.dashboards-rest.api]] namespace such
   as [[metabase.dashboards-rest.api/process-query-for-dashcard]]."
-  [dashboard   :- ::dashboards.schema/dashboard
-   slug->value :- SlugValueMap]
-  (let [parameters (:parameters dashboard)
+  [dashboard        :- ::dashboards.schema/dashboard
+   embedding-params :- [:maybe ms/EmbeddingParams]
+   slug->value      :- SlugValueMap]
+  (let [locked     (locked-slugs embedding-params)
+        parameters (:parameters dashboard)
         slug->id (into {} (map (juxt :slug :id)) parameters)
         slug->type (into {} (map (juxt :slug :type)) parameters)]
     (vec (for [[slug value] slug->value
                :let [slug (u/qualified-name slug)
                      param-type (get slug->type slug)
                      default-options (params/param-type->default-options param-type)]]
-           (cond-> {:slug slug
-                    :id    (or (get slug->id slug)
-                               (throw (ex-info (tru "No matching parameter with slug {0}. Found: {1}" (pr-str slug) (pr-str (keys slug->id)))
-                                               {:status-code          400
-                                                :slug                 slug
-                                                :dashboard-parameters parameters})))
-                    :value value}
-             default-options (assoc :options default-options))))))
+           (-> {:slug  slug
+                :id    (or (get slug->id slug)
+                           (throw (ex-info (tru "No matching parameter with slug {0}. Found: {1}" (pr-str slug) (pr-str (keys slug->id)))
+                                           {:status-code          400
+                                            :slug                 slug
+                                            :dashboard-parameters parameters})))
+                :value value}
+               (cond-> default-options (assoc :options default-options))
+               (mark-must-apply locked slug value))))))
 
 (mu/defn parse-query-params :- :map
   "Parses parameter values from the query string in a backward compatible way.
@@ -265,6 +307,12 @@
   than the client, and are passed to the parameter value lookups as constraints so the values offered for the
   enabled parameters match the rows the locked values select."
   [embedding-params token-params]
+  ;; these lookups skip [[check-params-are-allowed]], so check the locked values here: a missing or malformed one
+  ;; would otherwise just leave its constraint out
+  (let [token-values (update-keys token-params name)]
+    (doseq [[param status] embedding-params
+            :when (= status "locked")]
+      (check-locked-param! token-values param)))
   (into {}
         (comp (filter (fn [[slug _value]] (= (get embedding-params (name slug)) "locked")))
               (map (fn [[slug value]] [(name slug) value])))
@@ -326,21 +374,24 @@
                                          [:value :any]]]]
   "Adds `value` to parameters with `slug` matching a key in `merged-slug->value` and removes parameters without a
    `value`."
-  [parameters  :- [:sequential ::parameters.schema/parameter]
-   slug->value :- SlugValueMap]
+  [parameters       :- [:sequential ::parameters.schema/parameter]
+   embedding-params :- [:maybe ms/EmbeddingParams]
+   slug->value      :- SlugValueMap]
   (when (seq parameters)
-    (for [param parameters
-          :let  [slug  (:slug param)
-                 value (get slug->value slug)
-                 ;; operator parameters expect a sequence of values so if we get a lone value (e.g. from a single URL
-                 ;; query parameter) wrap it in a sequence
-                 value (if (and (some? value)
-                                (params.ops/operator? (:type param)))
-                         (u/one-or-many value)
-                         value)]
-          :when (contains? slug->value slug)]
-      (assoc (select-keys param [:type :target :slug :id])
-             :value value))))
+    (let [locked (locked-slugs embedding-params)]
+      (for [param parameters
+            :let  [slug  (:slug param)
+                   value (get slug->value slug)
+                   ;; operator parameters expect a sequence of values so if we get a lone value (e.g. from a single URL
+                   ;; query parameter) wrap it in a sequence
+                   value (if (and (some? value)
+                                  (params.ops/operator? (:type param)))
+                           (u/one-or-many value)
+                           value)]
+            :when (contains? slug->value slug)]
+        (-> (select-keys param [:type :target :slug :id])
+            (assoc :value value)
+            (mark-must-apply locked slug value))))))
 
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
@@ -388,7 +439,7 @@
       :or   {qp qp.card/process-query-for-card-default-qp}}]
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters         (apply-slug->value (resolve-card-parameters card) merged-slug->value)]
+        parameters         (apply-slug->value (resolve-card-parameters card) embedding-params merged-slug->value)]
     (database-routing/with-anonymous-router-access
       (m/mapply api.public/process-query-for-card-with-id
                 card export-format parameters
@@ -414,6 +465,7 @@
   [card token-params parameter-values]
   (let [parameters (resolve-card-parameters card)]
     (apply-slug->value parameters
+                       (:embedding_params card)
                        (validate-and-merge-params (:embedding_params card)
                                                   token-params
                                                   (tile-slug->value parameters parameter-values)))))
@@ -422,6 +474,7 @@
   "The parameters an embedded Dashboard's map tile should run with."
   [dashboard token-params parameter-values]
   (resolve-dashboard-parameters dashboard
+                                (:embedding_params dashboard)
                                 (validate-and-merge-params (:embedding_params dashboard)
                                                            token-params
                                                            (tile-slug->value (:parameters dashboard) parameter-values))))
@@ -498,7 +551,7 @@
   {:pre [(map? dashboard) (map? dashcard) (map? card) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters  (resolve-dashboard-parameters dashboard slug->value)]
+        parameters  (resolve-dashboard-parameters dashboard embedding-params slug->value)]
     (database-routing/with-anonymous-router-access
       (api.public/process-query-for-dashcard
        :dashboard     dashboard

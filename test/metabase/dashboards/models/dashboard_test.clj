@@ -321,6 +321,18 @@
              #":parameters must be a sequence of maps with :id and :type keys"
              (t2/update! :model/Dashboard :id id {:parameters [{:id 100}]})))))))
 
+(deftest saved-parameters-cannot-be-must-apply-test
+  (testing "a saved Dashboard's :parameters cannot carry :lib/must-apply?, which only the server sets at run time"
+    (let [param {:id "p1", :type :number/=, :lib/must-apply? true}]
+      (testing "creating"
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (mt/with-temp [:model/Dashboard _ {:parameters [param]}]))))
+      (testing "updating"
+        (mt/with-temp [:model/Dashboard {:keys [id]} {:parameters []}]
+          (is (thrown? clojure.lang.ExceptionInfo
+                       (t2/update! :model/Dashboard :id id {:parameters [param]})))
+          (is (= [] (t2/select-one-fn :parameters :model/Dashboard :id id))))))))
+
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]

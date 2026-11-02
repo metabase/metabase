@@ -25,6 +25,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.parameters.must-apply :as must-apply]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -80,45 +81,11 @@
     ::params.types/referenced-query-snippet
     ::params.types/temporal-unit]])
 
-(mu/defn- tag-targets
-  "Given a template tag, returns a set of `target` structures that can be used to target the tag.
-  Potential targets look something like:
-
-     [:dimension [:template-tag {:id <param-id>}]
-     [:dimension [:template-tag <param-name>]]     ; for Field Filters
-
-     [:variable  [:template-tag {:id <param-id>}]]
-     [:variable  [:template-tag <param-name>]]     ; for other types of params
-
-  Targeting template tags by ID is preferable (as of version 44) but targeting by name is supported for backwards
-  compatibility."
-  [tag :- ::lib.schema.template-tag/template-tag]
-  (let [target-type (case (:type tag)
-                      (:dimension :temporal-unit) :dimension
-                      :variable)]
-    #{[target-type [:template-tag (:name tag)]]
-      [target-type [:template-tag {:id (:id tag)}]]}))
-
-(defn- tag-target-pred
-  "Returns a predicate recognizing parameter targets pointing to `tag`."
-  [tag]
-  (let [targets (tag-targets tag)]
-    (fn tag-target? [param-target]
-      (and (vector? param-target)
-           (> (count param-target) 1)
-           (targets (subvec param-target 0 2))
-           ;; legacy dimension params come without stage-number, 0 is the default
-           (= (get-in param-target [2 :stage-number] 0)
-              ;; Currently, we have no multi-stage native queries, so the stage-number is always 0.
-              ;; If in the future we introduce such queries, we can specify the stage-number of tags
-              ;; and they should match the stage-number of the parameter target.
-              (get tag :stage-number 0))))))
-
 (mu/defn- tag-params
   "Return params from the provided `params` list targeting the provided `tag`."
   [tag    :- ::lib.schema.template-tag/template-tag
    params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
-  (let [tag-target? (tag-target-pred tag)]
+  (let [tag-target? (lib/template-tag-target-pred tag)]
     (seq (for [param params
                :when (tag-target? (:target param))]
            param))))
@@ -519,3 +486,51 @@
                 (when (lib/parsed-referenced-card-query-param? param)
                   (:card-id param))))
         (vals params-map)))
+
+;;; Must-apply parameters
+;;
+;; A `tracker` is a volatile set of the names of the tags that native parameter substitution put a value in place of, or
+;; nil when the stage has no must-apply parameter and nothing needs tracking.
+
+(defn record-substituted-tag!
+  "Record in `tracker` that substitution put a value in place of tag `tag-name`."
+  [tracker tag-name]
+  (some-> tracker (vswap! conj tag-name)))
+
+(defn substituted-tags
+  "The tags `tracker` holds now. Take this before an optional clause, and give it to [[reset-substituted-tags!]] if the
+  clause is left out."
+  [tracker]
+  (some-> tracker deref))
+
+(defn reset-substituted-tags!
+  "Forget the tags `tracker` recorded since [[substituted-tags]] returned `tags`."
+  [tracker tags]
+  (some-> tracker (vreset! tags)))
+
+(defn- must-apply-tag->param
+  "Map of tag name, as [[stage->params-map]] keys it, to the must-apply parameter that targets that tag."
+  [{tags :template-tags, params :parameters}]
+  (into {}
+        (keep (fn [{tag-name :name, :as tag}]
+                (let [tag-target? (lib/template-tag-target-pred tag)]
+                  (when-let [param (some #(when (and (:lib/must-apply? %) (tag-target? (:target %))) %) params)]
+                    [(or (lib/match-and-normalize-tag-name tag-name) tag-name) param]))))
+        tags))
+
+(defn call-with-must-apply-check
+  "Call `(f tracker)`, which substitutes the parameters of native `stage`, and return its result. `f` records each tag it
+  substitutes with [[record-substituted-tag!]]. Throw if the tag of a must-apply parameter was not substituted."
+  [stage f]
+  (let [tag->param (must-apply-tag->param stage)]
+    (if-not (seq tag->param)
+      (f nil)
+      (let [tracker     (volatile! #{})
+            result      (f tracker)
+            substituted @tracker]
+        (doseq [[tag-name param] tag->param
+                :when (not (contains? substituted tag-name))]
+          (must-apply/throw-if-must-apply
+           param
+           (tru "its template tag is not in the query, or is in an optional clause that was left out")))
+        result))))

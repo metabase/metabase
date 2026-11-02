@@ -2003,6 +2003,14 @@
                       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                                             {:parameters []})))))))
 
+(deftest update-card-parameters-drops-must-apply-test
+  (testing "PUT /api/card/:id does not save :lib/must-apply?, which only the server sets at run time"
+    (mt/with-temp [:model/Card card]
+      (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
+                            {:parameters [{:id "p1", :type "number/=", :lib/must-apply? true}]})
+      (is (= [{:id "p1", :type :number/=}]
+             (t2/select-one-fn :parameters :model/Card :id (u/the-id card)))))))
+
 (deftest update-card-parameter-mappings-test
   (testing "PUT /api/card/:id"
     (mt/with-temp [:model/Card card]

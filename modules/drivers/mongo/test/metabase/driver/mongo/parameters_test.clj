@@ -338,6 +338,36 @@
             (-> (mongo.params/substitute-native-parameters :mongo query 0)
                 (lib/query-stage 0))))))
 
+(deftest ^:parallel must-apply-param-not-substituted-fails-closed-test
+  (let [query (fn [native-query]
+                (as-> (lib/query meta/metadata-provider
+                                 {:database   (meta/id)
+                                  :type       :native
+                                  :native     {:query         native-query
+                                               :collection    "venues"
+                                               :template-tags {"price" {:name "price", :display-name "Price", :type :number}
+                                                               "name"  {:name "name", :display-name "Name", :type :text}}}
+                                  :parameters [{:id              "p1"
+                                                :type            :number/=
+                                                :target          [:variable [:template-tag "price"]]
+                                                :value           1
+                                                :lib/must-apply? true}]}) $query
+                  (lib/update-query-stage $query 0 assoc :parameters (:parameters $query))))]
+    (testing "a must-apply parameter throws when its template tag is not substituted"
+      (doseq [[description native-query] {"tag not in the query text"
+                                          "[{$match: {}}]"
+                                          "optional clause dropped because another tag in it has no value"
+                                          "[{$match: {[[price: {{price}}, name: {{name}}]]}}]"}]
+        (testing description
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Filter `p1` must be applied, but it could not be"
+               (mongo.params/substitute-native-parameters :mongo (query native-query) 0))))))
+    (testing "a must-apply parameter in a kept optional clause is substituted"
+      (is (=? {:native "[{$match: {price: 1}}]"}
+              (-> (mongo.params/substitute-native-parameters :mongo (query "[{$match: {[[price: {{price}}]]}}]") 0)
+                  (lib/query-stage 0)))))))
+
 (deftest ^:parallel variable-default-value-substitution-test
   (testing "previewing a Mongo native query substitutes a plain variable tag's :default when no runtime param is supplied (#47793)"
     (let [mp    (lib.tu/merged-mock-metadata-provider

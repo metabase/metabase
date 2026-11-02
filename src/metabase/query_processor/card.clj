@@ -55,7 +55,7 @@
     strategy))
 
 (mu/defn- explict-stage-references :- [:set :int]
-  [parameters :- [:maybe ::parameters.schema/parameters]]
+  [parameters :- [:maybe ::parameters.schema/run-time-parameters]]
   (into #{}
         (keep (fn [{:keys [target]}]
                 (some-> target lib/parameter-target-dimension-options :stage-number)))
@@ -93,7 +93,7 @@
   [{dataset-query :dataset_query
     card-type     :type
     :as           card} :- ::queries.schema/card
-   parameters  :- [:maybe ::parameters.schema/parameters]
+   parameters  :- [:maybe ::parameters.schema/run-time-parameters]
    constraints :- [:maybe ::lib.schema.constraints/constraints]
    middleware  :- [:maybe ::lib.schema.middleware-options/middleware-options]
    & [ids] :- [:* [:maybe [:map {:closed true}
@@ -329,9 +329,9 @@
           (remove #(contains? parameter-ids (:id %)))
           tag-parameters)))
 
-(mu/defn- enrich-parameters-from-card :- ::parameters.schema/parameters
+(mu/defn- enrich-parameters-from-card :- ::parameters.schema/run-time-parameters
   "Allow the FE to omit type and target for parameters by adding them from the card."
-  [parameters      :- [:maybe ::parameters.schema/parameters-with-optional-types]
+  [parameters      :- [:maybe ::parameters.schema/run-time-parameters-with-optional-types]
    card-parameters :- [:maybe ::parameters.schema/parameters]]
   (let [id->card-param (->> card-parameters
                             (map #(select-keys % [:id :type :target]))
@@ -401,7 +401,7 @@
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}
    :- [:maybe [:map {:closed true}
-               [:parameters     {:optional true} [:maybe ::parameters.schema/parameters-with-optional-types]]
+               [:parameters     {:optional true} [:maybe ::parameters.schema/run-time-parameters-with-optional-types]]
                [:constraints    {:optional true} [:maybe ::lib.schema.constraints/constraints]]
                [:context        {:optional true} [:maybe ::lib.schema.info/context]]
                [:dashboard-id   {:optional true} [:maybe ::lib.schema.id/dashboard]]

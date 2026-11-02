@@ -1010,6 +1010,15 @@
                      :errors          {:width "enum of fixed, full"}}
                     (mt/user-http-request :rasta :put 400 (str "dashboard/" (u/the-id dashboard)) {:width 1200})))))))))
 
+(deftest update-dashboard-parameters-drops-must-apply-test
+  (testing "PUT /api/dashboard/:id does not save :lib/must-apply?, which only the server sets at run time"
+    (mt/with-temp [:model/Dashboard dashboard {}]
+      (with-dashboards-in-writeable-collection! [dashboard]
+        (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
+                              {:parameters [{:id "p1", :name "P1", :slug "p1", :type "number/=", :lib/must-apply? true}]})
+        (is (= [{:id "p1", :name "P1", :slug "p1", :type :number/=}]
+               (t2/select-one-fn :parameters :model/Dashboard :id (u/the-id dashboard))))))))
+
 (deftest update-dashboard-add-time-granularity-param
   (testing "PUT /api/dashboard/:id"
     (testing "We can add a time granularity parameter to a dashboard"

@@ -9,6 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.query-processor.parameters.values :as params.values]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -58,7 +59,9 @@
    ;; IDs of the snippets currently being expanded, used to detect snippets that reference themselves
    [:expanding-snippet-ids [:set ::lib.schema.id/snippet]]
    ;; volatile count of the snippets expanded so far by the current call to [[substitute]]
-   [:snippet-expansions    [:fn volatile?]]])
+   [:snippet-expansions    [:fn volatile?]]
+   ;; see [[params.values/call-with-must-apply-check]]
+   [:substituted-tags      [:maybe [:fn volatile?]]]])
 
 (mu/defn- substitute-field-param :- ::acc
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -118,7 +121,11 @@
       (cond
         (or (lib/parsed-field-filter-param? v)
             (lib/parsed-temporal-unit-param? v))
-        (substitute-field-param metadata-providerable [sql args missing] in-optional? k v)
+        (do
+          ;; a no-value filter becomes `1 = 1` or is left out, so it does not count as substituted
+          (when-not (= (:value v) lib/parsed-param-no-value-placeholder)
+            (params.values/record-substituted-tag! (:substituted-tags ctx) k))
+          (substitute-field-param metadata-providerable [sql args missing] in-optional? k v))
 
         (or (lib/parsed-referenced-card-query-param? v)
             (lib/parsed-referenced-table-query-param? v))
@@ -133,6 +140,7 @@
         :else
         (let [{:keys [replacement-snippet prepared-statement-args]}
               (->replacement-snippet-info metadata-providerable v)]
+          (params.values/record-substituted-tag! (:substituted-tags ctx) k)
           [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))))
 
 (mu/defn- substitute-optional :- ::acc
@@ -141,9 +149,12 @@
    param->value          :- [:maybe [:map-of :string :metabase.lib.parameters.parse.types/parsed-value]]
    [sql args missing]    :- ::acc
    {subclauses :args} :- :metabase.lib.parameters.parse.types/optional]
-  (let [[opt-sql opt-args opt-missing] (substitute* metadata-providerable ctx param->value subclauses true)]
+  (let [substituted                    (params.values/substituted-tags (:substituted-tags ctx))
+        [opt-sql opt-args opt-missing] (substitute* metadata-providerable ctx param->value subclauses true)]
     (if (seq opt-missing)
-      [sql args missing]
+      (do
+        (params.values/reset-substituted-tags! (:substituted-tags ctx) substituted)
+        [sql args missing])
       [(str sql opt-sql) (concat args opt-args) missing])))
 
 (mu/defn- substitute* :- ::acc
@@ -174,30 +185,38 @@
 (mu/defn substitute :- [:tuple #_sql :string #_args [:maybe [:sequential :any]]]
   "Substitute `Optional` and `Param` objects in a `parsed-query`, a sequence of parsed string fragments and tokens, with
   the values from the map `param->value` (using logic from `substitution` to decide what replacement SQL should be
-  generated).
+  generated). `substituted-tags` is a tracker from [[params.values/call-with-must-apply-check]].
 
     (substitute [\"select * from foobars where bird_type = \" (param \"bird_type\")]
                  {\"bird_type\" \"Steller's Jay\"})
     ;; -> [\"select * from foobars where bird_type = ?\" [\"Steller's Jay\"]]"
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   parsed-query          :- [:sequential :metabase.lib.parameters.parse/parsed-token]
-   param->value          :- [:maybe [:map-of :string :metabase.lib.parameters.parse.types/parsed-value]]]
-  (log/tracef "Substituting %d params in query" (count param->value))
-  (let [[sql args missing] (try
-                             (substitute* metadata-providerable
-                                          {:expanding-snippet-ids #{}, :snippet-expansions (volatile! 0)}
-                                          param->value
-                                          parsed-query
-                                          false)
-                             (catch Throwable e
-                               (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
-                                               {:type         (or (:type (ex-data e)) driver-api/qp.error-type.qp)
-                                                :params       param->value
-                                                :parsed-query parsed-query}
-                                               e))))]
-    (log/tracef "Substituted %d params" (count args))
-    (when (seq missing)
-      (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
-                      {:type    driver-api/qp.error-type.missing-required-parameter
-                       :missing missing})))
-    [(str/trim sql) args]))
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    parsed-query          :- [:sequential :metabase.lib.parameters.parse/parsed-token]
+    param->value          :- [:maybe [:map-of :string :metabase.lib.parameters.parse.types/parsed-value]]]
+   (substitute metadata-providerable parsed-query param->value nil))
+
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    parsed-query          :- [:sequential :metabase.lib.parameters.parse/parsed-token]
+    param->value          :- [:maybe [:map-of :string :metabase.lib.parameters.parse.types/parsed-value]]
+    substituted-tags      :- [:maybe [:fn volatile?]]]
+   (log/tracef "Substituting %d params in query" (count param->value))
+   (let [[sql args missing] (try
+                              (substitute* metadata-providerable
+                                           {:expanding-snippet-ids #{}
+                                            :snippet-expansions    (volatile! 0)
+                                            :substituted-tags      substituted-tags}
+                                           param->value
+                                           parsed-query
+                                           false)
+                              (catch Throwable e
+                                (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
+                                                {:type         (or (:type (ex-data e)) driver-api/qp.error-type.qp)
+                                                 :params       param->value
+                                                 :parsed-query parsed-query}
+                                                e))))]
+     (log/tracef "Substituted %d params" (count args))
+     (when (seq missing)
+       (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
+                       {:type    driver-api/qp.error-type.missing-required-parameter
+                        :missing missing})))
+     [(str/trim sql) args])))

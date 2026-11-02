@@ -1418,6 +1418,115 @@
               (is (= "The parameter price does not exist on this card."
                      (client/client :get 400 (format "embed/card/%s/params/c1/remapping?value=2" token)))))))))))
 
+(def ^:private malformed-locked-values
+  "Locked JWT values that are neither a single value nor a flat list of values, with the error each gets. The query
+  processor reads `[nil]` as \"no value\", so it must be refused, not read as \"filter off\".
+  The token schema already refused the nested list and the map."
+  {[nil]     "Invalid value for locked parameter venue_id."
+   [nil nil] "Invalid value for locked parameter venue_id."
+   [[100]]   #"Invalid input: .*cannot be a collection.*"
+   {:a 100}  #"Invalid input: .*cannot be a collection.*"})
+
+(defn- venue-id-native-card
+  "A SQL card counting venues, with a `venue_id` field filter that embedding locks."
+  []
+  {:enable_embedding true
+   :embedding_params {:venue_id "locked"}
+   :dataset_query    {:database (mt/id)
+                      :type     :native
+                      :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{venue_id}}"
+                                 :template-tags {"venue_id" {:id           "v1"
+                                                             :name         "venue_id"
+                                                             :display-name "Venue ID"
+                                                             :type         :dimension
+                                                             :widget-type  :id
+                                                             :dimension    [:field (mt/id :venues :id) nil]}}}}
+   :parameters       [{:id "v1", :type :id, :slug "venue_id", :name "Venue ID"
+                       :target [:dimension [:template-tag "venue_id"]]}]})
+
+(deftest card-malformed-locked-value-test
+  (testing "a malformed locked value is refused instead of dropping the filter"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-card [card (venue-id-native-card)]
+        (doseq [[value message] malformed-locked-values]
+          (testing (pr-str value)
+            (is (=? message (client/client :get 400 (card-query-url card "" {:params {:venue_id value}}))))))
+        (testing "a single value filters"
+          (is (=? {:data {:rows [[1]]}}
+                  (client/client :get 202 (card-query-url card "" {:params {:venue_id 100}})))))
+        (testing "a list with some nils still filters on its values, as before"
+          (is (=? {:data {:rows [[1]]}}
+                  (client/client :get 202 (card-query-url card "" {:params {:venue_id [nil 100]}})))))
+        (testing "[] turns the filter off, as documented"
+          (is (=? {:data {:rows [[100]]}}
+                  (client/client :get 202 (card-query-url card "" {:params {:venue_id []}})))))))))
+
+(deftest dashcard-malformed-locked-value-test
+  (testing "a malformed locked value is refused instead of dropping the filter"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "locked"}}}]
+        (doseq [[value message] malformed-locked-values]
+          (testing (pr-str value)
+            (is (=? message (client/client :get 400 (dashcard-url dashcard {:params {:venue_id value}}))))))
+        (testing "a single value filters"
+          (is (=? {:data {:rows [[1]]}}
+                  (client/client :get 202 (dashcard-url dashcard {:params {:venue_id 100}})))))
+        (testing "a list with some nils still filters on its values, as before"
+          (is (=? {:data {:rows [[1]]}}
+                  (client/client :get 202 (dashcard-url dashcard {:params {:venue_id [nil 100]}})))))
+        (testing "[] turns the filter off, as documented"
+          (is (=? {:data {:rows [[100]]}}
+                  (client/client :get 202 (dashcard-url dashcard {:params {:venue_id []}})))))))))
+
+(deftest locked-filter-must-be-applied-by-query-processor-test
+  (testing "with the locked-value check switched off, the query processor still refuses to drop the filter"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-dynamic-fn-redefs [api.embed.common/check-locked-value! (constantly nil)]
+        (with-temp-card [card (venue-id-native-card)]
+          (testing "card"
+            (is (=? {:status "failed", :error #"Filter `v1` must be applied, but it could not be.*"}
+                    (client/client :get 400 (card-query-url card "" {:params {:venue_id [nil]}}))))))
+        (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "locked"}}}]
+          (testing "dashcard"
+            (is (=? {:status "failed", :error #"Filter `_VENUE_ID_` must be applied, but it could not be.*"}
+                    (client/client :get 400 (dashcard-url dashcard {:params {:venue_id [nil]}}))))))))))
+
+(deftest card-param-values-require-valid-locked-values-test
+  (testing "parameter value lookups refuse a missing or malformed locked value instead of dropping the constraint"
+    (with-embedding-enabled-and-new-secret-key!
+      (let [mp (mt/metadata-provider)]
+        (with-temp-card [card {:enable_embedding true
+                               :embedding_params {:price "locked" :cat "enabled"}
+                               :dataset_query
+                               (-> (lib/native-query mp (str "SELECT ID, CATEGORY_ID, PRICE FROM VENUES "
+                                                             "WHERE {{price}} AND {{cat}}"))
+                                   (lib/with-template-tags
+                                     {"price" {:id           "p1"
+                                               :name         "price"
+                                               :display-name "Price"
+                                               :type         :dimension
+                                               :widget-type  :number/=
+                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))}
+                                      "cat"   {:id           "c1"
+                                               :name         "cat"
+                                               :display-name "Cat"
+                                               :type         :dimension
+                                               :widget-type  :number/=
+                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))}}))
+                               :parameters [{:id "p1" :type :number/= :slug "price" :name "Price"
+                                             :target [:dimension [:template-tag "price"]]}
+                                            {:id "c1" :type :number/= :slug "cat" :name "Cat"
+                                             :target [:dimension [:template-tag "cat"]]}]}]
+          (doseq [[description token-params message]
+                  [["missing" {} "You must specify a value for :price in the JWT."]
+                   ["[nil]" {:price [nil]} "Invalid value for locked parameter price."]]
+                  :let [token (card-token card {:params token-params})]]
+            (testing description
+              (testing "values"
+                (is (= message (client/client :get 400 (format "embed/card/%s/params/c1/values" token)))))
+              (testing "remapping"
+                (is (= message (client/client :get 400 (format "embed/card/%s/params/c1/remapping?value=2" token))))))))))))
+
 (deftest card-param-values-native-card-without-parameters-test
   (testing "a native card described only by its template tags, with an empty locked value, still serves values"
     (with-embedding-enabled-and-new-secret-key!
@@ -1871,6 +1980,7 @@
                                                    :name    "Name"
                                                    :slug    "NAME"
                                                    :default nil}]
+                                                 nil
                                                  {"NAME" ["Aaron Hand"]})
            (#'api.embed.common/apply-slug->value [{:id      "NAME"
                                                    :type    :string/=
@@ -1878,6 +1988,7 @@
                                                    :name    "Name"
                                                    :slug    "NAME"
                                                    :default nil}]
+                                                 nil
                                                  {"NAME" "Aaron Hand"})))))
 
 (deftest handle-single-params-for-operator-filters-test
@@ -2268,7 +2379,10 @@
                                                                    :value_field (mt/$ids $venues.name)}}]
                            :embedding_params (zipmap [:static_category :static_category_label :card] (repeat :enabled))
                            :table_id      (mt/id :venues)}]
-        (let [url #(format "embed/card/%s/params/%s/remapping?value=%s" (card-token %1) %2 %3)
+        (let [;; `price` is locked on field-filter-card, so its token has to carry a value
+              url #(format "embed/card/%s/params/%s/remapping?value=%s"
+                           (card-token %1 (when (= %1 field-filter-card) {:params {:price 1}}))
+                           %2 %3)
               request #(client/client :get 200 (url %1 %2 %3))]
           (are [card value-source value] (= [value] (request card value-source value))
             field-filter-card param-field-values      "20th Century Cafe"
