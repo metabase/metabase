@@ -197,6 +197,7 @@ export const GoalValueInput = ({
       trackDynamicGoalUnset(display, currentSource);
     }
     commitValue(null);
+    setTimeout(() => numberInputRef.current?.focus(), 0);
   };
 
   const selectSelfColumn = (columnName: string) => {
@@ -320,7 +321,6 @@ export const GoalValueInput = ({
   const handlePillKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Backspace" || event.key === "Delete") {
       removeDynamicValue();
-      setTimeout(() => numberInputRef.current?.focus(), 0);
     }
   };
 

@@ -675,25 +675,22 @@ describe("GoalValueInput", () => {
   });
 
   it("moves focus to the static input after deleting the pill with backspace", async () => {
-    const Harness = () => {
-      const [value, setValue] = useState<GoalValue | null>("sum");
-      return (
-        <GoalValueInput
-          aria-label="Min"
-          data={DATA}
-          datasetQuery={DATASET_QUERY}
-          display="progress"
-          id="goal-value"
-          referencedEntities={[]}
-          value={value}
-          onChange={setValue}
-        />
-      );
-    };
-    renderWithProviders(<Harness />);
+    renderWithProviders(<ControlledGoalValueInput />);
 
     const pill = screen.getByRole("group", { name: "Min" });
     fireEvent.keyDown(pill, { key: "Backspace" });
+
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Min" })).toHaveFocus(),
+    );
+  });
+
+  it("moves focus to the static input after clearing the reference with the remove button", async () => {
+    renderWithProviders(<ControlledGoalValueInput />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove value source" }),
+    );
 
     await waitFor(() =>
       expect(screen.getByRole("textbox", { name: "Min" })).toHaveFocus(),
@@ -1770,4 +1767,21 @@ async function openMenuWithKeyboard() {
   await userEvent.keyboard("{Enter}");
   await screen.findByRole("menu");
   await waitFor(() => expect(trigger).not.toHaveFocus());
+}
+
+function ControlledGoalValueInput() {
+  const [value, setValue] = useState<GoalValue | null>("sum");
+
+  return (
+    <GoalValueInput
+      aria-label="Min"
+      data={DATA}
+      datasetQuery={DATASET_QUERY}
+      display="progress"
+      id="goal-value"
+      referencedEntities={[]}
+      value={value}
+      onChange={setValue}
+    />
+  );
 }
