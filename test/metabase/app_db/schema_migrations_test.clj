@@ -4314,11 +4314,11 @@
 (deftest osi-generation-analytics-views-test
   (impl/test-migrations ["kz72om" "gt64hx"] [migrate!]
     (let [user-id (t2/insert-returning-pk! :core_user {:email "osi-analytics@example.com"
-                                                        :first_name "Test"
-                                                        :last_name "User"
-                                                        :password "unused"
-                                                        :date_joined :%now
-                                                        :entity_id (subs (str (random-uuid)) 0 21)})
+                                                       :first_name "Test"
+                                                       :last_name "User"
+                                                       :password "unused"
+                                                       :date_joined :%now
+                                                       :entity_id (subs (str (random-uuid)) 0 21)})
           conversation-id (str (random-uuid))]
       (t2/insert! :metabot_conversation {:id conversation-id, :user_id user-id})
       (t2/insert! :ai_usage_log {:source            "osi-generation"

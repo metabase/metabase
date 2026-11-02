@@ -679,14 +679,14 @@
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
                                                llm-mini-model       "waiting/mini"]
           (is (= (str "Invalid Bedrock model \"bedrock/openai.gpt-oss-120b\". "
-                                 "Supported model IDs use the anthropic.* or openai.* prefix; "
-                                 "openai.gpt-oss* is not supported.")
-                  (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                        {:type   "bedrock"
-                                         :config {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
-                                                  :secret-access-key "test-secret"
-                                                  :region            "us-east-1"}
-                                         :model  "openai.gpt-oss-120b"})))
+                      "Supported model IDs use the anthropic.* or openai.* prefix; "
+                      "openai.gpt-oss* is not supported.")
+                 (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                       {:type   "bedrock"
+                                        :config {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                 :secret-access-key "test-secret"
+                                                 :region            "us-east-1"}
+                                        :model  "openai.gpt-oss-120b"})))
           (is (= [] (llm.provider/stored-connections)))
           (is (nil? (setting/db-stored-value :llm-metabot-provider)))
           (is (= "waiting/mini" (metabot.settings/explicit-mini-model))))))))
@@ -1197,12 +1197,12 @@
           (mt/with-temporary-raw-setting-values [llm-metabot-provider "bedrock/anthropic.claude-opus-4-8"
                                                  llm-mini-model       "bedrock/anthropic.claude-haiku-4-5"]
             (is (= (str "Invalid Bedrock model \"bedrock/openai.gpt-oss-120b\". "
-                                   "Supported model IDs use the anthropic.* or openai.* prefix; "
-                                   "openai.gpt-oss* is not supported.")
-                    (mt/user-http-request :crowberto :put 400 "llm/providers/bedrock"
-                                          {:name   "Changed"
-                                           :config {:region "eu-west-1"}
-                                           :model  "openai.gpt-oss-120b"})))
+                        "Supported model IDs use the anthropic.* or openai.* prefix; "
+                        "openai.gpt-oss* is not supported.")
+                   (mt/user-http-request :crowberto :put 400 "llm/providers/bedrock"
+                                         {:name   "Changed"
+                                          :config {:region "eu-west-1"}
+                                          :model  "openai.gpt-oss-120b"})))
             (is (= [original] (llm.provider/stored-connections)))
             (is (= "bedrock/anthropic.claude-opus-4-8" (metabot.settings/llm-metabot-provider)))
             (is (= "bedrock/anthropic.claude-haiku-4-5"
