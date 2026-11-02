@@ -1322,16 +1322,24 @@
              (not (mr/validate ::lib.schema/query query)))
     (let [errors (mu.humanize/humanize (mr/explain ::lib.schema/query query))]
       ;; the message names two causes because `mu/defn` is not instrumented in prod: an app DB can hold MBQL the QP
-      ;; tolerates but this schema rejects, so a refusal is not on its own evidence of a newer export
+      ;; tolerates but this schema rejects, so a refusal is not on its own evidence of a newer export.
+      ;; It suggests only the env var because every import path honors it; a per-entity skip exists on some paths
+      ;; and not others, so callers that offer one add it (see [[query-schema-refusal?]]).
       (throw (ex-info (str "Refusing to import a query that does not match this Metabase's query schema. It was "
                            "either exported by a newer Metabase whose query shape this version cannot represent, "
-                           "or stored by an instance that never validated it. Pass continue_on_error to skip just "
-                           "this entity, or set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to skip this check "
-                           "for the whole import.")
+                           "or stored by an instance that never validated it. Set "
+                           "MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to skip this check for the whole import.")
                       ;; no `:status`/`:status-code` here - `load-one!` rewraps everything thrown from this
                       ;; block in a fresh ex-info, so nothing we attach reaches the API's status handling
-                      {:schema-errors errors}))))
+                      {:schema-errors          errors
+                       ::query-schema-refusal? true}))))
   query)
+
+(defn query-schema-refusal?
+  "True when `e`, or any exception in its cause chain, is an import refused because a query fails this instance's
+  query schema."
+  [e]
+  (boolean (some (comp ::query-schema-refusal? ex-data) (u/full-exception-chain e))))
 
 (defn- normalize-imported
   "Normalizes ingested MBQL/structure into this instance's representation, returning `x` unchanged if normalization
