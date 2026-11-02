@@ -1,5 +1,6 @@
 ---
 title: Tables
+summary: Arrange, hide, resize, and freeze columns, and filter or summarize right from a column heading.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/table
 ---

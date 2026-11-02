@@ -1,5 +1,6 @@
 ---
 title: LDAP
+summary: Authenticate people against your LDAP directory and map LDAP groups to Metabase groups.
 ---
 
 # LDAP

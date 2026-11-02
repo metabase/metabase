@@ -1,5 +1,6 @@
 ---
 title: "Migrate to Metabase Cloud - Metabase 49 or lower"
+summary: Migrate a self-hosted Metabase running version 49 or earlier to Metabase Cloud, keeping all of your content and settings.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

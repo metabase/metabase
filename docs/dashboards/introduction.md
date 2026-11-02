@@ -1,5 +1,6 @@
 ---
 title: Introduction to dashboards
+summary: Group related questions, text, and filters into tabs on a single page, and share the result as a report.
 redirect_from:
   - /docs/latest/users-guide/07-dashboards
 ---

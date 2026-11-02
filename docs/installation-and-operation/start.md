@@ -1,5 +1,6 @@
 ---
 title: "Installation and operation overview"
+summary: Install, configure, back up, and upgrade your Metabase.
 ---
 
 # Installation and operation overview

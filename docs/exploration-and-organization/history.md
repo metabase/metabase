@@ -1,5 +1,6 @@
 ---
 title: History
+summary: See what changed in a question, dashboard, model, or transform, and roll back to an earlier version.
 ---
 
 # History

@@ -1,5 +1,6 @@
 ---
 title: Oracle
+summary: Connect Metabase to Oracle, including which versions are supported and every connection setting.
 redirect_from:
   - /docs/latest/administration-guide/databases/oracle
 ---

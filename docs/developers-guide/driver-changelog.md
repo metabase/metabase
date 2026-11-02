@@ -1,5 +1,6 @@
 ---
 title: Driver interface changelog
+summary: Changes to the Metabase driver interface, listed by release.
 ---
 
 # Driver Interface Changelog

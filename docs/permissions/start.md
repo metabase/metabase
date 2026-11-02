@@ -1,5 +1,6 @@
 ---
 title: Permissions overview
+summary: Everything you can set permissions on in Metabase, from data and collections to features and notifications.
 redirect_from:
   - /docs/latest/permissions
 ---

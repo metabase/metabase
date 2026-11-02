@@ -1,5 +1,6 @@
 ---
 title: Data permissions
+summary: Control which groups can view data and write queries, down to the database, schema, or table.
 redirect_from:
   - /docs/latest/administration-guide/data-permissions
 ---

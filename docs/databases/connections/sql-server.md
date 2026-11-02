@@ -1,5 +1,6 @@
 ---
 title: SQL Server
+summary: Connect Metabase to SQL Server, including which versions are supported and every connection setting.
 ---
 
 # SQL Server

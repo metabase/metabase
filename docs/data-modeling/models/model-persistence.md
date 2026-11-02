@@ -1,5 +1,6 @@
 ---
 title: Model persistence
+summary: Store model results as tables in your data warehouse so your models, and the questions built on them, load faster.
 redirect_from:
   - /docs/latest/data-modeling/model-persistence
 ---

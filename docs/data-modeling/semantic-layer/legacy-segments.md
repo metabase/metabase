@@ -1,5 +1,6 @@
 ---
 title: "Segments"
+summary: Save a named filter that people can reuse in the query builder as an official definition of a subset of your data.
 ---
 
 # Segments

@@ -1,5 +1,6 @@
 ---
 title: SAML-based authentication
+summary: Set up SAML single sign-on with your identity provider, including user provisioning and passing user attributes into Metabase permissions.
 redirect_from:
   - /docs/latest/enterprise-guide/authenticating-with-saml
 ---

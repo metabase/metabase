@@ -1,5 +1,6 @@
 ---
 title: CountIf
+summary: Count only the rows that meet a condition you define.
 ---
 
 # CountIf

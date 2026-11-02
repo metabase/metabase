@@ -1,5 +1,6 @@
 ---
 title: "Data modeling overview"
+summary: Transform, label, and document your data, build a semantic layer of metrics and definitions, and track lineage and dependencies.
 redirect_from:
   - /docs/latest/data-modeling
 ---

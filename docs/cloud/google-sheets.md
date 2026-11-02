@@ -1,5 +1,6 @@
 ---
 title: Sync Google Sheets with Metabase
+summary: Sync Google Sheets from a Google Drive folder into Metabase Cloud Storage, where Metabase creates tables from the synced sheets.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

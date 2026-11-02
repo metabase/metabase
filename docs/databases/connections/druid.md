@@ -1,5 +1,6 @@
 ---
 title: Druid
+summary: Connect Metabase to Druid, with every connection setting explained, including SSH tunneling.
 ---
 
 # Druid

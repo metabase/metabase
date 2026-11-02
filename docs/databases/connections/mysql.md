@@ -1,5 +1,6 @@
 ---
 title: MySQL
+summary: Connect Metabase to MySQL, including which versions are supported and every connection setting.
 redirect_from:
   - /docs/latest/administration-guide/databases/mysql
 ---

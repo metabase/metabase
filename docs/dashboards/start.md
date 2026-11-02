@@ -1,5 +1,6 @@
 ---
 title: Dashboards overview
+summary: Build dashboards, add filters, customize what happens on click, and send results out on a schedule.
 redirect_from:
   - /docs/latest/dashboards
 ---

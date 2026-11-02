@@ -1,5 +1,6 @@
 ---
 title: Questions overview
+summary: Ask questions with the query builder or SQL, visualize the results, and set up alerts to tell you when something changes.
 redirect_from:
   - /docs/latest/questions
 ---

@@ -1,5 +1,6 @@
 ---
 title: Activating your Metabase commercial license
+summary: Activate your Pro or Enterprise license to unlock paid features in a self-hosted Metabase.
 redirect_from:
   - /docs/latest/enterprise-guide/activating-the-enterprise-edition
   - /docs/latest/paid-features/activating-the-enterprise-edition

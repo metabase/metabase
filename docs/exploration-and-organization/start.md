@@ -1,5 +1,6 @@
 ---
 title: "Organization overview"
+summary: Tools for finding things in Metabase and keeping your content organized.
 redirect_from:
   - /docs/latest/exploration-and-organization
 ---

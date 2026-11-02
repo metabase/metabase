@@ -1,5 +1,6 @@
 ---
 title: Upgrading Metabase
+summary: Upgrade your Metabase safely, with the backup steps to take first and what to expect during an upgrade.
 redirect_from:
   - /docs/latest/operations-guide/upgrading-metabase
 ---

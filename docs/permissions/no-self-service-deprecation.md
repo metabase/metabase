@@ -1,5 +1,6 @@
 ---
 title: Migrating from legacy permissions
+summary: What changed in the Metabase 50 permissions overhaul, and what to do if your old setup needs adjusting.
 ---
 
 # Migrating from legacy permissions

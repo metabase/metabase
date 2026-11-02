@@ -1,5 +1,6 @@
 ---
 title: "People overview"
+summary: Set up accounts, groups, and authentication, including SSO, LDAP, and SCIM provisioning.
 redirect_from:
   - /docs/latest/administration-guide/sso
   - /docs/latest/people-and-groups

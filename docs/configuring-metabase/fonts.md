@@ -1,5 +1,6 @@
 ---
 title: Fonts
+summary: Change the font Metabase uses, either from a curated set of Google Fonts or a custom font you host yourself.
 redirect_from:
   - /docs/latest/enterprise-guide/fonts
   - /docs/latest/embedding/fonts
