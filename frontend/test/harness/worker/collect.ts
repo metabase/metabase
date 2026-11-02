@@ -43,6 +43,14 @@ const suiteStack: Suite[] = [rootSuite];
 // files, which register theirs again each time they run.
 export const packageHooks: Hooks = createHooks();
 const packageOfHook = new WeakMap<TestFunction, string>();
+const timeoutOfHook = new WeakMap<TestFunction, number>();
+
+/**
+ * The timeout that the spec gave a hook, as jest's second argument.
+ */
+export function hookTimeoutOf(fn: TestFunction): number | undefined {
+  return timeoutOfHook.get(fn);
+}
 
 export function createSuite(name: string, mode: Mode): Suite {
   return { name, mode, children: [], ...createHooks() };
@@ -179,15 +187,34 @@ function currentSuite(): Suite {
 
 function declareTest(mode: Mode) {
   return (name: string, fn?: TestFunction, timeoutMs?: number): void => {
+    if (typeof fn !== "function") {
+      throw new Error(
+        "Missing second argument. It must be a callback function. Perhaps you want to use `test.todo` for a test placeholder.",
+      );
+    }
     currentSuite().children.push({
       type: "test",
       name,
       fn,
       timeoutMs,
-      mode: fn ? mode : "todo",
+      mode,
       path: suiteStack.slice(2).map((suite) => suite.name),
     });
   };
+}
+
+function declareTodo(name: string, ...rest: unknown[]): void {
+  if (rest.length > 0) {
+    throw new Error("Todo must be called with only a description.");
+  }
+  currentSuite().children.push({
+    type: "test",
+    name,
+    fn: undefined,
+    timeoutMs: undefined,
+    mode: "todo",
+    path: suiteStack.slice(2).map((suite) => suite.name),
+  });
 }
 
 function createTestFunction(mode: Mode) {
@@ -202,7 +229,7 @@ function createTestFunction(mode: Mode) {
     only: Object.assign(declareTest("only"), {
       each: bindEach(declareTest("only")),
     }),
-    todo: (name: string) => declareTest("todo")(name),
+    todo: declareTodo,
     failing: (name: string, fn: TestFunction, timeoutMs?: number) =>
       declare(name, () => expectFailure(fn), timeoutMs),
   });
@@ -247,7 +274,10 @@ function createDescribeFunction(mode: Mode) {
 }
 
 function registerHook(kind: HookKind) {
-  return (fn: TestFunction): void => {
+  return (fn: TestFunction, timeoutMs?: number): void => {
+    if (timeoutMs !== undefined) {
+      timeoutOfHook.set(fn, timeoutMs);
+    }
     const packageFrame = packageFrameOfCaller();
     if (packageFrame) {
       packageOfHook.set(fn, packageFrame);

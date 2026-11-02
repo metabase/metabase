@@ -44,7 +44,7 @@ type AssertionResult = {
   ancestorTitles: string[];
   title: string;
   fullName: string;
-  status: "passed" | "failed" | "pending";
+  status: "passed" | "failed" | "pending" | "todo";
   failureMessages: string[];
   failureDetails: unknown[];
   numPassingAsserts: number;
@@ -99,6 +99,13 @@ type FormatResultsErrors = (
   testPath: string,
 ) => string | null;
 
+type FormatExecError = (
+  error: SerializableError,
+  config: ProjectConfig,
+  options: { noStackTrace: boolean },
+  testPath: string,
+) => string;
+
 type OnTestStart = (test: Test) => Promise<void>;
 type OnTestSuccess = (test: Test, result: TestResult) => Promise<void>;
 type OnTestFailure = (test: Test, error: SerializableError) => Promise<void>;
@@ -117,8 +124,13 @@ const requireFromJestCore = createRequire(
     paths: [path.dirname(createRequire(import.meta.url).resolve("jest"))],
   }),
 );
-const { formatResultsErrors }: { formatResultsErrors: FormatResultsErrors } =
-  requireFromJestCore("jest-message-util");
+const {
+  formatExecError,
+  formatResultsErrors,
+}: {
+  formatExecError: FormatExecError;
+  formatResultsErrors: FormatResultsErrors;
+} = requireFromJestCore("jest-message-util");
 const RUNNER_FRAME = new RegExp(
   `^\\s+at .*(node:internal/|${import.meta.dirname}/)`,
 );
@@ -229,6 +241,18 @@ function fileError(failures: TestFailure[]): SerializableError | null {
   };
 }
 
+// jest-circus puts the errors of afterAll hooks in testExecError, next to the
+// results of the file's tests.
+function suiteError(errors: TestFailure[]): SerializableError | null {
+  if (errors.length === 0) {
+    return null;
+  }
+  return {
+    message: errors.map((error) => error.message).join("\n"),
+    stack: errors.map((error) => stackOf(error)).join("\n"),
+  };
+}
+
 function toTestResult(
   done: FileDone,
   start: number,
@@ -242,10 +266,18 @@ function toTestResult(
   const testResults = [
     ...result.passedTests.map((identity) => assertion(identity, "passed")),
     ...result.skippedTests.map((identity) => assertion(identity, "pending")),
+    ...result.todoTests.map((identity) => assertion(identity, "todo")),
     ...failed.map(({ failure, identity }) =>
       assertion(identity, "failed", failure),
     ),
   ];
+  const testExecError = suiteError(result.suiteErrors);
+  const options = { noStackTrace: globalConfig.noStackTrace };
+  const failureMessages = [
+    formatResultsErrors(testResults, test.context.config, options, done.file),
+    testExecError &&
+      formatExecError(testExecError, test.context.config, options, done.file),
+  ].filter((message) => message);
   const runtime = done.durationMs;
   const slowThreshold =
     test.context.config.slowTestThreshold ?? DEFAULT_SLOW_TEST_THRESHOLD_S;
@@ -254,13 +286,10 @@ function toTestResult(
     numPassingTests: result.passed,
     numFailingTests: result.failed,
     numPendingTests: result.skipped,
-    numTodoTests: 0,
-    failureMessage: formatResultsErrors(
-      testResults,
-      test.context.config,
-      { noStackTrace: globalConfig.noStackTrace },
-      done.file,
-    ),
+    numTodoTests: result.todo,
+    failureMessage:
+      failureMessages.length > 0 ? failureMessages.join("\n") : null,
+    ...(testExecError && { testExecError }),
     testResults,
     perfStats: {
       start,
