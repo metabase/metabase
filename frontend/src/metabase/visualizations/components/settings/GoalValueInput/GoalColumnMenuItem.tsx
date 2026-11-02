@@ -3,6 +3,7 @@ import { formatValue } from "metabase/value-formatting";
 import type { ColumnSettings } from "metabase-types/api";
 
 type Props = {
+  disabled?: boolean;
   formatOptions: ColumnSettings | undefined;
   label: string;
   resolvedValue: number | null;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function GoalColumnMenuItem({
+  disabled,
   formatOptions,
   selected,
   label,
@@ -20,6 +22,7 @@ export function GoalColumnMenuItem({
   return (
     <Menu.Item
       bg={selected ? "background_surface-selected" : undefined}
+      disabled={disabled}
       lh="1rem"
       rightSection={
         resolvedValue != null ? (

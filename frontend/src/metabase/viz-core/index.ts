@@ -246,6 +246,7 @@ export {
   getNumericGoalValue,
   getReferencedEntities,
   getSegmentColor,
+  getTooManyRowsMessage,
   getUnansweredGoalEntities,
   hasUnansweredGoalReferences,
   hasUnresolvedGoalReferences,

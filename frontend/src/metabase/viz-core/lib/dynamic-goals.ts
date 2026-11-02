@@ -198,7 +198,9 @@ export const getGoalErrorMessage = (
     .with("not-a-number", () => t`This value isn't a number`)
     .exhaustive();
 
-const getTooManyRowsMessage = (sourceKind: ReferencedEntityKind | undefined) =>
+export const getTooManyRowsMessage = (
+  sourceKind: ReferencedEntityKind | undefined,
+) =>
   match(sourceKind)
     .with(
       "question",
