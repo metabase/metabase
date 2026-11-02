@@ -550,7 +550,7 @@
                     title      (-> (mt/run-mbql-query products {:filter [:= $id 1] :fields [$title]}) mt/rows ffirst)]
                 (is (not (str/includes? (json/encode dash) sentinel)))
                 (is (= (format "Here's a look at \"%s\" from \"%s\"" title (:name model)) (:name dash)))
-                (is (str/includes? (:description dash) title))
+                (is (str/includes? (:description dash "") title))
                 (is (seq pk-filters))
                 (is (every? #{1} pk-filters))))
             (testing "a user with read access to the model but no data permissions gets neither value: the title
