@@ -1,0 +1,20 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 2rem;
+  border-bottom: 1px dashed var(--mb-color-border-neutral-strong);
+}
+
+.label {
+  color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.15;
+}
+
+.value {
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  font-weight: bold;
+  line-height: 1.22;
+}
