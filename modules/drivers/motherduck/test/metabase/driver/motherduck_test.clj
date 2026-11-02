@@ -313,6 +313,26 @@
                                              (lib.metadata/database (mt/metadata-provider))
                                              :table-names ["both_pk" "diff_pk" "only_b_pk"]))))))))
 
+(mt/defdataset estimated-row-counts
+  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+
+(deftest describe-database-estimated-row-count-test
+  (mt/test-driver :motherduck
+    (mt/dataset estimated-row-counts
+      (execute-statements! "CREATE OR REPLACE TABLE three_rows (x INTEGER)"
+                           "INSERT INTO three_rows VALUES (1), (2), (3)"
+                           "CREATE OR REPLACE TABLE no_rows (x INTEGER)"
+                           "CREATE OR REPLACE VIEW three_rows_view AS SELECT * FROM three_rows")
+      (testing "tables report their row count, except that 0 is reported as unknown; views have none"
+        (is (= {"no_rows"         nil
+                "three_rows"      3
+                "three_rows_view" nil}
+               (into {}
+                     (comp (filter (comp #{"no_rows" "three_rows" "three_rows_view"} :name))
+                           (map (juxt :name :estimated_row_count)))
+                     (:tables (driver/describe-database :motherduck
+                                                        (lib.metadata/database (mt/metadata-provider)))))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                MotherDuck copies of Postgres-only tests                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+

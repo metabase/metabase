@@ -147,13 +147,15 @@
 (def ^:private describe-database-tables-sql
   ;; Restrict discovery to the connected database, excluding system, temp, and other attached
   ;; databases. Also exclude internal views within the connected database.
+  ;; `estimated_size` counts inserted rows but not deletes. Like the Postgres query, report 0 as unknown.
   [(str/join
     "\n"
-    ["SELECT schema_name AS \"schema\", table_name AS \"name\", comment AS \"description\""
+    ["SELECT schema_name AS \"schema\", table_name AS \"name\", comment AS \"description\","
+     "  NULLIF(estimated_size, 0) AS \"estimated_row_count\""
      "FROM duckdb_tables()"
      "WHERE database_name = current_database()"
      "UNION ALL"
-     "SELECT schema_name, view_name, comment"
+     "SELECT schema_name, view_name, comment, NULL"
      "FROM duckdb_views()"
      "WHERE database_name = current_database() AND internal = false"])])
 
