@@ -5,6 +5,8 @@ summary: Find unused, duplicated, and poorly organized content so you can clean 
 
 # Content diagnostics
 
+_Monitor > Content diagnostics_
+
 {% include plans-blockquote.html feature="Content diagnostics" %}
 
 Content diagnostics scans your Metabase for content that clutters your instance or performs poorly, like questions nobody views, duplicate dashboards, and empty collections. It groups results by finding type so you can review them and clean up your Metabase.
@@ -40,14 +42,12 @@ Click an item to open a sidebar with its:
 - Creator, or owner for collections
 - Created date
 
-The sidebar also shows why Metabase flagged the item:
+The sidebar also shows the details behind the finding:
 
 - **Stale**: view count and last used date.
 - **Duplicated**: view count, and a list of the duplicates with their view counts. Click a duplicate to open it.
 - **Slow**: view count and run duration.
 - **Empty**, **Sparse**, and **Crowded**: content count.
-
-To open the item, click the arrow icon next to its name.
 
 ## Trash or dismiss findings
  
@@ -56,10 +56,10 @@ To open the item, click the arrow icon next to its name.
 
 **Move to trash** sends items to the [Trash](../exploration-and-organization/delete-and-restore.md), where you can restore them later. The exception is transforms, which Metabase deletes permanently.
 
-**Dismiss finding** hides the finding until the next scan. If the problem still exists, the finding appears again.
+**Dismiss finding** hides the finding until content diagnostics runs again. If the problem still exists, the finding comes back.
 
-## When scans run
+## When content diagnostics run
 
-Metabase runs the first scan when you upgrade to Metabase 65 or later, and then scans every day at 4:00 AM server time. You can't start a scan manually.
+Metabase first runs content diagnostics when you upgrade to Metabase 65 or later, and then runs the diagnostics every day at 4:00 AM server time. You can't run diagnostics manually.
 
-If you fix a problem, the finding stays in the list until the next scan. Dismiss the finding to hide it sooner.
+If you fix a problem, the finding stays in the list until content diagnostics runs again. Dismiss the finding to hide it sooner.
