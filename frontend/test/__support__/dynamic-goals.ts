@@ -18,12 +18,15 @@ export const DYNAMIC_GOAL_DISPLAYS = [
   "boxplot",
 ] as const satisfies readonly VisualizationDisplay[];
 
+// echarts draws the line over a white halo
+export const PATHS_PER_GOAL_LINE = 2;
+
 const GOAL_LINE_SELECTOR = `path[stroke-dasharray="${GOAL_LINE_DASH.join(",")}"]`;
 
 export function queryEChartsGoalLine() {
   return document.querySelector(GOAL_LINE_SELECTOR);
 }
 
-export function queryAllEChartsGoalLines() {
-  return document.querySelectorAll(GOAL_LINE_SELECTOR);
+export function queryAllEChartsGoalLines(root: ParentNode = document) {
+  return root.querySelectorAll(GOAL_LINE_SELECTOR);
 }
