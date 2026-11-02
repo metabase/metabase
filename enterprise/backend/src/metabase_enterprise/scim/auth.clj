@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.api.open-api :as open-api]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -14,7 +13,7 @@
    (let [expected-api-key (-> (t2/select-one :model/ApiKey :scope :scim) :key)]
      (if (and api-key expected-api-key)
        (u.password/verify-password api-key "" expected-api-key)
-       (mw.session/do-useless-hash)))))
+       (u.password/do-useless-hash)))))
 
 (def ^:private error-schema-uri "urn:ietf:params:scim:api:messages:2.0:Error")
 

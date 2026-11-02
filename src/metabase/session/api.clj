@@ -256,12 +256,19 @@
                       [:provider/support-access-grant
                        :provider/emailed-secret-password-reset]
                       (select-keys request-body [:token :password]))]
-    (if (:success? auth-result)
+    (cond
+      (= :password-unchanged (:error auth-result))
+      (api/throw-invalid-param-exception
+       :password (tru "New password must be different from your current password."))
+
+      (not (:success? auth-result))
+      (api/throw-invalid-param-exception :password (tru "Invalid reset token"))
+
+      :else
       (request/set-session-cookies request
                                    {:success true :session_id (get-in auth-result [:session :key])}
                                    (:session auth-result)
-                                   (t/zoned-date-time (t/zone-id "GMT")))
-      (api/throw-invalid-param-exception :password (tru "Invalid reset token")))))
+                                   (t/zoned-date-time (t/zone-id "GMT"))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
