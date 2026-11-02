@@ -28,7 +28,6 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
-    Statement
     Types]
    [java.time
     LocalDate
@@ -333,24 +332,9 @@
                               (h2x/with-database-type-info "timestamp")))]
     (sql.qp/adjust-start-of-week driver week-extract-fn expr)))
 
-(defmethod sql-jdbc.execute/do-with-connection-with-options :databricks
-  [driver db-or-id-or-spec options f]
-  (sql-jdbc.execute/do-with-resolved-connection
-   driver
-   db-or-id-or-spec
-   options
-   (fn [^Connection conn]
-     (let [read-only? (.isReadOnly conn)]
-       (try
-         (.setReadOnly conn false)
-         ;; Method is re-implemented because `legacy_time_parser_policy` has to be set to pass the test suite.
-         ;; https://docs.databricks.com/en/sql/language-manual/parameters/legacy_time_parser_policy.html
-         (with-open [^Statement stmt (.createStatement conn)]
-           (.execute stmt "set legacy_time_parser_policy = legacy"))
-         (finally
-           (.setReadOnly conn read-only?))))
-     (sql-jdbc.execute/set-default-connection-options! driver db-or-id-or-spec conn options)
-     (f conn))))
+;; Do not SET `legacy_time_parser_policy` here. That session parameter is a Spark 2.4-compat shim used by the
+;; Databricks driver test suite (see `metabase.test.data.databricks`). Warehouses that do not expose it
+;; (e.g. Lakehouse//RT) fail the connection with CONFIG_NOT_AVAILABLE before any user query.
 
 (defmethod sql.qp/datetime-diff [:databricks :second]
   [_driver _unit x y]
