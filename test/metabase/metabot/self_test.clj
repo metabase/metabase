@@ -672,6 +672,18 @@
                             :error  {:class :unrecoverable :code :internal}}}
               (last result))))))
 
+(deftest ^:parallel escaped-jvm-errors-keep-their-code-test
+  (testing "a JVM error or an interrupt that escapes a tool is reported with its own code"
+    (doseq [[throwable code] [[(StackOverflowError.) :jvm-error]
+                              [(InterruptedException.) :interrupted]]]
+      (let [tools  {"fail" {:tool-name "fail"
+                            :doc       "Throws."
+                            :schema    [:=> [:cat [:map {:closed true}]] :any]
+                            :fn        (fn [_] (throw throwable))}}
+            chunks (test-util/parts->aisdk-chunks [{:type :tool-input :id "call-1" :function "fail" :arguments {}}])]
+        (is (=? {:result {:error {:class :unrecoverable :code code}}}
+                (last (into [] (self.core/tool-executor-xf tools) chunks))))))))
+
 (def ^:private failing-tool-exception
   "What `failing-tool` throws. An atom so the tool can be a real var, which is what `adapt` accepts."
   (atom nil))
@@ -2968,18 +2980,23 @@
                     "so does the text written for the reader"))))
           (testing (str "persistence stores it as a failed step, keeping the MODEL's text: "
                         "`tool-part->llm-messages` replays `:errorText` to the model, so a generic "
-                        "sentence here would lose the authored failure on every replay")
-            (let [stored (#'persistence/internal-parts->storable
-                          [{:type :tool-input :id "c1" :function "failer" :arguments {}}
-                           part])
-                  entry  (first (filter #(= "tool-failer" (:type %)) stored))]
+                        "sentence here would lose the authored failure on every replay. Only an exception "
+                        "nothing classified is stored as one neutral sentence, because its live text tells "
+                        "the model not to retry in a turn that will have ended")
+            (let [stored   (#'persistence/internal-parts->storable
+                            [{:type :tool-input :id "c1" :function "failer" :arguments {}}
+                             part])
+                  entry    (first (filter #(= "tool-failer" (:type %)) stored))
+                  replayed (if (= "internal" expected-code)
+                             "This call failed with an unexpected error."
+                             (:output outcome))]
               (is (= "output-error" (:state entry)) (pr-str entry))
-              (is (= (:output outcome) (:errorText entry)))
+              (is (= replayed (:errorText entry)))
               (is (nil? (:output entry))
                   "a failed step stores no :output; its text is the :errorText")
               (testing "and that text replays to the model verbatim"
                 ;; a pair: the assistant's tool_call, then the `:tool` message the model reads
-                (is (= (:output outcome)
+                (is (= replayed
                        (:content (last (persistence/tool-part->llm-messages entry)))))))))))))
 
 (deftest a-rejected-argument-is-failed-at-every-consumer-test

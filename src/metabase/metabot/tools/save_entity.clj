@@ -350,10 +350,11 @@
 (defrecord SaveEntityTool []
   tools/Tool
   (declaration [_]
-    {:name        "save_entity"
-     :description tool-description
-     :scope       scope/agent-question-create
-     :args        save-entity-schema})
+    {:name            "save_entity"
+     :description     tool-description
+     :scope           scope/agent-question-create
+     :args            save-entity-schema
+     :metabot/writes? true})
 
   (handle [_ {:keys [chart_id destination description] question-name :name} _ctx]
     (let [{:keys [dataset_query display]} (resolve-chart chart_id)
