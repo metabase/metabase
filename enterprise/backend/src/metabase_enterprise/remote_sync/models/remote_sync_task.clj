@@ -185,7 +185,7 @@
   "Gets the version that any changes are built off of.
 
   Returns the version string from the most recent successful task (either export or import), or nil if no successful
-  tasks exist."
+  tasks exist. A task that ended in conflict is not one: see [[remote-sync.db/last-successful-task]]."
   []
   (:version (remote-sync.db/last-successful-task)))
 
