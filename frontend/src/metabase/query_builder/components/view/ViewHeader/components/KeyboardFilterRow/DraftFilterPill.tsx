@@ -823,23 +823,18 @@ function ValueInput({
 }: ValueInputProps) {
   const isAiPromptText = isAiPrompt(text);
   const maxDropdownWidth = useMaxDropdownWidth(inputRef);
-  const { fieldValues, isListed } = useFieldValues(
-    query,
-    column,
-    isAiPromptText ? "" : text,
-  );
+  const fieldValues = useFieldValues(query, column, isAiPromptText ? "" : text);
   const valueCounts = useValueCounts({
     query,
     stageIndex,
     column,
     filter,
-    isEnabled: hasValueShares(column, operator, fieldValues, isListed),
+    isEnabled: hasValueShares(column, operator),
   });
   const widget = useValueWidget({
     column,
     operator,
     fieldValues,
-    isListed,
     values,
     getShare: valueCounts.type === "counts" ? valueCounts.getShare : undefined,
     isShareEstimate: valueCounts.type === "counts" && valueCounts.isEstimate,
@@ -857,8 +852,10 @@ function ValueInput({
         .map((option) => option.value)
         .filter((value) => value !== SELECT_ALL_VALUE),
     );
+    // Values that are not in the list, like typed values, stay selected.
     const isAllChecked = allValues.every((value) => values.includes(value));
-    onValuesChange(isAllChecked ? [] : allValues);
+    const otherValues = values.filter((value) => !allValues.includes(value));
+    onValuesChange(isAllChecked ? otherValues : [...otherValues, ...allValues]);
   };
   const groups = useMemo(
     () =>
@@ -1184,7 +1181,7 @@ function useFieldValues(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
   text: string,
-): { fieldValues: ValueAndLabel[]; isListed: boolean } {
+): ValueAndLabel[] {
   const fieldInfo = useMemo(
     () => Lib.fieldValuesSearchInfo(query, column),
     [query, column],
@@ -1211,16 +1208,13 @@ function useFieldValues(
 
   return useMemo(() => {
     const rows = listedValues?.values ?? foundValues ?? [];
-    return {
-      fieldValues: rows
-        .filter(([value]) => value != null)
-        .map(
-          ([value, label]): ValueAndLabel => [
-            String(value),
-            String(label ?? value),
-          ],
-        ),
-      isListed: listedValues != null,
-    };
+    return rows
+      .filter(([value]) => value != null)
+      .map(
+        ([value, label]): ValueAndLabel => [
+          String(value),
+          String(label ?? value),
+        ],
+      );
   }, [listedValues, foundValues]);
 }

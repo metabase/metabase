@@ -14,6 +14,10 @@ export type SuggestionOption = {
   /** Shown after the label in grey, like a state code. */
   description?: string;
   isChecked?: boolean;
+  /** Some, but not all, of the values that this option selects are checked. */
+  isIndeterminate?: boolean;
+  /** A "Select all" option, with a stacked checkbox. */
+  isSelectAll?: boolean;
   /** The share of the rows with this value, shown on a tile. */
   share?: { value: number; label: string };
 };

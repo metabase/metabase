@@ -20,7 +20,6 @@ import * as Lib from "metabase-lib";
 import S from "./KeyboardFilterRow.module.css";
 import type { DraftOperator, SuggestionGroup } from "./types";
 
-const MAX_TILE_OPTIONS = 8;
 const TILES_DROPDOWN_WIDTH = 360;
 const STATES_DROPDOWN_WIDTH = 720;
 const STATES_MAP_WIDTH = 400;
@@ -50,8 +49,6 @@ interface UseValueWidgetOpts {
   operator: DraftOperator;
   /** The values of the column, with labels. */
   fieldValues: ValueAndLabel[];
-  /** The column lists all its values, so the list does not change on search. */
-  isListed: boolean;
   values: string[];
   /** The share of the rows with each value, when it is known. */
   getShare?: (value: string) => number;
@@ -65,34 +62,27 @@ interface UseValueWidgetOpts {
 
 /**
  * True when the widget of the column shows the share of the rows with each
- * value: tiles and the US states map.
+ * value: the operator options, countries and US states.
  */
 export function hasValueShares(
   column: Lib.ColumnMetadata,
   operator: DraftOperator,
-  fieldValues: ValueAndLabel[],
-  isListed: boolean,
 ) {
   return (
-    operator.options != null ||
-    Lib.isState(column) ||
-    Lib.isCountry(column) ||
-    (isListed &&
-      fieldValues.length > 0 &&
-      fieldValues.length <= MAX_TILE_OPTIONS)
+    operator.options != null || Lib.isState(column) || Lib.isCountry(column)
   );
 }
 
 /**
  * Prototype: the dropdown under the value input, with the widgets of the
- * filter widgets prototype: tiles for short lists, flags and continent
- * presets for countries, and a map for US states.
+ * filter widgets prototype: tiles for operator options, flags and continent
+ * presets for countries, and a map for US states. Other columns get a
+ * checkbox list.
  */
 export function useValueWidget({
   column,
   operator,
   fieldValues,
-  isListed,
   values,
   getShare,
   isShareEstimate = false,
@@ -141,14 +131,17 @@ export function useValueWidget({
     return {
       groups: [
         {
-          options: countryValues.map(([value, label]) => ({
-            value,
-            label,
-            leftSection: (
-              <img className={S.flag} src={getFlagUrl(value)} alt="" />
-            ),
-            isChecked: isChecked(value),
-          })),
+          options: [
+            ...getSelectAllOptions(operator, countryValues, values),
+            ...countryValues.map(([value, label]) => ({
+              value,
+              label,
+              leftSection: (
+                <img className={S.flag} src={getFlagUrl(value)} alt="" />
+              ),
+              isChecked: isChecked(value),
+            })),
+          ],
         },
       ],
       header: operator.valueKind === "multi" && (
@@ -180,21 +173,11 @@ export function useValueWidget({
   }
 
   if (stateValues != null) {
-    const isMulti = operator.valueKind === "multi";
-    const isAllChecked = stateValues.every(([value]) => isChecked(value));
     return {
       groups: [
         {
           options: [
-            ...(isMulti
-              ? [
-                  {
-                    value: SELECT_ALL_VALUE,
-                    label: t`Select all`,
-                    isChecked: isAllChecked,
-                  },
-                ]
-              : []),
+            ...getSelectAllOptions(operator, stateValues, values),
             ...stateValues.map(([value, label]) => ({
               value,
               label,
@@ -220,24 +203,49 @@ export function useValueWidget({
     };
   }
 
-  const isTiles =
-    isListed &&
-    fieldValues.length > 0 &&
-    fieldValues.length <= MAX_TILE_OPTIONS;
   return {
     groups: [
       {
-        options: fieldValues.map(([value, label]) => ({
-          value,
-          label,
-          isChecked: isChecked(value),
-        })),
+        options: [
+          ...getSelectAllOptions(operator, fieldValues, values),
+          ...fieldValues.map(([value, label]) => ({
+            value,
+            label,
+            isChecked: isChecked(value),
+          })),
+        ],
       },
     ],
-    isTiles,
-    columns: isTiles ? 2 : 1,
-    dropdownWidth: isTiles ? TILES_DROPDOWN_WIDTH : undefined,
+    isTiles: false,
+    columns: 1,
   };
+}
+
+/**
+ * The "Select all" option above a list of values that the user can check
+ * many of. It is checked when all the values are checked, and indeterminate
+ * when some are.
+ */
+function getSelectAllOptions(
+  operator: DraftOperator,
+  fieldValues: ValueAndLabel[],
+  selectedValues: string[],
+) {
+  if (operator.valueKind !== "multi" || fieldValues.length < 2) {
+    return [];
+  }
+  const checkedCount = fieldValues.filter(([value]) =>
+    selectedValues.includes(value),
+  ).length;
+  return [
+    {
+      value: SELECT_ALL_VALUE,
+      label: t`Select all`,
+      isChecked: checkedCount === fieldValues.length,
+      isIndeterminate: checkedCount > 0 && checkedCount < fieldValues.length,
+      isSelectAll: true,
+    },
+  ];
 }
 
 /**

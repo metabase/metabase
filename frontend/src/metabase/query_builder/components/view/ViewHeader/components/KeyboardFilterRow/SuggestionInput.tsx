@@ -239,11 +239,13 @@ export function SuggestionInput({
         {isMultiSelect ? (
           <Checkbox
             className={S.optionCheckbox}
+            variant={option.isSelectAll ? "stacked" : undefined}
             classNames={{
               body: S.optionCheckboxBody,
               labelWrapper: S.optionCheckboxLabelWrapper,
             }}
             checked={option.isChecked ?? false}
+            indeterminate={option.isIndeterminate}
             label={<OptionLabel option={option} />}
             readOnly
             tabIndex={-1}
