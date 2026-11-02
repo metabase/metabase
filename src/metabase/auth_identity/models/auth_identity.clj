@@ -128,6 +128,14 @@
      (auth-identity.db/delete-auth-identities! user-id "emailed-secret-password-reset")
      (auth-identity.db/end-sessions-for-user! user-id (:ended-by opts)))))
 
+(mu/defn current-password? :- :boolean
+  "Whether `password` is the current password of the user with `user-id`, false when they have none."
+  [user-id  :- ms/PositiveInt
+   password :- :string]
+  (boolean
+   (when-let [{{:keys [password_hash password_salt]} :credentials} (auth-identity.db/auth-identity user-id "password")]
+     (u.password/verify-password password password_salt password_hash))))
+
 (mu/defn reset-token-hash :- [:maybe :string]
   "The bcrypt hash of `user-id`'s current password-reset token, taken from their `emailed-secret-password-reset`
   AuthIdentity (the authoritative store), or nil if they have none. Lets callers include the token in audit events
