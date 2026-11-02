@@ -1215,12 +1215,12 @@
         rejected-sql (mt/native-query {:query "SELECT * FROM NO_SUCH_TABLE"})]
     (doseq [profile run-query-profiles]
       (testing profile
-        (testing "a run that fails inside Metabase ends the turn, and the user gets the generic error"
+        (testing "a run that fails inside Metabase tells the model only that it failed, and the model answers"
           (binding [qp.pipeline/*execute* mut/reject-app-db-lookup]
-            (is (= {:llm-calls 1
+            (is (= {:llm-calls 2
                     :result    mut/internal-failure
-                    :text      "Something went wrong."
-                    :finish    :terminal-error}
+                    :text      "Done."
+                    :finish    :stop}
                    (run-turn! profile sql)))))
         (testing "a query the database rejects reaches the model quoted, and the model answers"
           (is (=? {:llm-calls 2
