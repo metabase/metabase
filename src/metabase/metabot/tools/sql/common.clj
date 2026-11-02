@@ -149,7 +149,7 @@
    :text "Build the question with `construct_notebook_query` instead. Don't write SQL against this database again."})
 
 (tools/defrecoverable sql-on-audit-database!
-  "The SQL targets the audit database, where Metabase runs no SQL for any user."
+  "The SQL targets the audit database, and the notebook builder is offered this turn."
   {:payload [:map {:closed true}]}
   [_]
   {:message  "Metabase does not run SQL on the Internal Metabase Database, for any user."
@@ -169,11 +169,11 @@
                                     :native   {:query "SELECT 1"}})))
 
 (defn check-native-query-access!
-  "Throw unless the user may write native queries against `database-id`.
-  The error is recoverable for the audit database ([[sql-on-audit-database!]]) and unrecoverable otherwise."
+  "Throw an unrecoverable error for the audit database or a user without native query permission on `database-id`."
   [database-id]
   (when (= audit/audit-db-id database-id)
-    (sql-on-audit-database! {}))
+    (tools/unrecoverable! ::sql-on-audit-database
+                          {:user-message (tru "Metabase does not run SQL on the Internal Metabase Database, for any user.")}))
   (when-not (native-query-access? database-id)
     (tools/unrecoverable! ::no-native-permission
                           {:user-message (tru "You do not have permission to write SQL queries against this database. Native query permissions are required.")

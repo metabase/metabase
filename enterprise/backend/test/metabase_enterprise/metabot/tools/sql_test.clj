@@ -7,6 +7,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.agent.core-test :as agent-test]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.sql-test :as sql-test]
@@ -18,6 +19,9 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
+
+(def ^:private audit-sql-unavailable-message
+  "Metabase does not run SQL on the Internal Metabase Database, for any user.")
 
 (deftest sandboxed-user-has-no-native-query-access-test
   (sandbox.tu/with-gtaps! {:gtaps {:checkins {}}}
@@ -39,15 +43,67 @@
                       :edits       [{:old_string "1" :new_string "2"}]
                       :new_query   "SELECT 2"}]
           (doseq [user      [:crowberto :rasta]
-                  profile   [:internal :sql]
+                  profile   [:internal :sql :internal-sql]
                   tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
             (testing (str user " " profile " " tool-name)
               (mt/with-current-user (mt/user->id user)
                 (let [{:keys [error output]} (#'sql-test/invoke-sql-tool profile memory tool-name args)]
-                  (is (= {:class :recoverable :code ::sql.common/sql-on-audit-database} error))
-                  (is (str/includes? output "Metabase does not run SQL on the Internal Metabase Database"))
+                  (is (= (cond-> {:class (if (= :internal profile) :recoverable :unrecoverable)
+                                  :code  ::sql.common/sql-on-audit-database}
+                           (not= :internal profile)
+                           (assoc :user-message audit-sql-unavailable-message))
+                         error))
+                  (is (str/includes? (or (:user-message error) output)
+                                     "Metabase does not run SQL on the Internal Metabase Database"))
                   (is (= (= :internal profile)
                          (str/includes? output "Build the question with `construct_notebook_query`"))))))))))))
+
+(deftest audit-sql-refusal-ends-a-turn-without-the-notebook-builder-test
+  (mt/with-premium-features #{:audit-app}
+    (audit-test/with-audit-db-restoration!
+      (mt/with-db-perm-for-group! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native
+        (mt/with-db-perm-for-group! (perms/all-users-group) audit/audit-db-id :perms/create-queries :query-builder
+          (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+            (doseq [user [:crowberto :rasta]
+                    profile [:sql :internal-sql :document-generate-content]]
+              (testing (str user " " profile)
+                (mt/with-current-user (mt/user->id user)
+                  (let [{:keys [llm-calls parts]}
+                        (if (= :document-generate-content profile)
+                          (#'agent-test/run-turn!
+                           profile "Query Usage analytics"
+                           (mapv (fn [n]
+                                   [{:type :tool-input :id (str "retry-" n)
+                                     :function "document_construct_sql_chart"
+                                     :arguments {:database_id audit/audit-db-id
+                                                 :name "Birds" :description "Birds" :analysis "Birds" :approach "SQL"
+                                                 :sql "SELECT 1" :viz_settings {:chart_type "table"}}}])
+                                 (range 21))
+                           :context {:capabilities ["permission:write_sql_queries"]})
+                          (#'agent-test/run-sql-turn!
+                           profile audit/audit-db-id
+                           :calls (mapv #(vector (str "retry-" %)) (range 21))))]
+                    (is (= 1 llm-calls))
+                    (is (= :terminal-error (:finish-reason (last parts))))
+                    (is (some #(and (= :text (:type %))
+                                    (= audit-sql-unavailable-message (:text %)))
+                              parts))))))))))))
+
+(deftest chat-recovers-from-audit-sql-refusal-in-the-same-turn-test
+  (mt/with-premium-features #{:audit-app}
+    (audit-test/with-audit-db-restoration!
+      (mt/with-db-perm-for-group! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native
+        (mt/with-db-perm-for-group! (perms/all-users-group) audit/audit-db-id :perms/create-queries :query-builder
+          (doseq [user [:crowberto :rasta]]
+            (testing user
+              (mt/with-current-user (mt/user->id user)
+                (let [{:keys [llm-calls parts]} (#'agent-test/run-sql-turn! :internal audit/audit-db-id)]
+                  (is (= 2 llm-calls))
+                  (is (= :stop (:finish-reason (last parts))))
+                  (is (=? {:type :tool-output
+                           :result {:error {:class :recoverable :code ::sql.common/sql-on-audit-database}
+                                    :output #"(?s).*Build the question with `construct_notebook_query`.*"}}
+                          (some #(when (= :tool-output (:type %)) %) parts))))))))))))
 
 (deftest read-resource-says-sql-is-unavailable-on-the-audit-database-test
   (mt/with-premium-features #{:audit-app}
