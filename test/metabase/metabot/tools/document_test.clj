@@ -20,6 +20,8 @@
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt]
@@ -72,8 +74,9 @@
 
 (deftest document-schema-collect-chosen-database-test
   (testing "the model chooses the database when the user mentioned none, or one of several that the user mentioned"
-    (mt/with-dynamic-fn-redefs [warehouses/get-database (fn [id] {:id id :engine "h2"})
-                                table-utils/schema-full (constantly "CREATE TABLE TestTable (\n  TestColumn varchar\n);")]
+    (mt/with-dynamic-fn-redefs [warehouses/get-database          (fn [id] {:id id :engine "h2"})
+                                sql.common/native-query-access? (constantly true)
+                                table-utils/schema-full          (constantly "CREATE TABLE TestTable (\n  TestColumn varchar\n);")]
       (doseq [references [{} {"database:1" "Test DB 1" "database:2" "Test DB 2"}]]
         (testing (pr-str references)
           (let [result (invoke-document-tool "document_schema_collect" {:database_id 2} (mentions references))]
@@ -111,6 +114,22 @@
               (is (= {:class :recoverable :code ::document-tools/chosen-database-not-found}
                      (:error (invoke-document-tool "document_schema_collect" {:database_id database-id}
                                                    (mentions {}))))))))))))
+
+(deftest document-schema-collect-chosen-database-without-sql-access-test
+  (testing "the user can read the database but can't write SQL against it"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "the model chose it, so the model is sent to choose another"
+          (let [result (invoke-document-tool "document_schema_collect" {:database_id (mt/id)} (mentions {}))]
+            (is (= {:class :recoverable :code ::document-tools/chosen-database-without-sql-access}
+                   (:error result)))
+            (is (str/includes? (:output result) "`list_available_data_sources`"))))
+        (testing "the user mentioned it, so the tool returns the schema"
+          (is (= {:database_id (mt/id) :sql_engine :h2}
+                 (:structured-output (invoke-document-tool "document_schema_collect" {}
+                                                           (mentions {(str "database:" (mt/id)) "Test Data"}))))))))))
 
 (deftest document-construct-sql-chart-tool-test
   (testing "builds chart draft payload from SQL query"

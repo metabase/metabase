@@ -75,6 +75,15 @@
   {:message  (str "Database " database-id " was not found.")
    :recovery [find-database-id-step]})
 
+(tools/defrecoverable chosen-database-without-sql-access!
+  "The current user can read the database the call chose, but can't write SQL against it, for example because the user
+  has only query builder access or a sandbox on it."
+  {:payload     [:map {:closed true} [:database-id :int]]
+   :status-code 403}
+  [{:keys [database-id]}]
+  {:message  (str "The user can't write SQL against database " database-id ".")
+   :recovery [find-database-id-step]})
+
 (defn- chosen-database-id
   "Return the ID of the database to collect the schema of.
 
@@ -100,27 +109,34 @@
 (defn- chosen-database
   "Return the database to collect the schema of. When the database doesn't exist or the current user can't read it,
   throw an unrecoverable error, which ends the turn, if the user mentioned it, because only the user can mention another
-  one. Throw a recoverable error if the model chose it."
+  one. Throw a recoverable error if the model chose it.
+
+  When the model chose the database, also throw a recoverable error if the current user can't write SQL against it.
+  `document_construct_sql_chart` makes the same check, but there a failure ends the turn."
   [ctx database-id]
   (let [references    (get-in (some-> (:memory-atom ctx) deref) [:context :references])
         mentioned-ids (referenced-database-ids references)
-        database-id   (chosen-database-id mentioned-ids database-id)]
-    (try
-      (warehouses/get-database database-id)
-      (catch clojure.lang.ExceptionInfo e
-        (cond
-          (not (contains? tools/refusal-status-codes (:status-code (ex-data e))))
-          (throw e)
+        database-id   (chosen-database-id mentioned-ids database-id)
+        db            (try
+                        (warehouses/get-database database-id)
+                        (catch clojure.lang.ExceptionInfo e
+                          (cond
+                            (not (contains? tools/refusal-status-codes (:status-code (ex-data e))))
+                            (throw e)
 
-          (seq mentioned-ids)
-          (tools/unrecoverable!
-           ::database-unavailable
-           {:user-message (tru "The database you mentioned wasn''t found, or you don''t have access to it.")
-            :data         {:database-id database-id}
-            :cause        e})
+                            (seq mentioned-ids)
+                            (tools/unrecoverable!
+                             ::database-unavailable
+                             {:user-message (tru "The database you mentioned wasn''t found, or you don''t have access to it.")
+                              :data         {:database-id database-id}
+                              :cause        e})
 
-          :else
-          (chosen-database-not-found! {:database-id database-id}))))))
+                            :else
+                            (chosen-database-not-found! {:database-id database-id}))))]
+    (when-not (or (seq mentioned-ids)
+                  (sql.common/native-query-access? database-id))
+      (chosen-database-without-sql-access! {:database-id database-id}))
+    db))
 
 (def ^:private schema-collect-description
   "Collects the schema of a database in order to construct a SQL query.
