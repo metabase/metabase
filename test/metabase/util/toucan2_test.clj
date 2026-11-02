@@ -21,10 +21,14 @@
                                                        :where  [:and [:= :email (str a b)] (f x)]
                                                        :limit  n})))))
 
-(deftest update-changes-wrapped-test
+(deftest update-conditions-wrapped-test
   (is (= '(toucan2.core/update! :model/User :id (metabase.util.toucan2/value id)
-                                {:first_name (metabase.util.toucan2/value first-name)})
+                                {:first_name first-name})
          (macroexpand-1 '(metabase.util.toucan2/update! :model/User :id id {:first_name first-name})))))
+
+(deftest insert-rows-passed-through-test
+  (is (= '(toucan2.core/insert! :model/User {:email email})
+         (macroexpand-1 '(metabase.util.toucan2/insert! :model/User {:email email})))))
 
 (deftest ^:parallel string-value-bound-test
   (let [email "x' OR 1=1 --"]
