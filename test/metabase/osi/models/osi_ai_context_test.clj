@@ -1,11 +1,11 @@
 (ns metabase.osi.models.osi-ai-context-test
   (:require
    [clojure.test :refer :all]
-   [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.models.serialization :as serdes]
    ;; Load the model's serdes defmethods (make-spec, load-update!) so an isolated run of this namespace
    ;; doesn't fall through to the compound-key-incorrect defaults.
    [metabase.osi.models.osi-ai-context]
+   [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -106,7 +106,7 @@
                                              :data_source :unknown))))
     (mt/with-temp [:model/OsiAiContext _ (assoc entity :ai_context ai-context)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"data_source must be one of"
-                            (t2/update! :model/OsiAiContext entity {:data_source :unknown}))))))
+                            (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 42 {:data_source :unknown}))))))
 
 (deftest basis-json-roundtrip-test
   (testing "basis round-trips as a keywordized map, so the job's stored-vs-fresh comparison is by value"
@@ -159,7 +159,7 @@
                              (merge entity {:ai_context {:instructions "same"}
                                             :generated_at :generated
                                             :basis {:name "same"}})))
-      (is (= {:ai_context "same" :data_source :human} @updated)))))
+      (is (= {:ai_context {:instructions "same"} :data_source :human} @updated)))))
 
 (deftest ai-context-storage-schema-test
   (testing "unknown keys survive storage for forward-compatible SerDes round trips"

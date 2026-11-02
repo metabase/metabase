@@ -1499,6 +1499,7 @@
            premium-features
            remote-sync
            search
+           search.entity-retrieval
            users
            util
            warehouse-schema-overlay
@@ -2182,7 +2183,6 @@
            dashboards
            documents
            embedding
-           entity-retrieval
            events
            lib
            lib.be
@@ -2201,6 +2201,7 @@
            query-processor
            request
            search
+           search.entity-retrieval
            settings
            staleness
            sync
@@ -2579,9 +2580,16 @@
 
   search.entity-retrieval
   {:team "Metabot"
-   :api #{metabase.search.entity-retrieval.core metabase.search.entity-retrieval.mirror}
-   :uses #{premium-features util}
-   :model-imports #{:model/OsiAiContext}}
+   :api #{metabase.search.entity-retrieval.core metabase.search.entity-retrieval.mirror metabase.search.entity-retrieval.spec}
+   :uses #{collections
+           premium-features
+           util
+           warehouse-schema-overlay}
+   :model-imports #{:model/Card
+                    :model/Measure
+                    :model/OsiAiContext
+                    :model/Segment
+                    :model/Table}}
 
   security-center
   {:team "Gadget"
@@ -2602,6 +2610,7 @@
            premium-features
            remote-sync
            search
+           search.entity-retrieval
            users
            util
            warehouse-schema-overlay
@@ -2616,7 +2625,6 @@
   {:team "Graphy"
    :api  #{metabase.segments.rest.api}
    :uses #{api
-           entity-retrieval
            events
            lib
            lib.be
@@ -3418,7 +3426,6 @@
            collections
            database-routing
            driver
-           entity-retrieval
            lib
            lib.be
            lib.metadata
@@ -3431,6 +3438,7 @@
            query-processor
            remote-sync
            search
+           search.entity-retrieval
            settings
            sync.analyze
            util
@@ -4381,7 +4389,6 @@
    :api #{metabase-enterprise.search.entity-retrieval.init}
    :uses #{analytics.interface
            app-db
-           collections
            health-inspector
            lib.schema
            premium-features

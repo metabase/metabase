@@ -10,16 +10,16 @@
 
 (mu/defn ai-context
   "The OsiAiContext of the entity with `entity-type` and `entity-local-id`, or nil."
-  ([entity-type entity-local-id]
+  ([entity-type :- :string, entity-local-id :- ms/PositiveInt]
    (ai-context :model/OsiAiContext entity-type entity-local-id))
-  ([model entity-type entity-local-id]
+  ([model :- [:or :keyword [:sequential :keyword]], entity-type :- :string, entity-local-id :- ms/PositiveInt]
    (t2/select-one model :entity_type entity-type :entity_local_id entity-local-id)))
 
 (mu/defn ai-contexts-page
   "Up to `limit` OsiAiContexts from `offset`, ordered by entity type and local id."
-  ([limit offset]
+  ([limit :- :int, offset :- :int]
    (ai-contexts-page :model/OsiAiContext limit offset))
-  ([model limit offset]
+  ([model :- [:or :keyword [:sequential :keyword]], limit :- :int, offset :- :int]
    (t2/select model
               {:order-by [[:entity_type :asc] [:entity_local_id :asc]]
                :limit    limit
@@ -36,12 +36,10 @@
    entity-local-id  :- ms/PositiveInt]
   (t2/delete! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
 
-(mu/defn update-ai-context!
+(defn update-ai-context!
   "Apply `changes` to the OsiAiContext of the entity with `entity-type` and `entity-local-id`, returning the
   number updated."
-  [entity-type      :- :string
-   entity-local-id  :- ms/PositiveInt
-   changes          :- ::osi.schema/osi-ai-context.update]
+  [entity-type entity-local-id changes]
   (t2/update! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id changes))
 
 (mu/defn upsert-ai-context!
@@ -53,4 +51,10 @@
   (app-db/update-or-insert! :model/OsiAiContext
                             {:entity_type     entity-type
                              :entity_local_id entity-local-id}
-                            (constantly {:ai_context ai-context})))
+                            (constantly {:ai_context ai-context, :data_source :human})))
+
+(mu/defn update-if-unchanged!
+  "Update an entity if its last update timestamp still matches."
+  [entity-type :- :string, entity-local-id :- ms/PositiveInt, updated-at :- ms/TemporalInstant, stamp :- ms/TemporalInstant]
+  (t2/update! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id
+              :updated_at updated-at {:rewrite_requested_at stamp}))

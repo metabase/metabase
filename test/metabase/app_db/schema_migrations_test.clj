@@ -4282,3 +4282,31 @@
                 "Monthly job" false
                 "Custom job"  true}
                (job-active)))))))
+
+(deftest osi-ai-context-generation-metadata-test
+  (testing "Existing context stays human-owned when generation metadata is added"
+    (impl/test-migrations ["gctsny" "aasd14"] [migrate!]
+      (let [context "{\"instructions\":\"Preserve this authored context.\"}"
+            row     {:entity_id       (u/generate-nano-id)
+                     :entity_type     "table"
+                     :entity_local_id 424242
+                     :ai_context      context
+                     :created_at      :%now
+                     :updated_at      :%now}]
+        (t2/insert! :osi_ai_context row)
+        (migrate!)
+        (is (= {:ai_context           context
+                :data_source          "human"
+                :generated_at         nil
+                :invalidated_at       nil
+                :basis_invalidated_at nil
+                :basis                nil
+                :rewrite_requested_at nil
+                :generator_version    nil}
+               (select-keys (t2/select-one :osi_ai_context :entity_type "table" :entity_local_id 424242)
+                            [:ai_context :data_source :generated_at :invalidated_at :basis_invalidated_at
+                             :basis :rewrite_requested_at :generator_version])))
+        (testing "Writers omitting metadata also default to human-owned context"
+          (t2/insert! :osi_ai_context (assoc row :entity_local_id 424243 :entity_id (u/generate-nano-id)))
+          (is (= "human" (t2/select-one-fn :data_source :osi_ai_context
+                                           :entity_type "table" :entity_local_id 424243))))))))

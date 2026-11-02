@@ -1,19 +1,19 @@
 (ns metabase.warehouse-schema.models.table
   (:require
-   [medley.core :as m]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
-   [metabase.search.entity-retrieval.spec :as entity-retrieval.spec]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.card-schema :as card-schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.search.entity-retrieval.spec :as entity-retrieval.spec]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -765,11 +765,7 @@
                                  ;; connection and fetch size that make it stream.
                                  (app-db/streaming-reducible
                                   (fn [conn]
-                                    (t2/reducible-select :conn conn
-                                                         [:model/Field :table_id :name :nfc_path]
-                                                         :table_id [:in (vec id-chunk)]
-                                                         :active true
-                                                         :visibility_type [:not-in ["sensitive" "retired"]]))))
+                                    (warehouse-schema.db/reducible-active-field-paths conn id-chunk))))
                      vec)))
           ;; Chunked for the app db's bind-parameter limit. Chunking by table id is what keeps the cap
           ;; per-table: every field of a table lands in the one chunk holding its id, so no table is

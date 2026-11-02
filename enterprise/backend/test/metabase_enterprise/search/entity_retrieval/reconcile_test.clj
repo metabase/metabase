@@ -6,11 +6,11 @@
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.measures.test-util :as measures.tu]
+   [metabase.metabot.tools.search :as tools.search]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.search.entity-retrieval.spec :as spec]
-   [metabase.measures.test-util :as measures.tu]
-   [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
@@ -367,7 +367,7 @@
               (reconcile/reconcile! ds (constantly model))
               (is (contains? (set (map :doc_text (docs-for ds "table" bad-id))) "kept synonym")
                   "baseline: the synonym is indexed while the context is readable")
-              (t2/update! :model/Table good-id {:display_name "Good Renamed"})
+              (t2/update! :model/Table :id good-id {:display_name "Good Renamed"})
               (doseq [corrupt-value ["{not-json" "null"]]
                 (t2/query-one {:update :osi_ai_context
                                :set    {:ai_context corrupt-value}
