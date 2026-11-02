@@ -69,8 +69,17 @@
 
 (declare process-clauses)
 
+(defn- strip-meta [expr]
+  (if (instance? clojure.lang.IObj expr)
+    (vary-meta expr dissoc :depends-on :vector-check)
+    expr))
+
 (defn- process-pattern [pattern value bindings conditions return]
-  (let [{:keys [parts rest-part predicate] :as parsed} (parse-pattern pattern)]
+  (let [{:keys [parts rest-part predicate] :as parsed} (parse-pattern pattern)
+        ;; The metadata on `value` is only for an equality condition to inherit its `:depends-on`.
+        ;; Left on the emitted code, it would do nothing.
+        value-meta (meta value)
+        value      (if (symbol? value) value (strip-meta value))]
     (case (:type parsed)
       :symbol (when-not (= (:symbol parsed) '_)
                 (vswap! bindings conj [(:symbol parsed) value]))
@@ -123,7 +132,7 @@
                (when (:length parsed)
                  (vswap! conditions conj (with-meta (list `metabase.util.match.impl/count= s (:length parsed))
                                                     {:depends-on s}))))
-      :equality (vswap! conditions conj (with-meta (list `= value (:value parsed)) (meta value)))
+      :equality (vswap! conditions conj (with-meta (list `= value (:value parsed)) value-meta))
       :set (vswap! conditions conj (list (:value parsed) value)))))
 
 (defn- process-clause [[pattern ret] value-sym]
@@ -135,11 +144,6 @@
 
 (defn- seq-contains? [coll item]
   (some #(= % item) coll))
-
-(defn- strip-meta [expr]
-  (if (instance? clojure.lang.IObj expr)
-    (vary-meta expr dissoc :depends-on :vector-check)
-    expr))
 
 (defn- collect-common [bindings conditions]
   (let [common-bindings (filter (fn [bind] (every? #(seq-contains? % bind) bindings))
@@ -159,7 +163,7 @@
                           (mapv (fn [conditions]
                                   (->> conditions
                                        (remove #(seq-contains? common-conditions %))
-                                       strip-meta))))}))
+                                       (mapv strip-meta)))))}))
 
 (defn- expand-conditions [combiner conditions body & [bool?]]
   (case (count conditions)
@@ -401,7 +405,7 @@
         processed (process-clause [clause true] '&match)]
     `(let [~'&match ~value
            ~@(mapcat identity (:bindings processed))]
-       ~(expand-conditions `and (:conditions processed) true true))))
+       ~(expand-conditions `and (mapv strip-meta (:conditions processed)) true true))))
 
 (defmacro matches?
   "Pattern matching macro for a single clause that returns `true` if the pattern matches, and `false` otherwise. See

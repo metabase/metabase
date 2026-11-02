@@ -761,6 +761,9 @@ export const sendAgentRequest = createAsyncThunk<
         error,
         getSetting(getState(), "metabot-name"),
       );
+      if (handled.error.type === "unknown") {
+        console.error(error);
+      }
       return rejectWithValue({
         type: "error" as const,
         conversation_id: request.conversation_id,

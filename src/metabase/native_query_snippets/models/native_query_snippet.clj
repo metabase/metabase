@@ -18,6 +18,8 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/NativeQuerySnippet [_model] :native_query_snippet)

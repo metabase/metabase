@@ -185,6 +185,20 @@ function openExploreFurtherToast(threadName: string): void {
     cy.findByRole("button", { name: "View" }).click();
   });
 }
+function measureGreeting(title: string | RegExp, promptInputTestId: string) {
+  return cy.findByText(title).then(($title) =>
+    cy.findByTestId(promptInputTestId).then(($input) => {
+      const titleRect = $title[0].getBoundingClientRect();
+      const inputRect = $input[0].getBoundingClientRect();
+      return {
+        titleTop: Math.round(titleRect.top),
+        titleLeft: Math.round(titleRect.left),
+        inputTop: Math.round(inputRect.top),
+      };
+    }),
+  );
+}
+
 describe("scenarios > explorations", () => {
   beforeEach(() => {
     cy.task("stopMockLlmServer");
@@ -198,6 +212,25 @@ describe("scenarios > explorations", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
+  });
+
+  describe("entry page", () => {
+    it("aligns the title and prompt input with the /question/ask page", () => {
+      cy.visit("/question/ask");
+      cy.findByTestId("metabot-conversation-history").should("be.visible");
+      measureGreeting(
+        /What (would you like to know|do you want to explore|are you looking to learn)\?/,
+        "metabot-chat-input",
+      ).then((askLayout) => {
+        cy.visit("/question/research");
+        measureGreeting(
+          "What do you want to research?",
+          "exploration-prompt-input",
+        ).then((researchLayout) => {
+          expect(researchLayout).to.deep.equal(askLayout);
+        });
+      });
+    });
   });
 
   describe("new research", () => {

@@ -276,7 +276,7 @@
           (mt/with-fake-inbox
             (notification.seed/seed-notification!)
             (let [mp (mt/metadata-provider)
-                  table (t2/select-one :model/Table (mt/id :transforms_products))
+                  table (t2/select-one :model/Table :id (mt/id :transforms_products))
                   ;; generate sql for different dbs
                   sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
                           (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
@@ -343,7 +343,7 @@
                                     :model/TransformJobRun]
               (notification.seed/seed-notification!)
               (let [mp (mt/metadata-provider)
-                    table (t2/select-one :model/Table (mt/id :transforms_products))
+                    table (t2/select-one :model/Table :id (mt/id :transforms_products))
                     ;; generate sql for different dbs
                     sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
                             (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
@@ -440,7 +440,7 @@
                                      :model/TransformJobRun]
                (notification.seed/seed-notification!)
                (let [mp (mt/metadata-provider)
-                     table (t2/select-one :model/Table (mt/id :transforms_products))
+                     table (t2/select-one :model/Table :id (mt/id :transforms_products))
                      ;; generate sql for different dbs
                      sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
                              (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
@@ -546,7 +546,7 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (let [mp (mt/metadata-provider)
-                table (t2/select-one :model/Table (mt/id :transforms_products))
+                table (t2/select-one :model/Table :id (mt/id :transforms_products))
                 sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
                         (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
                         (lib/limit 10)

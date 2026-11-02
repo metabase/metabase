@@ -444,12 +444,12 @@
                         (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
                                                                     :o  [t :null]}
                                                                    {:primary-key [:id]}]]
-                          (let [table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] table-id)
+                          (let [table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] :id table-id)
                                 field-id      (t2/select-one-fn :id [:model/Field :id] :table_id table-id :name "o")
                                 driver        driver/*driver*
                                 get-qp-state  (fn [] (map #(zipmap [:id :o] %) (table-rows table-id)))
                                 get-db-state  (fn [] (sql-jdbc/query driver (lib.metadata/database (mt/metadata-provider)) {:select [:*] :from [table-name-kw]}))]
-                            (t2/update! :model/Field field-id {:coercion_strategy coercion-strategy})
+                            (t2/update! :model/Field :id field-id {:coercion_strategy coercion-strategy})
                             (testing "create"
                               (let [row                {:o input}
                                     {outputs :outputs} (action-v2.tu/create-rows! table-id [row])

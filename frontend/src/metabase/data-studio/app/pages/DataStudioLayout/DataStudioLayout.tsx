@@ -19,6 +19,7 @@ import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
+import { Badge } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { getCurrentTab } from "./utils";
@@ -149,13 +150,19 @@ export function DataStudioLayout() {
             ) : null
           }
         />
-        {PLUGIN_DATA_APPS.isEnabled && isAdmin && (
+        {isAdmin && (
           <AreaTab
             label={t`Data apps`}
             icon="app"
             to={Urls.dataStudioDataApps()}
             isSelected={currentTab === "data-apps"}
             showLabel={isNavbarOpened}
+            rightSection={
+              PLUGIN_DATA_APPS.isEnabled && isNavbarOpened ? (
+                <Badge color="brand">{t`Beta`}</Badge>
+              ) : null
+            }
+            isGated={!PLUGIN_DATA_APPS.isEnabled}
           />
         )}
         <AreaTab

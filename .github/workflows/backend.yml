@@ -18,7 +18,7 @@ jobs:
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
-      filters: backend_all project_backend_checks project_migration_checks project_ratchet_checks
+      filters: backend_all project_backend_checks project_codeowners_checks project_migration_checks project_ratchet_checks
 
   # Generated static-viz output can shift without any backend source changing, so the suite follows
   # it too. Only worth probing when nothing else has already decided the suite.
@@ -82,9 +82,21 @@ jobs:
             || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
           run: ./bin/mage kondo-ratchets
 
+  # Only a checkout is needed: bin/mage fetches babashka, and the runner's Java resolves bb.edn's deps.
+  codeowners-check:
+    name: 'Project tests: CODEOWNERS'
+    needs: gate
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_codeowners_checks') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the generated CODEOWNERS block
+        run: ./bin/mage update-codeowners --check
+
   project-tests:
     name: Project tests
-    needs: project-checks
+    needs: [project-checks, codeowners-check]
     if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5

@@ -942,7 +942,7 @@
             (is (= 1 (t2/count :model/FieldValues :field_id field-id :type :advanced)))))
         (testing "should search with the cached FieldValues when search without constraints"
           (mt/with-temp
-            [:model/Field       field (-> (t2/select-one :model/Field (mt/id :categories :name))
+            [:model/Field       field (-> (t2/select-one :model/Field :id (mt/id :categories :name))
                                           (dissoc :id)
                                           (assoc :name "NAME2"))
              :model/FieldValues  _    {:field_id (:id field)
@@ -980,7 +980,7 @@
 (deftest use-cached-field-values-for-remapped-field-test
   (testing "fetching a remapped field should returns remapped values (#21528)"
     (mt/with-discard-model-updates! [:model/Field]
-      (t2/update! :model/Field (mt/id :venues :category_id) {:has_field_values "list"})
+      (t2/update! :model/Field :id (mt/id :venues :category_id) {:has_field_values "list"})
       (mt/with-column-remappings [venues.category_id categories.name]
         (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"]]
                 :has_more_values false}
@@ -1049,12 +1049,12 @@
           fvs              (t2/select :model/FieldValues :field_id field-id)]
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
       ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
-      (t2/update! :model/Field field-id {:has_field_values "list"})
+      (t2/update! :model/Field :id field-id {:has_field_values "list"})
       (t2/delete! :model/FieldValues :field_id field-id)
       (try
         (thunk)
         (finally
-          (t2/update! :model/Field field-id {:has_field_values has_field_values})
+          (t2/update! :model/Field :id field-id {:has_field_values has_field_values})
           (t2/insert! :model/FieldValues fvs))))))
 
 (defmacro ^:private with-clean-field-values-for-field!

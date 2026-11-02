@@ -63,14 +63,6 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
 
-(mu/defn card-ids-outside-collection
-  "Among `card-ids`, the IDs of the Cards that are not in the Collection with `collection-id`."
-  [card-ids      :- [:set ::lib.schema.id/card]
-   collection-id :- ::lib.schema.id/collection]
-  (t2/select-pks-set :model/Card {:where [:and
-                                          [:in :id card-ids]
-                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
-
 (mu/defn collection-exists?
   "Whether the Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
@@ -125,7 +117,7 @@
 (mu/defn dashcard-dashboard-id
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] dashcard-id))
+  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :id [:auto/param dashcard-id]))
 
 (mu/defn dashcard-action-id
   "The Action id of the DashboardCard with `dashcard-id`, or nil."
@@ -151,7 +143,7 @@
   "Apply `changes` to the Action with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/action.for-update]
-  (t2/update! :model/Action action-id changes))
+  (t2/update! :model/Action :id action-id changes))
 
 (mu/defn insert-query-action!
   "Insert the QueryAction `action`, returning the number inserted."
@@ -167,13 +159,13 @@
   "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/query-action.update]
-  (t2/update! :model/QueryAction action-id changes))
+  (t2/update! :model/QueryAction :action_id action-id changes))
 
 (mu/defn update-implicit-action!
   "Apply `changes` to the ImplicitAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/implicit-action.update]
-  (t2/update! :model/ImplicitAction action-id changes))
+  (t2/update! :model/ImplicitAction :action_id action-id changes))
 
 (mu/defn delete-query-action!
   "Delete the QueryAction of the Action with `action-id`, returning the number deleted."
@@ -199,12 +191,6 @@
   "The Table id of the ImplicitAction of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one-fn :table_id [:model/ImplicitAction :table_id] :action_id action-id))
-
-(mu/defn table-published? :- :boolean
-  "Whether the Table with `table-id` is published to the Library."
-  [table-id :- ::lib.schema.id/table]
-  (some? (t2/select-one-fn :id [:model/Table :id] :id table-id :is_published true
-                           {:from [(warehouse-schema-overlay/table-query)]})))
 
 (mu/defn tables-with-fields
   "The Tables with `table-ids`, with their Fields hydrated."
@@ -260,7 +246,7 @@
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] dashboard-id))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
 
 (mu/defn destination-database-exists-for-router?
   "Whether the Database with `database-id` has routing destinations."

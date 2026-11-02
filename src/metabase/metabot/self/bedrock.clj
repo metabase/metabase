@@ -74,12 +74,15 @@
             :status-code 403}
            cause))
 
+(defonce ^:private default-credentials-provider
+  (delay (.build (DefaultCredentialsProvider/builder))))
+
 (defn- chain-credentials
   "Credentials resolved from the AWS SDK default provider chain
-  (https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html). The SDK's shared
-  chain caches what it resolves, so short-lived role credentials rotate without a restart."
+  (https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html). The chain is built
+  once and caches what it resolves, so short-lived role credentials rotate without a restart."
   ^AwsCredentialsIdentity []
-  (.resolveCredentials (DefaultCredentialsProvider/create)))
+  (.resolveCredentials ^DefaultCredentialsProvider @default-credentials-provider))
 
 (defn- aws-identity
   "The AWS credentials identity to sign with: the connection's access key pair, carrying the session token when one

@@ -9,6 +9,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
@@ -252,6 +253,10 @@
       (when (some-> card mi/can-read?)
         (when (= :metric (:type card))
           (metric-not-runnable! {:query-id query-id, :source (metric-source card)}))
+        ;; The rows go to the model: a curated-only Metabot runs a saved question only when `read_resource` would
+        ;; read it.
+        (when (shared/curated-only?)
+          (curation/check-curated-subject! (str "question " card-id) ["card" card-id]))
         {:saved-card card
          :query      {:lib/type :mbql/query
                       :database (:database_id card)
@@ -396,6 +401,8 @@
                                   " the database.")
         :sql-executing-function (str "It calls " detail ", which runs SQL passed to it as text that this check cannot"
                                      " see into.")
+        :dynamic-function-call (str "It calls a function through IDENTIFIER(...), whose name this check cannot read."
+                                    " Call the function by its name.")
         :statement-word      (str "It uses the word " detail " outside quotes, which starts a new statement on"
                                   " SQL Server.")
         :executable-comment  "It holds a /*! or /*M! comment, which MySQL and MariaDB run as SQL."
@@ -695,6 +702,12 @@
   (check-private-conversation!)
   (let [{:keys [query saved-card]} (stored-query query_id allow-non-sql?)
         runnable                   (runnable-query query_id query allow-non-sql?)]
+    ;; A query the conversation holds came from construct_notebook_query, which judged it, or from the user's
+    ;; viewing context, which nothing judged: the rows go to the model either way. A saved question was judged
+    ;; in [[saved-question]]. SQL the query holds itself is left to the SQL gates above; its structured stages,
+    ;; and a notebook query over a SQL question Metabot saved, are judged like any other.
+    (when (and (shared/curated-only?) (nil? saved-card))
+      (curation/check-curated-query! (str "query " query_id) (:query runnable)))
     (when-not (or allow-non-sql? (:checked-sql runnable))
       (not-sql! {:query-id query_id, :hint (recovery-hint allow-non-sql?)}))
     (let [page                                 (execute-page! query_id runnable (or row_limit default-row-limit)

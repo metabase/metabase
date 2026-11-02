@@ -22,7 +22,7 @@
     (mt/test-drivers #{:mysql :postgres}
       (mt/with-premium-features #{:transforms-python :transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                      :schema schema
                                                                      :name   "swap_tbl"}]
@@ -40,7 +40,7 @@
                   (transforms.tu/wait-for-table table-name 10000)
                   (let [initial-rows (transforms.tu/table-rows table-name)]
                     (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob")
-                    (t2/update! :model/Transform (:id transform)
+                    (t2/update! :model/Transform :id (:id transform)
                                 {:source {:type            "python"
                                           :source-tables   []
                                           :source-database (mt/id)
@@ -55,7 +55,7 @@
                                                                                    (original-rename-tables-atomic! driver db-id rename-pairs))]
                       (let [transform-future (future
                                                (transforms-python.execute/execute-python-transform!
-                                                (t2/select-one :model/Transform (:id transform))
+                                                (t2/select-one :model/Transform :id (:id transform))
                                                 {:run-method :manual}))]
                         (is (= [["Alice" 25] ["Bob" 30]]
                                (transforms.tu/table-rows table-name))
@@ -71,7 +71,7 @@
     (mt/test-drivers #{:mysql :postgres}
       (mt/with-premium-features #{:transforms-python :transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                      :schema schema
                                                                      :name   "cleanup_"}]
@@ -100,7 +100,7 @@
     (mt/test-drivers #{:postgres}
       (mt/with-premium-features #{:transforms-python :transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
             (with-transform-cleanup! [target {:type   "table"
                                               :schema schema
                                               :name   "timeout_test"}]
@@ -135,7 +135,7 @@
     (mt/test-drivers #{:postgres}
       (mt/with-premium-features #{:transforms-python :transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
             (with-transform-cleanup! [target {:type   "table"
                                               :schema schema
                                               :name   "unresolved_test"}]

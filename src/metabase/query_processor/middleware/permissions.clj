@@ -18,6 +18,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
+(set! *warn-on-reflection* true)
+
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use

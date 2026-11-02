@@ -24,7 +24,7 @@ You get expert support, backups, upgrades, an SMTP server, SSL certificate, SoC2
 - Use [documents](https://www.metabase.com/docs/latest/documents/introduction) for long-form data analysis, and invite people to comment.
 - [Transform](https://www.metabase.com/docs/latest/data-modeling/transforms/transforms-overview) raw data into analytics-ready tables, track down broken dependencies, and define canonical metrics in Metabase's [Data Studio](https://www.metabase.com/docs/latest/data-modeling/data-studio).
 - Set up [alerts on your data](https://www.metabase.com/docs/latest/questions/alerts), or schedule [dashboard subscriptions](https://www.metabase.com/docs/latest/dashboards/subscriptions) to email, Slack, or even a webhook.
-- Curate content in a [Library](https://www.metabase.com/docs/latest/data-modeling/semantic-layer/library), and [version your work with Git](https://www.metabase.com/docs/latest/installation-and-operation/remote-sync).
+- Curate content in a [Library](https://www.metabase.com/docs/latest/data-modeling/semantic-layer/library), and [version your work with Git](https://www.metabase.com/docs/latest/data-modeling/semantic-layer/remote-sync).
 - [Embed Metabase in your app](https://www.metabase.com/docs/latest/embedding/introduction), with components for charts, dashboards, data browser, AI chat, and more. You can even put [an entire Metabase](https://www.metabase.com/docs/latest/embedding/full-app-embedding) in your app.
 - Set granular [permissions](https://www.metabase.com/docs/latest/permissions/introduction) that work for both internal teams and embedded analytics, whether you co-locate your customer data, or give each customer their own database.
 - Dark mode, content translations, and way more stuff than we can list here.

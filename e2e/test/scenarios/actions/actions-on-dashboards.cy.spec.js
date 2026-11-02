@@ -372,7 +372,7 @@ const MODEL_NAME = "Test Action Model";
                 model_id: id,
               });
             })
-            .then(({ body: action }) => {
+            .then((action) => {
               H.createDashboard(dashboardDetails).then(
                 ({ body: dashboard }) => {
                   H.updateDashboardCards({
