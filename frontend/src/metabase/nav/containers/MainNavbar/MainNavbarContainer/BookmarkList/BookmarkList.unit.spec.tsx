@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import { times } from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupDeleteBookmarkEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -146,6 +147,59 @@ describe("BookmarkList", () => {
       expect(await screen.findByRole("tooltip")).toHaveTextContent(
         "Remove bookmark",
       );
+    });
+
+    it("moves focus to the next bookmark when one is removed with the keyboard", async () => {
+      const bookmarks = createBookmarks(2);
+      setupDeleteBookmarkEndpoint(bookmarks[0]);
+      const { rerender } = renderWithProviders(
+        <BookmarkList {...mockProps} bookmarks={bookmarks} />,
+      );
+
+      await userEvent.tab(); // the section header
+      await userEvent.tab();
+      await userEvent.tab();
+      await userEvent.keyboard("{Enter}");
+
+      const nextLink = screen.getByRole("link", { name: /Bookmark 2/ });
+      expect(nextLink).toHaveFocus();
+
+      rerender(<BookmarkList {...mockProps} bookmarks={[bookmarks[1]]} />);
+
+      expect(nextLink).toHaveFocus();
+    });
+
+    it("moves focus to the previous bookmark when the last one is removed with the keyboard", async () => {
+      const bookmarks = createBookmarks(2);
+      setupDeleteBookmarkEndpoint(bookmarks[1]);
+      renderWithProviders(
+        <BookmarkList {...mockProps} bookmarks={bookmarks} />,
+      );
+
+      await userEvent.tab(); // the section header
+      await userEvent.tab();
+      await userEvent.tab();
+      await userEvent.tab();
+      await userEvent.tab();
+      await userEvent.keyboard("{Enter}");
+
+      expect(screen.getByRole("link", { name: /Bookmark 1/ })).toHaveFocus();
+    });
+
+    it("doesn't move focus to another bookmark when one is removed with the mouse", async () => {
+      const bookmarks = createBookmarks(2);
+      setupDeleteBookmarkEndpoint(bookmarks[0]);
+      renderWithProviders(
+        <BookmarkList {...mockProps} bookmarks={bookmarks} />,
+      );
+
+      await userEvent.click(
+        screen.getAllByRole("button", { name: "Remove bookmark" })[0],
+      );
+
+      expect(
+        screen.getByRole("link", { name: /Bookmark 2/ }),
+      ).not.toHaveFocus();
     });
   });
 
