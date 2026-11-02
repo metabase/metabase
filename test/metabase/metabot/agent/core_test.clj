@@ -451,6 +451,53 @@
               (is (= "SELECT 3" (metabot.u/extract-sql-content (get-in final-state [:queries "q1"]))))
               (is (= (if (= profile :sql) :terminal-tool :stop) (:finish-reason (last replaced)))))))))))
 
+(deftest edit-viewed-saved-sql-question-test
+  ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [card-id     157
+              context     {:capabilities    ["permission:write_sql_queries"]
+                           :user_is_viewing [{:type  "question"
+                                              :id    card-id
+                                              :query {:lib/type :mbql/query
+                                                      :database db-id
+                                                      :stages   [{:lib/type :mbql.stage/native
+                                                                  :native   "SELECT 1"}]}}]}
+              shown-id    (atom nil)
+              calls       (atom 0)
+              parts       (mt/with-dynamic-fn-redefs
+                            [openrouter/openrouter
+                             (fn [request]
+                               (if (= 1 (swap! calls inc))
+                                 ;; The model edits the query by the ID that the viewing context shows it.
+                                 (let [query-id (second (re-find #"Query ID: ([^\s\\\"]+)" (pr-str request)))]
+                                   (reset! shown-id query-id)
+                                   (mut/mock-llm-response
+                                    [{:type      :tool-input
+                                      :id        "edit"
+                                      :function  "edit_sql_query"
+                                      :arguments {:query_id  query-id
+                                                  :checklist "Checked"
+                                                  :title     "Results"
+                                                  :edits     [{:old_string "1" :new_string "2"}]}}]))
+                                 (mut/mock-llm-response [{:type :text :text "Done."}])))]
+                            (into [] (run-agent-loop {:messages   [{:role :user :content "Select 2 instead"}]
+                                                      :state      {}
+                                                      :profile-id :internal
+                                                      :context    context})))
+              edit-result (some #(when (and (= :tool-output (:type %)) (= "edit" (:id %))) (:result %)) parts)
+              state       (some #(when (= "state" (:data-type %)) (:data %)) parts)]
+          (testing "the viewing context shows a query ID for the question's SQL"
+            (is (some? @shown-id)))
+          (testing "edit_sql_query edits the SQL of the question on screen"
+            (is (nil? (:error edit-result)) (:output edit-result))
+            (is (= "SELECT 2" (metabot.u/extract-sql-content (get-in state [:queries @shown-id])))))
+          (testing "the question's own ID is not a query ID, so run_query still runs the saved question"
+            (is (not= (str card-id) @shown-id))
+            (is (not (contains? (:queries state) (str card-id))))))))))
+
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections

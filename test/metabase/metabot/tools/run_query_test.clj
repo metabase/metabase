@@ -1015,8 +1015,8 @@
   (testing "the SQL-only tool's refusals point at SQL or at telling the user, never at the notebook builder"
     (testing "an unknown id"
       (is (= (refusal ::recoverable.common/unknown-query-id
-                      (str "Query \"nope\" was not found. Available query IDs: \"q1\". A saved question or model has "
-                           "no query ID.")
+                      (str "Query \"nope\" was not found. Available query IDs: \"q1\". The ID of a saved question or "
+                           "model is not a query ID.")
                       (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
                            "`run_query`."))
              (run-sql-only-tool! {"q1" (venues-by-id)} {:query_id "nope"}))))
@@ -1046,8 +1046,8 @@
              (run-sql-only-tool! false {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"}))))
     (testing "an unknown id"
       (is (= (refusal ::recoverable.common/unknown-query-id
-                      (str "Query \"nope\" was not found. Available query IDs: \"q1\". A saved question or model has "
-                           "no query ID, and no SQL can run here.")
+                      (str "Query \"nope\" was not found. Available query IDs: \"q1\". The ID of a saved question or "
+                           "model is not a query ID, and no SQL can run here.")
                       no-values-step)
              (run-sql-only-tool! false {"q1" (venues-by-id)} {:query_id "nope"}))))
     (testing "a query that is not SQL"
@@ -1086,8 +1086,8 @@
   (testing "an invented ID is cut to leave room for the recovery step"
     (let [query-id (apply str (repeat 5000 "x"))]
       (is (= (refusal ::recoverable.common/unknown-query-id
-                      (str "Query \"" (subs query-id 0 100) "\" was not found. Available query IDs: \"q1\". A saved "
-                           "question or model has no query ID.")
+                      (str "Query \"" (subs query-id 0 100) "\" was not found. Available query IDs: \"q1\". The ID of "
+                           "a saved question or model is not a query ID.")
                       (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
                            "`run_query`."))
              (run-sql-only-tool! {"q1" (venues-by-id)} {:query_id query-id}))))))

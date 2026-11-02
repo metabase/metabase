@@ -430,6 +430,41 @@
         (is (re-find #"(?i)orders" result))
         (is (re-find #"(?i)field" result))))))
 
+(deftest format-saved-question-query-id-test
+  (let [notebook-query {:database (mt/id) :type :query :query {:source-table (mt/id :orders)}}]
+    (testing "a saved notebook question shows the query ID of the query on screen"
+      (mt/with-test-user :rasta
+        (mt/with-temp [:model/Card {card-id :id} {:name          "Orders"
+                                                  :type          "question"
+                                                  :database_id   (mt/id)
+                                                  :dataset_query notebook-query}]
+          (let [result (user-context/format-viewing-context
+                        {:user_is_viewing [{:type "question" :id card-id :query notebook-query :query_id "q-1"}]})]
+            (is (str/includes? result "Orders"))
+            (is (str/includes? result "Query ID: q-1"))))))
+    (testing "a saved SQL question shows its own ID and the query ID apart"
+      (let [result (user-context/format-viewing-context
+                    {:user_is_viewing [{:type     "question"
+                                        :id       absent-entity-id
+                                        :query    {:database (mt/id) :type :native :native {:query "SELECT 1"}}
+                                        :query_id "q-1"}]})]
+        (is (str/includes? result (str "Question ID: " absent-entity-id)))
+        (is (str/includes? result "Query ID: q-1"))
+        (is (not (str/includes? result (str "Query ID: " absent-entity-id))))))
+    (testing "a saved notebook question the user cannot read is omitted, with its query ID"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card       {card-id :id} {:name          "Hidden Orders"
+                                                        :type          "question"
+                                                        :collection_id coll-id
+                                                        :database_id   (mt/id)
+                                                        :dataset_query notebook-query}]
+          (mt/with-test-user :rasta
+            (let [result (user-context/format-viewing-context
+                          {:user_is_viewing [{:type "question" :id card-id :query notebook-query :query_id "q-1"}]})]
+              (is (not (str/includes? result "Hidden Orders")))
+              (is (not (str/includes? result "q-1"))))))))))
+
 (deftest format-entity-rejects-destination-database-table-test
   (testing "a table on a destination (routed) database in the viewing context is not surfaced with its
             real details -- a destination database is a routing internal, not a resource users should
