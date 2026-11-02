@@ -7,6 +7,10 @@ import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
+import {
+  LoadingSkeleton,
+  TextSkeleton,
+} from "metabase/common/components/Skeletons";
 import { useToast } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useUpdateMetabotMutation } from "metabase/metabot";
@@ -20,6 +24,7 @@ import {
   Flex,
   Icon,
   Loader,
+  Skeleton,
   Stack,
   Switch,
   Text,
@@ -32,6 +37,8 @@ import type {
 } from "metabase-types/api";
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
+
+const BUTTON_HEIGHT = 32;
 
 export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
   const isEmbedMetabot =
@@ -159,10 +166,23 @@ function MetabotCollectionConfigurationPane({
   const [isOpen, { open, close }] = useDisclosure(false);
   const [sendToast] = useToast();
 
-  if (isLoading || !collection || error) {
+  const defaultTitle = c("{0} is the name of an AI assistant")
+    .t`Collection ${metabotName} can use`;
+
+  if (isLoading) {
+    return (
+      <Box>
+        <SettingHeader id="allow-metabot" title={title ?? defaultTitle} />
+        <LoadingSkeleton gap={0}>
+          <CollectionPaneSkeleton />
+        </LoadingSkeleton>
+      </Box>
+    );
+  }
+
+  if (!collection || error) {
     return (
       <LoadingAndErrorWrapper
-        loading={isLoading}
         error={error ? t`Error fetching Metabot configuration` : null}
       />
     );
@@ -184,9 +204,6 @@ function MetabotCollectionConfigurationPane({
       });
     }
   };
-
-  const defaultTitle = c("{0} is the name of an AI assistant")
-    .t`Collection ${metabotName} can use`;
 
   return (
     <Box>
@@ -264,3 +281,53 @@ const CollectionDisplay = ({
     </Flex>
   );
 };
+
+function CollectionPaneSkeleton() {
+  return (
+    <>
+      <Flex align="center" gap="sm" h={20} mb="sm">
+        <Skeleton h={16} w={16} radius="xs" />
+        <Skeleton h={14} w={160} radius="xs" />
+      </Flex>
+      <Skeleton h={BUTTON_HEIGHT} w={200} mt="lg" radius="sm" />
+    </>
+  );
+}
+
+function SettingHeaderSkeleton({
+  withDescription = false,
+}: {
+  withDescription?: boolean;
+}) {
+  return (
+    <Stack gap="sm" mb="sm">
+      <Skeleton h={14} w={200} radius="xs" />
+      {withDescription && (
+        <TextSkeleton lines={2} lineHeight={12} maw="38rem" />
+      )}
+    </Stack>
+  );
+}
+
+/** Stands in for `MetabotSettingsPanel` while the metabot it configures loads. */
+export function MetabotSettingsPanelSkeleton() {
+  return (
+    <Stack gap="xl">
+      <Box>
+        <SettingHeaderSkeleton withDescription />
+        <Flex align="center" gap="lg" mt="lg">
+          <Skeleton h={20} w={36} radius="xl" />
+          <Skeleton h={14} w={140} radius="xs" />
+        </Flex>
+      </Box>
+      <Box>
+        <SettingHeaderSkeleton />
+        <CollectionPaneSkeleton />
+      </Box>
+      <Box>
+        <SettingHeaderSkeleton withDescription />
+        <Skeleton h={BUTTON_HEIGHT} w={220} radius="sm" />
+      </Box>
+    </Stack>
+  );
+}

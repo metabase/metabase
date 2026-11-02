@@ -6,6 +6,7 @@ import { t } from "ttag";
 import noResultsSource from "assets/img/no_results.svg";
 import { useCreateCommentMutation, useListCommentsQuery } from "metabase/api";
 import { CommentEditor } from "metabase/comments/components";
+import { CommentsSkeleton } from "metabase/comments/components/CommentsSkeleton";
 import { Discussions } from "metabase/comments/components/Discussions";
 import type { CommentExtraRenderer } from "metabase/comments/types";
 import {
@@ -14,6 +15,7 @@ import {
   getListCommentsQuery,
 } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { useToast } from "metabase/common/hooks";
 import {
   ActionIcon,
@@ -180,32 +182,32 @@ export const Comments = ({
     }
   };
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  const header = (
+    <CommentsHeader
+      title={title}
+      showCloseButton={showCloseButton}
+      onClose={closeSidebar}
+    />
+  );
+
+  if (isLoading) {
+    return (
+      <Stack gap={0} h="100%">
+        {header}
+        <LoadingSkeleton px="xl" pt="xl">
+          <CommentsSkeleton />
+        </LoadingSkeleton>
+      </Stack>
+    );
   }
 
   return (
     <Stack gap={0} h="100%">
-      {(title || showCloseButton) && (
-        <Flex
-          px="xxl"
-          pt="1.25rem"
-          pb="sm"
-          justify="space-between"
-          align="center"
-        >
-          {title && <Title order={3}>{title}</Title>}
-          {showCloseButton && (
-            <ActionIcon
-              variant="subtle"
-              aria-label={t`Close`}
-              onClick={closeSidebar}
-            >
-              <Icon name="close" c="text-primary" />
-            </ActionIcon>
-          )}
-        </Flex>
-      )}
+      {header}
 
       <Tabs
         className={S.tabsContainer}
@@ -283,6 +285,33 @@ export const Comments = ({
     </Stack>
   );
 };
+
+interface CommentsHeaderProps {
+  title?: string;
+  showCloseButton: boolean;
+  onClose: () => void;
+}
+
+function CommentsHeader({
+  title,
+  showCloseButton,
+  onClose,
+}: CommentsHeaderProps) {
+  if (!title && !showCloseButton) {
+    return null;
+  }
+
+  return (
+    <Flex px="xxl" pt="1.25rem" pb="sm" justify="space-between" align="center">
+      {title && <Title order={3}>{title}</Title>}
+      {showCloseButton && (
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
+          <Icon name="close" c="text-primary" />
+        </ActionIcon>
+      )}
+    </Flex>
+  );
+}
 
 function getFilteredComments(
   comments: Comment[],

@@ -1,4 +1,5 @@
 import { skipToken, useListCollectionTimelinesQuery } from "metabase/api";
+import { TimelineDetailsModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import * as Urls from "metabase/urls";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
@@ -25,7 +26,12 @@ function TimelineIndexModalContainer({
 
   if (isLoading || error) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<TimelineDetailsModalSkeleton onClose={props.onClose} />}
+        noWrapper
+      />
     );
   }
 

@@ -6,6 +6,7 @@ import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SelectList } from "metabase/common/components/SelectList";
+import { ListSkeleton } from "metabase/common/components/Skeletons";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -13,6 +14,8 @@ import type { CardType, Collection, DatabaseId } from "metabase-types/api";
 
 import SavedEntityListS from "./SavedEntityList.module.css";
 import { CARD_INFO } from "./constants";
+
+const SKELETON_ROW_COUNT = 8;
 
 interface SavedEntityListProps {
   type: CardType;
@@ -37,7 +40,7 @@ export const SavedEntityList = ({
 
   const isVirtualCollection = collection?.id === PERSONAL_COLLECTIONS.id;
 
-  const { data, error, isFetching } = useListCollectionItemsQuery(
+  const { currentData, error, isFetching } = useListCollectionItemsQuery(
     collection && !isVirtualCollection
       ? {
           id: collection.id,
@@ -47,7 +50,7 @@ export const SavedEntityList = ({
         }
       : skipToken,
   );
-  const list = data?.data ?? [];
+  const list = currentData?.data ?? [];
   const filteredList = databaseId
     ? // When `databaseId` is provided, we're joining data, so we need to filter out items that don't belong to the current database
       list.filter((collectionItem) => collectionItem.database_id === databaseId)
@@ -58,8 +61,9 @@ export const SavedEntityList = ({
       <SelectList className={SavedEntityListS.SavedEntityListRoot}>
         <LoadingAndErrorWrapper
           className={SavedEntityListS.LoadingWrapper}
-          loading={!collection || isFetching}
+          loading={!collection || (isFetching && !currentData)}
           error={error}
+          loader={<ListSkeleton rows={SKELETON_ROW_COUNT} p="sm" />}
         >
           <Fragment>
             {filteredList.map((collectionItem) => {

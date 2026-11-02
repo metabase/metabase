@@ -10,6 +10,7 @@ import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import type { CollectionId } from "metabase-types/api";
 
+import { CollectionContentSkeleton } from "./CollectionContentSkeleton";
 import { CollectionContentView } from "./CollectionContentView";
 
 export function CollectionContent({
@@ -50,7 +51,7 @@ export function CollectionContent({
   }
 
   if (!bookmarks || !databases || !collections || !collection) {
-    return <LoadingAndErrorWrapper loading />;
+    return <CollectionContentSkeleton />;
   }
 
   return (

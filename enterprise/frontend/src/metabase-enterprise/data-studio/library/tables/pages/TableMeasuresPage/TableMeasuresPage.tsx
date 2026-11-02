@@ -5,6 +5,10 @@ import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import {
+  DataStudioPageSkeleton,
+  EntityListSkeleton,
+} from "../../../components/DataStudioPageSkeleton";
 import { TableHeader } from "../../components/TableHeader";
 
 import { TableMeasures } from "./TableMeasures";
@@ -18,10 +22,18 @@ export function TableMeasuresPage() {
   const tableId = Urls.extractEntityId(params.tableId);
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
 
-  if (isLoading || error != null || table == null) {
+  if (isLoading) {
+    return (
+      <DataStudioPageSkeleton icon="table" tabCount={5}>
+        <EntityListSkeleton />
+      </DataStudioPageSkeleton>
+    );
+  }
+
+  if (error != null || table == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

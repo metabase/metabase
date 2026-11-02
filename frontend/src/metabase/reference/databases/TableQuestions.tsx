@@ -11,6 +11,7 @@ import { connect } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
+import { ReferenceListSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import * as Urls from "metabase/urls";
 import { visualizations } from "metabase/viz-core";
 import type * as Lib from "metabase-lib";
@@ -67,6 +68,7 @@ class TableQuestions extends Component<TableQuestionsProps> {
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}
           error={loadingError}
+          loader={<ReferenceListSkeleton />}
         >
           {() =>
             questions.length > 0 ? (

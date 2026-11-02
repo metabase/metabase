@@ -7,6 +7,7 @@ import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 
 import { getArchiveUrl } from "../../actions";
+import { NotificationModalContentSkeleton } from "../../components/NotificationModalSkeleton";
 import { UnsubscribeModal } from "../../components/UnsubscribeModal";
 import { getPulseId } from "../../selectors";
 
@@ -43,8 +44,12 @@ export function UnsubscribePulseModal({
     navigate(getArchiveUrl(item, "pulse", hasUnsubscribed));
   };
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (isLoading) {
+    return <NotificationModalContentSkeleton onClose={onClose} />;
+  }
+
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
   }
 
   return pulse && user ? (

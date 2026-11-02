@@ -15,6 +15,7 @@ import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
+import { ReferenceFieldListSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import * as actions from "metabase/reference/reference";
 import { updateField } from "metabase/reference/update-actions";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
@@ -148,8 +149,9 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
         startEditing={startEditing}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        loading={!loadingError && !saveError && loading}
         error={saveError ?? loadingError}
+        loader={<ReferenceFieldListSkeleton />}
       >
         {() =>
           table != null && Object.keys(entities).length > 0 ? (

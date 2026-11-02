@@ -8,6 +8,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
+  CodeEditorSkeleton,
+  PageSkeleton,
+} from "metabase/common/data-studio/components/PageSkeleton";
+import {
   PaneHeader,
   PaneHeaderActions,
   PaneHeaderInput,
@@ -35,10 +39,18 @@ export function NewActionPage() {
     [databases],
   );
 
-  if (isLoading || error != null) {
+  if (isLoading) {
+    return (
+      <PageSkeleton breadcrumbs={<NewActionBreadcrumbs />}>
+        <CodeEditorSkeleton withTopBar />
+      </PageSkeleton>
+    );
+  }
+
+  if (error != null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
@@ -110,12 +122,7 @@ function NewActionPageBody({ databases }: NewActionPageBodyProps) {
               onCancel={() => navigate(Urls.dataStudioActions())}
             />
           }
-          breadcrumbs={
-            <DataStudioBreadcrumbs>
-              <Link to={Urls.dataStudioActions()}>{t`Data actions`}</Link>
-              {t`New action`}
-            </DataStudioBreadcrumbs>
-          }
+          breadcrumbs={<NewActionBreadcrumbs />}
         />
         <ActionEditorPane>
           <ActionEditor
@@ -141,5 +148,14 @@ function NewActionPageBody({ databases }: NewActionPageBodyProps) {
         isLocationAllowed={isLocationAllowed}
       />
     </>
+  );
+}
+
+function NewActionBreadcrumbs() {
+  return (
+    <DataStudioBreadcrumbs>
+      <Link to={Urls.dataStudioActions()}>{t`Data actions`}</Link>
+      {t`New action`}
+    </DataStudioBreadcrumbs>
   );
 }

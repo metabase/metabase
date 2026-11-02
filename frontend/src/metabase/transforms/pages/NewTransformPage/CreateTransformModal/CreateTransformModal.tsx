@@ -29,6 +29,7 @@ import type {
 
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 import { TargetNameInput } from "../../../components/TargetNameInput";
+import { ModalFormSkeleton } from "../../../components/TransformSkeletons";
 
 import type { NewTransformValues } from "./form";
 import { useCreateTransform } from "./hooks";
@@ -106,10 +107,6 @@ export function CreateTransformModal({
     [supportsSchemas],
   );
 
-  if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   const defaultHandleSubmit = async (values: NewTransformValues) => {
     if (!databaseId) {
       throw new Error("Database ID is required");
@@ -126,22 +123,30 @@ export function CreateTransformModal({
       closeOnEscape={closeOnEscape}
       onClose={onClose}
     >
-      <FormProvider
-        initialValues={initialValues}
-        validationSchema={validationSchema}
-        validationContext={validationContext}
-        onSubmit={handleSubmit || defaultHandleSubmit}
-        validateOnMount={validateOnMount}
-      >
-        <CreateTransformForm
-          source={source}
-          supportsSchemas={supportsSchemas}
-          schemas={schemas}
-          onClose={onClose}
-          targetDescription={targetDescription}
-          showIncrementalSettings={showIncrementalSettings}
+      {isLoading || error != null ? (
+        <LoadingAndErrorWrapper
+          loading={isLoading}
+          error={error}
+          loader={<ModalFormSkeleton fields={4} />}
         />
-      </FormProvider>
+      ) : (
+        <FormProvider
+          initialValues={initialValues}
+          validationSchema={validationSchema}
+          validationContext={validationContext}
+          onSubmit={handleSubmit || defaultHandleSubmit}
+          validateOnMount={validateOnMount}
+        >
+          <CreateTransformForm
+            source={source}
+            supportsSchemas={supportsSchemas}
+            schemas={schemas}
+            onClose={onClose}
+            targetDescription={targetDescription}
+            showIncrementalSettings={showIncrementalSettings}
+          />
+        </FormProvider>
+      )}
     </Modal>
   );
 }

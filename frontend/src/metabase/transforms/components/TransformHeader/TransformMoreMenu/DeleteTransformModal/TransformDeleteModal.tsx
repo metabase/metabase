@@ -14,6 +14,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { deleteTransformAndTrack } from "metabase/transforms/analytics";
+import { ModalChoiceSkeleton } from "metabase/transforms/components/TransformSkeletons";
 import { Button, FocusTrap, Modal, Radio, Stack, Text } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
@@ -38,7 +39,11 @@ export function DeleteTransformModal({
     <Modal title={getModalTitle(transform)} opened onClose={onClose}>
       <FocusTrap.InitialFocus />
       {isLoading || error != null || transformWithTable == null ? (
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper
+          loading={isLoading}
+          error={error}
+          loader={<ModalChoiceSkeleton />}
+        />
       ) : (
         <DeleteTransformForm
           transform={transformWithTable}

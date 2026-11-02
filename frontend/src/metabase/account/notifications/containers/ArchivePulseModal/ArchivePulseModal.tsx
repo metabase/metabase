@@ -10,6 +10,7 @@ import { useSelector } from "metabase/redux";
 import { useSearchParams } from "metabase/router";
 
 import { ArchiveNotificationModal } from "../../components/ArchiveModal";
+import { NotificationModalContentSkeleton } from "../../components/NotificationModalSkeleton";
 import { getPulseId } from "../../selectors";
 
 type ArchivePulseModalProps = {
@@ -37,8 +38,12 @@ export function ArchivePulseModal({ params, onClose }: ArchivePulseModalProps) {
     await updateSubscription({ id: item.id, archived });
   };
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (isLoading) {
+    return <NotificationModalContentSkeleton onClose={onClose} />;
+  }
+
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
   }
 
   return pulse && user ? (

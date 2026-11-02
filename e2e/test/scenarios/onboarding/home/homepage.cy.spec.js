@@ -514,8 +514,8 @@ describe("scenarios > home > custom homepage", () => {
       );
 
       cy.visit("/");
-      cy.findByRole("heading", { name: "Loading..." }).should("exist");
-      cy.findByRole("heading", { name: "Loading...", timeout: 5000 }).should(
+      cy.findByTestId("homepage-dashboard-skeleton").should("exist");
+      cy.findByTestId("homepage-dashboard-skeleton", { timeout: 5000 }).should(
         "not.exist",
       );
 

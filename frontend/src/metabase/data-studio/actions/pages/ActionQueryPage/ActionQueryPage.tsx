@@ -7,6 +7,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { CodeEditorSkeleton } from "metabase/common/data-studio/components/PageSkeleton";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { hasNativeWritePermissions } from "metabase/common/utils/database";
@@ -19,6 +20,7 @@ import type { Database, WritebackQueryAction } from "metabase-types/api";
 import { ActionEditor } from "../../components/ActionEditor";
 import { ActionEditorPane } from "../../components/ActionEditorPane";
 import { ActionHeader } from "../../components/ActionHeader";
+import { ActionPageSkeleton } from "../../components/ActionPageSkeleton";
 import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useActionDraft } from "../../hooks/use-action-draft";
 import { useRouteAction } from "../../hooks/use-route-action";
@@ -44,10 +46,18 @@ export function ActionQueryPage() {
   const isLoading = isLoadingAction || isLoadingDatabases;
   const error = actionError ?? databasesError;
 
-  if (isLoading || error != null || action == null) {
+  if (isLoading) {
+    return (
+      <ActionPageSkeleton isEditMode={isEditRoute}>
+        <CodeEditorSkeleton withTopBar />
+      </ActionPageSkeleton>
+    );
+  }
+
+  if (error != null || action == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

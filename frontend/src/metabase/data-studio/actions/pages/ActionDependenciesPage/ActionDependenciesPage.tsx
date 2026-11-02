@@ -1,20 +1,30 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PageCardSkeleton } from "metabase/common/data-studio/components/PageSkeleton";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Outlet } from "metabase/router";
 import { Card, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { ActionHeader } from "../../components/ActionHeader";
+import { ActionPageSkeleton } from "../../components/ActionPageSkeleton";
 import { useRouteAction } from "../../hooks/use-route-action";
 
 export function ActionDependenciesPage() {
   const { action, isLoading, error } = useRouteAction();
 
-  if (isLoading || error != null || action == null) {
+  if (isLoading) {
+    return (
+      <ActionPageSkeleton>
+        <PageCardSkeleton />
+      </ActionPageSkeleton>
+    );
+  }
+
+  if (error != null || action == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

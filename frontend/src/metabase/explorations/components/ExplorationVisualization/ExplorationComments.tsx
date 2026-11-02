@@ -18,6 +18,7 @@ import {
   useUpdateCommentMutation,
 } from "metabase/api";
 import { CommentEditor } from "metabase/comments/components";
+import { CommentsSkeleton } from "metabase/comments/components/CommentsSkeleton";
 import DiscussionS from "metabase/comments/components/Discussion/Discussion.module.css";
 import { DiscussionActionPanel } from "metabase/comments/components/Discussion/DiscussionActionPanel";
 import { DiscussionReactions } from "metabase/comments/components/Discussion/DiscussionReactions";
@@ -28,6 +29,7 @@ import {
 } from "metabase/comments/utils";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { useToast } from "metabase/common/hooks";
 import { getUser } from "metabase/current-user";
 import { trackExplorationCommentCreated } from "metabase/explorations/analytics";
@@ -198,24 +200,33 @@ export function ExplorationComments({
     }
   };
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  const header = (
+    <Group px="xl" pt="1.25rem" pb="sm" justify="space-between" align="center">
+      <Title order={3}>{t`Comments`}</Title>
+      <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
+        <Icon name="close" c="icon-primary" />
+      </ActionIcon>
+    </Group>
+  );
+
+  if (isLoading) {
+    return (
+      <Stack gap={0} h="100%">
+        {header}
+        <LoadingSkeleton px="lg" py="sm">
+          <CommentsSkeleton gap="lg" />
+        </LoadingSkeleton>
+      </Stack>
+    );
   }
 
   return (
     <Stack gap={0} h="100%" data-testid="exploration-comments">
-      <Group
-        px="xl"
-        pt="1.25rem"
-        pb="sm"
-        justify="space-between"
-        align="center"
-      >
-        <Title order={3}>{t`Comments`}</Title>
-        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
-          <Icon name="close" c="icon-primary" />
-        </ActionIcon>
-      </Group>
+      {header}
       <Box ref={streamRef} flex={1} px="lg" py="sm" className={S.stream}>
         <Stack ref={streamContentRef} gap="lg">
           {commentsStream.map((comment) => (

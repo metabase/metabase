@@ -37,6 +37,10 @@ import {
 import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformEditor } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
+import {
+  TransformEditorSkeleton,
+  TransformPageSkeleton,
+} from "../../components/TransformSkeletons";
 import { useSourceState } from "../../hooks/use-source-state";
 import { isCompleteSource } from "../../utils";
 
@@ -68,8 +72,16 @@ export function TransformQueryPage() {
   const isLoading = isLoadingTransform || isLoadingDatabases || !isEditorLoaded;
   const error = transformError || databasesError;
 
-  if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (isLoading) {
+    return (
+      <TransformPageSkeleton>
+        <TransformEditorSkeleton />
+      </TransformPageSkeleton>
+    );
+  }
+
+  if (error != null) {
+    return <LoadingAndErrorWrapper error={error} />;
   }
 
   if (transform == null || transformsDatabases == null) {

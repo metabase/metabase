@@ -14,6 +14,7 @@ import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import type { Notification, User } from "metabase-types/api";
 
+import { NotificationConfirmModalSkeleton } from "../../components/NotificationModalSkeleton";
 import { getAlertId } from "../../selectors";
 
 type UnsubscribeAlertModalProps = {
@@ -61,8 +62,12 @@ export const UnsubscribeAlertModal = ({
     }
   };
 
+  if (isLoading) {
+    return <NotificationConfirmModalSkeleton lines={2} onClose={onClose} />;
+  }
+
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+    <LoadingAndErrorWrapper error={error}>
       {() =>
         notification ? (
           <UnsubscribeConfirmModal

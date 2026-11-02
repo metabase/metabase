@@ -11,6 +11,7 @@ import {
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
 import { QuestionName } from "metabase/common/components/QuestionName";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import CS from "metabase/css/core/index.css";
 import {
   ClickMappings,
@@ -19,7 +20,7 @@ import {
 import { getDashboard } from "metabase/dashboard/selectors";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { Button, Icon, Select } from "metabase/ui";
+import { Button, Icon, Repeat, Select, Skeleton, Stack } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -151,8 +152,12 @@ function TargetClickMappings({
   const isLoading = isDashboard ? dashboardIsLoading : cardIsLoading;
   const error = isDashboard ? dashboardError : cardError;
 
-  if (error || isLoading) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (isLoading) {
+    return <TargetClickMappingsSkeleton />;
   }
 
   return (
@@ -166,6 +171,21 @@ function TargetClickMappings({
         updateSettings={updateSettings}
       />
     </div>
+  );
+}
+
+const SKELETON_TARGET_COUNT = 3;
+
+function TargetClickMappingsSkeleton() {
+  return (
+    <LoadingSkeleton pt="sm" gap="md">
+      <Skeleton h={14} w="80%" radius="xs" />
+      <Stack gap="sm">
+        <Repeat times={SKELETON_TARGET_COUNT}>
+          <Skeleton h={40} radius="md" />
+        </Repeat>
+      </Stack>
+    </LoadingSkeleton>
   );
 }
 

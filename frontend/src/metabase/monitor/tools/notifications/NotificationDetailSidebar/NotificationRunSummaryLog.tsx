@@ -1,17 +1,19 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { dayjs } from "metabase/dayjs";
 import {
   DetailsRow,
   DetailsTable,
   SidebarSection,
 } from "metabase/monitor/components/DetailSidebar";
-import { Anchor, Badge, Flex, Loader, Text, Tooltip } from "metabase/ui";
+import { Anchor, Badge, Flex, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { formatRelativeDate } from "../NotificationsAdminPage/utils";
 
+import { RunHistoryRowsSkeleton } from "./NotificationDetailSidebarSkeleton";
 import type { NotificationRunSummaryLogProps } from "./types";
 
 export const NotificationRunSummaryLog = ({
@@ -30,11 +32,11 @@ export const NotificationRunSummaryLog = ({
   });
 
   const renderRuns = () => {
-    if (isLoading) {
+    if (isLoading && runs == null) {
       return (
-        <Flex align="center" justify="center" py="xl">
-          <Loader size="sm" data-testid="run-summary-loader" />
-        </Flex>
+        <LoadingSkeleton gap={0} data-testid="run-summary-loader">
+          <RunHistoryRowsSkeleton />
+        </LoadingSkeleton>
       );
     }
     if (runs && runs.length === 0) {

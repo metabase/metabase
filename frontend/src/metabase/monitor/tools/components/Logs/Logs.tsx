@@ -27,6 +27,7 @@ import {
 import * as Urls from "metabase/urls";
 import { openSaveDialog } from "metabase/utils/dom";
 
+import { LogsSkeleton } from "./LogsSkeleton";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
 import { filterLogs, urlStateConfig } from "./utils";
 
@@ -70,11 +71,21 @@ export const Logs = ({
         <MonitorMain>
           <MonitorHeaderTitle mb="sm">{t`Application logs`}</MonitorHeaderTitle>
 
-          {!loaded || error != null ? (
+          {error != null && (
             <Center flex={1}>
-              <DelayedLoadingAndErrorWrapper loading={!loaded} error={error} />
+              <DelayedLoadingAndErrorWrapper loading={false} error={error} />
             </Center>
-          ) : (
+          )}
+
+          {error == null && !loaded && (
+            <DelayedLoadingAndErrorWrapper
+              loading
+              error={undefined}
+              loader={<LogsSkeleton />}
+            />
+          )}
+
+          {error == null && loaded && (
             <>
               <Group gap="lg" align="center" wrap="nowrap">
                 <TextInput

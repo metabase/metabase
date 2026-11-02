@@ -6,6 +6,7 @@ import { getErrorMessage } from "metabase/api/utils";
 import { UnarchiveCollectionButton } from "metabase/common/collections/components/UnarchiveCollectionButton";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -29,6 +30,7 @@ import {
   Tooltip,
   TreeTable,
   type TreeTableColumnDef,
+  TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -97,10 +99,10 @@ export function ArchivedActionListPage() {
     defaultExpanded: true,
   });
 
-  if (isLoading || error) {
+  if (error) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
@@ -132,23 +134,32 @@ export function ArchivedActionListPage() {
           onChange={(event) => setSearchQuery(event.target.value)}
         />
         <Card withBorder p={0}>
-          <TreeTable
-            instance={treeTableInstance}
-            emptyState={t`No archived actions`}
-            onRowClick={(row) => {
-              if (row.getCanExpand()) {
-                row.toggleExpanded();
-              }
-            }}
-            renderRowLink={(row, props) => {
-              const { data } = row.original;
-              return data.model === "action" ? (
-                <Link to={Urls.dataStudioAction(Number(data.id))} {...props} />
-              ) : (
-                props.children
-              );
-            }}
-          />
+          {isLoading ? (
+            <LoadingSkeleton>
+              <TreeTableSkeleton columnWidths={[0.9, 0.05]} />
+            </LoadingSkeleton>
+          ) : (
+            <TreeTable
+              instance={treeTableInstance}
+              emptyState={t`No archived actions`}
+              onRowClick={(row) => {
+                if (row.getCanExpand()) {
+                  row.toggleExpanded();
+                }
+              }}
+              renderRowLink={(row, props) => {
+                const { data } = row.original;
+                return data.model === "action" ? (
+                  <Link
+                    to={Urls.dataStudioAction(Number(data.id))}
+                    {...props}
+                  />
+                ) : (
+                  props.children
+                );
+              }}
+            />
+          )}
         </Card>
       </Stack>
     </SectionLayout>

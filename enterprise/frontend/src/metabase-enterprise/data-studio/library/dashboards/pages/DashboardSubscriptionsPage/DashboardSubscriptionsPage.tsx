@@ -12,10 +12,12 @@ import {
   Card,
   Group,
   Icon,
+  Skeleton,
   Stack,
   Text,
   TextInput,
   TreeTable,
+  TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -32,6 +34,7 @@ export function DashboardSubscriptionsPage() {
   return (
     <DashboardPageShell
       data-testid="dashboard-subscriptions-page"
+      bodySkeleton={<DashboardSubscriptionsSkeleton />}
       aside={(dashboard, containerWidth) => (
         <SelectedSubscriptionSidebar
           dashboard={dashboard}
@@ -82,7 +85,13 @@ function DashboardSubscriptions({ dashboard }: DashboardSubscriptionsProps) {
       : Urls.dataStudioDashboardSubscriptions(dashboard.id, subscriptionId);
 
   if (isLoading || error != null) {
-    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <DelayedLoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<DashboardSubscriptionsSkeleton />}
+      />
+    );
   }
 
   return (
@@ -121,6 +130,20 @@ function DashboardSubscriptions({ dashboard }: DashboardSubscriptionsProps) {
           renderRowLink={(row, props) => (
             <Link to={getRowUrl(row.original.id)} {...props} />
           )}
+        />
+      </Card>
+    </Stack>
+  );
+}
+
+function DashboardSubscriptionsSkeleton() {
+  return (
+    <Stack gap="lg">
+      <Skeleton h={40} radius="sm" />
+      <Card withBorder p={0}>
+        <TreeTableSkeleton
+          rowsCount={4}
+          columnWidths={[0.35, 0.25, 0.25, 0.15]}
         />
       </Card>
     </Stack>

@@ -2,9 +2,22 @@ import type { CSSProperties, ComponentProps, Key, ReactNode } from "react";
 
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
+import {
+  LoadingSkeleton,
+  getSkeletonLineWidth,
+} from "metabase/common/components/Skeletons";
 import { VirtualizedGrid } from "metabase/common/components/VirtualizedGrid";
 import CS from "metabase/css/core/index.css";
-import { Box, Card, Flex, Group, Icon, Loader, Title } from "metabase/ui";
+import {
+  Box,
+  Card,
+  Flex,
+  Group,
+  Icon,
+  SimpleGrid,
+  Skeleton,
+  Title,
+} from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import styles from "./CollectionListView.module.css";
@@ -17,6 +30,9 @@ type CollectionListItem = {
   icon: IconName;
   link: string;
 };
+
+const COLUMNS_PER_ROW = { xs: 1, sm: 2, md: 3, lg: 4, xl: 4 };
+const SKELETON_CARD_COUNT = 12;
 
 type CollectionListViewProps = {
   crumbs: Crumb;
@@ -64,15 +80,13 @@ export const CollectionListView = ({
       </Box>
       <Box style={{ flexGrow: 1, overflowY: "hidden" }} pr="0.5rem">
         {loading ? (
-          <Flex justify="center" align="center" h="100%">
-            <Loader size="lg" />
-          </Flex>
+          <CollectionListSkeleton />
         ) : (
           <VirtualizedGrid
             items={items}
             keyExtractor={(item) => item.key}
             renderItem={renderItem}
-            columnsPerRow={{ xs: 1, sm: 2, md: 3, lg: 4, xl: 4 }}
+            columnsPerRow={COLUMNS_PER_ROW}
             estimatedRowHeight={80}
           />
         )}
@@ -80,3 +94,28 @@ export const CollectionListView = ({
     </Flex>
   );
 };
+
+const CollectionListSkeleton = () => (
+  <LoadingSkeleton>
+    <SimpleGrid
+      cols={{
+        base: COLUMNS_PER_ROW.xs,
+        sm: COLUMNS_PER_ROW.sm,
+        md: COLUMNS_PER_ROW.md,
+        lg: COLUMNS_PER_ROW.lg,
+        xl: COLUMNS_PER_ROW.xl,
+      }}
+      spacing="lg"
+      verticalSpacing="xl"
+    >
+      {Array.from({ length: SKELETON_CARD_COUNT }, (_, index) => (
+        <Card key={index} shadow="none" withBorder>
+          <Group gap="sm" wrap="nowrap">
+            <Skeleton h={18} w={18} radius="xs" flex="none" />
+            <Skeleton h={14} w={getSkeletonLineWidth(index)} radius="xs" />
+          </Group>
+        </Card>
+      ))}
+    </SimpleGrid>
+  </LoadingSkeleton>
+);

@@ -15,15 +15,17 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { CodeEditorSkeleton } from "metabase/common/data-studio/components/PageSkeleton";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
-import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
+import { Alert, Card, Center, Flex, Skeleton, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { SnippetHeader } from "../../components/SnippetHeader";
+import { SnippetPageSkeleton } from "../../components/SnippetPageSkeleton";
 
 import S from "./EditSnippetPage.module.css";
 import { SnippetDescriptionSection } from "./SnippetDescriptionSection";
@@ -97,10 +99,14 @@ export function EditSnippetPage() {
     return <NotFound />;
   }
 
-  if (isLoading || error || !snippet) {
+  if (isLoading) {
+    return <EditSnippetPageSkeleton />;
+  }
+
+  if (error || !snippet) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
@@ -177,5 +183,22 @@ export function EditSnippetPage() {
         isEnabled={isDirty && !isSaving}
       />
     </>
+  );
+}
+
+function EditSnippetPageSkeleton() {
+  return (
+    <SnippetPageSkeleton gap="lg">
+      <Flex flex={1} w="100%" gap="sm" mt="lg">
+        <CodeEditorSkeleton />
+        <Stack p="lg" gap="xl" flex="0 0 20rem">
+          <Skeleton h={14} w="60%" radius="xs" />
+          <Stack gap="sm">
+            <Skeleton h={12} w="80%" radius="xs" />
+            <Skeleton h={12} w="70%" radius="xs" />
+          </Stack>
+        </Stack>
+      </Flex>
+    </SnippetPageSkeleton>
   );
 }

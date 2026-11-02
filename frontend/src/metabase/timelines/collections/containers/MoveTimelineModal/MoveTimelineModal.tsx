@@ -7,6 +7,7 @@ import {
   useGetTimelineQuery,
 } from "metabase/api";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { ListSkeleton } from "metabase/common/components/Skeletons";
 import { useSetCollection } from "metabase/common/hooks";
 import { getDefaultTimelineName } from "metabase/common/utils/timelines";
 import { useDispatch } from "metabase/redux";
@@ -65,7 +66,12 @@ function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<ListSkeleton rows={6} p="xxl" />}
+        noWrapper
+      />
     );
   }
 

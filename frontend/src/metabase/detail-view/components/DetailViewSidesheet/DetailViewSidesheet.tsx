@@ -16,6 +16,7 @@ import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import {
   DetailsGroup,
   Header,
@@ -50,6 +51,11 @@ import type {
   TableColumnOrderSetting,
   WritebackActionId,
 } from "metabase-types/api";
+
+import {
+  DetailHeaderSkeleton,
+  DetailsGroupSkeleton,
+} from "../DetailViewSkeleton";
 
 import { Sidesheet } from "./Sidesheet";
 import { extractData, getModelId } from "./utils";
@@ -217,10 +223,30 @@ export function DetailViewSidesheet({
     ],
   ]);
 
-  if (error || isLoading) {
+  if (error) {
     return (
       <Sidesheet data-testid="object-detail" onClose={handleClose}>
-        <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+        <LoadingAndErrorWrapper error={error} />
+      </Sidesheet>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Sidesheet data-testid="object-detail" onClose={handleClose}>
+        <LoadingSkeleton gap={0}>
+          <Box pb="lg" pt="xxs" px={rem(56)}>
+            <Box ml={rem(-8)}>
+              <DetailHeaderSkeleton />
+            </Box>
+          </Box>
+          <DetailsGroupSkeleton
+            rows={table?.fields?.length}
+            pb={rem(48)}
+            pt="xxl"
+            px={rem(56)}
+          />
+        </LoadingSkeleton>
       </Sidesheet>
     );
   }

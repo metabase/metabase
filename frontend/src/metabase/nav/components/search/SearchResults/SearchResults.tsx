@@ -6,10 +6,15 @@ import { t } from "ttag";
 import { skipToken, useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
+import {
+  LoadingSkeleton,
+  type LoadingSkeletonProps,
+  getSkeletonLineWidth,
+} from "metabase/common/components/Skeletons";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import type { SearchFilters } from "metabase/common/search/types";
 import { navigate } from "metabase/router";
-import { Box, Loader, Stack, rem } from "metabase/ui";
+import { Box, Flex, Skeleton, Stack, rem } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import {
   DEFAULT_SEARCH_LIMIT,
@@ -46,8 +51,24 @@ export type SearchResultsProps = {
   context: SearchContext;
 };
 
-export const SearchLoadingSpinner = () => (
-  <Loader size="lg" label={t`Loading…`} />
+const SEARCH_RESULTS_SKELETON_ROWS = 6;
+
+/** Search or recents result rows: an icon, a title, and a secondary line. */
+export const SearchResultsSkeleton = ({
+  rows = SEARCH_RESULTS_SKELETON_ROWS,
+  ...props
+}: Omit<LoadingSkeletonProps, "children"> & { rows?: number }) => (
+  <LoadingSkeleton gap={0} {...props}>
+    {Array.from({ length: rows }, (_, index) => (
+      <Flex key={index} align="center" gap="0.75rem" p="sm">
+        <Skeleton h={rem(32)} w={rem(32)} radius="xs" flex="none" />
+        <Stack gap="xs" flex={1}>
+          <Skeleton h={14} w={getSkeletonLineWidth(index)} radius="xs" />
+          <Skeleton h={10} w={getSkeletonLineWidth(index + 3)} radius="xs" />
+        </Stack>
+      </Flex>
+    ))}
+  </LoadingSkeleton>
 );
 
 export const EmptyStateContainer = ({
@@ -150,7 +171,7 @@ export const SearchResults = ({
   }, [searchText, reset]);
 
   if (isLoading || isWaitingForDebounce) {
-    return <SearchLoadingSpinner />;
+    return <SearchResultsSkeleton p="sm" />;
   }
 
   return hasResults ? (

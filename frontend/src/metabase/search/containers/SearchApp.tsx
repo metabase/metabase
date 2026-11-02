@@ -6,6 +6,10 @@ import { useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import {
+  LoadingSkeleton,
+  getSkeletonLineWidth,
+} from "metabase/common/components/Skeletons";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import {
   filterEnabledSearchTypes,
@@ -23,10 +27,21 @@ import { queryToSearch, useLocation, useNavigate } from "metabase/router";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { Box, Flex, Group, Paper, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  Group,
+  Paper,
+  Skeleton,
+  Stack,
+  Text,
+  rem,
+} from "metabase/ui";
 import type { SearchRequest } from "metabase-types/api";
 
 import S from "./SearchApp.module.css";
+
+const SEARCH_RESULTS_SKELETON_ROWS = 8;
 
 const getPageFromLocation = (location: Location) => {
   const page = new URLSearchParams(location.search).get("page");
@@ -92,8 +107,16 @@ export function SearchApp() {
     });
   };
 
-  const { data, error, isFetching, requestId } = useSearchQuery(query);
+  // `currentData` is only for the current query, so a new search or page
+  // doesn't show the previous one's results while it loads.
+  const {
+    currentData: data,
+    error,
+    isFetching,
+    requestId,
+  } = useSearchQuery(query);
   const list = useMemo(() => data?.data ?? [], [data?.data]);
+  const isLoading = isFetching && !data;
 
   return (
     <Flex className={S.main} data-testid="search-app">
@@ -105,11 +128,11 @@ export function SearchApp() {
           <SearchSidebar value={searchFilters} onChange={onFilterChange} />
         </Stack>
         <Box flex={1}>
-          {(error || isFetching) && (
-            <LoadingAndErrorWrapper error={error} loading={isFetching} />
-          )}
+          {!!error && <LoadingAndErrorWrapper error={error} />}
 
-          {!error && !isFetching && list.length === 0 && (
+          {!error && isLoading && <SearchResultSectionSkeleton />}
+
+          {!error && !isLoading && list.length === 0 && (
             <Paper shadow="lg" p="2rem">
               <EmptyState
                 title={t`Didn't find anything`}
@@ -119,7 +142,7 @@ export function SearchApp() {
             </Paper>
           )}
 
-          {!error && !isFetching && list.length > 0 && (
+          {!error && !isLoading && list.length > 0 && (
             <Box>
               <SearchResultSection
                 totalResults={data?.total ?? 0}
@@ -148,3 +171,20 @@ export function SearchApp() {
     </Flex>
   );
 }
+
+const SearchResultSectionSkeleton = () => (
+  <Paper px="sm" py="lg">
+    <LoadingSkeleton gap="sm">
+      <Skeleton h={12} w={80} ml="sm" mb="sm" radius="xs" />
+      {Array.from({ length: SEARCH_RESULTS_SKELETON_ROWS }, (_, index) => (
+        <Flex key={index} align="flex-start" gap="0.75rem" p="sm">
+          <Skeleton h={rem(32)} w={rem(32)} radius="xs" flex="none" />
+          <Stack gap="sm" flex={1} pt="xs">
+            <Skeleton h={14} w={getSkeletonLineWidth(index)} radius="xs" />
+            <Skeleton h={10} w={getSkeletonLineWidth(index + 3)} radius="xs" />
+          </Stack>
+        </Flex>
+      ))}
+    </LoadingSkeleton>
+  </Paper>
+);

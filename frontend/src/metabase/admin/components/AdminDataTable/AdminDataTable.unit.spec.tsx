@@ -137,16 +137,18 @@ describe("AdminDataTable", () => {
     expect(screen.getByText("Nothing here")).toBeInTheDocument();
   });
 
-  it("keeps showing rows while refetching (overlay instead of blanking)", () => {
+  it("keeps showing rows while refetching, without a loading indicator", () => {
     setup({ loading: true });
 
-    // rows stay visible; the spinner overlays them
     expect(screen.getByText("Alpha")).toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 
-  it("does not render rows while loading with no data yet", () => {
+  it("shows a skeleton under the real headers while loading with no data yet", () => {
     setup({ rows: [], loading: true, emptyText: "Nothing here" });
 
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.getByText("Name")).toBeInTheDocument();
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
     expect(screen.queryByText("Nothing here")).not.toBeInTheDocument();
   });

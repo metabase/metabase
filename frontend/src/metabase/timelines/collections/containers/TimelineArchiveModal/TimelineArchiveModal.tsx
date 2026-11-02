@@ -2,6 +2,7 @@ import { skipToken, useGetTimelineQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
+import { TimelineDetailsModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
@@ -25,7 +26,12 @@ function TimelineArchiveModalContainer({
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<TimelineDetailsModalSkeleton onClose={props.onClose} />}
+        noWrapper
+      />
     );
   }
 

@@ -22,6 +22,7 @@ import { isWithinWeeks } from "../../utils";
 import { EmbedHomepage } from "../EmbedHomepage";
 import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection, recentsFilter } from "../HomeRecentSection";
+import { HomeSectionSkeleton } from "../HomeSectionSkeleton";
 import { HomeXraySection } from "../HomeXraySection";
 
 export const HomeContent = (): JSX.Element | null => {
@@ -60,7 +61,7 @@ export const HomeContent = (): JSX.Element | null => {
   // `!user` is implied by `!isContentReady`, and repeating it narrows the
   // type for everything below.
   if (!isContentReady || !user) {
-    return <LoadingAndErrorWrapper loading />;
+    return <HomeSectionSkeleton />;
   }
 
   if (embeddingHomepage === "visible" && user.is_superuser) {

@@ -7,6 +7,7 @@ import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { DetailViewPage } from "metabase/detail-view/components";
+import { DetailViewPageSkeleton } from "metabase/detail-view/components/DetailViewSkeleton";
 import {
   filterByPk,
   getRowName,
@@ -88,12 +89,14 @@ export function ModelDetailPage() {
     dispatch(setDetailView(null));
   });
 
-  if (!table || !dataset || !row || error || isLoading) {
-    const rowError = !row && !isLoading ? t`Row not found` : undefined;
+  if (isLoading && !error) {
+    return <DetailViewPageSkeleton rows={table?.fields?.length} />;
+  }
 
-    return (
-      <LoadingAndErrorWrapper error={error ?? rowError} loading={isLoading} />
-    );
+  if (!table || !dataset || !row || error) {
+    const rowError = !row ? t`Row not found` : undefined;
+
+    return <LoadingAndErrorWrapper error={error ?? rowError} />;
   }
 
   return (

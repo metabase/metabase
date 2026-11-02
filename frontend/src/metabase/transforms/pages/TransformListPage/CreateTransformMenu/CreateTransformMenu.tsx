@@ -3,13 +3,17 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
+import {
+  ListSkeleton,
+  LoadingSkeleton,
+} from "metabase/common/components/Skeletons";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
-import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
+import { Button, Icon, Menu, Skeleton, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { trackTransformCreate } from "../../../analytics";
@@ -79,9 +83,10 @@ export const CreateTransformMenu = () => {
         </Menu.Target>
         <Menu.Dropdown>
           {isLoading ? (
-            <Center>
-              <Loader size="sm" />
-            </Center>
+            <LoadingSkeleton w={220} p="sm" gap="lg">
+              <Skeleton h={10} w="60%" radius="xs" />
+              <ListSkeleton rows={3} />
+            </LoadingSkeleton>
           ) : (
             <>
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>

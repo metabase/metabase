@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import {
@@ -23,11 +24,16 @@ import {
   Flex,
   Group,
   Icon,
+  Skeleton,
   Stack,
   Text,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import {
+  CardListSkeleton,
+  PaneHeaderSkeleton,
+} from "../../../components/DataStudioPageSkeleton";
 import { trackMetadataChange } from "../../analytics";
 import { TableHeader } from "../../components/TableHeader";
 
@@ -54,10 +60,14 @@ export function TableFieldsPage() {
     { close: closeFieldValuesModal, open: openFieldValuesModal },
   ] = useDisclosure();
 
-  if (isLoading || error != null || table == null || tableId == null) {
+  if (isLoading) {
+    return <TableFieldsPageSkeleton />;
+  }
+
+  if (error != null || table == null || tableId == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
@@ -169,5 +179,35 @@ export function TableFieldsPage() {
         />
       )}
     </PageContainer>
+  );
+}
+
+function TableFieldsPageSkeleton() {
+  return (
+    <LoadingSkeleton h="100%" gap={0}>
+      <PageContainer gap="lg" px={0} pb={0}>
+        <PaneHeaderSkeleton icon="table" tabCount={5} px="3.5rem" />
+        <Flex
+          flex={1}
+          style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
+        >
+          <Stack
+            className={S.column}
+            flex="8 1 0"
+            miw={320}
+            maw={640}
+            gap="lg"
+            pt="xl"
+            pl="3.5rem"
+            pr="xl"
+          >
+            <Group h={32}>
+              <Skeleton h={14} w={60} radius="xs" />
+            </Group>
+            <CardListSkeleton rows={8} gap={12} withDescription />
+          </Stack>
+        </Flex>
+      </PageContainer>
+    </LoadingSkeleton>
   );
 }

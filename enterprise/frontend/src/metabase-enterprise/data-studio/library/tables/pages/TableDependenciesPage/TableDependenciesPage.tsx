@@ -3,9 +3,10 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Outlet, useParams } from "metabase/router";
-import { Card, Center } from "metabase/ui";
+import { Card, Center, Skeleton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { DataStudioPageSkeleton } from "../../../components/DataStudioPageSkeleton";
 import { TableHeader } from "../../components/TableHeader";
 
 type TableDependenciesPageParams = {
@@ -17,10 +18,18 @@ export function TableDependenciesPage() {
   const tableId = Urls.extractEntityId(params.tableId);
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
 
-  if (isLoading || error != null || table == null) {
+  if (isLoading) {
+    return (
+      <DataStudioPageSkeleton icon="table" tabCount={5}>
+        <Skeleton flex={1} radius="md" />
+      </DataStudioPageSkeleton>
+    );
+  }
+
+  if (error != null || table == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

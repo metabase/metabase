@@ -6,6 +6,7 @@ import {
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
+import { NewEventModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import * as Urls from "metabase/urls";
 import type {
   CreateTimelineEventRequest,
@@ -27,7 +28,12 @@ function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<NewEventModalSkeleton onClose={onClose} />}
+        noWrapper
+      />
     );
   }
 

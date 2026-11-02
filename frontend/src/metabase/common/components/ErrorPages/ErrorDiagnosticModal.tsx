@@ -5,6 +5,7 @@ import _ from "underscore";
 import { useSendBugReportMutation } from "metabase/api/bug-report";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeDiagnostics } from "metabase/redux/app";
@@ -12,7 +13,7 @@ import { addUndo } from "metabase/redux/undo";
 import { getIsErrorDiagnosticModalOpen } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
-import { Button, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
+import { Button, Icon, Modal, Skeleton, Stack, Text } from "metabase/ui";
 import { downloadObjectAsJson } from "metabase/utils/download";
 import { isWithinIframe } from "metabase/utils/iframe";
 
@@ -46,15 +47,17 @@ export const ErrorDiagnosticModal = ({
 
   if (loading || !errorInfo) {
     return (
-      <Modal opened onClose={onClose}>
-        <Stack align="center" justify="center" mb="xl">
-          <Text fw="bold" color="text-secondary" mb="sm">
-            {c(
-              "loading message indicating that we are gathering debugging information to aid in providing technical support",
-            ).t`Gathering diagnostic information...`}
-          </Text>
-          <Loader />
-        </Stack>
+      <Modal
+        opened
+        onClose={onClose}
+        title={
+          isBugReportingEnabled
+            ? t`Report a bug`
+            : t`Gather diagnostic information`
+        }
+        size={550}
+      >
+        <DiagnosticFormSkeleton />
       </Modal>
     );
   }
@@ -179,6 +182,15 @@ export const ErrorDiagnosticModal = ({
     />
   );
 };
+
+const DiagnosticFormSkeleton = () => (
+  <LoadingSkeleton gap="lg" py="lg">
+    <Skeleton h={14} w="55%" radius="xs" />
+    <Skeleton h={120} radius="sm" />
+    <Skeleton h={14} w="80%" radius="xs" />
+    <Skeleton h={40} w={120} radius="sm" />
+  </LoadingSkeleton>
+);
 
 export const ErrorDiagnosticModalTrigger = () => {
   const [isModalOpen, setModalOpen] = useState(false);

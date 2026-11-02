@@ -8,7 +8,8 @@ import type { Dashboard } from "metabase-types/api";
 
 import { DashboardPageShell } from "../../components/DashboardPageShell";
 
-import { UsageStatsCard } from "./UsageStatsCard";
+import { UsageStatsCard, UsageStatsCardSkeleton } from "./UsageStatsCard";
+import { USAGE_STATS_CARD_SKELETON_DISPLAYS } from "./constants";
 import {
   getDashboardIdParameter,
   getUsageStatsDashcards,
@@ -17,7 +18,10 @@ import {
 
 export function DashboardUsageStatsPage() {
   return (
-    <DashboardPageShell data-testid="dashboard-usage-stats-page">
+    <DashboardPageShell
+      data-testid="dashboard-usage-stats-page"
+      bodySkeleton={<DashboardUsageStatsSkeleton />}
+    >
       {(dashboard) => <DashboardUsageStats dashboard={dashboard} />}
     </DashboardPageShell>
   );
@@ -45,7 +49,13 @@ function DashboardUsageStats({ dashboard }: DashboardUsageStatsProps) {
   const error = auditInfoError ?? auditDashboardError;
 
   if (isLoading || error != null) {
-    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <DelayedLoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<DashboardUsageStatsSkeleton />}
+      />
+    );
   }
 
   if (auditDashboardId == null || auditDashboard == null) {
@@ -77,6 +87,16 @@ function DashboardUsageStats({ dashboard }: DashboardUsageStatsProps) {
           dashcard={dashcard}
           parameters={parameters}
         />
+      ))}
+    </Stack>
+  );
+}
+
+function DashboardUsageStatsSkeleton() {
+  return (
+    <Stack gap="lg">
+      {USAGE_STATS_CARD_SKELETON_DISPLAYS.map((display) => (
+        <UsageStatsCardSkeleton key={display} display={display} />
       ))}
     </Stack>
   );

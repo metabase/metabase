@@ -11,6 +11,7 @@ import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
+import { ReferenceDetailSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { updateTable } from "metabase/reference/update-actions";
@@ -169,8 +170,18 @@ const TableDetail = (props: TableDetailProps) => {
         nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        loading={!loadingError && !saveError && loading}
         error={saveError ?? loadingError}
+        loader={
+          <ReferenceDetailSkeleton
+            titles={[
+              t`Description`,
+              t`Actual name in database`,
+              t`Why this table is interesting`,
+              t`Things to be aware of about this table`,
+            ]}
+          />
+        }
       >
         {() => (
           <div className={CS.wrapper}>

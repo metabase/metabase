@@ -5,8 +5,9 @@ import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { useStore } from "metabase/redux";
-import { Loader, Stack, Text, rem } from "metabase/ui";
+import { Skeleton, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { ForeignKey } from "metabase-types/api";
 
@@ -41,7 +42,7 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
   );
 
   const {
-    data: dataset,
+    currentData: dataset,
     error,
     isFetching,
   } = useGetAdhocQueryQuery(
@@ -55,6 +56,7 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
 
     return dataset.data.rows[0]?.[0] ?? 0; // rows array can be empty (metabase#62156)
   }, [dataset]);
+  const isCountLoading = isFetching && !dataset;
   const clickable = typeof count === "number" && count > 0;
   const originTableName = fk.origin?.table?.display_name ?? "";
   const relationName =
@@ -72,9 +74,11 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
         ? { component: Link, to: fkQuestionUrl, onClick }
         : undefined)}
     >
-      {isFetching && <Loader size="md" />}
-
-      {!isFetching && (
+      {isCountLoading ? (
+        <LoadingSkeleton>
+          <Skeleton h={24} w={40} radius="xs" />
+        </LoadingSkeleton>
+      ) : (
         <Text
           c={count === 0 ? "text-disabled" : "text-secondary"}
           className={S.text}

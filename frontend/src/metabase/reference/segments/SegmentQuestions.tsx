@@ -11,6 +11,7 @@ import { useSelector } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
+import { ReferenceListSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import * as Urls from "metabase/urls";
 import { visualizations } from "metabase/viz-core";
 import type * as Lib from "metabase-lib";
@@ -64,7 +65,11 @@ export const SegmentQuestions = ({
         name={t`Questions about ${segment?.name}`}
         headerIcon={modelIconMap.segment}
       />
-      <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
+      <LoadingAndErrorWrapper
+        loading={!error && isLoading}
+        error={error}
+        loader={<ReferenceListSkeleton />}
+      >
         {() =>
           cards.length > 0 ? (
             <div className={cx(CS.wrapper, CS.wrapperTrim)}>

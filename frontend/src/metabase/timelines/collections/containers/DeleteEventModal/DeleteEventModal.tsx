@@ -6,6 +6,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
+import { DeleteModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import * as Urls from "metabase/urls";
 import type { TimelineEvent } from "metabase-types/api";
 
@@ -24,7 +25,13 @@ function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
   };
 
   if (isLoading || error || !event) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<DeleteModalSkeleton onClose={onClose} />}
+      />
+    );
   }
 
   return (

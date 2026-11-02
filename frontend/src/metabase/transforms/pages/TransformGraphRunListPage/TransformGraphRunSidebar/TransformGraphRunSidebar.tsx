@@ -41,6 +41,7 @@ import type {
 } from "metabase-types/api";
 
 import { TransformRunItem } from "../../JobRunListPage/JobRunSidebar/TransformRunItem";
+import { TransformRunItemsSkeleton } from "../../JobRunListPage/JobRunSidebar/TransformRunItemsSkeleton";
 import { RunName, isDeletedRun } from "../TransformGraphRunTable";
 
 import { TransformGraphRunInfoSection } from "./TransformGraphRunInfoSection";
@@ -245,7 +246,13 @@ function TransformRunList({
   error,
 }: TransformRunListProps) {
   if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<TransformRunItemsSkeleton />}
+      />
+    );
   }
 
   if (transformRuns.length === 0) {

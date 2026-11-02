@@ -8,6 +8,7 @@ import { CopyButton } from "metabase/common/components/CopyButton";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { LogsViewer } from "metabase/monitor/components/LogsViewer";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
@@ -19,7 +20,7 @@ import {
   Button,
   Flex,
   Icon,
-  Loader,
+  Skeleton,
   Stack,
   Text,
   Tooltip,
@@ -30,6 +31,7 @@ import { openSaveDialog } from "metabase/utils/dom";
 import type { Database } from "metabase-types/api";
 
 import { formatTaskDetails, getFilename } from "../../utils";
+import { DetailRowsSkeleton } from "../DetailRowsSkeleton";
 import { MonitorBackLink } from "../MonitorBackLink";
 import { TaskStatusBadge } from "../TaskStatusBadge";
 
@@ -37,14 +39,18 @@ import S from "./TaskDetailsPage.module.css";
 
 export const TaskDetailsPage = () => {
   const { taskId } = useParams();
-  const { data: task, error, isLoading } = useGetTaskQuery(Number(taskId));
+  const { data: task, error } = useGetTaskQuery(Number(taskId));
   const code = formatTaskDetails(task);
   const linesCount = useMemo(() => code.split("\n").length, [code]);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
 
-  if (!task || error || isLoading) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (!task) {
+    return <TaskDetailsPageSkeleton />;
   }
   const hasLogs = Boolean(task.logs?.length);
   const databases = databasesData?.data ?? [];
@@ -95,27 +101,19 @@ export const TaskDetailsPage = () => {
             )}
             <Flex gap="lg">
               <Text fw="bold" w={120}>{t`DB Name`}</Text>
-              <Text>
-                {isLoadingDatabases ? (
-                  <Loader size="xs" />
-                ) : db ? (
-                  dbName
-                ) : (
-                  EMPTY_CELL_PLACEHOLDER
-                )}
-              </Text>
+              {isLoadingDatabases ? (
+                <DatabaseValueSkeleton />
+              ) : (
+                <Text>{db ? dbName : EMPTY_CELL_PLACEHOLDER}</Text>
+              )}
             </Flex>
             <Flex gap="lg">
               <Text fw="bold" w={120}>{t`DB Engine`}</Text>
-              <Text>
-                {isLoadingDatabases ? (
-                  <Loader size="xs" />
-                ) : db ? (
-                  dbEngine
-                ) : (
-                  EMPTY_CELL_PLACEHOLDER
-                )}
-              </Text>
+              {isLoadingDatabases ? (
+                <DatabaseValueSkeleton />
+              ) : (
+                <Text>{db ? dbEngine : EMPTY_CELL_PLACEHOLDER}</Text>
+              )}
             </Flex>
             <Flex gap="lg" align="baseline">
               <Text fw="bold" w={120}>{t`Started at`}</Text>
@@ -191,3 +189,36 @@ export const TaskDetailsPage = () => {
     </Flex>
   );
 };
+
+const DatabaseValueSkeleton = () => (
+  <LoadingSkeleton display="inline-flex" justify="center">
+    <Skeleton h={12} w={100} radius="xs" />
+  </LoadingSkeleton>
+);
+
+const TaskDetailsPageSkeleton = () => (
+  <Flex h="100%" wrap="nowrap">
+    <MonitorMain gap="xl">
+      <MonitorBackLink to={Urls.monitorTasksList()} label={t`Back to Tasks`} />
+      <MonitorPageContent className={S.content}>
+        <LoadingSkeleton gap="sm">
+          <MonitorHeaderTitle>{t`Task details`}</MonitorHeaderTitle>
+          <DetailRowsSkeleton
+            labels={[
+              t`ID`,
+              t`Task`,
+              t`Status`,
+              t`DB Name`,
+              t`DB Engine`,
+              t`Started at`,
+              t`Ended at`,
+              t`Duration (ms)`,
+            ]}
+          />
+          <MonitorHeaderTitle>{t`JSON details`}</MonitorHeaderTitle>
+          <Skeleton h={200} mt="lg" radius="sm" />
+        </LoadingSkeleton>
+      </MonitorPageContent>
+    </MonitorMain>
+  </Flex>
+);

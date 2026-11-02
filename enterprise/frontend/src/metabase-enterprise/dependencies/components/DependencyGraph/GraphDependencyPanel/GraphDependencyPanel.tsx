@@ -3,7 +3,8 @@ import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { Box, Card } from "metabase/ui";
+import { getSkeletonLineWidth } from "metabase/common/components/Skeletons";
+import { Box, Card, Group, Skeleton, Stack } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import type {
@@ -84,7 +85,11 @@ export function GraphDependencyPanel({
         onClose={onClose}
       />
       {isLoading || error != null ? (
-        <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+        <DelayedLoadingAndErrorWrapper
+          loading={isLoading}
+          error={error}
+          loader={<PanelBodySkeleton />}
+        />
       ) : nodes.length === 0 ? (
         <Box p="xl" c="text-secondary" ta="center">
           {t`Didn't find any results`}
@@ -93,5 +98,31 @@ export function GraphDependencyPanel({
         <PanelBody nodes={nodes} getGraphUrl={getGraphUrl} />
       )}
     </Card>
+  );
+}
+
+const SKELETON_ITEM_COUNT = 4;
+
+function PanelBodySkeleton() {
+  return (
+    <Stack gap={0}>
+      {Array.from({ length: SKELETON_ITEM_COUNT }, (_, index) => (
+        <Stack key={index} className={S.skeletonItem} p="xl" gap="sm">
+          <Group justify="space-between" wrap="nowrap">
+            <Group gap="sm" wrap="nowrap" flex={1}>
+              <Skeleton h={16} w={16} radius="xs" flex="none" />
+              <Skeleton h={12} w={getSkeletonLineWidth(index)} radius="xs" />
+            </Group>
+            <Skeleton h={10} w={56} radius="xs" />
+          </Group>
+          <Skeleton
+            h={10}
+            w={`calc(${getSkeletonLineWidth(index + 3)} / 2)`}
+            ml="1.5rem"
+            radius="xs"
+          />
+        </Stack>
+      ))}
+    </Stack>
   );
 }

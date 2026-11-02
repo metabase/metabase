@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
-import { Center, type ComboboxProps, Loader } from "metabase/ui";
+import {
+  ListSkeleton,
+  LoadingSkeleton,
+} from "metabase/common/components/Skeletons";
+import { type ComboboxProps, Skeleton } from "metabase/ui";
 
 import { ListValuePicker } from "./ListValuePicker";
 import { SearchValuePicker } from "./SearchValuePicker";
@@ -14,6 +18,8 @@ import type {
   UseSearchFieldValuesResult,
 } from "./types";
 import { canShowListPicker, canShowSearchPicker } from "./utils";
+
+const SKELETON_CHECKBOX_COUNT = 5;
 
 export interface FieldValuePickerProps {
   values: string[];
@@ -57,11 +63,7 @@ export function FieldValuePicker({
   });
 
   if (isLoading) {
-    return (
-      <Center h="2.5rem">
-        <Loader />
-      </Center>
-    );
+    return <ListValuePickerSkeleton />;
   }
 
   if (fieldData && canShowListPicker(fieldData)) {
@@ -103,5 +105,14 @@ export function FieldValuePicker({
       parseValue={parseValue}
       onChange={onChange}
     />
+  );
+}
+
+function ListValuePickerSkeleton() {
+  return (
+    <LoadingSkeleton>
+      <Skeleton h={40} radius="sm" />
+      <ListSkeleton rows={SKELETON_CHECKBOX_COUNT} iconSize={20} gap="md" />
+    </LoadingSkeleton>
   );
 }

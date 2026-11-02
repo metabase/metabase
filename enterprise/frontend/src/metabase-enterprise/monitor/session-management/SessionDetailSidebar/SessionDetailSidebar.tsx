@@ -5,6 +5,7 @@ import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Flex, Stack, Text } from "metabase/ui";
 
+import { SessionDetailSkeleton } from "./SessionDetailSkeleton";
 import { SessionDetails } from "./SessionDetails";
 import { SessionTitle } from "./SessionTitle";
 import { SidebarFooter } from "./SidebarFooter";
@@ -60,7 +61,12 @@ export const SessionDetailSidebar = ({
           onNavigate={onNavigate}
           onClose={onClose}
         />
-        <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+        <LoadingAndErrorWrapper
+          loading={isLoading}
+          error={error}
+          loader={<SessionDetailSkeleton />}
+          noWrapper
+        >
           {session ? (
             <>
               <SessionTitle user={session.user} />

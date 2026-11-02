@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { getSkeletonLineWidth } from "metabase/common/components/Skeletons";
 import { Table } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
 import { usePagination } from "metabase/common/hooks/use-pagination";
@@ -154,7 +155,7 @@ export const MetabotPromptSuggestionPane = ({
           rows={rows}
           rowRenderer={(row) =>
             row.isLoading ? (
-              <SkeletonSuggestedPromptRow key={row.id} />
+              <SkeletonSuggestedPromptRow key={row.id} index={row.id} />
             ) : (
               <SuggestedPromptRow
                 key={row.id}
@@ -196,13 +197,13 @@ export const MetabotPromptSuggestionPane = ({
   );
 };
 
-const SkeletonSuggestedPromptRow = () => (
+const SkeletonSuggestedPromptRow = ({ index }: { index: number }) => (
   <Box component="tr" h="3.5rem" data-testid="prompt-loading-row">
     <td>
-      <Skeleton h="1rem" natural />
+      <Skeleton h="1rem" w={getSkeletonLineWidth(index)} />
     </td>
     <td>
-      <Skeleton h="1rem" natural />
+      <Skeleton h="1rem" w={getSkeletonLineWidth(index + 3)} />
     </td>
     <Flex h="3.5rem" component="td" align="center" justify="flex-end">
       <Skeleton w="1.25rem" h="1rem" mr=".25rem" />

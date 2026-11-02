@@ -5,6 +5,7 @@ import {
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { useNavigate } from "metabase/router";
+import { TimelineDetailsModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
@@ -43,7 +44,12 @@ function TimelineDetailsModalContainer({
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<TimelineDetailsModalSkeleton onClose={props.onClose} />}
+        noWrapper
+      />
     );
   }
 

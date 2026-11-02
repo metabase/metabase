@@ -5,9 +5,11 @@ import _ from "underscore";
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { ArchiveModal } from "metabase/common/components/ArchiveModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { setArchivedDashboard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
 import { useParams } from "metabase/router";
+import { Button, Modal, Skeleton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -63,18 +65,38 @@ export const ArchiveDashboardModalConnectedInner = (props: OwnProps) => {
     id != null ? { id } : skipToken,
   );
 
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (id == null) {
+    return null;
+  }
+
+  if (!dashboard) {
+    return <ArchiveDashboardModalSkeleton onClose={props.onClose} />;
+  }
+
   return (
-    <LoadingAndErrorWrapper
-      loading={id != null && !dashboard}
-      error={error}
-      noWrapper
-    >
-      {dashboard && (
-        <ArchiveDashboardModal onClose={props.onClose} dashboard={dashboard} />
-      )}
-    </LoadingAndErrorWrapper>
+    <ArchiveDashboardModal onClose={props.onClose} dashboard={dashboard} />
   );
 };
+
+function ArchiveDashboardModalSkeleton({ onClose }: OwnProps) {
+  return (
+    <Modal opened title={t`Move this dashboard to trash?`} onClose={onClose}>
+      <LoadingSkeleton py="xs">
+        <Skeleton h={14} w="60%" radius="xs" />
+      </LoadingSkeleton>
+      <Modal.Footer>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button color="negative" variant="filled" disabled>
+          {t`Move to trash`}
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+}
 
 export const ArchiveDashboardModalConnected =
   ArchiveDashboardModalConnectedInner;

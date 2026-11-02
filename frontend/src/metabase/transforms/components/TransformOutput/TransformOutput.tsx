@@ -5,7 +5,8 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { Box, Breadcrumbs, FixedSizeIcon, Group, Loader } from "metabase/ui";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
+import { Box, Breadcrumbs, FixedSizeIcon, Group, Skeleton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformId } from "metabase-types/api";
 
@@ -36,7 +37,11 @@ export const TransformOutput = ({ transformId }: TransformOutputProps) => {
   const error = transformError || schemasError;
 
   if (isLoading) {
-    return <Loader size="xs" />;
+    return (
+      <LoadingSkeleton>
+        <Skeleton h={12} w={160} radius="xs" />
+      </LoadingSkeleton>
+    );
   }
 
   if (error || !transform) {

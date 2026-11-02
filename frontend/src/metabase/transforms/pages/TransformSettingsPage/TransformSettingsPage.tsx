@@ -7,6 +7,10 @@ import * as Urls from "metabase/urls";
 
 import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "../../components/TransformHeader";
+import {
+  TransformPageSkeleton,
+  TransformSettingsSkeleton,
+} from "../../components/TransformSkeletons";
 import { useTransformWithPolling } from "../../hooks/use-transform-with-polling";
 
 import { TransformSettingsSection } from "./TransformSettingsSection";
@@ -33,10 +37,18 @@ export const TransformSettingsPage = () => {
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
-  if (isLoading || error || transform == null) {
+  if (isLoading) {
+    return (
+      <TransformPageSkeleton>
+        <TransformSettingsSkeleton />
+      </TransformPageSkeleton>
+    );
+  }
+
+  if (error || transform == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

@@ -3,6 +3,7 @@ import {
   useGetCollectionQuery,
   useListCollectionTimelinesQuery,
 } from "metabase/api";
+import { TimelineListModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import * as Urls from "metabase/urls";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
@@ -39,7 +40,12 @@ function TimelineListModalContainer({
 
   if (isLoading || error || !collection) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<TimelineListModalSkeleton onClose={props.onClose} />}
+        noWrapper
+      />
     );
   }
 

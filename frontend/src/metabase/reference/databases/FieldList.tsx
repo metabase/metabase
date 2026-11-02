@@ -13,6 +13,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
 import S from "metabase/reference/components/List/List.module.css";
+import { ReferenceFieldListSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import * as actions from "metabase/reference/reference";
 import { updateField } from "metabase/reference/update-actions";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
@@ -151,8 +152,9 @@ const FieldList = (props: FieldListProps) => {
         startEditing={startEditing}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        loading={!loadingError && !saveError && loading}
         error={saveError ?? loadingError}
+        loader={<ReferenceFieldListSkeleton />}
       >
         {() =>
           table != null && fields.length > 0 ? (

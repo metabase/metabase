@@ -1,6 +1,6 @@
 export {
   EmptyStateContainer,
-  SearchLoadingSpinner,
   SearchResults,
+  SearchResultsSkeleton,
 } from "./SearchResults";
 export type { SearchResultsFooter } from "./SearchResults";

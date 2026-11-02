@@ -13,7 +13,7 @@ import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboa
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import {
   EmptyStateContainer,
-  SearchLoadingSpinner,
+  SearchResultsSkeleton,
 } from "metabase/nav/components/search/SearchResults";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Group, Loader, Stack, Title } from "metabase/ui";
@@ -22,6 +22,8 @@ import { isSyncCompleted } from "metabase/utils/syncing";
 import type { RecentItem } from "metabase-types/api";
 
 import { getItemUrl, isItemActive } from "./util";
+
+const RECENTS_SKELETON_ROWS = 5;
 
 type RecentsListContentProps = {
   isLoading: boolean;
@@ -43,7 +45,12 @@ export const RecentsListContent = ({
   });
 
   if (isLoading) {
-    return <SearchLoadingSpinner />;
+    return (
+      <Stack gap="sm" px="sm" pt="lg" pb="sm">
+        <Title order={4} px="sm">{t`Recently viewed`}</Title>
+        <SearchResultsSkeleton rows={RECENTS_SKELETON_ROWS} />
+      </Stack>
+    );
   }
 
   if (results.length === 0) {

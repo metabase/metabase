@@ -7,6 +7,7 @@ import { useListActionsQuery, useSearchQuery } from "metabase/api";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { ListSkeleton } from "metabase/common/components/Skeletons";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { ActionCreator } from "metabase/querying/action-creator";
@@ -209,7 +210,12 @@ function ActionPickerWithModels(
   const isLoading = isLoadingSearch || isLoadingActions;
   const error = searchError || actionsError;
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+    <LoadingAndErrorWrapper
+      loading={isLoading}
+      error={error}
+      noWrapper
+      loader={<ListSkeleton rows={6} iconSize={12} textHeight={14} gap="md" />}
+    >
       <ActionPicker {...props} models={models} actions={actions} />
     </LoadingAndErrorWrapper>
   );

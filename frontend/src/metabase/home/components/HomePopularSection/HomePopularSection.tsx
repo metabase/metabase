@@ -11,6 +11,7 @@ import type { PopularItem } from "metabase-types/api";
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeModelCard } from "../HomeModelCard";
+import { HomeSectionSkeleton } from "../HomeSectionSkeleton";
 
 import S from "./HomePopularSection.module.css";
 
@@ -22,8 +23,12 @@ export const HomePopularSection = (): JSX.Element => {
     error,
   } = useListPopularItemsQuery(undefined, { refetchOnMountOrArgChange: true });
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (isLoading) {
+    return <HomeSectionSkeleton />;
   }
 
   return (

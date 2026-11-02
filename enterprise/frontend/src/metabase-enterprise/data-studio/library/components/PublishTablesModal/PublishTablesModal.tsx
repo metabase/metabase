@@ -3,6 +3,7 @@ import { jt, t } from "ttag";
 import { useGetTableSelectionInfoQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { FormSkeleton } from "metabase/common/components/Skeletons";
 import { trackDataStudioTablePublished } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/common/hooks";
 import {
@@ -13,7 +14,15 @@ import {
 } from "metabase/forms";
 import { PLUGIN_LIBRARY, type PublishTablesModalProps } from "metabase/plugins";
 import { useNavigate } from "metabase/router";
-import { Button, FocusTrap, List, Modal, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  FocusTrap,
+  List,
+  Modal,
+  Skeleton,
+  Stack,
+  Text,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type {
@@ -63,11 +72,14 @@ type ModalTitleProps = {
 };
 
 function ModalTitle({ databaseIds, schemaIds, tableIds }: ModalTitleProps) {
-  const { data } = useGetTableSelectionInfoQuery({
+  const { data, isLoading } = useGetTableSelectionInfoQuery({
     database_ids: databaseIds,
     schema_ids: schemaIds,
     table_ids: tableIds,
   });
+  if (isLoading) {
+    return <Skeleton h={24} w="70%" radius="xs" />;
+  }
   if (!data) {
     return null;
   }
@@ -109,6 +121,7 @@ function ModalBody({
       <DelayedLoadingAndErrorWrapper
         loading={isLoading || isLoadingDataCollection || dataCollection == null}
         error={error}
+        loader={<ModalBodySkeleton />}
       />
     );
   }
@@ -194,6 +207,19 @@ function ModalBody({
         </Modal.Footer>
       </Form>
     </FormProvider>
+  );
+}
+
+function ModalBodySkeleton() {
+  return (
+    <Stack gap={0}>
+      <Skeleton h={14} w="75%" radius="xs" />
+      <FormSkeleton fields={1} mt="xl" />
+      <Modal.Footer>
+        <Skeleton h={40} w={80} radius="sm" />
+        <Skeleton h={40} w={140} radius="sm" />
+      </Modal.Footer>
+    </Stack>
   );
 }
 

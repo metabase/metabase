@@ -13,6 +13,7 @@ import { isWithinWeeks } from "../../utils";
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeModelCard } from "../HomeModelCard";
+import { HomeSectionSkeleton } from "../HomeSectionSkeleton";
 
 import S from "./HomeRecentSection.module.css";
 
@@ -23,8 +24,12 @@ export const HomeRecentSection = () => {
   const hasHelpCard =
     user != null && user.is_installer && isWithinWeeks(user.first_login, 2);
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (isLoading) {
+    return <HomeSectionSkeleton />;
   }
 
   return (

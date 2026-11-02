@@ -1,4 +1,3 @@
-import cx from "classnames";
 import {
   type StyleHTMLAttributes,
   forwardRef,
@@ -19,9 +18,12 @@ import {
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
+import {
+  ListSkeleton,
+  LoadingSkeleton,
+} from "metabase/common/components/Skeletons";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import CS from "metabase/css/core/index.css";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { addRemappings } from "metabase/metadata-store";
 import {
@@ -35,6 +37,7 @@ import {
   Loader,
   MultiAutocompleteOption,
   MultiAutocompleteValue,
+  Skeleton,
 } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
@@ -373,7 +376,7 @@ export const FieldValuesWidgetInner = forwardRef<
         ref={ref}
       >
         {isListMode && isLoading ? (
-          <LoadingState />
+          <ListFieldSkeleton isDashboardFilter={!!parameter} />
         ) : isListMode && hasListValues && multi ? (
           <ListField
             isDashboardFilter={!!parameter}
@@ -464,13 +467,22 @@ export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
 // eslint-disable-next-line import/no-default-export
 export default FieldValuesWidget;
 
-const LoadingState = () => (
-  <div
-    className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
-    style={{ minHeight: 82 }}
-  >
-    <Loader size="xs" />
-  </div>
+const LIST_SKELETON_ROWS = 6;
+
+const ListFieldSkeleton = ({
+  isDashboardFilter,
+}: {
+  isDashboardFilter: boolean;
+}) => (
+  <LoadingSkeleton gap={isDashboardFilter ? 0 : "sm"}>
+    <Skeleton h={40} radius="sm" />
+    <ListSkeleton
+      rows={LIST_SKELETON_ROWS}
+      gap="lg"
+      py="sm"
+      px={isDashboardFilter ? "sm" : "xxxs"}
+    />
+  </LoadingSkeleton>
 );
 
 function getNothingFoundMessage({

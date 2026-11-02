@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { Center, Flex } from "metabase/ui";
+import { Center, Flex, Skeleton } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
+import { DataStudioPageSkeleton } from "../../../components/DataStudioPageSkeleton";
 import {
   type DashboardTabsInfo,
   useDashboardTabsInfo,
@@ -21,11 +22,13 @@ type DashboardPageShellProps = {
   "data-testid"?: string;
   children: RenderPage;
   aside?: RenderAside;
+  /** Placeholder for the page body while the dashboard loads. */
+  bodySkeleton?: ReactNode;
 };
 
 /**
  * Loads the dashboard in the route and what its tabs need, and frames a Data
- * Studio dashboard page with its header. Renders a loader or the error until
+ * Studio dashboard page with its header. Renders a skeleton or the error until
  * all of it is there, then `children` with the dashboard. `aside` renders beside the page, at its
  * edge, with the width the page is left with.
  */
@@ -33,6 +36,7 @@ export function DashboardPageShell({
   "data-testid": dataTestId,
   children,
   aside,
+  bodySkeleton = <Skeleton flex={1} mih={400} radius="md" />,
 }: DashboardPageShellProps) {
   const {
     dashboard,
@@ -47,10 +51,18 @@ export function DashboardPageShell({
   const isLoading = isLoadingDashboard || isLoadingTabsInfo;
   const error = dashboardError ?? tabsInfoError;
 
-  if (isLoading || error != null || dashboard == null) {
+  if (isLoading) {
+    return (
+      <DataStudioPageSkeleton icon="dashboard" tabCount={5}>
+        {bodySkeleton}
+      </DataStudioPageSkeleton>
+    );
+  }
+
+  if (error != null || dashboard == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

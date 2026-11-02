@@ -7,7 +7,7 @@ import {
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { dayjs } from "metabase/dayjs";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
-import { ActionIcon, Box, Button, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Icon, Skeleton } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
@@ -39,7 +39,18 @@ export function ModelCacheManagementSection({ model }: Props) {
   if (isLoading) {
     // we actually don't want to show the error here, because if the model has not been cached
     // the api returns a 404 instead of an empty record
-    return <DelayedLoadingAndErrorWrapper loading error={null} />;
+    return (
+      <DelayedLoadingAndErrorWrapper
+        loading
+        error={null}
+        loader={
+          <Flex align="center" gap="sm">
+            <Skeleton h={20} w={36} radius="xl" />
+            <Skeleton h={14} w={140} radius="xs" />
+          </Flex>
+        }
+      />
+    );
   }
 
   const shouldShowRefreshStatus =

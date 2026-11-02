@@ -3,16 +3,22 @@ import { t } from "ttag";
 
 import { useSearchQuery } from "metabase/api";
 import {
+  LoadingSkeleton,
+  getSkeletonLineWidth,
+} from "metabase/common/components/Skeletons";
+import {
   ActionIcon,
   Box,
-  Center,
   Checkbox,
   FixedSizeIcon,
-  Loader,
+  Group,
   Popover,
+  Skeleton,
   Stack,
 } from "metabase/ui";
 import type { SearchModel } from "metabase-types/api";
+
+import { ENABLED_SEARCH_MODELS } from "../../constants";
 
 import S from "./SearchModelPicker.module.css";
 import { getSearchModelItems } from "./utils";
@@ -75,9 +81,18 @@ function SearchModelPopover({
   return (
     <Box w="15rem" p="lg">
       {isLoading ? (
-        <Center>
-          <Loader />
-        </Center>
+        <LoadingSkeleton gap="0.75rem">
+          {Array.from({ length: ENABLED_SEARCH_MODELS.length }, (_, index) => (
+            <Group key={index} gap="sm" wrap="nowrap">
+              <Skeleton h={20} w={20} radius="xs" flex="none" />
+              <Skeleton
+                h={12}
+                w={`calc(${getSkeletonLineWidth(index)} / 2)`}
+                radius="xs"
+              />
+            </Group>
+          ))}
+        </LoadingSkeleton>
       ) : (
         <Checkbox.Group value={searchModels} onChange={handleChange}>
           <Stack gap="0.75rem">

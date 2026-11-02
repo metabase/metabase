@@ -12,6 +12,10 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ListSearchField } from "metabase/common/components/ListSearchField";
+import {
+  ListSkeleton,
+  LoadingSkeleton,
+} from "metabase/common/components/Skeletons";
 import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import type { TextInputProps } from "metabase/ui";
@@ -23,6 +27,8 @@ import { isTouchDevice } from "metabase/utils/browser";
 import styles from "./AccordionListCell.module.css";
 import type { Item, Row, Section } from "./types";
 import { isReactNode } from "./utils";
+
+const LOADING_SECTION_SKELETON_ROWS = 3;
 
 export type SharedAccordionProps<
   TItem extends Item,
@@ -306,9 +312,9 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
     );
   } else if (type === "loading") {
     content = (
-      <div className={cx(CS.m1, CS.flex, CS.layoutCentered)}>
-        <Loader size="lg" />
-      </div>
+      <LoadingSkeleton px="lg" py="md">
+        <ListSkeleton rows={LOADING_SECTION_SKELETON_ROWS} />
+      </LoadingSkeleton>
     );
   } else if (type === "search") {
     borderBottom = true;

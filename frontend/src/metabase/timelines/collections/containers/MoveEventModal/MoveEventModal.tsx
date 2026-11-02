@@ -9,6 +9,7 @@ import {
   MoveEventModal,
   type MoveEventModalProps,
 } from "metabase/timelines/common/components/MoveEventModal";
+import { MoveEventModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import { useSetTimeline } from "metabase/timelines/common/hooks";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
@@ -67,7 +68,13 @@ function MoveEventModalContainer({ params, ...props }: ContainerProps) {
   const error = eventError ?? timelinesError ?? collectionError;
 
   if (isLoading || error || !event) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<MoveEventModalSkeleton onClose={props.onClose} />}
+      />
+    );
   }
 
   return (

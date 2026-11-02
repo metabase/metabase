@@ -5,6 +5,7 @@ import {
   useGetDatabaseMetadataQuery,
   useListDatabaseSchemaTablesQuery,
 } from "metabase/api";
+import { BrowseCardsSkeleton } from "metabase/browse/components/BrowseSkeletons";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
@@ -31,6 +32,8 @@ type TableBrowserContainerProps = {
 };
 
 const EMPTY_TABLES: Table[] = [];
+
+export const TABLE_CARDS_SKELETON_COUNT = 12;
 
 const getDatabaseId = (
   props: TableBrowserContainerProps,
@@ -96,7 +99,14 @@ export const TableBrowser = (props: TableBrowserContainerProps) => {
   }
 
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+    <LoadingAndErrorWrapper
+      loading={isLoading}
+      error={error}
+      noWrapper
+      loader={
+        <BrowseCardsSkeleton cards={TABLE_CARDS_SKELETON_COUNT} withCrumbs />
+      }
+    >
       <TableBrowserInner
         tables={tables}
         dbId={dbId}

@@ -5,12 +5,17 @@ import { t } from "ttag";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { Box, Card, Flex, LoadingOverlay } from "metabase/ui";
+import { Box, Card, Flex } from "metabase/ui";
 import type { SortingOptions } from "metabase-types/api";
 
+import { AdminTableSkeletonRows } from "../AdminTableSkeletonRows";
+
 import S from "./AdminDataTable.module.css";
+
+const MAX_SKELETON_ROWS = 10;
 
 export type AdminDataTableAlign = "left" | "center" | "right";
 
@@ -82,92 +87,101 @@ export function AdminDataTable<Row, SortColumn extends string = string>({
   maxBodyHeight,
   tableClassName,
 }: AdminDataTableProps<Row, SortColumn>) {
-  // While an initial load or an error is in flight there is nothing to show, so hand the whole body
-  // to LoadingAndErrorWrapper. Once we have rows, keep showing them and overlay a spinner instead,
-  // so paging/sorting doesn't blank the table out.
-  const showLoadingOrError = error != null || (loading && rows.length === 0);
-  const showEmpty = !loading && error == null && rows.length === 0;
-  const showOverlay = loading && rows.length > 0;
+  // Skeleton rows only stand in for the first load. Once we have rows, keep showing them while
+  // paging/sorting refetches, so the table doesn't blank out.
+  const showError = error != null;
+  const showSkeleton = !showError && loading && rows.length === 0;
+  const showEmpty = !loading && !showError && rows.length === 0;
+  const skeletonRowCount = Math.min(
+    pagination?.pageSize ?? MAX_SKELETON_ROWS,
+    MAX_SKELETON_ROWS,
+  );
 
-  const table = (
-    <Box pos="relative">
-      <LoadingOverlay visible={showOverlay} />
-      <Box
-        data-testid="admin-data-table-body"
-        className={maxBodyHeight != null ? S.scrollBox : undefined}
-        style={maxBodyHeight != null ? { maxHeight: maxBodyHeight } : undefined}
-      >
-        <table className={cx(AdminS.ContentTable, S.table, tableClassName)}>
-          <thead>
-            <tr>
-              {columns.map((column) => {
-                const headerProps = {
-                  ...column.headerProps,
-                  style: {
-                    textAlign: column.align,
-                    ...column.headerProps?.style,
-                  },
-                };
-                // Only sortable columns get the interactive header; the rest render a plain `<th>`
-                // so screen readers don't announce a static header as a button.
-                return sorting != null && column.sortKey != null ? (
-                  <SortableColumnHeader
-                    key={column.key}
-                    name={column.sortKey}
-                    sortingOptions={sorting.sortingOptions}
-                    onSortingOptionsChange={sorting.onSortingOptionsChange}
-                    columnHeaderProps={headerProps}
-                  >
-                    {column.title}
-                  </SortableColumnHeader>
-                ) : (
-                  <th key={column.key} {...headerProps}>
-                    {column.title}
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {showLoadingOrError ? (
-              <tr>
-                <td colSpan={columns.length}>
-                  <LoadingAndErrorWrapper loading={loading} error={error} />
-                </td>
-              </tr>
-            ) : showEmpty ? (
-              <tr>
-                <td colSpan={columns.length}>
-                  <Flex c="text-disabled" justify="center">
-                    {emptyText}
-                  </Flex>
-                </td>
-              </tr>
-            ) : (
-              rows.map((row, rowIndex) => (
-                <tr
-                  key={getRowKey ? getRowKey(row, rowIndex) : rowIndex}
-                  className={onRowClick ? CS.cursorPointer : undefined}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+  const tableBody = (
+    <Box
+      data-testid="admin-data-table-body"
+      className={maxBodyHeight != null ? S.scrollBox : undefined}
+      style={maxBodyHeight != null ? { maxHeight: maxBodyHeight } : undefined}
+    >
+      <table className={cx(AdminS.ContentTable, S.table, tableClassName)}>
+        <thead>
+          <tr>
+            {columns.map((column) => {
+              const headerProps = {
+                ...column.headerProps,
+                style: {
+                  textAlign: column.align,
+                  ...column.headerProps?.style,
+                },
+              };
+              // Only sortable columns get the interactive header; the rest render a plain `<th>`
+              // so screen readers don't announce a static header as a button.
+              return sorting != null && column.sortKey != null ? (
+                <SortableColumnHeader
+                  key={column.key}
+                  name={column.sortKey}
+                  sortingOptions={sorting.sortingOptions}
+                  onSortingOptionsChange={sorting.onSortingOptionsChange}
+                  columnHeaderProps={headerProps}
                 >
-                  {columns.map((column) => (
-                    <td key={column.key} style={{ textAlign: column.align }}>
-                      {column.render(row)}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </Box>
+                  {column.title}
+                </SortableColumnHeader>
+              ) : (
+                <th key={column.key} {...headerProps}>
+                  {column.title}
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {showError ? (
+            <tr>
+              <td colSpan={columns.length}>
+                <LoadingAndErrorWrapper error={error} />
+              </td>
+            </tr>
+          ) : showSkeleton ? (
+            <AdminTableSkeletonRows
+              rowCount={skeletonRowCount}
+              columnCount={columns.length}
+            />
+          ) : showEmpty ? (
+            <tr>
+              <td colSpan={columns.length}>
+                <Flex c="text-disabled" justify="center">
+                  {emptyText}
+                </Flex>
+              </td>
+            </tr>
+          ) : (
+            rows.map((row, rowIndex) => (
+              <tr
+                key={getRowKey ? getRowKey(row, rowIndex) : rowIndex}
+                className={onRowClick ? CS.cursorPointer : undefined}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+              >
+                {columns.map((column) => (
+                  <td key={column.key} style={{ textAlign: column.align }}>
+                    {column.render(row)}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
     </Box>
   );
 
   return (
     <>
       <Card withBorder shadow="none" p={0}>
-        {table}
+        {showSkeleton ? (
+          <LoadingSkeleton gap={0}>{tableBody}</LoadingSkeleton>
+        ) : (
+          tableBody
+        )}
       </Card>
 
       {pagination && (

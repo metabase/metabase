@@ -3,7 +3,9 @@ import { useMemo } from "react";
 
 import { useSearchQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { ListSkeleton } from "metabase/common/components/Skeletons";
 import type { SimpleDataPickerProps } from "metabase/plugins";
+import { CONTAINER_WIDTH } from "metabase/querying/common/components/DataSelector/constants";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -67,7 +69,11 @@ export function SimpleDataPicker({
         </Box>
       </Popover.Target>
       <Popover.Dropdown>
-        <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
+        <DelayedLoadingAndErrorWrapper
+          loading={isLoading}
+          error={error}
+          loader={<ListSkeleton rows={6} w={CONTAINER_WIDTH} p="md" gap={17} />}
+        >
           <SimpleDataPickerView
             selectedEntity={selectedEntity}
             onClick={(tableId) => {

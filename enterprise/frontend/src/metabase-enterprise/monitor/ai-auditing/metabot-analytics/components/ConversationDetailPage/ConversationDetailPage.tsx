@@ -7,6 +7,10 @@ import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
+  LoadingSkeleton,
+  TextSkeleton,
+} from "metabase/common/components/Skeletons";
+import {
   AgentMessage,
   Messages,
 } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
@@ -32,8 +36,8 @@ import {
   Card,
   Flex,
   Icon,
-  Loader,
   SimpleGrid,
+  Skeleton,
   Stack,
   Text,
   Title,
@@ -96,13 +100,15 @@ export function ConversationDetailPage() {
     triggerElementRef.current?.focus();
   };
 
+  // `currentData` so another conversation's data isn't shown while this one loads
   const {
-    data: conversation,
-    isLoading,
+    currentData: conversation,
+    isFetching,
     error,
   } = useGetMetabotAnalyticsConversationQuery(convoId, {
     refetchOnMountOrArgChange: true,
   });
+  const isLoading = isFetching && conversation == null;
 
   const conversationMessages = useMemo(
     () => normalizeMessages(conversation),
@@ -112,10 +118,18 @@ export function ConversationDetailPage() {
   const { messages, getExtraActions } =
     useBranchableMessages(conversationMessages);
 
-  if (isLoading || error) {
+  if (isLoading) {
     return (
       <MonitorMain>
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <ConversationDetailSkeleton />
+      </MonitorMain>
+    );
+  }
+
+  if (error) {
+    return (
+      <MonitorMain>
+        <LoadingAndErrorWrapper error={error} />
       </MonitorMain>
     );
   }
@@ -243,16 +257,58 @@ export function ConversationDetailPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+/** A labelled stat. Without a `value`, shows a placeholder in its place. */
+function StatCard({ label, value }: { label: string; value?: string }) {
   return (
     <Card withBorder shadow="none" p="lg">
       <Text size="sm" c="text-secondary">
         {label}
       </Text>
-      <Title order={2} mt="xxs">
-        {value}
-      </Title>
+      {value != null ? (
+        <Title order={2} mt="xxs">
+          {value}
+        </Title>
+      ) : (
+        <Skeleton h={28} w={64} mt="xxs" radius="xs" />
+      )}
     </Card>
+  );
+}
+
+function ConversationDetailSkeleton() {
+  return (
+    <LoadingSkeleton w="100%" maw={800} mx="auto" gap="xxl">
+      <Skeleton h={12} w={240} radius="xs" />
+      <Stack gap="sm">
+        <Skeleton h={28} w="50%" radius="xs" />
+        <Flex gap="xl">
+          <Skeleton h={14} w={100} radius="xs" />
+          <Skeleton h={14} w={100} radius="xs" />
+          <Skeleton h={14} w={120} radius="xs" />
+        </Flex>
+      </Stack>
+      <SimpleGrid cols={4}>
+        <StatCard label={t`Messages`} />
+        <StatCard label={t`Total tokens`} />
+        <StatCard label={t`Queries run`} />
+        <StatCard label={t`Searches`} />
+      </SimpleGrid>
+      <Stack gap="lg">
+        <Title order={3}>{t`Conversation`}</Title>
+        <Card withBorder shadow="none" p="xxl">
+          <Stack gap="xl">
+            <Flex justify="flex-end">
+              <Skeleton h={40} w="40%" radius="lg" />
+            </Flex>
+            <TextSkeleton lines={3} />
+            <Flex justify="flex-end">
+              <Skeleton h={40} w="30%" radius="lg" />
+            </Flex>
+            <TextSkeleton lines={4} />
+          </Stack>
+        </Card>
+      </Stack>
+    </LoadingSkeleton>
   );
 }
 
@@ -418,10 +474,19 @@ function NotebookGeneratedQueryCard({
 
   if (isLoading) {
     return (
-      <Card withBorder shadow="none" p="lg">
-        <Flex justify="center" align="center" mih={120}>
-          <Loader />
-        </Flex>
+      <Card withBorder shadow="none" p={{ base: "lg", sm: "xxl" }}>
+        <LoadingSkeleton gap="lg">
+          <Flex justify="space-between" align="center" gap="sm">
+            <Skeleton h={18} w="50%" radius="xs" />
+            <Skeleton h={40} w={80} radius="sm" />
+          </Flex>
+          {Array.from({ length: 2 }, (_, index) => (
+            <Stack key={index} gap="sm">
+              <Skeleton h={12} w={80} radius="xs" />
+              <Skeleton h={56} radius="md" />
+            </Stack>
+          ))}
+        </LoadingSkeleton>
       </Card>
     );
   }

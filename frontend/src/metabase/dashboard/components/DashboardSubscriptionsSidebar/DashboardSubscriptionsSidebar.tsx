@@ -4,9 +4,12 @@ import _ from "underscore";
 import { skipToken, useListSubscriptionsQuery, userApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useSetArchive } from "metabase/archive/hooks";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
 import { Sidebar } from "metabase/common/components/Sidebar";
+import {
+  LoadingSkeleton,
+  TextSkeleton,
+} from "metabase/common/components/Skeletons";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
@@ -24,6 +27,7 @@ import { getEditableSubscriptionChannel } from "metabase/notifications/pulse/sub
 import { NEW_PULSE_TEMPLATE, cleanPulse, createChannel } from "metabase/pulse";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { Repeat, Skeleton, Stack } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -445,7 +449,14 @@ function DashboardSubscriptionsSidebarInner({
   if (isLoading) {
     return (
       <Sidebar>
-        <LoadingAndErrorWrapper loading />
+        <LoadingSkeleton mx="xxl" my="xl" gap="lg">
+          <TextSkeleton withTitle lines={2} />
+          <Stack gap="sm">
+            <Repeat times={2}>
+              <Skeleton h={64} radius="sm" />
+            </Repeat>
+          </Stack>
+        </LoadingSkeleton>
       </Sidebar>
     );
   }

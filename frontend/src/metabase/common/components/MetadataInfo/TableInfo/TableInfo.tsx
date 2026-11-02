@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import CS from "metabase/css/core/index.css";
 import {
   getShallowTableFieldIds,
@@ -16,7 +17,7 @@ import {
   fetchTableForeignKeys,
   fetchTableMetadata,
 } from "metabase/redux/tables";
-import { Center, Loader, Stack } from "metabase/ui";
+import { Skeleton, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { NormalizedTable, TableId } from "metabase-types/api";
 
@@ -141,11 +142,11 @@ export function TableInfoInner({
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
       <Stack className={CS.overflowHidden} pos="relative" gap="sm" fz="sm">
-        <Fade visible={!hasFetchedMetadata}>
-          <Center pos="absolute" inset={0}>
-            <Loader size="md" color="core-brand" />
-          </Center>
-        </Fade>
+        {!hasFetchedMetadata && (
+          <LoadingSkeleton pos="absolute" top={0} left={0}>
+            <Skeleton h="1em" w={80} radius="xs" />
+          </LoadingSkeleton>
+        )}
         <Fade visible={hasFetchedMetadata}>
           {table && <ColumnCount fieldCount={fieldCount} />}
         </Fade>

@@ -8,6 +8,10 @@ import {
 } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  LoadingSkeleton,
+  TextSkeleton,
+} from "metabase/common/components/Skeletons";
 import { useDocsUrl, useLearnUrl } from "metabase/common/hooks";
 import { usableAsLinkedFilter } from "metabase/parameters/utils/linked-filters";
 import { useDispatch } from "metabase/redux";
@@ -18,6 +22,7 @@ import {
   Group,
   HoverCard,
   Icon,
+  Repeat,
   SimpleGrid,
   Skeleton,
   Stack,
@@ -83,7 +88,7 @@ function Content({
   );
 
   if (isLoading) {
-    return <Skeleton height="2.5rem" />;
+    return <ParameterListSkeleton parameterCount={usableParameters.length} />;
   }
 
   if (error != null) {
@@ -108,6 +113,19 @@ function Content({
       otherParameters={otherParameters}
       onChangeFilteringParameters={onChangeFilteringParameters}
     />
+  );
+}
+
+function ParameterListSkeleton({ parameterCount }: { parameterCount: number }) {
+  return (
+    <LoadingSkeleton gap="xl">
+      <TextSkeleton lines={3} />
+      <Stack gap="lg">
+        <Repeat times={parameterCount}>
+          <Skeleton h="2.5rem" radius="sm" />
+        </Repeat>
+      </Stack>
+    </LoadingSkeleton>
   );
 }
 
@@ -365,7 +383,12 @@ const FieldItem = ({ fieldId }: FieldItemProps) => {
   }
 
   if (!field || isLoading) {
-    return <Skeleton height="1.8125rem" />;
+    return (
+      <LoadingSkeleton gap="xs">
+        <Skeleton h={10} w="50%" radius="xs" />
+        <Skeleton h={12} w="70%" radius="xs" />
+      </LoadingSkeleton>
+    );
   }
 
   return (

@@ -28,6 +28,7 @@ import type { Database, DatabaseXray } from "metabase-types/api";
 
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
+import { HomeSectionSkeleton } from "../HomeSectionSkeleton";
 import { HomeXrayCard } from "../HomeXrayCard";
 
 export const HomeXraySection = () => {
@@ -44,8 +45,12 @@ export const HomeXraySection = () => {
   const isLoading = databasesLoading || candidateListState.isLoading;
   const error = databasesError ?? candidateListState.error;
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (isLoading) {
+    return <HomeSectionSkeleton />;
   }
 
   if (!database) {

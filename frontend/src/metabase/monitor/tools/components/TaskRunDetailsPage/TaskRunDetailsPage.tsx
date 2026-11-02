@@ -6,13 +6,23 @@ import { CopyButton } from "metabase/common/components/CopyButton";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
 import { useNavigate, useParams } from "metabase/router";
-import { Anchor, Box, Flex, Grid, Stack, Text, Tooltip } from "metabase/ui";
+import {
+  Anchor,
+  Box,
+  Flex,
+  Grid,
+  Skeleton,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { Task } from "metabase-types/api";
@@ -23,6 +33,7 @@ import {
   getEntityUrl,
   renderTaskRunCounters,
 } from "../../utils";
+import { DetailRowsSkeleton } from "../DetailRowsSkeleton";
 import { MonitorBackLink } from "../MonitorBackLink";
 import { TaskRunStatusBadge } from "../TaskRunStatusBadge";
 import { TaskStatusBadge } from "../TaskStatusBadge";
@@ -31,15 +42,19 @@ import S from "./TaskRunDetailsPage.module.css";
 
 export const TaskRunDetailsPage = () => {
   const { runId } = useParams();
-  const { data: taskRun, error, isLoading } = useGetTaskRunQuery(Number(runId));
+  const { data: taskRun, error } = useGetTaskRunQuery(Number(runId));
   const navigate = useNavigate();
 
   const onClickTask = (task: Task) => {
     navigate(Urls.monitorTaskDetails(task.id));
   };
 
-  if (!taskRun || error || isLoading) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (!taskRun) {
+    return <TaskRunDetailsPageSkeleton />;
   }
 
   return (
@@ -161,3 +176,50 @@ export const TaskRunDetailsPage = () => {
     </Flex>
   );
 };
+
+const ASSOCIATED_TASK_ROWS_COUNT = 4;
+
+const TaskRunDetailsPageSkeleton = () => (
+  <Flex h="100%" wrap="nowrap">
+    <MonitorMain gap="xl">
+      <MonitorBackLink to={Urls.monitorTasksRuns()} label={t`Back to Runs`} />
+      <MonitorPageContent className={S.content}>
+        <LoadingSkeleton>
+          <Grid>
+            <Grid.Col span={{ base: 12, lg: "content" }} maw="50%">
+              <MonitorHeaderTitle mb="lg">{t`Run details`}</MonitorHeaderTitle>
+              <DetailRowsSkeleton
+                labels={[
+                  t`ID`,
+                  t`Run type`,
+                  t`Entity type`,
+                  t`Entity`,
+                  t`Status`,
+                  t`Started at`,
+                  t`Ended at`,
+                  t`Task count`,
+                ]}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, lg: "auto" }}>
+              <MonitorHeaderTitle mb="lg">{t`Associated tasks`}</MonitorHeaderTitle>
+              <Stack gap="lg">
+                {Array.from(
+                  { length: ASSOCIATED_TASK_ROWS_COUNT },
+                  (_, index) => (
+                    <Flex key={index} align="center" gap="md">
+                      <Box w={200}>
+                        <Skeleton h={12} w="75%" radius="xs" />
+                      </Box>
+                      <Skeleton h={20} w={72} radius="xl" />
+                    </Flex>
+                  ),
+                )}
+              </Stack>
+            </Grid.Col>
+          </Grid>
+        </LoadingSkeleton>
+      </MonitorPageContent>
+    </MonitorMain>
+  </Flex>
+);

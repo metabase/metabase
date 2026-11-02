@@ -9,8 +9,12 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
+import {
+  ListSkeleton,
+  LoadingSkeleton,
+} from "metabase/common/components/Skeletons";
 import { useSetCollection } from "metabase/common/hooks";
-import { Flex, Icon } from "metabase/ui";
+import { Flex, Icon, Modal, Skeleton } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Dashboard } from "metabase-types/api";
@@ -102,15 +106,38 @@ export const DashboardMoveModalConnected = ({
     id != null ? { id } : skipToken,
   );
 
-  return (
-    <LoadingAndErrorWrapper
-      loading={id != null && !dashboard}
-      error={error}
-      noWrapper
-    >
-      {dashboard && (
-        <DashboardMoveModal dashboard={dashboard} onClose={onClose} />
-      )}
-    </LoadingAndErrorWrapper>
-  );
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (id == null) {
+    return null;
+  }
+
+  if (!dashboard) {
+    return <DashboardMoveModalSkeleton onClose={onClose} />;
+  }
+
+  return <DashboardMoveModal dashboard={dashboard} onClose={onClose} />;
 };
+
+/** Stands in for the collection picker modal while the dashboard loads. */
+function DashboardMoveModalSkeleton({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal.Root opened onClose={onClose} yOffset="10dvh">
+      <Modal.Overlay />
+      <Modal.Content miw="min(920px, 80vw)" maw="80vw" h="80dvh">
+        <Modal.Header px="1.5rem" py="1rem" bg="background_page-primary">
+          <Modal.Title fz="lg">{t`Move dashboard to…`}</Modal.Title>
+          <Modal.CloseButton size={21} pos="relative" top="1px" />
+        </Modal.Header>
+        <Modal.Body p={0}>
+          <LoadingSkeleton px="1.5rem" gap="1.5rem">
+            <Skeleton h={40} w={400} maw="100%" radius="md" />
+            <ListSkeleton rows={8} w={300} />
+          </LoadingSkeleton>
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
+  );
+}

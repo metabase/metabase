@@ -18,10 +18,13 @@ import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
+import { BrowsePageSkeleton } from "../components/BrowseSkeletons";
 import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 import DB from "./BrowseDatabases.module.css";
 import { trackAddDatabaseDBList } from "./analytics";
+
+const DATABASE_CARDS_SKELETON_COUNT = 3;
 
 export const BrowseDatabases = () => {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -34,7 +37,9 @@ export const BrowseDatabases = () => {
   }
 
   if (!databases && isLoading) {
-    return <LoadingAndErrorWrapper loading />;
+    return (
+      <BrowsePageSkeleton cards={DATABASE_CARDS_SKELETON_COUNT} size="lg" />
+    );
   }
 
   if (!databases?.length && !isAdmin) {

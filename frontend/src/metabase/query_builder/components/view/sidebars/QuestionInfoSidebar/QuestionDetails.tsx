@@ -7,8 +7,9 @@ import { getCollectionName } from "metabase/common/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import Styles from "metabase/css/core/index.css";
-import { Box, Flex, FixedSizeIcon as Icon, Loader, Text } from "metabase/ui";
+import { Box, Flex, FixedSizeIcon as Icon, Skeleton, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import type Question from "metabase-lib/v1/Question";
@@ -67,27 +68,31 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
             c="core-brand"
             className={SidebarStyles.IconMargin}
           />
-          <Text>
-            {isDashboardQuestion ? (
-              isLoading || !dashboard ? (
-                <Loader />
-              ) : (
+          {isDashboardQuestion ? (
+            isLoading || !dashboard ? (
+              <LoadingSkeleton justify="center" mih="1.25rem">
+                <Skeleton h={14} w={120} radius="xs" />
+              </LoadingSkeleton>
+            ) : (
+              <Text>
                 <Link to={Urls.dashboard(dashboard)} variant="brand">
                   {
                     // We need to use getCollectionName or the name of the root collection will not be displayed
                     dashboard.name
                   }
                 </Link>
-              )
-            ) : (
+              </Text>
+            )
+          ) : (
+            <Text>
               <Link to={Urls.collection(collection)} variant="brand">
                 {
                   // We need to use getCollectionName or the name of the root collection will not be displayed
                   getCollectionName(collection)
                 }
               </Link>
-            )}
-          </Text>
+            </Text>
+          )}
         </Flex>
       </SidesheetCardSection>
       <SharingDisplay question={question} />

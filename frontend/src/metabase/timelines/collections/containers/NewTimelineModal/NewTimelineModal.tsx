@@ -5,6 +5,7 @@ import {
 } from "metabase/api";
 import { useNavigate } from "metabase/router";
 import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
+import { NewTimelineModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import * as Urls from "metabase/urls";
 import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
 
@@ -37,7 +38,13 @@ function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
   };
 
   if (isLoading || error || !collection) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<NewTimelineModalSkeleton onClose={props.onClose} />}
+      />
+    );
   }
 
   return (

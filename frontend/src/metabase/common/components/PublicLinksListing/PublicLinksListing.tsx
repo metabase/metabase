@@ -5,9 +5,15 @@ import { t } from "ttag";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
+import {
+  LoadingSkeleton,
+  getSkeletonLineWidth,
+} from "metabase/common/components/Skeletons";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Box, Icon, Loader, Text } from "metabase/ui";
+import { ActionIcon, Box, Icon, Skeleton, Text } from "metabase/ui";
+
+const SKELETON_ROW_COUNT = 3;
 
 export const PublicLinksListing = <
   T extends { id: string | number; name: string },
@@ -32,7 +38,12 @@ export const PublicLinksListing = <
   const handleCloseModal = () => setLinkToRevoke(undefined);
 
   if (isLoading) {
-    return <Loader />;
+    return (
+      <PublicLinksTableSkeleton
+        hasPublicUrlColumn={Boolean(getPublicUrl)}
+        hasRevokeColumn={Boolean(revoke)}
+      />
+    );
   }
 
   if (data.length === 0) {
@@ -52,13 +63,10 @@ export const PublicLinksListing = <
   return (
     <div className={cx(CS.bordered, CS.rounded, CS.full)}>
       <table data-testid={dataTestId} className={AdminS.ContentTable}>
-        <thead>
-          <tr>
-            <th>{t`Name`}</th>
-            {getPublicUrl && <th>{t`Public Link`}</th>}
-            {revoke && <th>{t`Revoke Link`}</th>}
-          </tr>
-        </thead>
+        <PublicLinksTableHeader
+          hasPublicUrlColumn={Boolean(getPublicUrl)}
+          hasRevokeColumn={Boolean(revoke)}
+        />
         <tbody>
           {data.map((item) => {
             const internalUrl = getUrl(item);
@@ -111,3 +119,54 @@ export const PublicLinksListing = <
     </div>
   );
 };
+
+type PublicLinksTableColumnsProps = {
+  hasPublicUrlColumn: boolean;
+  hasRevokeColumn: boolean;
+};
+
+const PublicLinksTableHeader = ({
+  hasPublicUrlColumn,
+  hasRevokeColumn,
+}: PublicLinksTableColumnsProps) => (
+  <thead>
+    <tr>
+      <th>{t`Name`}</th>
+      {hasPublicUrlColumn && <th>{t`Public Link`}</th>}
+      {hasRevokeColumn && <th>{t`Revoke Link`}</th>}
+    </tr>
+  </thead>
+);
+
+const PublicLinksTableSkeleton = ({
+  hasPublicUrlColumn,
+  hasRevokeColumn,
+}: PublicLinksTableColumnsProps) => (
+  <LoadingSkeleton className={cx(CS.bordered, CS.rounded, CS.full)} gap={0}>
+    <table className={AdminS.ContentTable}>
+      <PublicLinksTableHeader
+        hasPublicUrlColumn={hasPublicUrlColumn}
+        hasRevokeColumn={hasRevokeColumn}
+      />
+      <tbody>
+        {Array.from({ length: SKELETON_ROW_COUNT }, (_, index) => (
+          <tr key={index}>
+            <td>
+              <Skeleton h={14} w={getSkeletonLineWidth(index)} />
+            </td>
+            {hasPublicUrlColumn && (
+              <td>
+                <Skeleton h={14} w={getSkeletonLineWidth(index + 3)} />
+              </td>
+            )}
+            {hasRevokeColumn && (
+              <td>
+                <Skeleton h={16} w={16} mx="auto" />
+              </td>
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </LoadingSkeleton>
+);

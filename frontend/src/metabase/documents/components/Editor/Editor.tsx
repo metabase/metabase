@@ -7,6 +7,10 @@ import React, { useEffect, useMemo } from "react";
 import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
 
+import {
+  LoadingSkeleton,
+  TextSkeleton,
+} from "metabase/common/components/Skeletons";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
@@ -36,7 +40,7 @@ import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/Sup
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/settings";
-import { Box, Center, Loader } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import { CardEmbed } from "../editor-extensions/CardEmbed/CardEmbedNode";
 
@@ -241,9 +245,10 @@ export const Editor: React.FC<EditorProps> = React.memo(
     if (isLoading) {
       return (
         <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
-          <Center flex={1}>
-            <Loader data-testid="editor-loader" />
-          </Center>
+          <LoadingSkeleton className={S.editorContentInner} w="100%" pt="xl">
+            <TextSkeleton lines={3} lineHeight={16} />
+            <TextSkeleton lines={4} lineHeight={16} mt="md" />
+          </LoadingSkeleton>
         </Box>
       );
     }

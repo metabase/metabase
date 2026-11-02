@@ -12,6 +12,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
+import {
+  ListSkeleton,
+  LoadingSkeleton,
+} from "metabase/common/components/Skeletons";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getDashboardId, getSelectedTabId } from "metabase/dashboard/selectors";
@@ -76,11 +80,7 @@ export function QuestionList({
     handlePreviousPage();
   };
 
-  const {
-    data: searchData,
-    error: searchError,
-    isFetching: searchIsFetching,
-  } = useSearchQuery(
+  const { currentData: searchData, error: searchError } = useSearchQuery(
     isSearching
       ? {
           q: trimmedSearchText,
@@ -96,25 +96,21 @@ export function QuestionList({
         }
       : skipToken,
   );
-  const {
-    data: itemsData,
-    error: itemsError,
-    isFetching: itemsIsFetching,
-  } = useListCollectionItemsQuery(
-    !isSearching
-      ? {
-          id: collectionId,
-          models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
-            ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
-            : ["card", "dataset", "metric"],
-          offset: queryOffset,
-          limit: DEFAULT_SEARCH_LIMIT,
-        }
-      : skipToken,
-  );
+  const { currentData: itemsData, error: itemsError } =
+    useListCollectionItemsQuery(
+      !isSearching
+        ? {
+            id: collectionId,
+            models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
+              ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
+              : ["card", "dataset", "metric"],
+            offset: queryOffset,
+            limit: DEFAULT_SEARCH_LIMIT,
+          }
+        : skipToken,
+    );
   const data = isSearching ? searchData : itemsData;
   const error = isSearching ? searchError : itemsError;
-  const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
   const dispatch = useDispatch();
   const list: (SearchResult | CollectionItem)[] = data?.data ?? [];
 
@@ -122,8 +118,18 @@ export function QuestionList({
     return null;
   }
 
-  if (error || isFetching) {
-    return <LoadingAndErrorWrapper error={error} loading={isFetching} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  // `currentData` is cleared when the search, collection or page changes, so
+  // results for a previous query are never shown for the new one.
+  if (!data) {
+    return (
+      <LoadingSkeleton p="sm">
+        <ListSkeleton rows={8} />
+      </LoadingSkeleton>
+    );
   }
 
   const shouldShowEmptyState =

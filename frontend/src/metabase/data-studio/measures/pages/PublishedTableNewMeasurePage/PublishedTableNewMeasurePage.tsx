@@ -1,5 +1,6 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { EntityDetailPageSkeleton } from "metabase/data-studio/common/components/EntityDetailPageSkeleton";
 import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -19,10 +20,14 @@ export function PublishedTableNewMeasurePage() {
     includeForeignTables: true,
   });
 
-  if (isLoading || error || !table || tableId == null) {
+  if (isLoading) {
+    return <EntityDetailPageSkeleton page="new" />;
+  }
+
+  if (error || !table || tableId == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

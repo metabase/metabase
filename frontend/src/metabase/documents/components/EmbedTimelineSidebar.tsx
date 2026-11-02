@@ -6,7 +6,7 @@ import { useListTimelinesQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { TimelineSidebar } from "metabase/timelines/panel/components/TimelineSidebar";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
-import { Box, Loader, Stack, Text } from "metabase/ui";
+import { Box, Stack, Text } from "metabase/ui";
 import {
   isSameTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
@@ -105,17 +105,6 @@ export function EmbedTimelineSidebar({
     dispatch(closeSidebar());
   }, [dispatch]);
 
-  if (isLoading) {
-    return (
-      <Stack gap="xl" p="xl" className={S.loadingContainer}>
-        <Box className={S.loadingContent}>
-          <Loader size="lg" />
-          <Text>{t`Loading timeline events...`}</Text>
-        </Box>
-      </Stack>
-    );
-  }
-
   if (isError) {
     return (
       <Stack gap="xl" p="xl" className={S.errorContainer}>
@@ -131,6 +120,7 @@ export function EmbedTimelineSidebar({
       <TimelineSidebar
         collectionId={collectionId}
         timelines={timelines}
+        isLoading={isLoading}
         visibleEventIds={visibleEventIds}
         selectedEventIds={selectedEventIds}
         focusedEventIds={focusedEventIds}

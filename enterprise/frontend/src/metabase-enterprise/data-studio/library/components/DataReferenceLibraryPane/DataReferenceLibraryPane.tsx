@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { skipToken, useSearchQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import CS from "metabase/css/core/index.css";
+import { ListSkeleton } from "metabase/common/components/Skeletons";
 import {
   NodeListContainer,
   NodeListItemIcon,
@@ -17,7 +17,7 @@ import type {
   DataReferencePaneProps,
   OnItemClick,
 } from "metabase/querying/components/DataReference/types";
-import { Box, Ellipsified, Text } from "metabase/ui";
+import { Box, Ellipsified, Skeleton, Stack, Text } from "metabase/ui";
 import { type SearchResult, isConcreteTableId } from "metabase-types/api";
 
 import { useGetLibraryCollection } from "../../hooks/use-get-library-collection";
@@ -74,18 +74,19 @@ export const DataReferenceLibraryPane = ({
   const hasTarget = queryDatabaseId != null;
 
   return (
-    <LoadingAndErrorWrapper
-      loading={isLoading}
-      error={error}
-      className={CS.fullHeight}
+    <SidebarContent
+      title={t`Library`}
+      icon="repository"
+      onBack={onBack}
+      onClose={onClose}
     >
-      <SidebarContent
-        title={t`Library`}
-        icon="repository"
-        onBack={onBack}
-        onClose={onClose}
-      >
-        <SidebarContent.Pane>
+      <SidebarContent.Pane>
+        <LoadingAndErrorWrapper
+          loading={isLoading}
+          error={error}
+          noWrapper
+          loader={<LibraryTableListSkeleton />}
+        >
           {hasTables ? (
             <NodeListContainer>
               {hasTarget && (
@@ -119,11 +120,18 @@ export const DataReferenceLibraryPane = ({
               </Text>
             </Box>
           )}
-        </SidebarContent.Pane>
-      </SidebarContent>
-    </LoadingAndErrorWrapper>
+        </LoadingAndErrorWrapper>
+      </SidebarContent.Pane>
+    </SidebarContent>
   );
 };
+
+const LibraryTableListSkeleton = () => (
+  <Stack gap="md" pt="lg" px="sm">
+    <Skeleton h={14} w={120} radius="xs" />
+    <ListSkeleton rows={6} gap={22} pt="xs" />
+  </Stack>
+);
 
 type LibraryTableListProps = {
   title: string;

@@ -14,7 +14,6 @@ import {
 } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { canUserCreateQueries } from "metabase/current-user";
 import { getShallowQuestions } from "metabase/metadata-store";
@@ -46,6 +45,7 @@ import { DataSelectorDataBucketPicker } from "./DataSelectorDataBucketPicker";
 import { DataSelectorDatabasePicker } from "./DataSelectorDatabasePicker";
 import { DataSelectorDatabaseSchemaPicker } from "./DataSelectorDatabaseSchemaPicker";
 import { DataSelectorFieldPicker } from "./DataSelectorFieldPicker";
+import { DataSelectorLoading } from "./DataSelectorLoading";
 import { DataSelectorSchemaPicker } from "./DataSelectorSchemaPicker";
 import { DataSelectorTablePicker } from "./DataSelectorTablePicker";
 import {
@@ -1202,7 +1202,7 @@ export class UnconnectedDataSelector extends Component<
       isSavedEntityPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
 
     if (this.isSearchLoading()) {
-      return <LoadingAndErrorWrapper loading />;
+      return <DataSelectorLoading />;
     }
 
     if (this.hasDataAccess()) {

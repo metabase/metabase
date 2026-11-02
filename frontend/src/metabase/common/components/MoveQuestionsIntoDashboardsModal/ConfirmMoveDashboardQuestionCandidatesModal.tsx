@@ -2,10 +2,16 @@ import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 
-import { Button, Flex, Icon, Loader, Modal, Text } from "metabase/ui";
+import {
+  LoadingSkeleton,
+  getSkeletonLineWidth,
+} from "metabase/common/components/Skeletons";
+import { Button, Flex, Icon, Modal, Skeleton, Text } from "metabase/ui";
 import type { GetCollectionDashboardQuestionCandidatesResult } from "metabase-types/api";
 
 import S from "./ConfirmMoveDashboardQuestionCandidatesModal.module.css";
+
+const SKELETON_ROW_COUNT = 10;
 
 export interface ConfirmMoveDashboardQuestionCandidatesModalProps {
   candidates:
@@ -94,11 +100,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
       </div>
       <div className={S.tbody}>
         {match({ isLoading, fetchError, rows })
-          .with({ isLoading: true }, () => (
-            <Flex justify="center" py="18.25rem">
-              <Loader size="xl" />
-            </Flex>
-          ))
+          .with({ isLoading: true }, () => <CandidateRowsSkeleton />)
           .with({ fetchError: P.not(P.nullish) }, ({ fetchError }) => {
             return (
               <Flex justify="center" py="19rem">
@@ -163,3 +165,18 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
     </Modal>
   );
 };
+
+const CandidateRowsSkeleton = () => (
+  <LoadingSkeleton gap={0}>
+    {Array.from({ length: SKELETON_ROW_COUNT }, (_, index) => (
+      <div key={index} className={S.tableRow}>
+        <div className={S.cell}>
+          <Skeleton h={14} my={3} w={getSkeletonLineWidth(index)} />
+        </div>
+        <div className={S.cell}>
+          <Skeleton h={14} my={3} w={getSkeletonLineWidth(index + 3)} />
+        </div>
+      </div>
+    ))}
+  </LoadingSkeleton>
+);

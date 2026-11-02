@@ -1,4 +1,5 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { EntityDetailPageSkeleton } from "metabase/data-studio/common/components/EntityDetailPageSkeleton";
 import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
@@ -16,10 +17,14 @@ export function PublishedTableSegmentRevisionHistoryPage() {
   const { isLoading, error, segment, table, tabUrls, onRemove } =
     usePublishedTableSegmentPage(params);
 
-  if (isLoading || error || !segment || !table || !tabUrls) {
+  if (isLoading) {
+    return <EntityDetailPageSkeleton page="revisions" />;
+  }
+
+  if (error || !segment || !table || !tabUrls) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

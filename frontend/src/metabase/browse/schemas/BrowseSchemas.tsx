@@ -22,9 +22,12 @@ import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
+import { BrowsePageSkeleton } from "../components/BrowseSkeletons";
 import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 type Schema = { id: string; name: string };
+
+const SCHEMA_CARDS_SKELETON_COUNT = 6;
 
 const BrowseSchemasContainer = ({
   schemas,
@@ -111,8 +114,14 @@ const BrowseSchemasByDatabaseName = ({
   const { data, isLoading, error } = useListDatabasesQuery();
   const database = findDatabaseByName(data?.data ?? [], databaseName);
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (isLoading) {
+    return (
+      <BrowsePageSkeleton cards={SCHEMA_CARDS_SKELETON_COUNT} withCrumbs />
+    );
   }
 
   if (!database) {
@@ -143,8 +152,14 @@ const BrowseSchemasForDatabase = ({
 }) => {
   const { data, isLoading, error } = useListDatabaseSchemasQuery({ id: dbId });
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (isLoading) {
+    return (
+      <BrowsePageSkeleton cards={SCHEMA_CARDS_SKELETON_COUNT} withCrumbs />
+    );
   }
 
   const schemas: Schema[] = (data ?? []).map((name) => ({ id: name, name }));

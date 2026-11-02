@@ -65,7 +65,11 @@
 
 .ModalLoadingAndErrorWrapper {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
   height: calc(50vh + 11.25rem);
+
+  /* The loading skeleton or error message fills the space of the modal it stands in for */
+  & > * {
+    flex: 1;
+  }
 }

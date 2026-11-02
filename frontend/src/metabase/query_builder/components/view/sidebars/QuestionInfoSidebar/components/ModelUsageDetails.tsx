@@ -3,8 +3,12 @@ import { t } from "ttag";
 import { useListCardsQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  ListSkeleton,
+  LoadingSkeleton,
+} from "metabase/common/components/Skeletons";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { Group, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
+import { Group, Icon, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
@@ -34,9 +38,9 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
 
   if (isLoading) {
     return (
-      <Repeat times={2}>
-        <Skeleton h="1rem" natural />
-      </Repeat>
+      <LoadingSkeleton>
+        <ListSkeleton rows={2} gap="md" textHeight={14} />
+      </LoadingSkeleton>
     );
   }
 

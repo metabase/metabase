@@ -6,6 +6,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
+import { DeleteModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
@@ -24,7 +25,12 @@ function DeleteTimelineModalContainer({
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<DeleteModalSkeleton onClose={onClose} />}
+        noWrapper
+      />
     );
   }
 

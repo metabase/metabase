@@ -2,15 +2,10 @@ import { t } from "ttag";
 
 import { skipToken, useListDagTransformsQuery } from "metabase/api";
 import {
-  Button,
-  Center,
-  List,
-  Loader,
-  Modal,
-  ScrollArea,
-  Stack,
-  Text,
-} from "metabase/ui";
+  ListSkeleton,
+  LoadingSkeleton,
+} from "metabase/common/components/Skeletons";
+import { Button, List, Modal, ScrollArea, Stack, Text } from "metabase/ui";
 import type { TransformDagDirection, TransformId } from "metabase-types/api";
 
 type RunDagConfirmModalProps = {
@@ -28,9 +23,10 @@ export function RunDagConfirmModal({
   onClose,
   onConfirm,
 }: RunDagConfirmModalProps) {
-  const { data: transforms, isFetching } = useListDagTransformsQuery(
+  const { currentData: transforms, isFetching } = useListDagTransformsQuery(
     direction ? { transformId, direction } : skipToken,
   );
+  const isLoadingTransforms = isFetching && transforms == null;
 
   const title =
     direction === "upstream"
@@ -41,10 +37,10 @@ export function RunDagConfirmModal({
     <Modal opened={direction != null} title={title} onClose={onClose}>
       <Stack gap="xl">
         <Text>{t`These transforms will be run:`}</Text>
-        {isFetching ? (
-          <Center py="xl">
-            <Loader />
-          </Center>
+        {isLoadingTransforms ? (
+          <LoadingSkeleton>
+            <ListSkeleton rows={4} iconSize={0} gap="md" />
+          </LoadingSkeleton>
         ) : (
           <ScrollArea.Autosize mah="50vh">
             <List>

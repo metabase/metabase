@@ -1,5 +1,9 @@
 import { setupRecentViewsEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
@@ -35,7 +39,8 @@ async function setup(recents = recentsData) {
 
   renderWithProviders(<RecentsList />);
 
-  await screen.findByText("Recently viewed");
+  // The "Recently viewed" title shows while loading too, so wait for the list.
+  await waitForLoaderToBeRemoved();
 }
 
 describe("RecentsList", () => {

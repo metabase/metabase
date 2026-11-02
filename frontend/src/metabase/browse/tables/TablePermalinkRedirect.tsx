@@ -3,9 +3,11 @@ import { useEffect } from "react";
 import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { findDatabaseByName } from "metabase/common/utils/database";
 import { useNavigate, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { getChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton";
 import type { DatabaseId, Table } from "metabase-types/api";
 import { isConcreteTableId } from "metabase-types/api";
 
@@ -70,8 +72,13 @@ export const TablePermalinkRedirect = () => {
     return <LoadingAndErrorWrapper error={error} />;
   }
 
+  // The redirect lands on the table's data, so stand in for it with a table.
   if (isLoadingDatabases || isLoadingTables || table) {
-    return <LoadingAndErrorWrapper loading />;
+    return (
+      <LoadingSkeleton h="100%" p="xl">
+        {getChartSkeletonImage("table")}
+      </LoadingSkeleton>
+    );
   }
 
   return <NotFound />;

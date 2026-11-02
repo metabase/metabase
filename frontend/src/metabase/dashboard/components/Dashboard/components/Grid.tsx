@@ -1,12 +1,10 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { Loader } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import { useDashboardContext } from "../../../context";
@@ -73,13 +71,12 @@ export const Grid = ({
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
 
-  if (!dashboard) {
-    return <DashboardGridSkeleton dashboardId={dashboardId} />;
-  }
+  // A refetch of a dashboard that's already open keeps its cards on screen,
+  // but shouldn't flash the empty state while it might be gaining cards.
+  const isRefetchingWhileEmpty = isLoadingWithoutCards && isEmpty;
 
-  // Only a refetch of a dashboard that's already open gets here.
-  if (isLoadingWithoutCards) {
-    return <Loader size="lg" label={t`Loading…`} />;
+  if (!dashboard || isRefetchingWhileEmpty) {
+    return <DashboardGridSkeleton dashboardId={dashboardId} />;
   }
 
   if (isEmpty) {

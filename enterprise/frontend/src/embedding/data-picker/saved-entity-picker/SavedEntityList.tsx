@@ -6,6 +6,7 @@ import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SelectList } from "metabase/common/components/SelectList";
+import { ListSkeleton } from "metabase/common/components/Skeletons";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
@@ -41,7 +42,7 @@ export const SavedEntityList = ({
 
   const isVirtualCollection = collectionId === PERSONAL_COLLECTIONS.id;
 
-  const { data, error, isFetching } = useListCollectionItemsQuery(
+  const { currentData, error, isFetching } = useListCollectionItemsQuery(
     collectionId != null && !isVirtualCollection
       ? {
           id: collectionId,
@@ -51,7 +52,7 @@ export const SavedEntityList = ({
         }
       : skipToken,
   );
-  const list = data?.data ?? [];
+  const list = currentData?.data ?? [];
   const filteredList = databaseId
     ? // When `databaseId` is provided, we're joining data, so we need to filter out items that don't belong to the current database
       list.filter((collectionItem) => collectionItem.database_id === databaseId)
@@ -62,8 +63,9 @@ export const SavedEntityList = ({
       <SelectList className={SavedEntityListS.SavedEntityListRoot}>
         <LoadingAndErrorWrapper
           className={SavedEntityListS.LoadingWrapper}
-          loading={collectionId == null || isFetching}
+          loading={collectionId == null || (isFetching && !currentData)}
           error={error}
+          loader={<ListSkeleton rows={8} p="sm" gap={16} />}
         >
           <Fragment>
             {filteredList.map((collectionItem) => {

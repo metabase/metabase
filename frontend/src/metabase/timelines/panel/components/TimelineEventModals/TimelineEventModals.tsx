@@ -3,6 +3,10 @@ import { t } from "ttag";
 
 import { skipToken, useGetTimelineEventQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  EditEventModalSkeleton,
+  MoveEventModalSkeleton,
+} from "metabase/timelines/common/components/TimelineSkeletons";
 import { Modal } from "metabase/ui";
 import type {
   CollectionId,
@@ -80,7 +84,17 @@ export function TimelineEventModals({
       padding={0}
       aria-label={getModalLabel(modal.type)}
     >
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={
+          modal.type === "move" ? (
+            <MoveEventModalSkeleton onClose={onClose} />
+          ) : (
+            <EditEventModalSkeleton onClose={onClose} />
+          )
+        }
+      >
         {content}
       </LoadingAndErrorWrapper>
     </Modal>

@@ -1,4 +1,5 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { EntityDetailPageSkeleton } from "metabase/data-studio/common/components/EntityDetailPageSkeleton";
 import { Outlet, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
@@ -18,10 +19,14 @@ export function DataModelMeasureDependenciesPage() {
   const { isLoading, error, measure, table, tabUrls, onRemove } =
     useDataModelMeasurePage(params);
 
-  if (isLoading || error || !measure || !table || !tabUrls) {
+  if (isLoading) {
+    return <EntityDetailPageSkeleton page="dependencies" />;
+  }
+
+  if (error || !measure || !table || !tabUrls) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

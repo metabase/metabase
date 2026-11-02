@@ -1,5 +1,5 @@
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { canAccessDataModel, useUserKeyValue } from "metabase/current-user";
 import {
   PLUGIN_DEPENDENCIES,
@@ -191,7 +191,9 @@ export function DataStudioIndexRedirect() {
   });
 
   if (isLoading || isNavigating) {
-    return <LoadingAndErrorWrapper loading />;
+    // The page this redirects to isn't known yet, so there's no layout to
+    // sketch: announce the loading state without drawing a wrong one.
+    return <LoadingSkeleton>{null}</LoadingSkeleton>;
   }
 
   return (

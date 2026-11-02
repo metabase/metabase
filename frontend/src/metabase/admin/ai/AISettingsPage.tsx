@@ -24,7 +24,10 @@ import { AIModelSettingsSection } from "./AIModelSettingsSection";
 import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
 import { EmbeddedMetabotUpsell } from "./EmbeddedMetabotUpsell";
 import { McpAppsSettings } from "./McpAppsSettings";
-import { MetabotSettingsPanel } from "./MetabotSettingsPanel";
+import {
+  MetabotSettingsPanel,
+  MetabotSettingsPanelSkeleton,
+} from "./MetabotSettingsPanel";
 
 type MetabotTabEntityId =
   | typeof FIXED_METABOT_ENTITY_IDS.DEFAULT
@@ -205,6 +208,7 @@ function MetabotSettingsSection({
         <LoadingAndErrorWrapper
           loading={isLoading}
           error={error ? t`Error loading Metabot configuration` : null}
+          loader={<MetabotSettingsPanelSkeleton />}
         />
       )}
     </SettingsSection>

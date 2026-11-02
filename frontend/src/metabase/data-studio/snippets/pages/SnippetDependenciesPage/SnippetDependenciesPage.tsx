@@ -1,12 +1,14 @@
 import { skipToken, useGetSnippetQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PageCardSkeleton } from "metabase/common/data-studio/components/PageSkeleton";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Outlet, useParams } from "metabase/router";
 import { Card, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { SnippetHeader } from "../../components/SnippetHeader";
+import { SnippetPageSkeleton } from "../../components/SnippetPageSkeleton";
 
 export type SnippetDependenciesPageParams = {
   snippetId: string;
@@ -22,10 +24,18 @@ export function SnippetDependenciesPage() {
     error,
   } = useGetSnippetQuery(snippetId ?? skipToken);
 
-  if (snippetId == null || snippet == null || isLoading || error != null) {
+  if (isLoading) {
+    return (
+      <SnippetPageSkeleton>
+        <PageCardSkeleton />
+      </SnippetPageSkeleton>
+    );
+  }
+
+  if (snippetId == null || snippet == null || error != null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

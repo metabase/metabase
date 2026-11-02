@@ -16,6 +16,8 @@ import type {
   TransformRun,
 } from "metabase-types/api";
 
+import { JobTransformsTableSkeleton } from "../../TransformSkeletons";
+
 import type { TransformRunByTransformId } from "./types";
 import { useJobRunTransformRuns } from "./use-job-run-transform-runs";
 import { getColumns } from "./utils";
@@ -42,7 +44,11 @@ export function TransformsSection({
       description={t`Transforms will be run in this order.`}
     >
       {isLoading || error != null ? (
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper
+          loading={isLoading}
+          error={error}
+          loader={<JobTransformsTableSkeleton />}
+        />
       ) : transforms.length === 0 ? (
         <Card shadow="none">
           <ListEmptyState label={t`There are no transforms for this job.`} />

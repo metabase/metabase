@@ -7,6 +7,7 @@ import {
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { useNavigate } from "metabase/router";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
+import { NewEventModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import * as Urls from "metabase/urls";
 import type { Collection, TimelineEventData } from "metabase-types/api";
 
@@ -51,7 +52,13 @@ function NewEventWithTimelineModalContainer(
   };
 
   if (isLoading || error || !collection) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<NewEventModalSkeleton onClose={props.onClose} />}
+      />
+    );
   }
 
   return (

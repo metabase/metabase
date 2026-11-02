@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -20,6 +20,7 @@ import {
   Center,
   Divider,
   Group,
+  Skeleton,
   Stack,
   Switch,
   Text,
@@ -30,6 +31,7 @@ import * as Urls from "metabase/urls";
 import type { WritebackQueryAction } from "metabase-types/api";
 
 import { ActionHeader } from "../../components/ActionHeader";
+import { ActionPageSkeleton } from "../../components/ActionPageSkeleton";
 import { useActionDatabase } from "../../hooks/use-action-database";
 import { useRouteAction } from "../../hooks/use-route-action";
 
@@ -49,10 +51,18 @@ export function ActionSettingsPage() {
   const isLoading = isLoadingAction || isLoadingDatabase;
   const error = actionError ?? databaseError;
 
-  if (isLoading || error != null || action == null) {
+  if (isLoading) {
+    return (
+      <ActionSettingsPageSkeleton
+        withPublicSharing={isAdmin && isPublicSharingEnabled}
+      />
+    );
+  }
+
+  if (error != null || action == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
@@ -76,6 +86,32 @@ export function ActionSettingsPage() {
         />
       </Stack>
     </PageContainer>
+  );
+}
+
+type TitleSectionChildrenProps = {
+  children: ReactNode;
+};
+
+function PublicSharingTitleSection({ children }: TitleSectionChildrenProps) {
+  return (
+    <TitleSection
+      label={t`Public sharing`}
+      description={t`Let anyone with the link run this action through a form, without signing in.`}
+    >
+      {children}
+    </TitleSection>
+  );
+}
+
+function SuccessMessageTitleSection({ children }: TitleSectionChildrenProps) {
+  return (
+    <TitleSection
+      label={t`Success message`}
+      description={t`Shown after the action runs on its public form.`}
+    >
+      {children}
+    </TitleSection>
   );
 }
 
@@ -126,10 +162,7 @@ function PublicSharingSection({
   };
 
   return (
-    <TitleSection
-      label={t`Public sharing`}
-      description={t`Let anyone with the link run this action through a form, without signing in.`}
-    >
+    <PublicSharingTitleSection>
       <Group p="xl" justify="space-between" wrap="nowrap">
         <Stack gap="xs">
           <Text fw="bold">{t`Make public`}</Text>
@@ -162,7 +195,7 @@ function PublicSharingSection({
         </>
       )}
       {confirmationModal}
-    </TitleSection>
+    </PublicSharingTitleSection>
   );
 }
 
@@ -191,10 +224,7 @@ function SuccessMessageSection({ action, readOnly }: SectionProps) {
   };
 
   return (
-    <TitleSection
-      label={t`Success message`}
-      description={t`Shown after the action runs on its public form.`}
-    >
+    <SuccessMessageTitleSection>
       <Stack p="xl" gap="sm">
         <Textarea
           label={t`Message`}
@@ -207,6 +237,38 @@ function SuccessMessageSection({ action, readOnly }: SectionProps) {
           onBlur={handleBlur}
         />
       </Stack>
-    </TitleSection>
+    </SuccessMessageTitleSection>
+  );
+}
+
+type ActionSettingsPageSkeletonProps = {
+  withPublicSharing: boolean;
+};
+
+function ActionSettingsPageSkeleton({
+  withPublicSharing,
+}: ActionSettingsPageSkeletonProps) {
+  return (
+    <ActionPageSkeleton>
+      <Stack gap="2.5rem">
+        {withPublicSharing && (
+          <PublicSharingTitleSection>
+            <Group p="xl" justify="space-between" wrap="nowrap">
+              <Stack gap="sm">
+                <Skeleton h={14} w={96} radius="xs" />
+                <Skeleton h={12} w={280} radius="xs" />
+              </Stack>
+              <Skeleton h={20} w={36} radius="xl" />
+            </Group>
+          </PublicSharingTitleSection>
+        )}
+        <SuccessMessageTitleSection>
+          <Stack p="xl" gap="sm">
+            <Skeleton h={12} w={64} radius="xs" />
+            <Skeleton h={84} radius="sm" />
+          </Stack>
+        </SuccessMessageTitleSection>
+      </Stack>
+    </ActionPageSkeleton>
   );
 }

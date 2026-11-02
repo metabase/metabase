@@ -8,6 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
+import { ReferenceListSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import type { Database } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
@@ -40,6 +41,7 @@ class DatabaseList extends Component<DatabaseListProps> {
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}
           error={loadingError}
+          loader={<ReferenceListSkeleton />}
         >
           {() =>
             entities.length > 0 ? (

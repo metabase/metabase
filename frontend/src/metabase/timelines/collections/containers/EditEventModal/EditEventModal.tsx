@@ -8,6 +8,7 @@ import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
+import { EditEventModalSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
@@ -50,7 +51,13 @@ function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
   const error = timelineError ?? eventError;
 
   if (isLoading || error || !event) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<EditEventModalSkeleton onClose={onClose} />}
+      />
+    );
   }
 
   return (

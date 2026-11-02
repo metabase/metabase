@@ -63,16 +63,18 @@ export const MoveCollectionModal = ({
   const collectionIdfromUrl = Urls.extractCollectionId(params?.slug);
 
   const resolvedCollectionId = collectionId ?? collectionIdfromUrl;
-  const {
-    data: collection,
-    isLoading,
-    error,
-  } = useGetCollectionQuery(
+  const { data: collection, error } = useGetCollectionQuery(
     resolvedCollectionId != null ? { id: resolvedCollectionId } : skipToken,
   );
 
-  if (!collection || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  // The modal renders over the collection page, which already shows its own
+  // content, so there's nothing to stand in for until the modal can open.
+  if (!collection) {
+    return null;
   }
 
   return (

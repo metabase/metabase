@@ -4,11 +4,22 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useParams } from "metabase/router";
-import { Button, Center, Flex, Group, Icon, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Center,
+  Flex,
+  Group,
+  Icon,
+  Skeleton,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackQueryAction } from "metabase-types/api";
 
 import { ActionHeader } from "../../components/ActionHeader";
+import { ActionPageSkeleton } from "../../components/ActionPageSkeleton";
 import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useRouteAction } from "../../hooks/use-route-action";
 import { canEditActionQuery } from "../../utils";
@@ -17,6 +28,8 @@ import { ActionFieldDetails } from "./ActionFieldDetails";
 import { ActionFieldList } from "./ActionFieldList";
 import S from "./ActionFieldsPage.module.css";
 import { useActionFields } from "./hooks";
+
+const FIELD_SKELETON_COUNT = 3;
 
 export function ActionFieldsPage() {
   const {
@@ -32,10 +45,14 @@ export function ActionFieldsPage() {
   const isLoading = isLoadingAction || isLoadingDatabases;
   const error = actionError ?? databasesError;
 
-  if (isLoading || error != null || action == null) {
+  if (isLoading) {
+    return <ActionFieldsPageSkeleton />;
+  }
+
+  if (error != null || action == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
@@ -124,5 +141,35 @@ function ActionFieldsPageBody({
         )}
       </Flex>
     </PageContainer>
+  );
+}
+
+function ActionFieldsPageSkeleton() {
+  return (
+    <ActionPageSkeleton gap="lg" px={0} pb={0} headerPx="3.5rem">
+      <Flex className={S.body} flex={1} mih={0}>
+        <Stack
+          className={S.column}
+          flex="8 1 0"
+          miw={320}
+          maw={640}
+          mih={0}
+          pl="3.5rem"
+          pr="xl"
+          py="xl"
+          gap="lg"
+        >
+          <Stack gap="xs">
+            <Title order={4}>{t`Fields`}</Title>
+            <Skeleton h={12} w="80%" my={4} radius="xs" />
+          </Stack>
+          <Stack gap="md">
+            {Array.from({ length: FIELD_SKELETON_COUNT }, (_, index) => (
+              <Skeleton key={index} h={70} radius="md" />
+            ))}
+          </Stack>
+        </Stack>
+      </Flex>
+    </ActionPageSkeleton>
   );
 }
