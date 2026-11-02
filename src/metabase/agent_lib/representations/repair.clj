@@ -2855,7 +2855,7 @@
      (if-let [[spelling match] (some #(when-let [match (lib-match %)] [% match])
                                      (distinct [col-name stripped]))]
        [spelling (:types match)]
-       (when-let [match (or (when prefix (loose-on unprefixed stripped))
+       (when-let [match (or (loose-on unprefixed stripped)
                             (loose-on :name stripped)
                             (loose-on :display-name stripped))]
          (let [spelling (or (unprefixed match) (:name match))]
@@ -3014,22 +3014,21 @@
      :path  (group-by alias (match/match-many stage' (node :guard (join-alias-path-field-clause? node)) node))}))
 
 (defn- bad-join-alias-refs
-  "The distinct `named-refs` naming no column in `cols`, followed by the distinct `path-refs` whose
-  field matches no column of `cols` by id, or by name among the columns without an id. A path ref
-  whose field can't be resolved is skipped."
+  "Returns `{:named [...], :path [...]}`: the distinct `named-refs` naming no column in `cols`, and the distinct
+  `path-refs` whose field matches no column of `cols` by id, or by name among the columns without an id.
+  A path ref whose field can't be resolved is skipped."
   [mp cols named-refs path-refs import-resolver]
   (let [returned-ids  (set (keep :id cols))
-        id-less-names (set (keep #(when-not (:id %) (:name %)) cols))]
-    (distinct
-     (concat
-      (filter #(nil? (match-cross-stage-column cols (nth % 2))) named-refs)
-      (filter #(when-let [field (some->> (try-resolve-field-id @import-resolver (nth % 2))
-                                         (lib.metadata.protocols/field mp))]
-                 ;; like lib, fall back to the field's name only for a column without an id, e.g.
-                 ;; one returned through a native card
-                 (and (not (contains? returned-ids (:id field)))
-                      (not (contains? id-less-names (:name field)))))
-              path-refs)))))
+        id-less-names (set (keep #(when-not (:id %) (:name %)) cols))
+        bad-named?    #(nil? (match-cross-stage-column cols (nth % 2)))
+        bad-path?     #(when-let [field (some->> (try-resolve-field-id @import-resolver (nth % 2))
+                                                 (lib.metadata.protocols/field mp))]
+                         ;; like lib, fall back to the field's name only for a column without an id, e.g. one
+                         ;; returned through a native card
+                         (and (not (contains? returned-ids (:id field)))
+                              (not (contains? id-less-names (:name field)))))]
+    {:named (into [] (comp (filter bad-named?) (distinct)) named-refs)
+     :path  (into [] (comp (filter bad-path?) (distinct)) path-refs)}))
 
 (defn- field-target-name
   "The column a field ref's target denotes: the name itself, or `TABLE.FIELD` for a portable path
@@ -3049,11 +3048,12 @@
         joins                (get stage "joins")
         checks               (vec (for [join  (when (and (or (seq named) (seq path)) (sequential? joins)) joins)
                                         :let  [alias      (when (map? join) (get join "alias"))
+                                               plain?     (plain-table-join? join)
                                                named-refs (get named alias)
                                                path-refs  (cond->> (get path alias)
                                                             ;; a plain table join returns all its table's columns, so it
                                                             ;; is resolved only for a ref to another table's column
-                                                            (plain-table-join? join)
+                                                            plain?
                                                             (other-table-path-refs mp @import-resolver join))]
                                         :when (or named-refs path-refs)
                                         :let  [cols (when (vector? (get join "stages"))
@@ -3064,7 +3064,7 @@
                                      :cols       cols
                                      :named-refs named-refs
                                      :path-refs  path-refs
-                                     :plain?     (plain-table-join? join)}))
+                                     :plain?     plain?}))
         alias->cols          (into {} (map (juxt :alias :cols)) checks)]
     {:stage    (cond->> stage
                  (seq alias->cols)
@@ -3075,23 +3075,26 @@
                       (maybe-fill-cross-stage-types node cols)
                       node))))
      :problems (vec (for [{:keys [alias cols named-refs path-refs plain?]} checks
-                          :let  [bad (bad-join-alias-refs mp cols named-refs path-refs import-resolver)]
+                          :let  [{bad-named :named, bad-path :path}
+                                 (bad-join-alias-refs mp cols named-refs path-refs import-resolver)
+                                 bad (into bad-named bad-path)]
                           :when (seq bad)]
                       {:stage        (repr/original-stage-index query idx)
                        :join-alias   alias
-                       :clauses      (vec bad)
+                       :clauses      bad
                        :columns      (vec (distinct (map #(field-target-name mp (nth % 2)) bad)))
                        :available    (mapv :name cols)
-                       ;; which advice the message gives: names, the join's columns, or another table's columns
-                       :named?       (boolean (some (set named-refs) bad))
+                       :named?       (boolean (seq bad-named))
                        :plain?       plain?
-                       :other-table? (boolean (and plain? (some (set path-refs) bad)))}))}))
+                       ;; a plain table join's path refs are all to other tables, see `path-refs` above
+                       :other-table? (boolean (and plain? (seq bad-path)))}))}))
 
 (defn- unresolved-join-alias-fields-error
-  "The `:agent-error?` for join-alias refs naming columns their joins don't return.
-  The advice after the list depends on how each ref went wrong, so a ref to another table through a plain table join
-  isn't told about display labels or grouped joins."
+  "The `:agent-error?` for `problems`, the join-alias refs naming columns their joins don't return.
+  Its message lists them, then gives the advice each problem's `:named?`, `:plain?` and `:other-table?` call for."
   [problems]
+  ;; Only the advice that applies: a ref to another table through a plain table join has nothing to do with display
+  ;; labels or grouped joins.
   (ex-info
    (str (format "Some join column references name a column their join doesn't return: %s."
                 (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
@@ -3101,7 +3104,8 @@
                                          (str/join ", " (map quoting/quoted columns))
                                          (str/join ", " (map quoting/quoted available))))))
         (when (some :named? problems)
-          " Reference a join column by its machine name (e.g. an aggregation is `min`, `count`, `sum` - never its display label like `Min of X`).")
+          (str " Reference a join column by its machine name (e.g. an aggregation is `min`, `count`, `sum` - never its"
+               " display label like `Min of X`)."))
         (when (some (complement :plain?) problems)
           " Reference only columns the join returns: a grouped join returns just its breakouts and aggregations.")
         (when (some :other-table? problems)
@@ -3110,7 +3114,7 @@
                " join's foreign key.")))
    {:agent-error? true
     :error        :unresolved-join-alias-field
-    :problems     (mapv #(dissoc % :named? :plain? :other-table?) problems)}))
+    :problems     problems}))
 
 (defn- repair-join-alias-refs*
   "Pass 4.7: type the join-alias string field refs of every stage from the referenced joins'
