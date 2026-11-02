@@ -130,6 +130,7 @@ describe("BookmarkList", () => {
       await userEvent.tab();
 
       expect(await screen.findByRole("tooltip")).toHaveTextContent(LONG_NAME);
+      expect(screen.getByRole("link")).not.toHaveAttribute("aria-describedby");
     });
 
     it("shows the remove button's tooltip when it has focus", async () => {

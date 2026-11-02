@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactElement } from "react";
+import { type ReactElement, cloneElement } from "react";
 
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import CS from "metabase/css/core/index.css";
@@ -13,7 +13,7 @@ function isLongItemName(itemName: string) {
 
 interface LongItemNameTooltipProps {
   itemName: string;
-  children: ReactElement;
+  children: ReactElement<{ "aria-describedby"?: string }>;
 }
 
 /**
@@ -30,7 +30,8 @@ export function LongItemNameTooltip({
   }
   return (
     <Tooltip label={itemName} withArrow maw="65ch">
-      {children}
+      {/* The tooltip repeats the accessible name, so it mustn't also describe it. */}
+      {cloneElement(children, { "aria-describedby": undefined })}
     </Tooltip>
   );
 }
