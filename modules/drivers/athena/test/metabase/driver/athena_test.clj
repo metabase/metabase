@@ -691,3 +691,53 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+;;; IAM authentication manual testing procedure
+
+;; IAM authentication is one of those features that we get for free from the
+;; underlying Athena JDBC driver, but it's not something we can test in CI
+;; because it depends on metadata that's present on the EC2 node but not present
+;; on the CI runner. In order to test IAM authentication, you have to spin up
+;; EC2 nodes yourself and test manually unfortunately.
+
+;; Create an IAM role that has access to all the "athena:*" actions
+;; as well as "s3:PutObject", "s3:GetObject", "s3:AbortMultipartUpload",
+;; "s3:ListBucket", "s3:GetBucketLocation" on resource: "*".
+
+;; Ensure you have a bucket for test results. It should be in the same region
+;; you're running your EC2 node.
+
+;; Start an EC2 node that's at least a t2.medium with the IAM instance profile
+;; you just created. SSH in (with -L 3000:localhost:3000).
+
+;; $ apt update && sudo apt install -y openjdk-21-jre-headless
+;; $ wcurl https://downloads.metabase.com/latest/metabase.jar
+;; $ java -jar metabase.jar
+
+;; Log into http://localhost:3000 and add an Athena database with the region and
+;; the bucket but with the access key and secret key left empty. If the IAM role
+;; is set up correctly, you should be able to hit "Test connection" and succeed.
+
+;;; Assuming roles
+
+;; https://docs.aws.amazon.com/sdkref/latest/guide/feature-assume-role-credentials.html
+
+;; The Athena JDBC driver also supports using the machine's IAM role (A) to
+;; assume a different role (B) where A does not have access to Athena but B does
+;; and A has access to assume role B.
+
+;; Role A needs access to the "sts:AssumeRole" action with the resource set to
+;; the ARN of role B, like "arn:aws:iam::488208231899:role/phil-athena-role"
+
+;; On the EC2 node you'll need to create a credential profiles file containing
+;; something like:
+
+;; [profile athena-role]
+;; credential_source = Ec2InstanceMetadata
+;; role_arn = arn:aws:iam::488208231899:role/athena-role
+
+;; The documentation is not clear about this, but you have to point set the
+;; AWS_CREDENTIAL_PROFILES_FILE env var to point to the credentials profile file
+;; before it'll be used. Finally you'll need the following as additional options:
+
+;; CredentialsProvider=ProfileCredentials;ProfileName=athena-role;
