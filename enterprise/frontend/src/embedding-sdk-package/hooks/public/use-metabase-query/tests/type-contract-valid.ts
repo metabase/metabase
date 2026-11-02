@@ -215,9 +215,9 @@ function ValidTypeFixtures() {
   void sdkCreateOrder.execute({ status: "shipped" });
   void useAction(CreateOrder).execute({ status: "shipped" });
 
-  const updatedRows = updateOrder.result?.["rows-updated"];
+  const updatedCount: number | undefined = updateOrder.result?.["rows-updated"];
 
-  void updatedRows;
+  void updatedCount;
 
   // A raw id types nothing, so the generics still stand in for a definition.
   const rawAction = useAction<{ status: string }, "create">(51);
