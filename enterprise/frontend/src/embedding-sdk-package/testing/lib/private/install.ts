@@ -14,8 +14,6 @@ const MOCK_SDK_STORE: MockSdkStore = {
   subscribe: () => () => undefined,
 };
 
-let mountedProviderCount = 0;
-
 function getPropsStore() {
   return ensureMetabaseProviderPropsStore<
     MetabaseProviderPropsStoreExternalProps,
@@ -27,7 +25,14 @@ export function installMockSdk(bundle: MetabaseEmbeddingSdkBundleExports) {
   const win = getWindow();
 
   if (!win) {
-    return bundle;
+    return () => undefined;
+  }
+
+  if (win.METABASE_EMBEDDING_SDK_BUNDLE) {
+    throw new Error(
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- developer-facing error naming SDK components
+      "An SDK bundle is already installed. Render one MetabaseTestProvider at a time.",
+    );
   }
 
   win.METABASE_EMBEDDING_SDK_BUNDLE = bundle;
@@ -40,26 +45,8 @@ export function installMockSdk(bundle: MetabaseEmbeddingSdkBundleExports) {
     loadingError: null,
   });
 
-  return bundle;
-}
-
-function uninstallMockSdk() {
-  const win = getWindow();
-
-  if (!win || mountedProviderCount > 0) {
-    return;
-  }
-
-  delete win.METABASE_EMBEDDING_SDK_BUNDLE;
-  getPropsStore().cleanup();
-}
-
-export function acquireMockSdk(bundle: MetabaseEmbeddingSdkBundleExports) {
-  mountedProviderCount += 1;
-  installMockSdk(bundle);
-
   return () => {
-    mountedProviderCount -= 1;
-    uninstallMockSdk();
+    delete win.METABASE_EMBEDDING_SDK_BUNDLE;
+    getPropsStore().cleanup();
   };
 }

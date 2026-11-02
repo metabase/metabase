@@ -192,6 +192,22 @@ describe("MetabaseTestProvider", () => {
     ).toBeInTheDocument();
   });
 
+  it("fails when another provider is already mounted", () => {
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    expect(() =>
+      render(
+        <MetabaseTestProvider>
+          <MetabaseTestProvider />
+        </MetabaseTestProvider>,
+      ),
+    ).toThrow("An SDK bundle is already installed");
+
+    consoleError.mockRestore();
+  });
+
   it("removes mock SDK on unmount", async () => {
     const { unmount } = setup({
       children: <StaticQuestion questionId={1} />,

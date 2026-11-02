@@ -1,4 +1,9 @@
-import { type ComponentType, type ReactNode, useEffect, useState } from "react";
+import {
+  type ComponentType,
+  type ReactNode,
+  useLayoutEffect,
+  useState,
+} from "react";
 
 import type { CollectionBrowserProps } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import type { CreateDashboardModalProps } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
@@ -18,10 +23,7 @@ import type {
   MetabaseUser,
 } from "embedding-sdk-bundle/types/user";
 import { createMockSdkBundle } from "embedding-sdk-package/testing/lib/private/bundle";
-import {
-  acquireMockSdk,
-  installMockSdk,
-} from "embedding-sdk-package/testing/lib/private/install";
+import { installMockSdk } from "embedding-sdk-package/testing/lib/private/install";
 
 export type MetabaseTestOptions = {
   CollectionBrowser?: ComponentType<CollectionBrowserProps>;
@@ -49,9 +51,15 @@ export function MetabaseTestProvider({
   children,
   ...options
 }: MetabaseTestProviderProps) {
-  const [bundle] = useState(() => installMockSdk(createMockSdkBundle(options)));
+  const [bundle] = useState(() => createMockSdkBundle(options));
+  const [isInstalled, setIsInstalled] = useState(false);
 
-  useEffect(() => acquireMockSdk(bundle), [bundle]);
+  useLayoutEffect(() => {
+    const uninstall = installMockSdk(bundle);
+    setIsInstalled(true);
 
-  return children;
+    return uninstall;
+  }, [bundle]);
+
+  return isInstalled ? children : null;
 }
