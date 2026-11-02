@@ -12,10 +12,9 @@
 (p/import-vars
  [metabase.public-sharing.reach
   anonymously-reachable-entities
-  card-ids-by
-  rendered-cards
-  rendered-card-ids
-  value-list-card-ids-by-surface])
+  embedding-params
+  shown-card-ids
+  value-list-sources])
 
 (def public-uuid-prefix-length
   "How many leading characters of a `public_uuid` are copied into the plaintext `public_uuid_prefix` column.

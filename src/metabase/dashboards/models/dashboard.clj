@@ -499,31 +499,34 @@
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
 
-(defmethod public-sharing/rendered-card-ids :model/Dashboard
-  [_model dashboard-id->surfaces]
+(defmethod public-sharing/shown-card-ids :model/Dashboard
+  [_model dashboard-ids]
   ;; An anonymous user who can open a dashboard reaches a database in three ways:
   ;; - a dashcard whose Card runs against it,
   ;; - a dashcard with a series Card that runs against it, and
-  ;; - a filter whose value list comes from a Card that runs against it.
-  (let [dashboard-ids          (keys dashboard-id->surfaces)
-        dashcard-card-ids      (public-sharing/card-ids-by :dashboard_id :card_id
-                                                           (dashboards.db/dashcard-cards-for-dashboards dashboard-ids))
-        series-card-ids        (public-sharing/card-ids-by :dashboard_id :card_id
-                                                           (dashboards.db/dashcard-series-cards-for-dashboards
-                                                            dashboard-ids))
-        filter-source-card-ids (into {}
-                                     (keep (fn [{:keys [id parameters], embedding-params :embedding_params}]
-                                             (when-let [by-surface (not-empty
-                                                                    (public-sharing/value-list-card-ids-by-surface
-                                                                     (get dashboard-id->surfaces id)
-                                                                     embedding-params
-                                                                     parameters
-                                                                     queries/values-source-card-ids))]
-                                               [id by-surface])))
-                                     (dashboards.db/parameters-for-dashboards dashboard-ids))]
-    (public-sharing/rendered-cards dashboard-id->surfaces
-                                   (merge-with into dashcard-card-ids series-card-ids)
-                                   filter-source-card-ids)))
+  ;; - a filter whose value list comes from a Card that runs against it (see `value-list-sources` below).
+  (reduce (fn [acc {:keys [dashboard_id card_id]}]
+            ;; text, link and action dashcards have no Card
+            (cond-> acc
+              card_id (update dashboard_id (fnil conj #{}) card_id)))
+          {}
+          (concat (dashboards.db/dashcard-cards-for-dashboards dashboard-ids)
+                  (dashboards.db/dashcard-series-cards-for-dashboards dashboard-ids))))
+
+(defmethod public-sharing/value-list-sources :model/Dashboard
+  [_model dashboard-ids]
+  (into {}
+        (map (fn [{:keys [id parameters]}]
+               [id (into []
+                         (keep (fn [parameter]
+                                 (when-let [card-id (queries/values-source-card-id parameter)]
+                                   {:parameter parameter, :card-id card-id})))
+                         parameters)]))
+        (dashboards.db/parameters-for-dashboards dashboard-ids)))
+
+(defmethod public-sharing/embedding-params :model/Dashboard
+  [_model dashboard-ids]
+  (into {} (map (juxt :id :embedding_params)) (dashboards.db/parameters-for-dashboards dashboard-ids)))
 
 (defmethod serdes/serialization-dependencies "Dashboard" [_model-name dashboard]
   ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps

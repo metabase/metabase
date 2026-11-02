@@ -1835,21 +1835,25 @@
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
-(defmethod public-sharing/rendered-card-ids :model/Card
-  [_model card-id->surfaces]
+(defmethod public-sharing/shown-card-ids :model/Card
+  [_model card-ids]
+  (into {} (map (fn [card-id] [card-id #{card-id}])) card-ids))
+
+(defmethod public-sharing/value-list-sources :model/Card
+  [_model card-ids]
   ;; A question's anonymous reach includes the questions its filters draw value lists from.
-  (let [cards (queries.db/card-parameters-for-cards (keys card-id->surfaces))]
-    (public-sharing/rendered-cards
-     card-id->surfaces
-     (into {} (map (fn [{:keys [id]}] [id #{id}])) cards)
-     (into {}
-           (map (fn [{:keys [id parameters], embedding-params :embedding_params}]
-                  [id (public-sharing/value-list-card-ids-by-surface
-                       (get card-id->surfaces id)
-                       embedding-params
-                       parameters
-                       parameter-card/values-source-card-ids)]))
-           cards))))
+  (into {}
+        (map (fn [{:keys [id parameters]}]
+               [id (into []
+                         (keep (fn [parameter]
+                                 (when-let [card-id (parameter-card/values-source-card-id parameter)]
+                                   {:parameter parameter, :card-id card-id})))
+                         parameters)]))
+        (queries.db/card-parameters-for-cards card-ids)))
+
+(defmethod public-sharing/embedding-params :model/Card
+  [_model card-ids]
+  (into {} (map (juxt :id :embedding_params)) (queries.db/card-parameters-for-cards card-ids)))
 
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]

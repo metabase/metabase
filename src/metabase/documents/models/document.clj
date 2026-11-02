@@ -738,24 +738,19 @@
                    :when (and link-id (contains? model->serdes-model model))]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
-(defmethod public-sharing/rendered-card-ids :model/Document
-  [_model document-id->surfaces]
+(defmethod public-sharing/shown-card-ids :model/Document
+  [_model document-ids]
   ;; An anonymous user who can open a document runs the query of each question that the document's content embeds
-  ;; inline and that belongs to the document.
-  (let [document-ids   (keys document-id->surfaces)
-        owned-card-ids (public-sharing/card-ids-by :document_id :id
-                                                   (documents.db/card-ids-owned-by-documents document-ids))]
-    (public-sharing/rendered-cards
-     document-id->surfaces
-     (into {}
-           ;; `prose-mirror/card-ids` throws on any other content type, so a new one cannot go unread here
-           (keep (fn [{document-id :id, :as document}]
-                   (let [owned (get owned-card-ids document-id #{})]
-                     (when-let [embedded (not-empty (into #{} (filter owned) (prose-mirror/card-ids document)))]
-                       [document-id embedded]))))
-           (documents.db/contents-for-documents document-ids))
-     ;; a document has no filters of its own, so it never runs a question's query to fill a value list
-     {})))
+  ;; inline and that belongs to the document. A document has no filters of its own, so it implements nothing else.
+  (let [owned-card-ids (reduce (fn [acc {:keys [id document_id]}]
+                                 (update acc document_id (fnil conj #{}) id))
+                               {}
+                               (documents.db/card-ids-owned-by-documents document-ids))]
+    (into {}
+          ;; `prose-mirror/card-ids` throws on any other content type, so a new one cannot go unread here
+          (map (fn [{document-id :id, :as document}]
+                 [document-id (into #{} (filter (get owned-card-ids document-id #{})) (prose-mirror/card-ids document))]))
+          (documents.db/contents-for-documents document-ids))))
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))

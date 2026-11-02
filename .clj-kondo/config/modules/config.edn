@@ -2076,6 +2076,7 @@
    :uses #{api
            embedding
            lib.schema
+           parameters.schema
            settings
            util}
    :model-imports #{:model/Action

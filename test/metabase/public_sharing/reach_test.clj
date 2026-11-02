@@ -355,6 +355,26 @@
                                            :parameters       [(card-value-source-parameter source-id)]}]
         (is (true? (anonymously-reachable? db-id)))))))
 
+(deftest anonymously-reachable-filter-without-slug-test
+  (mt/with-temporary-setting-values [enable-embedding-modular true]
+    (testing "a filter with no slug cannot be enabled in a guest embed, so it reaches nothing through one"
+      (mt/with-temp
+        [:model/Database  {db-id :id}     {}
+         :model/Table     {table-id :id}  {:db_id db-id}
+         :model/Card      {source-id :id} {:database_id db-id, :table_id table-id, :type :question}
+         :model/Dashboard _               {:enable_embedding true
+                                           :embedding_params {:filter "enabled"}
+                                           :parameters       [(dissoc (card-value-source-parameter source-id) :slug)]}]
+        (is (false? (anonymously-reachable? db-id)))))
+    (testing "but it still reaches through a public link"
+      (mt/with-temp
+        [:model/Database  {db-id :id}     {}
+         :model/Table     {table-id :id}  {:db_id db-id}
+         :model/Card      {source-id :id} {:database_id db-id, :table_id table-id, :type :question}
+         :model/Dashboard _               {:public_uuid (str (random-uuid))
+                                           :parameters  [(dissoc (card-value-source-parameter source-id) :slug)]}]
+        (is (true? (anonymously-reachable? db-id)))))))
+
 ;;; ------------------------------------------- Chunked id lists ----------------------------------------------------
 
 (deftest anonymously-reachable-is-the-union-over-chunks-test
@@ -469,10 +489,10 @@
 (defn- rendered-refs
   "The questions the entity `model`/`id` renders, as `[model-name id]` pairs."
   [model id]
-  (let [{:keys [shown shown-indirectly]} (get (public-sharing.reach/rendered-card-ids model {id #{:public-link}}) id)]
-    (into #{}
-          (comp cat cat (map (fn [card-id] ["Card" card-id])))
-          [(vals shown) (vals shown-indirectly)])))
+  (into #{}
+        (map (fn [card-id] ["Card" card-id]))
+        (concat (get (public-sharing.reach/shown-card-ids model [id]) id)
+                (map :card-id (get (public-sharing.reach/value-list-sources model [id]) id)))))
 
 (defn- assert-pinned-to-containments
   "Assert that `ours`, the questions the entity `model-name`/`id` renders, are serialization's containments for it
@@ -606,4 +626,4 @@
     (t2/update! :model/Document document-id {:content_type "text/plain"})
     (testing "a document whose content type reach cannot read fails loudly rather than reaching nothing"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"prose mirror content-type"
-                            (public-sharing.reach/rendered-card-ids :model/Document {document-id #{:public-link}}))))))
+                            (public-sharing.reach/shown-card-ids :model/Document [document-id]))))))

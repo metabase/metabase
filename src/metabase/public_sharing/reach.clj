@@ -5,12 +5,13 @@
   through either is anonymously reachable, and it reaches a database when anything it renders runs a query there.
   Turning off anonymous access to a database stops every entity that reaches it from returning that data.
 
-  [[anonymously-reachable-entities]] is the public API. [[rendered-card-ids]] is the method each content
-  module implements."
+  [[anonymously-reachable-entities]] is the public API. Each content module answers [[shown-card-ids]], and where it
+  has filters, [[value-list-sources]] and [[embedding-params]]."
   (:require
    [metabase.embedding.settings :as embedding.settings]
    [metabase.embedding.util :as embedding.util]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.db :as public-sharing.db]
    [metabase.public-sharing.settings :as public-sharing.settings]
    [metabase.util :as u]
@@ -30,102 +31,85 @@
   "For some model type (e.g. card, dashboard, document) a map of `id` to the surfaces that it is publicly accessible through."
   [:map-of ms/PositiveInt ::surfaces])
 
-(mr/def ::card-ids-by-surface
-  "Cards, by the surface through which an anonymous user gets their results, e.g. `{:public-link #{10 11}}`."
-  [:map-of ::surface [:set ::lib.schema.id/card]])
-
-(mr/def ::shown
-  "The Cards whose results an entity shows directly, such as the question on a dashboard card."
-  ::card-ids-by-surface)
-
-(mr/def ::shown-indirectly
-  "The Cards an entity uses without showing their results as its own, such as a question filling the value list of a
-  dashboard filter. A surface can expose fewer of them than another: a guest embed only fills the value lists of the
-  filters its publisher enabled."
-  ::card-ids-by-surface)
-
-(mr/def ::rendered
-  "What one entity renders, through each surface it is open through, e.g.
-  `{:shown {:public-link #{10 11}}, :shown-indirectly {:public-link #{12}}}`."
-  [:map {:closed true}
-   [:shown            ::shown]
-   [:shown-indirectly ::shown-indirectly]])
-
-(mr/def ::id->rendered
-  "What each entity of one model renders, by entity id."
-  [:map-of ms/PositiveInt ::rendered])
-
 (mr/def ::published
   "The first step of anonymous reach: the entities an anonymous user can open, by model, each with the surfaces it is
-  open through. It says nothing about what an entity runs; [[rendered-card-ids]] works that out from it."
+  open through. It says nothing about what an entity runs."
   [:map {:closed true}
    [:model/Card      ::id->surfaces]
    [:model/Dashboard ::id->surfaces]
    [:model/Document  ::id->surfaces]])
 
-(mr/def ::rendered-by-model
-  "The second step of anonymous reach: for the entities in a `::published`, the Cards each one renders, by model,
-  leaving out a model none of whose entities renders anything. Keeping the Cards that run against one database turns
-  it into that database's anonymous reach."
+(mr/def ::id->shown-card-ids
+  "The Cards whose results each entity shows directly, such as the question on a dashboard card, by entity id."
+  [:map-of ms/PositiveInt [:set ::lib.schema.id/card]])
+
+(mr/def ::value-list-source
+  "A parameter whose value list comes from a Card."
   [:map {:closed true}
-   [:model/Card      {:optional true} ::id->rendered]
-   [:model/Dashboard {:optional true} ::id->rendered]
-   [:model/Document  {:optional true} ::id->rendered]])
+   [:parameter ::parameters.schema/parameter]
+   [:card-id   ::lib.schema.id/card]])
 
-(defmulti rendered-card-ids
-  "The Cards each entity of `model` in `id->surfaces`, an `::id->surfaces`, renders, directly or indirectly, as an
-  `::id->rendered`."
-  {:arglists '([model id->surfaces])}
-  (fn [model _id->surfaces] model))
+(mr/def ::id->value-list-sources
+  "The filters of each entity that fill their value list from a Card, by entity id."
+  [:map-of ms/PositiveInt [:sequential ::value-list-source]])
 
-(defn card-ids-by
-  "Regroup `rows` into `{owner-id #{card-id}}`, dropping rows that reach no Card."
-  [row->owner-id row->card-id rows]
-  (reduce (fn [acc row]
-            (if-let [card-id (row->card-id row)]
-              (update acc (row->owner-id row) (fnil conj #{}) card-id)
-              acc))
-          {}
-          rows))
+(mr/def ::id->embedding-params
+  "Each entity's guest-embed whitelist as stored, by entity id."
+  [:map-of ms/PositiveInt [:maybe ms/EmbeddingParams]])
 
-(mu/defn rendered-cards :- ::id->rendered
-  "Build one content model's [[rendered-card-ids]] answer for the entities in `id->surfaces` from two maps keyed by
-  entity id: `shown`, the Cards each entity shows directly, and `shown-indirectly`, the Cards each entity uses by
-  surface without showing them, e.g. to fill a filter's value list. An entity shows the same Cards directly through
-  every surface it is open through. An entity in only one of the maps gets an empty map for the other:
+(defmulti shown-card-ids
+  "The Cards each entity of `model` among `ids` shows directly, as an `::id->shown-card-ids`. `ids` is one non-empty
+  chunk of ids. Every content model implements it."
+  {:arglists '([model ids])}
+  (fn [model _ids] model))
 
-    (rendered-cards {1 #{:public-link}, 2 #{:public-link}} {1 #{10}} {2 {:public-link #{12}}})
-    ;; => {1 {:shown {:public-link #{10}}, :shown-indirectly {}}
-    ;;     2 {:shown {},                   :shown-indirectly {:public-link #{12}}}}"
-  [id->surfaces     :- ::id->surfaces
-   shown            :- [:map-of ms/PositiveInt [:set ::lib.schema.id/card]]
-   shown-indirectly :- [:map-of ms/PositiveInt ::shown-indirectly]]
-  (into {}
-        (map (fn [id] [id {:shown            (if-let [card-ids (not-empty (get shown id))]
-                                               (into {} (map (fn [surface] [surface card-ids])) (get id->surfaces id))
-                                               {})
-                           :shown-indirectly (get shown-indirectly id {})}]))
-        (into (set (keys shown)) (keys shown-indirectly))))
+(defmulti value-list-sources
+  "The filters of each entity of `model` among `ids` that fill their value list from a Card, as an
+  `::id->value-list-sources`."
+  {:arglists '([model ids])}
+  (fn [model _ids] model))
 
-(defn- parameters-publicly-exposed-via-surface
-  "For a given `surface` (public links or guest embedding), filter `parameters` down to what an anonymous user of that surface could see.
-  - For public links, ANY published filter can be set
-  - For guest embeds, publishers choose which filters are `enabled` when publishing."
-  [surface embedding-params parameters]
-  (if (= surface :public-link)
-    parameters
-    (embedding.util/enabled-params parameters embedding-params)))
+(defmethod value-list-sources :default [_model _ids] {})
 
-(defn value-list-card-ids-by-surface
-  "The Cards each of `surfaces` lets an anonymous user draw a filter's value list from, as a `::shown-indirectly`."
-  [surfaces embedding-params parameters source-card-ids]
-  (into {}
-        (keep (fn [surface]
-                (when-let [card-ids (not-empty (source-card-ids
-                                                (parameters-publicly-exposed-via-surface
-                                                 surface embedding-params parameters)))]
-                  [surface card-ids])))
-        surfaces))
+(defmulti embedding-params
+  "The guest-embed whitelist of each entity of `model` among `ids`, as an `::id->embedding-params`."
+  {:arglists '([model ids])}
+  (fn [model _ids] model))
+
+(defmethod embedding-params :default [_model _ids] {})
+
+(mr/def ::model
+  "A content model an anonymous user can open."
+  [:enum :model/Card :model/Dashboard :model/Document])
+
+(mr/def ::id-chunk
+  "One non-empty chunk of entity ids, as the methods above take it."
+  [:sequential {:min 1} ms/PositiveInt])
+
+(mu/defn- shown-card-ids* :- ::id->shown-card-ids
+  [model :- ::model
+   ids   :- ::id-chunk]
+  (shown-card-ids model ids))
+
+(mu/defn- value-list-sources* :- ::id->value-list-sources
+  [model :- ::model
+   ids   :- ::id-chunk]
+  (value-list-sources model ids))
+
+(mu/defn- embedding-params* :- ::id->embedding-params
+  [model :- ::model
+   ids   :- ::id-chunk]
+  (embedding-params model ids))
+
+(defn- exposed-card-ids
+  "The Cards `sources` let an anonymous user of `surface` draw a value list from. A public link exposes every filter; a
+  guest embed only those its publisher enabled."
+  [surface whitelist sources]
+  (let [exposed (if (= surface :public-link)
+                  sources
+                  (let [enabled (set (embedding.util/enabled-params (map :parameter sources) whitelist))]
+                    (filter (comp enabled :parameter) sources)))]
+    (into #{} (map :card-id) exposed)))
 
 (def ^:private id-chunk-size
   "How many ids the anonymous-reach query puts into one `IN` clause."
@@ -154,27 +138,41 @@
      :model/Document  (cond-> {}
                         public-link? (by-surface :public-link (public-sharing.db/publicly-shared-document-ids)))}))
 
-(mu/defn- anonymously-rendered-card-ids :- ::rendered-by-model
-  "What each entity in `published` renders, by [[rendered-card-ids]]."
-  [published :- ::published]
+(defn- chunk-cards
+  "What each entity in `id->surfaces`, one chunk of a model's published entities, renders:
+  `{id {:shown #{card-id}, :value-lists {surface #{card-id}}}}`. `:shown` holds through every surface."
+  [model id->surfaces]
+  (let [ids       (vec (keys id->surfaces))
+        shown     (shown-card-ids* model ids)
+        sources   (value-list-sources* model ids)
+        embedded  (filterv #(and (contains? (id->surfaces %) :guest-embed) (seq (sources %))) ids)
+        whitelist (if (seq embedded) (embedding-params* model embedded) {})]
+    (into {}
+          (map (fn [[id surfaces]]
+                 [id {:shown       (get shown id #{})
+                      :value-lists (into {}
+                                         (map (fn [surface]
+                                                [surface (exposed-card-ids surface (get whitelist id) (get sources id))]))
+                                         surfaces)}]))
+          id->surfaces)))
+
+(defn- anonymously-rendered-cards
+  "`{model {id cards}}` for every entity in `published`, each `cards` as [[chunk-cards]] gives it."
+  [published]
   (into {}
-        (keep (fn [[model id->surfaces]]
-                (let [by-id (into {}
-                                  (mapcat #(rendered-card-ids model (into {} %)))
-                                  (partition-all id-chunk-size id->surfaces))]
-                  (when (seq by-id)
-                    [model by-id]))))
+        (map (fn [[model id->surfaces]]
+               [model (into {}
+                            (mapcat #(chunk-cards model (into {} %)))
+                            (partition-all id-chunk-size id->surfaces))]))
         published))
 
-(defn- card-ids-of
-  "Every Card id in one entity's [[rendered-card-ids]] answer, of either sort and over every surface."
-  [{:keys [shown shown-indirectly]}]
-  (into #{} (comp cat cat) [(vals shown) (vals shown-indirectly)]))
-
 (defn- card-ids-in
-  "Every Card id in `rendered`, over every model and entity."
+  "Every Card id in `rendered`, over every model, entity and surface."
   [rendered]
-  (into #{} (comp (mapcat vals) (mapcat card-ids-of)) (vals rendered)))
+  (into #{}
+        (comp (mapcat vals)
+              (mapcat (fn [{:keys [shown value-lists]}] (into shown cat (vals value-lists)))))
+        (vals rendered)))
 
 (defn- card-database-ids
   "The Database each unarchived Card among `card-ids` is saved against, as `{card-id database-id}`."
@@ -241,15 +239,15 @@
   filter's value list."
   [database-id :- ::lib.schema.id/database]
   (let [published (published-entities)
-        rendered  (anonymously-rendered-card-ids published)
+        rendered  (anonymously-rendered-cards published)
         card->db  (card-database-ids (card-ids-in rendered))
         on-db?    (fn [card-id] (= database-id (get card->db card-id)))]
     (named-rows
-     (for [[model id->rendered]                  rendered
-           [id {:keys [shown shown-indirectly]}] id->rendered
-           :let  [shows-directly? (fn [surface] (boolean (some on-db? (get shown surface))))
+     (for [[model id->cards]                rendered
+           [id {:keys [shown value-lists]}] id->cards
+           :let  [shows-directly? (boolean (some on-db? shown))
                   surfaces        (into #{}
-                                        (filter #(or (shows-directly? %) (some on-db? (get shown-indirectly %))))
+                                        (filter #(or shows-directly? (some on-db? (get value-lists %))))
                                         (get-in published [model id]))]
            :when (seq surfaces)]
-       {:model model, :id id, :surfaces surfaces, :indirect? (not-any? shows-directly? surfaces)}))))
+       {:model model, :id id, :surfaces surfaces, :indirect? (not shows-directly?)}))))
