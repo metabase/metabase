@@ -561,7 +561,9 @@
       (is (true? (driver/can-connect?
                   :databricks
                   (-> (:details (mt/db))
-                      (dissoc :token)
+                      ;; drop :auth-mode so :use-m2m takes effect; the fixture DB is set up for PAT and
+                      ;; normalize-db-details has injected :auth-mode "pat"
+                      (dissoc :token :auth-mode)
                       (assoc :use-m2m true
                              :client-id (tx/db-test-env-var-or-throw :databricks :client-id)
                              :oauth-secret (tx/db-test-env-var-or-throw :databricks :oauth-secret)))))))))
