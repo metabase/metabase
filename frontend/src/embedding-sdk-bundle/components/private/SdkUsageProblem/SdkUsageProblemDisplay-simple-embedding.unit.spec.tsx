@@ -28,6 +28,8 @@ jest.mock("metabase/visualizations/register", () => ({
 
 jest.mock("metabase/embedding-sdk/config", () => ({
   ...jest.requireActual("metabase/embedding-sdk/config"),
+  // The actual helper reads the actual config, not the mocked one below.
+  isEmbeddingEajs: () => true,
   EMBEDDING_SDK_CONFIG: {
     isEmbeddingSdk: true,
     metabaseClientRequestHeader: "embedding-simple",

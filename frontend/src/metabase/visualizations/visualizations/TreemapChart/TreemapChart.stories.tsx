@@ -1,6 +1,9 @@
 import type { StoryFn } from "@storybook/react";
 
-import { VisualizationWrapper } from "__support__/storybook";
+import {
+  VisualizationWrapper,
+  createWaitForChartsDecorator,
+} from "__support__/storybook";
 import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualization } from "metabase/viz-core";
@@ -12,6 +15,7 @@ import { data } from "./stories-data";
 export default {
   title: "viz/TreemapChart",
   component: TreemapChart,
+  decorators: [createWaitForChartsDecorator({ count: 1 })],
 };
 
 registerVisualization(TreemapChart);

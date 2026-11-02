@@ -232,8 +232,7 @@
         ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
         ;; `:data_layer`, `:data_authority`) are selected purely to drive the in-memory
         ;; library/metabot derivations below — they're ignored by `->card-entity` /
-        ;; `->table-entity`. `:card_schema` is required by `:model/Card`'s post-select hooks
-        ;; even when we don't otherwise use it.
+        ;; `->table-entity`.
         universe-cards    (data-complexity-score.db/universe-cards audit/audit-db-id)
         universe-tables   (data-complexity-score.db/universe-tables audit/audit-db-id)
         field-counts      (table-field-counts  (mapv :id universe-tables))

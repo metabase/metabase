@@ -2,7 +2,7 @@
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:refer-clojure :exclude [get-in])
   (:require
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
+   [clj-yaml.core]
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
@@ -165,12 +165,38 @@
   (t2/resolve-model :model/Database) ; for side-effects
   model)
 
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/database
+                                             #_resolved-query clojure.lang.IPersistentMap
+                                             #_k              :default]
+  "Qualify unqualified kv-args when fetching a `:metadata/database`."
+  [model honeysql k v]
+  (let [k (if (not (qualified-key? k))
+            (keyword "database" (name k))
+            k)]
+    (next-method model honeysql k v)))
+
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/database
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
-  (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details :admin_details :timezone :router_database_id]}))
+  (merge
+   (next-method query-type model parsed-args honeysql)
+   {:select    [:database/id
+                :database/engine
+                :database/name
+                :database/dbms_version
+                :database/settings
+                :database/is_audit
+                :database/is_attached_dwh
+                :database/details
+                :database/write_data_details
+                :database/timezone
+                :database/default_schema
+                :database/router_database_id
+                [:router/user_attribute :router_user_attribute]]
+    :from      [[(t2/table-name :model/Database) :database]]
+    :left-join [[:db_router :router]
+                [:= :router/database_id :database/id]]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -338,9 +364,13 @@
    (next-method query-type model parsed-args honeysql)
    {:select    [:card/collection_id
                 :card/created_at   ; Needed for backfilling :entity_id on demand; see [[metabase.queries.models.card]].
-                :card/card_schema  ; Needed for after-select logic to work.
+                ;; :card_schema and every column the Card schema upgrade reads must be selected together,
+                ;; or `upgrade-card-schema-to-latest` cannot run. See [[metabase.queries.models.card]].
+                :card/card_schema
                 :card/database_id
                 :card/dataset_query
+                :card/dimensions
+                :card/dimension_mappings
                 :card/id
                 :card/entity_id
                 :card/name
@@ -573,6 +603,7 @@
       lib.metadata.cached-provider/cached-metadata-provider
       lib.metadata.invocation-tracker/invocation-tracker-provider))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *metadata-provider-cache*
   "Bind this to a `(atom (clojure.core.cache/basic-cache-factory {}))` or similar cache-atom, and
   [[application-database-metadata-provider]] will use it for caching the `MetadataProvider` for each `database-id`

@@ -16,6 +16,8 @@ export type CollectionNamespace =
   | null
   | "snippets"
   | "transforms"
+  | "data-actions"
+  | "data-apps"
   | "analytics"
   | "tenant-specific"
   | "shared-tenant-collection";
@@ -42,6 +44,7 @@ export type CollectionType =
   | "library"
   | "library-data"
   | "library-metrics"
+  | "library-dashboards"
   | "shared-tenant-collection"
   | "tenant-specific-root-collection"
   | null;
@@ -103,6 +106,7 @@ export const COLLECTION_ITEM_MODELS = [
   "transform",
   "measure",
   "exploration",
+  "action",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 

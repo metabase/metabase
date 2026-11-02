@@ -1,0 +1,8 @@
+/*
+ * A state override: transitions must stay off whatever react-grid-layout's
+ * stylesheet, or the dashcards' reduced-motion rule, would otherwise set.
+ */
+.withoutTransitions,
+.withoutTransitions :global(.react-grid-item) {
+  transition: none !important;
+}

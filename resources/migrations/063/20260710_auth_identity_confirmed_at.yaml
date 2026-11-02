@@ -1,0 +1,51 @@
+## Adds auth_identity.confirmed_at so MFA enrollment state is queryable in SQL, and backfills it.
+##
+## These changeSets originally shipped in 059_update_migrations.yaml as v59.2026-07-10T22:29:16 and
+## v59.2026-07-10T22:29:17, but the feature only shipped in 63. No v59-v62 jar knows those ids, so
+## `migrate down` below 63 could not roll them back and left the column and changelog rows behind. The
+## first changeSet retires the stale v59 rows; the addColumn is guarded so instances that already have
+## the column just mark it ran. DATABASECHANGELOG is unquoted on purpose: it folds to the table's actual
+## case on postgres (lowercase) and h2 (uppercase), and matches it exactly on mysql/mariadb.
+
+databaseChangeLog:
+  - changeSet:
+      id: v63.2026-07-10T22:29:15
+      author: escherize
+      comment: Retire the misnumbered v59 changelog rows for auth_identity.confirmed_at
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM DATABASECHANGELOG WHERE id IN (
+                'v59.2026-07-10T22:29:16',
+                'v59.2026-07-10T22:29:17'
+              );
+      rollback: # nothing to undo - these rows should not exist
+
+  - changeSet:
+      id: v63.2026-07-10T22:29:16
+      author: escherize
+      comment: Add confirmed_at to auth_identity so MFA enrollment state is queryable in SQL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: auth_identity
+                columnName: confirmed_at
+      changes:
+        - addColumn:
+            tableName: auth_identity
+            columns:
+              - column:
+                  name: confirmed_at
+                  type: ${timestamp_type}
+                  remarks: When this identity was confirmed (e.g. MFA enrollment completed). Null = unconfirmed.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v63.2026-07-10T22:29:17
+      author: escherize
+      comment: Backfill auth_identity.confirmed_at from the (possibly encrypted) credentials JSON
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillMfaConfirmedAt"

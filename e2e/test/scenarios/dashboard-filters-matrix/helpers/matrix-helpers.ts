@@ -4,45 +4,37 @@ import type { ValuesQueryType } from "metabase-types/api";
 
 import { matrix } from "./matrix";
 
+const ADMIN_TYPES = ["search", "list", "plain"] as const;
+const RESULTS = ["large", "small"] as const;
+
 export type TestCase = {
   arity: "single" | "multi";
   type: "search" | "dropdown" | "plain";
-  adminType: "search" | "list" | "plain";
+  adminType: (typeof ADMIN_TYPES)[number];
   operator: "Is" | "Contains";
   source: "connected" | "card" | "custom";
-  results: "large" | "small";
+  results: (typeof RESULTS)[number];
   component: "token-field" | "list-field" | "single-select-list-field";
 };
 
-// there are 216 test cases so we need 11 spec files
-const PER_PAGE = 20;
+type SetupGroup = Pick<TestCase, "adminType" | "results">;
 
-export function runPage(pageNumber: number) {
-  runAll(page(pageNumber));
-}
+// Cases that share the field's `has_field_values` and mapped column can share one dashboard.
+export const SETUP_GROUPS: SetupGroup[] = ADMIN_TYPES.flatMap((adminType) =>
+  RESULTS.map((results) => ({ adminType, results })),
+);
 
-export function page(number: number): TestCase[] {
-  const start = number * PER_PAGE;
-  const end = start + PER_PAGE;
-  return matrix.slice(start, end);
-}
+export function runGroup({ adminType, results }: SetupGroup) {
+  const cases = matrix.filter(
+    (test) => test.adminType === adminType && test.results === results,
+  );
 
-export function runAll(cases: TestCase[]) {
-  cases.forEach(run);
-}
+  H.restore();
+  cy.signInAsAdmin();
 
-export function run(test: TestCase) {
-  it(`a parameter (${filterName(test)}) where the admin field setting is ${test.adminType} should render ${test.component}`, () => {
-    H.restore();
-    cy.signInAsAdmin();
+  setup({ adminType, results, cases });
 
-    setup(test);
-
-    openParameterWidget(test);
-    cy.findByTestId("loading-indicator").should("not.exist");
-
-    checkComponent(test);
-  });
+  cases.forEach(checkComponent);
 }
 
 function filterName(test: TestCase) {
@@ -90,14 +82,15 @@ function parameterSource(test: TestCase, otherCardId: number) {
   return {};
 }
 
-function setup(test: TestCase) {
-  const column = test.results === "large" ? PEOPLE.NAME : PEOPLE.SOURCE;
+function setup({
+  adminType,
+  results,
+  cases,
+}: SetupGroup & { cases: TestCase[] }) {
+  const column = results === "large" ? PEOPLE.NAME : PEOPLE.SOURCE;
 
-  // TODO: set the values source and source type
-
-  // Set field admin setting
   cy.request("PUT", `/api/field/${column}`, {
-    has_field_values: queryType(test.adminType),
+    has_field_values: queryType(adminType),
   });
 
   H.createQuestion({
@@ -110,21 +103,18 @@ function setup(test: TestCase) {
       collection: "Our Analytics",
     };
 
-    const type = test.operator === "Is" ? "string/=" : "string/contains";
-
-    const parameter = {
-      id: "5aefc726",
+    const parameters = cases.map((test, index) => ({
+      id: `matrix-${index}`,
       name: filterName(test),
-      slug: "filter",
-      type,
+      slug: `filter_${index}`,
+      type: test.operator === "Is" ? "string/=" : "string/contains",
+      isMultiSelect: test.arity === "multi",
       values_query_type: queryType(test.type),
       ...parameterSource(test, otherCardId),
-    };
+    }));
 
     H.createDashboardWithQuestions({
-      dashboardDetails: {
-        parameters: [parameter],
-      },
+      dashboardDetails: { parameters },
       questions: [question],
     }).then(({ dashboard, questions: cards }) => {
       const [question] = cards;
@@ -134,50 +124,30 @@ function setup(test: TestCase) {
         cards: [
           {
             card_id: question.id,
-            parameter_mappings: [
-              {
-                parameter_id: parameter.id,
-                card_id: question.id,
-                target: ["dimension", ["field", column, null]],
-              },
-            ],
+            parameter_mappings: parameters.map((parameter) => ({
+              parameter_id: parameter.id,
+              card_id: question.id,
+              target: ["dimension", ["field", column, null]],
+            })),
           },
         ],
       });
 
       H.visitDashboard(dashboard.id);
-
-      cy.wrap(dashboard.id).as("dashboardId");
     });
   });
 }
 
-function openParameterWidget(test: TestCase) {
-  H.filterWidget().contains(filterName(test)).click();
-}
-
 function checkComponent(test: TestCase) {
-  if (test.component === "token-field") {
-    cy.findByTestId("token-field").should("be.visible");
-  }
-  if (test.component === "list-field") {
-    cy.findByTestId("list-field").should("be.visible");
-  }
-  if (test.component === "single-select-list-field") {
-    cy.findByTestId("single-select-list-field").should("be.visible");
-  }
-}
+  const name = filterName(test);
+  cy.log(`${name} should render ${test.component}`);
 
-// function detectComponent(): Cypress.Chainable<string | null> {
-//   const validIds = ["token-field", "list-field", "single-select-list-field"];
-//   return cy.get("[data-testid]").then(res => {
-//     let id: string | null = null;
-//     res.each((_, el) => {
-//       const testid = el.dataset.testid;
-//       if (testid && validIds.includes(testid)) {
-//         id = testid;
-//       }
-//     });
-//     return id;
-//   });
-// }
+  H.filterWidget().contains(name).click();
+  cy.findByTestId("loading-indicator").should("not.exist");
+  H.dashboardParametersPopover()
+    .findByTestId(test.component)
+    .should("be.visible");
+
+  H.filterWidget().contains(name).click();
+  cy.findByTestId("parameter-value-dropdown").should("not.exist");
+}

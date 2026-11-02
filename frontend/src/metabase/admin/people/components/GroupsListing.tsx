@@ -148,7 +148,7 @@ function ActionsPopover({
       <Menu shadow="sm" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton aria-label={`group-action-button`}>
-            <Icon c="text-disabled" name="ellipsis" />
+            <Icon c="text-secondary" name="ellipsis" />
           </UnstyledButton>
         </Menu.Target>
         <Menu.Dropdown>
@@ -200,10 +200,14 @@ function EditingGroupRow({
       </td>
       <td />
       <Box component="td" ta="right">
-        <Button variant="subtle" onClick={onCancelClicked}>{t`Cancel`}</Button>
+        <Button
+          variant="subtle"
+          color="neutral"
+          onClick={onCancelClicked}
+        >{t`Cancel`}</Button>
         <Button
           ml="1rem"
-          variant={textIsValid && textHasChanged ? "filled" : "outline"}
+          variant={textIsValid && textHasChanged ? "filled" : "default"}
           disabled={!textIsValid || !textHasChanged}
           onClick={onDoneClicked}
         >
@@ -301,7 +305,7 @@ const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
     return null;
   }
   return (
-    <Box component="span" c="text-disabled">
+    <Box component="span" c="text-secondary">
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}
@@ -549,7 +553,7 @@ export const GroupsListing = (props: GroupsListingProps) => {
         closeButtonText={null}
         withCloseButton={false}
         confirmButtonText={t`Ok`}
-        confirmButtonProps={{ color: "core-brand" }}
+        confirmButtonProps={{ color: "brand" }}
         data-testid="alert-modal"
       />
     </AdminPaneLayout>

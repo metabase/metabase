@@ -64,11 +64,10 @@ export const RemoteSyncDependencyModal = ({
     <Modal
       opened
       onClose={handleDismiss}
-      padding="xxl"
       title={t`Couldn’t sync selected collection`}
       withCloseButton={false}
     >
-      <Stack gap="xl" pt="lg">
+      <Stack gap="xl">
         <Text>{getBlockedMessage(required)}</Text>
 
         {listedRequiredSyncs.length > 0 && (
@@ -94,20 +93,15 @@ export const RemoteSyncDependencyModal = ({
             ))}
           </Accordion>
         )}
-
-        <Group justify="end" gap="sm">
-          <Button onClick={handleDismiss}>{t`Back`}</Button>
-          {canSave && (
-            <Button
-              variant="filled"
-              loading={isSubmitting}
-              onClick={submitForm}
-            >
-              {t`Save changes`}
-            </Button>
-          )}
-        </Group>
       </Stack>
+      <Modal.Footer>
+        <Button onClick={handleDismiss}>{t`Back`}</Button>
+        {canSave && (
+          <Button variant="filled" loading={isSubmitting} onClick={submitForm}>
+            {t`Save changes`}
+          </Button>
+        )}
+      </Modal.Footer>
     </Modal>
   );
 };
@@ -139,13 +133,13 @@ const RequiredSyncItem = ({
   });
 
   return (
-    <Accordion.Item value={row.key} mt="sm">
+    <Accordion.Item value={row.key}>
       {/* The switch sits outside the control, so flipping it doesn't also toggle the panel. */}
       <Group
         gap="sm"
         px="md"
         wrap="nowrap"
-        bg={"background-secondary"}
+        bg={"background_page-secondary"}
         bdrs="md"
       >
         <Accordion.Control>
@@ -175,7 +169,7 @@ const RequiredSyncItem = ({
           <Group
             px="md"
             py="xs"
-            bg="background-secondary"
+            bg="background_page-secondary"
             className={S.contentRow}
           >
             <Text className={S.cell} fz="sm">{t`Item`}</Text>

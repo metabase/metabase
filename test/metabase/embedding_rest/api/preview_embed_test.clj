@@ -282,6 +282,14 @@
           (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (dashcard-url dashcard))))))))))
 
+(deftest dashcard-archived-card-test
+  (testing "GET /api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+    (testing "refuses a trashed Card, even though its DashboardCard row survives"
+      (embed-test/with-embedding-enabled-and-new-secret-key!
+        (embed-test/with-temp-dashcard [dashcard {:card {:archived true}}]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 (dashcard-url dashcard)))))))))
+
 (deftest dashcard-locked-params-test
   (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
     (testing "LOCKED params"
@@ -475,6 +483,16 @@
               (is (= "Message seems corrupt or manipulated"
                      (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (pivot-dashcard-url dashcard))))))))))))
 
+(deftest pivot-dashcard-archived-card-test
+  (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id refuses a trashed Card"
+    (mt/dataset test-data
+      (embed-test/with-embedding-enabled-and-new-secret-key!
+        (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters []}
+                                                  :card     (assoc (api.pivots/pivot-card) :archived true)
+                                                  :dashcard {:parameter_mappings []}}]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 (pivot-dashcard-url dashcard)))))))))
+
 (deftest handle-single-params-for-operator-filters-test
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
     (mt/dataset test-data
@@ -631,9 +649,9 @@
   (testing "embedding with parameter that has source is a static list"
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
-        (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
-                                                           :embedding_params {"static_category"       "enabled"
-                                                                              "static_category_label" "enabled"}})
+        (t2/update! :model/Dashboard :id (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
+                                                               :embedding_params {"static_category"       "enabled"
+                                                                                  "static_category_label" "enabled"}})
         (let [signed-token (dash-token dashboard)
               url            (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_STATIC_CATEGORY_")]
           (testing "Should work if the param we're fetching values for is enabled"
@@ -659,8 +677,8 @@
   (testing "GET /api/preview_embed/dashboard/:token/params/:param-key/search/:prefix"
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
-        (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
-                                                           :embedding_params {"static_category_label" "enabled"}})
+        (t2/update! :model/Dashboard :id (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
+                                                               :embedding_params {"static_category_label" "enabled"}})
         (let [signed-token (dash-token dashboard)
               search-url   (format "preview_embed/dashboard/%s/params/%s/search/%s" signed-token "_STATIC_CATEGORY_LABEL_" "AF")]
           (testing "Should work if the param we're fetching values for is enabled"
@@ -802,6 +820,20 @@
                                                  card-id)
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
+
+(deftest dashcard-tile-archived-card-test
+  (testing "GET api/preview_embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y refuses a trashed Card"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)
+                                                              :archived      true}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id      card-id
+                                                              :dashboard_id dashboard-id}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (format "preview_embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                                                 (embed-test/dash-token dashboard-id) dashcard-id card-id)
+                                     :latField (tiles.api-test/encoded-lat-field-ref)
+                                     :lonField (tiles.api-test/encoded-lon-field-ref))))))))
 
 (deftest card-tile-query-implicit-join-ref-test
   (testing "GET api/preview_embed/tiles/card/:uuid/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"

@@ -24,6 +24,7 @@
 (defn- parse-http-headers [headers]
   (json/decode headers))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *fetch-as-json*
   "Fetches url and parses body as json, returning it."
   [url headers]
@@ -197,6 +198,25 @@
     :allow-all            true
     (throw (ex-info (str "Unknown network policy: " (pr-str policy)) {:policy policy}))))
 
+(def configurable-network-policies
+  "The policies a deployment may ask for through an `*-allowed-networks` environment variable, strictest first."
+  [:external-only :allow-private :allow-all])
+
+(defn env-network-policy
+  "The network policy named by `raw-value`, the contents of an `*-allowed-networks` environment variable, or nil when
+  that variable is unset. Throws if raw-value is not a valid value."
+  [env-var-name raw-value]
+  (when-let [value (some-> raw-value str str/trim not-empty lower-case-en keyword)]
+    (if (some #{value} configurable-network-policies)
+      value
+      (throw (ex-info (format "Invalid %s: %s. Expected one of %s."
+                              env-var-name
+                              (pr-str raw-value)
+                              (str/join ", " (map name configurable-network-policies)))
+                      {:env-var  env-var-name
+                       :value    raw-value
+                       :expected (vec configurable-network-policies)})))))
+
 ;; one or more scheme segments, so nested schemes (`jdbc:postgresql://...`) are stripped too
 (def ^:private scheme-prefix-regex #"(?i)^(?:[a-z][a-z0-9+.-]*:)+//")
 
@@ -254,6 +274,7 @@
          (every? #(address-allowed-for-network-policy? policy %)
                  (host->inet-addresses hostname))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^DnsResolver ^:dynamic *system-dns-resolver*
   "The underlying system DNS resolver. Exposed as a dynamic var so tests can inject a fake
   host->address mapping"
@@ -275,6 +296,7 @@
             (throw (ex-info "Refusing to connect to a non-permitted network address"
                             {:ssrf true :policy policy :host host}))))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *proxy-selector*
   "The `ProxySelector` [[jvm-proxied-url?]] asks. nil reads `ProxySelector/getDefault` at call time, which is what
   Apache HttpClient's route planner does; tests bind it rather than installing a selector process-wide."

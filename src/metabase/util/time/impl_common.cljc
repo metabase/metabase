@@ -4,6 +4,14 @@
 
 (defn- by-unit [_ {:keys [unit]}] (keyword unit))
 
+(defn require-time-config
+  "Return `time-config`, or throw if it has no `:start-of-week`."
+  [{:keys [start-of-week] :as time-config}]
+  (when-not start-of-week
+    (throw (ex-info "Date operations require :start-of-week"
+                    {:time-config time-config})))
+  time-config)
+
 (defmulti to-range
   "Given a datetime and a unit (eg. \"hour\"), returns an *inclusive* datetime range as a pair of datetimes.
   For a unit of an hour, and a datetime for 13:49:28, that means [13:00:00 13:59:59.999], ie. 1 ms before the end."

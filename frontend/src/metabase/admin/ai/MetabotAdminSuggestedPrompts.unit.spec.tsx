@@ -9,18 +9,25 @@ import {
 } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { metabotApi } from "metabase/metabot/api";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
+import {
+  TEST_METABOT_IDS,
+  buildDefaultMetabots,
+} from "metabase/metabot/tests/utils";
 import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   RegenerateSuggestedMetabotPromptsResponse,
   SuggestedMetabotPrompt,
+  SuggestedMetabotPromptsRequest,
 } from "metabase-types/api";
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { mockSuggestedPrompts } from "./test-utils";
 
 const defaultMetabotMockedPrompts =
-  mockSuggestedPrompts[FIXED_METABOT_IDS.DEFAULT];
+  mockSuggestedPrompts[TEST_METABOT_IDS.INTERNAL];
 
 const userEvent = _userEvent.setup();
 
@@ -52,7 +59,7 @@ type SetupOpts = {
 
 const setup = async (opts?: SetupOpts) => {
   const {
-    metabotId = FIXED_METABOT_IDS.DEFAULT,
+    metabotId = TEST_METABOT_IDS.INTERNAL,
     pageSize = 3,
     mockInitialPage = true,
     regenerateBody,
@@ -88,18 +95,23 @@ const setup = async (opts?: SetupOpts) => {
   const TestComponent = () => (
     <>
       <MetabotPromptSuggestionPane
-        metabot={{ id: metabotId, collection_id: null }}
+        metabot={checkNotNull(
+          buildDefaultMetabots().find((metabot) => metabot.id === metabotId),
+        )}
         pageSize={pageSize}
       />
       <UndoListing />
     </>
   );
 
-  renderWithProviders(<Route path="/" element={<TestComponent />} />, {
-    withRouter: true,
-  });
+  const { store } = renderWithProviders(
+    <Route path="/" element={<TestComponent />} />,
+    {
+      withRouter: true,
+    },
+  );
 
-  return { metabotId, nextPaginationContext };
+  return { metabotId, nextPaginationContext, store };
 };
 
 describe("suggested prompts", () => {
@@ -113,9 +125,48 @@ describe("suggested prompts", () => {
     await expectVisiblePrompts(defaultMetabotMockedPrompts.slice(0, 3));
   });
 
+  it("refreshes chat suggestions after an admin deletes a prompt", async () => {
+    const [firstPrompt] = defaultMetabotMockedPrompts;
+    let prompts = [firstPrompt];
+    fetchMock.get(
+      `path:/api/metabot/metabot/${FIXED_METABOT_ENTITY_IDS.DEFAULT}/prompt-suggestions`,
+      () => ({ prompts, limit: 3, offset: 0, total: prompts.length }),
+    );
+    const { store, metabotId } = await setup();
+    const query: SuggestedMetabotPromptsRequest = {
+      metabot_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
+      limit: 3,
+      sample: true,
+    };
+    const subscription = store.dispatch(
+      metabotApi.endpoints.getSuggestedMetabotPrompts.initiate(query),
+    );
+    expect((await subscription.unwrap()).prompts).toEqual([firstPrompt]);
+
+    prompts = [];
+    setupRemoveMetabotPromptSuggestionEndpoint(metabotId, firstPrompt.id);
+    await store
+      .dispatch(
+        metabotApi.endpoints.deleteSuggestedMetabotPrompt.initiate({
+          metabot_id: metabotId,
+          prompt_id: firstPrompt.id,
+        }),
+      )
+      .unwrap();
+
+    await waitFor(() => {
+      expect(
+        metabotApi.endpoints.getSuggestedMetabotPrompts.select(query)(
+          store.getState(),
+        ).data?.prompts,
+      ).toEqual([]);
+    });
+    subscription.unsubscribe();
+  });
+
   it("should show loading state", async () => {
     setupMetabotPromptSuggestionsEndpoint({
-      metabotId: FIXED_METABOT_IDS.DEFAULT,
+      metabotId: TEST_METABOT_IDS.INTERNAL,
       prompts: defaultMetabotMockedPrompts,
       paginationContext: {
         offset: 0,
@@ -131,7 +182,7 @@ describe("suggested prompts", () => {
 
   it("should show empty state", async () => {
     setupMetabotPromptSuggestionsEndpoint({
-      metabotId: FIXED_METABOT_IDS.DEFAULT,
+      metabotId: TEST_METABOT_IDS.INTERNAL,
       prompts: [],
       paginationContext: {
         offset: 0,
@@ -144,7 +195,7 @@ describe("suggested prompts", () => {
   });
 
   it("should show error state", async () => {
-    setupMetabotPromptSuggestionsEndpointError(FIXED_METABOT_IDS.DEFAULT);
+    setupMetabotPromptSuggestionsEndpointError(TEST_METABOT_IDS.INTERNAL);
     await setup({ mockInitialPage: false });
     expect(
       await screen.findByText("Something went wrong."),
@@ -196,7 +247,7 @@ describe("suggested prompts", () => {
   });
 
   it("should show copy button for prompt on non-default metabots", async () => {
-    await setup({ metabotId: FIXED_METABOT_IDS.EMBEDDED });
+    await setup({ metabotId: TEST_METABOT_IDS.EMBEDDED });
 
     const [copyPromptAction] = await screen.findAllByTestId("prompt-copy");
     expect(copyPromptAction).toBeInTheDocument();
@@ -310,7 +361,7 @@ describe("suggested prompts", () => {
       await waitFor(() => {
         expect(
           fetchMock.callHistory.called(
-            `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions/regenerate`,
+            `path:/api/metabot/metabot/${TEST_METABOT_IDS.INTERNAL}/prompt-suggestions/regenerate`,
           ),
         ).toBe(true);
       });

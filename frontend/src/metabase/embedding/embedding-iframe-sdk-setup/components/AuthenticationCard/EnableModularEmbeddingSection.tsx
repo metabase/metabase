@@ -40,7 +40,10 @@ export const EnableModularEmbeddingSection = ({
         ...(!termsAccepted && { "show-modular-embed-terms": false }),
       });
     } catch (error) {
-      sendToast({ message: t`Failed to enable modular embedding` });
+      sendToast({
+        message: t`Failed to enable modular embedding`,
+        variant: "negative",
+      });
     }
   };
 
@@ -90,7 +93,6 @@ export const EnableModularEmbeddingSection = ({
         <Button
           variant={isAccepted ? "default" : "filled"}
           onClick={handleEnable}
-          size="xs"
           disabled={isAccepted}
           leftSection={isAccepted && <Icon name="check" />}
         >

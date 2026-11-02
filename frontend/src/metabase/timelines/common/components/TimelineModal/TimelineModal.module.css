@@ -1,0 +1,28 @@
+/* For modals that keep their header and footer in place and scroll a list between them */
+.content {
+  display: flex;
+  flex-direction: column;
+  min-height: min(36rem, calc(100dvh - 2 * var(--modal-y-offset)));
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.scrollArea {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.loading {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}

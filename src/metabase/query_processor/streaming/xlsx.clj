@@ -373,6 +373,7 @@
   [^Cell cell t styles typed-styles]
   (set-cell! cell (t/offset-date-time t) styles typed-styles))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *number-of-characters-cell*
   "Total number of characters that a cell can contain, 32767 is the maximum number supported by the cell."
   ;; See https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3
@@ -425,8 +426,8 @@
   (when (isa? semantic_type :type/Coordinate)
     (try (formatter/format-geographic-coordinates semantic_type value)
          ;; Fallback to plain string value if it couldn't be parsed
-         (catch Exception _ value
-                value))))
+         (catch Exception _
+           value))))
 
 (defn- maybe-parse-temporal-value
   "The format-rows qp middleware formats rows into strings, which circumvents the formatting done in this namespace.
@@ -441,8 +442,8 @@
              (string? value))
     (try (u.date/parse value)
          ;; Fallback to plain string value if it couldn't be parsed
-         (catch Exception _ value
-                value))))
+         (catch Exception _
+           value))))
 
 ;; ColumnHelper hack.
 ;;
@@ -570,6 +571,7 @@
                                scaled-val)]
           (set-cell! cell parsed-value styles typed-cell-styles))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *auto-sizing-threshold*
   "The maximum number of rows we should use for auto-sizing. If this number is too large, exports
   of large datasets will be prohibitively slow."
@@ -762,5 +764,7 @@
         (try
           (spreadsheet/save-workbook-into-stream! os workbook)
           (finally
-            (.dispose ^SXSSFWorkbook workbook)
-            (.close os)))))))
+            (try
+              (.close ^SXSSFWorkbook workbook)
+              (finally
+                (.close os)))))))))

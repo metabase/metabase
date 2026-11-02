@@ -15,6 +15,7 @@
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
@@ -36,7 +37,7 @@
                    (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
                    (deferred-tru "The database does not support the requested transform features."))
-    (api/check-400 (not (database-routing/db-routing-enabled? database))
+    (api/check-400 (not (database-routing/db-routing-enabled? (driver.u/lib-database (:id database))))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (defn check-feature-enabled!
@@ -116,7 +117,7 @@
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
-  (let [enabled-types (transforms.u/enabled-source-types-for-user)]
+  (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
     (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id)]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
@@ -131,7 +132,8 @@
   "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
   [transform]
   (when-let [db-id (transforms-base.i/target-db-id transform)]
-    (when-let [database (transforms.db/database db-id)]
+    (when-let [database (when (transforms.db/database-exists? db-id)
+                          (driver.u/lib-database db-id))]
       (let [methods (try
                       (driver/supported-index-methods (:engine database) database)
                       (catch Throwable e
@@ -208,7 +210,7 @@
                                           {:status-code 400}))))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/target-table-exists? new)))
-                                 403
+                                 409
                                  (deferred-tru "A table with that name already exists.")))
                     (transforms.db/update-transform! id (dissoc body :tag_ids))
                     ;; Update tag associations if provided

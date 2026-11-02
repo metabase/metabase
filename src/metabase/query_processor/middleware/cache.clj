@@ -41,6 +41,7 @@
     [initial-metadata row-1 row-2 ... row-n final-metadata]"
   3)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *backend*
   "Current cache backend. Dynamically rebindable primary for test purposes."
   (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
@@ -73,6 +74,7 @@
 (defn- schedule-purge! [backend]
   (grouper/submit! @purge-queue backend))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *in-fn*
   "The `in-fn` provided by [[impl/do-with-serialization]]."
   nil)
@@ -85,6 +87,7 @@
                (m/update-existing object :json_query lib/prepare-for-serialization)
                object))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *result-fn*
   "The `result-fn` provided by [[impl/do-with-serialization]]."
   nil)
@@ -202,6 +205,7 @@
         (u/prog1 (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)
           (log/trace "All cached rows reduced"))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *refresh-lease-duration-ms*
   "How long a claimed stale-while-revalidate refresh lease is honored before another process may take it over (e.g. if
   the claiming process crashed mid-refresh). Should comfortably exceed a normal query's run time."

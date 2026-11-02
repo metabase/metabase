@@ -2,7 +2,7 @@ import {
   type MetabaseEmbeddingTheme,
   defineMetabaseTheme,
 } from "metabase/embedding-sdk/theme";
-import { METABASE_DARK_THEME } from "metabase/ui/colors/constants/themes/dark";
+import { getDarkTheme } from "metabase/ui/colors/constants/themes/dark";
 
 export const darkColors = {
   primary: "#DF75E9",
@@ -317,7 +317,7 @@ export const storybookThemes: Record<
 > = {
   default: undefined,
   dark: darkTheme,
-  "dark-v2": METABASE_DARK_THEME,
+  "dark-v2": getDarkTheme(),
   pug: pugTheme,
   stitch: stitchTheme,
   luminara: luminaraTheme,

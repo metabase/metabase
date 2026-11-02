@@ -12,7 +12,6 @@ import { useSetting } from "metabase/settings";
 import type { PopoverBackButtonProps } from "metabase/ui";
 import {
   Box,
-  Button,
   Checkbox,
   Divider,
   Group,
@@ -21,6 +20,7 @@ import {
   Text,
 } from "metabase/ui";
 
+import { DatePickerMenuItem } from "../DatePickerMenuItem";
 import { MIN_WIDTH } from "../constants";
 import type { DatePickerSubmitButtonProps } from "../types";
 import { renderDefaultSubmitButton } from "../utils";
@@ -128,33 +128,24 @@ export function ExcludeOptionPicker({
       <Divider />
       <Box p="sm">
         {unitOptions.map((option, index) => (
-          <Button
+          <DatePickerMenuItem
             key={index}
-            c="text-primary"
-            display="block"
-            variant="subtle"
             onClick={() => onSelectUnit(option.unit)}
           >
             {option.label}
-          </Button>
+          </DatePickerMenuItem>
         ))}
         {unitOptions.length > 0 && operatorOptions.length > 0 && (
           <Divider mx="lg" my="sm" />
         )}
         {operatorOptions.map((option, index) => (
-          <Button
+          <DatePickerMenuItem
             key={index}
-            c={
-              option.operator === value?.operator
-                ? "text-brand"
-                : "text-primary"
-            }
-            display="block"
-            variant="subtle"
+            isSelected={option.operator === value?.operator}
             onClick={() => handleChange(option.operator)}
           >
             {option.label}
-          </Button>
+          </DatePickerMenuItem>
         ))}
       </Box>
     </Box>
@@ -255,5 +246,5 @@ function ExcludeValuePicker({
 }
 
 function BackButton(props: PopoverBackButtonProps) {
-  return <PopoverBackButton px="lg" py="sm" {...props} />;
+  return <PopoverBackButton px="lg" py="md" h="auto" {...props} />;
 }

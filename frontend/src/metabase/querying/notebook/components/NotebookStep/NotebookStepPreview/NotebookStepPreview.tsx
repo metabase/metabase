@@ -4,7 +4,9 @@ import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import CS from "metabase/css/core/index.css";
+import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { Box, Button, Flex, Icon } from "metabase/ui";
+import { getScrollBarSize } from "metabase/utils/dom";
 import { checkNotNull } from "metabase/utils/types";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
@@ -63,8 +65,7 @@ export const NotebookStepPreview = ({
             name="close"
             onClick={onClose}
             className={cx(
-              CS.textLight,
-              CS.textMediumHover,
+              CS.textSecondaryHoverPrimary,
               CS.cursorPointer,
               CS.ml1,
             )}
@@ -139,5 +140,5 @@ export const VisualizationPreview = ({
 
 function getPreviewHeightForResult(result: Dataset | null) {
   const rowCount = result ? result.data.rows.length : 1;
-  return rowCount * 36 + 36 + 2;
+  return rowCount * ROW_HEIGHT + HEADER_HEIGHT + getScrollBarSize() + 2;
 }

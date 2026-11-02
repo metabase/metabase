@@ -5,6 +5,7 @@ import _ from "underscore";
 import NoResults from "assets/img/metrics_bot.svg";
 import { skipToken } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
@@ -85,7 +86,7 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Title order={2} c="text-primary" id={titleId}>
+            <Title order={1} c="text-primary" id={titleId}>
               <Group gap="sm">
                 <Icon size={24} c="icon-brand" name="metric" />
                 {t`Metrics`}
@@ -95,9 +96,8 @@ export function BrowseMetrics() {
               {canCreateMetric && (
                 <Tooltip label={t`Create a new metric`} position="bottom">
                   <ActionIcon
+                    variant="subtle"
                     aria-label={t`Create a new metric`}
-                    size={32}
-                    variant="viewHeader"
                     component={ForwardRefLink}
                     to={newMetricLink}
                     onClick={() => {
@@ -152,7 +152,7 @@ function MetricsEmptyState({
   newMetricLink: string;
 }) {
   const { url: metricsDocsLink, showMetabaseLinks } = useDocsUrl(
-    "data-modeling/metrics",
+    "data-modeling/semantic-layer/metrics",
   );
 
   return (
@@ -162,16 +162,16 @@ function MetricsEmptyState({
           title={t`Create Metrics to define the official way to calculate important numbers for your team`}
           message={
             <Box>
-              <Text mt="sm" maw="25rem">
+              <Text lh="1.25rem" mt="sm" maw="25rem">
                 {t`Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.`}
               </Text>
               <Flex pt="lg" align="center" justify="center" gap="lg">
                 {showMetabaseLinks && (
-                  <Link
-                    target="_blank"
-                    to={metricsDocsLink}
-                    variant="brandBold"
-                  >{t`Read the docs`}</Link>
+                  <Button
+                    component={ExternalLink}
+                    href={metricsDocsLink}
+                    variant="subtle"
+                  >{t`Read the docs`}</Button>
                 )}
                 {canCreateMetric && (
                   <Button

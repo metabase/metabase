@@ -30,7 +30,8 @@ describe("scenarios > embedding > full app", () => {
   });
 
   describe("home page navigation", () => {
-    it("should show the top and side nav by default", () => {
+    it("should show or hide the top and side nav by params", () => {
+      cy.log("show the top and side nav by default");
       H.visitFullAppEmbeddingUrl({ url: "/" });
       cy.wait("@getXrayDashboard");
 
@@ -39,43 +40,29 @@ describe("scenarios > embedding > full app", () => {
         .within(() => {
           cy.findByTestId("main-logo").should("be.visible");
           cy.button(/New/).should("not.exist");
-          cy.findByPlaceholderText("Search").should("not.exist");
+          cy.findByPlaceholderText("Search…").should("not.exist");
         });
 
       sideNav().should("be.visible");
-    });
 
-    it("should hide the top nav when nothing is shown", () => {
+      cy.log("hide the top nav when nothing is shown");
       H.visitFullAppEmbeddingUrl({
         url: "/",
         qs: { side_nav: false, logo: false },
       });
       cy.wait("@getXrayDashboard");
+      cy.findByTestId("home-page").should("be.visible");
       H.appBar().should("not.exist");
-    });
 
-    it("should hide the top nav by an explicit param", () => {
+      cy.log("hide the top nav by an explicit param");
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: false } });
       cy.wait("@getXrayDashboard");
+      cy.findByTestId("home-page").should("be.visible");
       H.appBar().should("not.exist");
-    });
 
-    it("should not hide the top nav when the logo is still visible", () => {
-      H.visitFullAppEmbeddingUrl({
-        url: "/question/" + ORDERS_QUESTION_ID,
-        qs: { breadcrumbs: false },
-      });
-      cy.wait("@getCardQuery");
-
-      H.appBar().within(() => {
-        cy.findByTestId("main-logo").should("be.visible");
-        cy.findByRole("treeitem", { name: "Our analytics" }).should(
-          "not.exist",
-        );
-      });
-    });
-
-    it("should keep showing sidebar toggle button when logo, breadcrumbs, the new button, and search are hidden", () => {
+      cy.log(
+        "keep showing sidebar toggle button when logo, breadcrumbs, the new button, and search are hidden",
+      );
       H.visitFullAppEmbeddingUrl({
         url: "/",
         qs: {
@@ -94,45 +81,26 @@ describe("scenarios > embedding > full app", () => {
           cy.button("Toggle sidebar").should("be.visible").click();
         });
       sideNav().should("not.be.visible");
-    });
 
-    it("should hide the side nav by a param", () => {
+      cy.log("hide the side nav by a param");
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { side_nav: false } });
+      cy.wait("@getXrayDashboard");
       H.appBar().within(() => {
         cy.findByTestId("main-logo").should("be.visible");
         cy.button("Toggle sidebar").should("not.exist");
       });
       sideNav().should("not.exist");
-    });
 
-    it("should disable home link when top nav is enabled but side nav is disabled", () => {
-      visitDashboardUrl({
-        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
-        qs: { top_nav: true, side_nav: false },
-      });
-      cy.findByTestId("main-logo-link").should(
-        "have.attr",
-        "disabled",
-        "disabled",
-      );
-    });
-
-    it("should show question creation controls by a param", () => {
+      cy.log("show question creation controls by a param");
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { new_button: true } });
+      cy.wait("@getXrayDashboard");
       H.appBar().within(() => {
         cy.button(/New/).should("be.visible");
       });
-    });
 
-    it("should show search controls by a param", () => {
+      cy.log("preserve params when navigating");
       H.visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
-      H.appBar().within(() => {
-        cy.findByPlaceholderText("Search…").should("be.visible");
-      });
-    });
-
-    it("should preserve params when navigating", () => {
-      H.visitFullAppEmbeddingUrl({ url: "/", qs: { search: true } });
+      cy.wait("@getXrayDashboard");
 
       H.appBar().within(() => {
         cy.findByPlaceholderText("Search…").should("be.visible");
@@ -147,26 +115,34 @@ describe("scenarios > embedding > full app", () => {
       H.appBar().within(() => {
         cy.findByPlaceholderText("Search…").should("be.visible");
       });
-    });
-  });
 
-  describe("browse data", () => {
-    it("should hide the top nav when nothing is shown", () => {
+      cy.log(
+        "disable home link when top nav is enabled but side nav is disabled",
+      );
+      visitDashboardUrl({
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
+        qs: { top_nav: true, side_nav: false },
+      });
+      cy.findByTestId("main-logo-link").should(
+        "have.attr",
+        "disabled",
+        "disabled",
+      );
+
+      cy.log("browse data: hide the top nav when nothing is shown");
       H.visitFullAppEmbeddingUrl({
         url: "/browse/databases",
         qs: { side_nav: false, logo: false },
       });
       cy.findByRole("heading", { name: /Databases/ }).should("be.visible");
-      cy.findByRole("treeitem", { name: /Browse databases/ }).should(
-        "not.exist",
-      );
-      cy.findByRole("treeitem", { name: "Our analytics" }).should("not.exist");
+      sideNav().should("not.exist");
       H.appBar().should("not.exist");
     });
   });
 
   describe("questions", () => {
-    it("should show the question header by default", () => {
+    it("should show or hide the question header and top nav by params", () => {
+      cy.log("show the question header by default");
       visitQuestionUrl({ url: "/question/" + ORDERS_QUESTION_ID });
 
       cy.findByTestId("qb-header").should("be.visible");
@@ -181,54 +157,84 @@ describe("scenarios > embedding > full app", () => {
       cy.findByTestId("qb-header")
         .button(/Filter/)
         .should("be.visible");
-    });
 
-    it("should hide the question header by a param", () => {
+      cy.log("hide the question header by a param");
       visitQuestionUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { header: false },
       });
 
+      H.tableInteractive().should("be.visible");
       cy.findByTestId("qb-header").should("not.exist");
-    });
 
-    it("should hide the question's additional info by a param", () => {
+      cy.log("hide the question's additional info by a param");
       visitQuestionUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { additional_info: false },
       });
+      // the app bar only shows breadcrumbs while the navbar is closed
+      H.closeNavigationSidebar();
 
       cy.findByTestId("app-bar")
         .findByText("Our analytics")
         .should("be.visible");
+      cy.findByTestId("qb-header").should("be.visible");
       cy.findByTestId("qb-header")
         .findByText(/Edited/)
         .should("not.exist");
-    });
 
-    it("should hide the question's action buttons by a param", () => {
-      visitQuestionUrl({
+      cy.log(
+        "hide the question's action buttons by a param, and send the 'X-Metabase-Client' header for api requests",
+      );
+      H.visitFullAppEmbeddingUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { action_buttons: false },
+      });
+      cy.wait("@getCardQuery").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe-full-app",
+        );
       });
 
       cy.icon("refresh").should("be.visible");
       cy.findByTestId("notebook-button").should("not.exist");
       cy.button(/Summarize/).should("not.exist");
       cy.button(/Filter/).should("not.exist");
-    });
 
-    it("should send 'X-Metabase-Client' header for api requests", () => {
-      H.visitFullAppEmbeddingUrl({
+      cy.log("not hide the top nav when the logo is still visible");
+      visitQuestionUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
-        qs: { action_buttons: false },
+        qs: { breadcrumbs: false },
       });
 
-      cy.wait("@getCardQuery").then(({ request }) => {
-        expect(request?.headers?.["x-metabase-client"]).to.equal(
-          "embedding-iframe-full-app",
-        );
+      H.appBar().within(() => {
+        cy.findByTestId("main-logo").should("be.visible");
+        cy.findByText("Our analytics").should("not.exist");
       });
+
+      // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
+      cy.log("desktop: hide main header when there's nothing to display there");
+      visitQuestionUrl({
+        url: "/question/" + ORDERS_QUESTION_ID,
+        qs: { side_nav: false, logo: false, breadcrumbs: false },
+      });
+      cy.findByDisplayValue("Orders");
+      cy.findByTestId("app-bar").should("not.exist");
+      cy.findByTestId("main-logo").should("not.exist");
+      cy.icon("sidebar_closed").should("not.exist");
+      cy.button("Toggle sidebar").should("not.exist");
+
+      cy.log("mobile: hide main header when there's nothing to display there");
+      cy.viewport("iphone-x");
+      visitQuestionUrl({
+        url: "/question/" + ORDERS_QUESTION_ID,
+        qs: { side_nav: false, logo: false, breadcrumbs: false },
+      });
+      cy.findByDisplayValue("Orders");
+      cy.findByTestId("app-bar").should("not.exist");
+      cy.findByTestId("main-logo").should("not.exist");
+      cy.icon("sidebar_closed").should("not.exist");
+      cy.button("Toggle sidebar").should("not.exist");
     });
 
     describe("question creation", () => {
@@ -237,7 +243,7 @@ describe("scenarios > embedding > full app", () => {
         cy.signInAsNormalUser();
       });
 
-      it("should allow to create a new question from the navbar (metabase#21511)", () => {
+      it("should allow to create a new question from the navbar and show the database for a new native question (metabase#21511)", () => {
         // Simple data picker
         H.visitFullAppEmbeddingUrl({
           url: "/collection/root",
@@ -265,9 +271,8 @@ describe("scenarios > embedding > full app", () => {
           cy.findByText("Raw Data").click();
           cy.findByText("Orders").click();
         });
-      });
 
-      it("should show the database for a new native question (metabase#21511)", () => {
+        cy.log("show the database for a new native question");
         const newQuestionQuery = {
           dataset_query: {
             database: null,
@@ -287,40 +292,6 @@ describe("scenarios > embedding > full app", () => {
         cy.findByTestId("native-query-editor-container")
           .findByText(/Sample Database/)
           .should("be.visible");
-      });
-    });
-
-    describe("desktop logo", () => {
-      // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
-      it("should hide main header when there's nothing to display there", () => {
-        visitQuestionUrl({
-          url: "/question/" + ORDERS_QUESTION_ID,
-          qs: { side_nav: false, logo: false, breadcrumbs: false },
-        });
-        cy.findByDisplayValue("Orders");
-        cy.findByTestId("app-bar").should("not.exist");
-        cy.findByTestId("main-logo").should("not.exist");
-        cy.icon("sidebar_closed").should("not.exist");
-        cy.button("Toggle sidebar").should("not.exist");
-      });
-    });
-
-    describe("mobile logo", () => {
-      beforeEach(() => {
-        cy.viewport("iphone-x");
-      });
-
-      // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
-      it("should hide main header when there's nothing to display there", () => {
-        visitQuestionUrl({
-          url: "/question/" + ORDERS_QUESTION_ID,
-          qs: { side_nav: false, logo: false, breadcrumbs: false },
-        });
-        cy.findByDisplayValue("Orders");
-        cy.findByTestId("app-bar").should("not.exist");
-        cy.findByTestId("main-logo").should("not.exist");
-        cy.icon("sidebar_closed").should("not.exist");
-        cy.button("Toggle sidebar").should("not.exist");
       });
     });
   });
@@ -370,8 +341,8 @@ describe("scenarios > embedding > full app", () => {
       });
     }
 
-    function verifyCardSelected({ cardName, collectionName }) {
-      cy.wait("@getCard").then(({ response }) => {
+    function verifyCardSelected({ alias, cardName, collectionName }) {
+      cy.wait(alias).then(({ response }) => {
         cy.wrap(response.body).its("name").should("equal", cardName);
         cy.wrap(response.body)
           .its("collection.name")
@@ -381,7 +352,6 @@ describe("scenarios > embedding > full app", () => {
 
     beforeEach(() => {
       cy.signInAsNormalUser();
-      cy.intercept("GET", "/api/card/*").as("getCard");
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
     });
 
@@ -429,16 +399,6 @@ describe("scenarios > embedding > full app", () => {
     });
 
     describe("table", () => {
-      it("should select a table in the only database", () => {
-        startNewEmbeddingQuestion();
-        selectDataSource("Products");
-        clickOnDataSource("Products");
-        verifyTableSelected({
-          tableName: "Products",
-          databaseName: "Sample Database",
-        });
-      });
-
       it(
         "should select a table when there are multiple databases",
         { tags: "@external" },
@@ -475,42 +435,12 @@ describe("scenarios > embedding > full app", () => {
         },
       );
 
-      it(
-        "should select a table in a schema-less database",
-        { tags: "@external" },
-        () => {
-          H.restore("mysql-8");
-          cy.signInAsAdmin();
-          startNewEmbeddingQuestion();
-          selectFirstDataSource("Reviews");
-          verifyTableSelected({
-            tableName: "Reviews",
-            databaseName: "QA MySQL8",
-          });
-        },
-      );
-
-      it(
-        "should select a table when there are multiple schemas",
-        { tags: "@external" },
-        () => {
-          H.restore("postgres-writable");
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
-          cy.signInAsAdmin();
-          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-          startNewEmbeddingQuestion();
-          selectDataSource("Birds");
-          verifyTableSelected({
-            tableName: "Birds",
-            schemaName: "Wild",
-            databaseName: "Writable Postgres12",
-          });
-        },
-      );
-
       it("should be able to join a table when the data source is a table", () => {
         startNewEmbeddingQuestion();
         selectDataSource("Orders");
+        clickOnDataSource("Orders");
+        H.popover().findByRole("link", { name: "Products" }).should("exist");
+        cy.findByTestId("data-step-cell").click();
         H.getNotebookStep("data").button("Join data").click();
         H.popover().findByText("Products").click();
         verifyTableSelected({
@@ -522,271 +452,69 @@ describe("scenarios > embedding > full app", () => {
           databaseName: "Sample Database",
         });
       });
-
-      it("should not be able to select a question as a data source", () => {
-        H.createQuestion(ordersCardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", ordersCardDetails.name);
-      });
     });
 
-    describe("question", () => {
-      const cardType = "question";
+    describe("card", () => {
+      it("should only offer models as data sources in every collection the user can see", () => {
+        createCollectionMatrixCards({ withQuestions: true }).then(
+          (modelIds) => {
+            COLLECTION_CASES.forEach((testCase, index) => {
+              const modelName = getMatrixModelName(testCase.location);
+              const questionName = getMatrixQuestionName(testCase.location);
+              cy.log(`${testCase.user} user, model in ${testCase.location}`);
 
-      it("should not be able to select a data source in the root collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: null,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
+              signInForCollectionCase(testCase);
+              cy.intercept({
+                method: "GET",
+                pathname: `/api/card/${modelIds[testCase.location]}`,
+              }).as(`getMatrixModel${index}`);
 
-      it("should not be able to select a data source in a regular collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
+              startNewEmbeddingQuestion();
+              H.popover()
+                .findByRole("link", { name: modelName })
+                .should("exist");
+              H.popover().should("not.contain", questionName);
 
-      it("should not be able to select a data source in a nested collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: SECOND_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-
-      it("should not be able to select a data source in a personal collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-
-      it("should not be able to select a data source in another user personal collection", () => {
-        cy.signInAsAdmin();
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-
-      it("should not be able to select a data source when there is no access to the root collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: FIRST_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.log("grant `nocollection` user access to `First collection`");
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "read" },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-
-      it("should not be able to select a data source when there is no access to the immediate parent collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: THIRD_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: {
-            [FIRST_COLLECTION_ID]: "read",
-            [THIRD_COLLECTION_ID]: "read",
+              selectDataSource(modelName);
+              verifyCardSelected({
+                alias: `@getMatrixModel${index}`,
+                cardName: modelName,
+                collectionName: testCase.collectionName,
+              });
+            });
           },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion();
-        H.popover().should("not.contain", cardDetails.name);
+        );
       });
 
-      it("should not be able to join a card when the data source is a table", () => {
-        const cardDetails = {
+      it("should only offer models when joining a card to a table", () => {
+        const questionDetails = {
           ...ordersCardDetails,
-          type: cardType,
+          name: "Joined question",
+          type: "question",
           collection_id: FIRST_COLLECTION_ID,
         };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectDataSource("Products");
-        H.getNotebookStep("data").button("Join data").click();
-        H.popover().should("not.contain", cardDetails.name);
-      });
-    });
-
-    describe("model", () => {
-      const cardType = "model";
-
-      it("should select a data source in the root collection", () => {
-        const cardDetails = {
+        const modelDetails = {
           ...ordersCardDetails,
+          name: "Joined model",
           type: "model",
-          collection_id: null,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        H.popover().findByRole("link", { name: cardDetails.name }).click();
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Our analytics",
-        });
-      });
-
-      it("should select a data source in a regular collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
           collection_id: FIRST_COLLECTION_ID,
         };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "First collection",
-        });
-      });
-
-      it("should select a data source in a nested collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: SECOND_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Second collection",
-        });
-      });
-
-      it("should select a data source in a personal collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Robert Tableton's Personal Collection",
-        });
-      });
-
-      it("should select a data source in another user personal collection", () => {
-        cy.signInAsAdmin();
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Robert Tableton's Personal Collection",
-        });
-      });
-
-      it("should select a data source when there is no access to the root collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: FIRST_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.log("grant `nocollection` user access to `First collection`");
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "read" },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "First collection",
-        });
-      });
-
-      it("should select a data source when there is no access to the immediate parent collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: THIRD_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: {
-            [FIRST_COLLECTION_ID]: "read",
-            [THIRD_COLLECTION_ID]: "read",
-          },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion();
-        selectDataSource(cardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Third collection",
-        });
-      });
-
-      it("should be able to join a card when the data source is a table", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: cardType,
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
+        H.createQuestion(questionDetails);
+        H.createQuestion(modelDetails);
         startNewEmbeddingQuestion();
         selectDataSource("Products");
         H.getNotebookStep("data").button("Join data").click();
-        selectDataSource(cardDetails.name);
+        H.popover()
+          .findByRole("link", { name: modelDetails.name })
+          .should("exist");
+        H.popover().should("not.contain", questionDetails.name);
+        selectDataSource(modelDetails.name);
         verifyTableSelected({
           tableName: "Products",
           databaseName: "Sample Database",
         });
         verifyTableSelected({
-          tableName: cardDetails.name,
+          tableName: modelDetails.name,
         });
       });
     });
@@ -838,7 +566,28 @@ describe("scenarios > embedding > full app", () => {
       H.popover().findByText("Question").click();
     }
 
-    function selectTable({ tableName, schemaName, databaseName }) {
+    const DEFAULT_ALIASES = {
+      cardAlias: "@getCard",
+      tableMetadataAlias: "@getTableMetadata",
+    };
+
+    function interceptDataPickerRequests(name) {
+      cy.intercept("GET", "/api/card/*").as(`getCard${name}`);
+      cy.intercept("GET", "/api/table/*/query_metadata").as(
+        `getTableMetadata${name}`,
+      );
+      return {
+        cardAlias: `@getCard${name}`,
+        tableMetadataAlias: `@getTableMetadata${name}`,
+      };
+    }
+
+    function selectTable({
+      tableName,
+      schemaName,
+      databaseName,
+      aliases = DEFAULT_ALIASES,
+    }) {
       H.popover().within(() => {
         cy.findByText("Raw Data").click();
         if (databaseName) {
@@ -849,10 +598,15 @@ describe("scenarios > embedding > full app", () => {
         }
         cy.findByText(tableName).click();
       });
-      cy.wait("@getTableMetadata");
+      cy.wait(aliases.tableMetadataAlias);
     }
 
-    function selectCard({ cardName, cardType, collectionNames }) {
+    function selectCard({
+      cardName,
+      cardType,
+      collectionNames,
+      aliases = DEFAULT_ALIASES,
+    }) {
       H.popover().within(() => {
         cy.findByText(cardTypeToLabel[cardType]).click();
         collectionNames.forEach((collectionName) =>
@@ -860,9 +614,9 @@ describe("scenarios > embedding > full app", () => {
         );
         cy.findByText(cardName).click();
       });
-      cy.wait("@getTableMetadata");
+      cy.wait(aliases.tableMetadataAlias);
       if (cardType !== "metric") {
-        cy.wait("@getCard");
+        cy.wait(aliases.cardAlias);
       }
     }
 
@@ -926,7 +680,40 @@ describe("scenarios > embedding > full app", () => {
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
     });
 
-    it('should respect "entity_types" search parameter (EMB-228)', () => {
+    it('should respect "entity_types" search parameter and never offer questions or metrics (EMB-228)', () => {
+      H.createQuestion({
+        ...ordersCountCardDetails,
+        type: "metric",
+        collection_id: null,
+      });
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/database",
+        query: {
+          saved: "true",
+        },
+      }).as("getDatabases");
+
+      cy.log("test not providing `entity_types`");
+      startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+      cy.wait("@getDatabases");
+      H.popover().within(() => {
+        cy.findByText("Models").should("be.visible");
+        cy.findByText("Raw Data").should("be.visible");
+        cy.findByText("Saved Questions").should("not.exist");
+        cy.findByText("Metrics").should("not.exist");
+      });
+
+      cy.log("test providing `entity_types` as an empty string");
+      startNewEmbeddingQuestion({
+        isMultiStageDataPicker: true,
+        searchParameters: { entity_types: "" },
+      });
+      H.popover().within(() => {
+        cy.findByText("Models").should("be.visible");
+        cy.findByText("Raw Data").should("be.visible");
+      });
+
       cy.log('test `entity_types=["table"]`');
       startNewEmbeddingQuestion({
         isMultiStageDataPicker: true,
@@ -939,22 +726,14 @@ describe("scenarios > embedding > full app", () => {
          */
         cy.findByText("Sample Database").should("be.visible");
         cy.findByRole("heading", { name: "Orders" }).should("be.visible");
+        cy.findByRole("option", { name: "Orders" }).should("be.visible");
+        cy.findByText("Models").should("not.exist");
       });
 
       // We don't have to test every permutations here because we already cover those cases in `EmbeddingDataPicker.unit.spec.tsx`
     });
 
     describe("table", () => {
-      it("should select a table in the only database", () => {
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectTable({ tableName: "Products" });
-        clickOnDataSource("Products");
-        verifyTableSelected({
-          tableName: "Products",
-          databaseName: "Sample Database",
-        });
-      });
-
       it(
         "should select a table when there are multiple databases (metabase#54127)",
         { tags: "@external" },
@@ -1021,13 +800,29 @@ describe("scenarios > embedding > full app", () => {
       );
 
       it(
-        "should select a table in a schema-less database",
+        "should select a table in a schema-less database with the simple and staged data pickers",
         { tags: "@external" },
         () => {
           H.restore("mysql-8");
           cy.signInAsAdmin();
+
+          cy.log("simple data picker");
+          const simpleAliases = interceptDataPickerRequests("Simple");
+          startNewEmbeddingQuestion();
+          selectFirstDataSource("Reviews");
+          cy.wait(simpleAliases.tableMetadataAlias).then(({ response }) => {
+            expect(response.body.display_name).to.equal("Reviews");
+            expect(response.body.db.name).to.equal("QA MySQL8");
+          });
+
+          cy.log("staged data picker");
+          const stagedAliases = interceptDataPickerRequests("Staged");
           startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-          selectTable({ tableName: "Reviews", databaseName: "QA MySQL8" });
+          selectTable({
+            tableName: "Reviews",
+            databaseName: "QA MySQL8",
+            aliases: stagedAliases,
+          });
           clickOnDataSource("Reviews");
           verifyTableSelected({
             tableName: "Reviews",
@@ -1037,18 +832,32 @@ describe("scenarios > embedding > full app", () => {
       );
 
       it(
-        "should select a table when there are multiple schemas",
+        "should select a table when there are multiple schemas with the simple and staged data pickers",
         { tags: "@external" },
         () => {
           H.restore("postgres-writable");
           H.resetTestTable({ type: "postgres", table: "multi_schema" });
           cy.signInAsAdmin();
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+          cy.log("simple data picker");
+          const simpleAliases = interceptDataPickerRequests("Simple");
+          startNewEmbeddingQuestion();
+          selectDataSource("Birds");
+          cy.wait(simpleAliases.tableMetadataAlias).then(({ response }) => {
+            expect(response.body.display_name).to.equal("Birds");
+            expect(response.body.schema).to.equal("Wild");
+            expect(response.body.db.name).to.equal("Writable Postgres12");
+          });
+
+          cy.log("staged data picker");
+          const stagedAliases = interceptDataPickerRequests("Staged");
           startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
           selectTable({
             tableName: "Animals",
             schemaName: "Domestic",
             databaseName: "Writable Postgres12",
+            aliases: stagedAliases,
           });
           clickOnDataSource("Animals");
           verifyTableSelected({
@@ -1059,10 +868,30 @@ describe("scenarios > embedding > full app", () => {
         },
       );
 
-      it("should be able to join a table when the data source is a table", () => {
+      it("should join tables and models when the data source is a table", () => {
+        const cardDetails = {
+          ...ordersCardDetails,
+          type: "model",
+          collection_id: FIRST_COLLECTION_ID,
+        };
+        H.createQuestion(cardDetails);
+
+        cy.log("select a table in the only database");
+        const onlyDatabaseAliases = interceptDataPickerRequests("OnlyDatabase");
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        selectTable({ tableName: "Products", aliases: onlyDatabaseAliases });
+        clickOnDataSource("Products");
+        verifyTableSelected({
+          tableName: "Products",
+          databaseName: "Sample Database",
+        });
+
+        cy.log("join a table when the data source is a table");
+        const joinTableAliases = interceptDataPickerRequests("JoinTable");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectTable({
           tableName: "Orders",
+          aliases: joinTableAliases,
         });
         H.getNotebookStep("data").button("Join data").click();
         H.popover().findByText("Products").click();
@@ -1071,18 +900,13 @@ describe("scenarios > embedding > full app", () => {
           tableName: "Products",
           databaseName: "Sample Database",
         });
-      });
 
-      it("should be able to join a model when the data source is a table", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
+        cy.log("join a model when the data source is a table");
+        const joinModelAliases = interceptDataPickerRequests("JoinModel");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectTable({
           tableName: "Products",
+          aliases: joinModelAliases,
         });
         H.getNotebookStep("data").button("Join data").click();
         goBackToBucketStep();
@@ -1090,6 +914,7 @@ describe("scenarios > embedding > full app", () => {
           cardName: cardDetails.name,
           cardType: "model",
           collectionNames: ["First collection"],
+          aliases: joinModelAliases,
         });
         clickOnJoinDataSource(cardDetails.name);
         verifyCardSelected({
@@ -1099,192 +924,32 @@ describe("scenarios > embedding > full app", () => {
       });
     });
 
-    describe("question", () => {
-      beforeEach(() => {
-        cy.intercept({
-          method: "GET",
-          pathname: "/api/database",
-          query: {
-            saved: "true",
-          },
-        }).as("getDatabases");
-      });
-
-      it("should not be able to select a question", () => {
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        cy.wait("@getDatabases");
-        H.popover().within(() => {
-          cy.findByText("Models").should("be.visible");
-          cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Saved Questions").should("not.exist");
-        });
-      });
-    });
-
     describe("model", () => {
-      it("should select a data source in the root collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: null,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: [],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Our analytics",
+      it("should select a model in every collection the user can see", () => {
+        createCollectionMatrixCards({ withQuestions: false }).then(() => {
+          COLLECTION_CASES.forEach((testCase, index) => {
+            const modelName = getMatrixModelName(testCase.location);
+            cy.log(`${testCase.user} user, model in ${testCase.location}`);
+
+            signInForCollectionCase(testCase);
+            const aliases = interceptDataPickerRequests(`Matrix${index}`);
+            startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+            selectCard({
+              cardName: modelName,
+              cardType: "model",
+              collectionNames: testCase.stagedPath,
+              aliases,
+            });
+            clickOnDataSource(modelName);
+            verifyCardSelected({
+              cardName: modelName,
+              collectionName: testCase.stagedCollectionName,
+            });
+          });
         });
       });
 
-      it("should select a data source in a regular collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: FIRST_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: ["First collection"],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "First collection",
-        });
-      });
-
-      it("should select a data source in a nested collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: SECOND_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: ["First collection", "Second collection"],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Second collection",
-        });
-      });
-
-      it("should select a data source in a personal collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: ["Your personal collection"],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Your personal collection",
-        });
-      });
-
-      it("should select a data source in another user personal collection", () => {
-        cy.signInAsAdmin();
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-        };
-        H.createQuestion(cardDetails);
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: [
-            "All personal collections",
-            "Robert Tableton's Personal Collection",
-          ],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Robert Tableton's Personal Collection",
-        });
-      });
-
-      it("should select a data source when there is no access to the root collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: FIRST_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.log("grant `nocollection` user access to `First collection`");
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "read" },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: ["First collection"],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "First collection",
-        });
-      });
-
-      it("should select a data source when there is no access to the immediate parent collection", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
-          type: "model",
-          collection_id: THIRD_COLLECTION_ID,
-        };
-
-        cy.signInAsAdmin();
-        H.createQuestion(cardDetails);
-        cy.updateCollectionGraph({
-          [ALL_USERS_GROUP]: {
-            [FIRST_COLLECTION_ID]: "read",
-            [THIRD_COLLECTION_ID]: "read",
-          },
-        });
-
-        cy.signIn("nocollection");
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectCard({
-          cardName: cardDetails.name,
-          cardType: "model",
-          collectionNames: ["Third collection"],
-        });
-        clickOnDataSource(ordersCardDetails.name);
-        verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "Third collection",
-        });
-      });
-
-      it("should join a table when the data source is a model", () => {
+      it("should join tables and models when the data source is a model", () => {
         // Orders Model already exists
         const ordersModelName = "Orders Model";
         const ordersCountModelDetails = {
@@ -1295,11 +960,14 @@ describe("scenarios > embedding > full app", () => {
         };
         H.createQuestion(ordersCountModelDetails);
 
+        cy.log("join a model when the data source is a model");
+        const joinModelAliases = interceptDataPickerRequests("JoinModel");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: ordersModelName,
           cardType: "model",
           collectionNames: [],
+          aliases: joinModelAliases,
         });
 
         H.getNotebookStep("data").button("Join data").click();
@@ -1308,6 +976,7 @@ describe("scenarios > embedding > full app", () => {
           cardName: ordersCountModelDetails.name,
           cardType: "model",
           collectionNames: [],
+          aliases: joinModelAliases,
         });
 
         cy.log("select join column");
@@ -1319,17 +988,15 @@ describe("scenarios > embedding > full app", () => {
           cardName: ordersCountModelDetails.name,
           collectionName: "Our analytics",
         });
-      });
 
-      it("should join a model when the data source is a model", () => {
-        // Orders Model already exists
-        const ordersModelName = "Orders Model";
-
+        cy.log("join a table when the data source is a model");
+        const joinTableAliases = interceptDataPickerRequests("JoinTable");
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
         selectCard({
           cardName: ordersModelName,
           cardType: "model",
           collectionNames: [],
+          aliases: joinTableAliases,
         });
 
         H.getNotebookStep("data").button("Join data").click();
@@ -1338,6 +1005,7 @@ describe("scenarios > embedding > full app", () => {
         selectTable({
           tableName: "Products",
           databaseName: "Sample Database",
+          aliases: joinTableAliases,
         });
         clickOnJoinDataSource("Products");
         verifyTableSelected({
@@ -1346,102 +1014,85 @@ describe("scenarios > embedding > full app", () => {
         });
       });
     });
-
-    describe("metric", () => {
-      beforeEach(() => {
-        const cardDetails = {
-          ...ordersCountCardDetails,
-          type: "metric",
-          collection_id: null,
-        };
-        H.createQuestion(cardDetails);
-        cy.intercept({
-          method: "GET",
-          pathname: "/api/database",
-          query: {
-            saved: "true",
-          },
-        }).as("getDatabases");
-      });
-
-      it("should not be able to select a metric", () => {
-        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        cy.wait("@getDatabases");
-        H.popover().within(() => {
-          cy.findByText("Models").should("be.visible");
-          cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Metrics").should("not.exist");
-        });
-      });
-    });
-
-    describe('"entity_types" query parameter', () => {
-      it('should show only the provided "entity_types"', () => {
-        startNewEmbeddingQuestion({
-          isMultiStageDataPicker: true,
-          searchParameters: {
-            entity_types: "table",
-          },
-        });
-        H.popover().within(() => {
-          cy.findByText("Models").should("not.exist");
-          cy.findByText("Sample Database").should("be.visible");
-          cy.findByRole("option", { name: "Orders" }).should("be.visible");
-        });
-      });
-
-      it('should show models and tables as a default value when not providing "entity_types"', () => {
-        cy.log("Test providing `entity_types` as an empty string");
-        startNewEmbeddingQuestion({
-          isMultiStageDataPicker: true,
-          searchParameters: {
-            entity_types: "",
-          },
-        });
-        H.popover().within(() => {
-          cy.findByText("Models").should("be.visible");
-          cy.findByText("Raw Data").should("be.visible");
-        });
-
-        cy.log("Test not providing `entity_types`");
-        startNewEmbeddingQuestion({
-          isMultiStageDataPicker: true,
-        });
-        H.popover().within(() => {
-          cy.findByText("Models").should("be.visible");
-          cy.findByText("Raw Data").should("be.visible");
-        });
-      });
-    });
   });
 
   describe("dashboards", () => {
-    it("should show the dashboard header by default", () => {
-      visitDashboardUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
+    it("should show the dashboard header by default, send the 'X-Metabase-Client' header, and allow downloading question results when logged in via Google SSO (metabase#39848)", () => {
+      const CSRF_TOKEN = "abcdefgh";
+      cy.intercept("GET", "/api/user/current", (req) => {
+        req.on("response", (res) => {
+          res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
+        });
+      });
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query/csv").as(
+        "CsvDownload",
+      );
+      H.visitFullAppEmbeddingUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
+
+      cy.wait("@getDashboard").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe-full-app",
+        );
+      });
+      cy.wait("@getDashCardQuery");
 
       cy.findByTestId("dashboard-name-heading").should("be.visible");
       cy.button(/Edited.*by/).should("be.visible");
 
+      cy.log("hide the entity id in the dashboard info");
       H.dashboardHeader().findByRole("img", { name: /info/i }).click();
-      H.modal()
-        .findByRole("heading", { name: /entity id/i })
-        .should("not.exist");
+      H.sidesheet().within(() => {
+        cy.findByRole("heading", { name: "Description" }).should("be.visible");
+        cy.findByRole("heading", { name: /entity id/i }).should("not.exist");
+      });
+      H.sidesheet().findByLabelText("Close").click();
+      H.sidesheet().should("not.exist");
+
+      cy.log("download question results with the anti-CSRF token");
+      H.getDashboardCard().realHover();
+      H.getDashboardCardMenu().click();
+
+      H.exportFromDashcard(".csv");
+
+      cy.wait("@CsvDownload").then((interception) => {
+        expect(
+          interception.request.headers["x-metabase-anti-csrf-token"],
+        ).to.equal(CSRF_TOKEN);
+      });
     });
 
-    it("should hide the dashboard header by a param", () => {
+    it("should hide the dashboard header or its additional info by a param, and allow selecting tabs (metabase#38429, metabase#39002)", () => {
+      cy.log("hide the dashboard header by a param");
       visitDashboardUrl({
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { header: false },
       });
-      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
-        "not.exist",
-      );
       H.dashboardGrid().within(() => {
         H.assertTableRowsCount(2000);
       });
-    });
+      cy.findByTestId("dashboard-header").should("not.exist");
 
-    it("should hide the dashboard with multiple tabs header by a param and allow selecting tabs (metabase#38429, metabase#39002)", () => {
+      cy.log("hide the dashboard's additional info by a param");
+      visitDashboardUrl({
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
+        qs: { additional_info: false },
+      });
+      // the app bar only shows breadcrumbs while the navbar is closed
+      H.closeNavigationSidebar();
+
+      cy.findByTestId("dashboard-header")
+        .findByText("Orders in a dashboard")
+        .should("be.visible");
+      cy.findByTestId("dashboard-header")
+        .findByText(/Edited/)
+        .should("not.exist");
+      cy.findByTestId("app-bar")
+        .findByText("Our analytics")
+        .should("be.visible");
+
+      cy.log(
+        "hide the dashboard with multiple tabs header by a param and allow selecting tabs",
+      );
       const FIRST_TAB = { id: 1, name: "Tab 1" };
       const SECOND_TAB = { id: 2, name: "Tab 2" };
       H.createDashboardWithTabs({
@@ -1463,31 +1114,12 @@ describe("scenarios > embedding > full app", () => {
           qs: { header: false },
         });
       });
-      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
-        "not.exist",
-      );
       H.dashboardGrid().within(() => {
         H.assertTableRowsCount(2000);
       });
+      cy.findByTestId("dashboard-header").should("not.exist");
       H.goToTab(SECOND_TAB.name);
       cy.findByTestId("dashboard-empty-state").should("be.visible");
-    });
-
-    it("should hide the dashboard's additional info by a param", () => {
-      visitDashboardUrl({
-        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
-        qs: { additional_info: false },
-      });
-
-      cy.findByTestId("dashboard-header")
-        .findByText("Orders in a dashboard")
-        .should("be.visible");
-      cy.findByTestId("dashboard-header")
-        .findByText(/Edited/)
-        .should("not.exist");
-      cy.findByTestId("app-bar")
-        .findByText("Our analytics")
-        .should("be.visible");
     });
 
     it("should preserve embedding options with click behavior (metabase#24756)", () => {
@@ -1561,9 +1193,8 @@ describe("scenarios > embedding > full app", () => {
       cy.log("Navigate to a dashboard via in-app navigation");
       H.navigationSidebar().findByText("Our analytics").click();
       cy.findByRole("main").findByText(dashboardDetails.name).click();
-      H.navigationSidebar()
-        .findByText("Our analytics")
-        .should("not.be.visible");
+      H.navigationSidebar().should("be.visible");
+      H.closeNavigationSidebar();
 
       cy.get("main header")
         .findByText(dashboardDetails.name)
@@ -1619,8 +1250,6 @@ describe("scenarios > embedding > full app", () => {
       };
 
       it("should handle invalid questions/dashboards (metabase#65500)", () => {
-        cy.signInAsAdmin();
-
         H.createDashboardWithTabs({
           dashboard: {
             name: "Dashboard with tabs",
@@ -1673,6 +1302,34 @@ describe("scenarios > embedding > full app", () => {
       });
     });
 
+    it("should keep the navbar open when navigating, and only close it when the user toggles it", () => {
+      const dashboardName = "Navbar dashboard";
+      H.createDashboard({ name: dashboardName });
+
+      H.visitFullAppEmbeddingUrl({ url: "/" });
+      H.navigationSidebar().should("be.visible");
+
+      cy.log("navigating to a dashboard keeps the navbar open");
+      H.navigationSidebar().findByText("Our analytics").click();
+      cy.findByRole("main").findByText(dashboardName).click();
+      cy.findByTestId("dashboard-name-heading").should(
+        "have.value",
+        dashboardName,
+      );
+      H.navigationSidebar().should("be.visible");
+      H.appBar().findByText("Our analytics").should("not.be.visible");
+
+      cy.log("the toggle closes the navbar, and it stays closed on navigation");
+      H.appBar().findByTestId("sidebar-toggle").click();
+      H.navigationSidebar().should("not.be.visible");
+      H.appBar().findByText("Our analytics").click();
+      cy.findByTestId("collection-name-heading").should(
+        "have.text",
+        "Our analytics",
+      );
+      H.navigationSidebar().should("not.be.visible");
+    });
+
     it("should send `frame` message with dashboard height when the dashboard is resized (metabase#37437)", () => {
       const TAB_1 = { id: 1, name: "Tab 1" };
       const TAB_2 = { id: 2, name: "Tab 2" };
@@ -1719,6 +1376,8 @@ describe("scenarios > embedding > full app", () => {
         },
       });
 
+      // the app bar only shows breadcrumbs while the navbar is closed
+      H.closeNavigationSidebar();
       cy.get("@postMessage").invoke("resetHistory");
       cy.findByTestId("app-bar").findByText("Our analytics").click();
 
@@ -1735,53 +1394,16 @@ describe("scenarios > embedding > full app", () => {
         },
       });
     });
-
-    it("should allow downloading question results when logged in via Google SSO (metabase#39848)", () => {
-      const CSRF_TOKEN = "abcdefgh";
-      cy.intercept("GET", "/api/user/current", (req) => {
-        req.on("response", (res) => {
-          res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
-        });
-      });
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query/csv").as(
-        "CsvDownload",
-      );
-      visitDashboardUrl({
-        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
-      });
-
-      H.getDashboardCard().realHover();
-      H.getDashboardCardMenu().click();
-
-      H.exportFromDashcard(".csv");
-
-      cy.wait("@CsvDownload").then((interception) => {
-        expect(
-          interception.request.headers["x-metabase-anti-csrf-token"],
-        ).to.equal(CSRF_TOKEN);
-      });
-    });
-
-    it("should send 'X-Metabase-Client' header for api requests", () => {
-      H.visitFullAppEmbeddingUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
-
-      cy.wait("@getDashboard").then(({ request }) => {
-        expect(request?.headers?.["x-metabase-client"]).to.equal(
-          "embedding-iframe-full-app",
-        );
-      });
-    });
   });
 
   describe("x-ray dashboards", () => {
-    it("should show the dashboard header by default", () => {
+    it("should show the dashboard header by default and hide it by a param", () => {
       visitXrayDashboardUrl({ url: "/auto/dashboard/table/1" });
 
       cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
       cy.button("Save this").should("be.visible");
-    });
 
-    it("should hide the dashboard header by a param", () => {
+      cy.log("hide the dashboard header by a param");
       visitXrayDashboardUrl({
         url: "/auto/dashboard/table/1",
         qs: { header: false },
@@ -1794,7 +1416,6 @@ describe("scenarios > embedding > full app", () => {
 
   describe("documents > comments", () => {
     it("should not display comments in an embedded app", () => {
-      H.activateToken("pro-self-hosted");
       const DOCUMENT_ID = 1;
       const PARAGRAPH_ID = "b7fa322a-964e-d668-8d30-c772ef4f0022";
 
@@ -1844,7 +1465,7 @@ describe("scenarios > embedding > full app", () => {
 
       cy.intercept({
         method: "GET",
-        path: "/api/comment/*",
+        pathname: "/api/comment",
       }).as("commentGet");
 
       H.visitFullAppEmbeddingUrl({
@@ -1852,6 +1473,7 @@ describe("scenarios > embedding > full app", () => {
       });
 
       cy.wait("@documentGet");
+      H.documentContent().should("contain.text", "Lorem ipsum dolor sit amet.");
 
       cy.findByLabelText("Show all comments").should("not.exist");
 
@@ -1903,7 +1525,10 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
     cy.signOut(); // we *need* to sign out, otherwise the SSO process won't kick in
   });
 
-  it("when trying to access a resource while un-authenticated, it should pass the path via return_to to the jwt provider", () => {
+  it("should pass the path via return_to to the jwt provider when un-authenticated, then authenticate the user and pass JWT user attributes to click behavior custom destinations (metabase#65942)", () => {
+    cy.log(
+      "pass the path via return_to to the jwt provider when un-authenticated",
+    );
     cy.intercept(/http:\/\/localhost:8888\/.*/, (req) => {
       req.reply({
         statusCode: 200,
@@ -1918,35 +1543,10 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
         `http://localhost:8888/jwt-provider?return_to=/dashboard/${dashboardId}`,
       );
     });
-  });
 
-  it("should authenticate the user correctly if the JWT provider returns a valid JWT token", () => {
-    // 1) sign a jwt for the user
-    cy.task("signJwt", {
-      payload: {
-        email: USERS.normal.email,
-        exp: Math.round(Date.now() / 1000) + 10 * 60,
-      },
-      secret: jwtSecret,
-    }).then((jwtToken) => {
-      // 2) mock the JWT provider to redirect to the auth/sso endpoint with the JWT
-      cy.intercept(/http:\/\/localhost:8888\/.*/, (req) => {
-        const redirectUrl = `${baseUrl}/auth/sso?jwt=${jwtToken}&return_to=/dashboard/${dashboardId}`;
-        req.redirect(redirectUrl);
-      }).as("jwt-provider");
-    });
-
-    // 3) visit the dashboard
-    H.visitFullAppEmbeddingUrl({ url: `/dashboard/${dashboardId}` });
-
-    cy.wait("@jwt-provider");
-
-    // 4) verify the user is authenticated and can access the dashboard
-    cy.url().should("equal", `${baseUrl}/dashboard/${dashboardId}`);
-    H.main().findByText("Orders in a dashboard").should("be.visible");
-  });
-
-  it("should pass JWT user attributes to click behavior custom destinations (metabase#65942)", () => {
+    cy.log(
+      "authenticate the user and pass JWT user attributes to click behavior custom destinations",
+    );
     const jwtAttributeValue = ORDERS_QUESTION_ID;
 
     // 1) set up a click behavior that uses a user attribute in the URL
@@ -1965,16 +1565,17 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
       cy.intercept(/http:\/\/localhost:8888\/.*/, (req) => {
         const redirectUrl = `${baseUrl}/auth/sso?jwt=${jwtToken}&return_to=/dashboard/${dashboardId}`;
         req.redirect(redirectUrl);
-      }).as("jwt-provider");
+      }).as("jwt-provider-redirect");
     });
 
     // 4) visit the dashboard as embedded
     H.visitFullAppEmbeddingUrl({ url: `/dashboard/${dashboardId}` });
 
-    cy.wait("@jwt-provider");
+    cy.wait("@jwt-provider-redirect");
 
     // 5) verify user is on dashboard
     cy.url().should("equal", `${baseUrl}/dashboard/${dashboardId}`);
+    H.main().findByText("Orders in a dashboard").should("be.visible");
 
     cy.findAllByRole("gridcell").first().click();
     cy.wait("@getCardQuery");
@@ -2006,10 +1607,14 @@ const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
       dashcards: body.dashcards.map((card) => ({
         ...card,
         visualization_settings: {
-          click_behavior: {
-            type: "link",
-            linkType: "url",
-            linkTemplate,
+          column_settings: {
+            '["name","ID"]': {
+              click_behavior: {
+                type: "link",
+                linkType: "url",
+                linkTemplate,
+              },
+            },
           },
         },
       })),
@@ -2032,3 +1637,321 @@ const selectDataSource = (dataSource) => {
 const selectFirstDataSource = (dataSource) => {
   H.popover().findAllByRole("link", { name: dataSource }).first().click();
 };
+
+const MATRIX_LOCATIONS = [
+  { location: "root", collectionId: null },
+  { location: "First", collectionId: FIRST_COLLECTION_ID },
+  { location: "Second", collectionId: SECOND_COLLECTION_ID },
+  { location: "personal", collectionId: NORMAL_PERSONAL_COLLECTION_ID },
+  { location: "Third", collectionId: THIRD_COLLECTION_ID },
+];
+
+const COLLECTION_CASES = [
+  {
+    user: "normal",
+    location: "root",
+    collectionName: "Our analytics",
+    stagedPath: [],
+    stagedCollectionName: "Our analytics",
+  },
+  {
+    user: "normal",
+    location: "First",
+    collectionName: "First collection",
+    stagedPath: ["First collection"],
+    stagedCollectionName: "First collection",
+  },
+  {
+    user: "normal",
+    location: "Second",
+    collectionName: "Second collection",
+    stagedPath: ["First collection", "Second collection"],
+    stagedCollectionName: "Second collection",
+  },
+  {
+    user: "normal",
+    location: "personal",
+    collectionName: "Robert Tableton's Personal Collection",
+    stagedPath: ["Your personal collection"],
+    stagedCollectionName: "Your personal collection",
+  },
+  {
+    user: "admin",
+    location: "personal",
+    collectionName: "Robert Tableton's Personal Collection",
+    stagedPath: [
+      "All personal collections",
+      "Robert Tableton's Personal Collection",
+    ],
+    stagedCollectionName: "Robert Tableton's Personal Collection",
+  },
+  {
+    user: "nocollection",
+    location: "First",
+    readCollectionIds: [FIRST_COLLECTION_ID],
+    collectionName: "First collection",
+    stagedPath: ["First collection"],
+    stagedCollectionName: "First collection",
+  },
+  {
+    user: "nocollection",
+    location: "Third",
+    readCollectionIds: [FIRST_COLLECTION_ID, THIRD_COLLECTION_ID],
+    collectionName: "Third collection",
+    stagedPath: ["Third collection"],
+    stagedCollectionName: "Third collection",
+  },
+];
+
+const getMatrixModelName = (location) => `Model in ${location}`;
+
+const getMatrixQuestionName = (location) => `Question in ${location}`;
+
+const createCollectionMatrixCards = ({ withQuestions }) => {
+  const modelIds = {};
+  cy.signInAsAdmin();
+  MATRIX_LOCATIONS.forEach(({ location, collectionId }) => {
+    H.createQuestion({
+      name: getMatrixModelName(location),
+      type: "model",
+      query: { "source-table": ORDERS_ID },
+      collection_id: collectionId,
+    }).then(({ body }) => {
+      modelIds[location] = body.id;
+    });
+    if (withQuestions) {
+      H.createQuestion({
+        name: getMatrixQuestionName(location),
+        type: "question",
+        query: { "source-table": ORDERS_ID },
+        collection_id: collectionId,
+      });
+    }
+  });
+  return cy.wrap(modelIds);
+};
+
+const signInForCollectionCase = ({ user, readCollectionIds }) => {
+  if (readCollectionIds) {
+    cy.signInAsAdmin();
+    cy.updateCollectionGraph({
+      [ALL_USERS_GROUP]: Object.fromEntries(
+        readCollectionIds.map((collectionId) => [collectionId, "read"]),
+      ),
+    });
+  }
+  cy.signIn(user);
+};
+
+describe("issue 51934 (EMB-189)", () => {
+  const COLLECTION_NAME = "Model Collection";
+  const MODEL_IN_ROOT_NAME = "Products Model";
+  const MODEL_IN_COLLECTION_NAME = "QA Postgres12 Orders Model";
+  const QUESTION_IN_COLLECTION_NAME = "Orders Question";
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.createModelFromTableName({
+      tableName: "products",
+      modelName: MODEL_IN_ROOT_NAME,
+    });
+    H.createCollection({
+      name: COLLECTION_NAME,
+      alias: "collectionId",
+    });
+    H.createModelFromTableName({
+      tableName: "orders",
+      modelName: MODEL_IN_COLLECTION_NAME,
+      idAlias: "modelId",
+    });
+    moveToCollection({
+      collectionIdAlias: "collectionId",
+      cardIdAlias: "modelId",
+    });
+    H.createQuestion(
+      {
+        name: QUESTION_IN_COLLECTION_NAME,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "questionId",
+      },
+    );
+    moveToCollection({
+      collectionIdAlias: "collectionId",
+      cardIdAlias: "questionId",
+    });
+  });
+
+  it("should set the starting join step based on the query source", () => {
+    startNewEmbeddingQuestion();
+    const QA_DB_NAME = "QA Postgres12";
+    const DATA_SOURCE_NAME = "Orders";
+
+    // Before the picker can auto-navigate into the data source's collection it
+    // resolves the target path asynchronously: a card-metadata fetch plus one
+    // `listCollectionItems` request per collection level (root -> Model
+    // Collection). On a throttled CI runner that serial chain routinely outlasts
+    // Cypress's default 4 s command timeout, so the picker is still showing the
+    // parent (root) collections when a default-timeout query gives up — the
+    // dominant "cannot find menuitem '...' (only the root collections are
+    // present)" flake. Wait for the loader to clear, then give the item lookup a
+    // generous timeout so it waits for the path to finish resolving, and assert
+    // it is visible (positive anchor) before clicking.
+    const PICKER_ITEM_TIMEOUT = 15000;
+    const clickPickerItem = (name) => {
+      cy.get('[data-testid="mini-picker-list-loader"]').should("not.exist");
+      cy.findByRole("menuitem", { name }, { timeout: PICKER_ITEM_TIMEOUT })
+        .should("be.visible")
+        .click();
+    };
+
+    // The data-source picker and the join picker are both rendered by the same
+    // embedding DataSourceSelector, so a generic popover query could not tell
+    // them apart. When a click swaps one for the other they can briefly overlap
+    // (the outgoing one is still in its close transition while the incoming one
+    // is already mounted), which made matching ambiguous and flaky on slow CI
+    // runners.
+    //
+    // Each picker now carries its trigger's label as the dropdown's accessible
+    // name (`aria-label`), so we can target each popover deterministically by
+    // name regardless of any transition overlap. `.filter(":visible").last()`
+    // guards against a same-named popover that is still animating closed.
+    const pickerPopover = (name) =>
+      cy
+        .get(`[data-element-id=mantine-popover][aria-label="${name}"]`)
+        .filter(":visible")
+        .should("have.length.at.least", 1)
+        .last();
+    const dataSourcePopover = () => pickerPopover("Pick your starting data");
+    const joinPopover = () => pickerPopover("Pick data to join");
+
+    cy.log("select a table as a data source");
+    dataSourcePopover().within(() => {
+      cy.findByText("Raw Data").click();
+    });
+    dataSourcePopover().within(() => {
+      cy.findByRole("heading", { name: QA_DB_NAME }).click();
+    });
+    dataSourcePopover().within(() => {
+      cy.findByRole("option", { name: DATA_SOURCE_NAME }).click();
+    });
+    H.getNotebookStep("data").button("Join data").click();
+
+    cy.log(
+      'select the "Join" step when the data source is a table will open a table in the same database',
+    );
+    joinPopover().within(() => {
+      cy.findByText(QA_DB_NAME).should("be.visible");
+      cy.findByRole("option", { name: "Orders" }).should("be.visible");
+    });
+
+    cy.log(
+      "changing the data source while not selecting the join step should refresh the data picker on the join step",
+    );
+    H.getNotebookStep("data").findByText(DATA_SOURCE_NAME).click();
+
+    cy.log('go back to the "Bucket" step');
+    dataSourcePopover().within(() => {
+      cy.icon("chevronleft").click();
+    });
+    dataSourcePopover().within(() => {
+      cy.icon("chevronleft").click();
+    });
+
+    cy.log(
+      "select a question as a data source should open the saved question step in the same collection as the data source (metabase#58357)",
+    );
+    dataSourcePopover().within(() => {
+      cy.findByText("Saved Questions").click();
+    });
+    dataSourcePopover().within(() => clickPickerItem(COLLECTION_NAME));
+    dataSourcePopover().within(() =>
+      clickPickerItem(QUESTION_IN_COLLECTION_NAME),
+    );
+
+    cy.log("the join popover is automatically opened");
+    joinPopover().within(() => {
+      cy.log("the collection of the data source should be selected");
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 226)",
+      );
+      clickPickerItem(QUESTION_IN_COLLECTION_NAME);
+    });
+
+    cy.log(
+      "select a model as a data source should open the model step in the same collection as the data source",
+    );
+    H.getNotebookStep("data").findByText(QUESTION_IN_COLLECTION_NAME).click();
+
+    // Go back to the "Bucket" step
+    dataSourcePopover().within(() => {
+      cy.findByText("Saved Questions").click();
+    });
+    // We're now at the "Bucket" step
+    dataSourcePopover().within(() => {
+      cy.findByText("Models").click();
+    });
+    dataSourcePopover().within(() => clickPickerItem(MODEL_IN_COLLECTION_NAME));
+
+    cy.log("the join popover is automatically opened");
+    joinPopover().within(() => {
+      cy.log("the collection of the data source should be selected");
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 226)",
+      );
+      clickPickerItem(MODEL_IN_COLLECTION_NAME);
+    });
+
+    cy.log(
+      "select a data source after selecting a join step should refresh the data picker on the join step",
+    );
+    H.getNotebookStep("data").findByText(MODEL_IN_COLLECTION_NAME).click();
+    dataSourcePopover().within(() => clickPickerItem("Our analytics"));
+    dataSourcePopover().within(() => clickPickerItem(MODEL_IN_ROOT_NAME));
+
+    joinPopover().within(() => {
+      cy.log("the collection of the new data source should be selected");
+      cy.findByRole("menuitem", { name: "Our analytics" }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 226)",
+      );
+      cy.findByRole("menuitem", { name: MODEL_IN_ROOT_NAME }).should(
+        "be.visible",
+      );
+    });
+  });
+
+  function startNewEmbeddingQuestion() {
+    H.visitFullAppEmbeddingUrl({
+      url: "/question/notebook",
+      qs: {
+        data_picker: "staged",
+        entity_types: "table,model,question",
+      },
+    });
+  }
+
+  function moveToCollection({ collectionIdAlias, cardIdAlias }) {
+    cy.get(`@${collectionIdAlias}`).then((collectionId) => {
+      cy.get(`@${cardIdAlias}`).then((cardId) => {
+        cy.request("PUT", `/api/card/${cardId}`, {
+          collection_id: collectionId,
+        });
+      });
+    });
+  }
+});

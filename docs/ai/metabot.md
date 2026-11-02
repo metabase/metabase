@@ -18,6 +18,7 @@ To set up Metabot, see [Metabot settings](./settings.md).
 Here's a non-exhaustive list of things Metabot can help with:
 
 - [Answer data questions asked with natural language](#ai-exploration).
+- [Generate and rank many charts from a prompt](./research.md).
 - [Create a chart using the query builder](#how-metabot-uses-the-query-builder) from a natural language query.
 - [Generate SQL in the native editor](../questions/native-editor/writing-sql.md) from natural language. (Currently, only SQL is supported.)
 - [Edit SQL directly in the native editor](#inline-sql-editing).
@@ -47,7 +48,7 @@ Some tips:
 - Whenever you want Metabot to do something completely different, you should reset the conversation, as Metabot might find that irrelevant historical context to be confusing.
 - Once Metabot creates a question for you, you can follow up with more questions or take over yourself. You can drill through the chart or step into the editor to tweak the query (both in the query builder and the SQL editor).
 - Metabot works best with English prompts. While it might understand other languages, you'll get the most reliable results by asking your questions in English.
-- Define domain-specific terms in the [glossary](../exploration-and-organization/data-model-reference.md#glossary) to help Metabot understand your organization's terminology.
+- Define domain-specific terms in the [glossary](../data-modeling/semantic-layer/glossary.md) to help Metabot understand your organization's terminology.
 
 ### Metabot response menu
 
@@ -124,6 +125,8 @@ Use **AI exploration** to start a new conversation with Metabot when you don’t
 Open it from **+ New → AI exploration**, then ask a question or pick one of the suggested prompts.
 
 When answering questions in AI exploration, Metabot searches a limited set of content instead of your entire Metabase. Admins can set a **Collection for natural language querying** to scope AI exploration to a specific collection and its subcollections. You can still refer to content outside that scope by explicitly @-mentioning it in your prompt. See [Metabot AI settings](../ai/settings.md) for more details.
+
+To ask a broad question and have Metabase generate and rank many charts at once, click **Research** in the top right of the AI exploration page. See [Research](./research.md) for more details.
 
 ## Current limitations
 

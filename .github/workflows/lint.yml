@@ -24,7 +24,7 @@ jobs:
       workflows_files: ${{ steps.changes.outputs.workflows_files }}
       yaml: ${{ steps.changes.outputs.yaml }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Test which files changed
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
@@ -39,7 +39,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup frontend env
         if: |
@@ -62,6 +62,9 @@ jobs:
             # script sets executable output, for details see: https://github.com/rhysd/actionlint/blob/main/docs/usage.md#use-actionlint-on-github-actions
             bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash)
           fi
+
+      - name: Create Clojure CLI user config
+        run: clojure -Sdescribe > /dev/null
 
       - parallel:
         # Deliberately ungated. This guards a coupling that drifts silently, so running it only when a
@@ -106,7 +109,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -130,7 +133,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set up Java
         uses: actions/setup-java@v5.2.0
         with:

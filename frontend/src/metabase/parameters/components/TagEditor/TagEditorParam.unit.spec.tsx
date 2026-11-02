@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
   setupParameterValuesEndpoints,
@@ -12,7 +13,6 @@ import {
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
 import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -65,7 +65,7 @@ const setup = ({
     }),
   });
 
-  const metadata = getMetadata(state);
+  const metadata = createMockMetadataFromState(state);
 
   const databaseMetadata = checkNotNull(metadata.database(database.id));
 

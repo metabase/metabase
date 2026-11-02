@@ -60,6 +60,7 @@
    #{}
    indexes))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *update-partition-size*
   "Size of the partition of indexes to update using one `t2/update!` call. Dynamic for testing purposes."
   5000)

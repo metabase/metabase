@@ -3,8 +3,10 @@
   (:refer-clojure :exclude [get-in select-keys])
   (:require
    [malli.core :as mc]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -78,7 +80,7 @@
     (let [source-card-id (when (= (lib/normalized-query-type query) :mbql/query)
                            (query->source-card-id query))
           source-card    (when source-card-id
-                           (query-processor.db/source-card-metadata source-card-id))
+                           (queries/card-query-info source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
@@ -102,9 +104,12 @@
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
-   query :- ::lib-be.schema/maybe-legacy-or-internal-query]
+   query :- ::lib-be.schema/maybe-legacy-or-internal-query
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (run-streaming-query
    (-> query
        (dissoc :cache-strategy)
@@ -134,6 +139,7 @@
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and download the result data as a file in the specified format."
+  {:scope api-scope/data-app}
   [{:keys [export-format]} :- [:map {:closed true}
                                [:export-format ::qp.schema/export-format]]
    _query-params
@@ -156,7 +162,9 @@
                                                                         (string? x) (json/decode viz-setting-key-fn)))})]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]
-       [:csv_include_bom         {:default false} ms/BooleanValue]]]
+       [:csv_include_bom         {:default false} ms/BooleanValue]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
@@ -190,9 +198,12 @@
 
   You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with
   visibility_type :sensitive in the response."
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
-   query :- ::lib-be.schema/maybe-legacy-query]
+   query :- ::lib-be.schema/maybe-legacy-query
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (queries/batch-fetch-query-metadata
    [query]
    (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
@@ -204,11 +215,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
    {:keys [database pretty] :as query} :- [:map {:closed true}
                                            [:pretty {:default true} [:maybe :boolean]]
-                                           [::mc/default ::lib-be.schema/maybe-legacy-query]]]
+                                           [::mc/default ::lib-be.schema/maybe-legacy-query]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query (dissoc query :pretty)))
   (model-persistence/with-persisted-substituion-disabled
     (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
                     (dissoc :constraints :middleware)
@@ -238,9 +252,12 @@
 (api.macros/defendpoint :post "/pivot"
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Generate a pivoted dataset for an ad-hoc query"
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
-   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query]
+   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
@@ -250,8 +267,7 @@
                                            (update :middleware select-keys [:js-int-to-string? :ignore-cached-results?]))
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
-                                rff)
-      query)))
+                                rff))))
 
 (defn- parameter-field-values
   [field-ids query]

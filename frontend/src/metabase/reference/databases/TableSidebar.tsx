@@ -7,24 +7,31 @@ import CS from "metabase/css/core/index.css";
 import S from "metabase/reference/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/reference/components/SidebarItem";
 import MetabaseSettings from "metabase/utils/settings";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { trackReferenceXRayClicked } from "../analytics";
-import type { StubbedDatabase, StubbedTable } from "../types";
 
 interface TableSidebarProps {
-  database: StubbedDatabase;
-  table: StubbedTable;
+  databaseId: DatabaseId;
+  databaseName?: string;
+  tableId: TableId;
+  tableName?: string;
 }
 
-const TableSidebar = ({ database, table }: TableSidebarProps) => (
+const TableSidebar = ({
+  databaseId,
+  databaseName,
+  tableId,
+  tableName,
+}: TableSidebarProps) => (
   <div className={S.sidebar}>
     <div>
       <Breadcrumbs
         className={cx(CS.py4, CS.ml3)}
         crumbs={[
           [t`Databases`, "/reference/databases"],
-          [database.name, `/reference/databases/${database.id}`],
-          [table.name],
+          [databaseName, `/reference/databases/${databaseId}`],
+          [tableName],
         ]}
         inSidebar={true}
         placeholder={t`Data Reference`}
@@ -32,27 +39,27 @@ const TableSidebar = ({ database, table }: TableSidebarProps) => (
     </div>
     <ol className={CS.mx3}>
       <SidebarItem
-        key={`/reference/databases/${database.id}/tables/${table.id}`}
-        href={`/reference/databases/${database.id}/tables/${table.id}`}
+        key={`/reference/databases/${databaseId}/tables/${tableId}`}
+        href={`/reference/databases/${databaseId}/tables/${tableId}`}
         icon="document"
         name={t`Details`}
       />
       <SidebarItem
-        key={`/reference/databases/${database.id}/tables/${table.id}/fields`}
-        href={`/reference/databases/${database.id}/tables/${table.id}/fields`}
+        key={`/reference/databases/${databaseId}/tables/${tableId}/fields`}
+        href={`/reference/databases/${databaseId}/tables/${tableId}/fields`}
         icon="field"
         name={t`Fields in this table`}
       />
       <SidebarItem
-        key={`/reference/databases/${database.id}/tables/${table.id}/questions`}
-        href={`/reference/databases/${database.id}/tables/${table.id}/questions`}
+        key={`/reference/databases/${databaseId}/tables/${tableId}/questions`}
+        href={`/reference/databases/${databaseId}/tables/${tableId}/questions`}
         icon="folder"
         name={t`Questions about this table`}
       />
       {MetabaseSettings.get("enable-xrays") && (
         <SidebarItem
-          key={`/auto/dashboard/table/${table.id}`}
-          href={`/auto/dashboard/table/${table.id}`}
+          key={`/auto/dashboard/table/${tableId}`}
+          href={`/auto/dashboard/table/${tableId}`}
           icon="bolt"
           name={t`X-ray this table`}
           onClick={() => trackReferenceXRayClicked("table")}

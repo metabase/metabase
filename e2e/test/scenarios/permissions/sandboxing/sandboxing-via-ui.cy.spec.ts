@@ -1,6 +1,5 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { checkNotNull } from "metabase/utils/types";
 import type { CollectionItem, Dashboard } from "metabase-types/api";
 
 import {
@@ -9,9 +8,11 @@ import {
   assignAttributeToUser,
   configureSandboxPolicy,
   createSandboxingDashboardAndQuestions,
+  getDashcardResponses,
   gizmoViewer,
   modelCustomView,
   questionCustomView,
+  rowsShouldContainOnlyOneCategory,
   signInAs,
   widgetViewer,
 } from "./helpers/e2e-sandboxing-helpers";
@@ -38,8 +39,6 @@ describe(
     const customViews: CollectionItem[] = [];
 
     before(() => {
-      cy.intercept("/api/card/*/query").as("cardQuery");
-
       H.restore("postgres-12");
 
       cy.signInAsAdmin();
@@ -70,12 +69,9 @@ describe(
     });
 
     beforeEach(() => {
-      cy.intercept("/api/card/*/query").as("cardQuery");
-
       cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
         "dashcardQuery",
       );
-      cy.intercept("POST", "/api/dataset").as("datasetQuery");
       // Unjustified type cast. FIXME
       H.restore("sandboxing-snapshot" as any);
     });
@@ -197,7 +193,25 @@ describe(
           });
           signInAs(gizmoViewer);
 
-          H.visitDashboard(checkNotNull(dashboard).id);
+          getDashcardResponses(dashboard, sandboxableQuestions).then(
+            ({ questions, responses }) => {
+              if (customColumnType.endsWith("Literal")) {
+                // A literal column matches every row, so results stay mixed
+                responses.forEach((response) => {
+                  expect(JSON.stringify(response.body)).not.to.contain(
+                    "stacktrace",
+                  );
+                  expect(response.body.data.is_sandboxed).to.be.true;
+                });
+              } else {
+                rowsShouldContainOnlyOneCategory({
+                  questions,
+                  responses,
+                  productCategory: "Gizmo",
+                });
+              }
+            },
+          );
 
           H.getDashboardCard(0).within(() => {
             cy.findByText("Question showing all products").should("be.visible");
@@ -339,6 +353,7 @@ describe(
           cy.findByLabelText("WA").should("not.exist");
           cy.findByLabelText("Add filter").click();
         });
+        cy.location("search").should("contain", "Location=CA");
 
         signInAs(users["Washington"]);
         H.visitDashboard(dashboard_id);

@@ -28,7 +28,6 @@ import {
 } from "metabase-lib/v1/queries/utils/dataset";
 import {
   isCoordinate,
-  isCurrency,
   isDate,
   isDateWithoutTime,
   isNumber,
@@ -57,7 +56,10 @@ import type {
 import { getVisualization, getVisualizationRaw } from "../registry";
 
 import { nestedSettings } from "./nested";
-import { getDeduplicatedTableColumnSettings } from "./utils";
+import {
+  getDeduplicatedTableColumnSettings,
+  insertNewColumnSettings,
+} from "./utils";
 
 type GetColumnsFn = (
   series: Series,
@@ -294,9 +296,6 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       ],
     }),
     getDefault: getDefaultNumberStyle,
-    // hide this for currency
-    getHidden: (column, settings) =>
-      isCurrency(column) && settings.number_style === "currency",
     readDependencies: ["currency"],
   },
   currency: {
@@ -559,7 +558,7 @@ export function tableColumnSettings({
       getSection: () => t`Columns`,
       // title: t`Columns`,
       widget: "tableColumns",
-      getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
+      getHidden: (_series, vizSettings) => vizSettings["table.pivot"] ?? false,
       getValue: ([{ data }], vizSettings) => {
         const { cols } = data;
         const settings = vizSettings["table.columns"] ?? [];
@@ -574,19 +573,18 @@ export function tableColumnSettings({
           uniqColumnSettings,
         );
 
-        return [
+        return insertNewColumnSettings(
           // retain settings with matching columns only
-          ...uniqColumnSettings.filter(
+          uniqColumnSettings.filter(
             (_, settingIndex) => columnIndexes[settingIndex] >= 0,
           ),
-          // add columns that do not have matching settings to the end
-          ...cols
-            .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
-            .map((column) => ({
-              name: column.name,
-              enabled: true,
-            })),
-        ];
+          cols,
+          {
+            getColumnName: (setting) => setting.name,
+            isNewColumn: (_, columnIndex) => settingIndexes[columnIndex] < 0,
+            createSetting: (column) => ({ name: column.name, enabled: true }),
+          },
+        );
       },
       getProps: (series, settings) => {
         const [

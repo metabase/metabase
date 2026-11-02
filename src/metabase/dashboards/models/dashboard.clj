@@ -49,7 +49,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
@@ -78,12 +79,15 @@
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
     (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
-    (dashboards.db/delete-dashboard-revisions! dashboard-id)))
+    (dashboards.db/delete-dashboard-revisions! dashboard-id)
+    ;; delete through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
+    (dashboards.db/delete-pulses-for-dashboard! dashboard-id)))
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
   (let [defaults  {:parameters []}
-        dashboard (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))]
+        dashboard (-> (lib/normalize ::dashboards.schema/dashboard (merge defaults dashboard))
+                      maybe-populate-initially-published-at)]
     (u/prog1 (public-sharing/add-public-uuid-prefix dashboard)
       (collection/check-allowed-content :model/Dashboard (:collection_id dashboard))
       (params/assert-valid-parameters dashboard)
@@ -106,9 +110,7 @@
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
-      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
-      (when (:archived changes)
-        (dashboards.db/delete-pulses-for-dashboard! (u/the-id dashboard))))))
+      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
 
 (mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p
@@ -402,24 +404,30 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- dashcard-sort-key
+  "The sort key fn for the dashcards of `dashboard` in its file: the position and the `entity_id` of their tab, then
+  row, column and `entity_id`, so the order does not depend on local ids."
+  [dashboard]
+  (let [tab-order (into {} (map (juxt :id (juxt :position :entity_id))) (:tabs dashboard))]
+    (juxt (comp tab-order :dashboard_tab_id) :row :col :entity_id)))
+
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]
   {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
-   :skip      [;; those stats are inherently local state
+   :skip      [:initially_published_at
+               ;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
                :cache_ttl
                ;; always re-derived from public_uuid on import
                :public_uuid_prefix]
-   :transform {:created_at             (serdes/date)
-               :initially_published_at (serdes/date)
-               :collection_id          (serdes/fk :model/Collection)
+   :transform {:collection_id          (serdes/fk :model/Collection)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
-               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id (merge {:sort-by (juxt :position :created_at)} opts))
-               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id (merge {:sort-by (juxt :dashboard_tab_id :row :col)} opts))}
+               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id (merge {:sort-by (juxt :position :entity_id)} opts))
+               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id (merge {:sort-by-parent dashcard-sort-key} opts))}
    :coerce    {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}
    :defaults  {:archived                false
                :archived_directly       false
@@ -446,6 +454,17 @@
        (reduce set/union #{})
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes/parameters-deps allow-int-ids? parameters))))
+
+(defn- without-unloaded-action-dashcards
+  "`ingested` without the dashcards whose action has no local row."
+  [{:keys [dashcards] :as ingested}]
+  (if-let [action-eids (not-empty (into #{} (keep :action_id) dashcards))]
+    (let [loaded (dashboards.db/action-entity-ids-in action-eids)]
+      (assoc ingested :dashcards (filterv #(or (nil? (:action_id %)) (contains? loaded (:action_id %))) dashcards)))
+    ingested))
+
+(defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
+  (serdes/default-load-one! (without-unloaded-action-dashcards ingested) maybe-local))
 
 (defmethod serdes/deserialization-dependencies "Dashboard" [dashboard]
   (dashboard-deps false dashboard))
@@ -536,7 +555,8 @@
   ^:allow-subquery {:select [:report_dashboard.id
                              [(h2x/literal "Dashboard") :model]
                              [:report_dashboard.name :name]
-                             [:last_viewed_at :last_used_at]]
+                             [:last_viewed_at :last_used_at]
+                             :report_dashboard.collection_id]
                     :from :report_dashboard
                     :left-join [:pulse [:and
                                         [:= :pulse.archived false]
@@ -558,7 +578,4 @@
                               [:= :report_dashboard.enable_embedding false])
                             (when (setting/get :enable-public-sharing)
                               [:= :report_dashboard.public_uuid nil])
-                            [:or
-                             (when (contains? (:collection-ids args) nil)
-                               [:is :report_dashboard.collection_id nil])
-                             [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})
+                            (staleness/collection-filter :report_dashboard.collection_id args)]})

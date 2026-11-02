@@ -1,6 +1,8 @@
 (ns metabase.app-db.transient-error
   "Detection of transient application database errors (deadlocks, lock timeouts, serialization failures)
   that may succeed on retry."
+  (:require
+   [metabase.util :as u])
   (:import
    (java.sql SQLException)))
 
@@ -30,4 +32,4 @@
     (boolean
      (some #(and (instance? SQLException %)
                  (transient-sql-exception? codes %))
-           (take-while some? (iterate ex-cause e))))))
+           (u/full-exception-chain e)))))

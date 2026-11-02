@@ -1,8 +1,6 @@
 (ns ^:mb/driver-tests metabase.transforms-base.ordering-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
-   [metabase.driver.sql :as driver.sql]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -11,9 +9,8 @@
    [metabase.transforms.execute :as transforms.execute]
    [toucan2.core :as t2]))
 
-(defn- default-schema-or-public [& [fallback-driver]]
-  (let [driver (or driver/*driver* fallback-driver)]
-    (or (and driver (driver.sql/default-schema driver)) "public")))
+(defn- default-schema-or-public []
+  (or (:default_schema (mt/db)) "public"))
 
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
@@ -91,7 +88,7 @@
                                                                   LIMIT 100"}}
                                                 "orders_transform_products_transform")]
         (is (= #{{:transform t1} {:transform t2}}
-               (transform-deps-for-db (t2/select-one :model/Transform  t4))))
+               (transform-deps-for-db (t2/select-one :model/Transform  :id t4))))
         (is (= {t1 #{}
                 t2 #{}
                 t3 #{t1}
@@ -120,7 +117,7 @@
           (transforms.execute/execute! transform1 {:run-method :manual})
           (let [table1 (t2/select-one-pk :model/Table :name "checkins_transform")]
             (is (= #{{:table table1} {:transform t2}}
-                   (transform-deps-for-db (t2/select-one :model/Transform  t3)))))
+                   (transform-deps-for-db (t2/select-one :model/Transform  :id t3)))))
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
@@ -153,7 +150,7 @@
                                                                             LIMIT 100" dataset dataset)}}
                                                   "venues_transform_2" dataset)]
           (is (= #{{:table table1} {:transform t2}}
-                 (transform-deps-for-db (t2/select-one :model/Transform t3))))
+                 (transform-deps-for-db (t2/select-one :model/Transform :id t3))))
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
@@ -453,11 +450,11 @@
                                                  :type     "query"
                                                  :query    {:source-table (mt/id :orders)}})]
         ;; simulate a row created before the column existed
-        (t2/update! (t2/table-name :model/Transform) id {:table_dependencies nil})
+        (t2/update! (t2/table-name :model/Transform) :id id {:table_dependencies nil})
         (mt/with-metadata-provider (mt/id)
           (let [all (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies])
                 {:keys [uncached]} (ordering/transform-ordering #{id} all)]
             (is (contains? uncached id))
             (ordering/persist-table-dependencies! uncached)
             (is (= [{:table (mt/id :orders)}]
-                   (t2/select-one-fn :table_dependencies :model/Transform id)))))))))
+                   (t2/select-one-fn :table_dependencies :model/Transform :id id)))))))))

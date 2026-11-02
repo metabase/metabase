@@ -6,13 +6,13 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
 import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
+import type {
+  NavigatedEntityParameterChangePayload,
+  NavigatedEntityParameters,
+} from "embedding-sdk-bundle/types/navigation";
 import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
 import type { MetabaseError } from "embedding-sdk-shared/errors";
 import type { MetabaseErrorCode } from "embedding-sdk-shared/errors/error-code";
-import type {
-  SdkIframeDashboardEmbedSettings,
-  SdkIframeQuestionEmbedSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type {
   MetabaseEmbeddingSessionToken,
@@ -103,6 +103,10 @@ export type SdkIframeEmbedComponentTagMessage =
   | {
       type: "metabase.embed.sqlParametersChange";
       data: SqlParameterChangePayload;
+    }
+  | {
+      type: "metabase.embed.navigatedEntityParametersChange";
+      data: NavigatedEntityParameterChangePayload;
     };
 
 // --- Embed Option Interfaces ---
@@ -123,6 +127,7 @@ export type DashboardEmbedOptions = StrictUnion<
   parameters?: ParameterValues;
   hiddenParameters?: string[];
   enableEntityNavigation?: boolean;
+  navigatedEntityParameters?: NavigatedEntityParameters;
 
   customContext?: string | Record<string, unknown>;
 
@@ -154,6 +159,17 @@ export type QuestionEmbedOptions = StrictUnion<
   // incompatible options
   template?: never;
   dashboardId?: never;
+};
+
+// The embed setup wizard extends the runtime options with locked parameters;
+// the runtime accepts the key, so the types live here with the options they
+// extend.
+export type SdkIframeDashboardEmbedSettings = DashboardEmbedOptions & {
+  lockedParameters?: string[];
+};
+
+export type SdkIframeQuestionEmbedSettings = QuestionEmbedOptions & {
+  lockedParameters?: string[];
 };
 
 export interface ExplorationEmbedOptions {

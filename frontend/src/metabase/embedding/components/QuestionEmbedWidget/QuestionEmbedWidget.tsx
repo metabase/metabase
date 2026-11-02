@@ -15,7 +15,7 @@ type QuestionEmbedWidgetProps = {
 export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
   const { card, onBack, onClose } = props;
 
-  const buildQuestion = useQuestionFromCard();
+  const question = useQuestionFromCard(card);
 
   const [updateEnableEmbedding] = useUpdateCardEnableEmbeddingMutation();
   const [updateEmbeddingParams] = useUpdateCardEmbeddingParamsMutation();
@@ -25,7 +25,7 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
       opened={true}
       resource={card}
       resourceType="question"
-      resourceParameters={buildQuestion(card).parameters()}
+      resourceParameters={question.parameters()}
       onUpdateEnableEmbedding={(enable_embedding) =>
         updateEnableEmbedding({
           id: card.id,

@@ -42,6 +42,7 @@
     name generation. For a joined column, this might look like \"Venues → Price\"."
   [:enum :default :long])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *display-name-style*
   "Display name style to use when not explicitly passed in to [[display-name]]."
   :default)
@@ -191,6 +192,7 @@
     ;; anything else: use `pr-str` representation.
     (pr-str x)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *propagate-binning-and-bucketing*
   "Enable propagation of ref's `:temporal-unit` into `:inherited-temporal-unit` of a column or setting of
   the `:lib/original-binning` option.
@@ -287,7 +289,7 @@
       ;; `:type/Integer` if its an extraction operation, e.g. `:month-of-year` always returns an integer; otherwise we
       ;; can return `:base-type`.
       (when (and temporal-unit
-                 (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
+                 (contains? lib.schema.temporal-bucketing/datetime-integer-extraction-units temporal-unit))
         :type/Integer)
       ;; otherwise if `:base-type` is specified, we can return that.
       (:base-type options)
@@ -523,8 +525,7 @@
        {:selected selected})
      (when-let [temporal-unit ((some-fn :lib/temporal-unit :temporal-unit) x-metadata)]
        {:is-temporal-extraction
-        (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
-             (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
+        (contains? lib.schema.temporal-bucketing/datetime-integer-extraction-units temporal-unit)})
      (select-keys x-metadata [:breakout-positions :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default

@@ -27,14 +27,11 @@
    [:semantic-version {:optional true} [:or
                                         [:sequential :int]
                                         [:map {:closed true} [:major :int] [:minor :int]]]]
-   [:cloud            {:optional true} :boolean]])
+   [:cloud            {:optional true} :boolean]
+   [:single-node      {:optional true} :boolean]])
 
 (mr/def ::database.write-data-details
   "The `:write_data_details` column of a Database, decoded."
-  [:or ms/DatabaseDetails ::database.undecryptable-column])
-
-(mr/def ::database.admin-details
-  "The `:admin_details` column of a Database, decoded."
   [:or ms/DatabaseDetails ::database.undecryptable-column])
 
 (mr/def ::database
@@ -70,11 +67,13 @@
    [:metadata_sync_schedule      {:optional true} [:maybe :string]]
    [:cache_field_values_schedule {:optional true} [:maybe :string]]
    [:timezone                    {:optional true} [:maybe :string]]
+   [:default_schema              {:optional true} [:maybe :string]]
    [:is_on_demand                {:optional true} [:maybe :boolean]]
    [:auto_run_queries            {:optional true} [:maybe :boolean]]
    [:refingerprint               {:optional true} [:maybe :boolean]]
    [:cache_ttl                   {:optional true} [:maybe :int]]
    [:initial_sync_status         {:optional true} [:maybe [:or :keyword :string]]]
+   [:initial_sync_error          {:optional true} [:maybe :string]]
    [:creator_id                  {:optional true} [:maybe ::lib.schema.id/user]]
    [:settings                    {:optional true} [:maybe ::database.settings]]
    [:dbms_version                {:optional true} [:maybe ::database.dbms-version]]
@@ -86,7 +85,6 @@
    [:router_database_id          {:optional true} [:maybe ::lib.schema.id/database]]
    [:provider_name               {:optional true} [:maybe :string]]
    [:write_data_details          {:optional true} [:maybe ::database.write-data-details]]
-   [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
 (mr/def ::database-or-metadata

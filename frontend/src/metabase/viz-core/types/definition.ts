@@ -109,6 +109,13 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string | undefined;
+  getTitle?: (
+    object: T,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => string;
   getWrapperStyle?: (
     object: T,
     settings: T extends DatasetColumn
@@ -146,7 +153,7 @@ export type CompleteVisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = Omit<
   VisualizationSettingDefinition<T, TValue, TProps>,
-  "getProps" | "getWrapperStyle" | "getHidden" | "getSection"
+  "getProps" | "getWrapperStyle" | "getHidden" | "getSection" | "getTitle"
 > & {
   id: string;
   style?: CSSProperties;
@@ -258,6 +265,11 @@ export type VisualizationSettingsDefinitions = {
   >;
   "graph.tooltip_columns"?: SeriesSettingDefinition<Value, Props>;
   "graph.tooltip_type"?: SeriesSettingDefinition<Value, Props>;
+  "graph.trendline_color"?: SeriesSettingDefinition<Value, Props>;
+  "graph.trendline_style"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentedControlProps
+  >;
   "graph.x_axis._is_histogram"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_numeric"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_timeseries"?: SeriesSettingDefinition<Value, Props>;
@@ -271,11 +283,13 @@ export type VisualizationSettingsDefinitions = {
   "graph.y_axis.max"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.min"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.axis_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.right.title_text"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.scale"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.split_number"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.title_text"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.unpin_from_zero"?: SeriesSettingDefinition<Value, Props>;
   "legend.is_reversed"?: SeriesSettingDefinition<Value, Props>;
+  "legend.position"?: SeriesSettingDefinition<Value, Props>;
   "line.interpolate"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.marker_enabled"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.missing"?: SingleSeriesSettingDefinition<Value, Props>;
@@ -305,7 +319,6 @@ export type VisualizationSettingsDefinitions = {
   "pie.rows"?: SeriesSettingDefinition<Value, Props>;
   "pie.slice_threshold"?: SeriesSettingDefinition<Value, Props>;
   "pie.show_labels"?: SeriesSettingDefinition<Value, Props>;
-  "pie.show_legend"?: SeriesSettingDefinition<Value, Props>;
   "pie.show_total"?: SeriesSettingDefinition<Value, Props>;
   "pie.sort_rows"?: SeriesSettingDefinition<Value, Props>;
   "pie.sort_rows_dimension"?: SeriesSettingDefinition<Value, Props>;
@@ -341,6 +354,7 @@ export type VisualizationSettingsDefinitions = {
   >;
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
+  "timeline_events.enabled"?: SeriesSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
   "treemap._groups_widget"?: SeriesSettingDefinition<
     Value,
@@ -354,6 +368,11 @@ export type VisualizationSettingsDefinitions = {
   "treemap.show_parent_values"?: SeriesSettingDefinition<Value, Props>;
   "treemap.sub_grouping"?: SeriesSettingDefinition<Value, Props>;
   "treemap.value"?: SeriesSettingDefinition<Value, Props>;
+  "trendline.color"?: SingleSeriesSettingDefinition<Value, Props>;
+  "trendline.style"?: SingleSeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentedControlProps
+  >;
   view_as?: SeriesSettingDefinition<Value, Props>;
   "waterfall.decrease_color"?: SeriesSettingDefinition<Value, Props>;
   "waterfall.increase_color"?: SeriesSettingDefinition<Value, Props>;

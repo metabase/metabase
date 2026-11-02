@@ -9,6 +9,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Outlet, useLocation, useParams } from "metabase/router";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -37,7 +38,7 @@ export const DataModelV1 = () => {
   const parsedParams = parseRouteParams(params);
   const { databaseId, fieldId, schemaName, tableId } = parsedParams;
   const { data: databasesData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ "can-write-metadata": true });
+    useListDatabasesQuery(PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps);
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );

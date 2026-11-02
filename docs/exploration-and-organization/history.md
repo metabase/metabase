@@ -6,7 +6,7 @@ title: History
 
 Metabase keeps a version history for the previous fifteen versions for an entity. You can view changes, and revert to previous versions.
 
-On Metabase Pro and Enterprise plans, you can also version control most entities in Metabase, see [Remote Sync](../installation-and-operation/remote-sync.md).
+On Metabase Pro and Enterprise plans, you can also version control most entities in Metabase, see [Remote Sync](../data-modeling/semantic-layer/remote-sync.md).
 
 ## History for questions, dashboards, metrics, and models
 
@@ -30,7 +30,7 @@ Metabase will keep track of a version each time you save, move, revert, [move to
 
 ### Viewing tracked changes
 
-1. Go to your transform in [Data studio](../data-modeling/transforms/transforms-overview.md).
+1. Go to your transform in [Data Studio > Data transformation](../data-modeling/transforms/transforms-overview.md).
 2. Click the **three dots** icon and select **History**
 3. The History tab will display the item's history of up to 15 versions.
 
@@ -38,12 +38,12 @@ Any change to the transform's query or script will be recorded as "changed sourc
 
 ### Reverting to previous versions
 
-1. Go to your transform in [Data studio > Transforms](../data-modeling/transforms/transforms-overview.md).
+1. Go to your transform in [Data Studio > Data transformation](../data-modeling/transforms/transforms-overview.md).
 2. Click the **three dots** icon and select **History**.
 3. Click the **back arrow** beside a version to revert your item to that point in time.
 
 ## History for segments and measures
 
-1. Go to the table source for the segment or measure in [Data Studio > Tables](../data-modeling/metadata/managing-tables.md).
+1. Go to the table source for the segment or measure in [Data Studio > Connected data](../data-modeling/metadata/managing-tables.md).
 2. Pick the segment or measure in the right sidebar.
 3. On the segment or measure's page, go to **Revision history** tab.

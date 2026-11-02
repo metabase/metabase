@@ -103,8 +103,8 @@ function SamlConfiguredCard() {
         <Group justify="flex-end">
           <Link to={ADMIN_AUTHENTICATION_URL}>
             <Group gap={4} wrap="nowrap">
-              <Text c="brand" fw="bold">{t`Go to Admin`}</Text>
-              <Icon name="external" size={12} c="brand" />
+              <Text c="core-brand" fw="bold">{t`Go to Admin`}</Text>
+              <Icon name="external" size={12} c="core-brand" />
             </Group>
           </Link>
         </Group>
@@ -115,7 +115,7 @@ function SamlConfiguredCard() {
 
 function OtherAuthMethodsBanner() {
   return (
-    <Card p="lg" withBorder bg="background-brand">
+    <Card p="lg" withBorder bg="background_surface-brand-subtle">
       <Group gap="xxs">
         <Text c="text-secondary">
           {t`View more authentication options, such as SAML, in the`}
@@ -123,8 +123,8 @@ function OtherAuthMethodsBanner() {
 
         <Link to={ADMIN_AUTHENTICATION_URL}>
           <Group gap={4} wrap="nowrap">
-            <Text c="brand" fw="bold">{t`Admin settings`}</Text>
-            <Icon name="external" size={12} c="brand" />
+            <Text c="core-brand" fw="bold">{t`Admin settings`}</Text>
+            <Icon name="external" size={12} c="core-brand" />
           </Group>
         </Link>
       </Group>

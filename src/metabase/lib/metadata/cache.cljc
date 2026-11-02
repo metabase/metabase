@@ -157,12 +157,14 @@
     (log/warn "Not a cached-metadata-provider"))
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *cache-hit-hook*
   "Function called whenever we have a cache hit. Normally just does boring logging but dynamic so we can test this
   stuff."
   [k]
   (log/debug (str (u/colorize :green "HIT: ") (name (first k)) " " (hash (rest k)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *cache-miss-hook*
   "Function called whenever we have a cache miss. Normally just does boring logging but dynamic so we can test this
   stuff."

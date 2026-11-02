@@ -7,6 +7,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import {
   Box,
   Flex,
@@ -24,17 +25,15 @@ import {
   MCP_EVENT_SORT_COLUMNS,
   type McpEventSortColumn,
   type McpFilters,
+  buildEventsQuery,
   mcpEventColumnKeys,
 } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
-import { buildEventsQuery } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
 import type {
   CardMetadata,
   MetadataProvider,
   TableMetadata,
 } from "metabase-lib";
 import type { RowValue, RowValues, SortingOptions } from "metabase-types/api";
-
-export const EVENTS_PAGE_SIZE = 25;
 
 const DEFAULT_SORTING: SortingOptions<McpEventSortColumn> = {
   sort_column: "created_at",
@@ -224,11 +223,7 @@ function McpEventsTableInner({
     ],
   );
 
-  const { data, isFetching, error } = useMcpEventsQuery(
-    query,
-    page,
-    EVENTS_PAGE_SIZE,
-  );
+  const { data, isFetching, error } = useMcpEventsQuery(query, page, PAGE_SIZE);
 
   // The result columns (`data.data.cols`) are the full, warehouse-ordered set the query returns —
   // not the curated `columns` we render. So we map each curated column to its position in the
@@ -313,7 +308,10 @@ function McpEventsTableInner({
           <TreeTableSkeleton columnWidths={skeletonColumnWidths} />
         ) : (
           <>
-            <LoadingOverlay visible={isFetching} />
+            <LoadingOverlay
+              visible={isFetching}
+              data-testid="loading-overlay"
+            />
             <TreeTable
               instance={treeTableInstance}
               hierarchical={false}
@@ -329,7 +327,7 @@ function McpEventsTableInner({
         <Flex justify="flex-end">
           <PaginationControls
             page={page}
-            pageSize={EVENTS_PAGE_SIZE}
+            pageSize={PAGE_SIZE}
             itemsLength={rows.length}
             total={total}
             showTotal

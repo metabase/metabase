@@ -1,6 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { Button, Group, Modal } from "metabase/ui";
+import { Button, Modal } from "metabase/ui";
 
 type DeleteBulkRowConfirmationModalProps = {
   opened: boolean;
@@ -27,13 +27,13 @@ export function DeleteBulkRowConfirmationModal({
       opened={opened}
       onClose={onClose}
     >
-      <Group justify="flex-end" mt="xxl">
-        <Button variant="subtle" onClick={onClose}>
+      <Modal.Footer>
+        <Button variant="subtle" color="neutral" onClick={onClose}>
           {t`Cancel`}
         </Button>
         <Button
           variant="filled"
-          color="feedback-negative"
+          color="negative"
           onClick={onConfirm}
           loading={isLoading}
         >
@@ -43,7 +43,7 @@ export function DeleteBulkRowConfirmationModal({
             rowCount,
           )}
         </Button>
-      </Group>
+      </Modal.Footer>
     </Modal>
   );
 }

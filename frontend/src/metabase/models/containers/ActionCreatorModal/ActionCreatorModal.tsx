@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import { skipToken, useGetActionQuery, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -84,11 +84,7 @@ function ActionCreatorModalLoader({ params, onClose }: ModalComponentProps) {
     isLoading,
     error,
   } = useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
-  const buildQuestion = useQuestionFromCard();
-  const model = useMemo(
-    () => (card != null ? buildQuestion(card) : undefined),
-    [card, buildQuestion],
-  );
+  const model = useQuestionFromCard(card);
 
   if (isLoading || error != null || !model) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;

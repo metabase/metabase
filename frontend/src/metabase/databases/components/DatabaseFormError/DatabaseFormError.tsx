@@ -58,11 +58,7 @@ export const DatabaseFormError = () => {
       )}
       <Divider />
       <Button
-        fw={700}
-        fz="md"
-        leftSection={
-          <Icon name={showAllTips ? "chevronup" : "chevrondown"} size={12} />
-        }
+        leftSection={<Icon name={showAllTips ? "chevronup" : "chevrondown"} />}
         onClick={toggleShowAllTips}
         variant="subtle"
       >

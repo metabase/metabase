@@ -1,13 +1,14 @@
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
 import CS from "metabase/css/core/index.css";
 import {
   addCardToDashboard,
   navigateToNewCardFromDashboard,
+  openSubscriptionsSidebarIfAllowed,
   setEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
@@ -107,12 +108,24 @@ export const DashboardApp = () => {
       window.location.hash,
     );
     const editingOnLoad = options.edit;
+    const subscriptionsOnLoad = options.subscriptions;
     const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
 
     try {
       if (editingOnLoad) {
         dispatch(setEditingDashboard(dashboard));
         options = await extractHashOption("edit", options);
+      }
+
+      if (subscriptionsOnLoad) {
+        dispatch(
+          openSubscriptionsSidebarIfAllowed(
+            dashboard,
+            // a numeric hash value is parsed into a number, whatever its type says
+            Urls.extractEntityId(String(subscriptionsOnLoad)),
+          ),
+        );
+        options = await extractHashOption("subscriptions", options);
       }
 
       if (addCardOnLoad != null && dashboardId != null) {
@@ -191,6 +204,7 @@ export const DashboardApp = () => {
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
         }}
         dashboardActions={DASHBOARD_APP_ACTIONS}
+        withTimelineEvents
       >
         <DashboardAppInner location={location} />
       </DashboardContextProvider>

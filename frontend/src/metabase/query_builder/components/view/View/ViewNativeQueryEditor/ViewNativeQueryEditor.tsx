@@ -3,13 +3,10 @@ import { MetabotPromptButton } from "metabase/metabot/components/MetabotPromptBu
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
-import {
-  NATIVE_EDITOR_ICON_SIZE,
-  NativeQueryEditor,
-} from "metabase/querying/components/NativeQueryEditor";
-import type { QueryModalType } from "metabase/querying/constants";
+import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { useSelector } from "metabase/redux";
+import type { QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -123,7 +120,6 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
             promptButton={
               inlineSQLPrompt && (
                 <MetabotPromptButton
-                  size={NATIVE_EDITOR_ICON_SIZE}
                   isPromptInputOpen={inlineSQLPrompt.isPromptOpen}
                   onClick={inlineSQLPrompt.togglePrompt}
                 />

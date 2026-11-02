@@ -2,14 +2,15 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
+import { canManageSubscriptions, getUserIsAdmin } from "metabase/current-user";
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
-import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
-import { getIsWebApp } from "metabase/embedding/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
+import { getIsWebApp } from "metabase/embedding/selectors";
 import {
   getShallowDatabases,
   selectQuestionFromCardBuilder,
@@ -24,8 +25,11 @@ import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
+  EventsSidebarState,
+  SharingSidebarState,
   State,
   StoreDashboard,
+  StoreDashcard,
 } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
@@ -40,6 +44,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
+  ChannelApiResponse,
   DashCardId,
   Dashboard,
   DashboardCard,
@@ -47,6 +52,7 @@ import type {
   DashboardParameterMapping,
   DashboardTabId,
   EmbeddingParameterVisibility,
+  Parameter,
   ParameterId,
   VirtualCard,
 } from "metabase-types/api";
@@ -75,6 +81,26 @@ function isClickBehaviorSidebar(
 ): sidebar is ClickBehaviorSidebarState {
   return sidebar.name === SIDEBAR_NAME.clickBehavior;
 }
+
+function isEventsSidebar(sidebar: SidebarState): sidebar is EventsSidebarState {
+  return sidebar.name === SIDEBAR_NAME.events;
+}
+
+export const getEventsSidebarProps = (state: State) => {
+  const { sidebar } = state.dashboard;
+  return isEventsSidebar(sidebar) ? sidebar.props : null;
+};
+
+function isSharingSidebar(
+  sidebar: SidebarState,
+): sidebar is SharingSidebarState {
+  return sidebar.name === SIDEBAR_NAME.sharing;
+}
+
+export const getSharingSubscriptionId = (state: State) => {
+  const { sidebar } = state.dashboard;
+  return isSharingSidebar(sidebar) ? sidebar.props.subscriptionId : undefined;
+};
 
 function isEditParameterSidebar(
   sidebar: SidebarState,
@@ -146,6 +172,32 @@ export const getIsSharing = createSelector(
   (sidebar) => sidebar.name === SIDEBAR_NAME.sharing,
 );
 
+/**
+ * Whether the current user can set up and edit this dashboard's
+ * subscriptions. It takes the Subscriptions permission and a card with data
+ * to send, and for a non-admin a configured email or Slack channel, since
+ * only an admin can set one up. `channelInfo` is `undefined` while it loads
+ * or when its request fails, which leaves only an admin able to manage them.
+ */
+export const getCanManageDashboardSubscriptions = (
+  state: State,
+  dashboard: Pick<Dashboard, "dashcards">,
+  channelInfo: ChannelApiResponse | undefined,
+): boolean => {
+  const hasDataCards = dashboard.dashcards.some(
+    (dashcard) => !["text", "heading"].includes(dashcard.card.display),
+  );
+  const hasConfiguredChannel =
+    channelInfo?.channels.email?.configured === true ||
+    channelInfo?.channels.slack?.configured === true;
+
+  return (
+    canManageSubscriptions(state) &&
+    hasDataCards &&
+    (getUserIsAdmin(state) || hasConfiguredChannel)
+  );
+};
+
 export const getShowAddQuestionSidebar = createSelector(
   [getSidebar],
   (sidebar) => sidebar.name === SIDEBAR_NAME.addQuestion,
@@ -180,6 +232,96 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
 };
+
+const EMPTY_DASHCARDS: StoreDashcard[] = [];
+const EMPTY_PARAMETERS: Parameter[] = [];
+
+/**
+ * The dashboard as we last saw it, looked up by id in the in-memory Redux
+ * cache. Unlike `getDashboard`, it survives the reset of the active
+ * `dashboardId` while a dashboard (re)loads, so a dashboard seen earlier in
+ * this session can draw its real layout as a skeleton. Undefined on any fresh
+ * page load.
+ */
+export const getLastSeenDashboard = (
+  state: State,
+  dashboardId: DashboardId | null,
+): StoreDashboard | undefined =>
+  dashboardId == null ? undefined : getDashboardById(state, dashboardId);
+
+/**
+ * Whether the dashboard as last seen is fixed width. Without it in the cache,
+ * assume it is, since fixed is the default width for dashboards.
+ */
+export const getIsLastSeenDashboardFixedWidth = (
+  state: State,
+  dashboardId: DashboardId | null,
+): boolean =>
+  (getLastSeenDashboard(state, dashboardId)?.width ?? "fixed") === "fixed";
+
+/**
+ * The dashcards of the tab the user is landing on, in the dashboard as last
+ * seen. The tab is chosen the way `getSelectedTabId` chooses it on load.
+ */
+export const getLastSeenTabDashcards = createSelector(
+  [
+    getLastSeenDashboard,
+    getDashcards,
+    getIsWebApp,
+    (state: State) => getSetting(state, "site-url"),
+    (state: State & Partial<SdkSharedStoreState>) =>
+      state.sdk?.initialDashboardTabId,
+  ],
+  (
+    dashboard,
+    dashcardMap,
+    isWebApp,
+    siteUrl,
+    sdkInitialDashboardTabId,
+  ): StoreDashcard[] => {
+    if (!dashboard) {
+      return EMPTY_DASHCARDS;
+    }
+
+    const dashboardWithVisibleTabs = {
+      ...dashboard,
+      tabs: dashboard.tabs?.filter((tab) => !tab.isRemoved),
+    };
+    const tabId = isEmbeddingSdk()
+      ? getSdkInitialDashboardTabId(
+          dashboardWithVisibleTabs,
+          sdkInitialDashboardTabId,
+        )
+      : getInitialSelectedTabId(dashboardWithVisibleTabs, siteUrl, isWebApp);
+
+    const dashcards = dashboard.dashcards
+      .map((id) => dashcardMap[id])
+      .filter((dc): dc is StoreDashcard => isNotNull(dc) && !dc.isRemoved);
+    return tabId == null
+      ? dashcards
+      : dashcards.filter((dc) => dc.dashboard_tab_id === tabId);
+  },
+);
+
+/**
+ * The filters shown in the header of the dashboard as last seen: its
+ * parameters except those placed inline on a dashcard.
+ */
+export const getLastSeenDashboardHeaderParameters = createSelector(
+  [getLastSeenDashboard, getDashcards],
+  (dashboard, dashcardMap): Parameter[] => {
+    if (!dashboard?.parameters) {
+      return EMPTY_PARAMETERS;
+    }
+
+    const dashcards = dashboard.dashcards
+      .map((id) => dashcardMap[id])
+      .filter(isNotNull);
+    return dashboard.parameters.filter(
+      (parameter) => !isDashcardInlineParameter(parameter.id, dashcards),
+    );
+  },
+);
 
 export const getLinkTargetEntities = (state: State) =>
   state.dashboard.linkTargets;

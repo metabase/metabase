@@ -11,6 +11,7 @@ import type {
   Series,
   SeriesCard,
   TimelineEvent,
+  TimelineEventsVisibility,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -48,7 +49,7 @@ export type QueryVisualizationProps = VisualizationPassThroughProps & {
   scrollToLastColumn?: boolean;
   getExtraDataForClick?: () => Record<string, unknown>;
 
-  timelineEvents?: TimelineEvent[];
+  timelineEventsVisibility?: TimelineEventsVisibility;
   selectedTimelineEventIds?: number[];
 
   runQuestionQuery?: () => void;

@@ -1,0 +1,45 @@
+# Test changelog for metabase.app-db.liquibase.rollback-test/rollback-reverses-version-less-reran-changesets-newer-than-the-target-test.
+# Simulates 65.0: a table, a column and a runOnChange view over that column, all version-less. `versionless-late-roc-run2.yaml`
+# is 65.1's changelog, where only the view's SQL was edited in place (same changeset identity, changed checksum).
+databaseChangeLog:
+  - logicalFilePath: migrations/2026/versionless_late_roc.yaml
+  - changeSet:
+      id: late_roc_table
+      author: test
+      comment: table of 65.0 (scenario test)
+      changes:
+        - createTable:
+            tableName: lroc_table
+            columns:
+              - column:
+                  name: id
+                  type: int
+      rollback:
+        - dropTable:
+            tableName: lroc_table
+  - changeSet:
+      id: late_roc_column
+      author: test
+      comment: column of 65.0 that the view reads (scenario test)
+      changes:
+        - addColumn:
+            tableName: lroc_table
+            columns:
+              - column:
+                  name: extra
+                  type: int
+      rollback:
+        - dropColumn:
+            tableName: lroc_table
+            columnName: extra
+  - changeSet:
+      id: late_roc_view
+      author: test
+      runOnChange: true
+      comment: runOnChange view over the 65.0 column (scenario test)
+      changes:
+        - sql:
+            sql: CREATE OR REPLACE VIEW v_lroc AS SELECT extra, 1 AS x FROM lroc_table
+      rollback:
+        - sql:
+            sql: DROP VIEW IF EXISTS v_lroc

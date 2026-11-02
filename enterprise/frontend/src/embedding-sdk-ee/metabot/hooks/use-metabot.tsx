@@ -10,6 +10,7 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type {
   MetabotChartProps,
+  MetabotIncompleteResponse,
   MetabotMessage,
   MetabotErrorMessage as SdkMetabotErrorMessage,
   UseMetabotResult,
@@ -81,6 +82,24 @@ export const useMetabot = (): UseMetabotResult => {
     [agentRetryMessage],
   );
 
+  const agentContinueResponse = agent.continueResponse;
+  const incompleteTurn = agent.incompleteTurn;
+  const incompleteResponse = useMemo<MetabotIncompleteResponse | null>(() => {
+    if (!incompleteTurn) {
+      return null;
+    }
+    return {
+      reason: incompleteTurn.reason,
+      message: incompleteTurn.message,
+      ...(agentContinueResponse && {
+        continueResponse: () =>
+          agentContinueResponse({ preventOpenSidebar: true }).then(
+            () => undefined,
+          ),
+      }),
+    };
+  }, [incompleteTurn, agentContinueResponse]);
+
   const agentCreateNewConversation = agent.createNewConversation;
   const resetConversation = useCallback(() => {
     chartComponentsCache.current.clear();
@@ -109,13 +128,16 @@ export const useMetabot = (): UseMetabotResult => {
     () =>
       agent.messages
         .filter((m) => m.status.type === "errored")
-        .map(
-          (m) =>
-            (m.status.type === "errored" && m.status.display) || {
-              type: "message",
-              message: t`Something went wrong`,
-            },
-        ),
+        .map((m) => {
+          const display = m.status.type === "errored" && m.status.display;
+          if (!display) {
+            return { type: "message", message: t`Something went wrong` };
+          }
+          return {
+            type: display.type === "aborted" ? "message" : display.type,
+            message: display.message,
+          };
+        }),
     [agent.messages],
   );
 
@@ -127,6 +149,7 @@ export const useMetabot = (): UseMetabotResult => {
 
     messages,
     errorMessages,
+    incompleteResponse,
     isProcessing: agent.isDoingScience,
     contextWindowPercentUsage: agent.contextWindowPercentUsage,
     isContextWindowFull: agent.isContextWindowFull,

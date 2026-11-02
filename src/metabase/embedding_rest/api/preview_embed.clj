@@ -178,7 +178,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
         dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card             (api/check-404 (embedding-rest.db/card card-id))
+        card             (api/check-404 (embedding-rest.db/active-card card-id))
         embedding-params (token-embedding-params unsigned-token)
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
@@ -225,7 +225,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
         dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card             (api/check-404 (embedding-rest.db/card card-id))
+        card             (api/check-404 (embedding-rest.db/active-card card-id))
         embedding-params (token-embedding-params unsigned-token)
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
@@ -288,7 +288,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
         dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card             (api/check-404 (embedding-rest.db/card card-id))]
+        card             (api/check-404 (embedding-rest.db/active-card card-id))]
     (api.embed.common/process-tiles-query-for-dashcard
      dashboard dashcard card
      (api.embed.common/tile-parameters-for-dashboard

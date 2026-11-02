@@ -300,10 +300,9 @@ function getJoinedQuery() {
                 operator: "=",
                 left: {
                   type: "column",
-                  sourceName: "ORDERS",
                   name: "PRODUCT_ID",
                 },
-                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+                right: { type: "column", name: "ID" },
               },
             ],
           },

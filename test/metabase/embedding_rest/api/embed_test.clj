@@ -18,6 +18,7 @@
    [metabase.parameters.custom-values :as custom-values]
    [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -1105,6 +1106,16 @@
         (is (= "Message seems corrupt or manipulated"
                (client/client :get 400 (with-new-secret-key! (dashcard-url dashcard)))))))))
 
+(deftest dashcard-archived-card-test
+  (testing "GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id[/:export-format]"
+    (testing "refuses a trashed Card, indistinguishably from a missing one, even though its DashboardCard row survives"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                       :card {:archived true}}]
+          (do-response-formats [response-format _request-options]
+            (is (= "Not found."
+                   (client/client :get 400 (str (dashcard-url dashcard) response-format))))))))))
+
 (deftest dashboard-locked-params-test
   (with-embedding-enabled-and-new-secret-key!
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "locked"}}}]
@@ -1257,11 +1268,11 @@
       (mt/with-temporary-setting-values [enable-embedding-modular true]
         (with-new-secret-key!
           (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
-            (t2/update! :model/Card (:id field-filter-card)
+            (t2/update! :model/Card :id (:id field-filter-card)
                         {:enable_embedding true
                          :embedding_params (zipmap (map :slug (:parameters field-filter-card))
                                                    (repeat "enabled"))})
-            (t2/update! :model/Card (:id card)
+            (t2/update! :model/Card :id (:id card)
                         {:enable_embedding true
                          :embedding_params (zipmap (map :slug (:parameters card))
                                                    (repeat "enabled"))})
@@ -1439,7 +1450,7 @@
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions :impersonation}
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard], :as m}]
-        (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding true})
+        (t2/update! :model/Dashboard :id (u/the-id dashboard) {:enable_embedding true})
         (letfn [(token [params]
                   (dash-token dashboard (when params {:params params})))
                 (values-url [& [params param-key]]
@@ -1459,7 +1470,7 @@
 (deftest chain-filter-embedding-disabled-test
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "without embedding enabled for dashboard"
-      (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false})
+      (t2/update! :model/Dashboard :id (u/the-id dashboard) {:enable_embedding false})
       (testing "GET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= "Embedding is not enabled for this object."
                (client/client :get 400 (values-url)))))
@@ -1480,7 +1491,7 @@
 (deftest params-with-static-list-test
   (testing "embedding with parameter that has source is a static list"
     (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
-      (t2/update! :model/Dashboard (:id dashboard)
+      (t2/update! :model/Dashboard :id (:id dashboard)
                   {:embedding_params {"static_category" "enabled", "static_category_label" "enabled"}})
       (testing "Should work if the param we're fetching values for is enabled"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
@@ -1495,7 +1506,7 @@
 (deftest embed-dashboard-card-source-param-values-test
   (testing "GET /api/embed/dashboard/:token/params/:key/values works for a card-source parameter"
     (with-chain-filter-fixtures! [{:keys [dashboard values-url]}]
-      (t2/update! :model/Dashboard (u/the-id dashboard)
+      (t2/update! :model/Dashboard :id (u/the-id dashboard)
                   {:parameters       (mapv (fn [p] (cond-> p (= (:id p) "_CARD_") (assoc :slug "card")))
                                            (:parameters dashboard))
                    :embedding_params {"card" "enabled"}})
@@ -1503,7 +1514,7 @@
 
 (deftest chain-filter-enabled-params-test
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
-    (t2/update! :model/Dashboard (:id dashboard)
+    (t2/update! :model/Dashboard :id (:id dashboard)
                 {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
     (testing "Should work if the param we're fetching values for is enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
@@ -1544,7 +1555,7 @@
     (mt/with-temp-copy-of-db
       (mt/with-no-data-perms-for-all-users!
         (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
-          (t2/update! :model/Dashboard (:id dashboard)
+          (t2/update! :model/Dashboard :id (:id dashboard)
                       {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
           (testing "Should work if the param we're fetching values for is enabled"
             (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
@@ -1559,14 +1570,14 @@
 (deftest chain-filter-locked-params-test
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is locked"
-      (t2/update! :model/Dashboard (:id dashboard)
+      (t2/update! :model/Dashboard :id (:id dashboard)
                   {:embedding_params {"category_id" "locked", "category_name" "locked"}})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
           (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter."
                    (client/client :get 400 url))))))
     (testing "Search param enabled\n"
-      (t2/update! :model/Dashboard (:id dashboard)
+      (t2/update! :model/Dashboard :id (:id dashboard)
                   {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "locked"}})
       (testing "Requests should fail if the token is missing a locked parameter"
         (doseq [url [(values-url) (search-url)]]
@@ -1592,14 +1603,14 @@
 (deftest chain-filter-disabled-params-test
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is disabled"
-      (t2/update! :model/Dashboard (:id dashboard)
+      (t2/update! :model/Dashboard :id (:id dashboard)
                   {:embedding_params {"category_id" "disabled", "category_name" "disabled"}})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
           (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter\."
                    (client/client :get 400 url))))))
     (testing "Search param enabled\n"
-      (t2/update! :model/Dashboard (:id dashboard)
+      (t2/update! :model/Dashboard :id (:id dashboard)
                   {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "disabled"}})
       (testing "Requests should fail if the token has a disabled parameter"
         (doseq [url-fn [values-url search-url]
@@ -1660,6 +1671,43 @@
               (is (= "Message seems corrupt or manipulated"
                      (client/client :get 400 (with-new-secret-key! (pivot-card-query-url card ""))))))))))))
 
+(deftest embed-pivot-card-error-does-not-leak-query-test
+  (testing "GET /api/embed/pivot/card/:token/query"
+    (testing "an error raised while building the pivot sub-queries must not leak the Card's query or a stacktrace"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-card [card {:enable_embedding true
+                               :name             "EMBED ERROR LEAK CARD NAME CANARY"
+                               :display          :pivot
+                               :dataset_query    {:database (mt/id)
+                                                  :type     :native
+                                                  :native   {:query "SELECT * FROM no_such_table -- EMBED_ERROR_LEAK_SQL_CANARY"}}}]
+          ;; Both pivot flows fail with the same H2 "table not found" root cause, but H2 embeds the
+          ;; compiled SQL in its error message and the compiled SQL has different Metabase-added
+          ;; comments per path. The parity signature compares message text, so it flags this as a
+          ;; divergence even though the user-visible outcome is identical.
+          (api.pivots/without-pivot-parity-check
+           (let [{:keys [status body]} (client/client-full-response :get (pivot-card-query-url card ""))
+                 body-str              (pr-str body)]
+             (is (= 500 status))
+             (is (= {:status "failed", :error "An error occurred while running the query.", :error_type "qp"}
+                    body))
+             (is (not (str/includes? body-str "CANARY")))
+             (is (not (str/includes? body-str ":trace"))))))))))
+
+(deftest embed-card-query-exception-outside-qp-does-not-leak-test
+  (testing "GET /api/embed/card/:token/query"
+    (testing "an exception that escapes the QP entirely is still reduced to the generic embedding error"
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-card [card {:enable_embedding true, :name "EMBED ERROR LEAK CARD NAME CANARY"}]
+          (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card-default-qp
+                                      (fn [query _rff]
+                                        (throw (ex-info "Boom EMBED_ERROR_LEAK_SQL_CANARY" {:query query})))]
+            (let [{:keys [status body]} (client/client-full-response :get (card-query-url card ""))]
+              (is (= 500 status))
+              (is (= {:status "failed", :error "An error occurred while running the query."}
+                     body))
+              (is (not (str/includes? (pr-str body) "CANARY"))))))))))
+
 (defn- pivot-dashcard-url
   ([dashcard] (pivot-dashcard-url dashcard (:dashboard_id dashcard)))
   ([dashcard dashboard-id & [additional-token-keys]]
@@ -1705,6 +1753,16 @@
                                      :dashcard {:parameter_mappings []}}]
         (is (= "Embedding is not enabled for this object."
                (client/client :get 400 (pivot-dashcard-url dashcard))))))))
+
+(deftest pivot-dashcard-archived-card-test
+  (testing "GET /api/embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id refuses a trashed Card"
+    (mt/dataset test-data
+      (with-embedding-enabled-and-new-secret-key!
+        (with-temp-dashcard [dashcard {:dash     {:enable_embedding true, :parameters []}
+                                       :card     (assoc (api.pivots/pivot-card) :archived true)
+                                       :dashcard {:parameter_mappings []}}]
+          (is (= "Not found."
+                 (client/client :get 400 (pivot-dashcard-url dashcard)))))))))
 
 (deftest pivot-dashcard-signing-check-test
   (mt/dataset test-data
@@ -2041,7 +2099,7 @@
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true
                                               :last_viewed_at #t "2000-01-01"}}]
           (let [dashboard-id (t2/select-one-fn :id :model/Dashboard :id (:dashboard_id dashcard))
-                original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
+                original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)]
             (mt/with-temporary-setting-values [synchronous-batch-updates true]
               (client/client :get 202 (dashcard-url dashcard))
               (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))))
@@ -2268,6 +2326,20 @@
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
 
+(deftest dashcard-tile-archived-card-test
+  (testing "GET api/embed/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y refuses a trashed Card"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)
+                                                              :archived      true}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id      card-id
+                                                              :dashboard_id dashboard-id}]
+        (is (= "Not found."
+               (client/client :get 400 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                               (dash-token dashboard-id) dashcard-id card-id)
+                              :latField (tiles.api-test/encoded-lat-field-ref)
+                              :lonField (tiles.api-test/encoded-lon-field-ref))))))))
+
 (deftest dashcard-tile-query-does-not-save-last-used-parameters-test
   (testing "GET api/embed/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
     (testing "must not persist the URL's parameters as a signed-in visitor's last used parameter values"
@@ -2322,9 +2394,9 @@
                   :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
                   :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
 
+;; Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.
+;; Embedded dashboards should apply case-insensitive default options for string operators.
 (deftest embedded-string-parameter-case-sensitivity-regression-test
-  "Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.
-   Embedded dashboards should apply case-insensitive default options for string operators."
   (mt/dataset test-data
     (mt/with-temp
       [:model/Card card {:database_id (mt/id)
@@ -2340,7 +2412,7 @@
                                                             :card_id (:id card)
                                                             :target [:dimension (mt/$ids venues $name)]}]}]
       (with-embedding-enabled-and-new-secret-key!
-        (t2/update! :model/Dashboard (:id dashboard)
+        (t2/update! :model/Dashboard :id (:id dashboard)
                     {:enable_embedding true
                      :embedding_params {"name_contains" "enabled"}})
         (letfn [(dashcard-query-url [params]

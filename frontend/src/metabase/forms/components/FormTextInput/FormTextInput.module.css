@@ -7,8 +7,7 @@
   align-items: center;
   padding: var(--mantine-spacing-sm);
   border-left: 1px solid var(--mb-color-border-neutral);
-  border-top-right-radius: var(--mantine-radius-xxs);
-  border-bottom-right-radius: var(--mantine-radius-xxs);
+  border-radius: 0 var(--mantine-radius-xxs) var(--mantine-radius-xxs) 0;
   color: var(--mb-color-core-brand);
   outline: none;
 

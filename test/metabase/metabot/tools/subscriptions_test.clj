@@ -1,178 +1,136 @@
 (ns metabase.metabot.tools.subscriptions-test
-  "Tests for the create_dashboard_subscription agent tool wrapper."
+  "Test the Chat profile's dashboard subscription tool and the code shared with the Slack profile."
   (:require
    [clojure.test :refer :all]
+   [metabase.api-scope.core :as api-scope]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.create-alert :as tools.create-alert]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.subscriptions :as agent-subscriptions]
-   [metabase.test :as mt]))
+   [metabase.pulse.api :as pulse.api]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
-;;; ------------------------------------------ schema / metadata tests -----------------------------------------------
+(def ^:private fake-channels
+  {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})
 
-(deftest create-dashboard-subscription-tool-schema-test
-  (let [m (meta #'agent-subscriptions/create-dashboard-subscription-tool)]
-    (testing "tool has correct :tool-name"
-      (is (= "create_dashboard_subscription" (:tool-name m))))
-    (testing "tool var has expected metadata"
-      (is (some? (:schema m)))
-      (is (string? (:doc m))))))
+(defn- subscribe
+  "Run `create_dashboard_subscription` through the Chat agent loop and return its result."
+  [args]
+  (tools.runtime/invoke (tools.core/entries [agent-subscriptions/create-dashboard-subscription-tool])
+                        {:profile-id :internal
+                         :metabot    nil
+                         :user-scope api-scope/unrestricted
+                         :tool-names #{"create_dashboard_subscription" "search"}}
+                        "create_dashboard_subscription"
+                        args))
 
-;;; --------------------------------------- integration tests (with-temp) -------------------------------------------
+(defn- daily [dashboard-id slack-channel]
+  {:dashboard_id dashboard-id :slack_channel slack-channel :schedule {:frequency "daily" :hour 9}})
 
-(deftest create-dashboard-subscription-happy-path-test
-  (testing "valid dashboard, valid user email, valid schedule → success"
-    (let [captured-args (atom nil)]
-      (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
-                                  (fn [args] (reset! captured-args args) {:output "success"})]
-        (mt/with-current-user (mt/user->id :crowberto)
-          (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
-            (let [email  (:email (mt/fetch-user :crowberto))
-                  result (agent-subscriptions/create-dashboard-subscription-tool
-                          {:dashboard_id dash-id
-                           :email        email
-                           :schedule     {:frequency "daily" :hour 9}})]
-              (is (= "success" (:output result)))
-              (is (= email (:email @captured-args)))
-              (is (= dash-id (:dashboard-id @captured-args))))))))))
+(deftest ^:parallel arguments-test
+  (testing "an unsupported day_of_week fails argument validation"
+    (is (=? #"Invalid tool arguments: `schedule` .*should be either \"sunday\".*"
+            (test-util/tool-boundary-error "create_dashboard_subscription"
+                                           #'agent-subscriptions/create-dashboard-subscription-tool
+                                           {:dashboard_id  1
+                                            :slack_channel "data-team"
+                                            :schedule      {:frequency "weekly" :day_of_week "mo" :hour 9}}))))
+  (testing "Slack delivery requires a channel"
+    (is (= "Invalid tool arguments: `slack_channel` is required."
+           (test-util/tool-boundary-error "create_dashboard_subscription"
+                                          #'agent-subscriptions/create-dashboard-subscription-tool
+                                          {:dashboard_id 1 :schedule {:frequency "daily" :hour 9}})))))
 
-(deftest create-dashboard-subscription-invalid-dashboard-id-test
-  (testing "nonexistent dashboard_id → error about missing dashboard"
+(deftest subscribes-a-slack-channel-test
+  (mt/with-model-cleanup [:model/Pulse]
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
+                                channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Sales"}
+                       :model/Card          {card-id :id} {}
+                       :model/DashboardCard _             {:dashboard_id dash-id :card_id card-id}]
+          (let [{:keys [output error]} (subscribe (assoc (daily dash-id "#data-team")
+                                                         :schedule {:frequency    "monthly"
+                                                                    :day_of_month "last-sunday"
+                                                                    :hour         7}))
+                pulse                  (t2/select-one :model/Pulse :dashboard_id dash-id)]
+            (is (nil? error))
+            (testing "the model reads what it created"
+              (is (= (str "Created subscription " (:id pulse) " to dashboard \"Sales\" (ID " dash-id
+                          "), posting to #data-team.")
+                     output)))
+            (testing "and it posts to that channel on the requested schedule"
+              (is (=? [{:channel_type   :slack
+                        :details        {:channel "#data-team"}
+                        :schedule_type  :monthly
+                        :schedule_hour  7
+                        :schedule_day   "sun"
+                        :schedule_frame :last}]
+                      (t2/select :model/PulseChannel :pulse_id (:id pulse)))))))))))
+
+(deftest unknown-slack-channel-test
+  (testing "a channel that Metabase has never seen is for the model to sort out with the user"
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
+                                channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Dashboard {dash-id :id} {}]
+          (is (= {:output (str "Metabase can't find a Slack channel or user named \"data team\". "
+                               "It can send to public channels, private channels that the "
+                               "Metabase app has been added to, and users. A channel created in the last few hours "
+                               "may not be available yet.\n"
+                               "Ask the user for the channel's exact name, as it appears in Slack.")
+                  :error  {:class :recoverable :code ::agent-subscriptions/unknown-slack-channel}}
+                 (subscribe (daily dash-id "data team")))))))))
+
+(deftest slack-not-connected-test
+  (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly false)]
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [result (agent-subscriptions/create-dashboard-subscription-tool
-                    {:dashboard_id 0
-                     :email        "nobody@example.com"
-                     :schedule     {:frequency "daily"}})]
-        ;; dashboard_id 0 is int but won't match any dashboard
-        (is (string? (:error result)))))))
+      (is (= {:class        :unrecoverable
+              :code         ::tools.create-alert/slack-not-configured
+              :user-message "Slack isn't connected to Metabase. An admin can connect it in Admin settings."}
+             (:error (subscribe (daily 1 "data-team"))))))))
 
-(deftest create-dashboard-subscription-unknown-email-test
-  (testing "unknown email → 'no user with this email found'"
-    (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
-                                (fn [{:keys [email]}]
-                                  (if (= email "nonexistent-user@example.com")
-                                    {:output "no user with this email found"}
-                                    {:output "success"}))]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
-          (let [result (agent-subscriptions/create-dashboard-subscription-tool
-                        {:dashboard_id dash-id
-                         :email        "nonexistent-user@example.com"
-                         :schedule     {:frequency "daily" :hour 9}})]
-            (is (= "no user with this email found" (:output result)))))))))
+(deftest a-dashboard-it-cannot-read-is-not-found-test
+  (testing "the model gets the same answer for a dashboard that is missing and one that the user can't read"
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
+                                channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Dashboard {dash-id :id} {}]
+          (mt/with-current-user (mt/user->id :rasta)
+            (doseq [id [dash-id Integer/MAX_VALUE]
+                    channel ["data-team" "unknown-channel"]]
+              (is (= {:output (str "Dashboard " id " was not found. It may not exist, or you may not have access "
+                                   "to it.\nCall `search` to find the entity you want and use an id from the results.")
+                      :error  {:class :recoverable :code ::recoverable.common/not-found}}
+                     (subscribe (daily id channel)))))))))))
 
-(deftest create-dashboard-subscription-nonexistent-dashboard-test
-  (testing "nonexistent dashboard → 404 or error message"
-    (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
-                                (fn [{:keys [dashboard-id]}]
-                                  (if (= dashboard-id 999999)
-                                    {:output "no dashboard with this dashboard_id found"}
-                                    {:output "success"}))]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (let [result (agent-subscriptions/create-dashboard-subscription-tool
-                      {:dashboard_id 999999
-                       :email        (:email (mt/fetch-user :crowberto))
-                       :schedule     {:frequency "daily" :hour 9}})]
-          (is (= "no dashboard with this dashboard_id found" (:output result))))))))
-
-(deftest create-dashboard-subscription-schedule-keywords-test
-  (testing "schedule keywords are converted from snake_case to kebab-case"
-    (let [captured-args (atom nil)]
-      (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
-                                  (fn [args] (reset! captured-args args) {:output "success"})]
-        (mt/with-current-user (mt/user->id :crowberto)
-          (agent-subscriptions/create-dashboard-subscription-tool
-           {:dashboard_id 1
-            :email        "test@example.com"
-            :schedule     {:frequency    "weekly"
-                           :hour         9
-                           :day_of_week  "monday"
-                           :day_of_month "first-mon"}}))
-        (let [{:keys [schedule]} @captured-args]
-          (is (= :weekly (:frequency schedule)))
-          (is (= :monday (:day-of-week schedule)))
-          (is (= :first-mon (:day-of-month schedule)))
-          (is (= 9 (:hour schedule)))
-          ;; snake_case keys should be absent
-          (is (nil? (:day_of_week schedule)))
-          (is (nil? (:day_of_month schedule))))))))
-
-;;; ---------------------------------------- Slack integration tests --------------------------------------------------
-
-(deftest create-dashboard-subscription-slack-happy-path-test
-  (testing "valid dashboard, Slack channel, daily schedule → success"
-    (mt/with-model-cleanup [:model/Pulse]
-      (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                       (constantly true)
-                                  channel.settings/slack-cached-channels-and-usernames
-                                  (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
-        (mt/with-current-user (mt/user->id :crowberto)
-          (mt/with-temp [:model/Dashboard     {dash-id :id}  {:name "Test Dashboard"}
-                         :model/Card          {card-id :id}  {}
-                         :model/DashboardCard _               {:dashboard_id dash-id
-                                                               :card_id      card-id
-                                                               :row          0
-                                                               :col          0}]
-            (let [result (agent-subscriptions/create-dashboard-subscription-tool
-                          {:dashboard_id  dash-id
-                           :slack_channel "data-team"
-                           :schedule      {:frequency "daily" :hour 9}})]
-              (is (= {:output "success"} result)))))))))
-
-(deftest create-dashboard-subscription-slack-monthly-schedule-test
-  (testing "Slack subscription with monthly schedule → success"
-    (mt/with-model-cleanup [:model/Pulse]
-      (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                       (constantly true)
-                                  channel.settings/slack-cached-channels-and-usernames
-                                  (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
-        (mt/with-current-user (mt/user->id :crowberto)
-          (mt/with-temp [:model/Dashboard     {dash-id :id}  {:name "Test Dashboard"}
-                         :model/Card          {card-id :id}  {}
-                         :model/DashboardCard _               {:dashboard_id dash-id
-                                                               :card_id      card-id
-                                                               :row          0
-                                                               :col          0}]
-            (let [result (agent-subscriptions/create-dashboard-subscription-tool
-                          {:dashboard_id  dash-id
-                           :slack_channel "data-team"
-                           :schedule      {:frequency    "monthly"
-                                           :day_of_month "last-sunday"
-                                           :hour         7}})]
-              (is (= {:output "success"} result)))))))))
-
-(deftest create-dashboard-subscription-slack-required-test
-  (testing "empty slack_channel → error"
-    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
-          (let [result (agent-subscriptions/create-dashboard-subscription-tool
-                        {:dashboard_id  dash-id
-                         :slack_channel ""
-                         :schedule      {:frequency "daily" :hour 9}})]
-            (is (= {:error "slack_channel is required"} result))))))))
-
-(deftest create-dashboard-subscription-slack-not-configured-test
-  (testing "Slack not configured → error"
-    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly false)]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
-          (let [result (agent-subscriptions/create-dashboard-subscription-tool
-                        {:dashboard_id  dash-id
-                         :slack_channel "data-team"
-                         :schedule      {:frequency "daily" :hour 9}})]
-            (is (= {:error "slack is not configured. Ask an admin to connect slack in Metabase settings."}
-                   result))))))))
-
-(deftest create-dashboard-subscription-slack-channel-not-found-test
-  (testing "nonexistent Slack channel → error"
-    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                       (constantly true)
-                                channel.settings/slack-cached-channels-and-usernames (constantly {:channels []})]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Dashboard     {dash-id :id}  {:name "Test Dashboard"}
-                       :model/Card          {card-id :id}  {}
-                       :model/DashboardCard _               {:dashboard_id dash-id
-                                                             :card_id      card-id
-                                                             :row          0
-                                                             :col          0}]
-          (let [result (agent-subscriptions/create-dashboard-subscription-tool
-                        {:dashboard_id  dash-id
-                         :slack_channel "no-such-channel"
-                         :schedule      {:frequency "daily" :hour 9}})]
-            (is (= {:error "no slack channel found with this name"} result))))))))
+(deftest refused-subscription-test
+  (testing "a subscription refusal names neither the dashboard nor its questions"
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
+                                channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
+      (mt/with-temp [:model/Collection    collection    {}
+                     :model/Dashboard     {dash-id :id} {}
+                     :model/Card          {card-id :id} {:collection_id (:id collection)}
+                     :model/DashboardCard _             {:dashboard_id dash-id :card_id card-id}]
+        (testing "a hidden question prevents the subscription"
+          (doseq [channel ["data-team" "unknown-channel"]]
+            (mt/with-non-admin-groups-no-collection-perms collection
+              (mt/with-current-user (mt/user->id :rasta)
+                (is (= {:class        :unrecoverable
+                        :code         ::agent-subscriptions/dashboard-cards-not-readable
+                        :user-message (str "You can't subscribe to this dashboard, because you don't have access to "
+                                           "every question on it.")}
+                       (:error (subscribe (daily dash-id channel)))))))))
+        (testing "a 403 prevents the subscription"
+          (mt/with-dynamic-fn-redefs [pulse.api/create-pulse-with-perm-checks!
+                                      (fn [& _] (throw (ex-info "You don't have permissions to do that."
+                                                                {:status-code 403})))]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (is (= {:class        :unrecoverable
+                      :code         ::agent-subscriptions/no-subscription-permission
+                      :user-message "You don't have permission to create a subscription for this dashboard."}
+                     (:error (subscribe (daily dash-id "data-team"))))))))))))

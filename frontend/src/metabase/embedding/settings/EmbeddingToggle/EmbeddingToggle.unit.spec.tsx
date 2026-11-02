@@ -72,8 +72,8 @@ describe("EmbeddingToggle", () => {
       expect(screen.getByText("Enabled")).toBeInTheDocument();
     });
 
-    it("should render a switch in the 'off' position when value is false", () => {
-      setup({ value: false });
+    it("should render a switch in the 'off' position when value is false", async () => {
+      await setup({ value: false });
       const switchElement = screen.getByRole("switch");
       expect(switchElement).toBeInTheDocument();
       expect(switchElement).not.toBeChecked();
@@ -85,7 +85,7 @@ describe("EmbeddingToggle", () => {
     it("should send a PUT request with value=true when setting is off", async () => {
       await setup({ value: false });
 
-      expect(screen.getByRole("switch")).not.toBeChecked();
+      expect(await screen.findByRole("switch")).not.toBeChecked();
       await userEvent.click(screen.getByRole("switch"));
 
       const puts = await findRequests("PUT");

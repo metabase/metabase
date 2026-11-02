@@ -53,6 +53,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(set! *warn-on-reflection* true)
+
 (defn- check-results-and-metadata-keys-match
   "Primarily for dev and debugging purposes. We can probably take this out when shipping the finished product."
   [results metadata]
@@ -125,6 +127,7 @@
                     {:type        qp.error-type/invalid-query
                      :status-code 400}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *additional-query-params*
   "Additional `internal` query params beyond `type`, `fn`, and `args`. These are bound to this dynamic var which is a
   chance to do something clever outside of the normal function args. For example audit app uses `limit` and `offset`

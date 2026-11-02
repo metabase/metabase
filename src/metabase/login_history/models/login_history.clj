@@ -57,11 +57,13 @@
     login-history))
 
 (t2/define-after-select :model/LoginHistory
-  [{session-id :session_id, :as login-history}]
-  ;; session ID is sensitive, so it's better if we don't even return it. Replace it with a more generic `active` key.
+  [{active :active, :as login-history}]
+  ;; session ID is sensitive, so it's better if we don't even return it. What callers get instead is `active`, which
+  ;; `login-history.db/login-history-for-user` computes in SQL as 1/0: whether the session the login created is
+  ;; still live.
   (cond-> (t2.realize/realize login-history)
-    (contains? login-history :session_id) (assoc :active (boolean session-id))
-    true                                  (dissoc :session_id)))
+    (some? active) (assoc :active (= 1 (long active)))
+    true           (dissoc :session_id)))
 
 (defn first-login-ever?
   "Return true if this is the first login ever for the given user-id."

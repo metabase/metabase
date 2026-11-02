@@ -50,7 +50,7 @@
   "Event info for the failure digest, covering the previous calendar day."
   []
   (let [yesterday           (u.date/add (t/zoned-date-time (digest-timezone)) :day -1)
-        {:keys [start end]} (u.date/range yesterday :day)
+        {:keys [start end]} (u.date/range {:start-of-week :sunday} yesterday :day)
         jobs                (failing-jobs start end)]
     {:job_count     (count jobs)
      :failure_count (reduce + 0 (map :failure_count jobs))
@@ -67,9 +67,11 @@
 (def ^:private digest-job-key "metabase.transforms.notification.failure-digest-job")
 (def ^:private digest-trigger-key "metabase.transforms.notification.failure-digest-trigger")
 
-(task/defjob ^{:doc "Sends the daily transform failure digest."
-               org.quartz.DisallowConcurrentExecution true}
-  SendTransformFailureDigest [_ctx]
+(task/defjob SendTransformFailureDigest
+  "Sends the daily transform failure digest."
+  {:saved-class "metabase.transforms.notification.SendTransformFailureDigest"
+   :concurrent? false}
+  [_ctx]
   (send-failure-digest!))
 
 (defmethod task/init! ::SendTransformFailureDigest [_]

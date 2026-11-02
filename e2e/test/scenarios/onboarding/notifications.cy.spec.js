@@ -77,30 +77,6 @@ describe("scenarios > account > notifications", () => {
       });
     });
 
-    it("should be able to see help info", () => {
-      openUserNotifications();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Not seeing one here?").click();
-
-      H.modal().within(() => {
-        cy.findByText("Not seeing something listed here?");
-        cy.findByText("Got it").click();
-      });
-
-      H.modal().should("not.exist");
-    });
-
-    it("should be able to see alerts notifications", () => {
-      openUserNotifications();
-
-      cy.findByTestId("notifications-list").within(() => {
-        cy.findByText("Question");
-        cy.findByText("Daily at 9:00 am", { exact: false });
-        cy.findByText("Created by you", { exact: false });
-      });
-    });
-
     it("should be able to delete an alert when the user created it and he is a single recipient", () => {
       openUserNotifications();
 
@@ -110,7 +86,11 @@ describe("scenarios > account > notifications", () => {
       );
       cy.intercept("PUT", "/api/notification/*").as("alertDelete");
 
-      cy.findByTestId("notifications-list").findByText("Question");
+      cy.findByTestId("notifications-list")
+        .should("contain", "Question")
+        .and("contain", "Check daily at 9:00 AM")
+        .and("contain", "Created by you");
+      checkNotificationHelp();
 
       clickUnsubscribe();
 
@@ -137,7 +117,7 @@ describe("scenarios > account > notifications", () => {
         .should("exist");
 
       H.modal().should("not.exist");
-      cy.findByTestId("notification-list").should("not.exist");
+      cy.findByTestId("notifications-list").should("not.exist");
     });
 
     it("should be able to unsubscribe from an alert when the user has not created it", () => {
@@ -235,36 +215,14 @@ describe("scenarios > account > notifications", () => {
       });
     });
 
-    it("should be able to see help info", () => {
-      openUserNotifications();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Not seeing one here?").click();
-
-      H.modal().within(() => {
-        cy.findByText("Not seeing something listed here?");
-        cy.findByText("Got it").click();
-      });
-
-      H.modal().should("not.exist");
-    });
-
-    it("should be able to see pulses notifications", () => {
-      openUserNotifications();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Subscription");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Slack’d hourly", { exact: false });
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created by you", { exact: false });
-    });
-
     it("should be able to unsubscribe and delete a pulse when the user has created it", () => {
       openUserNotifications();
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Subscription");
+      cy.findByTestId("notifications-list")
+        .should("contain", "Subscription")
+        .and("contain", "Slack’d hourly")
+        .and("contain", "Created by you");
+      cy.intercept("PUT", "/api/pulse/*").as("archivePulse");
       clickUnsubscribe();
 
       H.modal().within(() => {
@@ -272,8 +230,9 @@ describe("scenarios > account > notifications", () => {
         cy.findByText("Yes, delete this subscription").click();
       });
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Subscription").should("not.exist");
+      cy.wait("@archivePulse").its("response.body.archived").should("eq", true);
+      H.modal().should("not.exist");
+      cy.findByTestId("notifications-list").should("not.exist");
     });
   });
 });
@@ -288,4 +247,13 @@ function openUserNotifications() {
   cy.intercept("GET", "/api/pulse?*").as("loadSubscriptions");
   cy.visit("/account/notifications");
   cy.wait("@loadSubscriptions");
+}
+
+function checkNotificationHelp() {
+  H.main().findByText("Not seeing one here?").click();
+  H.modal().within(() => {
+    cy.findByText("Not seeing something listed here?").should("be.visible");
+    cy.findByRole("button", { name: "Got it" }).click();
+  });
+  H.modal().should("not.exist");
 }

@@ -1,4 +1,3 @@
-
 export const githubReleaseTemplate = `## Upgrading
 
 > Before you upgrade, back up your Metabase application database!
@@ -20,40 +19,5 @@ JAR download: {{ee-download-url}}
 ## Changelog
 
 [Full Changelog]({{changelog-url}})
-
-`;
-
-export const websiteChangelogTemplate = `
-## Metabase {{version}}
-
-### Upgrading | {{generic-version}}
-
-#### Metabase Open Source | {{generic-version}}
-
-- Docker image: {{oss-docker-tag}}
-- [JAR download]({{oss-download-url}})
-
-#### Metabase Enterprise | {{generic-version}}
-
-- Docker image: {{ee-docker-tag}}
-- [JAR download]({{ee-download-url}})
-
-### Enhancements | {{generic-version}}
-
-{{enhancements}}
-
-### Bug fixes | {{generic-version}}
-
-{{bug-fixes}}
-
-### Already Fixed | {{generic-version}}
-
-Issues confirmed to have been fixed in a previous release.
-
-{{already-fixed}}
-
-### Under the Hood | {{generic-version}}
-
-{{under-the-hood}}
 
 `;

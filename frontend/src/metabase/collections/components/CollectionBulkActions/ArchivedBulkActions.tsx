@@ -98,6 +98,7 @@ export const ArchivedBulkActions = ({
       dispatch(
         addUndo({
           message: t`There was an error permanently deleting these items.`,
+          variant: "negative",
         }),
       );
     } finally {

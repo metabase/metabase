@@ -5,7 +5,15 @@ import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Button, Center, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Center,
+  Flex,
+  Icon,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { Revision } from "metabase-types/api";
 
@@ -46,8 +54,7 @@ export function RevisionHistoryTimeline({
     } catch (error) {
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
           message: getErrorMessage(
             error,
             t`Failed to revert to previous version.`,
@@ -96,15 +103,16 @@ export function RevisionHistoryTimeline({
               <Flex>
                 {revision && canWrite && isNotFirstEvent && (
                   <Tooltip label={t`Revert to this version`}>
-                    <Button
+                    <ActionIcon
                       className={S.revertButton}
                       variant="subtle"
+                      size="sm"
                       onClick={() => handleRevert(revision)}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}
                     >
                       <Icon name="revert" />
-                    </Button>
+                    </ActionIcon>
                   </Tooltip>
                 )}
               </Flex>
@@ -130,7 +138,7 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
         bd="1px solid var(--mb-color-border-neutral)"
         bg="background_page-primary"
       >
-        <Icon name={icon} c="text-disabled" size={12} />
+        <Icon name={icon} c="text-secondary" size={12} />
       </Center>
     );
   }

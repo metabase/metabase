@@ -3,7 +3,15 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
-import { Button, Group, Icon, Modal, Stack, Tooltip, rem } from "metabase/ui";
+import {
+  ActionIcon,
+  Group,
+  Icon,
+  Modal,
+  Stack,
+  Tooltip,
+  rem,
+} from "metabase/ui";
 
 import S from "./Sidesheet.module.css";
 
@@ -39,20 +47,18 @@ export function Sidesheet({
         w={rem(720)}
       >
         <Modal.Body className={S.body} p={0} pt="xl">
-          <Group gap="xl" justify="flex-end" px="xxl">
+          <Group gap="lg" justify="flex-end" px="xxl">
             {actions}
 
             <Tooltip label={t`Close`}>
-              <Button
+              <ActionIcon
                 aria-label={t`Close`}
-                c="text-primary"
-                h={20}
-                leftSection={<Icon name="close" />}
-                p={0}
+                size="sm"
                 variant="subtle"
-                w={20}
                 onClick={onClose}
-              />
+              >
+                <Icon name="close" />
+              </ActionIcon>
             </Tooltip>
           </Group>
 

@@ -1,4 +1,6 @@
-import { act, screen, waitFor, within } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+
+import { screen, waitFor, within } from "__support__/ui";
 
 import { setup } from "./setup.spec";
 
@@ -21,7 +23,7 @@ describe("SdkBreadcrumbs", () => {
     );
 
     // Click on the collection browser item.
-    screen.getByText("Test Dashboard").click();
+    await userEvent.click(screen.getByText("Test Dashboard"));
 
     await waitFor(() => {
       expect(screen.getByTestId("current-view-id")).toHaveTextContent("1");
@@ -39,7 +41,9 @@ describe("SdkBreadcrumbs", () => {
     });
 
     // After going back to the root collection, it should no longer show the dashboard on the breadcrumb.
-    within(breadcrumbsContainer).getByText("Our analytics").click();
+    await userEvent.click(
+      within(breadcrumbsContainer).getByText("Our analytics"),
+    );
 
     await waitFor(() => {
       expect(
@@ -57,7 +61,7 @@ describe("SdkBreadcrumbs", () => {
     });
 
     // Click on the question
-    screen.getByText("Test Question").click();
+    await userEvent.click(screen.getByText("Test Question"));
 
     await waitFor(() => {
       expect(screen.getByTestId("current-view-id")).toHaveTextContent("1");
@@ -77,7 +81,9 @@ describe("SdkBreadcrumbs", () => {
     });
 
     // Navigate back to root collection
-    within(breadcrumbsContainer).getByText("Our analytics").click();
+    await userEvent.click(
+      within(breadcrumbsContainer).getByText("Our analytics"),
+    );
 
     // Question should disappear from the breadcrumb
     await waitFor(() => {
@@ -102,9 +108,7 @@ describe("SdkBreadcrumbs", () => {
     ).toBeInTheDocument();
 
     // Click on a nested collection on collection browser
-    act(() => {
-      screen.getByText("Nested Collection").click();
-    });
+    await userEvent.click(screen.getByText("Nested Collection"));
 
     await waitFor(() => {
       expect(screen.getByTestId("current-view-id")).toHaveTextContent("2");
@@ -119,9 +123,9 @@ describe("SdkBreadcrumbs", () => {
     ).toBeInTheDocument();
 
     // Click on the root collection breadcrumb to go back
-    act(() => {
-      within(breadcrumbsContainer).getByText("Our analytics").click();
-    });
+    await userEvent.click(
+      within(breadcrumbsContainer).getByText("Our analytics"),
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId("current-view-id")).toHaveTextContent("root");

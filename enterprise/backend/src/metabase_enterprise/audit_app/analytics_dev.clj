@@ -23,6 +23,7 @@
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
@@ -85,7 +86,7 @@
                  :creator_id user-id
                  :auto_run_queries true})]
         (log/info "Created analytics dev database:" (:id db))
-        (sync/sync-database! db {:scan :schema})
+        (sync/sync-database! (u/the-id db) {:scan :schema})
         db))))
 
 (defn delete-analytics-dev-database!

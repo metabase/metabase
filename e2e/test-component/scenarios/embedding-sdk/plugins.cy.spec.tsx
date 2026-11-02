@@ -1,4 +1,8 @@
-import { InteractiveDashboard } from "@metabase/embedding-sdk-react";
+import {
+  EditableDashboard,
+  InteractiveDashboard,
+  type MetabasePluginsConfig,
+} from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -111,7 +115,7 @@ describe("scenarios > embedding-sdk > plugins", () => {
         mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
           sdkProviderProps: {
             pluginsConfig: {
-              mapQuestionClickActions: (clickActions: ClickAction[]) => [
+              mapQuestionClickActions: (clickActions) => [
                 ...clickActions,
                 CUSTOM_ACTION_WITH_VIEW,
               ],
@@ -212,6 +216,102 @@ describe("scenarios > embedding-sdk > plugins", () => {
     });
   });
 
+  describe("The `mapQuestionClickActions` plugin should work for `EditableDashboard`", () => {
+    beforeEach(() => {
+      setup(() => {
+        createDashboardWithQuestions({
+          dashboardName: "Orders in a dashboard",
+          questions: [BASE_QUESTION],
+          cards: [
+            {
+              size_x: 12,
+              col: 0,
+            },
+          ],
+        }).then(({ dashboard }) => {
+          cy.wrap(dashboard.id).as("dashboardId");
+        });
+      });
+    });
+
+    it("should open a click actions popover with a custom item from component plugins", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        mountSdkContent(
+          <EditableDashboard
+            dashboardId={dashboardId}
+            plugins={{
+              mapQuestionClickActions: (clickActions: ClickAction[]) => [
+                ...clickActions,
+                CUSTOM_ACTION_WITH_VIEW,
+              ],
+            }}
+          />,
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Facebook").click();
+
+        cy.findByTestId("click-actions-popover").within(() => {
+          cy.findByText("Custom element").click();
+        });
+
+        cy.findByTestId("click-actions-popover").should("not.exist");
+      });
+    });
+
+    it("should open a click actions popover with a custom item from global plugins", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        mountSdkContent(<EditableDashboard dashboardId={dashboardId} />, {
+          sdkProviderProps: {
+            pluginsConfig: {
+              mapQuestionClickActions: (clickActions) => [
+                ...clickActions,
+                CUSTOM_ACTION_WITH_VIEW,
+              ],
+            },
+          },
+        });
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Facebook").click();
+
+        cy.findByTestId("click-actions-popover").within(() => {
+          cy.findByText("Custom element").click();
+        });
+
+        cy.findByTestId("click-actions-popover").should("not.exist");
+      });
+    });
+
+    it("should open a click actions popover with a custom item when the same plugins are passed to both the provider and the component", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        const plugins: MetabasePluginsConfig = {
+          mapQuestionClickActions: (clickActions) => [
+            ...clickActions,
+            CUSTOM_ACTION_WITH_VIEW,
+          ],
+        };
+
+        mountSdkContent(
+          <EditableDashboard dashboardId={dashboardId} plugins={plugins} />,
+          { sdkProviderProps: { pluginsConfig: plugins } },
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Facebook").click();
+
+        cy.findByTestId("click-actions-popover").within(() => {
+          cy.findByText("Custom element").click();
+        });
+
+        cy.findByTestId("click-actions-popover").should("not.exist");
+      });
+    });
+  });
+
   describe("The `mapQuestionClickActions` plugin should work for `InteractiveQuestion`", () => {
     beforeEach(() => {
       setup(() => {
@@ -225,7 +325,7 @@ describe("scenarios > embedding-sdk > plugins", () => {
     it("should open a click actions popover with a custom item", () => {
       mountInteractiveQuestion({
         plugins: {
-          mapQuestionClickActions: (clickActions: ClickAction[]) => [
+          mapQuestionClickActions: (clickActions) => [
             ...clickActions,
             CUSTOM_ACTION_WITH_VIEW,
           ],

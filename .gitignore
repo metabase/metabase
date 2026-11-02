@@ -69,9 +69,8 @@ cypress.env.json
 
 /lein-plugins/*/target
 /local
+/locales/metabase-i18n/
 /locales/metabase-*.pot
-# Pseudo-locale generated at build time
-/locales/en-ZZ.po
 /logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
@@ -159,6 +158,7 @@ mise.local.toml
 !**/.clj-kondo/README.md
 !**/.clj-kondo/config.edn
 !**/.clj-kondo/ratchets.edn
+!**/.clj-kondo/ratchets-test.edn
 !**/.clj-kondo/config/
 !**/.clj-kondo/src/
 !**/.clj-kondo/test/

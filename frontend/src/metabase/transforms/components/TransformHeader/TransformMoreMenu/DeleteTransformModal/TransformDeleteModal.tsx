@@ -13,16 +13,8 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import {
-  Box,
-  Button,
-  FocusTrap,
-  Group,
-  Modal,
-  Radio,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { deleteTransformAndTrack } from "metabase/transforms/analytics";
+import { Button, FocusTrap, Modal, Radio, Stack, Text } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
 type DeleteTransformModalProps = {
@@ -43,12 +35,7 @@ export function DeleteTransformModal({
   } = useGetTransformQuery(transform.id);
 
   return (
-    <Modal
-      title={getModalTitle(transform)}
-      opened
-      padding="xxl"
-      onClose={onClose}
-    >
+    <Modal title={getModalTitle(transform)} opened onClose={onClose}>
       <FocusTrap.InitialFocus />
       {isLoading || error != null || transformWithTable == null ? (
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -82,10 +69,16 @@ function DeleteTransformForm({
     if (transform == null) {
       return;
     }
-    if (shouldDeleteTarget) {
-      await deleteTransformTarget(transform.id).unwrap();
-    }
-    await deleteTransform(transform.id).unwrap();
+    await deleteTransformAndTrack({
+      deleteTransform: async () => {
+        if (shouldDeleteTarget) {
+          await deleteTransformTarget(transform.id).unwrap();
+        }
+        await deleteTransform(transform.id).unwrap();
+      },
+      transformId: transform.id,
+      triggeredFrom: "transform_page",
+    });
     onDelete();
   };
 
@@ -108,18 +101,16 @@ function DeleteTransformForm({
               </Stack>
             </Radio.Group>
           )}
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton
-              label={getSubmitButtonLabel(transform, shouldDeleteTarget)}
-              variant="filled"
-              color="feedback-negative"
-            />
-          </Group>
         </Stack>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+          <FormSubmitButton
+            label={getSubmitButtonLabel(transform, shouldDeleteTarget)}
+            variant="filled"
+            color="negative"
+          />
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

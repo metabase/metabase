@@ -32,7 +32,7 @@
 (mu/defn card-name-and-description
   "The name and description of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :name :description :card_schema], :id card-id))
+  (t2/select-one [:model/Card :name :description], :id card-id))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."

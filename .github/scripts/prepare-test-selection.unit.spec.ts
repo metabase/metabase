@@ -206,9 +206,15 @@ describe("prepareTestSelection", () => {
 
 describe("test selection workflow steps", () => {
   const ACTION = "./.github/actions/prepare-test-selection";
-  const CONSUMERS: Record<string, { suite: keyof typeof SUITES }> = {
+  const CONSUMERS: Record<
+    string,
+    { suite: keyof typeof SUITES; "require-download"?: boolean }
+  > = {
     "frontend.yml": { suite: "unit" },
     "loki.yml": { suite: "loki" },
+    "e2e-matrix-builder.yml": { suite: "e2e" },
+    // The matrix was sized for the planned specs, so a shard fails when the plan download fails.
+    "e2e-test.yml": { suite: "e2e", "require-download": true },
   };
 
   it("skips Loki visual tests only for an empty story selection", () => {

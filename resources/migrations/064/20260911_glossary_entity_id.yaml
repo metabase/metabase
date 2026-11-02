@@ -1,0 +1,94 @@
+## Glossary entries get an entity_id so serialization and remote sync can key them on a stable, portable
+## identifier instead of the (renameable, per-instance) term. Backfill mirrors 20260723_backfill_entity_ids:
+## all three dialect variants in one changeset so every database records it, then NOT NULL and UNIQUE.
+##
+## These changesets first shipped on master as v65.* in migrations/065/. They were moved here to backport the
+## feature to v64, so each one is skipped (MARK_RAN) on a database that already ran its v65 counterpart.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-11T12:00:00
+      author: tplude
+      comment: Add entity_id column to glossary table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v65.2026-09-11T12:00:00
+              author: tplude
+              changeLogFile: migrations/065/20260911_glossary_entity_id.yaml
+      changes:
+        - addColumn:
+            tableName: glossary
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: glossary
+            columnName: entity_id
+
+  - changeSet:
+      id: v64.2026-09-11T12:00:01
+      author: tplude
+      comment: Backfill NULL glossary.entity_id values
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v65.2026-09-11T12:00:01
+              author: tplude
+              changeLogFile: migrations/065/20260911_glossary_entity_id.yaml
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: UPDATE glossary SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: UPDATE glossary SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: h2
+            sql: UPDATE glossary SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+      rollback: []
+
+  - changeSet:
+      id: v64.2026-09-11T12:00:02
+      author: tplude
+      comment: entity_id is NOT NULL on glossary
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v65.2026-09-11T12:00:02
+              author: tplude
+              changeLogFile: migrations/065/20260911_glossary_entity_id.yaml
+      changes:
+        - addNotNullConstraint:
+            tableName: glossary
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v64.2026-09-11T12:00:03
+      author: tplude
+      comment: entity_id is unique on glossary
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v65.2026-09-11T12:00:03
+              author: tplude
+              changeLogFile: migrations/065/20260911_glossary_entity_id.yaml
+      changes:
+        - addUniqueConstraint:
+            tableName: glossary
+            columnNames: entity_id
+            constraintName: uq_glossary_entity_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: glossary
+            constraintName: uq_glossary_entity_id

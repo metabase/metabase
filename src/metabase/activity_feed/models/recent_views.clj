@@ -55,6 +55,7 @@
   (let [defaults {:timestamp (t/zoned-date-time)}]
     (merge defaults log-entry)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *recent-views-stored-per-user-per-model*
   "The number of recently viewed items to keep per user per model. This is used to keep the most recent views of each
   model type in [[rv-models]]."

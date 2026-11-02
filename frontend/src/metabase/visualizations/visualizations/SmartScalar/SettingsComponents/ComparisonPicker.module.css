@@ -1,0 +1,3 @@
+.pickerButton:hover .secondaryText {
+  color: var(--mb-color-core-brand);
+}

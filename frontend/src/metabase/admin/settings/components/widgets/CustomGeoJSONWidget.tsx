@@ -148,7 +148,7 @@ export const CustomGeoJSONWidget = () => {
       {!hasCustomMaps && (
         <Stack p="xxl" align="center" gap="lg">
           <Image w={120} h={120} src={noResultsSource} />
-          <Text fw="700" c="text-disabled">{t`No custom maps yet`}</Text>
+          <Text fw="700" c="text-secondary">{t`No custom maps yet`}</Text>
         </Stack>
       )}
 
@@ -227,7 +227,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
                 <td className={AdminS.TableActions}>
                   <Button
                     variant="filled"
-                    color="feedback-negative"
+                    color="negative"
                     onClick={() => setMapIdToDelete(mapId)}
                   >{t`Remove`}</Button>
                 </td>
@@ -419,6 +419,7 @@ const EditMap = ({
             />
             <Button
               ml="sm"
+              size="lg"
               disabled={!map.url}
               variant={geoJson ? "default" : "filled"}
               onClick={onLoadGeoJson}
@@ -489,7 +490,7 @@ const EditMap = ({
               CS.flex,
               CS.layoutCentered,
               CS.textBold,
-              CS.textLight,
+              CS.textSecondary,
               CS.textCentered,
             )}
           >

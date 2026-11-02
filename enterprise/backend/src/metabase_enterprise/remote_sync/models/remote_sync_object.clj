@@ -33,6 +33,17 @@
   []
   (remote-sync.db/dirty-rsos (spec/excluded-model-types)))
 
+(defn- with-action-card-ids
+  "`objects` with the `:card_id` of the model each existing Action belongs to, nil for an Action without a model."
+  [objects]
+  (let [action-ids (into [] (comp (filter #(= "action" (:model %))) (map :id)) objects)
+        card-ids   (when (seq action-ids)
+                     (remote-sync.db/action-model-ids action-ids))]
+    (mapv (fn [{:keys [id model] :as object}]
+            (cond-> object
+              (and (= "action" model) (contains? card-ids id)) (assoc :card_id (get card-ids id))))
+          objects)))
+
 (defn dirty-objects
   "Gets all models in any collection that are dirty with their sync status.
    Returns a sequence of model maps that have changed since the last remote sync,
@@ -51,4 +62,4 @@
                                    :model_table_name :table_name
                                    :status :sync_status})
                  (update :model u/lower-case-en)))
-       (into [])))
+       with-action-card-ids))

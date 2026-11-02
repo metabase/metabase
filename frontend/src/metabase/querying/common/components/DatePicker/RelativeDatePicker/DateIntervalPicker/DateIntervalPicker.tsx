@@ -6,7 +6,7 @@ import type {
   RelativeDatePickerValue,
 } from "metabase/querying/common/types";
 import {
-  Button,
+  ActionIcon,
   Divider,
   Flex,
   Group,
@@ -20,6 +20,7 @@ import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
+import { useTimeConfig } from "../use-time-config";
 import {
   formatDateRange,
   getInterval,
@@ -49,10 +50,11 @@ export function DateIntervalPicker({
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
+  const timeConfig = useTimeConfig();
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
-  const dateRangeText = formatDateRange(value);
-  const outOfBounds = isOutOfBounds(value, minDate, maxDate);
+  const dateRangeText = formatDateRange(timeConfig, value);
+  const outOfBounds = isOutOfBounds(timeConfig, value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {
     if (typeof inputValue === "number") {
@@ -101,13 +103,15 @@ export function DateIntervalPicker({
           }}
         />
         <Tooltip label={t`Starting from…`} position="bottom">
-          <Button
-            aria-label={t`Starting from…`}
-            c="text-secondary"
+          <ActionIcon
             variant="subtle"
-            leftSection={<Icon name="arrow_left_to_line" />}
+            size="lg"
+            ml="sm"
+            aria-label={t`Starting from…`}
             onClick={handleStartingFromClick}
-          />
+          >
+            <Icon name="arrow_left_to_line" />
+          </ActionIcon>
         </Tooltip>
       </Flex>
       <Flex p="lg" pt={0}>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { Outlet, Route, navigate, subscribeLocation } from "metabase/router";
 
 // `subscribeLocation` fires a callback on every location change and returns an
@@ -37,7 +37,9 @@ describe("subscribeLocation", () => {
 
     await screen.findByTestId("seen");
 
-    navigate("/other");
+    act(() => {
+      navigate("/other");
+    });
 
     await screen.findByText("other");
     expect(screen.getByTestId("seen")).toHaveTextContent("/other");

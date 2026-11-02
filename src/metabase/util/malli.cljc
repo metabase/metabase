@@ -2,7 +2,8 @@
   (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
-       ([metabase.util.malli.fn :as mu.fn]
+       ([metabase.util.malli.closed-schemas]
+        [metabase.util.malli.fn :as mu.fn]
         [metabase.util.malli.defn :as mu.defn]
         [net.cgrand.macrovich :as macros]
         [potemkin :as p]))

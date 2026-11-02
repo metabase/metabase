@@ -1,15 +1,9 @@
 import { memo, useMemo } from "react";
 import _ from "underscore";
 
-import {
-  ChartAxis,
-  ChartBar,
-  ChartBarSection,
-  ChartGrid,
-  ChartPlot,
-  ChartRoot,
-  ChartTick,
-} from "./ChartColorSample.styled";
+import { Box, Flex } from "metabase/ui";
+
+import S from "./ChartColorSample.module.css";
 
 const BAR_HEIGHTS = [0.75, 0.875, 1];
 const TICK_COUNT = 8;
@@ -18,41 +12,39 @@ export interface ChartColorSampleProps {
   colorGroups: string[][];
 }
 
-const ChartColorSample = ({
+export const ChartColorSample = memo(function ChartColorSample({
   colorGroups,
-}: ChartColorSampleProps): JSX.Element => {
+}: ChartColorSampleProps) {
   const reversedGroups = useMemo(
     () => colorGroups.map((group) => [...group].reverse()),
     [colorGroups],
   );
 
   return (
-    <ChartRoot>
-      <ChartGrid>
+    <Box pos="relative" h="100%">
+      <Flex direction="column" justify="space-between" pos="absolute" inset={0}>
         {_.times(TICK_COUNT, (index) => (
-          <ChartTick key={index} />
+          <Box key={index} className={S.tick} />
         ))}
-        <ChartAxis />
-      </ChartGrid>
-      <ChartPlot>
+        <Box className={S.axis} />
+      </Flex>
+      <Flex justify="space-evenly" align="flex-end" pos="absolute" inset={0}>
         {reversedGroups.map((group, index) => (
-          <ChartBar key={index} style={{ height: getBarHeight(index) }}>
+          <Flex key={index} direction="column" w="10%" h={getBarHeight(index)}>
             {group.map((color, index) => (
-              <ChartBarSection
+              <Box
                 key={index}
-                style={{ flexGrow: index + 1, backgroundColor: color }}
+                flex={`${index + 1} 1 auto`}
+                style={{ backgroundColor: color }}
               />
             ))}
-          </ChartBar>
+          </Flex>
         ))}
-      </ChartPlot>
-    </ChartRoot>
+      </Flex>
+    </Box>
   );
-};
+});
 
 const getBarHeight = (index: number) => {
   return `${BAR_HEIGHTS[index % BAR_HEIGHTS.length] * 100}%`;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default memo(ChartColorSample);

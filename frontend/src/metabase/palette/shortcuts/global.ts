@@ -21,6 +21,16 @@ export const globalShortcuts = {
     shortcut: ["c n"],
     shortcutGroup: "global" as const,
   },
+  "create-new-research": {
+    get name() {
+      return t`Create a research`;
+    },
+    get keywords() {
+      return t`add research, add exploration, research mode`;
+    },
+    shortcut: ["c r"],
+    shortcutGroup: "global" as const,
+  },
   "create-new-dashboard": {
     get name() {
       return t`Create a dashboard`;
@@ -159,6 +169,14 @@ export const globalShortcuts = {
       return t`Go to admin`;
     },
     shortcut: ["g a"],
+    shortcutGroup: "global" as const,
+  },
+
+  "navigate-data-apps": {
+    get name() {
+      return t`Go to Data Apps`;
+    },
+    shortcut: ["g Shift+a"],
     shortcutGroup: "global" as const,
   },
 

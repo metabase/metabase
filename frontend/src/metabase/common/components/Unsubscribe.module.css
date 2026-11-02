@@ -1,0 +1,7 @@
+.logo {
+  height: 4rem;
+}
+
+.shadow {
+  box-shadow: 0 1px 15px var(--mb-color-shadow-default);
+}

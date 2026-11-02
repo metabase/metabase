@@ -94,8 +94,6 @@ export function GlossaryTable({
         </Text>
         {!readOnly && (
           <Button
-            variant="default"
-            size="sm"
             leftSection={<Icon name="add" />}
             onClick={() => {
               if (editingId) {
@@ -219,7 +217,7 @@ export function GlossaryTable({
                         <ActionIcon
                           aria-label={t`Delete`}
                           variant="subtle"
-                          c="text-disabled"
+                          c="text-secondary"
                           className={cx(S.action)}
                           onClick={() => setDeletingItem(item)}
                         >

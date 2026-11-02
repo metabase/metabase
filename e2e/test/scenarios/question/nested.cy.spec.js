@@ -84,13 +84,7 @@ describe("scenarios > question > nested", () => {
         name: "15725",
         native: { query: "select 'A' as cat, 5 as val" },
       });
-      // Window object gets recreated for every `cy.visit`
-      // See: https://stackoverflow.com/a/65218352/8815185
-      cy.visit("/", {
-        onBeforeLoad(win) {
-          cy.spy(win.console, "warn").as("consoleWarn");
-        },
-      });
+      cy.visit("/");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New").click();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -121,12 +115,7 @@ describe("scenarios > question > nested", () => {
 
       H.visualize();
 
-      cy.get("@consoleWarn").should(
-        "not.be.calledWith",
-        "Removing invalid MBQL clause",
-      );
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sum of VAL");
+      assertCountAndSumByCategory();
     });
 
     it("Count of rows by CAT + add sum of VAL later from the sidebar (metabase#15725-2)", () => {
@@ -142,14 +131,19 @@ describe("scenarios > question > nested", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Sum of/).click();
       H.popover().findByText("VAL").click();
-      cy.wait("@dataset").then((xhr) => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
-      cy.get("@consoleWarn").should(
-        "not.be.calledWith",
-        "Removing invalid MBQL clause",
-      );
+      cy.wait("@dataset");
+      H.rightSidebar().button("Done").click();
+
+      assertCountAndSumByCategory();
     });
+
+    function assertCountAndSumByCategory() {
+      H.queryBuilderFooter().findByLabelText("Switch to data").click();
+      H.assertTableData({
+        columns: ["CAT", "Count", "Sum of VAL"],
+        firstRows: [["A", "1", "5"]],
+      });
+    }
   });
 
   it("should properly work with native questions (metabase#15808, metabase#16938, metabase#18364)", () => {
@@ -205,11 +199,10 @@ describe("scenarios > question > nested", () => {
 
       H.saveQuestionToCollection();
 
-      cy.wait("@cardCreated").then(({ response: { body } }) => {
-        expect(body.error).not.to.exist;
-      });
+      cy.wait("@cardCreated");
 
-      cy.button("Failed").should("not.exist");
+      cy.location("pathname").should("match", /^\/question\/\d+/);
+      cy.findByTestId("save-question-modal").should("not.exist");
     }
   });
 });

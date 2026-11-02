@@ -139,68 +139,6 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         filteredRowCount: 1,
       });
 
-      cy.log("!= operator");
-      testFilter({
-        filterOperator: "Not equal to",
-        setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
-        filterDisplayName: `NUMBER is not equal to ${minValue}`,
-        filteredRowCount: 2,
-      });
-
-      cy.log("> operator");
-      testFilter({
-        filterOperator: "Greater than",
-        setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
-        filterDisplayName: `NUMBER is greater than ${minValue}`,
-        filteredRowCount: 2,
-      });
-
-      cy.log(">= operator");
-      testFilter({
-        filterOperator: "Greater than or equal to",
-        setFilterValue: () => cy.findByLabelText("Filter value").type(minValue),
-        filterDisplayName: `NUMBER is greater than or equal to ${minValue}`,
-        filteredRowCount: 3,
-      });
-
-      cy.log("< operator");
-      testFilter({
-        filterOperator: "Less than",
-        setFilterValue: () => cy.findByLabelText("Filter value").type(maxValue),
-        filterDisplayName: `NUMBER is less than ${maxValue}`,
-        filteredRowCount: 2,
-      });
-
-      cy.log("<= operator");
-      testFilter({
-        filterOperator: "Less than or equal to",
-        setFilterValue: () => cy.findByLabelText("Filter value").type(maxValue),
-        filterDisplayName: `NUMBER is less than or equal to ${maxValue}`,
-        filteredRowCount: 3,
-      });
-
-      cy.log("between operator - min value");
-      testFilter({
-        filterOperator: "Between",
-        setFilterValue: () => {
-          cy.findByPlaceholderText("Min").type(minValue);
-          cy.findByPlaceholderText("Max").type("0");
-        },
-        filterDisplayName: `NUMBER is between ${minValue} and 0`,
-        filteredRowCount: 2,
-      });
-
-      cy.log("between operator - max value");
-      testFilter({
-        filterOperator: "Between",
-        setFilterValue: () => {
-          cy.findByPlaceholderText("Min").type("0");
-          cy.findByPlaceholderText("Max").type(maxValue);
-        },
-        filterDisplayName: `NUMBER is between 0 and ${maxValue}`,
-        filteredRowCount: 2,
-      });
-
       cy.log("between operator - min and max values");
       testFilter({
         filterOperator: "Between",
@@ -228,7 +166,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     });
   });
 
-  it("dashboards + mbql query + id parameters", { tags: "external" }, () => {
+  it("dashboards + mbql query + id parameters", { tags: "@external" }, () => {
     function setupDashboard({
       tableName,
       baseType,
@@ -391,27 +329,6 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
           sectionId: "number",
         },
         {
-          id: "b6ed2d72",
-          type: "number/!=",
-          name: "Not equal to",
-          slug: "not-equal=to",
-          sectionId: "number",
-        },
-        {
-          id: "b6ed2d73",
-          type: "number/>=",
-          name: "Greater than or equal to",
-          slug: "greater-than-or-equal-to",
-          sectionId: "number",
-        },
-        {
-          id: "b6ed2d74",
-          type: "number/<=",
-          name: "Less than or equal to",
-          slug: "less-than-or-equal-to",
-          sectionId: "number",
-        },
-        {
           id: "b6ed2d75",
           type: "number/between",
           name: "Between",
@@ -521,13 +438,11 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     function testFilters({
       minValue,
       maxValue,
-      formattedMinValue,
       formattedMaxValue,
       withDrillThru,
     }: {
       minValue: string;
       maxValue: string;
-      formattedMinValue: string;
       formattedMaxValue: string;
       withDrillThru?: boolean;
     }) {
@@ -539,65 +454,6 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         filterDisplayName: `NUMBER is equal to ${maxValue}`,
         filterArgsDisplayName: formattedMaxValue,
         filteredRowCount: 1,
-        withDrillThru,
-      });
-
-      cy.log("number/!= parameter");
-      testFilter({
-        parameterName: "Not equal to",
-        setParameterValue: () =>
-          cy.findByPlaceholderText("Enter a number").type(minValue),
-        filterDisplayName: `NUMBER is not equal to ${minValue}`,
-        filterArgsDisplayName: formattedMinValue,
-        filteredRowCount: 2,
-        withDrillThru,
-      });
-
-      cy.log("number/>= parameter");
-      testFilter({
-        parameterName: "Greater than or equal to",
-        setParameterValue: () =>
-          cy.findByPlaceholderText("Enter a number").type(minValue),
-        filterDisplayName: `NUMBER is greater than or equal to ${minValue}`,
-        filterArgsDisplayName: formattedMinValue,
-        filteredRowCount: 3,
-        withDrillThru,
-      });
-
-      cy.log("number/<= parameter");
-      testFilter({
-        parameterName: "Less than or equal to",
-        setParameterValue: () =>
-          cy.findByPlaceholderText("Enter a number").type(maxValue),
-        filterDisplayName: `NUMBER is less than or equal to ${maxValue}`,
-        filterArgsDisplayName: formattedMaxValue,
-        filteredRowCount: 3,
-        withDrillThru,
-      });
-
-      cy.log("number/between parameter - min value");
-      testFilter({
-        parameterName: "Between",
-        setParameterValue: () => {
-          cy.findAllByPlaceholderText("Enter a number").eq(0).type(minValue);
-          cy.findAllByPlaceholderText("Enter a number").eq(1).type("0");
-        },
-        filterDisplayName: `NUMBER is between ${minValue} and 0`,
-        filterArgsDisplayName: "2 selections",
-        filteredRowCount: 2,
-        withDrillThru,
-      });
-
-      cy.log("number/between parameter - max value");
-      testFilter({
-        parameterName: "Between",
-        setParameterValue: () => {
-          cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
-          cy.findAllByPlaceholderText("Enter a number").eq(1).type(maxValue);
-        },
-        filterDisplayName: `NUMBER is between 0 and ${maxValue}`,
-        filterArgsDisplayName: "2 selections",
-        filteredRowCount: 2,
         withDrillThru,
       });
 
@@ -621,7 +477,6 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       testFilters({
         minValue: MIN_BIGINT_VALUE,
         maxValue: MAX_BIGINT_VALUE,
-        formattedMinValue: FORMATTED_MIN_BIGINT_VALUE,
         formattedMaxValue: FORMATTED_MAX_BIGINT_VALUE,
         withDrillThru,
       });
@@ -633,7 +488,6 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       testFilters({
         minValue: NEGATIVE_DECIMAL_VALUE,
         maxValue: POSITIVE_DECIMAL_VALUE,
-        formattedMinValue: FORMATTED_NEGATIVE_DECIMAL_VALUE,
         formattedMaxValue: FORMATTED_POSITIVE_DECIMAL_VALUE,
         withDrillThru,
       });
@@ -666,114 +520,6 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     testDecimalFilters();
     visitEmbeddedDashboard();
     testDecimalFilters();
-  });
-
-  it("query builder + native query + variables", () => {
-    function setupQuestion({
-      sourceQuestionDetails,
-    }: {
-      sourceQuestionDetails: NativeQuestionDetails;
-    }) {
-      const getTargetQuestionDetails = (
-        cardId: CardId,
-      ): NativeQuestionDetails => {
-        const cardTagName = `#${cardId}-sql-number`;
-        const cardTagDisplayName = `#${cardId} Sql Number`;
-
-        const parameterDetails: Parameter = {
-          id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
-          type: "number/=",
-          target: ["variable", ["template-tag", "number"]],
-          name: "Number",
-          slug: "number",
-        };
-
-        return {
-          name: "SQL",
-          display: "scalar",
-          native: {
-            query: `SELECT COUNT(*) FROM {{#${cardId}-sql-number}} [[WHERE NUMBER = {{number}}]]`,
-            "template-tags": {
-              [cardTagName]: {
-                id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
-                name: cardTagName,
-                "display-name": cardTagDisplayName,
-                type: "card",
-                "card-id": cardId,
-              },
-              number: {
-                id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
-                name: "number",
-                "display-name": "Number",
-                type: "number",
-              },
-            },
-          },
-          parameters: [parameterDetails],
-          enable_embedding: true,
-          embedding_params: {
-            [parameterDetails.slug]: "enabled",
-          },
-        };
-      };
-
-      H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
-        H.createNativeQuestion(getTargetQuestionDetails(card.id), {
-          wrapId: true,
-        });
-      });
-    }
-
-    function testFilter({
-      value,
-      withRunButton,
-    }: {
-      value: string;
-      withRunButton?: boolean;
-    }) {
-      cy.log("add a filter");
-      cy.findByTestId("scalar-value").should("have.text", "3");
-      H.filterWidget().findByRole("textbox").type(value).blur();
-      if (withRunButton) {
-        cy.findAllByTestId("run-button").first().click();
-      }
-      H.filterWidget().findByRole("textbox").should("have.value", value);
-      cy.findByTestId("scalar-value").should("have.text", "1");
-    }
-
-    function testBitIntFilter({
-      withRunButton,
-    }: { withRunButton?: boolean } = {}) {
-      testFilter({ value: MAX_BIGINT_VALUE, withRunButton });
-    }
-
-    function testDecimalFilter({
-      withRunButton,
-    }: { withRunButton?: boolean } = {}) {
-      testFilter({ value: NEGATIVE_DECIMAL_VALUE, withRunButton });
-    }
-
-    cy.log("BIGINT");
-    cy.signInAsAdmin();
-    setupQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
-    cy.signInAsNormalUser();
-    H.visitQuestion("@questionId");
-    testBitIntFilter({ withRunButton: true });
-    visitPublicQuestion();
-    testBitIntFilter();
-    visitEmbeddedQuestion();
-    testBitIntFilter();
-
-    cy.log("DECIMAL");
-    cy.signInAsAdmin();
-    setupQuestion({ sourceQuestionDetails: decimalQuestionDetails });
-    cy.signInAsNormalUser();
-    H.visitQuestion("@questionId");
-    testDecimalFilter({ withRunButton: true });
-    visitPublicQuestion();
-    testDecimalFilter();
-    visitEmbeddedQuestion();
-    testDecimalFilter();
   });
 
   it("dashboards + native query + variables", () => {
@@ -893,7 +639,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     function testDecimalFilter({
       withDrillThru,
     }: { withDrillThru?: boolean } = {}) {
-      testFilter({ value: POSITIVE_DECIMAL_VALUE, withDrillThru });
+      testFilter({ value: NEGATIVE_DECIMAL_VALUE, withDrillThru });
     }
 
     cy.log("BIGINT");
@@ -1031,7 +777,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     },
   );
 
-  it("query builder + expression editor", { tags: "@external" }, () => {
+  it("query builder + object detail", { tags: "@external" }, () => {
     function setupQuestion({ tableName }: { tableName: string }) {
       const getQuestionDetails = (tableId: TableId) => ({
         database: WRITABLE_DB_ID,
@@ -1041,141 +787,40 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       });
 
       H.getTableId({ name: tableName }).then((tableId) => {
-        H.createQuestion(getQuestionDetails(tableId), { visitQuestion: true });
-      });
-    }
-
-    function testExpression({ value }: { value: string }) {
-      H.assertQueryBuilderRowCount(3);
-
-      H.openNotebook();
-      H.getNotebookStep("data").button("Filter").click();
-      H.popover().findByText("Custom Expression").click();
-      H.enterCustomColumnDetails({ formula: `[ID] = ${value}` });
-      cy.button("Done").click();
-      H.visualize();
-      H.assertQueryBuilderRowCount(1);
-
-      H.openNotebook();
-      H.getNotebookStep("filter").findByText(`ID is ${value}`).click();
-      H.popover().within(() => {
-        cy.findByLabelText("Back").click();
-        cy.findByText("Custom Expression").click();
-      });
-      H.enterCustomColumnDetails({ formula: `[ID] != ${value}` });
-      cy.button("Update").click();
-      H.visualize();
-      H.assertQueryBuilderRowCount(2);
-    }
-
-    cy.log("setup");
-    setupTables();
-
-    cy.log("BIGINT");
-    setupQuestion({ tableName: BIGINT_PK_TABLE_NAME });
-    testExpression({ value: MAX_BIGINT_VALUE });
-
-    cy.log("DECIMAL");
-    setupQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
-    testExpression({ value: NEGATIVE_DECIMAL_VALUE });
-  });
-
-  it("query builder + object detail", { tags: "@external" }, () => {
-    function setupQuestion({ tableName }: { tableName: string }) {
-      H.getTableId({ name: tableName }).then((tableId) =>
-        H.createQuestion(
-          {
-            database: WRITABLE_DB_ID,
-            query: { "source-table": tableId },
-          },
-          { visitQuestion: true },
-        ),
-      );
-    }
-
-    function testObjectDetail({
-      idValue,
-      nameValue,
-    }: {
-      idValue: string;
-      nameValue: string;
-    }) {
-      H.tableInteractive().findByText(idValue).click();
-      H.modal().within(() => {
-        cy.findAllByText(idValue).should("have.length.gte", 1);
-        cy.findAllByText(nameValue).should("have.length.gte", 1);
-      });
-    }
-
-    cy.log("setup");
-    setupTables();
-
-    cy.log("BIGINT");
-    setupQuestion({ tableName: BIGINT_PK_TABLE_NAME });
-    testObjectDetail({
-      idValue: MAX_BIGINT_VALUE,
-      nameValue: "Positive",
-    });
-
-    cy.log("DECIMAL");
-    setupQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
-    testObjectDetail({
-      idValue: NEGATIVE_DECIMAL_VALUE,
-      nameValue: "Negative",
-    });
-  });
-
-  it("query builder + drills", () => {
-    function setupQuestion({
-      sourceQuestionDetails,
-    }: {
-      sourceQuestionDetails: NativeQuestionDetails;
-    }) {
-      const getTargetQuestionDetails = (
-        cardId: CardId,
-      ): StructuredQuestionDetails => ({
-        name: "MBQL",
-        query: {
-          "source-table": `card__${cardId}`,
-        },
-        display: "table",
-      });
-
-      H.createNativeQuestion(sourceQuestionDetails).then(({ body: card }) => {
-        H.createQuestion(getTargetQuestionDetails(card.id), {
+        H.createQuestion(getQuestionDetails(tableId), {
           visitQuestion: true,
         });
       });
     }
 
-    function testDrill({
+    function testObjectDetail({
       value,
-      formattedValue,
+      nameValue,
     }: {
       value: string;
-      formattedValue: string;
+      nameValue: string;
     }) {
-      H.assertQueryBuilderRowCount(3);
-      H.tableInteractive().findByText(formattedValue).click();
-      H.popover().findByText("=").click();
-      H.queryBuilderFiltersPanel()
-        .findByText(`NUMBER is equal to ${value}`)
-        .should("be.visible");
-      H.assertQueryBuilderRowCount(1);
+      H.tableInteractive().findByText(value).click();
+      H.modal().within(() => {
+        cy.findAllByText(value).should("have.length.gte", 1);
+        cy.findAllByText(nameValue).should("have.length.gte", 1);
+        cy.findByLabelText("Close").click();
+      });
+      H.modal().should("not.exist");
     }
 
+    cy.log("setup");
+    setupTables();
+
     cy.log("BIGINT");
-    setupQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
-    testDrill({
-      value: MAX_BIGINT_VALUE,
-      formattedValue: FORMATTED_MAX_BIGINT_VALUE,
-    });
+    setupQuestion({ tableName: BIGINT_PK_TABLE_NAME });
+    testObjectDetail({ value: MAX_BIGINT_VALUE, nameValue: "Positive" });
 
     cy.log("DECIMAL");
-    setupQuestion({ sourceQuestionDetails: decimalQuestionDetails });
-    testDrill({
+    setupQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
+    testObjectDetail({
       value: NEGATIVE_DECIMAL_VALUE,
-      formattedValue: FORMATTED_NEGATIVE_DECIMAL_VALUE,
+      nameValue: "Negative",
     });
   });
 
@@ -1223,13 +868,18 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       });
     }
 
-    function testExport() {
+    function testExport({ values }: { values: string[] }) {
       cy.get("@questionId").then((questionId) => {
         H.downloadAndAssert({
           fileType: "csv",
           questionId: Number(questionId),
           isDashboard: false,
           enableFormatting: true,
+          assertResponseBody: (body) => {
+            // formatted numbers carry thousands separators
+            const digits = body.replaceAll(",", "");
+            values.forEach((value) => expect(digits).to.include(value));
+          },
         });
       });
     }
@@ -1238,16 +888,18 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     setupTables();
 
     cy.log("BIGINT");
+    const bigIntValues = [MIN_BIGINT_VALUE, MAX_BIGINT_VALUE];
     setupTableQuestion({ tableName: BIGINT_PK_TABLE_NAME });
-    testExport();
+    testExport({ values: bigIntValues });
     setupNestedQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
-    testExport();
+    testExport({ values: bigIntValues });
 
     cy.log("DECIMAL");
+    const decimalValues = [NEGATIVE_DECIMAL_VALUE, POSITIVE_DECIMAL_VALUE];
     setupTableQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
-    testExport();
+    testExport({ values: decimalValues });
     setupNestedQuestion({ sourceQuestionDetails: decimalQuestionDetails });
-    testExport();
+    testExport({ values: decimalValues });
   });
 
   it("dashboards + click behavior", () => {

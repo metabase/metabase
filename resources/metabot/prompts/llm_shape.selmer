@@ -37,7 +37,7 @@ The related tables below are listed without their fields. Look them up separatel
 This entity has more FK-related tables than the {{related_tables_surfaced}} shown here.
 </related-tables-truncated>{% endif %}{% endif %}
 {% if is_metric %}
-<metric id="{{metric_id}}", name="{{metric_name}}" is_verified="{{metric_verified}}"{% if metric_database_name %} database_name="{{metric_database_name}}"{% endif %}{% if metric_base_table_fqn %} base_table_fully_qualified_name="{{metric_base_table_fqn}}"{% endif %}{% if metric_portable_entity_id %} portable_entity_id="{{metric_portable_entity_id}}"{% endif %}>
+<metric id="{{metric_id}}", name="{{metric_name}}" is_verified="{{metric_verified}}"{% if metric_database_name %} database_name="{{metric_database_name}}"{% endif %}{% if metric_base_table_fqn %} base_table_fully_qualified_name="{{metric_base_table_fqn}}"{% endif %}{% if metric_source_card_entity_id %} source_card_portable_entity_id="{{metric_source_card_entity_id}}"{% if metric_source_card_name %} source_card_name="{{metric_source_card_name}}"{% endif %}{% endif %}{% if metric_source_unavailable %} source_unavailable="true"{% endif %}{% if metric_portable_entity_id %} portable_entity_id="{{metric_portable_entity_id}}"{% endif %}>
 {% if metric_collection_xml %}
 The metric is stored in the following collection:
 {{metric_collection_xml|safe}}
@@ -79,8 +79,8 @@ The following fields are available in this table.
 {% if table_related_tables_xml %}
 ### Related Tables
 Foreign key fields from related tables. Usage patterns:
-- Can be used directly in notebook queries (non-sql) as if they were part of the table.
-- For SQL queries: Use "fieldname" with explicit JOINs
+- Can be used directly in notebook queries as if they were part of the table.
+- They are not columns of the table itself; any other kind of query must join the related table through the listed foreign key.
 
 {{table_related_tables_xml|safe}}
 {% endif %}
@@ -133,8 +133,8 @@ The following fields are available in this model.
 
 ### Related Tables
 Foreign key fields from related tables. Usage patterns:
-- Can be used directly in notebook queries (non-sql) as if they were part of the model.
-- For SQL queries: Use "fieldname" with explicit JOINs
+- Can be used directly in notebook queries as if they were part of the model.
+- They are not columns of the model itself; any other kind of query must join the related table through the listed foreign key.
 
 {{model_related_tables_xml|safe}}
 {% endif %}
@@ -248,6 +248,8 @@ The question is visualized as follows:
   The dashboard is stored in the following collection:
   {{dashboard_collection_xml|safe}}
 {% endif %}
+{% if dashboard_filters_xml %}
+{{dashboard_filters_xml|safe}}{% endif %}
 {% if dashboard_tabs_xml %}
 {{dashboard_tabs_xml|safe}}{% endif %}
 </dashboard>
@@ -286,7 +288,7 @@ or jargon that may be relevant to the user's questions.
 </user>
 {% endif %}
 {% if is_search_result %}
-<{{search_tag_name}} id="{{search_id}}"{% if search_uri %} uri="{{search_uri}}"{% endif %} name="{{search_name}}"{% if search_has_curated %} is_curated="{{search_curated}}"{% endif %}{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_has_official %} is_official="{{search_official}}"{% endif %}{% if search_has_can_write %} can_write="{{search_can_write}}"{% endif %}{% if search_data_layer %} data_layer="{{search_data_layer}}"{% endif %}{% if search_data_authority %} data_authority="{{search_data_authority}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
+<{{search_tag_name}} id="{{search_id}}"{% if search_uri %} uri="{{search_uri}}"{% endif %} name="{{search_name}}"{% if search_has_curated %} is_curated="{{search_curated}}"{% endif %}{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_has_official %} is_official="{{search_official}}"{% endif %}{% if search_has_can_write %} can_write="{{search_can_write}}"{% endif %}{% if search_data_layer %} data_layer="{{search_data_layer}}"{% endif %}{% if search_data_authority %} data_authority="{{search_data_authority}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_source_card_entity_id %} source_card_portable_entity_id="{{search_source_card_entity_id}}"{% if search_source_card_name %} source_card_name="{{search_source_card_name}}"{% endif %}{% endif %}{% if search_source_unavailable %} source_unavailable="true"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
 {% if search_description %}
 {{search_description}}
 {% endif %}
@@ -307,7 +309,9 @@ Here are the search results:
 The following sample values show the data format in this field. The actual dataset may contain
 other values following the same pattern:
 
-{{sample_values_table|safe}}
+{{sample_values_table|safe}}{% if sample_values_total %}
+
+This list shows {{sample_values_shown}} of the field's {{sample_values_total}}{% if sample_values_more %}+{% endif %} values. The rest can include the value the user asked for, so don't assume it's missing or swap in the closest listed one: when the user asks for a specific value, filter on that value, following the casing the listed values show.{% endif %}
 {% else %}
 **Sample Values**
 This field hasn't been sampled yet. Continue without samples.
@@ -320,6 +324,11 @@ The following statistics are based on a df.sample(n) of the data.
 They provide a rough idea of the data characteristics but may not reflect the complete dataset:
 
 {{stats_table|safe}}
+{% endif %}
+{% if stats_unavailable %}
+
+**Field Statistics**
+Metabase couldn't sample this field from the database, so there are no statistics to show. Continue without them.
 {% endif %}
 {% endif %}
 {% if is_field_metadata %}

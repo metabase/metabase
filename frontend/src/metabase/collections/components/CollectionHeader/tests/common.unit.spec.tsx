@@ -295,6 +295,17 @@ describe("CollectionHeader", () => {
       expect(screen.queryByLabelText("Upload data")).not.toBeInTheDocument();
     });
 
+    it("should not show the upload button if uploads are enabled but the user cannot upload to the database", () => {
+      setup({
+        collection: { can_write: true },
+        uploadsEnabled: true,
+        canUpload: false,
+        isAdmin: false,
+      });
+
+      expect(screen.queryByLabelText("Upload data")).not.toBeInTheDocument();
+    });
+
     it("should show an informational modal when clicking the upload button when uploads are disabled", async () => {
       setup({
         collection: { can_write: true },

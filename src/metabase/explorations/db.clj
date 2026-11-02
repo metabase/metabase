@@ -12,6 +12,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -66,7 +68,7 @@
          :group-by [:eid]}]
     (cond-> {:select   [:exploration.*
                         [:agg.max_ts :current_user_last_touched_at]
-                        [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
+                        [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
              :from     [:exploration]
              :join     [[agg :agg] [:= :agg.eid :exploration.id]]
              :where    [:and
@@ -82,7 +84,7 @@
   [user-id :- ::lib.schema.id/user
    limit   :- [:maybe ms/PositiveInt]
    offset  :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select :model/Exploration (my-explorations-query user-id limit offset)))
+  (t2/select :model/Exploration (h2x/assert-map-or-nil! (my-explorations-query user-id limit offset))))
 
 (mu/defn exploration-creator-id-for-thread
   "The creator of the Exploration owning the ExplorationThread with `thread-id`."
@@ -100,7 +102,7 @@
   "Apply `changes` to the Exploration with `exploration-id`."
   [exploration-id :- ms/PositiveInt
    changes        :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :archived_directly :collection_id :collection_position])]
-  (t2/update! :model/Exploration exploration-id changes))
+  (t2/update! :model/Exploration :id exploration-id changes))
 
 (mu/defn delete-exploration!
   "Delete the Exploration with `exploration-id`."
@@ -168,9 +170,9 @@
   (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id))
 
 (mu/defn lens-stamped-threads
-  "The ID and data-access token of the ExplorationThreads among `thread-ids` that carry a token."
+  "The ExplorationThreads among `thread-ids` that carry a data-access token, with what the content gate reads."
   [thread-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/ExplorationThread :id :data_access_token]
+  (t2/select [:model/ExplorationThread :id :data_access_token :resolved_source_ids]
              :id [:in thread-ids]
              :data_access_token [:not= nil]))
 
@@ -198,7 +200,7 @@
   "Apply `changes` to the ExplorationThread with `thread-id`."
   [thread-id :- ms/PositiveInt
    changes   :- (mut/select-keys ::explorations.schema/exploration-thread.update [:started_at :analysis_started_at :completed_at :query_plan_transcript])]
-  (t2/update! :model/ExplorationThread thread-id changes))
+  (t2/update! :model/ExplorationThread :id thread-id changes))
 
 (mu/defn cancel-thread!
   "Mark the uncompleted ExplorationThread with `thread-id` canceled and completed at `now`, returning the number of
@@ -374,7 +376,7 @@
   "Apply `changes` to the ExplorationPage with `page-id`."
   [page-id :- ms/PositiveInt
    changes :- (mut/select-keys ::explorations.schema/exploration-page.update [:starred])]
-  (t2/update! :model/ExplorationPage page-id changes))
+  (t2/update! :model/ExplorationPage :id page-id changes))
 
 (mu/defn update-pages!
   "Apply `changes` to the ExplorationPages with `page-ids`."
@@ -430,10 +432,11 @@
              {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn lens-stamped-queries
-  "The ID, thread, Database, query, and data-access token of the ExplorationQueries with a query on the
-  ExplorationThreads with `thread-ids`, in ID order."
+  "The ExplorationQueries with a query on the ExplorationThreads with `thread-ids`, with what the content gate reads,
+  in ID order."
   [thread-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/ExplorationQuery :id :exploration_thread_id :database_id :dataset_query :data_access_token]
+  (t2/select [:model/ExplorationQuery :id :exploration_thread_id :database_id :dataset_query :data_access_token
+              :resolved_source_ids]
              :exploration_thread_id [:in thread-ids]
              :dataset_query [:not= nil]
              {:order-by [[:id :asc]]}))
@@ -498,8 +501,12 @@
 (mu/defn update-query!
   "Apply `changes` to the ExplorationQuery with `query-id`."
   [query-id :- ms/PositiveInt
-   changes  :- (mut/select-keys ::explorations.schema/exploration-query.update [:dataset_query :name :data_access_token :status :started_at :finished_at])]
-  (t2/update! :model/ExplorationQuery query-id changes))
+   changes  :- [:and
+                (mut/select-keys ::explorations.schema/exploration-query.update
+                                 [:dataset_query :name :data_access_token :resolved_source_ids
+                                  :status :started_at :finished_at])
+                ::explorations.schema/exploration-query.update.stamped-together]]
+  (t2/update! :model/ExplorationQuery :id query-id changes))
 
 (mu/defn fail-pending-query!
   "Mark the pending ExplorationQuery with `query-id` as errored with `message` at `finished-at`, returning the number
@@ -770,17 +777,14 @@
   (t2/select-one [:model/Card :name :description :display :visualization_settings] :id card-id))
 
 (mu/defn card-queries
-  "The ID, schema, Database, and query of the Cards with `card-ids`."
+  "The query-relevant columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :card_schema :database_id :dataset_query] :id [:in card-ids]))
+  (queries/cards-queries-info card-ids :include [:database_id]))
 
 (mu/defn metric-cards-by-id
   "A map of ID to the planner columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn identity
-                    [:model/Card :id :name :description :database_id :dataset_query :card_schema :dimensions
-                     :dimension_mappings]
-                    :id [:in card-ids]))
+  (u/index-by :id (queries/cards-queries-info card-ids :include [:name :description :database_id])))
 
 (mu/defn metric-card-ids
   "The `:id`s of the Cards visible to the current user as metrics, restricted to `metric-ids` when
@@ -800,7 +804,7 @@
 ;;; the response stays small and JSON encoding is fast.
 (def ^:private exploration-card-columns
   [:id :name :description :collection_id :database_id :table_id :type :entity_id
-   :card_schema :dataset_query :dimensions :dimension_mappings])
+   :card_schema :dataset_query :result_metadata :dimensions :dimension_mappings])
 
 (mu/defn metric-cards-for-explorations
   "The exploration-relevant columns of the metric Cards with `card-ids`."

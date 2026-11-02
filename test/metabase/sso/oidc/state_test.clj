@@ -1,6 +1,8 @@
 (ns metabase.sso.oidc.state-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.system.settings :as system.settings]
    [metabase.util.encryption :as encryption])
@@ -54,7 +56,19 @@
       (is (true? (oidc.state/valid-redirect-url? "/path#fragment" "https://example.com"))))
     (testing "rejects protocol-relative URLs (potential open redirect)"
       (is (false? (oidc.state/valid-redirect-url? "//evil.com" "https://example.com")))
-      (is (false? (oidc.state/valid-redirect-url? "//evil.com/path" "https://example.com")))))
+      (is (false? (oidc.state/valid-redirect-url? "//evil.com/path" "https://example.com"))))
+    (testing "rejects relative URLs containing characters a browser normalizes away"
+      ;; A browser treats a backslash as a path separator and strips TAB/CR/LF while resolving a URL, so these
+      ;; would not resolve to the same-origin path this predicate sees.
+      (are [url] (false? (oidc.state/valid-redirect-url? url "https://example.com"))
+        "/\\other.example"
+        "/\\/other.example"
+        "/foo\\bar"
+        "/fo\to/bar"
+        "/foo\r/bar"
+        "/foo\n/bar"))
+    (testing "still accepts ordinary relative paths"
+      (is (true? (oidc.state/valid-redirect-url? "/foo/bar" "https://example.com")))))
   (testing "absolute URLs"
     (testing "accepts same-origin URLs"
       (is (true? (oidc.state/valid-redirect-url? "https://example.com/" "https://example.com")))
@@ -94,6 +108,24 @@
       (is (true? (oidc.state/valid-redirect-url? "/dashboard")))
       (is (true? (oidc.state/valid-redirect-url? "https://metabase.example.com/dashboard")))
       (is (false? (oidc.state/valid-redirect-url? "https://evil.com/"))))))
+
+(deftest validate-redirect-url-returns-clean-400-test
+  (testing "an unacceptable redirect produces a 400 whose body is just the message"
+    (with-site-url! "https://metabase.example.com"
+      (let [supplied "https://other.example/somewhere"
+            response (try
+                       (oidc.state/validate-redirect-url! supplied)
+                       (is false "expected validate-redirect-url! to throw")
+                       (catch clojure.lang.ExceptionInfo e
+                         (mw.exceptions/api-exception-response e {})))
+            body     (:body response)]
+        (is (= 400 (:status response)))
+        (testing "the body is the plain message, not a serialized exception"
+          (is (string? body))
+          (is (not (str/includes? body ":trace")))
+          (is (not (str/includes? body ":via"))))
+        (testing "the body does not contain the supplied value"
+          (is (not (str/includes? body supplied))))))))
 
 ;;; -------------------------------------------------- create-oidc-state Tests --------------------------------------------------
 
@@ -270,6 +302,14 @@
   (with-test-encryption!
     (testing "returns nil for nil input"
       (is (nil? (oidc.state/decrypt-state nil))))))
+
+(deftest decrypt-state-malformed-input-test
+  (with-test-encryption!
+    (testing "returns nil rather than throwing for unusable input"
+      ;; `decrypt-state` promises nil for any input it cannot decode.
+      (are [input] (nil? (oidc.state/decrypt-state input))
+        ""
+        "AAAA"))))
 
 (deftest decrypt-state-browser-id-validation-test
   (with-test-encryption!

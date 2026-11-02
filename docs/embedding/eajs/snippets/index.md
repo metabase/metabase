@@ -7,6 +7,7 @@ This is the source of truth for all attributes accepted by modular embedding com
 | Interface                                                     | Description                                              |
 | :------------------------------------------------------------ | :------------------------------------------------------- |
 | [MetabaseBrowserAttributes](MetabaseBrowserAttributes.md)     | Attributes for the `<metabase-browser>` web component.   |
+| [MetabaseConfig](MetabaseConfig.md)                           | Settings for `defineMetabaseConfig()`.                   |
 | [MetabaseDashboardAttributes](MetabaseDashboardAttributes.md) | Attributes for the `<metabase-dashboard>` web component. |
 | [MetabaseMetabotAttributes](MetabaseMetabotAttributes.md)     | Attributes for the `<metabase-metabot>` web component.   |
 | [MetabaseQuestionAttributes](MetabaseQuestionAttributes.md)   | Attributes for the `<metabase-question>` web component.  |

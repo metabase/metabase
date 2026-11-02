@@ -133,7 +133,7 @@ const datasetResponse: Dataset = createMockDataset({
 });
 
 // A count/breakout dataset whose scalar count (rows[0][0]) exceeds one page, so the events
-// table's pagination controls appear (total > EVENTS_PAGE_SIZE of 25).
+// table's pagination controls appear (total > PAGE_SIZE of 25).
 const multiPageDatasetResponse: Dataset = createMockDataset({
   data: createMockDatasetData({
     rows: [

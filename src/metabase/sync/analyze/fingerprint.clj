@@ -17,7 +17,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.table :as table]
    [redux.core :as redux]))
 
 (defn incomplete-analysis-kvs
@@ -60,6 +59,7 @@
    :updated-fingerprints   0
    :fingerprints-attempted fields-count})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *truncation-size*
   "The maximum size of :type/Text to be selected from the database in `table-rows-sample`. In practice we see large
   text blobs and want to balance taking enough for distinct counts and but not so much that we risk out of memory
@@ -89,7 +89,7 @@
                                (update count-info :updated-fingerprints inc))))
                          (empty-stats-map (count fingerprints))
                          (map vector fields fingerprints)))))
-        driver (driver.u/database->driver (table/database table))
+        driver (driver.u/database->driver (:db_id table))
         opts {:truncation-size *truncation-size*}]
     (tracing/with-span :sync "sync.fingerprint.sample" {:sync/table (:name table) :sync/field-count (count fields)}
       (driver/table-rows-sample driver table fields rff opts))))
@@ -98,6 +98,7 @@
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already
   are analyzed and have fingerprints."

@@ -4,10 +4,11 @@ import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
-import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
+import * as DateFilter from "../native/helpers/e2e-date-filter-helpers";
 
 /** These tests are about the `downloads` flag for static embeds, both dashboards and questions.
  *  Unless the product changes, these should test the same things as `public-resource-downloads.cy.spec.ts`
@@ -51,13 +52,20 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
       );
       waitLoading();
 
+      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+        "be.visible",
+      );
+      H.getDashboardCard()
+        .findAllByTestId("cell-data")
+        .should("have.length.above", 0);
+
       cy.findByRole("button", { name: "Download as PDF" }).should("not.exist");
 
       // we should not have any dashcard action in a static embedded/embed scenario, so the menu should not be there
-      cy.findByRole("button", { name: "Download results" }).should("not.exist");
+      H.getEmbeddedDashboardCardMenu().should("not.exist");
     });
 
-    it("should be able to download a static embedded dashboard as PDF", () => {
+    it("should be able to download a static embedded dashboard as PDF and a dashcard as CSV", () => {
       H.visitEmbeddedPage(
         {
           resource: { dashboard: ORDERS_DASHBOARD_ID },
@@ -82,22 +90,6 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
         dashboard_id: 0,
         dashboard_accessed_via: "static-embed",
       });
-    });
-
-    it("should be able to download a static embedded dashcard as CSV", () => {
-      H.visitEmbeddedPage(
-        {
-          resource: { dashboard: ORDERS_DASHBOARD_ID },
-          params: {},
-        },
-        {
-          pageStyle: {
-            downloads: true,
-          },
-        },
-      );
-
-      waitLoading();
 
       H.getDashboardCard().realHover();
       H.getEmbeddedDashboardCardMenu().click();
@@ -115,8 +107,6 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
     describe("with dashboard parameters", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
-
-        H.activateToken("pro-self-hosted");
 
         // Test parameter with accentuation (metabase#49118)
         const CATEGORY_FILTER = createMockParameter({
@@ -210,25 +200,7 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
       cy.signOut();
     });
 
-    it("#downloads=false should disable result downloads", () => {
-      H.visitEmbeddedPage(
-        {
-          resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
-          params: {},
-        },
-        {
-          pageStyle: {
-            downloads: false,
-          },
-        },
-      );
-
-      waitLoading();
-
-      cy.findByRole("button", { name: "Download results" }).should("not.exist");
-    });
-
-    it("should be able to download the question as PNG", () => {
+    it("should be able to download a static embedded question as PNG and CSV", () => {
       H.visitEmbeddedPage(
         {
           resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
@@ -257,22 +229,6 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
         accessed_via: "static-embed",
         export_type: "png",
       });
-    });
-
-    it("should be able to download a static embedded card as CSV", () => {
-      H.visitEmbeddedPage(
-        {
-          resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
-          params: {},
-        },
-        {
-          pageStyle: {
-            downloads: true,
-          },
-        },
-      );
-
-      waitLoading();
 
       cy.findByRole("button", { name: "Download results" }).click();
 
@@ -294,8 +250,6 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
     describe("with native question parameters", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
-
-        H.activateToken("pro-self-hosted");
       });
 
       it("should be able to download a static embedded question as CSV with correct parameters when field filters has multiple values (metabase#52430)", () => {
@@ -485,6 +439,141 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
           downloadUrl: "/api/embed/card/*/query/csv*",
           downloadMethod: "GET",
         });
+      });
+    });
+  });
+});
+
+describe("scenarios > embedding > questions > downloads", () => {
+  const questionDetails: NativeQuestionDetails = {
+    name: "Simple SQL Query for Embedding",
+    native: {
+      query: "select {{text}} as WYSIWYG",
+      "template-tags": {
+        text: {
+          id: "fake-uuid",
+          name: "text",
+          "display-name": "Text",
+          type: "text",
+          default: null,
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion(questionDetails, {
+      wrapId: true,
+    });
+  });
+
+  context("without token", () => {
+    it("should not be possible to disable downloads", () => {
+      cy.get<number>("@questionId").then((questionId) => {
+        H.visitQuestion(questionId);
+
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: questionId,
+          activeTab: "lookAndFeel",
+        });
+
+        cy.log(
+          "Embedding settings page should not show option to disable downloads",
+        );
+        cy.findByLabelText("Customizing look and feel").should(
+          "not.contain",
+          "Download (csv, xlsx, json, png)",
+        );
+
+        cy.log('Use API to "publish" this question and to enable its filter');
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+          embedding_params: {
+            text: "enabled",
+          },
+        });
+
+        const payload = {
+          resource: { question: questionId },
+          params: {},
+        };
+
+        cy.log(
+          "Visit embedded question and set its filter through query parameters",
+        );
+        H.visitEmbeddedPage(payload, {
+          setFilters: { text: "Foo" },
+        });
+
+        cy.findByRole("gridcell").should("have.text", "Foo");
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).click();
+
+        H.popover().within(() => {
+          cy.findByText("Download");
+          cy.findByText(".csv");
+          cy.findByText(".xlsx");
+          cy.findByText(".json");
+        });
+
+        cy.log(
+          "Trying to prevent downloads via query params doesn't have any effect",
+        );
+        cy.url().then((url) => {
+          cy.visit(url + "&downloads=false");
+        });
+
+        cy.findByRole("gridcell").should("have.text", "Foo");
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should("exist");
+      });
+    });
+  });
+
+  context("premium token with paid features", () => {
+    beforeEach(() => H.activateToken("pro-self-hosted"));
+
+    it("should be possible to disable downloads", () => {
+      cy.get<number>("@questionId").then((questionId) => {
+        H.visitQuestion(questionId);
+
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: questionId,
+          activeTab: "lookAndFeel",
+        });
+
+        cy.log("Disable downloads");
+        cy.findByLabelText("Download (csv, xlsx, json, png)")
+          .as("allow-download-toggle")
+          .should("be.checked");
+
+        cy.findByLabelText("Download (csv, xlsx, json, png)").click();
+        cy.get("@allow-download-toggle").should("not.be.checked");
+
+        cy.log('Use API to "publish" this question and to enable its filter');
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+          embedding_params: {
+            text: "enabled",
+          },
+        });
+
+        H.visitIframe();
+
+        H.filterWidget().type("Foo{enter}");
+        cy.findByRole("gridcell").should("have.text", "Foo");
+
+        cy.location("search").should("eq", "?text=Foo");
+        cy.location("hash").should("match", /&downloads=false$/);
+
+        cy.log("We don't even show the footer if it's empty");
+        cy.findByRole("contentinfo").should("not.exist");
+        cy.icon("download").should("not.exist");
       });
     });
   });

@@ -1,22 +1,26 @@
 import { t } from "ttag";
 
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-
-import {
-  BrandLinkWithLeftMargin,
-  ExplainerTextContainer,
-} from "./ExplainerText.styled";
+import CS from "metabase/css/core/index.css";
+import { Box, Text } from "metabase/ui";
 
 export function ExplainerText() {
   const { url, showMetabaseLinks } = useDocsUrl("dashboards/actions");
   return (
-    <ExplainerTextContainer>
+    <Text component="p" mx="xxl" my="md" c="text-secondary">
       {t`You can either ask users to enter values, or use the value of a dashboard filter.`}
       {showMetabaseLinks && (
-        <BrandLinkWithLeftMargin href={url}>
+        // a className stops ExternalLink falling back to CS.link (hover underline)
+        <Box
+          component={ExternalLink}
+          className={CS.textBrand}
+          href={url}
+          ml="sm"
+        >
           {t`Learn more.`}
-        </BrandLinkWithLeftMargin>
+        </Box>
       )}
-    </ExplainerTextContainer>
+    </Text>
   );
 }

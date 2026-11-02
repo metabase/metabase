@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import { useCallback } from "react";
+import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
 import { FormField } from "metabase/forms";
@@ -19,11 +19,11 @@ const DatabaseAuthProviderSectionField = ({
   }, [value, setValue]);
 
   return (
-    <FormField>
+    <FormField mb="lg">
       <Button
         w="fit-content"
-        variant="subtle"
-        size="compact-sm"
+        variant="transparent"
+        size="compact-md"
         onClick={handleClick}
       >
         {value ? t`Use password` : t`Use an authentication provider`}

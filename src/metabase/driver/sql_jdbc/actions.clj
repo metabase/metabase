@@ -1,6 +1,5 @@
 (ns metabase.driver.sql-jdbc.actions
   (:refer-clojure :exclude [some mapv select-keys empty? not-empty get-in])
-  #_{:clj-kondo/ignore [:discouraged-namespace]} ;; for using toucan2 in this ns
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -131,6 +130,7 @@
                                              e)))))))
                    column->value)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^Connection *connection*
   "Data warehouse JDBC Connection to use for doing CRUD Actions. Bind this to reuse the same Connection/transaction
   throughout a single bulk Action."
@@ -706,7 +706,7 @@
   [action context inputs]
   (table-row-delete! action context inputs))
 
-;;;; `bulk/update`
+;;;; `:table.row/update`
 
 (mu/defn- check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."

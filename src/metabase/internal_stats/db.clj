@@ -5,14 +5,15 @@
    [metabase.app-db.core :as mdb]
    [metabase.internal-stats.util :as u]
    [metabase.models.interface :as mi]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn enabled-data-app-count
-  "The number of enabled data apps without a sync error."
+  "The number of enabled data apps."
   []
-  (t2/count :data_app :enabled true :sync_error nil))
+  (t2/count :data_app :enabled true))
 
 (mu/defn embedded-dashboard-count
   "The number of unarchived Dashboards with embedding enabled."
@@ -117,10 +118,14 @@
   [started-after :- ms/TemporalInstant]
   (t2/select-one query-execution-statistics {:where [:> :started_at started-after]}))
 
-(mu/defn query-execution-statistics-on
-  "The QueryExecution counts per embedding client for executions started on the day of `date`."
-  [date :- ms/TemporalInstant]
-  (t2/select-one query-execution-statistics {:where [:= [:cast :started_at :date] [:cast date :date]]}))
+(mu/defn query-execution-statistics-between
+  "The QueryExecution counts per embedding client for executions started in `[start, end)`."
+  [start :- ms/TemporalInstant
+   end   :- ms/TemporalInstant]
+  ;; A bare range on `started_at` lets the DB use `idx_query_execution_started_at`; casting the column would not.
+  (t2/select-one query-execution-statistics {:where [:and
+                                                     [:>= :started_at start]
+                                                     [:< :started_at end]]}))
 
 (defn- and-not-nil
   ([not-nil-field]
@@ -134,24 +139,26 @@
   (condp = (mdb/db-type)
     :mysql [:json_contains_path
             :dataset_query
-            ^:allow-raw-sql [:inline "one"]
-            ^:allow-raw-sql [:inline "$.native.\"template-tags\".*"]]
+            "one"
+            "$.native.\"template-tags\".*"]
     :postgres [:jsonb_path_exists
                [:cast :dataset_query :jsonb]
-               ^:allow-raw-sql [:inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
+               ;; the path is a `jsonpath`, not a value: as a `?` parameter Postgres binds it as `varchar` and can't
+               ;; find a matching `jsonb_path_exists` overload, so it has to be a real SQL literal
+               (h2x/literal "$.native.\"template-tags\" ? (exists(@.*))")]))
 
 (defn- contains-embedding-param
   [param]
   (condp = (mdb/db-type)
     :mysql [:!= [:json_search
                  :embedding_params
-                 ^:allow-raw-sql [:inline "one"]
+                 "one"
                  param]
             nil]
     :postgres [:jsonb_path_exists
                [:cast :embedding_params :jsonb]
-               ^:allow-raw-sql [:inline "$.* ? (@ == $val)"]
-               [:jsonb_build_object ^:allow-raw-sql [:inline "val"] param]]))
+               (h2x/literal "$.* ? (@ == $val)")
+               [:jsonb_build_object "val" param]]))
 
 (def ^:private embedding-on [:= :enable_embedding [:inline true]])
 

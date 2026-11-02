@@ -34,6 +34,7 @@ disabled_ratchets=';; Kondo ignore ratchets apply only to master; this release b
 # divergent ratchets ratchets (on a pty)   none             finish without opening an editor
 # active ratchets    unrelated file        app.txt          leave the conflict for manual resolution
 # divergent ratchets ratchets + app.txt    app.txt          resolve only ratchets
+# active ratchets    test ratchets only    none             disable only the test ratchets file
 # release cut        ratchets              none             cut and backport commit the same opt-out
 # n/a                cut-release workflow  n/a              the workflow calls the shared writer
 # any                invalid commit        n/a              propagate the cherry-pick failure
@@ -155,29 +156,52 @@ test_mixed_conflict_resolves_only_ratchets() (
   assert_cherry_pick_pending
 )
 
+test_test_ratchets_only_backport_disables_only_that_file() (
+  local repo="$test_root/test-ratchet-only"
+  init_repo "$repo"
+  local commit
+  commit=$(feature_commit "$repo" change_test_ratchets)
+  git -C "$repo" checkout -q release
+
+  cd "$repo"
+  cherry_pick_backport "$commit"
+
+  assert_ratchets "$active_ratchets"
+  assert_test_ratchets_disabled
+  assert_cherry_pick_completed
+  assert_worktree_clean
+)
+
 test_release_cut_and_backport_commit_the_same_opt_out() (
   local cut_repo="$test_root/release-cut"
   init_repo "$cut_repo"
   cd "$cut_repo"
   git checkout -qb release-x.99.x
-  write_disabled_ratchets
-  git add --sparse .clj-kondo/ratchets.edn
+  write_disabled_ratchets .clj-kondo/ratchets.edn
+  write_disabled_ratchets .clj-kondo/ratchets-test.edn
+  git add --sparse .clj-kondo/ratchets.edn .clj-kondo/ratchets-test.edn
   git commit -q --allow-empty --no-verify -m "Cut release-x.99.x branch"
   git show HEAD:.clj-kondo/ratchets.edn > "$test_root/release-cut.edn"
+  git show HEAD:.clj-kondo/ratchets-test.edn > "$test_root/release-cut-test.edn"
 
   local backport_repo="$test_root/release-cut-backport"
   init_repo "$backport_repo"
   local commit
-  commit=$(feature_commit "$backport_repo" change_ratchets)
+  commit=$(feature_commit "$backport_repo" change_both_ratchets)
   git -C "$backport_repo" checkout -q release
   cd "$backport_repo"
   cherry_pick_backport "$commit"
   git show HEAD:.clj-kondo/ratchets.edn > "$test_root/backport.edn"
+  git show HEAD:.clj-kondo/ratchets-test.edn > "$test_root/backport-test.edn"
 
   cmp -s "$test_root/release-cut.edn" "$test_root/backport.edn" ||
-    fail "the release cut and the backport committed different opt-out files"
+    fail "the release cut and the backport committed different prod opt-out files"
+  cmp -s "$test_root/release-cut-test.edn" "$test_root/backport-test.edn" ||
+    fail "the release cut and the backport committed different test opt-out files"
   assert_eq "$disabled_ratchets" "$(cat "$test_root/release-cut.edn")" \
-    "the release cut did not install the expected opt-out"
+    "the release cut did not install the expected prod opt-out"
+  assert_eq "$disabled_ratchets" "$(cat "$test_root/release-cut-test.edn")" \
+    "the release cut did not install the expected test opt-out"
 )
 
 test_cut_release_workflow_uses_the_shared_writer() (
@@ -253,6 +277,14 @@ assert_ratchets_disabled() {
   assert_ratchets "$disabled_ratchets"
 }
 
+assert_test_ratchets() {
+  assert_eq "$1" "$(cat .clj-kondo/ratchets-test.edn)" "unexpected test-ratchet state"
+}
+
+assert_test_ratchets_disabled() {
+  assert_test_ratchets "$disabled_ratchets"
+}
+
 assert_cherry_pick_completed() {
   ! git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null || fail "the cherry-pick is still pending"
 }
@@ -285,6 +317,7 @@ init_repo() {
   printf 'base\n' > "$repo/app.txt"
   mkdir -p "$repo/.clj-kondo"
   printf '%s\n' "$active_ratchets" > "$repo/.clj-kondo/ratchets.edn"
+  printf '%s\n' "$active_ratchets" > "$repo/.clj-kondo/ratchets-test.edn"
   git -C "$repo" add .
   git -C "$repo" commit -qm "Base"
 }
@@ -317,6 +350,15 @@ change_ratchets() {
   printf '{:ignore-counts {:example 2}}\n' > "$1/.clj-kondo/ratchets.edn"
 }
 
+change_test_ratchets() {
+  printf '{:ignore-counts {:example 2}}\n' > "$1/.clj-kondo/ratchets-test.edn"
+}
+
+change_both_ratchets() {
+  change_ratchets "$1"
+  change_test_ratchets "$1"
+}
+
 change_app_and_ratchets() {
   change_app "$1"
   change_ratchets "$1"
@@ -335,9 +377,9 @@ change_release_app_and_ratchets() {
   change_release_ratchets "$1"
 }
 
-# Setup writes the opt-out through the shared writer; the only copy is the expected text at the top.
+# Setup writes the opt-out through the shared writer; the only copies are the expected text at the top.
 disable_release_ratchets() {
-  (cd "$1" && write_disabled_ratchets)
+  (cd "$1" && write_disabled_ratchets .clj-kondo/ratchets.edn && write_disabled_ratchets .clj-kondo/ratchets-test.edn)
 }
 
 commit_release_change() {
@@ -369,6 +411,7 @@ run_test "ratchet-only conflict is resolved"
 run_test "continuation never opens an editor"
 run_test "non-ratchet conflict remains manual"
 run_test "mixed conflict resolves only ratchets"
+run_test "test ratchets only backport disables only that file"
 run_test "release cut and backport commit the same opt-out"
 run_test "cut-release workflow uses the shared writer"
 run_test "invalid commit failure is propagated"

@@ -17,4 +17,7 @@
   :visibility :public
   :setter     :none
   :getter     driver.util/available-drivers-info
-  :doc        false)
+  :doc        false
+  ;; Large enough to dominate the settings payload and the inlined page JSON, and read only by the
+  ;; screens that pick or configure a database, so clients fetch it by key from `GET /api/setting/engines`.
+  :include-in-list? false)

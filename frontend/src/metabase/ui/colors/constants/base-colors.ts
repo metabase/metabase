@@ -8,8 +8,12 @@
 const baseColors = {
   white: "hsla(0, 0%, 100%, 1.00)",
   black: "hsla(0, 0%, 0%, 1.00)",
+  blackAlpha: {
+    10: "hsla(0, 0%, 0%, 0.10)",
+    35: "hsla(0, 0%, 0%, 0.35)",
+  },
+  transparent: "hsla(0, 0%, 100%, 0)",
   gold: "hsla(50.6, 100%, 50%, 1)",
-  upsellGem: "hsla(190, 100%, 50%, 1)",
 
   // Brand colors (dynamic based on --mb-color-core-brand). Expanded to roughly match the values in the new color palette (but these should be reworked).
   brand: {
@@ -112,7 +116,7 @@ const baseColors = {
     50: "hsla(204, 66%, 8%, 0.51)",
     40: "hsla(204, 66%, 8%, 0.44)",
     30: "hsla(204, 66%, 8%, 0.29)",
-    20: "hsla(204, 66%, 8%, 0.17)",
+    20: "hsla(204, 66%, 8%, 0.14)",
     10: "hsla(204, 66%, 8%, 0.05)",
     5: "hsla(204, 66%, 8%, 0.02)",
   },
@@ -154,6 +158,16 @@ const baseColors = {
     20: "hsla(2, 67%, 90%, 1)",
     10: "hsla(0, 76%, 97%, 1)",
     5: "hsla(0, 100%, 99%, 1)",
+  },
+
+  // Lobster Alpha
+  lobsterAlpha: {
+    50: "hsla(358, 71%, 54%, 0.82)",
+    40: "hsla(358, 71%, 54%, 0.69)",
+    30: "hsla(358, 71%, 54%, 0.45)",
+    20: "hsla(358, 71%, 54%, 0.21)",
+    10: "hsla(358, 71%, 54%, 0.07)",
+    5: "hsla(358, 71%, 54%, 0.03)",
   },
 
   // Flamingo
@@ -201,7 +215,18 @@ const baseColors = {
     5: "hsla(45, 100%, 96%, 1)",
   },
 
+  dubloonAlpha: {
+    40: "hsla(44, 100%, 44%, 0.78)",
+    30: "hsla(46, 100%, 49%, 0.51)",
+  },
+
   // Palm
+  palmAlpha: {
+    30: "hsla(90, 100%, 31%, 0.57)",
+    20: "hsla(90, 100%, 34%, 0.29)",
+    10: "hsla(90, 100%, 41%, 0.13)",
+  },
+
   palm: {
     100: "hsla(94, 85%, 5%, 1)",
     90: "hsla(92, 62%, 10%, 1)",

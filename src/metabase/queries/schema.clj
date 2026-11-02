@@ -4,10 +4,12 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.query-permissions.schema :as query-permissions.schema]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -257,6 +259,11 @@
   [:map {:closed true}
    [:join_step {:optional true} [:maybe :int]]])
 
+(mr/def ::query-execution.sandbox-details
+  "The `:sandbox_details` column of a QueryExecution, decoded: one entry per sandbox (row-level restriction) applied
+  to the execution. Built by the enterprise sandboxing middleware."
+  [:sequential [:ref ::lib.schema/sandboxing.details.entry]])
+
 (mr/def ::query-execution
   "A QueryExecution as selected from the app DB: every column of `:query_execution`, plus `:row_count` added by the model's after-select hook."
   [:merge
@@ -302,7 +309,8 @@
    [:sanitized_user_agent        {:optional true} [:maybe :string]]
    [:embedding_route             {:optional true} [:maybe :string]]
    [:metabase_version            {:optional true} [:maybe :string]]
-   [:embedding_client_identifier {:optional true} [:maybe :string]]])
+   [:embedding_client_identifier {:optional true} [:maybe :string]]
+   [:sandbox_details             {:optional true} [:maybe ::query-execution.sandbox-details]]])
 
 (mr/def ::query-table
   "A QueryTable as selected from the app DB: every column of `:query_table`."
@@ -327,6 +335,9 @@
   "The `:data_access_token` column of a StoredResult, decoded."
   ::permissions.schema/data-access-token)
 
+(mr/def ::stored-result.resolved-source-ids
+  ::query-permissions.schema/resolved-source-ids)
+
 (mr/def ::stored-result
   "A StoredResult as selected from the app DB: every column of `:stored_result`."
   [:merge
@@ -337,14 +348,15 @@
 (mr/def ::stored-result.update
   "What an update (or insert) of a StoredResult accepts: every column of `:stored_result` except `id`, all optional."
   [:map {:closed true}
-   [:result_data       {:optional true} [:maybe [:or bytes? :string]]]
-   [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
-   [:database_id       {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query     {:optional true} [:maybe ::stored-result.dataset-query]]
-   [:data_access_token {:optional true} [:maybe ::stored-result.data-access-token]]
-   [:row_count         {:optional true} [:maybe :int]]
-   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])
+   [:result_data         {:optional true} [:maybe [:or bytes? :string]]]
+   [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
+   [:database_id         {:optional true} [:maybe ::lib.schema.id/database]]
+   [:dataset_query       {:optional true} [:maybe ::stored-result.dataset-query]]
+   [:data_access_token   {:optional true} [:maybe ::stored-result.data-access-token]]
+   [:resolved_source_ids {:optional true} [:maybe ::stored-result.resolved-source-ids]]
+   [:row_count           {:optional true} [:maybe :int]]
+   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::stored-result-use
   "A StoredResultUse as selected from the app DB: every column of `:stored_result_use`."

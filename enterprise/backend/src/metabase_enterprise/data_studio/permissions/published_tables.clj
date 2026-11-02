@@ -38,22 +38,6 @@
   (when (:is_published table)
     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection (:collection_id table) :read))))
 
-(defenterprise published-table-visible-clause
-  "Returns a HoneySQL clause matching published tables that are readable via collection permissions."
-  :feature :library
-  [table-id-column {:keys [user-id is-superuser?]}]
-  [:in table-id-column
-   ^:allow-subquery
-   {:select [:id]
-    :from   [(warehouse-schema-overlay/table-query)]
-    :where  [:and
-             [:= :is_published true]
-             (collection/visible-collection-filter-clause
-              :collection_id
-              {}
-              {:current-user-id user-id
-               :is-superuser?   is-superuser?})]}])
-
 (defenterprise published-table-perm-grant-rows
   "Returns a HoneySQL SELECT producing (id, perm_type, perm_value) rows for tables that are
   published into a collection the user can read. The grant supplies `:perms/create-queries

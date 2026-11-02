@@ -42,6 +42,16 @@
   [s]
   (like-pattern (u/lower-case-en s) #(str % "%")))
 
+(defn assert-map-or-nil!
+  "`honeysql`, a Honey SQL query or conditions map (or nil), to pass to a Toucan 2 call such as `t2/select` after the
+  model. Throws for anything else.
+
+  The `:metabase/t2-implicit-pk` linter accepts a call to this where it would otherwise ask for `:id`."
+  [honeysql]
+  (when-not (or (nil? honeysql) (map? honeysql))
+    (throw (ex-info "Expected a Honey SQL map" {:value honeysql})))
+  honeysql)
+
 ;;; `[:inline <clojure.lang.Ratio>] should emit something wrapped in parens. Because otherwise the result could be
 ;;; something unintended. e.g.
 ;;;
@@ -97,6 +107,24 @@
   ;; make sure no one tries to be sneaky and pass some sort of malicious unit in.
   {:pre [(some-fn keyword? string?) (re-matches #"^[a-zA-Z0-9]+$" (name unit))]}
   [::extract unit expr])
+
+;; register the `::timestampdiff` function with HoneySQL. MySQL's `TIMESTAMPDIFF` takes its unit as a bare keyword, which
+;; no plain Honey SQL form produces short of `:raw` -- a keyword unit comes out as a quoted identifier, `` `microsecond` ``.
+;; Funny SQL ([[metabase.funnysql.core]]) compiles this form to the same SQL.
+(defn- format-timestampdiff
+  "(sql/format-expr [::timestampdiff :microsecond :a :b])
+   => [\"timestampdiff(microsecond, a, b)\"]"
+  [_tag [unit x y]]
+  (when-not (and ((some-fn keyword? string?) unit)
+                 (re-matches #"^[a-zA-Z0-9]+$" (name unit)))
+    (throw (ex-info "Invalid unit" {:unit unit})))
+  (let [[x-sql & x-args] (sql/format-expr x {:nested true})
+        [y-sql & y-args] (sql/format-expr y {:nested true})]
+    (into [(clojure.core/format "timestampdiff(%s, %s, %s)" (name unit) x-sql y-sql)]
+          cat
+          [x-args y-args])))
+
+(sql/register-fn! ::timestampdiff #'format-timestampdiff)
 
 ;; register the function `::distinct-count` with HoneySQL
 (defn- format-distinct-count
@@ -419,23 +447,76 @@
    [:fn {:error/message "::h2x/typed Honey SQL form"} typed?]
    [:sequential [:or [:ref ::honeysql-expr] ::honeysql-clause-opts]]])
 
-(def ^:private raw-cast-type-name-re
-  #"(?i)[a-z][a-z0-9_ ]*(?:\(\d+(?:, ?\d+)?\))?")
+(def ^:private raw-type-name-regex
+  "The shape of a plain SQL type name, from the grammar the supported engines report their types in:
+
+      type   ::= word ((' ')+ word | args)*     `double precision`, `TIMESTAMP(6) WITH TIME ZONE`
+      args   ::= '(' arg (',' arg)* ')'         `varchar(10)`, `Decimal(38, 19)`, `Map(String, Int32)`
+      arg    ::= type | number | quoted         `Nullable(DateTime64(3, 'GMT0'))`
+      word   ::= letter (letter | digit | '_')*
+      quoted ::= a single-quoted run holding no quote, backslash or line break
+      suffix ::= '[]'*                          `int[]`, `varchar(50)[]`
+
+  The pattern is built from the innermost type outwards, each turn letting a type take the previous one as an
+  argument; the innermost takes none, which bounds arguments at four deep. That covers what a warehouse reports
+  (`Array(Nullable(Tuple(String, Int32)))` is three); anything deeper is quoted as an identifier rather than
+  spliced.
+
+  A quoted argument is how a type carries a name it cannot spell as a token — the timezone of
+  `DateTime64(3, 'GMT0')`, which ClickHouse reports for an ordinary timestamp column and accepts back as a cast
+  target. Its content is a string to the engine, so nothing in it can end the expression the type sits in, so long
+  as the engine and this pattern agree on where it ends: a backslash is out because ClickHouse and MySQL read `\\'`
+  as a quote in the string rather than as its end, and the two readings would then part company over which
+  parentheses are structural."
+  (let [word   "[A-Za-z][A-Za-z0-9_]*"
+        number "[0-9]+"
+        quoted "'[^'\\\\\\n]*'"]
+    (re-pattern
+     (str (reduce (fn [type _]
+                    (let [arg  (str "(?:" type "|" number "|" quoted ")")
+                          args (str "\\(" arg "(?: *, *" arg ")*\\)")]
+                      (str word "(?:(?: +" word ")|" args ")*")))
+                  word
+                  (range 4))
+          "(?:\\[\\])*"))))
 
 (defn raw-type-name?
-  "Whether `sql-type` is a plain SQL type name — letters, digits, underscores, and spaces with an optional precision
-  suffix, e.g. `varchar(10)` or `double precision` — and is therefore safe to splice into SQL unquoted. Cast targets
-  that don't match (e.g. a `database-type` coming from field metadata) must be quoted as identifiers or rejected
-  instead of being emitted raw."
+  "Whether `sql-type` is a plain SQL type name — the shape [[raw-type-name-regex]] spells out — and is therefore safe
+  to splice into SQL unquoted.
+
+  Nothing a name of that shape holds can end the expression it is spliced into: it is words, arguments in balanced
+  parentheses, and an array suffix, so it carries no semicolon, dot or comment marker, no parenthesis that closes
+  one it did not open, and no comma or quote outside an argument list. Postgres, for one, emits `(…)::«type»` in a
+  select list, where `text, (SELECT secret FROM users)` would add a column. Cast targets that don't match (e.g. a
+  `database-type` coming from field metadata) must be quoted as identifiers or rejected instead of being emitted
+  raw."
   [sql-type]
-  (boolean (re-matches raw-cast-type-name-re (name sql-type))))
+  (boolean (re-matches raw-type-name-regex (name sql-type))))
+
+(defn- format-raw-type-name
+  "Emit a [[raw-type-name?]] type name as the SQL it names: unquoted, and with its spelling preserved exactly as the
+  engine reported it.
+
+  A type name needs its own form because neither shape Honey SQL splices on its own is the name we were given. A
+  string in the type position of `:cast` becomes a `?` parameter, which is not a type at all, so the engine rejects
+  the statement. A keyword goes through `honey.sql/sql-kw`, which upper-cases it and drops everything before a `/` --
+  so `timestamp` becomes `TIMESTAMP`, and ClickHouse's `DateTime64(3, 'America/New_York')` loses its timezone."
+  [_fn [sql-type]]
+  (let [type-name (name sql-type)]
+    ;; [[cast]] checks this before building the form; check it again here so the guarantee holds for anyone who writes
+    ;; the form directly, and so nothing unvalidated can reach the SQL through this path.
+    (when-not (raw-type-name? type-name)
+      (throw (ex-info "Invalid SQL type name" {:type type-name})))
+    [type-name]))
+
+(sql/register-fn! ::raw-type-name #'format-raw-type-name)
 
 (mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [sql-type :- ms/KeywordOrString
    expr     :- ::honeysql-expr]
   (-> (if (raw-type-name? sql-type)
-        [:cast expr ^:allow-raw-sql [:raw (name sql-type)]]
+        [:cast expr [::raw-type-name (name sql-type)]]
         [:cast expr (identifier :type-name (name sql-type))])
       (with-database-type-info sql-type)))
 
@@ -670,7 +751,7 @@
 
 (defmethod calculate-interval-honeysql-form :mysql
   [_db-type end-form start-form]
-  [:timestampdiff ^:allow-raw-sql [:raw "MICROSECOND"] start-form end-form])
+  [::timestampdiff :microsecond start-form end-form])
 
 (defmethod calculate-interval-honeysql-form :h2
   [_db-type end-form start-form]

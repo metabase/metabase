@@ -133,7 +133,6 @@ export const EmbedQuestionSettingsSidebar = ({
             <Menu position="bottom-start">
               <Menu.Target>
                 <Button
-                  variant="default"
                   disabled={!selectedElem}
                   rightSection={<Icon ml="xxs" size={10} name="chevrondown" />}
                   leftSection={
@@ -197,12 +196,7 @@ export const EmbedQuestionSettingsSidebar = ({
             </Menu>
           </Group>
 
-          <ActionIcon
-            mt="1rem"
-            mr="1rem"
-            color="text-primary"
-            onClick={handleDone}
-          >
+          <ActionIcon variant="subtle" mt="1rem" mr="1rem" onClick={handleDone}>
             <Icon name="close" />
           </ActionIcon>
         </Group>

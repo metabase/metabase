@@ -32,8 +32,10 @@
                                                                 :pulses      legacy-pulse
                                                                 :instanceURL (urls/site-url)})})))))
 
-(task/defjob ^{:doc "Send email to admins and warn about removal of Pulse in 49, This job will only run once."}
-  EmailRemoveLegacyPulse [_ctx]
+(task/defjob EmailRemoveLegacyPulse
+  "Send email to admins and warn about removal of Pulse in 49, This job will only run once."
+  {:saved-class "metabase.pulse.task.email_remove_legacy_pulse.EmailRemoveLegacyPulse"}
+  [_ctx]
   (email-remove-legacy-pulse))
 
 (defmethod task/init! ::SendWarnPulseRemovalEmail [_job-name]

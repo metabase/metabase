@@ -28,11 +28,23 @@
 ;; Snippet events are derived in the the ...models.native-query-snippet interface
 ;; with some indirection
 
+;; Glossary events
+(events/derive! ::glossary-event :metabase/event)
+(events/derive! :event/glossary-create ::glossary-event)
+(events/derive! :event/glossary-update ::glossary-event)
+(events/derive! :event/glossary-delete ::glossary-event)
+
 ;; Transform Tag events
 (events/derive! ::transform-tag-event :metabase/event)
 (events/derive! :event/transform-tag-create ::transform-tag-event)
 (events/derive! :event/transform-tag-update ::transform-tag-event)
 (events/derive! :event/transform-tag-delete ::transform-tag-event)
+
+;; Transform Test events
+(events/derive! ::transform-test-event :metabase/event)
+(events/derive! :event/transform-test-create ::transform-test-event)
+(events/derive! :event/transform-test-update ::transform-test-event)
+(events/derive! :event/transform-test-delete ::transform-test-event)
 
 ;; Transform Run events
 (events/derive! ::transform-run-event :metabase/event)

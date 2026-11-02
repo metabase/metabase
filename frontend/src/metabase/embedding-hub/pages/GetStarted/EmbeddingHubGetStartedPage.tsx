@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
+import { EmbeddingHubUpsellBanner } from "metabase/embedding-hub/components/EmbeddingHubUpsellBanner";
 import {
   useCompletedSetupGuideSteps,
   useSetupGuideModals,
@@ -13,11 +14,10 @@ import type {
   SetupGuideModalToTrigger,
   SetupGuideStepId,
 } from "metabase/embedding/setup-guide/types/setup-guide";
-import { EmbeddingHubUpsellBanner } from "metabase/embedding-hub/components/EmbeddingHubUpsellBanner";
+import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
 import { getUrlWithUtm } from "metabase/selectors/settings";
 import {
   Box,
@@ -73,7 +73,7 @@ export function EmbeddingHubGetStartedPage() {
 
   const openEmbedModal = useCallback(
     (initialState: SdkIframeEmbedSetupModalInitialState) => {
-      dispatch(setOpenModalWithProps({ id: "embed", props: { initialState } }));
+      dispatch(openEmbedJsWizard(initialState));
     },
     [dispatch],
   );
@@ -421,7 +421,7 @@ function UsefulLink({
       className={S.interactiveCard}
     >
       <Group gap="sm" wrap="nowrap">
-        <FixedSizeIcon name={icon} size={16} c="brand" />
+        <FixedSizeIcon name={icon} size={16} c="core-brand" />
         <Text fz="md" c="text-primary">
           {label}
         </Text>

@@ -10,6 +10,7 @@ import {
   getBlockedReason,
   getCollectionPathSegments,
   getListedRequiredSyncs,
+  getProgressPhaseLabel,
   getRequiredSyncRow,
   isTableChildModel,
 } from "./utils";
@@ -201,9 +202,35 @@ describe("remote_sync utils", () => {
     });
   });
 
+  describe("getProgressPhaseLabel", () => {
+    it("maps import progress onto the backend checkpoints", () => {
+      expect(getProgressPhaseLabel(0, "import")).toBe("preparing");
+      expect(getProgressPhaseLabel(0.049, "import")).toBe("preparing");
+      expect(getProgressPhaseLabel(0.05, "import")).toBe("importing content");
+      expect(getProgressPhaseLabel(0.69, "import")).toBe("importing content");
+      expect(getProgressPhaseLabel(0.7, "import")).toBe("recording sync state");
+      expect(getProgressPhaseLabel(0.89, "import")).toBe(
+        "recording sync state",
+      );
+      expect(getProgressPhaseLabel(0.9, "import")).toBe("finishing");
+      expect(getProgressPhaseLabel(1, "import")).toBe("finishing");
+    });
+
+    it("maps export progress onto the plan, serialize and push phases", () => {
+      expect(getProgressPhaseLabel(0, "export")).toBe("preparing");
+      expect(getProgressPhaseLabel(0.33, "export")).toBe("exporting content");
+      expect(getProgressPhaseLabel(0.66, "export")).toBe("pushing");
+      expect(getProgressPhaseLabel(1, "export")).toBe("pushing");
+    });
+  });
+
   describe("isTableChildModel", () => {
-    it("should return true for field model", () => {
-      expect(isTableChildModel("field")).toBe(true);
+    it("should return true for field user settings model", () => {
+      expect(isTableChildModel("fieldusersettings")).toBe(true);
+    });
+
+    it("should return true for dimension model", () => {
+      expect(isTableChildModel("dimension")).toBe(true);
     });
 
     it("should return true for segment model", () => {
@@ -218,8 +245,8 @@ describe("remote_sync utils", () => {
       expect(isTableChildModel("card")).toBe(false);
     });
 
-    it("should return false for table model", () => {
-      expect(isTableChildModel("table")).toBe(false);
+    it("should return false for table user settings model", () => {
+      expect(isTableChildModel("tableusersettings")).toBe(false);
     });
 
     it("should return false for dashboard model", () => {

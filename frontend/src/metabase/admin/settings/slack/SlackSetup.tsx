@@ -87,7 +87,8 @@ const SlackConnectionStatus = ({
         </Flex>
 
         <Button
-          c="feedback-negative"
+          variant="light"
+          color="negative"
           onClick={handleOpen}
         >{t`Disconnect`}</Button>
       </Flex>

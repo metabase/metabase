@@ -4,6 +4,7 @@ import type {
   CustomVizPluginId,
   DatabaseId,
   FieldId,
+  GroupId,
   SchemaName,
   SegmentId,
   TableId,
@@ -56,6 +57,10 @@ export function unsubscribeUser(user: Pick<BaseUser, "id" | "tenant_id">) {
     : `${getTenantsBasePath()}/people/${user.id}/unsubscribe`;
 }
 
+export function adminGroup(groupId: GroupId) {
+  return `/admin/people/groups/${groupId}`;
+}
+
 // TODO: move to EE urls
 
 export function newDatabase() {
@@ -76,10 +81,6 @@ export function editDatabase(databaseId: DatabaseId) {
 
 export function editDatabaseWritableConnection(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/write-data`;
-}
-
-export function editDatabaseAdminConnection(databaseId: DatabaseId) {
-  return `/admin/databases/${databaseId}/admin`;
 }
 
 type DataModelParams = {
@@ -144,8 +145,11 @@ export function dataModelSegmentRevisions(segmentId: SegmentId) {
   return `${dataModelSegment(segmentId)}/revisions`;
 }
 
+/** Default `/admin/settings` page. The index route redirects here. */
+export const SETTINGS_INDEX_SLUG = "general";
+
 export function generalSettings() {
-  return "/admin/settings/general";
+  return `/admin/settings/${SETTINGS_INDEX_SLUG}`;
 }
 
 export function domainsSettings() {

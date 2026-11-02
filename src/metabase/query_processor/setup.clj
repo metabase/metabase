@@ -151,13 +151,12 @@
 
       :else
       ;; `:database` here is whatever the user submitted, so a destination at this point is a direct
-      ;; request to query one; reject it before building a provider. Legitimate routing never passes
+      ;; request to query one; reject it before running anything. Legitimate routing never passes
       ;; through this branch: when a router query is routed to a destination, that swap happens later,
       ;; in the execution middleware, binding its own metadata provider.
-      (do
-        (database-routing/check-allowed-access! (:database query))
-        (qp.store/with-metadata-provider (:database query)
-          (f (maybe-attach-metadata-provider-to-query query)))))))
+      (qp.store/with-metadata-provider (:database query)
+        (database-routing/check-allowed-access! (lib.metadata/database (qp.store/metadata-provider)))
+        (f (maybe-attach-metadata-provider-to-query query))))))
 
 (mu/defn- do-with-driver :- fn?
   [f :- fn?]
@@ -273,6 +272,7 @@
    #'do-with-resolved-database])
 ;;; ↑↑↑ SETUP MIDDLEWARE ↑↑↑ happens from BOTTOM to TOP e.g. [[do-with-resolved-database]] is the first to do its thing
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *has-setup*
   "This is here so we can skip calling the setup middleware if it's already done. Not super important, since the setup
   middleware should all no-op, but it keeps the stacktraces tidier so we do not have a bunch of calls that don't do

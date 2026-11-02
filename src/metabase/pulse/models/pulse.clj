@@ -39,6 +39,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Pulse [_model] :pulse)
@@ -85,6 +87,7 @@
       (collection/check-allowed-content :model/Pulse (:collection_id notification))
       (collection/check-collection-namespace :model/Pulse (:collection_id notification)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-moving-dashboard-subscriptions*
   "If true, allows the collection_id on a dashboard subscription to be modified. This should
   only be done when the associated dashboard is being moved to a new collection."
@@ -305,6 +308,7 @@
    :id
    {:default []}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-hydrate-archived-cards*
   "By default the :cards hydration method only return active cards,
   but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."

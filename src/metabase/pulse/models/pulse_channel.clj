@@ -140,6 +140,7 @@
                                  {:email email})
                                (get pcid->recipients (:id pc))))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *archive-parent-pulse-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
   in [[update-notification-channels!]] which creates/deletes/updates several channels sequentially."

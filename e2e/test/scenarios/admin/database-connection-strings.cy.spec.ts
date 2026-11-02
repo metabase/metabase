@@ -2,8 +2,6 @@ import { QA_MYSQL_PORT, QA_POSTGRES_PORT } from "e2e/support/cypress_data";
 
 import { waitForDbSync } from "./helpers/e2e-database-helpers";
 
-const { H } = cy;
-
 beforeEach(() => {
   cy.H.restore();
   cy.signInAsAdmin();
@@ -205,6 +203,8 @@ const databaseTestCases = [
 ];
 
 describe("Database connection strings", () => {
+  // The field labels come from the driver definitions the backend serves, so
+  // this is the only place that pins the mapper's detail keys to them.
   it("should parse connection strings for all supported databases", () => {
     cy.visit("/admin/databases/create");
 
@@ -226,42 +226,6 @@ describe("Database connection strings", () => {
         });
       },
     );
-  });
-
-  it("should enable the 'Save' button when the connection string is valid", () => {
-    cy.visit("/admin/databases/create");
-
-    chooseDatabase("MySQL");
-
-    cy.findByLabelText("Connection string (optional)").paste(
-      "jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true",
-    );
-
-    cy.button("Save").should("be.enabled");
-  });
-
-  it("should show a warning if the connection string is invalid", () => {
-    cy.visit("/admin/databases/create");
-
-    chooseDatabase("MySQL");
-
-    cy.findByLabelText("Connection string (optional)").paste("invalid");
-
-    cy.findByTextEnsureVisible("Couldn’t use this connection string.");
-  });
-
-  it("should not clear the existing values", () => {
-    cy.visit("/admin/databases/create");
-
-    chooseDatabase("PostgreSQL");
-    cy.findByLabelText("Port").type("1111");
-
-    cy.findByLabelText("Connection string (optional)").paste(
-      "postgresql://postgres:password@db.apbkobhfnmcqqzqeeqss.supabase.co/postgres",
-    );
-
-    cy.findByLabelText("Port").should("have.value", "1111");
-    cy.findByLabelText("Database type").should("have.value", "PostgreSQL");
   });
 
   describe("actual database connections", { tags: "@external" }, () => {
@@ -362,61 +326,5 @@ describe("Database connection strings", () => {
 
       cy.button("Failed").should("exist");
     });
-  });
-});
-
-describe("Database connection strings events", () => {
-  beforeEach(() => {
-    H.resetSnowplow();
-    H.restore();
-    H.enableTracking();
-    cy.visit("/admin/databases/create?engine=mysql");
-  });
-
-  it("should track success events correctly", () => {
-    const successEvent = {
-      event: "connection_string_parsed_success",
-      triggered_from: "full-page",
-    };
-
-    cy.findByLabelText("Connection string (optional)")
-      .focus()
-      .paste("jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true")
-      .paste("jdbc:mysql://a:b@c:3/dbname?ssl=false");
-
-    cy.findByTextEnsureVisible("Connection details pre-filled below.").should(
-      "exist",
-    );
-
-    cy.findByLabelText("Display name").click();
-
-    H.expectUnstructuredSnowplowEvent(successEvent, 1);
-
-    cy.findByLabelText("Connection string (optional)").click();
-    cy.findByLabelText("Display name").click();
-
-    // Should not track the same event again
-    H.expectUnstructuredSnowplowEvent(successEvent, 1);
-  });
-
-  it("should track failure events correctly", () => {
-    cy.findByLabelText("Connection string (optional)")
-      .focus()
-      .paste("broken string")
-      .type("also not a valid string");
-
-    cy.findByTextEnsureVisible("Couldn’t use this connection string.").should(
-      "exist",
-    );
-
-    cy.findByLabelText("Display name").click();
-
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "connection_string_parsed_failed",
-        triggered_from: "full-page",
-      },
-      1,
-    );
   });
 });

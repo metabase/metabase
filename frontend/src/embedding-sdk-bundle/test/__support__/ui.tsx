@@ -2,10 +2,14 @@ import { render } from "@testing-library/react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import { seedApiQueryCache } from "__support__/state";
-import { type StoreSeedState, createMockState } from "__support__/state";
+import {
+  type StoreSeedState,
+  createMockState,
+  seedApiQueryCache,
+} from "__support__/state";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
+import { sdkListenerMiddleware } from "embedding-sdk-bundle/store/listener-middleware";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
@@ -52,7 +56,7 @@ export function renderWithSDKProviders(
   // Without this, SDK components will not render due to missing token features and settings.
   if (!storeInitialState.settings && seededSettings) {
     seededSettings.values["token-features"].embedding_sdk = true;
-    seededSettings.values["enable-embedding-modular"] = true;
+    seededSettings.values["enable-embedding-sdk"] = true;
   }
 
   if (seededSettings?.values) {
@@ -67,7 +71,8 @@ export function renderWithSDKProviders(
     };
   }
 
-  const storeMiddleware = _.compact([Api.middleware]);
+  // Same middleware as the real SDK store
+  const storeMiddleware = [Api.middleware, sdkListenerMiddleware.middleware];
 
   // Unjustified type cast. FIXME
   const store = getStore(

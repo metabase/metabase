@@ -131,8 +131,9 @@
   "A 200 'error' response from HM. nb: if you change this, change it in test_resources/gsheets/mock_hm_responses.edn"
   "e8653c8d-4d86-4ebc-92a3-0468252b9d07")
 
-(defmacro with-sample-db-as-dwh [& body]
+(defmacro with-sample-db-as-dwh
   "We need an attached dwh for these tests, so let's have the sample db fill in for us:"
+  [& body]
   (let [db-sym (gensym "db-")]
     `(mt/with-temp [:model/Database ~db-sym {:is_attached_dwh true}]
        ~@body)))

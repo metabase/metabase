@@ -40,6 +40,7 @@ import {
   isHistoryEnabledProfile,
 } from "../constants";
 import { PLUGIN_METABOT_SLASH_COMMANDS } from "../plugins";
+import { isReasoningVisible } from "../utils/reasoning-visibility";
 
 import { metabot } from "./reducer";
 import {
@@ -64,7 +65,11 @@ import type {
   MetabotUserChatMessage,
   SlashCommand,
 } from "./types";
-import { createMessageId, parseSlashCommand } from "./utils";
+import {
+  createMessageId,
+  getServerErrorDisplay,
+  parseSlashCommand,
+} from "./utils";
 
 export const {
   addAgentTextDelta,
@@ -415,14 +420,28 @@ export const submitInput = createAsyncThunk<
       const result = await sendMessageRequestPromise;
 
       if (isRejected(result)) {
+        const metabotName = getSetting(getState(), "metabot-name");
         return {
           prompt: rawPrompt,
           success: false,
           shouldRetry: result.payload?.shouldRetry ?? true,
-          error:
-            result.payload?.type === "error"
-              ? result.payload.display
-              : undefined,
+          error: match(result)
+            .returnType<MetabotAgentTurnDisplayError | undefined>()
+            .with(
+              P.union(
+                { payload: { type: "abort" } },
+                { meta: { aborted: true } },
+              ),
+              () => ({
+                type: "aborted",
+                message: t`Response from ${metabotName} was interrupted`,
+              }),
+            )
+            .with(
+              { payload: { type: "error" } },
+              ({ payload }) => payload.display,
+            )
+            .otherwise(() => undefined),
         };
       }
 
@@ -506,6 +525,7 @@ export const sendAgentRequest = createAsyncThunk<
           sourceId: conversationId,
         },
         {
+          shouldPaceReasoning: () => isReasoningVisible(conversationId),
           onDataPart: function handleDataPart(part) {
             const pushDataPart = (
               message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
@@ -544,9 +564,9 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "data-generated_entity" }, (part) => {
-                // TODO: always push, but let the surface render and/or navigate on its own
+                pushDataPart({ type: "data_part", part });
+
                 if (isFullPageMetabot) {
-                  pushDataPart({ type: "data_part", part });
                   return;
                 }
 
@@ -556,7 +576,6 @@ export const sendAgentRequest = createAsyncThunk<
                   if (part.data.type === "card") {
                     dispatch(setNavigateToPath(path));
                   }
-                  pushDataPart({ type: "data_part", part });
                   return;
                 }
 
@@ -704,13 +723,7 @@ export const sendAgentRequest = createAsyncThunk<
           shouldRetry: true,
           serverStarted,
           error: streamedError,
-          display: isMatching(
-            { type: "ai_usage_limit_reached", message: P.string },
-            streamedError,
-          )
-            ? // special case where we want to show the returned error from the backend
-              { type: "message" as const, message: streamedError.message }
-            : undefined,
+          display: getServerErrorDisplay(streamedError),
         });
       }
 
@@ -748,6 +761,9 @@ export const sendAgentRequest = createAsyncThunk<
         error,
         getSetting(getState(), "metabot-name"),
       );
+      if (handled.error.type === "unknown") {
+        console.error(error);
+      }
       return rejectWithValue({
         type: "error" as const,
         conversation_id: request.conversation_id,
@@ -904,8 +920,7 @@ export const fetchConversationSnapshot = createAsyncThunk(
     if (error || !detail) {
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
           message: t`Sorry, we couldn't load that conversation.`,
         }),
       );

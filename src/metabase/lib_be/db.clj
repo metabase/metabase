@@ -5,18 +5,19 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (mu/defn card-database-ids
-  "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
+  "The `:id` and `:database_id` of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :database_id :card_schema] :id [:in card-ids]))
+  (t2/select [:model/Card :id :database_id] :id [:in card-ids]))
 
 (mu/defn database
   "The `:metadata/database` with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :metadata/database database-id))
+  (t2/select-one :metadata/database :id database-id))
 
 ;;; ----------------------------------------------- Lib metadata -----------------------------------------------
 ;;;
@@ -129,46 +130,48 @@
   "The `:metadata/table` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (t2/select :metadata/table (metadata-where :metadata/table database-id metadata-spec)))
+  (t2/select :metadata/table (h2x/assert-map-or-nil! (metadata-where :metadata/table database-id metadata-spec))))
 
 (mu/defn columns
   "The `:metadata/column` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (t2/select :metadata/column (metadata-where :metadata/column database-id metadata-spec)))
+  (t2/select :metadata/column (h2x/assert-map-or-nil! (metadata-where :metadata/column database-id metadata-spec))))
 
 (mu/defn cards
   "The `:metadata/card` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (t2/select :metadata/card (metadata-where :metadata/card database-id metadata-spec)))
+  (t2/select :metadata/card (h2x/assert-map-or-nil! (metadata-where :metadata/card database-id metadata-spec))))
 
 (mu/defn metrics
   "The `:metadata/metric` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (t2/select :metadata/metric (metadata-where :metadata/metric database-id metadata-spec)))
+  (t2/select :metadata/metric (h2x/assert-map-or-nil! (metadata-where :metadata/metric database-id metadata-spec))))
 
 (mu/defn segments
   "The `:metadata/segment` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (t2/select :metadata/segment (metadata-where :metadata/segment database-id metadata-spec)))
+  (t2/select :metadata/segment (h2x/assert-map-or-nil! (metadata-where :metadata/segment database-id metadata-spec))))
 
 (mu/defn measures
   "The `:metadata/measure` rows for `database-id` picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (t2/select :metadata/measure (metadata-where :metadata/measure database-id metadata-spec)))
+  (t2/select :metadata/measure (h2x/assert-map-or-nil! (metadata-where :metadata/measure database-id metadata-spec))))
 
 (mu/defn native-query-snippets
   "The `:metadata/native-query-snippet` rows picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (t2/select :metadata/native-query-snippet (metadata-where :metadata/native-query-snippet database-id metadata-spec)))
+  (t2/select :metadata/native-query-snippet
+             (h2x/assert-map-or-nil! (metadata-where :metadata/native-query-snippet database-id metadata-spec))))
 
 (mu/defn transforms
   "The `:metadata/transform` rows picked out by `metadata-spec`."
   [database-id   :- ::lib.schema.id/database
    metadata-spec :- ::lib.metadata.protocols/metadata-spec]
-  (t2/select :metadata/transform (metadata-where :metadata/transform database-id metadata-spec)))
+  (t2/select :metadata/transform
+             (h2x/assert-map-or-nil! (metadata-where :metadata/transform database-id metadata-spec))))

@@ -5,11 +5,4 @@ table_id:
 - PUBLIC
 - events
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: events
-  model: Table
-- id: event_ts
-  model: Field
+- model: Field

@@ -70,7 +70,6 @@ export const DatasetEditorSettingsSidebar = ({
           />
           {display === "list" && (
             <Button
-              variant="default"
               onClick={() =>
                 dispatch(
                   setUIControls({ isShowingListViewConfiguration: true }),

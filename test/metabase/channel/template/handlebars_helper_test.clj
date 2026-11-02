@@ -52,6 +52,13 @@
     (testing "argument can be a datetime object"
       (is (= "30-01-00" (format-date (t/instant "2000-01-30T00:00:00Z")))))))
 
+(deftest mailto-url-test
+  (let [mailto-url #(handlebars/render-string "{{{mailto-url email}}}" {:email %})]
+    (testing "ordinary addresses are unchanged"
+      (is (= "mailto:first.last+tag@corp.com" (mailto-url "first.last+tag@corp.com"))))
+    (testing "only `%`, `?` and `#` are percent-encoded"
+      (is (= "mailto:a%25b%3Fcc=c%23d&e@corp.com" (mailto-url "a%b?cc=c#d&e@corp.com"))))))
+
 (deftest now-test
   (mt/with-clock #t "2019-12-10T00:00-08:00[US/Pacific]"
     (is (= "2019-12-10T08:00:00Z" (handlebars/render-string "{{now}}" {})))))

@@ -1,0 +1,120 @@
+## Adds transform_test_run: the execution history for transform tests.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-18T00:00:00
+      author: ranquild
+      comment: Add transform_test_run
+      changes:
+        - createTable:
+            tableName: transform_test_run
+            remarks: An execution of a transform test and its outcome
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: transform_test_id
+                  type: int
+                  remarks: The transform test that was run
+                  constraints:
+                    nullable: true
+              - column:
+                  name: initiated_by
+                  type: int
+                  remarks: ID of the user who initiated the transform test run
+                  constraints:
+                    nullable: true
+              - column:
+                  name: start_time
+                  type: ${timestamp_type}
+                  remarks: When the transform test run started
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: ${timestamp_type}
+                  remarks: When the transform test run completed; null while it is running
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: Current status of the transform test run (started, passed, failed, error, or timeout)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_heartbeat
+                  type: ${timestamp_type}
+                  remarks: Heartbeat stamped while the run executes; a stale value means the owning process died
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-09-18T00:00:01
+      author: ranquild
+      comment: Index transform_test_run.transform_test_id
+      changes:
+        - createIndex:
+            tableName: transform_test_run
+            indexName: idx_transform_test_run_transform_test_id
+            columns:
+              - column:
+                  name: transform_test_id
+
+  - changeSet:
+      id: v65.2026-09-18T00:00:02
+      author: ranquild
+      comment: Add FK constraint on transform_test_run.transform_test_id; SET NULL preserves historical runs when a test is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_test_run
+            baseColumnNames: transform_test_id
+            referencedTableName: transform_test
+            referencedColumnNames: id
+            constraintName: fk_transform_test_run_transform_test_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v65.2026-09-18T00:00:03
+      author: ranquild
+      comment: Index active transform test runs for heartbeat-based orphan detection
+      changes:
+        - createIndex:
+            tableName: transform_test_run
+            indexName: idx_transform_test_run_active_runs
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: last_heartbeat
+
+  - changeSet:
+      id: v65.2026-09-18T00:00:04
+      author: ranquild
+      comment: Index transform_test_run.initiated_by
+      changes:
+        - createIndex:
+            tableName: transform_test_run
+            indexName: idx_transform_test_run_initiated_by
+            columns:
+              - column:
+                  name: initiated_by
+
+  - changeSet:
+      id: v65.2026-09-18T00:00:05
+      author: ranquild
+      comment: Add FK constraint on transform_test_run.initiated_by; SET NULL preserves historical runs when a user is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_test_run
+            baseColumnNames: initiated_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_transform_test_run_initiated_by
+            onDelete: SET NULL

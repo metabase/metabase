@@ -222,11 +222,11 @@
   "Columns `list_models` selects for the `:question` projection."
   ;; Naming the columns keeps `t2/select` from running the `dataset_query` and `result_metadata`
   ;; transforms on every model — the expensive part of listing a database with thousands of cards.
-  ;; `:card_schema` is never projected, but Card's after-select hook throws without it once the
-  ;; row carries `:id` plus any of `:dataset_query`/`:result_metadata`/`:database_id`/`:type`.
+  ;; None of these are [[metabase.queries.card-schema/schema-governed-columns]], so the Card schema
+  ;; upgrade stays out of the way and `:card_schema` does not have to ride along.
   ;; `question-enrichment-keys` are projection keys `get_content` computes, not Card columns;
   ;; selecting them would name a nonexistent column, so they are dropped from the DB select here.
-  (into [:model/Card :card_schema]
+  (into [:model/Card]
         (remove projections/question-enrichment-keys projections/question-detailed-keys)))
 
 (defn- list-models
@@ -292,7 +292,11 @@
                                       [id (into []
                                                 (comp (keep #(get-in % [:target :table_id]))
                                                       (remove #{id})
-                                                      (distinct))
+                                                      (distinct)
+                                                      ;; Cap before the lookup so its `IN` stays bounded. The
+                                                      ;; `:target` hydration already dropped unreadable targets,
+                                                      ;; so only inactive or unbrowsable ones can shrink the list.
+                                                      (take max-related-tables))
                                                 fields)]))
                                metadata-rows)
         related-ids      (into #{} (mapcat val) targets-by-table)
@@ -314,7 +318,6 @@
                  (fn [target-ids]
                    (into []
                          (comp (keep related)
-                               (take max-related-tables)
                                (map-indexed
                                 (fn [i {:keys [id name display_name schema]}]
                                   (cond-> {:id id :name name :display_name display_name :schema schema}
@@ -418,8 +421,8 @@
 (defn- slice-table-payload
   "The explicit single-table slice: fields in position order from `offset`, as many as fit the
    budget (never fewer than one, so paging always advances), plus counts and — when fields
-   remain — the continuation message naming the next offset."
-  [payload offset]
+   remain — the continuation message naming table `table-id` and the exact next call."
+  [table-id payload offset]
   (let [all-fields (vec (:fields payload))
         total      (count all-fields)
         base       (assoc payload :fields [] :total_fields total :offset offset)
@@ -432,21 +435,22 @@
                            (drop offset all-fields))
         next-offset (+ offset (count included))
         line        (when (< next-offset total)
-                      (message/msg ["%s: %d of %d fields, continue with `offset: %d`."]
-                                   (or (:name payload) (:id payload)) (count included) total next-offset))]
+                      (message/msg ["Table %d: %d of %d fields, continue with `table_ids: [%d], offset: %d`."]
+                                   table-id (count included) total table-id next-offset))]
     {:payload (assoc base :fields included)
      :message line}))
 
 (defn- assemble-tables
   "Apply the byte budget to `payloads` (in request order): whole tables until the budget runs out.
    When the first table alone exceeds the budget — or the caller passed an explicit `offset` — it
-   is returned as a single-table slice instead. Returns `{:tables [...] :message ...}`; `:tables`
-   is always a prefix of `payloads`, so the caller names what was dropped from its own source rows."
-  [payloads offset]
+   is returned as a single-table slice instead. `table-ids` are the tables' ids, index-aligned with
+   `payloads`. Returns `{:tables [...] :message ...}`; `:tables` is always a prefix of `payloads`,
+   so the caller names what was dropped from its own source rows."
+  [payloads table-ids offset]
   (if (and (seq payloads)
            (or (some? offset)
                (> (byte-size (first payloads)) get-fields-byte-budget)))
-    (let [{:keys [payload] line :message} (slice-table-payload (first payloads) (or offset 0))]
+    (let [{:keys [payload] line :message} (slice-table-payload (first table-ids) (first payloads) (or offset 0))]
       {:tables  [payload]
        :message line})
     (loop [[payload & more :as remaining] payloads
@@ -493,7 +497,7 @@
                       detailed? withhold-restricted-fingerprints)
           related   (related-tables-by-requested-table browsable-db-ids rows)
           payloads  (mapv #(project-table args related %) rows)
-          {:keys [tables] line :message} (assemble-tables payloads offset)
+          {:keys [tables] line :message} (assemble-tables payloads (mapv :id rows) offset)
           ;; `tables` is a prefix of `payloads`, which is index-aligned with `rows`, so the tables
           ;; the budget dropped are the matching suffix of `rows` — named from the source rows
           ;; because a `fields` projection can strip `:id`/`:name` off the payloads.
@@ -509,7 +513,7 @@
           body      (cond-> {:tables tables}
                       (seq omitted) (assoc :omitted omitted))]
       (common/success-content (if line
-                                (message/msg ["%s" "%s"] (message/raw (json/encode body)) line)
+                                (message/msg ["%s" "%s"] (message/data body) line)
                                 body)))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
@@ -541,10 +545,11 @@
 
 (registry/deftool browse-data
   "Browse the data hierarchy: databases → schemas → tables → fields. Actions: list_databases — databases you can see; list_schemas — schema names in a database; list_tables — tables in a database, scoped to `schema` (omit it for databases without schemas) and optionally narrowed with `search`; list_models — models built on a database; get_fields — field metadata for up to 20 tables in one call, each table carrying its measures, segments, metrics, and related tables (FK targets with column names) for query construction. list_* actions return the {data, returned, total} envelope paged with limit/offset. get_fields returns whole tables within a response byte budget and names any tables it had to omit; a single table too large for the budget comes back as a position-ordered field slice with a continuation offset."
-  {:name        "browse_data"
-   :scope       metabot.scope/agent-content-read
-   :annotations {:readOnlyHint true :idempotentHint true}
-   :args        browse-args-schema}
+  {:name           "browse_data"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-read
+   :annotations    {:readOnlyHint true :idempotentHint true}
+   :args           browse-args-schema}
   [{:keys [action] :as args} _context]
   (validate-args-for-action! args)
   (case action
@@ -663,7 +668,6 @@
   (case ns-str
     nil          (into #{} (map type->rest-model) type)
     "snippets"   #{:snippet :collection}
-    "transforms" #{:transform :collection}
     "analytics"  #{:collection}))
 
 (defn- collection-items-content
@@ -709,7 +713,7 @@
                       (message/msg ["Returned %d of %d — continue with `offset: %d`."]
                                    (count rows) total (+ offset limit))))]
     (common/success-content (if line
-                              (message/msg ["%s" "%s"] (message/raw (json/encode envelope)) line)
+                              (message/msg ["%s" "%s"] (message/data envelope) line)
                               envelope))))
 
 ;;; --------------------------------------------- browse_collection tree -------------------------------------------
@@ -832,8 +836,8 @@
     [:maybe [:enum {:description "items (default) lists the collection's contents; tree returns the nested subcollection structure (collections only, no items, no pagination)."}
              "items" "tree"]]]
    [:namespace {:optional true}
-    [:maybe [:enum {:description "Which collection partition to browse; only meaningful with id: \"root\" (a real collection id already carries its namespace). content (default) holds questions/dashboards/etc.; snippets holds snippet folders and snippets; transforms holds transform folders and transforms; analytics is the read-only usage-analytics tree."}
-             "content" "snippets" "transforms" "analytics"]]]
+    [:maybe [:enum {:description "Which collection partition to browse; only meaningful with id: \"root\" (a real collection id already carries its namespace). content (default) holds questions/dashboards/etc.; snippets holds snippet folders and snippets; analytics is the read-only usage-analytics tree."}
+             "content" "snippets" "analytics"]]]
    [:type {:optional true}
     [:maybe [:sequential [:enum {:description "items mode, content namespace only: return only these item types."}
                           "question" "model" "metric" "dashboard" "collection" "document"]]]]
@@ -861,10 +865,11 @@
 
 (registry/deftool browse-collection
   "Browse collections structurally — one uniform id over every partition: a numeric id, a 21-char entity_id, \"root\" (re-rooted per namespace), or \"trash\" (archived content, items mode only). items mode (default) lists one collection's contents with type/created_by/pinned_state/sort_column/sort_direction and limit/offset paging in the {data, returned, total} envelope; browsing the trash or an archived collection returns archived children. tree mode returns the nested subcollection structure (collections only, no items, no pagination) down to depth (default 2) under a per-node child cap and total node budget; trimmed or deeper nodes carry a marker naming the expansion call, e.g. … 14 more under \"Finance\" — browse_collection(id: 45, mode: \"tree\"); archived subtrees and the trash never appear in trees. For content search or recents use the search tool."
-  {:name        "browse_collection"
-   :scope       metabot.scope/agent-content-read
-   :annotations {:readOnlyHint true :idempotentHint true}
-   :args        browse-collection-args-schema}
+  {:name           "browse_collection"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-read
+   :annotations    {:readOnlyHint true :idempotentHint true}
+   :args           browse-collection-args-schema}
   [{:keys [mode] :as args} _context]
   (validate-browse-collection-args! args)
   (let [target (resolve-browse-target args)]

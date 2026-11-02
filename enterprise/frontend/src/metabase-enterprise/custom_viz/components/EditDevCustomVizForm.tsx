@@ -80,14 +80,6 @@ export function EditDevCustomVizForm({ plugin }: Props) {
                     .with("error", () => (
                       <Text c="feedback-negative" fw={700}>{t`Error`}</Text>
                     ))
-                    .with("pending", () => (
-                      <Text
-                        c="text-secondary"
-                        fw={plugin.enabled ? 700 : undefined}
-                      >
-                        {t`Pending`}
-                      </Text>
-                    ))
                     .exhaustive()}
                 </Group>
               </Group>
@@ -100,7 +92,7 @@ export function EditDevCustomVizForm({ plugin }: Props) {
               <Group justify="flex-end">
                 <Button
                   variant="subtle"
-                  color="feedback-negative"
+                  color="negative"
                   onClick={handleRemove}
                 >
                   {t`Disable`}

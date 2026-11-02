@@ -3,14 +3,14 @@ import { c, t } from "ttag";
 import { getCollectionName } from "metabase/common/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
+import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import {
   ColumnHeader,
   ItemCell,
   TBody,
   Table,
   TableColumn,
-} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
-import { Columns } from "metabase/common/components/ItemsTable/Columns";
+} from "metabase/common/components/ItemsTable/TableElements";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { Ellipsified, FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
 import type { SortingOptions } from "metabase-types/api/sorting";

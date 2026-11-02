@@ -28,16 +28,19 @@ Supported models:
 | Model             | Model ID                     | Context window (tokens) |
 | ----------------- | ---------------------------- | ----------------------- |
 | Claude Fable 5    | `claude-fable-5`             | 1,000,000               |
+| Claude Fable 5.1  | `claude-fable-5-1`           | 1,000,000               |
 | Claude Haiku 4.5  | `claude-haiku-4-5-20251001`  | 200,000                 |
-| Claude Opus 4.1   | `claude-opus-4-1-20250805`   | 200,000                 |
+| Claude Haiku 5.5  | `claude-haiku-5-5`           | 1,000,000               |
 | Claude Opus 4.5   | `claude-opus-4-5-20251101`   | 200,000                 |
 | Claude Opus 4.6   | `claude-opus-4-6`            | 1,000,000               |
 | Claude Opus 4.7   | `claude-opus-4-7`            | 1,000,000               |
 | Claude Opus 4.8   | `claude-opus-4-8`            | 1,000,000               |
 | Claude Opus 5     | `claude-opus-5`              | 1,000,000               |
+| Claude Opus 5.5   | `claude-opus-5-5`            | 1,000,000               |
 | Claude Sonnet 4.5 | `claude-sonnet-4-5-20250929` | 200,000                 |
 | Claude Sonnet 4.6 | `claude-sonnet-4-6`          | 1,000,000               |
 | Claude Sonnet 5   | `claude-sonnet-5`            | 1,000,000               |
+| Claude Sonnet 5.5 | `claude-sonnet-5-5`          | 1,000,000               |
 
 Credentials:
 
@@ -80,8 +83,8 @@ Supported models:
 | Model                  | Model ID                          | Context window (tokens) |
 | ---------------------- | --------------------------------- | ----------------------- |
 | Claude Fable 5         | `anthropic/claude-fable-5`        | 1,000,000               |
+| Claude Fable 5.1       | `anthropic/claude-fable-5.1`      | 1,000,000               |
 | Claude Haiku 4.5       | `anthropic/claude-haiku-4.5`      | 200,000                 |
-| Claude Opus 4.1        | `anthropic/claude-opus-4.1`       | 200,000                 |
 | Claude Opus 4.5        | `anthropic/claude-opus-4.5`       | 200,000                 |
 | Claude Opus 4.6        | `anthropic/claude-opus-4.6`       | 1,000,000               |
 | Claude Opus 4.7        | `anthropic/claude-opus-4.7`       | 1,000,000               |
@@ -93,6 +96,7 @@ Supported models:
 | DeepSeek V4 Flash 0731 | `deepseek/deepseek-v4-flash-0731` | 1,048,576               |
 | DeepSeek V4 Pro 0423   | `deepseek/deepseek-v4-pro`        | 1,048,576               |
 | DeepSeek V4 Pro 0813   | `deepseek/deepseek-v4-pro-0813`   | 1,048,575               |
+| Gemini 3.8 Flash       | `google/gemini-3.8-flash`         | 1,048,576               |
 | Mistral Medium 3.5     | `mistralai/mistral-medium-3-5`    | 262,144                 |
 | Kimi K3                | `moonshotai/kimi-k3`              | 1,048,576               |
 | GPT-5.4                | `openai/gpt-5.4`                  | 922,000                 |
@@ -103,9 +107,10 @@ Supported models:
 | GPT-5.6 Luna           | `openai/gpt-5.6-luna`             | 922,000                 |
 | GPT-5.6 Sol            | `openai/gpt-5.6-sol`              | 922,000                 |
 | GPT-5.6 Terra          | `openai/gpt-5.6-terra`            | 922,000                 |
-| Qwen3.8 Max            | `qwen/qwen3.8-max`                | 1,000,000               |
+| Qwen3.8 Max 0902       | `qwen/qwen3.8-max-0902`           | 1,000,000               |
 | GLM-5.2                | `z-ai/glm-5.2`                    | 1,048,576               |
 | GLM-5.3                | `z-ai/glm-5.3`                    | 1,048,576               |
+| GLM-5.3-Flash          | `z-ai/glm-5.3-flash`              | 1,048,575               |
 
 Credentials:
 
@@ -137,10 +142,11 @@ Credentials:
 
 Supported models:
 
-| Model   | Model ID  | Context window (tokens) |
-| ------- | --------- | ----------------------- |
-| GLM-5.2 | `glm-5.2` | 1,048,576               |
-| GLM-5.3 | `glm-5.3` | 1,048,576               |
+| Model         | Model ID        | Context window (tokens) |
+| ------------- | --------------- | ----------------------- |
+| GLM-5.2       | `glm-5.2`       | 1,048,576               |
+| GLM-5.3       | `glm-5.3`       | 1,048,576               |
+| GLM-5.3-Flash | `glm-5.3-flash` | 1,048,576               |
 
 Credentials:
 
@@ -169,19 +175,37 @@ Credentials:
 
 - Provider key: `deepseek`
 - Default model: `deepseek-v4-pro`
-- Model for short tasks like naming a conversation: `deepseek-v4-flash`
+- Model for short tasks like naming a conversation: `deepseek-flash`
 
 Supported models:
 
-| Model             | Model ID            |
-| ----------------- | ------------------- |
-| DeepSeek V4 Flash | `deepseek-v4-flash` |
-| DeepSeek V4 Pro   | `deepseek-v4-pro`   |
+| Model           | Model ID          | Context window (tokens) |
+| --------------- | ----------------- | ----------------------- |
+| DeepSeek Flash  | `deepseek-flash`  | 1,048,576               |
+| DeepSeek V4 Pro | `deepseek-v4-pro` | 1,048,576               |
 
 Credentials:
 
 - **API key** (required). [Where do I find this?](https://platform.deepseek.com/api_keys) You can also set it with the environment variable `MB_LLM_DEEPSEEK_API_KEY`.
 - **API base URL** (advanced). The root both surfaces hang off; leave off any /anthropic or /v1 path. Defaults to `https://api.deepseek.com`. You can also set it with the environment variable `MB_LLM_DEEPSEEK_API_BASE_URL`.
+
+## xAI
+
+- Provider key: `xai`
+- Default model: `grok-4.7`
+- Model for short tasks like naming a conversation: `grok-4.3`
+
+Supported models:
+
+| Model    | Model ID   | Context window (tokens) |
+| -------- | ---------- | ----------------------- |
+| Grok 4.3 | `grok-4.3` | 1,000,000               |
+| Grok 4.7 | `grok-4.7` | 500,000                 |
+
+Credentials:
+
+- **API key** (required). [Where do I find this?](https://console.x.ai/team/default/api-keys) You can also set it with the environment variable `MB_LLM_XAI_API_KEY`.
+- **API base URL** (advanced). Defaults to `https://api.x.ai/v1`. You can also set it with the environment variable `MB_LLM_XAI_API_BASE_URL`.
 
 ## Google Gemini Enterprise
 
@@ -190,28 +214,46 @@ Credentials:
 
 Supported models:
 
-| Model             | Model ID                              |
-| ----------------- | ------------------------------------- |
-| Claude Fable 5    | `anthropic/claude-fable-5`            |
-| Claude Haiku 4.5  | `anthropic/claude-haiku-4-5@20251001` |
-| Claude Opus 4.6   | `anthropic/claude-opus-4-6`           |
-| Claude Opus 5     | `anthropic/claude-opus-5`             |
-| Claude Sonnet 4.6 | `anthropic/claude-sonnet-4-6`         |
-| Claude Sonnet 5   | `anthropic/claude-sonnet-5`           |
-| Gemini 3.5 Flash  | `google/gemini-3.5-flash`             |
-| Gemini 3.6 Flash  | `google/gemini-3.6-flash`             |
-| Gemini 3.7 Flash  | `google/gemini-3.7-flash`             |
+| Model             | Model ID                      |
+| ----------------- | ----------------------------- |
+| Claude Fable 5    | `anthropic/claude-fable-5`    |
+| Claude Fable 5.1  | `anthropic/claude-fable-5-1`  |
+| Claude Haiku 4.5  | `anthropic/claude-haiku-4-5`  |
+| Claude Haiku 5.5  | `anthropic/claude-haiku-5-5`  |
+| Claude Opus 4.6   | `anthropic/claude-opus-4-6`   |
+| Claude Opus 5     | `anthropic/claude-opus-5`     |
+| Claude Opus 5.5   | `anthropic/claude-opus-5-5`   |
+| Claude Sonnet 4.6 | `anthropic/claude-sonnet-4-6` |
+| Claude Sonnet 5   | `anthropic/claude-sonnet-5`   |
+| Claude Sonnet 5.5 | `anthropic/claude-sonnet-5-5` |
+| Gemini 3.5 Flash  | `google/gemini-3.5-flash`     |
+| Gemini 3.6 Flash  | `google/gemini-3.6-flash`     |
+| Gemini 3.7 Flash  | `google/gemini-3.7-flash`     |
+| Gemini 3.8 Flash  | `google/gemini-3.8-flash`     |
 
 Credentials:
 
 - **Project ID**. The Google Cloud project to use. Optional if the service account key provides it. [Where do I find this?](https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects) You can also set it with the environment variable `MB_LLM_GOOGLE_PROJECT_ID`.
 - **Location**. Optional. Defaults to global. You can also set it with the environment variable `MB_LLM_GOOGLE_LOCATION`.
-- **Authentication method** (required). Authenticate with a service account key or an OAuth access token. One of: `Service account key`, `OAuth token`. Defaults to `Service account key`.
-- **Service account key file**. Only when **Authentication method** is **Service account key**. Upload a service account key file to authenticate with. [Where do I find this?](https://docs.cloud.google.com/iam/docs/keys-create-delete) You can also set it with the environment variable `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`.
-- **OAuth access token**. Only when **Authentication method** is **OAuth token**. A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing. You can also set it with the environment variable `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`.
+- **Authentication method** (required). Authenticate with a service account key or an OAuth access token. One of: `service-account-key`, `oauth-token`. Defaults to `service-account-key`.
+- **Service account key file**. Only when **Authentication method** is **Service account key** (`service-account-key`). Upload a service account key file to authenticate with. [Where do I find this?](https://docs.cloud.google.com/iam/docs/keys-create-delete) You can also set it with the environment variable `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`.
+- **OAuth access token**. Only when **Authentication method** is **OAuth token** (`oauth-token`). A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing. You can also set it with the environment variable `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`.
+- **Model Garden endpoint ID**. Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to.
 - **API base URL** (advanced). Derived from the location when left at the global host. Defaults to `https://aiplatform.googleapis.com`. You can also set it with the environment variable `MB_LLM_GOOGLE_API_BASE_URL`.
 
 Google Gemini Enterprise needs either **Service account key file**, or **OAuth access token** and **Project ID**.
+
+### Connect an open model from Model Garden
+
+You can also run Metabot on an open model, like GLM or Llama, that you deployed from [Model Garden](https://cloud.google.com/model-garden). Metabase talks to the endpoint the deployment created through its OpenAI-compatible Chat Completions API, with the credentials above, and finds a dedicated endpoint's own DNS name for you.
+
+To connect it, add a Google Gemini Enterprise provider in **Admin > AI**, enter the endpoint's ID in **Model Garden endpoint ID**, and set **Location** to the region you deployed to. That connection serves the endpoint instead of the models above: connecting checks the endpoint, and the model picker offers the endpoint as the connection's only model. To use the models above too, add a second Google Gemini Enterprise provider without an endpoint ID, and pick between them in the model picker.
+
+If you configure the Google connection with environment variables, it has no endpoint ID. Set `MB_LLM_METABOT_PROVIDER` to `google/endpoints/` followed by the endpoint's ID instead.
+
+The credentials need `aiplatform.endpoints.get` to look up the endpoint and `aiplatform.endpoints.predict` to run it.
+
+Metabot calls tools and sends long prompts, so deploy the model with tool calling turned on (for vLLM, `--enable-auto-tool-choice` and a `--tool-call-parser` that matches the model) and a context length of at least 16,384 tokens, the minimum Metabase also requires of a vLLM connection. Metabase doesn't check either one when you connect.
 
 ## Microsoft Azure
 
@@ -225,7 +267,7 @@ Credentials:
 
 - **API key** (required). [Where do I find this?](https://ai.azure.com) You can also set it with the environment variable `MB_LLM_AZURE_API_KEY`.
 - **API base URL** (required). You can also set it with the environment variable `MB_LLM_AZURE_API_BASE_URL`.
-- **Model provider** (required). Whether your deployment serves an Anthropic or an OpenAI model. One of: `OpenAI`, `Anthropic`. Defaults to `OpenAI`. You can also set it with the environment variable `MB_LLM_AZURE_MODEL_FAMILY`.
+- **Model provider** (required). Whether your deployment serves an Anthropic or an OpenAI model. One of: `openai`, `anthropic`. Defaults to `openai`. You can also set it with the environment variable `MB_LLM_AZURE_MODEL_FAMILY`.
 - **Deployment name** (required). The name of the model deployment on your Azure resource. We recommend naming deployments after the model they serve. You can also set it with the environment variable `MB_LLM_AZURE_DEPLOYMENT_NAME`.
 
 ## Amazon Bedrock
@@ -236,26 +278,88 @@ Credentials:
 
 Supported models:
 
-| Model                | Model ID                     | Context window (tokens) |
-| -------------------- | ---------------------------- | ----------------------- |
-| Claude Fable 5       | `anthropic.claude-fable-5`   | 1,000,000               |
-| Claude Haiku 4.5     | `anthropic.claude-haiku-4-5` | 200,000                 |
-| Claude Opus 4.7      | `anthropic.claude-opus-4-7`  | 1,000,000               |
-| Claude Opus 4.8      | `anthropic.claude-opus-4-8`  | 1,000,000               |
-| Claude Opus 5        | `anthropic.claude-opus-5`    | 1,000,000               |
-| Claude Sonnet 5      | `anthropic.claude-sonnet-5`  | 1,000,000               |
-| GPT-5.4              | `openai.gpt-5.4`             | 272,000                 |
-| GPT-5.4 (2026-03-05) | `openai.gpt-5.4-2026-03-05`  | 272,000                 |
-| GPT-5.5              | `openai.gpt-5.5`             | 272,000                 |
-| GPT-5.5 (2026-04-23) | `openai.gpt-5.5-2026-04-23`  | 272,000                 |
-| GPT-6 Astra          | `openai.gpt-6-astra`         | 922,000                 |
+| Model                | Model ID                      | Context window (tokens) |
+| -------------------- | ----------------------------- | ----------------------- |
+| Claude Fable 5       | `anthropic.claude-fable-5`    | 1,000,000               |
+| Claude Fable 5.1     | `anthropic.claude-fable-5-1`  | 1,000,000               |
+| Claude Haiku 4.5     | `anthropic.claude-haiku-4-5`  | 200,000                 |
+| Claude Haiku 5.5     | `anthropic.claude-haiku-5-5`  | 1,000,000               |
+| Claude Opus 4.7      | `anthropic.claude-opus-4-7`   | 1,000,000               |
+| Claude Opus 4.8      | `anthropic.claude-opus-4-8`   | 1,000,000               |
+| Claude Opus 5        | `anthropic.claude-opus-5`     | 1,000,000               |
+| Claude Opus 5.5      | `anthropic.claude-opus-5-5`   | 1,000,000               |
+| Claude Sonnet 5      | `anthropic.claude-sonnet-5`   | 1,000,000               |
+| Claude Sonnet 5.5    | `anthropic.claude-sonnet-5-5` | 1,000,000               |
+| GPT-5.4              | `openai.gpt-5.4`              | 272,000                 |
+| GPT-5.4 (2026-03-05) | `openai.gpt-5.4-2026-03-05`   | 272,000                 |
+| GPT-5.5              | `openai.gpt-5.5`              | 272,000                 |
+| GPT-5.5 (2026-04-23) | `openai.gpt-5.5-2026-04-23`   | 272,000                 |
+| GPT-6 Astra          | `openai.gpt-6-astra`          | 922,000                 |
 
 Credentials:
 
 - **Access key ID**. Only together with **Secret access key**. Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile). On Metabase Cloud, Bedrock always authenticates with your own AWS keys. [Where do I find this?](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html) You can also set it with the environment variable `MB_LLM_BEDROCK_ACCESS_KEY_ID`.
 - **Secret access key**. Only together with **Access key ID**. Required on Metabase Cloud. You can also set it with the environment variable `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`.
 - **Region**. Pick one from the dropdown in **Admin > AI**. Defaults to `us-east-1`. You can also set it with the environment variable `MB_LLM_BEDROCK_REGION`.
+- **Model ID**. Optional. Use an inference profile, or a model that isn't listed for this region, by its ID or ARN.
 - **Session token** (advanced). Only together with **Access key ID** and **Secret access key**. Only needed for temporary credentials. You can also set it with the environment variable `MB_LLM_BEDROCK_SESSION_TOKEN`.
+
+### IAM permissions for Bedrock
+
+Metabase talks to Bedrock through the mantle endpoint, `https://bedrock-mantle.{region}.api.aws`, unless the connection's **Model ID** sends it to `bedrock-runtime` (see [Use an inference profile](#use-an-inference-profile)). Mantle is a separate IAM namespace with its own actions, so a policy written against the `bedrock` prefix won't grant access. Metabase lists models and runs conversations, so it needs `bedrock-mantle:ListModels` and `bedrock-mantle:CreateInference`.
+
+Here's a least-privilege policy that grants both:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["bedrock-mantle:ListModels", "bedrock-mantle:CreateInference"],
+      "Resource": "arn:aws:bedrock-mantle:*:*:project/*"
+    }
+  ]
+}
+```
+
+The AWS managed policy [AmazonBedrockMantleInferenceAccess](https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonBedrockMantleInferenceAccess.html) also covers both actions (along with permissions Metabase doesn't use).
+
+If Metabase reports "AWS Bedrock credentials lack permission for this model or action", check that your policy uses the `bedrock-mantle` prefix.
+
+### The Bedrock models you can pick depend on the region
+
+The table above lists the models Metabase can use. The **Models** card only offers the ones Bedrock serves in the connection's region, so what you can pick depends on the region. The mantle catalog has no cross-region inference profiles, so to reach a model that isn't served in your region, [use an inference profile](#use-an-inference-profile).
+
+If the model list is empty or shorter than you expect after connecting:
+
+- **Check the region**: the **Region** dropdown lists every AWS region, including regions where Bedrock serves none of these models. The [AWS model cards](https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html) show where each model is available. For example, the GPT models are only served in US regions.
+- **Check your account's data retention setting**: Bedrock marks a model unavailable when your account's data retention mode doesn't meet what that model requires. For example, [Claude Fable 5](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-fable-5.html) requires the `aws_review` data retention mode.
+
+### Use an inference profile
+
+To use an [inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles.html), or a Claude model that isn't listed for your region, enter its ID or ARN in **Model ID**, like `eu.anthropic.claude-sonnet-4-6` or `us.anthropic.claude-haiku-4-5-20251001-v1:0`. That connection serves this model instead of the models above: connecting checks it by generating a single token, and the model picker offers it as the connection's only model. To use the models above too, add a second Amazon Bedrock provider without a model ID.
+
+Metabase sends inference profile IDs, ARNs, and model IDs with a version suffix like `-v1:0` to `bedrock-runtime`, `https://bedrock-runtime.{region}.amazonaws.com`, instead of mantle. Through `bedrock-runtime`, Metabase only talks to Claude models, and it needs `bedrock:InvokeModelWithResponseStream` on the inference profile and on the foundation model in every region the profile routes to:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "bedrock:InvokeModelWithResponseStream",
+      "Resource": [
+        "arn:aws:bedrock:*:*:inference-profile/*",
+        "arn:aws:bedrock:*:*:application-inference-profile/*",
+        "arn:aws:bedrock:*::foundation-model/*"
+      ]
+    }
+  ]
+}
+```
+
+If you configure the Bedrock connection with environment variables, it has no model ID. Set `MB_LLM_METABOT_PROVIDER` to `bedrock/` followed by the ID instead, and set `MB_LLM_MINI_MODEL` the same way, since short tasks otherwise run on `anthropic.claude-haiku-4-5` through mantle.
 
 ## vLLM
 
@@ -263,12 +367,68 @@ Credentials:
 
 Supported models:
 
-Metabase lists whichever models your vLLM server is serving, so what you can pick depends on how you started it.
+Metabase lists whichever models your vLLM server has available, so what you can pick depends on how you set it up.
 
 Credentials:
 
 - **API base URL** (required). Your server's OpenAI-compatible API. It should end in /v1. Metabase must be able to reach it: self-hosted, a server on your private network or on this machine needs MB_LLM_ALLOWED_NETWORKS. You can also set it with the environment variable `MB_LLM_VLLM_API_BASE_URL`.
 - **API key**. Only needed if you started your server with --api-key. You can also set it with the environment variable `MB_LLM_VLLM_API_KEY`.
+
+## Ollama
+
+- Provider key: `ollama`
+
+Supported models:
+
+Metabase lists whichever models your Ollama server has available, so what you can pick depends on how you set it up.
+
+Credentials:
+
+- **API base URL** (required). Your Ollama server's address, ending in /v1, or https://ollama.com/v1 for Ollama Cloud. To reach a server on your private network, set MB_LLM_ALLOWED_NETWORKS=allow-private; for one on this machine, allow-all. You can also set it with the environment variable `MB_LLM_OLLAMA_API_BASE_URL`.
+- **API key**. Required for Ollama Cloud. Leave blank if your server doesn't require one. You can also set it with the environment variable `MB_LLM_OLLAMA_API_KEY`.
+
+### Context window
+
+Ollama can load a model with a smaller context window than the model supports. Metabot needs at least 16,384 tokens, and Metabase checks the window when you connect. See Ollama's documentation on [context length](https://docs.ollama.com/context-length).
+
+## OpenAI-compatible API
+
+- Provider key: `openai-compatible`
+
+Supported models:
+
+Whichever model your server serves. Metabase runs the one you enter in **Model ID**.
+
+Credentials:
+
+- **API base URL** (required). Any server that implements OpenAI's Chat Completions API with tool calling. Enter the URL that comes before /chat/completions. You can also set it with the environment variable `MB_LLM_OPENAI_COMPATIBLE_API_BASE_URL`.
+- **API key**. Only needed if your server asks for one. You can also set it with the environment variable `MB_LLM_OPENAI_COMPATIBLE_API_KEY`.
+- **Model ID** (required). The model to run, exactly as your server names it.
+
+### What connecting checks
+
+When you connect, Metabase sends the model a few short test requests. The model has to call a tool, call a tool when the request requires one (`tool_choice` set to `required`), and return its reasoning separately from its answer. If the server's `/models` list gives the model's context window, as `max_model_len` or `context_length`, it has to be at least 16,384 tokens. If a check fails, Metabase doesn't save the connection and tells you which check failed.
+
+The checks only test what Metabot needs to run. Metabase doesn't benchmark these models, so how well Metabot works depends on the model you choose. Models that need their reasoning sent back with every request can fail partway through a conversation, because Metabase doesn't send it back to them.
+
+### Servers this connection has been tried with
+
+- xAI, `https://api.x.ai/v1`, with `grok-4.3`: connects, and Metabot answers questions on it.
+- OpenRouter, `https://openrouter.ai/api/v1`, with `anthropic/claude-haiku-4.5`: passed the checks when tried. OpenRouter sends each request to one of the providers that serve a model, so a model can pass the checks on one try and fail them on the next, as `openai/gpt-oss-120b` did.
+- DeepSeek, `https://api.deepseek.com/v1`, with `deepseek-v4-pro`: doesn't connect. In thinking mode, DeepSeek rejects requests that require a tool call, so the forced tool call check fails.
+
+### API base URL examples
+
+Enter the URL that comes before `/chat/completions`. These examples show the format, and weren't tried:
+
+- Scaleway: `https://api.scaleway.ai/v1`
+- A vLLM, llama.cpp, or LM Studio server: `http://<host>:<port>/v1`
+
+On a self-hosted Metabase, a server on your private network or on the same machine as Metabase needs [`MB_LLM_ALLOWED_NETWORKS`](../configuring-metabase/environment-variables.md#mb_llm_allowed_networks).
+
+### Set the model with environment variables
+
+If you configure this connection with environment variables, it has no **Model ID**. Set `MB_LLM_METABOT_PROVIDER` to `openai-compatible/` followed by the model ID instead, like `openai-compatible/gpt-oss-120b`.
 
 ## Metabase AI service
 

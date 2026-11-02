@@ -14,6 +14,8 @@
    [metabase.lib.test-util :as lib.tu]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -180,6 +182,29 @@
                (driver.u/connection-props-server->client
                 nil
                 [{:name "test", :type :info}])))))))
+
+(deftest connection-props-server->client-hidden-when-hosted-test
+  (let [prop   {:name    "auth-mode"
+                :type    "select"
+                :options [{:name "Local"   :value "local"}
+                          {:name "Ambient" :value "ambient" :hidden-when-hosted true}]}
+        strip  #(-> (driver.u/connection-props-server->client nil [prop]) first :options (->> (mapv :value)))]
+    (testing "On Metabase Cloud, options tagged :hidden-when-hosted are stripped from the client payload."
+      (mt/with-premium-features #{:hosting}
+        (is (= ["local"] (strip)))))
+    (testing "Off Metabase Cloud, every option passes through unchanged."
+      (mt/with-premium-features #{}
+        (is (= ["local" "ambient"] (strip))))))
+  (testing "Group fields recurse: a tagged option inside a nested :group field is stripped on hosted."
+    (let [prop  {:type   :group
+                 :fields [{:name    "nested"
+                           :type    "select"
+                           :options [{:name "ok"    :value "ok"}
+                                     {:name "nope"  :value "nope" :hidden-when-hosted true}]}]}]
+      (mt/with-premium-features #{:hosting}
+        (is (= ["ok"]
+               (-> (driver.u/connection-props-server->client nil [prop])
+                   first :fields first :options (->> (mapv :value)))))))))
 
 (deftest ^:parallel connection-props-server->client-schema-filters-test
   (testing "connection-props-server->client works as expected for the schema-filters type"
@@ -883,9 +908,9 @@
           (try
             (testing "an attached DWH on a private address still gets a connection pool"
               ;; fetch by id so the database takes the metadata-provider path, which must carry `is-attached-dwh`
-              (is (some? (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database)))))
+              (is (some? (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (u/the-id database))))))
             (finally
-              (sql-jdbc.conn/invalidate-pool-for-db! database))))))
+              (sql-jdbc.conn/invalidate-pool-for-db! (:id database)))))))
     ;; write the ordinary row under allow-all, the way a formerly-lax instance would have, then flip the policy
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
       (mt/with-temp [:model/Database database {:engine  :postgres
@@ -895,7 +920,7 @@
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"private or internal network address"
-                 (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))))))))))
+                 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (u/the-id database)))))))))))
 
 (deftest warehouse-allowed-networks-default-test
   (testing "self-hosted, with nothing configured, all networks are allowed"
@@ -925,8 +950,111 @@
       (is (= :external-only (driver.settings/warehouse-allowed-networks)))
       (is (=? {:status-code 400}
               (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
-  (testing "an unrecognized policy fails closed at the point of use rather than quietly allowing everything"
+  (testing "an unrecognized policy is refused outright rather than silently leaving the instance on some other
+           policy -- startup reads this Setting, so the instance does not come up at all"
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "unknown-policy"]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Unknown network policy"
-                            (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
+                            #"Invalid MB_WAREHOUSE_ALLOWED_NETWORKS"
+                            (driver.settings/warehouse-allowed-networks))))))
+
+(deftest warehouse-allowed-networks-is-environment-only-test
+  (testing "the policy is read from the environment only: a value that reached the setting table -- an older
+           version's admin API, a serialization import, a direct write -- is ignored, not trusted"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks nil]
+      (mt/with-premium-features #{:hosting}
+        (mt/with-temporary-raw-setting-values [warehouse-allowed-networks "allow-all"]
+          (is (= :external-only (driver.settings/warehouse-allowed-networks)))
+          (is (=? {:status-code 400}
+                  (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))))
+  (testing "and the environment still wins over a stored value"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+      (mt/with-temporary-raw-setting-values [warehouse-allowed-networks "external-only"]
+        (is (= :allow-private (driver.settings/warehouse-allowed-networks))))))
+  (testing "nothing can write it: it is a read-only Setting"
+    (is (thrown-with-msg? UnsupportedOperationException
+                          #"read-only setting"
+                          (setting/set! :warehouse-allowed-networks :allow-all)))))
+
+(deftest warehouse-allowed-networks-startup-validation-test
+  (testing "a policy the environment names but Metabase does not recognize stops the boot, rather than waiting
+           for the first query to discover it"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-everything"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Invalid MB_WAREHOUSE_ALLOWED_NETWORKS"
+                            (startup/def-startup-validation! ::driver.settings/warehouse-allowed-networks)))))
+  (testing "a policy it does recognize lets the boot continue"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+      (is (= :allow-private
+             (startup/def-startup-validation! ::driver.settings/warehouse-allowed-networks))))))
+
+(deftest ^:parallel normalize-connection-parameter-test
+  (are [s expected] (= expected (#'driver.u/normalize-connection-parameter s))
+    "testSetting"               "testsetting"
+    "TEST_SETTING"              "testsetting"
+    "test.setting-name+x y\tz"  "testsettingnamexyz"
+    "%74est%53etting"           "testsetting"
+    "%2574estSetting"           "%74estsetting"
+    "te%C5%BFtSetting"          "testsetting"
+    "teſtSetting"               "testsetting"
+    "testSettİng"               "testsetting"
+    "%"                         "%"
+    "%zz%4"                     "%zz%4"
+    "%C5"                       "�"
+    nil                         ""))
+
+(driver/register! ::denylist-driver, :abstract? true)
+
+(defmethod driver/disallowed-connection-parameters ::denylist-driver
+  [_driver]
+  ["testSetting" "otherSetting"])
+
+(deftest ^:parallel disallowed-connection-parameter-normalizes-both-sides-test
+  (is (= "testSetting" (driver.u/disallowed-connection-parameter ::denylist-driver "x=te%C5%BFT_setting")))
+  (is (= "otherSetting" (driver.u/disallowed-connection-parameter ::denylist-driver "OTHER-setting.x")))
+  (is (= "testSetting" (driver.u/disallowed-connection-parameter ::denylist-driver "testSettİng=1")))
+  (is (nil? (driver.u/disallowed-connection-parameter ::denylist-driver "harmless=1"))))
+
+(defn- validation-error [driver details]
+  (try
+    (driver.u/validate-connection-parameters! driver details)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (assoc (ex-data e) :message (ex-message e)))))
+
+(deftest ^:parallel validate-connection-parameters!-normalizes-names-test
+  (doseq [opts ["testSetting=x" "TEST_SETTING=x" "test.setting=x" "%74est%53etting=x" "teſtSetting=x"]]
+    (testing (pr-str opts)
+      (is (= {:status-code 400 :disallowed-key "testSetting" :message "Potentially dangerous keys in additional options"}
+             (validation-error ::denylist-driver {:additional-options opts})))))
+  (doseq [k [:TEST_SETTING :test-setting "test%53etting" :teſtSetting]]
+    (testing (pr-str k)
+      (is (=? {:status-code 400 :message "Potentially dangerous keys in connection details"}
+              (validation-error ::denylist-driver {k "x"})))))
+  (testing "a disallowed name in a URL-building value is refused by the separator check"
+    (is (=? {:status-code 400 :detail :db}
+            (validation-error ::denylist-driver {:db "a?testSetting=x"}))))
+  (is (nil? (validation-error ::denylist-driver {:host "db.example.com" :port 5432 :db "d" :user "u" :password "p&q;r"
+                                                 :additional-options "harmless=1&other=2"}))))
+
+(deftest ^:parallel validate-connection-parameters!-url-building-details-test
+  (doseq [k   [:host :port :db :dbname :catalog :account]
+          sep ["?" "&" ";" "#"]]
+    (testing (pr-str k sep)
+      (is (= {:status-code 400
+              :detail      k
+              :message     (str "Connection detail " (name k) " may not contain ? & ; #")}
+             (validation-error :postgres {k (str "a" sep "b")})))))
+  (doseq [k       [:host :db]
+          encoded ["%3B" "%3b" "%3F" "%26" "%23"]]
+    (testing (pr-str k encoded)
+      (is (= 400 (:status-code (validation-error :postgres {k (str "a" encoded "b")}))))))
+  (doseq [k [:host :db]]
+    (testing (pr-str k "%253B")
+      ;; clients decode once, so a double-encoded separator reaches them as the literal text %3B
+      (is (nil? (validation-error :postgres {k "a%253Bb"})))))
+  (is (nil? (validation-error :postgres {:host "https://db.example.com:5432/x" :port 5432 :db "my db%2Fb%41%20"
+                                         :password "a?b&c;d#e f"})))
+  (is (= [] (driver/url-building-detail-keys :h2)))
+  (is (nil? (validation-error :h2 {:db "file:/tmp/x;USER=GUEST;PASSWORD=guest"})))
+  (is (not-any? #{:db} (driver/url-building-detail-keys :sqlite)))
+  (is (nil? (validation-error :sqlite {:db "/tmp/my data#1.db"}))))

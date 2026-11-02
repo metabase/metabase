@@ -38,7 +38,6 @@ export const PolicySidePanel = ({
         <Group gap="sm">
           <ActionIcon
             size="lg"
-            className={S.navButton}
             disabled={onPrevious === undefined}
             aria-label={t`Previous item`}
             onClick={onPrevious}
@@ -47,7 +46,6 @@ export const PolicySidePanel = ({
           </ActionIcon>
           <ActionIcon
             size="lg"
-            className={S.navButton}
             disabled={onNext === undefined}
             aria-label={t`Next item`}
             onClick={onNext}
@@ -58,7 +56,6 @@ export const PolicySidePanel = ({
       )}
       <ActionIcon
         variant="subtle"
-        c="icon-primary"
         size="lg"
         ml="auto"
         aria-label={t`Close`}

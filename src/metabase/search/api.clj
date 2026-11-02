@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
@@ -272,6 +273,7 @@
     :current-user-id                     api/*current-user-id*
     :is-impersonated-user?               (perms/impersonated-user?)
     :is-sandboxed-user?                  (perms/sandboxed-user?)
+    :is-routed-user?                     (perms/routed-user?)
     :is-superuser?                       api/*is-superuser?*
     :current-user-perms                  @api/*current-user-permissions-set*
     :filter-items-in-personal-collection filter-items-in-personal-collection
@@ -332,6 +334,7 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
+  {:scope api-scope/data-app}
   [_route-params
    query-params :- search-request-schema]
   (api/check-valid-page-params (request/limit) (request/offset))

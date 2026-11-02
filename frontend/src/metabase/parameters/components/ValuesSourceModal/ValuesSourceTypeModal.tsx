@@ -1,4 +1,4 @@
-import type { ChangeEvent, ReactNode } from "react";
+import type { ChangeEvent, JSX, ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
@@ -723,11 +723,7 @@ function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
     isLoading: isCardLoading,
     error: cardError,
   } = useGetCardQuery(card_id != null ? { id: card_id } : skipToken);
-  const buildQuestion = useQuestionFromCard();
-  const question = useMemo(
-    () => (card != null ? buildQuestion(card) : undefined),
-    [card, buildQuestion],
-  );
+  const question = useQuestionFromCard(card);
 
   return (
     <ModalLoadingAndErrorWrapper

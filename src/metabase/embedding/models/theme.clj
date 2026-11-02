@@ -27,9 +27,7 @@
   [_model-name _opts]
   {:copy      [:entity_id :name :settings]
    ;; is_default means the theme is a default theme for this instance.
-   :skip      [:is_default]
-   :transform {:created_at (serdes/date)
-               :updated_at (serdes/date)}})
+   :skip      [:is_default]})
 
 (defmethod serdes/storage-path "EmbeddingTheme"
   [entity _ctx]

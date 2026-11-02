@@ -96,42 +96,42 @@
                                   :x {:name "cat" :type "string"}
                                   :y {:name "cost" :type "number"}
                                   :display_name "Cost"}}]
-      (is (=? {:chart-type :categorical
+      (is (=? {:chart-type   :categorical
                :series-count 2
-               :series {"Revenue" {:summary {:min 100
-                                             :max 200
-                                             :mean 150.0
-                                             :median 200.0
-                                             :std-dev (=?/approx [70.71 0.01])
-                                             :range 100}
-                                   :category-count 2
-                                   :top-categories
-                                   [{:name "B"
-                                     :value 200
-                                     :percentage (=?/approx [66.66 0.01])}
-                                    {:name "A"
-                                     :value 100
-                                     :percentage (=?/approx [33.33 0.01])}]
-                                   :outliers []
-                                   :x-name "cat"
-                                   :y-name "rev"}
-                        "Cost" {:summary {:min 50
-                                          :max 80
-                                          :mean 65.0
-                                          :median 80.0
-                                          :std-dev (=?/approx [21.21 0.01])
-                                          :range 30}
-                                :category-count 2
-                                :top-categories
-                                [{:name "B"
-                                  :value 80
-                                  :percentage (=?/approx [61.5 0.1])}
-                                 {:name "A"
-                                  :value 50
-                                  :percentage (=?/approx [38.4 0.1])}]
-                                :outliers [],
-                                :x-name "cat",
-                                :y-name "cost"}}}
+               :series       [{:name           "Revenue"
+                               :summary        {:min     100
+                                                :max     200
+                                                :mean    150.0
+                                                :median  200.0
+                                                :std-dev (=?/approx [70.71 0.01])
+                                                :range   100}
+                               :category-count 2
+                               :top-categories [{:name       "B"
+                                                 :value      200
+                                                 :percentage (=?/approx [66.66 0.01])}
+                                                {:name       "A"
+                                                 :value      100
+                                                 :percentage (=?/approx [33.33 0.01])}]
+                               :outliers       []
+                               :x-name         "cat"
+                               :y-name         "rev"}
+                              {:name           "Cost"
+                               :summary        {:min     50
+                                                :max     80
+                                                :mean    65.0
+                                                :median  80.0
+                                                :std-dev (=?/approx [21.21 0.01])
+                                                :range   30}
+                               :category-count 2
+                               :top-categories [{:name       "B"
+                                                 :value      80
+                                                 :percentage (=?/approx [61.5 0.1])}
+                                                {:name       "A"
+                                                 :value      50
+                                                 :percentage (=?/approx [38.4 0.1])}]
+                               :outliers       []
+                               :x-name         "cat"
+                               :y-name         "cost"}]}
               (categorical/compute-categorical-stats series-data {:deep? false}))))))
 
 (deftest ^:parallel compute-categorical-stats-correlations-when-deep?-test

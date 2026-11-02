@@ -1,7 +1,7 @@
 (ns metabase.osi.models.osi-ai-context-test
   (:require
    [clojure.test :refer :all]
-   [metabase.entity-retrieval.mirror :as mirror]
+   [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

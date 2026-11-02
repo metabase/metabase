@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.activity-feed.models.recent-views :as recent-views.model]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -83,6 +84,18 @@
           (is (nil? (:collection_name doc)))
           (is (nil? (:collection_authority_level doc))))))))
 
+(deftest select-documents-for-recents-personal-collection-test
+  (testing "returns the owner-qualified name for a document in a personal collection"
+    ;; The command palette shows the collection a recent document lives in, and for a personal
+    ;; collection that name is the owner-qualified one written at creation time, not a blank row.
+    (let [coll-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Personal Document"
+                                                   :collection_id coll-id
+                                                   :archived false}]
+        (let [doc (first (#'recent-views.model/document-recents [doc-id]))]
+          (is (= coll-id (:collection_id doc)))
+          (is (= "Rasta Toucan's Personal Collection" (:collection_name doc))))))))
+
 (deftest select-documents-for-recents-archived-collections-test
   (testing "excludes documents from archived collections via left join"
     (mt/with-temp [:model/Collection {archived-coll-id :id} {:name "Archived Collection"
@@ -147,22 +160,21 @@
       (let [results (#'recent-views.model/document-recents [doc1-id doc2-id doc1-id])]
         ;; Should return unique documents even if IDs are duplicated
         (is (= 2 (count results)))
-        (is (= #{doc1-id doc2-id} (set (map :id results)))))))
-  (deftest recents-api-with-documents-premium-feature-test
-    (testing "/recents API returns documents when :document premium feature is enabled"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                     :model/Document {doc-id :id} {:name "Test Document"
-                                                   :collection_id coll-id
-                                                   :archived false}]
-        ;; Add document to recent views
-        (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
-        ;; Call the API
-        (let [response (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views])]
-          (is (some #(and (= (:model %) "document")
-                          (= (:id %) doc-id)
-                          (= (:name %) "Test Document"))
-                    (:recents response))
-              "Document should be present in recents when premium feature is enabled"))))))
+        (is (= #{doc1-id doc2-id} (set (map :id results))))))))
+
+(deftest recents-api-returns-documents-test
+  (testing "/recents API returns viewed documents"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                   :model/Document {doc-id :id} {:name "Test Document"
+                                                 :collection_id coll-id
+                                                 :archived false}]
+      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
+      (let [response (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views])]
+        (is (some #(and (= (:model %) "document")
+                        (= (:id %) doc-id)
+                        (= (:name %) "Test Document"))
+                  (:recents response))
+            "Document should be present in recents")))))
 
 (deftest recents-api-excludes-exploration-documents-test
   (testing "/recents API hides documents attached to an exploration"

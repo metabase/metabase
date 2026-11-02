@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import ModelSVG from "img/model-illustration.svg?component";
+import ModelSVG from "assets/img/model-illustration.svg?component";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { useUserAcknowledgement } from "metabase/current-user";
 import { useDispatch } from "metabase/redux";
@@ -29,6 +29,7 @@ export function NewDatasetModal({ onClose }: { onClose: () => void }) {
           key="cancel"
           onClick={onClose}
           variant="subtle"
+          color="neutral"
         >{t`Cancel`}</Button>,
         <Button
           key="action"

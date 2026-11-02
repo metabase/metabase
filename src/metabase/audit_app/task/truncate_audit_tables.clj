@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.settings :as audit-app.settings]
+   [metabase.audit-app.task.partitions :as partitions]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
@@ -55,7 +56,7 @@
   metabase-enterprise.audit-app.task.truncate-audit-tables
   []
   ;; postgres has partitioned query_execution; we detach partitions instead of deleting
-  (if (= :postgres (mdb/db-type))
+  (if (partitions/fully-on-partitions?)
     []
     [{:model :model/QueryExecution :timestamp-col :started_at}]))
 
@@ -67,7 +68,10 @@
        (truncate-table! model timestamp-col)))
    (audit-models-to-truncate)))
 
-(task/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]
+(task/defjob TruncateAuditTables
+  "Triggers the removal of `query_execution` rows older than the configured threshold."
+  {:saved-class "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"}
+  [_]
   (truncate-audit-tables!))
 
 (def ^:private truncate-audit-tables-job-key "metabase.task.truncate-audit-tables.job")

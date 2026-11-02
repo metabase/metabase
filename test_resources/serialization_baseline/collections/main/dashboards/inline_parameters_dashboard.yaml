@@ -1,6 +1,5 @@
 name: Inline Parameters Dashboard
 entity_id: eUXWiB6QAXkOc7P1ozoat
-created_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 collection_id: cOlDaShBoArDs0ExAmPlx
 parameters:
@@ -18,12 +17,9 @@ parameters:
   slug: min_price
   type: number/>=
 serdes/meta:
-- id: eUXWiB6QAXkOc7P1ozoat
-  label: inline_parameters_dashboard
-  model: Dashboard
+- model: Dashboard
 dashcards:
 - entity_id: yaY0FfjZyI9oEQQR5TZ3q
-  created_at: '2026-04-02T02:59:02.778668Z'
   row: 0
   col: 0
   size_x: 24
@@ -33,17 +29,10 @@ dashcards:
   parameter_mappings: []
   series: []
   visualization_settings:
-    column_settings: null
     text: Products in {{category}}
     virtual_card:
       display: heading
-  serdes/meta:
-  - id: eUXWiB6QAXkOc7P1ozoat
-    model: Dashboard
-  - id: yaY0FfjZyI9oEQQR5TZ3q
-    model: DashboardCard
 - entity_id: v29EoQMk66PPR6a68pe_S
-  created_at: '2026-04-02T02:59:02.778668Z'
   row: 1
   col: 0
   size_x: 12
@@ -54,20 +43,13 @@ dashcards:
   parameter_mappings: []
   series: []
   visualization_settings:
-    column_settings: null
     text: |-
       Showing products in the **{{category}}** category
       with price above **{{min_price}}**.
     virtual_card:
       display: text
-  serdes/meta:
-  - id: eUXWiB6QAXkOc7P1ozoat
-    model: Dashboard
-  - id: v29EoQMk66PPR6a68pe_S
-    model: DashboardCard
 - entity_id: _5CQR0-k5mgaLOemB5EOl
   card_id: h5F2EjHsRd73Dqqh8sAtd
-  created_at: '2026-04-02T02:59:02.778668Z'
   row: 3
   col: 0
   size_x: 18
@@ -95,12 +77,6 @@ dashcards:
         - PRICE
       - null
   series: []
-  visualization_settings:
-    column_settings: null
-  serdes/meta:
-  - id: eUXWiB6QAXkOc7P1ozoat
-    model: Dashboard
-  - id: _5CQR0-k5mgaLOemB5EOl
-    model: DashboardCard
+  visualization_settings: {}
 tabs: []
 width: fixed

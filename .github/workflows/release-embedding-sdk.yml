@@ -96,7 +96,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -265,7 +265,7 @@ jobs:
       tag_as_latest: ${{ steps.metadata.outputs.tag_as_latest }}
     steps:
       - name: Check out the code using the provided branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare-release.outputs.branch }}
 
@@ -316,7 +316,7 @@ jobs:
       tag: embedding-sdk-${{ needs.read-sdk-release-metadata.outputs.sdk_version }}
     steps:
       - name: Check out the code using the provided branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare-release.outputs.branch }}
           fetch-depth: 0
@@ -340,7 +340,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare-release.outputs.branch }}
 
@@ -361,7 +361,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare-release.outputs.branch }}
           fetch-depth: 0
@@ -450,7 +450,7 @@ jobs:
       stable_tag: embedding-sdk-${{ needs.read-sdk-release-metadata.outputs.major_version }}-stable
     steps:
       - name: Check out the code using the provided branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           ref: ${{ needs.prepare-release.outputs.branch }}

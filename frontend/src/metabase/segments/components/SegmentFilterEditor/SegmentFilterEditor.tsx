@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";

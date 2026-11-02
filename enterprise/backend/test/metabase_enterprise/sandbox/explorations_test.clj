@@ -12,7 +12,6 @@
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
    [metabase-enterprise.test :as met]
    [metabase.explorations.query-plan.variants :as variants]
-   [metabase.explorations.test-util :as explorations.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -28,9 +27,6 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
-
-;; The application does not mount `/api/exploration` while explorations are disabled; serve it for these tests.
-(use-fixtures :each explorations.tu/exploration-routes-fixture)
 
 (defn- venues-count-query []
   (let [mp (mt/metadata-provider)]
@@ -236,7 +232,7 @@
           {:creator-id (mt/user->id :rasta) :data-access-token token}
           (fn [{:keys [query]}]
             (testing "lucky is a non-admin with full data access and no sandbox"
-              (is (=? {:message #"Cannot show cached results: your data access differs.*"}
+              (is (=? #"Cannot show cached results: your data access differs.*"
                       (mt/user-http-request :lucky :get 403 (format "exploration/query/%d" (:id query))))
                   "the denial is the lens refusing, not a missing data perm"))
             (testing "while a superuser streams it (bypass)"
@@ -429,7 +425,7 @@
                                :model/PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
                                                                     :group_id (:id escape-group)}]
                   (perms/set-database-permission! escape-group (mt/id) :perms/view-data :unrestricted)
-                  (is (=? {:message #"Cannot show cached results: your data access differs.*"}
+                  (is (=? #"Cannot show cached results: your data access differs.*"
                           (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))
                       "the denial is the lens refusing, not a missing data perm")))
               (testing "a superuser streams the cached result (bypass — superusers see every exploration)"
@@ -457,8 +453,8 @@
                               (data-access-token/routing-token-for-db (mt/id))))))))
 
 (deftest resolved-table-ids-skip-viewer-routing-lens-test
-  (testing "resolving a query's table footprint must not resolve the *viewer's* routing lens.
-            Footprint resolution preprocesses as admin, but do-as-admin keeps the user's id and
+  (testing "resolving a query's source ids must not resolve the *viewer's* routing lens.
+            Resolving them preprocesses as admin, but do-as-admin keeps the user's id and
             attributes, so without `preprocess-without-per-user-lens` the routing preprocess
             middleware resolves this user's destination db and throws (no :database-routing
             feature) — and the read gate would deny every same-lens viewer"
@@ -468,7 +464,7 @@
         (sandbox.tu/with-user-attributes! :rasta {"db_name" "sr-dest-a"}
           (mt/with-test-user :rasta
             (is (= #{(mt/id :venues)}
-                   (query-perms/query->resolved-source-table-ids (venues-count-query))))))))))
+                   (:table-ids (query-perms/query->resolved-source-ids (venues-count-query)))))))))))
 
 (deftest routing-gate-end-to-end-test
   (testing "the routing lens gates cached exploration results per destination database"

@@ -29,6 +29,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -36,7 +37,8 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections rs.test/clean-remote-sync-state rs.test/commit-with-temp)
 
 ;;; ------------------------------------------------- State capture --------------------------------------------------
 
@@ -224,8 +226,9 @@
            (let [b-id (t2/select-one-pk :model/Card :entity_id b-eid)]
              (mt/with-dynamic-fn-redefs [search/delete! (fn [model ids] (swap! deleted conj [model (vec ids)]))]
                (import-at! src "v1"))                      ; incremental delete of card_b
-             (is (some (fn [[model ids]] (and (= :model/Card model) (some #{b-id} ids))) @deleted)
-                 "the removed card is deleted from the search index by id"))))))))
+             (is (some (fn [[model ids]] (and (= :model/Card model) (some #{(str b-id)} ids))) @deleted)
+                 "the removed card is deleted from the search index by id, as the string the index stores
+                  (an integer id fails on Postgres with `text = integer`)"))))))))
 
 (deftest rename-card-equivalence-test
   (testing "GHY-3779: renaming a card (same entity_id at a new path) imports equivalently — the old
@@ -260,6 +263,24 @@
        (is (= :fallback (run-differential! f0 {})))))))
 
 ;;; ------------------------------------------ First import: never incremental ------------------------------------------
+
+(deftest cancelled-after-commit-keeps-the-sync-base-test
+  (testing "a pull whose task is cancelled after its transaction committed still advances last-version, so the
+            next pull of the same snapshot is skipped instead of re-importing everything"
+    (do-with-bench!
+     (fn [f0]
+       (search.tu/with-index-disabled
+         (let [f1  (update f0 (path-with f0 "card_b") str/replace "display: table" "display: line")
+               src (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")]
+           (is (= :success (:status (import-at! src "v0" :force? true))))
+           (let [task (t2/insert-returning-pk! :model/RemoteSyncTask
+                                               {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+             (is (= :success (:status (impl/import! (source.p/snapshot-at src "v1") task))))
+             ;; The worker died (or an admin cancelled) between the commit and the result bookkeeping.
+             (remote-sync.task/cancel-sync-task! task)
+             (is (=? {:cancelled true :version "v1"} (t2/select-one :model/RemoteSyncTask :id task))))
+           (is (= "v1" (remote-sync.task/last-version)))
+           (is (=? {:status :success :outcome {:kind "pull-skipped"}} (import-at! src "v1")))))))))
 
 (deftest first-import-no-force-uses-full-load-test
   (testing "GHY-3779: a first import (no prior version, so last-version is nil) with force? false must NOT

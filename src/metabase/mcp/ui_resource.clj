@@ -60,11 +60,15 @@
    tool — so those two keys only render into the test fallback template."
   [vars]
   (cond
+    ;; The fallback wins when installed: a developer whose worktree has a frontend build would
+    ;; otherwise render the built template, and the credential-embedding tests would fail on their
+    ;; machine and pass on CI. Gated on `is-test?` so no production process can ever prefer an
+    ;; inline template over the built one, whatever leaves the atom set.
+    (and config/is-test? @fallback-template)
+    (stencil/render-string @fallback-template vars)
+
     (io/resource embed-mcp-template-path)
     (stencil/render-file embed-mcp-template-path vars)
-
-    @fallback-template
-    (stencil/render-string @fallback-template vars)
 
     :else
     (throw (ex-info (str "Missing MCP embed template: " embed-mcp-template-path
@@ -173,8 +177,8 @@
 
    The returned fn takes the `resources/read` options map: `:ui-credential` (the scoped credential
    the iframe authenticates with, as a delay — forcing it here is what mints one, so resources that
-   do not embed a credential never cause one to exist) and `:session-id` (the MCP session id it
-   echoes back on callbacks). Since #81041 the production template discards both — the iframe
+   do not embed a credential never cause one to exist; absent or nil renders none) and `:session-id`
+   (the MCP session id it echoes back on callbacks). Since #81041 the production template discards both — the iframe
    fetches its credential through the `refresh_ui_credential` tool — so on a production shell read
    the minted credential (HMAC-only, no DB row) is unused; the test fallback template still embeds
    it, which is what the shell-credential tests exercise."

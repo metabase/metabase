@@ -46,6 +46,16 @@ describe("metabase/redux/undo", () => {
       expect(store.getState().undo).toHaveLength(1);
       expect(store.getState().undo[0].message).toBe("Updated toast");
     });
+
+    it("should keep an explicit icon regardless of the variant", async () => {
+      const store = createMockStore();
+
+      await store.dispatch(
+        addUndo({ id: MOCK_ID, variant: "negative", icon: "info" }),
+      );
+
+      expect(store.getState().undo[0].icon).toBe("info");
+    });
   });
 
   describe("performUndo", () => {
@@ -117,7 +127,7 @@ describe("metabase/redux/undo", () => {
     expect(store.getState().undo.length).toBe(1);
 
     // resume undo (e.g. when mouse left toast)
-    store.dispatch(resumeUndo(store.getState().undo[0]));
+    store.dispatch(resumeUndo(store.getState().undo[0].id));
 
     await act(async () => {
       jest.advanceTimersByTime(timeShiftResumed1);

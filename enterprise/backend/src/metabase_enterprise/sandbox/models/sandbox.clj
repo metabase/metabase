@@ -6,12 +6,12 @@
   See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions
   system."
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -39,7 +39,8 @@
   (derive :metabase/model)
   ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
-  (derive ::mi/write-policy.superuser))
+  (derive ::mi/write-policy.superuser)
+  (derive :hook/dependencies))
 
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})
@@ -71,12 +72,13 @@
       (when-not (isa? col-base-type table-col-base-type)
         (let [msg (tru "Sandbox Questions can''t return columns that have different types than the Table they are sandboxing.")]
           (throw (ex-info msg
-                          {:type        qp.error-type/bad-configuration
-                           :status-code 400
-                           :message     msg
-                           :new-col     col
-                           :expected    table-col-base-type
-                           :actual      (:base_type col)})))))))
+                          {:type          qp.error-type/bad-configuration
+                           :status-code   400
+                           :message       msg
+                           :new-col       col
+                           :expected      table-col-base-type
+                           :actual        (:base_type col)
+                           :response/keys #{:expected :actual}})))))))
 
 (defn- merge-sandbox-into-graph
   "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,
@@ -144,25 +146,48 @@
              :when table-col]
        (check-column-types-match col table-col)))))
 
-(defn- sandboxing-card-ids
-  "Every Card a sandbox is built out of: the Cards sandboxes name directly, plus every Card those read at any depth."
+(defn- sandbox-dependency-set
+  "The sandbox dependency set: every Card, snippet, Segment, and Measure some sandbox's policy reads at any depth, as a
+  map of entity kind (`:card`, `:snippet`, `:segment`, `:measure`) to ids. The Cards sandboxes name directly are in
+  `:card` alongside everything those Cards read."
   []
+  ;; Each Card gets its own walk because the metadata provider is scoped to a single Database, and sandboxing Cards span
+  ;; Databases. A possible future optimization: Cards, Segments, and Measures belong to one Database, so a check on one
+  ;; of those could walk only the sandboxing Cards on the same Database. Snippets are not tied to a Database, so a
+  ;; snippet check would still need every sandboxing Card.
   (let [cards (sandbox.db/sandboxing-cards)]
-    (into (into #{} (map :id) cards)
-          (mapcat (fn [{:keys [dataset_query database_id]}]
-                    (when (seq dataset_query)
-                      (lib/all-source-card-ids-recursive
-                       (lib/query (lib-be/application-database-metadata-provider database_id) dataset_query)))))
-          cards)))
+    (-> (transduce (keep (fn [{:keys [dataset_query database_id]}]
+                           (when (seq dataset_query)
+                             (lib/all-referenced-entity-ids-recursive
+                              (lib/query (lib-be/application-database-metadata-provider database_id) dataset_query)))))
+                   (completing (partial merge-with set/union))
+                   {:card (into #{} (map :id) cards), :snippet #{}, :segment #{}, :measure #{}}
+                   cards)
+        (select-keys [:card :snippet :segment :measure]))))
+
+(defn- sandbox-dependency-error [entity-kind id]
+  (case entity-kind
+    :card    (ex-info
+              (tru "You do not have permissions to modify a question that is used for row and column level security.")
+              {:status-code 403, :card-id id})
+    :snippet (ex-info
+              (tru "You do not have permissions to modify a snippet that is used for row and column level security.")
+              {:status-code 403, :snippet-id id})
+    :segment (ex-info
+              (tru "You do not have permissions to modify a segment that is used for row and column level security.")
+              {:status-code 403, :segment-id id})
+    :measure (ex-info
+              (tru "You do not have permissions to modify a measure that is used for row and column level security.")
+              {:status-code 403, :measure-id id})))
 
 (defn- check-non-admin-cannot-affect-sandboxing!
-  "Throws a 403 if `card-id` is a Card a sandbox is built out of and the current user is not an admin. Server-side
-  writes (sync, serdes and the like) run with no user bound, or as a superuser, and are not subject to the check."
-  [card-id]
-  (when (and card-id api/*current-user-id* (not api/*is-superuser?*))
-    (when (contains? (sandboxing-card-ids) card-id)
-      (throw (ex-info (tru "You do not have permissions to modify a question that is used for row and column level security.")
-                      {:status-code 403, :card-id card-id})))))
+  "Throws a 403 if the `entity-kind` (`:card`, `:snippet`, `:segment`, or `:measure`) entity with `id` is in the sandbox
+  dependency set and the current user is not an admin. Server-side writes (sync, serdes and the like) run with no user
+  bound, or as a superuser, and are not subject to the check."
+  [entity-kind id]
+  (when (and id api/*current-user-id* (not api/*is-superuser?*))
+    (when (contains? (get (sandbox-dependency-set) entity-kind) id)
+      (throw (sandbox-dependency-error entity-kind id)))))
 
 (defn- check-result-metadata-still-matches-sandboxed-tables!
   "Throws if `new-result-metadata` would stop matching the Tables the sandboxes built out of this Card sandbox: the
@@ -182,12 +207,14 @@
                               e)))))))))
 
 (defenterprise pre-update-check-sandbox-constraints
-  "If a Card is updated, and its result metadata changes, check that these changes do not violate the constraints placed
-  on sandboxes (the Card cannot add fields or change types vs. the original Table)."
+  "Refuses a non-admin's update to a Card in the sandbox dependency set when `changes` touches `:dataset_query`,
+  `:archived`, or `:result_metadata` (for a Card-backed sandbox, the column allow-list). If the result metadata
+  changes, also checks that it does not violate the constraints placed on sandboxes (the Card cannot add fields or
+  change types vs. the original Table)."
   :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id} changes]
-  (when (some #(contains? changes %) [:dataset_query :archived])
-    (check-non-admin-cannot-affect-sandboxing! card-id))
+  (when (some #(contains? changes %) [:dataset_query :archived :result_metadata])
+    (check-non-admin-cannot-affect-sandboxing! :card card-id))
   (when (contains? changes :result_metadata)
     (check-result-metadata-still-matches-sandboxed-tables! card-id new-result-metadata)))
 
@@ -195,7 +222,49 @@
   "Checks sandbox constraints when a Card a sandbox is built out of is deleted."
   :feature :sandboxes
   [{card-id :id}]
-  (check-non-admin-cannot-affect-sandboxing! card-id))
+  (check-non-admin-cannot-affect-sandboxing! :card card-id))
+
+(defenterprise pre-update-check-sandbox-constraints-for-snippet
+  "Refuses a non-admin's update to a snippet in the sandbox dependency set when `changes` touches `:content`, `:name`,
+  or `:archived`."
+  :feature :sandboxes
+  [{snippet-id :id} changes]
+  (when (some #(contains? changes %) [:content :name :archived])
+    (check-non-admin-cannot-affect-sandboxing! :snippet snippet-id)))
+
+(defenterprise pre-delete-check-sandbox-constraints-for-snippet
+  "Refuses a non-admin's deletion of a snippet in the sandbox dependency set."
+  :feature :sandboxes
+  [{snippet-id :id}]
+  (check-non-admin-cannot-affect-sandboxing! :snippet snippet-id))
+
+(defenterprise pre-update-check-sandbox-constraints-for-segment
+  "Refuses a non-admin's update to a Segment in the sandbox dependency set when `changes` touches `:definition` or
+  `:archived`."
+  :feature :sandboxes
+  [{segment-id :id} changes]
+  (when (some #(contains? changes %) [:definition :archived])
+    (check-non-admin-cannot-affect-sandboxing! :segment segment-id)))
+
+(defenterprise pre-delete-check-sandbox-constraints-for-segment
+  "Refuses a non-admin's deletion of a Segment in the sandbox dependency set."
+  :feature :sandboxes
+  [{segment-id :id}]
+  (check-non-admin-cannot-affect-sandboxing! :segment segment-id))
+
+(defenterprise pre-update-check-sandbox-constraints-for-measure
+  "Refuses a non-admin's update to a Measure in the sandbox dependency set when `changes` touches `:definition` or
+  `:archived`."
+  :feature :sandboxes
+  [{measure-id :id} changes]
+  (when (some #(contains? changes %) [:definition :archived])
+    (check-non-admin-cannot-affect-sandboxing! :measure measure-id)))
+
+(defenterprise pre-delete-check-sandbox-constraints-for-measure
+  "Refuses a non-admin's deletion of a Measure in the sandbox dependency set."
+  :feature :sandboxes
+  [{measure-id :id}]
+  (check-non-admin-cannot-affect-sandboxing! :measure measure-id))
 
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be
@@ -211,16 +280,8 @@
        (do
          (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
            (sandbox.db/update-sandbox! id (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-         (let [updated-sandbox (sandbox.db/sandbox id)]
-           (events/publish-event! :event/sandbox-update
-                                  {:object updated-sandbox
-                                   :user-id api/*current-user-id*})
-           updated-sandbox))
-       (let [inserted-sandbox (sandbox.db/insert-sandbox! sandbox)]
-         (events/publish-event! :event/sandbox-create
-                                {:object inserted-sandbox
-                                 :user-id api/*current-user-id*})
-         inserted-sandbox)))))
+         (sandbox.db/sandbox id))
+       (sandbox.db/insert-sandbox! sandbox)))))
 
 (defn- normalize-sandbox-attribute-remappings
   "Normalize `:attribute_remappings` on a Sandbox map, if present. `before-insert`/`before-update` hooks see this

@@ -16,7 +16,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCollection,

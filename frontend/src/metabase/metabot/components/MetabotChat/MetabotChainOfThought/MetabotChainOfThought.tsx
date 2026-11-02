@@ -7,6 +7,8 @@ import { AIMarkdown } from "metabase/metabot/components/AIMarkdown";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
 import { Collapse, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
 
+import { MetabotResponseLoader } from "../MetabotResponseLoader";
+
 import S from "./MetabotChainOfThought.module.css";
 import { MetabotToolProgress } from "./MetabotToolProgress";
 import { ReasoningStep } from "./ReasoningStep";
@@ -23,21 +25,29 @@ import {
 } from "./utils";
 
 type MetabotChainOfThoughtProps = {
+  conversationId: string;
   part: MetabotAgentChainOfThoughtMessage;
   supportsReasoning?: boolean;
 };
 
 export const MetabotChainOfThought = ({
+  conversationId,
   part,
   supportsReasoning = true,
 }: MetabotChainOfThoughtProps) => {
   if (!supportsReasoning) {
     return <MetabotToolProgress part={part} />;
   }
-  return <ChainOfThought part={part} />;
+  return (
+    <>
+      {!part.finished && <MetabotResponseLoader />}
+      <ChainOfThought conversationId={conversationId} part={part} />
+    </>
+  );
 };
 
 const ChainOfThought = ({
+  conversationId,
   part,
 }: Omit<MetabotChainOfThoughtProps, "supportsReasoning">) => {
   const isStreaming = !part.finished;
@@ -139,9 +149,11 @@ const ChainOfThought = ({
                   return (
                     <div key={`reasoning-${index}`} className={S.step}>
                       <ReasoningStep
+                        conversationId={conversationId}
                         text={step.text}
                         label={active ? t`Thinking` : stepReasoningLabel(index)}
                         active={active}
+                        shown={open}
                       />
                     </div>
                   );

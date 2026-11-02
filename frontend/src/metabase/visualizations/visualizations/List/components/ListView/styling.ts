@@ -39,6 +39,10 @@ export const ENTITY_ICON_COLORS: ColorName[] = [
   "accent6",
 ];
 
+/** Cards saved on v0.59.1–v0.63.0 store old color name "brand". */
+export const getEntityIconColor = (iconColor?: string) =>
+  iconColor === "brand" ? "core-brand" : iconColor;
+
 // For icons with default color, use white background,
 // otherwise derive transparent background from custom color.
 export function getIconBackground(iconColor?: string) {

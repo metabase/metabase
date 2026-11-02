@@ -44,6 +44,38 @@ describe("readManifest", () => {
     expect(() => readManifest(APP_ROOT)).toThrow(/Could not parse/);
   });
 
+  describe("slug", () => {
+    it("reads the slug", () => {
+      setup({ [YAML_PATH]: "slug: sales-ops\n" });
+
+      expect(readManifest(APP_ROOT)?.manifest.slug).toBe("sales-ops");
+    });
+
+    it("throws on a non-string slug", () => {
+      setup({ [YAML_PATH]: "slug: [a]\n" });
+
+      expect(() => readManifest(APP_ROOT)).toThrow(/"slug" must be a string/);
+    });
+  });
+
+  describe("collection", () => {
+    it("reads the resource collection's entity ID", () => {
+      setup({ [YAML_PATH]: "collection: appCollectionEntity01\n" });
+
+      expect(readManifest(APP_ROOT)?.manifest.collection).toBe(
+        "appCollectionEntity01",
+      );
+    });
+
+    it("throws when it is not a string", () => {
+      setup({ [YAML_PATH]: "collection: [1, 2]\n" });
+
+      expect(() => readManifest(APP_ROOT)).toThrow(
+        '"collection" must be an entity ID',
+      );
+    });
+  });
+
   describe("allowed_hosts", () => {
     it("reads allowed_hosts as a list of strings", () => {
       setup({

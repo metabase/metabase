@@ -3,12 +3,6 @@
 import type { AsyncThunkAction } from "@reduxjs/toolkit";
 
 import { EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
-import {
-  connectToInstanceAuthSso,
-  jwtDefaultRefreshTokenFunction,
-  openSamlLoginPopup,
-  validateSession,
-} from "embedding/auth-common";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import {
   PLUGIN_EMBEDDING_SDK_AUTH,
@@ -28,15 +22,18 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
+import {
+  connectToInstanceAuthSso,
+  jwtDefaultRefreshTokenFunction,
+  openSamlLoginPopup,
+  validateSession,
+} from "embedding/auth-common";
 import { PLUGIN_API } from "metabase/api/client";
 import {
   currentUserApi,
   loadCurrentUser,
   refetchCurrentUser,
 } from "metabase/current-user";
-import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
-import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
-import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,
@@ -44,6 +41,9 @@ import {
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
+import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
+import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
+import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { refetchSiteSettings, settingsApi } from "metabase/settings";
 import MetabaseSettings from "metabase/utils/settings";

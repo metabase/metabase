@@ -277,7 +277,7 @@
     [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [jobs (transforms-rest.db/jobs)]
     (into []
           (comp (map add-next-run)

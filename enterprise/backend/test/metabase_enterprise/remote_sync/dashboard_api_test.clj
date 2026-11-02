@@ -3,12 +3,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(use-fixtures :each (fn [f]
-                      (mt/with-temporary-setting-values [remote-sync-type :read-write]
-                        (f))))
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections (fn [f]
+                                                   (mt/with-temporary-setting-values [remote-sync-type :read-write]
+                                                     (f))))
 
 (deftest api-update-dashboard-collection-id-remote-synced-dependency-checking-success-test
   (testing "PUT /api/dashboard/:id with collection_id in remote-synced succeeds when all dependencies are in remote-synced"
@@ -53,7 +55,8 @@
                                            {:collection_id target-id})]
         ;; Verify error response contains dependency information
         (is (str/includes? (:message response) "content that is not remote synced")
-            "Error message should mention content that is not remote synced"))
+            "Error message should mention content that is not remote synced")
+        (is (seq (:non-remote-synced-models response))))
       ;; Verify the transaction was rolled back - dashboard should not be moved
       (let [unchanged-dash (t2/select-one :model/Dashboard :id dash-id)]
         (is (= source-id (:collection_id unchanged-dash))

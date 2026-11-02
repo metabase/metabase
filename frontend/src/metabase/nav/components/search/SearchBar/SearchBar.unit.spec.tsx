@@ -24,6 +24,13 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
+
 const TEST_SEARCH_RESULTS: CollectionItem[] = [
   "Card ABC",
   "Card BCD",

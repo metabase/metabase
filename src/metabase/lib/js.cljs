@@ -958,6 +958,14 @@
   [a-query stage-number]
   (to-array (lib.core/aggregations a-query stage-number)))
 
+(defn ^:export aggregation-column
+  "Given an `aggregation-clause` from [[aggregations]], returns the column it produces, named as its result column is
+  before the stage deduplicates its column names.
+
+  > **Code health:** Healthy"
+  [a-query stage-number aggregation-clause]
+  (lib.core/aggregation-column a-query stage-number aggregation-clause))
+
 (defn ^:export aggregation-clause
   "Returns a standalone aggregation clause for an `aggregation-operator` and a `column`.
 
@@ -2460,12 +2468,14 @@
   code. It does not need to be wrapped or included here. Just merge these extra keyword conversions into that code and
   remove this."
   [n unit offset-n offset-unit options]
-  (u.time/format-relative-date-range
-   n
-   (keyword unit)
-   offset-n
-   (some-> offset-unit keyword)
-   (js->clj options :keywordize-keys true)))
+  (let [{:keys [start-of-week] :as options} (js->clj options :keywordize-keys true)]
+    (u.time/format-relative-date-range
+     {:start-of-week (keyword (or start-of-week :sunday))}
+     n
+     (keyword unit)
+     offset-n
+     (some-> offset-unit keyword)
+     (dissoc options :start-of-week))))
 
 (defn ^:export find-matching-column
   "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.
@@ -2809,3 +2819,8 @@
   (-> js-native-query-spec
       (js->clj :keywordize-keys true)
       (->> (lib.query.test-spec/test-native-query metadata-providerable))))
+
+(defn ^:export unique-expression-name
+  "Generates an expression name that's unique in the query."
+  [the-query stage-number suggested-name]
+  (lib.expression/unique-expression-name the-query stage-number suggested-name))

@@ -5,7 +5,9 @@ import {
   createMockCard,
   createMockColumn,
   createMockDashboard,
+  createMockDashboardCard,
   createMockParameter,
+  createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
 
 import { DashboardClickAction } from "./DashboardClickAction";
@@ -44,9 +46,7 @@ function buildSettings({
   );
   const settings: ComputedVisualizationSettings = {
     column_settings,
-    // Computed column() does NOT surface click_behavior (#73448). Returning the
-    // formatter-only shape mirrors the production behavior we have to handle.
-    column: () => ({}),
+    column: ({ name }) => ({ click_behavior: columns[name] }),
   };
   if (root) {
     settings.click_behavior = root;
@@ -55,51 +55,76 @@ function buildSettings({
 }
 
 describe("getClickBehavior", () => {
-  it("uses click behavior configured on the clicked column", () => {
-    const clickBehavior = getClickBehavior({
-      column: metricColumn,
-      settings: buildSettings({ columns: { count: metricClickBehavior } }),
-    });
-
-    expect(clickBehavior).toBe(metricClickBehavior);
-  });
-
-  it("falls back to the click behavior configured on a clicked dimension (#73448)", () => {
+  it("does not inherit another table column's click behavior through row dimensions (#82956)", () => {
     const clickBehavior = getClickBehavior({
       column: metricColumn,
       dimensions: [{ column: dimensionColumn, value: "Gadget" }],
       settings: buildSettings({
         columns: { CATEGORY: dimensionClickBehavior },
       }),
+      extraData: { dashcard: createMockDashboardCard() },
     });
 
-    expect(clickBehavior).toBe(dimensionClickBehavior);
+    expect(clickBehavior).toBeUndefined();
   });
 
-  it("prefers a clicked column behavior over a dimension behavior", () => {
-    const clickBehavior = getClickBehavior({
-      column: metricColumn,
-      dimensions: [{ column: dimensionColumn, value: "Gadget" }],
-      settings: buildSettings({
-        columns: {
-          count: metricClickBehavior,
-          CATEGORY: dimensionClickBehavior,
+  it.each([
+    { description: "explicit", behavior: rootClickBehavior },
+    { description: "default", behavior: undefined },
+  ])(
+    "uses the chart's $description behavior instead of retained table column actions (#73448)",
+    ({ behavior }) => {
+      const clickBehavior = getClickBehavior({
+        column: metricColumn,
+        dimensions: [{ column: dimensionColumn, value: "Gadget" }],
+        extraData: {
+          dashcard: createMockVisualizerDashboardCard({
+            card: createMockCard({ display: "table" }),
+            visualization_settings: {
+              visualization: {
+                display: "bar",
+                settings: {},
+                columnValuesMapping: {},
+              },
+            },
+          }),
         },
-      }),
-    });
+        settings: {
+          ...buildSettings({
+            root: behavior,
+            columns: {
+              count: metricClickBehavior,
+              CATEGORY: dimensionClickBehavior,
+            },
+          }),
+          // Charts' computed column settings do not expose retained table click actions.
+          column: () => ({}),
+        },
+      });
 
-    expect(clickBehavior).toBe(metricClickBehavior);
-  });
+      expect(clickBehavior).toBe(behavior);
+    },
+  );
 
-  it("falls back to the root click behavior when neither column nor dimension has one", () => {
-    const clickBehavior = getClickBehavior({
-      column: metricColumn,
-      dimensions: [{ column: dimensionColumn, value: "Gadget" }],
-      settings: buildSettings({ root: rootClickBehavior }),
-    });
+  it.each([
+    { description: "configured", behavior: metricClickBehavior },
+    { description: "default", behavior: undefined },
+  ])(
+    "uses only the table column's $description behavior when a card action remains",
+    ({ behavior }) => {
+      const clickBehavior = getClickBehavior({
+        column: metricColumn,
+        dimensions: [{ column: dimensionColumn, value: "Gadget" }],
+        extraData: { dashcard: createMockDashboardCard() },
+        settings: {
+          ...buildSettings({ root: rootClickBehavior }),
+          column: () => ({ click_behavior: behavior }),
+        },
+      });
 
-    expect(clickBehavior).toBe(rootClickBehavior);
-  });
+      expect(clickBehavior).toBe(behavior);
+    },
+  );
 });
 
 const stateColumn = createMockColumn({ name: "STATE" });
@@ -283,17 +308,17 @@ describe("getDashboardDrillLinkUrl", () => {
 });
 
 describe("DashboardClickAction", () => {
-  it("creates a click-behavior action for a chart click with a dimension-scoped behavior (#73448)", () => {
+  it("creates a click-behavior action for the configured chart behavior", () => {
     const actions = DashboardClickAction({
       question: new Question(createMockCard()),
       clicked: {
         column: metricColumn,
         dimensions: [{ column: dimensionColumn, value: "Gadget" }],
         extraData: { dashboard: {}, parameters: [] },
+        settings: buildSettings({
+          root: { type: "crossfilter", parameterMapping: {} },
+        }),
       },
-      settings: buildSettings({
-        columns: { CATEGORY: { type: "crossfilter", parameterMapping: {} } },
-      }),
     });
 
     expect(actions).toHaveLength(1);

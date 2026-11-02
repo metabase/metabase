@@ -156,8 +156,7 @@ export function ItemDragSource(props: ItemDragSourceProps) {
   const onMoveError = (error: unknown) =>
     sendToast({
       message: getErrorMessage(error),
-      icon: "warning_triangle_filled",
-      iconColor: "feedback-warning",
+      variant: "negative",
     });
   return (
     <DragSourceComponent

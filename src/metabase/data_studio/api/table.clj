@@ -166,7 +166,7 @@
         [:entity_type {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [selectors       (select-keys body [:database_ids :schema_ids :table_ids])
         set-ks          [:data_authority
                          :data_source
@@ -192,7 +192,7 @@
   [_route-params
    _query-params
    body :- ::table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [selectors         (select-keys body [:database_ids :schema_ids :table_ids])
         selected-tables   (data-studio.db/selection-columns-for-selectors selectors 2)
         selected-table    (when-not (next selected-tables)
@@ -210,7 +210,7 @@
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
+  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
 
 (api.macros/defendpoint :post "/sync-schema" :- :nil
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
@@ -219,7 +219,7 @@
   [_
    _
    body :- ::table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)
         db-ids (sort (set (map :db_id tables)))]
     (doseq [database (data-studio.db/databases db-ids)]
@@ -239,7 +239,7 @@
   [_
    _
    body :- ::table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
     (doseq [table tables]
@@ -252,7 +252,7 @@
   [_
    _
    body :- ::table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
     (data-studio.db/delete-field-values-for-tables! (map :id tables))
     nil))

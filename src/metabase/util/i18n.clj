@@ -21,17 +21,20 @@
  [i18n.common
   join-strings-with-conjunction]
  [i18n.impl
+  available-locale-names
   available-locale?
   fallback-locale
   locale
   normalized-locale-string
   translate])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *user-locale*
   "Bind this to a string, keyword, or `Locale` to set the locale for the current User. To get the locale we should
   *use*, use the `user-locale` function instead."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *site-locale-override*
   "Bind this to a string, keyword to override the value returned by `site-locale`. For testing purposes,
   such as when swapping out an application database temporarily, when the setting table may not even exist."

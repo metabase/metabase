@@ -4,8 +4,10 @@ import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
 import { useListPermissionsGroupsQuery } from "metabase/api";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { getAddMembersDisabledReason } from "metabase/common/utils/groups";
 import type { SelectProps } from "metabase/ui";
-import { Loader, Select } from "metabase/ui";
+import { DefaultSelectItem, Loader, Select, Tooltip } from "metabase/ui";
 import type { GroupId } from "metabase-types/api";
 
 interface FormGroupWidgetProps extends Omit<
@@ -24,6 +26,7 @@ export const FormGroupWidget = forwardRef(function FormGroupWidget(
   const [{ value }, { error, touched }, { setValue, setTouched }] = useField<
     GroupId | null | undefined
   >(name);
+  const hasAdvancedPermissions = useHasTokenFeature("advanced_permissions");
 
   const handleChange = useCallback(
     (newValue: string) => {
@@ -46,10 +49,34 @@ export const FormGroupWidget = forwardRef(function FormGroupWidget(
     return <Loader size={16} />;
   }
 
+  // Only a change of group is an addition; keeping the current one is not.
+  const disabledReasonByValue = new Map(
+    groups.map((group) => [
+      String(group.id),
+      group.id === value
+        ? null
+        : getAddMembersDisabledReason(group, hasAdvancedPermissions),
+    ]),
+  );
+
   const groupOptions = groups.map(({ id, name }) => ({
     value: String(id),
     label: name,
+    disabled: disabledReasonByValue.get(String(id)) != null,
   }));
+
+  const renderOption: SelectProps["renderOption"] = ({ option, checked }) => {
+    const disabledReason = disabledReasonByValue.get(option.value) ?? null;
+    return (
+      <Tooltip
+        label={disabledReason}
+        disabled={disabledReason == null}
+        position="right"
+      >
+        <DefaultSelectItem {...option} selected={checked} />
+      </Tooltip>
+    );
+  };
 
   return (
     <Select
@@ -60,6 +87,7 @@ export const FormGroupWidget = forwardRef(function FormGroupWidget(
       value={value == null ? undefined : String(value)}
       error={touched && error ? <div role="alert">{error}</div> : null}
       data={groupOptions}
+      renderOption={renderOption}
       onChange={handleChange}
       onBlur={handleBlur}
     />

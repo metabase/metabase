@@ -76,6 +76,7 @@ import { getMantineThemeColors } from "./utils/colors";
 /* eslint-disable metabase/no-color-literals */
 const LIGHT_SHADOWS = {
   xs: "0 1px 3px 0 rgba(0, 0, 0, 0.07)",
+  xs_on_dark: "0 1px 3px 0 rgba(0, 0, 0, 0.20)",
   xs_outline:
     "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 3px 0 rgba(0, 0, 0, 0.07)",
   sm: "0 1px 4px 0 rgba(0, 0, 0, 0.05), 0 5px 15px 0 rgba(0, 0, 0, 0.10)",
@@ -87,6 +88,7 @@ const LIGHT_SHADOWS = {
 
 const DARK_SHADOWS = {
   xs: "0 1px 3px 0 rgba(0, 0, 0, 0.20)",
+  xs_on_dark: "0 1px 3px 0 rgba(0, 0, 0, 0.20)",
   xs_outline:
     "0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.20)",
   sm: "0 1px 4px 0 rgba(0, 0, 0, 0.07), 0 5px 15px 0 rgba(0, 0, 0, 0.20)",
@@ -136,13 +138,22 @@ export const breakpoints = {
 };
 export type BreakpointName = keyof typeof breakpoints;
 
-export const getThemeOverrides = (
-  colorScheme: "light" | "dark" = "light",
-  whitelabelColors?: ColorSettings | null,
-): MantineThemeOverride => ({
+export const getThemeOverrides = ({
+  colorScheme = "light",
+  whitelabelColors,
+  forceDynamicBrandRamp,
+}: {
+  colorScheme?: "light" | "dark";
+  whitelabelColors?: ColorSettings | null;
+  forceDynamicBrandRamp?: boolean;
+} = {}): MantineThemeOverride => ({
   focusClassName: Styles.focus,
   breakpoints,
-  colors: getMantineThemeColors(colorScheme, whitelabelColors),
+  colors: getMantineThemeColors({
+    colorScheme,
+    whitelabelColors,
+    forceDynamicBrandRamp,
+  }),
   primaryColor: "core-brand",
   primaryShade: 0,
   // Store colorScheme in other property for access later

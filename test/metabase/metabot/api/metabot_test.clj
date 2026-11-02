@@ -17,6 +17,15 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest prompt-suggestions-metabot-id-test
+  (mt/with-temp [:model/Metabot {:keys [id entity_id]} {:name "Prompt sources"}]
+    (doseq [metabot-id [id entity_id]]
+      (is (=? {:prompts [] :total 0}
+              (mt/user-http-request :rasta :get 200
+                                    (format "metabot/metabot/%s/prompt-suggestions" metabot-id))))))
+  (is (= "Unknown Metabot."
+         (mt/user-http-request :rasta :get 404 "metabot/metabot/nonexistent-entity-id/prompt-suggestions"))))
+
 (defmacro with-clean-metabots
   "Macro to reset the Metabots table to an empty state before a test and restore it after the test runs."
   [& body]

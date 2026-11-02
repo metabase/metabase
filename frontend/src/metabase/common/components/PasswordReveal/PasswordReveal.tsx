@@ -39,7 +39,6 @@ export const PasswordReveal = ({ password }: PasswordRevealProps) => {
                 data-testid="copy-button"
                 aria-label={t`Copy password`}
                 variant="subtle"
-                color="icon-secondary"
                 size="lg"
               >
                 <Icon name={copied ? "check" : "copy"} />

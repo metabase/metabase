@@ -41,7 +41,7 @@ export function ChecklistCard({
   to,
   onClick,
 }: ChecklistCardProps) {
-  const textColor = isLocked ? "text-tertiary" : "text-primary";
+  const textColor = isLocked ? "text-disabled" : "text-primary";
   const isInteractive = !isLocked && (to != null || onClick != null);
 
   const content = (
@@ -50,7 +50,7 @@ export function ChecklistCard({
         <FixedSizeIcon
           name={icon}
           size={16}
-          c={isLocked ? "text-tertiary" : "brand"}
+          c={isLocked ? "text-disabled" : "core-brand"}
           mt="0.15rem"
         />
 
@@ -62,7 +62,7 @@ export function ChecklistCard({
           <Text
             fz="md"
             lh="lg"
-            c={isLocked ? "text-tertiary" : "text-secondary"}
+            c={isLocked ? "text-disabled" : "text-secondary"}
           >
             {description}
           </Text>
@@ -157,17 +157,17 @@ function StepBadge({
     return (
       <Flex
         className={S.badge}
-        bg="background-success"
+        bg="background_surface-success"
         aria-label={t`Step ${step} complete`}
       >
-        <Icon name="check" size={14} c="success" />
+        <Icon name="check" size={14} c="feedback-positive" />
       </Flex>
     );
   }
 
   return (
     <Flex className={S.badge}>
-      <Text fw="bold" fz="md" c={isLocked ? "text-tertiary" : "brand"}>
+      <Text fw="bold" fz="md" c={isLocked ? "text-disabled" : "core-brand"}>
         {step}
       </Text>
     </Flex>

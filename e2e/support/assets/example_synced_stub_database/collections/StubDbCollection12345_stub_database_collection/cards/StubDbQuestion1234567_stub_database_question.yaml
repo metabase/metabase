@@ -1,0 +1,58 @@
+description: null
+archived: false
+collection_position: null
+source_card_id: null
+table_id:
+- Stub Postgres
+- public
+- products
+result_metadata: null
+card_schema: 22
+database_id: Stub Postgres
+enable_embedding: false
+collection_id: StubDbCollection12345
+query_type: query
+name: Stub Database Question
+document_id: null
+type: question
+creator_id: admin@metabase.test
+made_public_by_id: null
+embedding_params: null
+dataset_query:
+  database: Stub Postgres
+  type: query
+  query:
+    source-table:
+    - Stub Postgres
+    - public
+    - products
+    fields:
+    - - field
+      - - Stub Postgres
+        - public
+        - products
+        - title
+      - null
+    order-by:
+    - - asc
+      - - field
+        - - Stub Postgres
+          - public
+          - products
+          - id
+        - null
+    limit: 1
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: StubDbQuestion1234567
+  label: stub_database_question
+display: table
+archived_directly: false
+entity_id: StubDbQuestion1234567
+collection_preview: true
+visualization_settings: {}
+parameters: []
+dashboard_id: null
+created_at: '2026-10-05T09:00:00.000000-07:00'
+public_uuid: null

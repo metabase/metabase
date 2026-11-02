@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
@@ -6,7 +5,6 @@ import { Button, Icon } from "metabase/ui";
 
 import { withPublicComponentWrapper } from "../PublicComponentWrapper";
 
-import S from "./SdkInternalNavigationBackButton.module.css";
 import { useSdkInternalNavigationOptional } from "./context";
 
 /**
@@ -38,14 +36,12 @@ const SdkInternalNavigationBackButtonInner = ({
 
   return (
     <Button
-      variant="subtle"
-      color="text-secondary"
-      size="sm"
+      variant="transparent"
+      size="compact-md"
       leftSection={<Icon name="chevronleft" />}
       onClick={pop}
-      pl={0}
       style={style}
-      className={cx(className, S.backButton)}
+      className={className}
       aria-label={label}
     >
       {label}

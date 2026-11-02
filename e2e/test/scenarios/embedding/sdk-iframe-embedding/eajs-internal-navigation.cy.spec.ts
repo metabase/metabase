@@ -1,6 +1,11 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { getSignedJwtForResource, updateSetting } from "e2e/support/helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
+import type {
+  NavigatedEntityParameterChangePayload,
+  NavigationId,
+} from "embedding-sdk-bundle/types/navigation";
+import type { MetabaseDashboardElement } from "metabase/embedding/embedding-iframe-sdk/embed";
 import type { Parameter } from "metabase-types/api";
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
@@ -50,6 +55,7 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
         parameters: [TARGET_DASHBOARD_FILTER],
       }).then(({ body: targetDashboard }) => {
         cy.wrap(targetDashboard.id).as("targetDashboardId");
+        cy.wrap(targetDashboard.entity_id).as("targetDashboardEntityId");
 
         H.createQuestion({
           name: "Orders for Target Dashboard",
@@ -153,7 +159,7 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       });
     });
 
-    it("should navigate to a linked dashboard with filters when clicking a dashboard link", () => {
+    it("should navigate to a linked dashboard with filters and to a linked question with parameters", () => {
       cy.get<number>("@startingDashboardId").then((startingDashboardId) => {
         H.visitCustomHtmlPage(`
           ${H.getNewEmbedScriptTag()}
@@ -196,18 +202,6 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       H.getSimpleEmbedIframeContent()
         .findByText(/Back to/)
         .should("not.exist");
-    });
-
-    it("should navigate to a linked question with parameters when clicking a question link", () => {
-      cy.get<number>("@startingDashboardId").then((startingDashboardId) => {
-        H.visitCustomHtmlPage(`
-          ${H.getNewEmbedScriptTag()}
-          ${H.getNewEmbedConfigurationScript({})}
-          <metabase-dashboard dashboard-id="${startingDashboardId}" drills enable-entity-navigation />
-        `);
-      });
-
-      cy.wait("@getDashCardQuery");
 
       cy.log("click on the question link");
       H.getSimpleEmbedIframeContent()
@@ -224,6 +218,103 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       H.getSimpleEmbedIframeContent()
         .findByText("Back to Starting Dashboard")
         .should("be.visible");
+    });
+
+    it("should report and control the parameters of a navigated dashboard through the custom element", () => {
+      const onNavigatedEntityParametersChange = cy
+        .stub()
+        .as("onNavigatedEntityParametersChange");
+
+      cy.get<number>("@startingDashboardId").then((startingDashboardId) => {
+        H.visitCustomHtmlPage(`
+          ${H.getNewEmbedScriptTag()}
+          ${H.getNewEmbedConfigurationScript({})}
+          <metabase-dashboard dashboard-id="${startingDashboardId}" drills enable-entity-navigation />
+        `);
+      });
+
+      cy.window().then((win) => {
+        cy.get("metabase-dashboard").then(([dashboardElement]) => {
+          dashboardElement.addEventListener(
+            "navigated-entity-parameters-change",
+            (event) => {
+              if (event instanceof win.CustomEvent) {
+                const payload: unknown = event.detail;
+                onNavigatedEntityParametersChange(payload);
+              }
+            },
+          );
+        });
+      });
+
+      cy.wait("@getDashCardQuery");
+
+      cy.log("click on the dashboard link");
+      H.getSimpleEmbedIframeContent()
+        .findAllByText("Go to Target Dashboard")
+        .should("have.length", 5)
+        .first()
+        .click();
+
+      H.getSimpleEmbedIframeContent()
+        .findByText("Target Dashboard")
+        .should("be.visible");
+
+      cy.log("the navigation reports the initial state of the target");
+      cy.get<string>("@targetDashboardEntityId").then(
+        (targetDashboardEntityId) => {
+          cy.get("@onNavigatedEntityParametersChange").should(
+            "have.been.calledWithMatch",
+            {
+              source: "initial-state",
+              entityType: "dashboard",
+              entityId: targetDashboardEntityId,
+              navigationId: Cypress.sinon.match.string,
+              clickParameters: { [TARGET_DASHBOARD_FILTER.slug]: [1] },
+            },
+          );
+        },
+      );
+
+      cy.get<sinon.SinonStub<[NavigatedEntityParameterChangePayload]>>(
+        "@onNavigatedEntityParametersChange",
+      )
+        .then((stub) => stub.firstCall.args[0].navigationId)
+        .as("navigationId");
+
+      cy.log("the host sets the filter of this visit via the element property");
+      cy.get<NavigationId>("@navigationId").then((navigationId) => {
+        cy.get<MetabaseDashboardElement>("metabase-dashboard").then(
+          ([dashboardElement]) => {
+            dashboardElement.navigatedEntityParameters = {
+              [navigationId]: { [TARGET_DASHBOARD_FILTER.slug]: [2] },
+            };
+          },
+        );
+      });
+
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("dashboard-parameters-widget-container")
+        .findByLabelText("ID Filter")
+        .should("contain", "2")
+        .and("not.contain", "1");
+
+      cy.log("the user clears the filter in the iframe");
+      H.getSimpleEmbedIframeContent().within(() => {
+        H.filterWidget({ name: "ID Filter" }).icon("close").click();
+      });
+
+      cy.get<NavigationId>("@navigationId").then((navigationId) => {
+        cy.get("@onNavigatedEntityParametersChange").should(
+          "have.been.calledWithMatch",
+          {
+            source: "manual-change",
+            entityType: "dashboard",
+            navigationId,
+            parameters: { [TARGET_DASHBOARD_FILTER.slug]: null },
+          },
+        );
+      });
     });
 
     it("should not navigate when drills are disabled", () => {
@@ -361,7 +452,7 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       });
     });
 
-    it("should hide breadcrumbs during internal navigation and show them again after going back", () => {
+    it("should hide breadcrumbs during internal navigation, show them again after going back, and clean up the navigation stack", () => {
       H.visitCustomHtmlPage(`
         ${H.getNewEmbedScriptTag()}
         ${H.getNewEmbedConfigurationScript({})}
@@ -392,15 +483,18 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
         .first()
         .click();
 
+      cy.log("back button should be visible");
+      H.getSimpleEmbedIframeContent()
+        .findByText("Back to First Dashboard")
+        .should("be.visible");
+
       cy.log("breadcrumbs should be hidden after navigating");
       H.getSimpleEmbedIframeContent()
         .findByTestId("sdk-breadcrumbs")
         .should("not.exist");
 
-      cy.log("back button should be visible");
       H.getSimpleEmbedIframeContent()
         .findByText("Back to First Dashboard")
-        .should("be.visible")
         .click();
 
       cy.log("verify we returned to First Dashboard");
@@ -417,36 +511,6 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       H.getSimpleEmbedIframeContent()
         .findByText(/Back to/)
         .should("not.exist");
-    });
-
-    it("should clean up navigation stack when clicking a collection breadcrumb after navigating back", () => {
-      H.visitCustomHtmlPage(`
-        ${H.getNewEmbedScriptTag()}
-        ${H.getNewEmbedConfigurationScript({})}
-        <metabase-browser initial-collection="root" enable-entity-navigation />
-      `);
-
-      cy.log("open First Dashboard from the browser");
-      H.getSimpleEmbedIframeContent()
-        .findByText("First Dashboard")
-        .should("be.visible")
-        .click();
-
-      cy.wait("@getDashCardQuery");
-
-      cy.log("navigate to Target Dashboard via click behavior link");
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("Go to Target Dashboard")
-        .first()
-        .click();
-
-      cy.wait("@getDashboard");
-
-      cy.log("click back to return to First Dashboard");
-      H.getSimpleEmbedIframeContent()
-        .findByText("Back to First Dashboard")
-        .should("be.visible")
-        .click();
 
       cy.log(
         "click 'Our analytics' breadcrumb to go back to the collection browser",

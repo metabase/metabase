@@ -378,7 +378,7 @@ describe("parseFullText — numeric literal parsing", () => {
     expect(result).toHaveLength(1);
     const entry = result[0];
     if (entry.type === "expression") {
-      // eslint-disable-next-line jest/no-conditional-expect
+      // eslint-disable-next-line jest-js/no-conditional-expect
       expect(buildExpressionText(entry.tokens, metricNames)).toBe(text);
     } else {
       throw new Error("Expected expression entry");
@@ -490,7 +490,7 @@ describe("parseFullText — negative numbers", () => {
     expect(result).toHaveLength(1);
     const entry = result[0];
     if (entry.type === "expression") {
-      // eslint-disable-next-line jest/no-conditional-expect
+      // eslint-disable-next-line jest-js/no-conditional-expect
       expect(buildExpressionText(entry.tokens, metricNames)).toBe(text);
     } else {
       throw new Error("Expected expression entry");

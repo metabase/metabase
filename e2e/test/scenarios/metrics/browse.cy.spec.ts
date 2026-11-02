@@ -90,37 +90,48 @@ describe("scenarios > browse > metrics", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   describe("no metrics", () => {
-    it("should not hide the browse metrics link in the sidebar", () => {
-      cy.visit("/");
-      H.navigationSidebar().findByText("Metrics").should("be.visible");
-    });
+    it("should show the empty metrics page, discard a new metric on cancel (metabase#48024), and hide create actions from users who cannot create queries", () => {
+      const emptyStateText =
+        "Create Metrics to define the official way to calculate important numbers for your team";
 
-    it("should show the empty metrics page", () => {
-      cy.visit("/browse/metrics");
+      cy.visit("/");
+      H.navigationSidebar().findByText("Metrics").should("be.visible").click();
+      cy.location("pathname").should("eq", "/browse/metrics");
+      cy.findByTestId("browse-metrics-header")
+        .findByLabelText("Create a new metric")
+        .should("be.visible");
       H.main().within(() => {
-        cy.findByText(
-          "Create Metrics to define the official way to calculate important numbers for your team",
-        ).should("be.visible");
+        cy.findByText(emptyStateText).should("be.visible");
         cy.findByText("Create metric").should("be.visible").click();
       });
       cy.location("pathname").should("eq", "/metric/new");
-    });
 
-    it("should not show the create metric button if the user does not have data access", () => {
+      cy.log("cancelling a new metric asks to discard it");
+      H.MetricPage.queryEditor().should("be.visible");
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("Orders").click();
+      });
+      H.MetricPage.cancelButton().click();
+      H.modal().within(() => {
+        cy.findByText("Discard your changes?").should("be.visible");
+        cy.button("Discard changes").click();
+      });
+      cy.location("pathname").should("eq", "/browse/metrics");
+      H.main().findByText(emptyStateText).should("be.visible");
+
+      cy.log(
+        "create actions are hidden from a sandboxed user who cannot create queries",
+      );
       cy.signInAsSandboxedUser();
       cy.visit("/browse/metrics");
       H.main().within(() => {
-        cy.findByText(
-          "Create Metrics to define the official way to calculate important numbers for your team",
-        ).should("be.visible");
+        cy.findByText(emptyStateText).should("be.visible");
         cy.findByText("Create metric").should("not.exist");
       });
-
-      cy.log("New metric header button should not show either");
       cy.findByTestId("browse-metrics-header")
         .findByLabelText("Create a new metric")
         .should("not.exist");
@@ -157,35 +168,7 @@ describe("scenarios > browse > metrics", () => {
   });
 
   describe("multiple metrics", () => {
-    it("can browse metrics", () => {
-      createMetrics(ALL_METRICS);
-      cy.visit("/browse/metrics");
-      H.navigationSidebar().findByText("Metrics").should("be.visible");
-
-      ALL_METRICS.forEach((metric) => {
-        findMetric(metric.name).should("be.visible");
-      });
-    });
-
-    it("should navigate to the metric when clicking a metric title", () => {
-      createMetrics([ORDERS_SCALAR_METRIC]);
-      cy.visit("/browse/metrics");
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click();
-      cy.location("pathname").should("match", /^\/metric\//);
-      H.MetricPage.aboutPage().should("be.visible");
-    });
-
-    it("should navigate to that collection when clicking a collection title", () => {
-      createMetrics([ORDERS_SCALAR_METRIC]);
-      cy.visit("/browse/metrics");
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
-
-      metricsTable().findByText("Our analytics").should("be.visible").click();
-
-      cy.location("pathname").should("eq", "/collection/root");
-    });
-
-    it("should open the collections in a new tab when alt-clicking a metric", () => {
+    it("should open a metric in a new tab on meta-click, and navigate to its collection and to the metric on click", () => {
       cy.on("window:before:load", (win) => {
         // prevent Cypress opening in a new window/tab and spy on this method
         cy.stub(win, "open").as("open");
@@ -194,6 +177,7 @@ describe("scenarios > browse > metrics", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
       cy.visit("/browse/metrics");
 
+      cy.log("meta-click opens the metric in a new tab");
       findMetric(ORDERS_SCALAR_METRIC.name)
         .should("be.visible")
         .click(H.holdMetaKey);
@@ -207,6 +191,16 @@ describe("scenarios > browse > metrics", () => {
 
       // the page did not navigate on this page
       cy.location("pathname").should("eq", "/browse/metrics");
+
+      cy.log("clicking the collection navigates to it");
+      metricsTable().findByText("Our analytics").should("be.visible").click();
+      cy.location("pathname").should("eq", "/collection/root");
+
+      cy.log("clicking the metric navigates to it");
+      cy.visit("/browse/metrics");
+      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click();
+      cy.location("pathname").should("match", /^\/metric\//);
+      H.MetricPage.aboutPage().should("be.visible");
     });
 
     it("should render truncated name and markdown in the table", () => {
@@ -216,6 +210,7 @@ describe("scenarios > browse > metrics", () => {
         "This is a _very_ **long description** that should be truncated by the metrics table because it is really very long.";
 
       createMetrics([
+        ...ALL_METRICS,
         {
           ...ORDERS_SCALAR_METRIC,
           name,
@@ -224,6 +219,11 @@ describe("scenarios > browse > metrics", () => {
       ]);
 
       cy.visit("/browse/metrics");
+      H.navigationSidebar().findByText("Metrics").should("be.visible");
+
+      ALL_METRICS.forEach((metric) => {
+        findMetric(metric.name).should("be.visible");
+      });
 
       metricsTable()
         .findByText(name)
@@ -239,7 +239,10 @@ describe("scenarios > browse > metrics", () => {
         .findByText(/This is a/)
         .realHover();
 
-      cy.findAllByText(/should be truncated/).should("have.length", 2);
+      H.tooltip().within(() => {
+        cy.findByText(/should be truncated/).should("be.visible");
+        cy.get("strong").should("have.text", "long description");
+      });
     });
 
     it("should be possible to sort the metrics", () => {
@@ -275,28 +278,15 @@ describe("scenarios > browse > metrics", () => {
   });
 
   describe("dot menu", () => {
-    it("should be possible to bookmark a metrics from the dot menu", () => {
-      createMetrics([ORDERS_SCALAR_METRIC]);
+    beforeEach(() => {
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+      cy.signInAsNormalUser();
+    });
 
-      cy.visit("/browse/metrics");
-
-      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
-
-      metricsTable().findByLabelText("Metric options").click();
-      H.popover().findByText("Bookmark").should("be.visible").click();
-
-      shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
-
-      metricsTable().findByLabelText("Metric options").click();
-      H.popover()
-        .findByText("Remove from bookmarks")
-        .should("be.visible")
-        .click();
-
-      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
-
-      metricsTable().findByLabelText("Metric options").click();
-      H.popover().findByText("Bookmark").should("be.visible");
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
     });
 
     it("should be possible to navigate to the collection from the dot menu", () => {
@@ -313,12 +303,33 @@ describe("scenarios > browse > metrics", () => {
       );
     });
 
-    it("should be possible to trash a metric from the dot menu when the user has write access", () => {
+    it("should be possible to bookmark, trash, and restore a metric from the dot menu when the user has write access", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
 
       cy.visit("/browse/metrics");
 
+      cy.log("bookmark and unbookmark");
       metricsTable().findByLabelText("Metric options").click();
+      H.popover().findByText("Bookmark").should("be.visible").click();
+
+      shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
+      H.expectUnstructuredSnowplowEvent({
+        event: "bookmark_added",
+        event_detail: "metric",
+        triggered_from: "browse_metrics",
+      });
+
+      metricsTable().findByLabelText("Metric options").click();
+      H.popover()
+        .findByText("Remove from bookmarks")
+        .should("be.visible")
+        .click();
+
+      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+      cy.log("trash and restore");
+      metricsTable().findByLabelText("Metric options").click();
+      H.popover().findByText("Bookmark").should("be.visible");
       H.popover().findByText("Move to trash").should("be.visible").click();
 
       H.main()
@@ -340,38 +351,21 @@ describe("scenarios > browse > metrics", () => {
     });
 
     describe("when the user does not have write access", () => {
-      it("should not be possible to trash a metric from the dot menu when the user does not have write access", () => {
+      it("should be possible to bookmark a metric and navigate to its collection, but not trash it, from the dot menu", () => {
         createMetrics([ORDERS_SCALAR_METRIC]);
         cy.signIn("readonly");
 
         cy.visit("/browse/metrics");
 
+        cy.log("trash is not offered");
         metricsTable().findByLabelText("Metric options").click();
-        H.popover().findByText("Move to trash").should("not.exist");
-      });
+        H.popover().within(() => {
+          cy.findByText("Bookmark").should("be.visible");
+          cy.findByText("Move to trash").should("not.exist");
+        });
 
-      it("should be possible to navigate to the collection from the dot menu", () => {
-        createMetrics([ORDERS_SCALAR_METRIC]);
-        cy.signIn("readonly");
-
-        cy.visit("/browse/metrics");
-
-        metricsTable().findByLabelText("Metric options").click();
-        H.popover().findByText("Open collection").should("be.visible").click();
-
-        cy.location("pathname").should("eq", "/collection/root");
-      });
-
-      it("should be possible to bookmark a metrics from the dot menu", () => {
-        createMetrics([ORDERS_SCALAR_METRIC]);
-        cy.signIn("readonly");
-
-        cy.visit("/browse/metrics");
-
-        shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
-
-        metricsTable().findByLabelText("Metric options").click();
-        H.popover().findByText("Bookmark").should("be.visible").click();
+        cy.log("bookmark and unbookmark");
+        H.popover().findByText("Bookmark").click();
 
         shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
@@ -383,8 +377,12 @@ describe("scenarios > browse > metrics", () => {
 
         shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
+        cy.log("open collection");
         metricsTable().findByLabelText("Metric options").click();
         H.popover().findByText("Bookmark").should("be.visible");
+        H.popover().findByText("Open collection").should("be.visible").click();
+
+        cy.location("pathname").should("eq", "/collection/root");
       });
     });
   });
@@ -395,16 +393,7 @@ describe("scenarios > browse > metrics", () => {
       H.activateToken("pro-self-hosted");
     });
 
-    it("should not show the verified metrics filter when there are no verified metrics", () => {
-      createMetrics(ALL_METRICS);
-      cy.visit("/browse/metrics");
-
-      cy.findByLabelText("Table of metrics").should("be.visible");
-
-      cy.findByLabelText(/show.*verified.*metrics/i).should("not.exist");
-    });
-
-    it("should show the verified metrics filter when there are verified metrics", () => {
+    it("should show the verified metrics filter when there are verified metrics, and persist its user setting", () => {
       cy.intercept(
         "PUT",
         "/api/setting/browse-filter-only-verified-metrics",
@@ -415,26 +404,38 @@ describe("scenarios > browse > metrics", () => {
 
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
+      cy.findByLabelText(/show.*verified.*metrics/i).should("not.exist");
 
       verifyMetric(ORDERS_SCALAR_METRIC);
 
+      verifiedMetricsSwitch().should("have.attr", "aria-selected", "true");
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
 
       toggleVerifiedMetricsFilter();
-      cy.get<{ request: Request }>("@setSetting").should((xhr) => {
-        expect(xhr.request.body).to.deep.equal({ value: false });
-      });
+      cy.wait("@setSetting")
+        .its("request.body")
+        .should("deep.equal", { value: false });
 
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
 
-      toggleVerifiedMetricsFilter();
-      cy.get<{ request: Request }>("@setSetting").should((xhr) => {
-        expect(xhr.request.body).to.deep.equal({ value: true });
-      });
-      cy.wait("@setSetting");
+      cy.log("the setting survives a reload");
+      cy.reload();
+      verifiedMetricsSwitch().should("have.attr", "aria-selected", "false");
+      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
 
+      toggleVerifiedMetricsFilter();
+      cy.wait("@setSetting")
+        .its("request.body")
+        .should("deep.equal", { value: true });
+
+      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
+
+      cy.reload();
+      verifiedMetricsSwitch().should("have.attr", "aria-selected", "true");
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
 
@@ -442,40 +443,6 @@ describe("scenarios > browse > metrics", () => {
 
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
-    });
-
-    it("should respect the user setting on whether to only show verified metrics", () => {
-      cy.intercept("GET", "/api/session/properties", (req) => {
-        req.continue((res) => {
-          res.body["browse-filter-only-verified-metrics"] = true;
-          res.send();
-        });
-      });
-
-      createMetrics([ORDERS_SCALAR_METRIC, ORDERS_SCALAR_MODEL_METRIC]);
-      cy.visit("/browse/metrics");
-      verifyMetric(ORDERS_SCALAR_METRIC);
-
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      cy.findByRole("switch", { name: /show.*verified.*metrics/i }).should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-
-      cy.intercept("GET", "/api/session/properties", (req) => {
-        req.continue((res) => {
-          res.body["browse-filter-only-verified-metrics"] = true;
-          res.send();
-        });
-      });
-
-      cy.visit("/browse/metrics");
-      cy.findByRole("switch", { name: /show.*verified.*metrics/i }).should(
-        "have.attr",
-        "aria-selected",
-        "false",
-      );
     });
   });
 });
@@ -525,6 +492,10 @@ function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
   H.navigationSidebar()
     .findByRole("listitem", { name: "Browse metrics" })
     .click();
+}
+
+function verifiedMetricsSwitch() {
+  return cy.findByRole("switch", { name: /show.*verified.*metrics/i });
 }
 
 function toggleVerifiedMetricsFilter() {

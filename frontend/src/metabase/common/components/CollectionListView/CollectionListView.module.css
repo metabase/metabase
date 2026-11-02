@@ -5,6 +5,7 @@
 .card {
   color: var(--mb-color-text-secondary);
   cursor: pointer;
+  outline-offset: -2px;
 }
 
 .card:hover {

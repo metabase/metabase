@@ -17,10 +17,11 @@ import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, Table } from "metabase-types/api";
 
-import { NewSegmentHeader } from "../../components/NewSegmentHeader";
 import { SegmentEditor } from "../../components/SegmentEditor";
 import { useSegmentQuery } from "../../hooks/use-segment-query";
 import { createInitialQueryForTable } from "../../utils/segment-query";
+
+import { NewSegmentHeader } from "./NewSegmentHeader";
 
 // Hoisted: the metadata selector memoises on the options object, so a fresh
 // literal each render would defeat it.

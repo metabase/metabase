@@ -1,14 +1,8 @@
-import { RuleTester } from "eslint";
-import tseslint from "typescript-eslint";
-
 import rule from "../eslint-plugin-metabase/rules/no-plugin-slot-outside-plugins-files";
 
-const ruleTester = new RuleTester({
-  languageOptions: {
-    parser: tseslint.parser,
-    sourceType: "module",
-  },
-});
+import { createRuleTester } from "./rule-tester";
+
+const ruleTester = createRuleTester();
 
 const MODULE_FILE = "/repo/frontend/src/metabase/search/slots.ts";
 const MODULE_INDEX = "/repo/frontend/src/metabase/search/index.ts";

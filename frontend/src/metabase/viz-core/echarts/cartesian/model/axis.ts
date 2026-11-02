@@ -20,11 +20,7 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { computeNumericDataInterval } from "../../../lib/numeric";
 import { getLineAreaBarComparisonSettings } from "../../../lib/settings";
-import type {
-  ComputedVisualizationSettings,
-  Extent,
-  VisualizationGridSize,
-} from "../../../types";
+import type { ComputedVisualizationSettings, Extent } from "../../../types";
 import type { ShowWarning } from "../../types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
@@ -60,6 +56,9 @@ import type {
 } from "./types";
 import { getFormattingOptionsWithoutScaling } from "./util";
 
+// Default to 5 ticks for consistent behavior between single and multiple series
+const DEFAULT_Y_AXIS_SPLIT_NUMBER = 5;
+
 const uniqueCards = (seriesModels: SeriesModel[]) =>
   _.uniq(seriesModels.map(({ cardId }) => cardId)).length;
 
@@ -68,10 +67,10 @@ const getMetricColumnsCount = (seriesModels: SeriesModel[]) => {
     .length;
 };
 
-export function shouldAutoSplitYAxis(
+// The checks of `shouldAutoSplitYAxis` that don't need series extents.
+function canAutoSplitYAxis(
   settings: ComputedVisualizationSettings,
   seriesModels: SeriesModel[],
-  seriesExtents: SeriesExtents,
 ) {
   if (!settings["graph.y_axis.auto_split"] || settings["graph.split_panels"]) {
     return false;
@@ -80,10 +79,18 @@ export function shouldAutoSplitYAxis(
   const isSingleCardWithSingleMetricColumn =
     uniqueCards(seriesModels) <= 1 && getMetricColumnsCount(seriesModels) <= 1;
 
-  if (
-    isSingleCardWithSingleMetricColumn ||
-    settings["stackable.stack_type"] != null
-  ) {
+  return (
+    !isSingleCardWithSingleMetricColumn &&
+    settings["stackable.stack_type"] == null
+  );
+}
+
+export function shouldAutoSplitYAxis(
+  settings: ComputedVisualizationSettings,
+  seriesModels: SeriesModel[],
+  seriesExtents: SeriesExtents,
+) {
+  if (!canAutoSplitYAxis(settings, seriesModels)) {
     return false;
   }
 
@@ -228,10 +235,10 @@ export function computeSplit(
   return best;
 }
 
-const getYAxisSplit = (
+export const getYAxisSplit = (
   seriesModels: SeriesModel[],
   stackModels: StackModel[],
-  seriesExtents: SeriesExtents,
+  dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   isAutoSplitSupported: boolean,
 ) => {
@@ -294,12 +301,20 @@ const getYAxisSplit = (
     }
   }
 
-  if (
-    !isAutoSplitSupported ||
-    !shouldAutoSplitYAxis(settings, seriesModels, seriesExtents)
-  ) {
-    // assign all auto to the left
-    return [new Set([...left, ...auto]), new Set(right)];
+  const allAutoLeft = [new Set([...left, ...auto]), new Set(right)];
+
+  // Extents take a pass over the rows, so skip them when no auto split can happen.
+  if (!isAutoSplitSupported || !canAutoSplitYAxis(settings, seriesModels)) {
+    return allAutoLeft;
+  }
+
+  const seriesExtents = getDatasetExtents(
+    seriesModels.map((seriesModel) => seriesModel.dataKey),
+    dataset,
+  );
+
+  if (!shouldAutoSplitYAxis(settings, seriesModels, seriesExtents)) {
+    return allAutoLeft;
   }
 
   // computes a split with all axis unassigned, then moves
@@ -418,15 +433,20 @@ export const getYAxisFormatter = (
   };
 };
 
-const getYAxisLabel = (
+export const getYAxisLabel = (
   seriesNames: string[],
   settings: ComputedVisualizationSettings,
+  isSplitRightAxis: boolean,
 ) => {
   if (settings["graph.y_axis.labels_enabled"] === false) {
     return undefined;
   }
 
-  const specifiedAxisName = settings["graph.y_axis.title_text"];
+  // An unset right label falls back to the left one; a blank one hides it.
+  const specifiedAxisName = isSplitRightAxis
+    ? (settings["graph.y_axis.right.title_text"] ??
+      settings["graph.y_axis.title_text"])
+    : settings["graph.y_axis.title_text"];
 
   if (specifiedAxisName != null) {
     return specifiedAxisName;
@@ -463,7 +483,7 @@ function findWidestRange(extents: Extent[]): Extent | null {
   return [min, max];
 }
 
-function getYAxisExtent(
+export function getYAxisExtent(
   seriesKeys: DataKey[],
   stackModels: StackModel[],
   dataset: ChartDataset,
@@ -499,8 +519,9 @@ interface YAxisModelOptions {
   stackModels?: StackModel[];
   stackType?: StackType;
   formattingOptions?: ColumnSettings;
-  gridSize?: VisualizationGridSize;
+  hasResponsiveTicks?: boolean;
   showLabel?: boolean;
+  isSplitRightAxis?: boolean;
 }
 
 export function getYAxisModel(
@@ -515,8 +536,9 @@ export function getYAxisModel(
     stackModels = [],
     stackType = null,
     formattingOptions,
-    gridSize,
+    hasResponsiveTicks = false,
     showLabel = true,
+    isSplitRightAxis = false,
   } = options;
 
   if (seriesKeys.length === 0) {
@@ -530,7 +552,9 @@ export function getYAxisModel(
     stackType,
   );
   const column = columnByDataKey[seriesKeys[0]];
-  const label = showLabel ? getYAxisLabel(seriesNames, settings) : undefined;
+  const label = showLabel
+    ? getYAxisLabel(seriesNames, settings, isSplitRightAxis)
+    : undefined;
   const formatter = getYAxisFormatter(
     column,
     settings,
@@ -554,12 +578,11 @@ export function getYAxisModel(
     formatter,
     formatGoal,
     isNormalized: stackType === "normalized",
+    hasResponsiveTicks,
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
         ? settings["graph.y_axis.split_number"]
-        : gridSize?.height && gridSize.height <= 5
-          ? 2 // Use fewer ticks for small dashboard charts
-          : 5, // Default to 5 ticks for consistent behavior between single and multiple series
+        : DEFAULT_Y_AXIS_SPLIT_NUMBER,
   };
 }
 
@@ -572,15 +595,12 @@ export function getYAxesModels(
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
   isCompactFormatting: boolean,
-  gridSize?: VisualizationGridSize,
+  hasResponsiveTicks = false,
 ) {
-  const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
-  const extents = getDatasetExtents(seriesDataKeys, dataset);
-
   const [leftAxisSeriesKeysSet, rightAxisSeriesKeysSet] = getYAxisSplit(
     seriesModels,
     stackModels,
-    extents,
+    dataset,
     settings,
     isAutoSplitSupported,
   );
@@ -618,7 +638,7 @@ export function getYAxesModels(
       stackModels: leftStackModels,
       stackType: settings["stackable.stack_type"] ?? null,
       formattingOptions: { compact: isCompactFormatting },
-      gridSize,
+      hasResponsiveTicks,
     },
   );
 
@@ -635,7 +655,10 @@ export function getYAxesModels(
           ? null
           : (settings["stackable.stack_type"] ?? null),
       formattingOptions: { compact: isCompactFormatting },
-      gridSize,
+      hasResponsiveTicks,
+      // A right axis alone uses the left label. Legend visibility must not
+      // change which label it uses.
+      isSplitRightAxis: leftAxisSeriesKeysSet.size > 0,
     },
   );
 
@@ -651,7 +674,7 @@ export function getYAxesModels(
             columnByDataKey,
             {
               formattingOptions: { compact: isCompactFormatting },
-              gridSize,
+              hasResponsiveTicks,
               showLabel: false,
             },
           ),

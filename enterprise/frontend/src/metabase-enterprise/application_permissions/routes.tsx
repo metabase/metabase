@@ -9,7 +9,17 @@ const applicationPermissionsPage = () =>
     Component: module.default,
   }));
 
-registerPagePrefetch(APPLICATION_PERMISSIONS_PATH, applicationPermissionsPage);
+/**
+ * Called from the licensed branch of `initializePlugin`, so only a page this
+ * instance mounts is registered. The background pass reads the registrations too,
+ * and fetching a page nobody can reach would spend a download on nothing.
+ */
+export function registerApplicationPermissionsPagePrefetch(): void {
+  registerPagePrefetch(
+    APPLICATION_PERMISSIONS_PATH,
+    applicationPermissionsPage,
+  );
+}
 
 const getRoutes = () => (
   <Route path="application" lazy={applicationPermissionsPage} />

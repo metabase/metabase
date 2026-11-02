@@ -243,6 +243,11 @@ const elements = [
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
+  createElement({
+    type: "shared",
+    name: "permissions",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "shared", name: "plugins" }),
   createElement({ type: "shared", name: "pulse" }),
   createElement({ type: "shared", name: "querying" }),
@@ -339,13 +344,13 @@ const elements = [
   createElement({
     type: "feature",
     name: "data-app-sandbox",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/sandbox/**",
     mode: "full",
   }),
   createElement({
     type: "app",
     name: "data-app-runtime",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/runtime/**",
     mode: "full",
   }),
   createElement({
@@ -384,8 +389,6 @@ const elements = [
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
-    "frontend/src/metabase/app/selectors.ts",
-    "frontend/src/metabase/app/selectors.unit.spec.ts",
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
@@ -429,12 +432,6 @@ const elements = [
         mode: "full",
       }),
   ),
-  createElement({
-    type: "shared",
-    name: "error-boundary",
-    pattern: "frontend/src/metabase/ErrorBoundary.tsx",
-    mode: "full",
-  }),
   createElement({
     type: "app",
     name: "routes-stable-id-aware",
@@ -588,4 +585,15 @@ export {
   enforcedRules,
   getFeatureModules,
   getPublicApiModules,
+};
+
+export const boundarySettings = {
+  "boundaries/elements": elements,
+  "boundaries/ignore": ["**/e2e/**", "test/**"],
+  "boundaries/dependency-nodes": ["import", "dynamic-import"],
+};
+export const boundaryOptions = {
+  default: "disallow",
+  rules: enforcedRules,
+  message: "${file.type} cannot import from ${dependency.type}",
 };

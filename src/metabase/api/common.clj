@@ -86,6 +86,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -102,32 +103,38 @@
 ;; These get bound by middleware for each HTTP request.
 
 ;;; TODO -- move this to [[metabase.request.current]]
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Integer *current-user-id*
   "Int ID or `nil` of user associated with current API call."
   nil)
 
 ;;; TODO -- move this to [[metabase.request.current]]
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-user*
   "Delay that returns the `User` (or nil) associated with the current API call.
    ex. `@*current-user*`"
   (atom nil)) ; default binding is just something that will return nil when dereferenced
 
 ;;; TODO -- move this to [[metabase.request.current]]
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Boolean *is-superuser?*
   "Is the current user a superuser?"
   false)
 
 ;;; TODO -- move this to [[metabase.request.current]]
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Boolean *is-group-manager?*
   "Is the current user a group manager of at least one group?"
   false)
 
 ;;; TODO -- move this to [[metabase.request.current]]
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Boolean *is-data-analyst?*
   "Is the current user a data analyst with access to Data Studio?"
   false)
 
 ;;; TODO -- move this to [[metabase.request.current]]
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-user-permissions-set*
   "Delay to the set of permissions granted to the current user. See documentation in [[metabase.permissions.models.permissions]] for
   more information about the Metabase permissions system."
@@ -146,7 +153,9 @@
                                   (not (i18n/localized-string? message)))
                            [(:message message) message]
                            [message])]
-      (throw (ex-info (str message) (assoc info :status-code code)))))
+      ;; a map message is authored as the response body, so all of it is client-facing
+      (throw (ex-info (str message)
+                      (apply api-error/extend-response-keys (assoc info :status-code code) (keys info))))))
   condition)
 
 (defn check
@@ -194,15 +203,31 @@
   (check-403 *is-superuser?*))
 
 (defn is-data-analyst?
-  "Returns a boolean representing whether the current user is a data analyst (or superuser)."
+  "Whether the current user is a superuser or a member of the Data Analysts group, regardless of whether the
+  `advanced-permissions` feature is available. See [[entitled-data-analyst?]]."
   []
+  ;; role membership only: the capabilities the permissions graph renders survive the loss of the feature
   (or *is-superuser?* *is-data-analyst?*))
 
-(defn check-data-analyst
-  "Check that `*current-user*` is a data analyst (or superuser) or throw a 403.
-  Superusers are automatically considered data analysts."
+(defn- advanced-permissions-enabled?
   []
-  (check-403 (is-data-analyst?)))
+  ;; resolved late: metabase.premium-features loads on top of this namespace
+  ((requiring-resolve 'metabase.premium-features.core/enable-advanced-permissions?)))
+
+(defn entitled-data-analyst?
+  "Whether the current user is a superuser, or a member of the Data Analysts group while the `advanced-permissions`
+  feature is available."
+  []
+  ;; capabilities that appear in no permissions graph pause on downgrade, so they key off this rather than
+  ;; [[is-data-analyst?]]
+  (or *is-superuser?*
+      (and *is-data-analyst?*
+           (advanced-permissions-enabled?))))
+
+(defn check-data-studio-access
+  "Check that `*current-user*` may enter Data Studio, or throw a 403."
+  []
+  (check-403 (entitled-data-analyst?)))
 
 ;; checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions
 ;; w/ relevant error messages.

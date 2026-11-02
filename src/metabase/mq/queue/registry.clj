@@ -53,6 +53,7 @@
     (fn [{:keys [exclusive max-concurrent-batches]}]
       (not (and exclusive max-concurrent-batches)))]])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *queues*
   "queue-name (keyword) → config map for every declared queue.
 

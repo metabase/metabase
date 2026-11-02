@@ -2,8 +2,8 @@ import L from "leaflet";
 import type { ContextType } from "react";
 
 import { api } from "metabase/api/client";
-import { EmbeddingEntityContext } from "metabase/embedding/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { EmbeddingEntityContext } from "metabase/embedding/context";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { DashboardId } from "metabase-types/api";
 

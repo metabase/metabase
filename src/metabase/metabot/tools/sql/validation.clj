@@ -66,6 +66,7 @@
    [:valid? :boolean]
    [:dialect {:optional true} [:maybe :string]]
    [:error-message {:optional true} :string]
+   [:reason {:optional true} :keyword]
    [:transpiled-sql {:optional true} :string]])
 
 (mu/defn validate-sql :- ::validation-result
@@ -78,7 +79,8 @@
   - sql contains Metabase template tags.
 
   When that is not the case, the query is transpiled from and into the same dialect. If that action
-  yields successfully, the query is considered valid.
+  yields successfully, the query is considered valid. Otherwise `:reason` says why, when the parser
+  knows (`:multiple-statements`).
 
   Returns the mapped dialect name in `:dialect` (not the raw driver name) for consistency
   with the Python ai-service."
@@ -93,7 +95,7 @@
       {:valid? true
        :dialect dialect
        :transpiled-sql sql}
-      (let [{:keys [error-message transpiled-sql status]}
+      (let [{:keys [error-message reason transpiled-sql status]}
             (sql-tools/transpile-sql sql mapped-dialect mapped-dialect)]
         (merge
          {:dialect dialect}
@@ -102,5 +104,6 @@
                      :transpiled-sql transpiled-sql}
            :skipped {:valid? true
                      :transpiled-sql transpiled-sql}
-           :error   {:valid? false
-                     :error-message error-message}))))))
+           :error   (cond-> {:valid? false
+                             :error-message error-message}
+                      reason (assoc :reason reason))))))))

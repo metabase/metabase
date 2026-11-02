@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.v2.storage.util
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.serialization.dump :as dump]
    [metabase.lib.core :as lib]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -25,15 +26,18 @@
         (u.str/limit-chars max-label-length))))
 
 (defn- resolve-path
-  "Given a storage path (vector of `{:label ... :key ...}` maps), resolves to a vector of strings
-  with deduplication per folder."
+  "Given a storage path (vector of `{:label ... :key ... :style ... :suffix ...}` maps), resolves to a vector of
+  strings with deduplication per folder; a `:suffix` is appended after the label is slugified and truncated."
   [unique-name-fns path]
   (loop [remaining    path
          resolved     []]
     (if (empty? remaining)
       resolved
-      (let [{:keys [label key]} (first remaining)
-            slug (slugify-name label)
+      (let [{:keys [label key style suffix] :or {style :name}} (first remaining)
+            slug (str (case style
+                        :name (slugify-name label)
+                        :slug label)
+                      suffix)
             gen  (or (get @unique-name-fns resolved)
                      (let [g (lib/non-truncating-unique-name-generator)]
                        (swap! unique-name-fns assoc resolved g)
@@ -47,3 +51,29 @@
   The last element is the filename (without extension)."
   [ctx entity]
   (resolve-path (:unique-name-fns ctx) (serdes/storage-path entity ctx)))
+
+(defn yaml-file-path
+  "The `/`-separated path of the YAML file at the `resolved` storage path."
+  [resolved]
+  (str/join "/" (concat (drop-last resolved) [(str (last resolved) ".yaml")])))
+
+(defn entity-file-path
+  "The path, relative to the export root, of the YAML file the extracted `entity` serializes to in storage context `ctx`."
+  [ctx entity]
+  (yaml-file-path (resolve-storage-path ctx entity)))
+
+(defn without-resources
+  "The `entity` as written to its YAML file: [[serdes/storable]], without its `:serdes/resources`."
+  [entity]
+  (serdes/storable (dissoc entity :serdes/resources)))
+
+(defn entity-yaml
+  "The text of the YAML file the extracted `entity` serializes to."
+  [entity]
+  (dump/yaml-content (without-resources entity)))
+
+(defn resource-files
+  "Each of `entity`'s `:serdes/resources` as `[path-segments content]`, next to its YAML file at `resolved`."
+  [resolved entity]
+  (for [[path content] (sort-by key (:serdes/resources entity))]
+    [(into (vec (drop-last resolved)) (str/split path #"/")) content]))

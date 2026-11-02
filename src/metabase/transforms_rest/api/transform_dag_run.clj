@@ -26,7 +26,7 @@
   [check! {:keys [source_transform_id] :as _dag-run}]
   (if source_transform_id
     (check! :model/Transform source_transform_id)
-    (api/check-data-analyst)))
+    (api/check-data-studio-access)))
 
 (api.macros/defendpoint :get "/:run-id/transform-runs" :- [:sequential transforms-rest.api.u/MemberTransformRunResponse]
   "Get the transform runs that made up a specific DAG run."

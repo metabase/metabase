@@ -54,7 +54,7 @@ jobs:
       MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/prepare-backend
       - name: Sweep orphaned test data
         run: |

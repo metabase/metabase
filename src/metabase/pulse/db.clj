@@ -12,18 +12,29 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :dataset_query [:model/Card :dataset_query] card-id))
+  ;; Written out by hand rather than using `metabase.queries.core/card-query-info`: `queries` already uses
+  ;; `pulse`, so requiring it back would add a module cycle for one query. Keep in sync with
+  ;; `metabase.queries.card-schema/schema-upgrade-triggers`.
+  (t2/select-one-fn :dataset_query
+                    [:model/Card :id :dataset_query :card_schema :type :entity_id
+                     :result_metadata :dimensions :dimension_mappings]
+                    :id [:auto/param card-id]))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. a legacy Pulse with no Dashboard), in
   which case the result is nil."
   [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
   (t2/select-one :model/Dashboard :id dashboard-id))
+
+(mu/defn dashboard-archived? :- :boolean
+  "Whether the Dashboard with `dashboard-id` exists and is archived."
+  [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
+  (t2/exists? :model/Dashboard :id dashboard-id :archived true))
 
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
@@ -200,7 +211,7 @@
   "Apply `changes` to the Pulse with `pulse-id`."
   [pulse-id :- ::lib.schema.id/pulse
    changes  :- ::pulse.schema/pulse.update]
-  (t2/update! :model/Pulse pulse-id changes))
+  (t2/update! :model/Pulse :id pulse-id changes))
 
 (mu/defn update-pulses-for-dashboard!
   "Apply `changes` to the Pulses of the Dashboard with `dashboard-id`, leaving `updated_at` untouched."
@@ -321,7 +332,7 @@
   "Apply `changes` to the PulseChannel with `channel-id`."
   [channel-id :- ms/PositiveInt
    changes    :- ::pulse.schema/pulse-channel.update]
-  (t2/update! :model/PulseChannel channel-id changes))
+  (t2/update! :model/PulseChannel :id channel-id changes))
 
 (mu/defn set-pulse-channels-enabled!
   "Set the enabled flag of the PulseChannels of the Pulse with `pulse-id`."
@@ -402,7 +413,7 @@
 (defn user-name-and-email
   "The first name, last name, and email of the User with `user-id`, or nil."
   [user-id]
-  (t2/select-one [:model/User :first_name :last_name :email] user-id))
+  (t2/select-one [:model/User :first_name :last_name :email] :id [:auto/param user-id]))
 
 (defn users-names-and-emails
   "The first names, last names, and emails of the Users with `user-ids`."
@@ -422,12 +433,12 @@
 (defn dashboard-parameters
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :id :parameters] dashboard-id))
+  (t2/select-one [:model/Dashboard :id :parameters] :id [:auto/param dashboard-id]))
 
 (defn dashboard-name-description-creator
   "The name, description, and creator id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id))
+  (t2/select-one [:model/Dashboard :name :description :creator_id] :id [:auto/param dashboard-id]))
 
 (defn unarchived-pulses-for-dashboard
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."

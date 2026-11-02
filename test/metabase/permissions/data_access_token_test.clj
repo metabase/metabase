@@ -1,17 +1,17 @@
 (ns metabase.permissions.data-access-token-test
   (:require
-   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.permissions.data-access-token :as data-access-token]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
 (def ^:private sandbox-ca {:sandbox {10 "d-ca"}})
 (def ^:private sandbox-ny {:sandbox {10 "d-ny"}})
-(def ^:private role-ro    {:impersonation {5 {:role "ro"}}})
-(def ^:private role-rw    {:impersonation {5 {:role "rw"}}})
-(def ^:private dest-a     {:routing {7 {:destination-db-id 100}}})
-(def ^:private dest-b     {:routing {7 {:destination-db-id 200}}})
+(def ^:private role-ro    {:impersonation {5 "d-ro"}})
+(def ^:private role-rw    {:impersonation {5 "d-rw"}})
+(def ^:private dest-a     {:routing {7 "d-100"}})
+(def ^:private dest-b     {:routing {7 "d-200"}})
 (def ^:private unrestricted {})
 
 (deftest data-access-compatible?-sandbox-test
@@ -67,15 +67,13 @@
 
 (deftest data-access-compatible?-multi-table-sandbox-test
   (let [compatible? data-access-token/data-access-compatible?
-        creator {:sandbox {10 "d-ca"
-                           20 "d-west"}}]
+        creator {:sandbox {10 "d-ca" 20 "d-west"}}]
     (testing "viewer must match on EVERY touched table"
       (is (true?  (compatible? creator creator)))
       ;; matches table 10, unsandboxed on 20 -> blocked (no relaxation for absence)
       (is (false? (compatible? creator {:sandbox {10 "d-ca"}})))
       ;; matches table 10 but a different sandbox on table 20 -> blocked
-      (is (false? (compatible? creator {:sandbox {10 "d-ca"
-                                                  20 "d-east"}}))))))
+      (is (false? (compatible? creator {:sandbox {10 "d-ca" 20 "d-east"}}))))))
 
 (deftest data-access-compatible?-oss-test
   (testing "two empty (OSS / unrestricted) tokens are always compatible -> no gating"
@@ -103,7 +101,7 @@
    :routing {:destination-db-id 100}})
 
 (deftest data-access-token-does-not-retain-raw-lens-values-test
-  (testing "the token is persisted as plaintext EDN on stored_result.data_access_token, so no raw
+  (testing "the token is persisted as plaintext JSON on stored_result.data_access_token, so no raw
            sandbox attribute value (potentially PII), GTAP card id, or warehouse role may survive in it"
     (let [printed (pr-str (token-for ca-lens))]
       (doseq [secret ["State" "CA" "CustomerEmail" "person@example.com" "analyst_ro"]]
@@ -153,8 +151,86 @@
         (is (false? (data-access-token/data-access-compatible? creator (token-for {}))))
         (is (false? (data-access-token/data-access-compatible? (token-for {}) creator)))))))
 
-(deftest data-access-token-is-edn-round-trippable-test
-  (testing "stored_result serializes the token with pr-str and reads it back with a reader-less
-           edn/read-string, so every value in it must survive that round trip"
-    (let [token (token-for ca-lens)]
-      (is (= token (edn/read-string {:readers {} :default (fn [_tag v] v)} (pr-str token)))))))
+(defn- transform-in  [token] ((:in data-access-token/data-access-token-transform) token))
+(defn- transform-out [s]     ((:out data-access-token/data-access-token-transform) s))
+
+(deftest data-access-token-is-json-round-trippable-test
+  (testing "the token is persisted as JSON and read back identically. JSON has no integer map keys,
+           so the transform decodes against the token schema to restore them — which matters both
+           because the gate is bare `=` and because callers index the dimensions by target id"
+    (doseq [token [(token-for ca-lens) sandbox-ca role-ro dest-a unrestricted
+                   {:sandbox {10 "d-ca" 20 "d-west"}}]]
+      (let [stored (transform-in token)]
+        (is (string? stored))
+        (is (= token (transform-out stored)) (pr-str token))))))
+
+(deftest data-access-token-nil-is-sql-null-test
+  (testing "nil is stored as SQL NULL rather than the string \"null\", and an empty (unrestricted)
+           token stays an empty map — nil and {} are not interchangeable to the gate"
+    (is (nil? (transform-in nil)))
+    (is (nil? (transform-out nil)))
+    (is (= {} (transform-out (transform-in {}))))))
+
+(deftest data-access-token-dimensions-are-keyed-by-target-test
+  (testing "each dimension is keyed by its target id, so a caller can ask about one target directly.
+           `metabase.metabot.metadata-perms/row-restricted-by-db` does exactly this to decide whether
+           a table's rows are narrowed, and a shape it cannot index would silently report every table
+           unrestricted"
+    (let [token (do-with-lens {:sandbox [1 "2026-01-01T00:00Z" {"State" "CA"}]}
+                              #(data-access-token/data-access-token
+                                {:database-id 5 :table-ids #{30 10 20}}))]
+      (is (= #{10 20 30} (set (keys (:sandbox token)))))
+      (is (contains? (:sandbox token) 20)))))
+
+(deftest data-access-token-unparseable-reads-as-nil-test
+  (testing "an unparseable blob fails closed"
+    (is (nil? (transform-out "{not json ][")))))
+
+(deftest data-access-token-reader-reads-each-contributor-once-test
+  (testing "a reader shares contributor reads across its calls, and its tokens match [[data-access-token]]'s"
+    (let [reads (atom [])]
+      (dynamic-redefs/with-dynamic-fn-redefs
+        [data-access-token/sandbox-token-for-table    (fn [table-id]
+                                                        (swap! reads conj [:sandbox table-id])
+                                                        [1 table-id])
+         data-access-token/impersonation-token-for-db (fn [db-id]
+                                                        (swap! reads conj [:impersonation db-id])
+                                                        {:role "ro"})
+         data-access-token/routing-token-for-db       (fn [db-id] (swap! reads conj [:routing db-id]) nil)]
+        (let [reader   (data-access-token/data-access-token-reader)
+              expected (data-access-token/data-access-token {:database-id 5 :table-ids #{10 20}})]
+          (reset! reads [])
+          (is (= expected (reader {:database-id 5 :table-ids #{10 20}})))
+          (is (= expected (reader {:database-id 5 :table-ids #{20 10}})))
+          (reader {:database-id 5 :table-ids #{10}})
+          (is (= {[:sandbox 10] 1 [:sandbox 20] 1 [:impersonation 5] 1 [:routing 5] 1}
+                 (frequencies @reads))
+              "a nil contributor read is shared too")
+          (testing "a second reader shares nothing with the first"
+            (reset! reads [])
+            ((data-access-token/data-access-token-reader) {:database-id 5 :table-ids #{10}})
+            (is (= 3 (count @reads)))))))))
+
+(deftest data-access-token-reader-does-not-memoize-a-throw-test
+  (testing "a contributor that throws throws again on the next call rather than reading as a value"
+    (let [calls (atom 0)]
+      (dynamic-redefs/with-dynamic-fn-redefs
+        [data-access-token/sandbox-token-for-table    (fn [_] nil)
+         data-access-token/impersonation-token-for-db (fn [_] nil)
+         data-access-token/routing-token-for-db       (fn [_] (swap! calls inc) (throw (ex-info "no attribute" {})))]
+        (let [reader (data-access-token/data-access-token-reader)]
+          (is (thrown? clojure.lang.ExceptionInfo (reader {:database-id 5 :table-ids #{}})))
+          (is (thrown? clojure.lang.ExceptionInfo (reader {:database-id 5 :table-ids #{}})))
+          (is (= 2 @calls)))))))
+
+(deftest data-access-token-reader-keys-by-current-user-test
+  (testing "a reader called under a different user binding reads that user's lens rather than reusing another's"
+    (dynamic-redefs/with-dynamic-fn-redefs
+      [data-access-token/sandbox-token-for-table    (fn [_] [api/*current-user-id*])
+       data-access-token/impersonation-token-for-db (fn [_] nil)
+       data-access-token/routing-token-for-db       (fn [_] nil)]
+      (let [reader (data-access-token/data-access-token-reader)
+            token  (fn [user-id] (binding [api/*current-user-id* user-id]
+                                   (reader {:database-id 5 :table-ids #{10}})))]
+        (is (not= (token 1) (token 2)))
+        (is (= (token 1) (token 1)))))))

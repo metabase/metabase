@@ -6,6 +6,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections-rest.db :as collections-rest.db]
@@ -13,6 +14,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.data-apps.core :as data-apps]
    [metabase.documents.core :as documents]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
@@ -70,14 +72,18 @@
   `?exclude-other-user-collections=true`.
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map {:closed true}
                                                                                  [:archived                       {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]]
+                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]
+   _body
+   request]
   (as->
    (collections.children/select-collections {:archived                       (boolean archived)
+                                             :collection-types               (some-> (data-apps/request-data-app request) data-apps/data-app-collection-types)
                                              :exclude-other-user-collections exclude-other-user-collections
                                              :namespaces                     (cond
                                                                                namespace [namespace]
@@ -135,6 +141,7 @@
 
   When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
   the root, if `collection-id` is `nil`)."
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
            namespace namespaces shallow collection-id]}
@@ -145,10 +152,13 @@
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
-       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
+       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]
+   _body
+   request]
   (api/check-400
    (not (and namespace (seq namespaces))))
-  (let [archived    (if exclude-archived false nil)
+  (let [data-app    (data-apps/request-data-app request)
+        archived    (if exclude-archived false nil)
         namespaces (cond
                      namespace #{namespace}
                      (seq namespaces) (into #{} (map not-empty namespaces))
@@ -159,7 +169,8 @@
                                                                   :namespaces                     namespaces
                                                                   :shallow                        shallow
                                                                   :collection-id                  collection-id
-                                                                  :include-library?               include-library})
+                                                                  :collection-types               (some-> data-app data-apps/data-app-collection-types)
+                                                                  :include-library?               (or include-library (some? data-app))})
                         (t2/hydrate :can_write))]
     (if shallow
       (collections.children/shallow-tree-from-collection-id collections)
@@ -172,6 +183,9 @@
                                                 :metric  #{}
                                                 :card    #{}}
                                                (collections-rest.db/unarchived-card-collection-types-reducible))
+                                       {:action (->> (collections-rest.db/unarchived-action-collection-ids)
+                                                     (map :collection_id)
+                                                     (into #{}))}
                                        ;; Tables in collections are an EE feature (library)
                                        (when (premium-features/has-feature? :library)
                                          {:table (->> (collections-rest.db/published-table-collection-ids)
@@ -356,6 +370,7 @@
 
 (api.macros/defendpoint :get "/root" :- ::Collection
   "Return the 'Root' Collection object with standard details added"
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [namespace]} :- [:map {:closed true}
                            [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
@@ -385,6 +400,7 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
            include-library collection-type show-dashboard-questions
@@ -401,21 +417,26 @@
                                                                        [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
                                                                        [:q                           {:optional true} [:maybe :string]]
                                                                        [:include-available-models    {:default false} [:maybe ms/BooleanValue]]
-                                                                       [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+                                                                       [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]
+   _body
+   request]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
-  (let [root-collection (assoc collection/root-collection :namespace namespace)
+  (let [data-app        (data-apps/request-data-app request)
+        root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (collections.children/visible-model-kwds root-collection model-set)
-        restrict-models (when (or (not (contains? collections.children/namespaces-holding-non-collection-types namespace))
+        restrict-models (when (or data-app
+                                  (not (contains? collections.children/namespaces-holding-non-collection-types namespace))
                                   (not (mi/can-read? root-collection)))
                           #{:collection})
         options         {:archived?                   (boolean archived)
                          :show-dashboard-questions?   (boolean show-dashboard-questions)
                          :show-exploration-documents? (boolean show-exploration-documents)
-                         :collection-type             collection-type
-                         :include-library?            include-library
-                         :models                      (if-not (contains? collections.children/namespaces-holding-non-collection-types namespace)
+                         :collection-types            (or (some-> data-app data-apps/data-app-collection-types) (some-> collection-type hash-set))
+                         :include-library?            (or include-library (some? data-app))
+                         :models                      (if (or data-app
+                                                              (not (contains? collections.children/namespaces-holding-non-collection-types namespace)))
                                                         #{:collection}
                                                         model-kwds)
                          :pinned-state                (keyword pinned-state)
@@ -455,7 +476,7 @@
                                {:archived?                   (boolean archived)
                                 :show-dashboard-questions?   (boolean show-dashboard-questions)
                                 :show-exploration-documents? (boolean show-exploration-documents)
-                                :collection-type             collection-type
+                                :collection-types            (some-> collection-type hash-set)
                                 :include-library?            include-library
                                 :pinned-state                (keyword pinned-state)
                                 :sort-info                   {:sort-column                 :name
@@ -587,9 +608,14 @@
 
 (api.macros/defendpoint :get "/:id" :- ::Collection
   "Fetch a specific Collection with standard details added"
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+   _query-params
+   _body
+   request]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
+    (some-> (data-apps/request-data-app request) (data-apps/check-collection resolved-id))
     (collection-detail (api/read-check :model/Collection resolved-id))))
 
 (api.macros/defendpoint :put "/:id" :- ::Collection
@@ -641,6 +667,7 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned-state sort-column sort-direction official-collections-first
@@ -655,13 +682,18 @@
                                             [:show-dashboard-questions    {:default false} [:maybe ms/BooleanValue]]
                                             [:show-exploration-documents  {:default false} [:maybe ms/BooleanValue]]
                                             [:q                           {:optional true} [:maybe :string]]
-                                            [:include-available-models    {:default false} [:maybe ms/BooleanValue]]]]
+                                            [:include-available-models    {:default false} [:maybe ms/BooleanValue]]]
+   _body
+   request]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
+        data-app    (data-apps/request-data-app request)
+        _           (some-> data-app (data-apps/check-collection resolved-id))
         model-kwds  (set (map keyword (u/one-or-many models)))
         collection  (api/read-check :model/Collection resolved-id)
         options     {:show-dashboard-questions?   show-dashboard-questions
                      :show-exploration-documents? show-exploration-documents
                      :models                      model-kwds
+                     :collection-types            (some-> data-app data-apps/data-app-collection-types)
                      :include-library?            true
                      :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                      :pinned-state                (keyword pinned-state)

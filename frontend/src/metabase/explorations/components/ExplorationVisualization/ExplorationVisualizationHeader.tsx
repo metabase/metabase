@@ -51,9 +51,15 @@ export function ExplorationVisualizationHeader({
       }
       iconProps={{ size: "1.125rem" }}
       isActive={isCommentsSidebarOpen}
-      bg={isCommentsSidebarOpen ? "background-brand" : "background-secondary"}
+      bg={
+        isCommentsSidebarOpen
+          ? "background_surface-brand-subtle"
+          : "background_page-secondary"
+      }
       bd={
-        isCommentsSidebarOpen ? "1px solid border-strong" : "1px solid border"
+        isCommentsSidebarOpen
+          ? "1px solid border-neutral-strong"
+          : "1px solid border-neutral"
       }
       onClick={() => {
         navigate(nextCommentsUrl);

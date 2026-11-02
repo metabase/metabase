@@ -1,5 +1,5 @@
 import { isFulfilled } from "@reduxjs/toolkit";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useMetabotContext } from "metabase/metabot";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -16,12 +16,13 @@ import {
   getConversationForkedFrom,
   getConversationTitle,
   getDebugMode,
+  getIncompleteTurn,
   getIsConversationProcessing,
   getLongChatNotice,
   getMessages,
-  getMetabotId,
+  getMetabotEntityId,
   getMetabotReactionsState,
-  getMetabotRequestId,
+  getMetabotRequestEntityId,
   getProfileOverride,
   retryPrompt,
   setProfileOverride as setProfileOverrideAction,
@@ -47,8 +48,8 @@ export const useMetabotConversation = (conversationId: string) => {
 
   const isFullPageMetabot = useIsFullPageMetabot();
 
-  const metabotRequestId = useSelector((state) =>
-    getMetabotRequestId(state, conversationId),
+  const metabotRequestEntityId = useSelector((state) =>
+    getMetabotRequestEntityId(state, conversationId),
   );
 
   const prepareRetryIfUnsuccesful = useCallback(
@@ -87,7 +88,7 @@ export const useMetabotConversation = (conversationId: string) => {
             : prompt),
           context: await getChatContext(),
           conversationId,
-          metabot_id: metabotRequestId,
+          metabot_id: metabotRequestEntityId,
           profile: options?.profile,
           isFullPageMetabot,
         }),
@@ -104,7 +105,7 @@ export const useMetabotConversation = (conversationId: string) => {
     [
       dispatch,
       getChatContext,
-      metabotRequestId,
+      metabotRequestEntityId,
       prepareRetryIfUnsuccesful,
       conversationId,
       promptInputRef,
@@ -120,7 +121,7 @@ export const useMetabotConversation = (conversationId: string) => {
         retryPrompt({
           messageId,
           context,
-          metabot_id: metabotRequestId,
+          metabot_id: metabotRequestEntityId,
           conversationId,
           profile: options?.profile,
           isFullPageMetabot,
@@ -133,12 +134,31 @@ export const useMetabotConversation = (conversationId: string) => {
     [
       dispatch,
       getChatContext,
-      metabotRequestId,
+      metabotRequestEntityId,
       prepareRetryIfUnsuccesful,
       conversationId,
       isFullPageMetabot,
     ],
   );
+
+  const incompleteTurn = useSelector((state) =>
+    getIncompleteTurn(state, conversationId),
+  );
+
+  const longChatNotice = useSelector((state) =>
+    getLongChatNotice(state, conversationId),
+  );
+  const isContextWindowFull = longChatNotice === "full";
+
+  const continueResponse = useMemo(() => {
+    const resumePrompt = incompleteTurn?.resumePrompt;
+    // A full window is judged against the current model, so a turn that could
+    // be resumed when it ran may not fit anymore; the composer hides for the
+    // same reason.
+    return resumePrompt && !isContextWindowFull
+      ? (options?: SubmitInputOptions) => submitInput(resumePrompt, options)
+      : undefined;
+  }, [incompleteTurn, isContextWindowFull, submitInput]);
 
   const cancelRequest = useCallback(() => {
     dispatch(cancelInflightConversationRequests(conversationId));
@@ -148,10 +168,6 @@ export const useMetabotConversation = (conversationId: string) => {
     dispatch(fetchConversationSnapshot(conversationId));
   }, [dispatch, conversationId]);
 
-  const longChatNotice = useSelector((state) =>
-    getLongChatNotice(state, conversationId),
-  );
-
   return {
     conversationId,
     prompt,
@@ -160,9 +176,10 @@ export const useMetabotConversation = (conversationId: string) => {
     setProfileOverride,
     submitInput,
     retryMessage,
+    continueResponse,
     cancelRequest,
     reloadConversation,
-    metabotId: useSelector(getMetabotId),
+    metabotEntityId: useSelector(getMetabotEntityId),
     profile: useSelector((state) => getProfileOverride(state, conversationId)),
     title: useSelector((state) => getConversationTitle(state, conversationId)),
     forkedFromConversationId: useSelector((state) =>
@@ -173,7 +190,8 @@ export const useMetabotConversation = (conversationId: string) => {
       getIsConversationProcessing(state, conversationId),
     ),
     longChatNotice,
-    isContextWindowFull: longChatNotice === "full",
+    incompleteTurn,
+    isContextWindowFull,
     contextWindowPercentUsage: useSelector((state) =>
       getContextUsagePercent(state, conversationId),
     ),

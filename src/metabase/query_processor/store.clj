@@ -42,6 +42,7 @@
       (throw (ex-info "Error: Query Processor store is not initialized. Initialize it with qp.store/with-metadata-provider"
                       {})))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *store*
   "Dynamic var used as the QP store for a given query execution."
   uninitialized-store)
@@ -54,6 +55,7 @@
   "Key sequence for a value in the store's miscellaneous cache; [[cached]] prefixes it with a unique symbol."
   [:sequential [:or :keyword :symbol :int :string]])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *DANGER-allow-replacing-metadata-provider*
   "This is (almost) only for tests! When enabled, [[with-metadata-provider]] can completely replace the current metadata
   provider (and cache) with a new one. This is reset to false after the QP store is replaced the first time.

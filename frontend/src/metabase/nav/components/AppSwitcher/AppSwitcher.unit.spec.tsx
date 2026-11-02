@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -9,7 +10,7 @@ import {
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { dayjs } from "metabase/dayjs";
 import { Route } from "metabase/router";
-import type { HelpLinkSetting } from "metabase-types/api";
+import type { HelpLinkSetting, TokenFeatures } from "metabase-types/api";
 import {
   createMockMetabaseInfo,
   createMockTokenFeatures,
@@ -50,18 +51,24 @@ const adminNavItem = {
 
 async function setup({
   isAdmin = false,
+  isAnalyst = false,
   isHosted = false,
   isPaidPlan = true,
   helpLinkSetting = "metabase",
   helpLinkCustomDestinationSetting = "https://custom-destination.com/help",
   instanceCreationDate = dayjs().toISOString(),
+  tokenFeatures = {},
+  applicationName,
 }: {
   isAdmin?: boolean;
+  isAnalyst?: boolean;
   isHosted?: boolean;
   isPaidPlan?: boolean;
   helpLinkSetting?: HelpLinkSetting;
   helpLinkCustomDestinationSetting?: string;
   instanceCreationDate?: string;
+  tokenFeatures?: Partial<TokenFeatures>;
+  applicationName?: string;
 } = {}) {
   setupBugReportingDetailsEndpoint();
 
@@ -71,8 +78,17 @@ async function setup({
     "help-link": helpLinkSetting,
     "help-link-custom-destination": helpLinkCustomDestinationSetting,
     "instance-creation": instanceCreationDate,
-    "token-features": createMockTokenFeatures(),
+    "token-features": createMockTokenFeatures(tokenFeatures),
+    ...(applicationName && {
+      "application-name": applicationName,
+      // A non-SVG data URI renders without a fetch of the whitelabel logo
+      "application-logo-url": "data:image/png;base64,iVBORw0KGgo=",
+    }),
   });
+
+  if (applicationName) {
+    setupEnterpriseOnlyPlugin("whitelabel");
+  }
 
   const admin = createMockAdminState({
     app: createMockAdminAppState({
@@ -93,7 +109,11 @@ async function setup({
       storeInitialState: {
         admin,
         settings,
-        currentUser: { ...USER, is_superuser: isAdmin },
+        currentUser: {
+          ...USER,
+          is_superuser: isAdmin,
+          is_data_analyst: isAnalyst,
+        },
       },
     },
   );
@@ -240,6 +260,37 @@ describe("ProfileLink", () => {
       );
     });
 
+    it("should show data studio and monitor for analysts when advanced-permissions is available", async () => {
+      await setup({
+        isAnalyst: true,
+        tokenFeatures: { advanced_permissions: true },
+      });
+
+      expect(screen.getByText("Data studio")).toBeInTheDocument();
+      expect(screen.getByText("Monitor")).toBeInTheDocument();
+    });
+
+    // Data Studio and Monitor diagnostics both come with the Data Analyst role rather than a
+    // permissions graph, so both pause while the plan lacks the feature.
+    it("should hide data studio and monitor from analysts when advanced-permissions is absent", async () => {
+      await setup({
+        isAnalyst: true,
+        tokenFeatures: { advanced_permissions: false },
+      });
+
+      expect(screen.queryByText("Data studio")).not.toBeInTheDocument();
+      expect(screen.queryByText("Monitor")).not.toBeInTheDocument();
+    });
+
+    it("should show data studio for admins when advanced-permissions is absent", async () => {
+      await setup({
+        isAdmin: true,
+        tokenFeatures: { advanced_permissions: false },
+      });
+
+      expect(screen.getByText("Data studio")).toBeInTheDocument();
+    });
+
     it("tracks opening Monitor from the app switcher", async () => {
       trackMonitorOpened.mockClear();
       await setup({ isAdmin: true });
@@ -349,6 +400,24 @@ describe("ProfileLink", () => {
           });
         });
       });
+    });
+
+    it("should use the whitelabel application name in the About menu item and modal", async () => {
+      await setup({
+        applicationName: "New Test Co",
+        tokenFeatures: { whitelabel: true },
+      });
+      await openHelpSubmenu();
+
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: "About New Test Co" }),
+      );
+
+      expect(
+        await screen.findByRole("dialog", {
+          name: "Thanks for using New Test Co!",
+        }),
+      ).toBeInTheDocument();
     });
   });
 });

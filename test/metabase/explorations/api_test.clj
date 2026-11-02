@@ -14,7 +14,6 @@
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.explorations.queues :as explorations.queues]
-   [metabase.explorations.test-util :as explorations.tu]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -29,9 +28,6 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
-
-;; The application does not mount `/api/exploration` while explorations are disabled; serve it for these tests.
-(use-fixtures :each explorations.tu/exploration-routes-fixture)
 
 (deftest gate-threads-derived-data-forbidden-status-test
   (testing "gate-threads-derived-data stamps forbidden when derived data is not visible"
@@ -110,11 +106,11 @@
           :when (nil? (:dataset_query q))]
     (when-let [ctx (qp.context/build-row-context q)]
       (when-let [dq (qp.variants/dataset-query (:query_type q) ctx)]
-        (t2/update! :model/ExplorationQuery (:id q)
+        (t2/update! :model/ExplorationQuery :id (:id q)
                     {:dataset_query     dq
                      :data_access_token (perms/data-access-token
                                          {:database-id (:database_id q)
-                                          :table-ids   (query-perms/query->resolved-source-table-ids dq)})})))))
+                                          :table-ids   (:table-ids (query-perms/query->resolved-source-ids dq))})})))))
 
 (defn- vectorize-clauses
   "`mt/user-http-request` decodes JSON arrays as lists, but MBQL normalization (and
@@ -287,7 +283,7 @@
                             :target       [:field {} 999999999]
                             :table-id     (mt/id :venues)}]
           ;; Replace whatever sync wrote with a minimal pair: one resolvable, one not.
-          (t2/update! :model/Card (:id metric)
+          (t2/update! :model/Card :id (:id metric)
                       {:dimensions         [{:id good-id :name "NAME" :display-name "Good"
                                              :effective-type :type/Text}
                                             {:id bad-id  :name "ZZZ"  :display-name "Unresolvable"
@@ -873,7 +869,7 @@
             orig-tid  (:id thread)]
         (is (pos? (count (:queries thread))) "the first run materialized queries")
         ;; Simulate a finished run so we can prove restart clears the terminal-state gates.
-        (t2/update! :model/ExplorationThread orig-tid
+        (t2/update! :model/ExplorationThread :id orig-tid
                     {:query_plan_started_at (t/offset-date-time)
                      :analysis_started_at   (t/offset-date-time)
                      :completed_at          (t/offset-date-time)})
@@ -914,7 +910,7 @@
             tid     (-> created :threads first :id)]
         ;; Perms ride the thread's parent exploration, resolved by `write-check-thread`.
         ;; Mark the thread terminal — restart refuses in-flight threads with a 409.
-        (t2/update! :model/ExplorationThread tid {:completed_at (t/offset-date-time)})
+        (t2/update! :model/ExplorationThread :id tid {:completed_at (t/offset-date-time)})
         (mt/user-http-request other :post 403 (format "exploration/thread/%d/restart" tid))
         (let [resp (mt/user-http-request owner :post 200 (format "exploration/thread/%d/restart" tid))]
           (is (= 1 (count (:threads resp))) "still a single thread after restart"))))))
@@ -932,7 +928,7 @@
                                :model/ExplorationThread
                                {:exploration_id expl-id :name "drill" :position 1
                                 :completed_at   (t/offset-date-time)}))]
-          (t2/update! :model/ExplorationThread root-tid {:completed_at (t/offset-date-time)})
+          (t2/update! :model/ExplorationThread :id root-tid {:completed_at (t/offset-date-time)})
           (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" root-tid))
           (is (nil? (t2/select-one-fn :completed_at :model/ExplorationThread :id root-tid))
               "the named (root) thread was reset")
@@ -946,6 +942,19 @@
     ;; expressible here. Perms ride the thread's parent exploration (see the permissions test).
     (mt/with-temp [:model/User u {:email "rs-404@example.com"}]
       (mt/user-http-request u :post 404 "exploration/thread/9999999/restart"))))
+
+(deftest exploration-get-hydrates-trash-permissions-test
+  (testing "GET /api/exploration/:id hydrates :can_restore and :can_delete"
+    (mt/with-temp [:model/Exploration {trashed-id :id} {:name              "trashed"
+                                                        :creator_id        (mt/user->id :crowberto)
+                                                        :archived          true
+                                                        :archived_directly true}
+                   :model/Exploration {live-id :id}    {:name       "live"
+                                                        :creator_id (mt/user->id :crowberto)}]
+      (is (=? {:archived true, :can_restore true, :can_delete true}
+              (mt/user-http-request :crowberto :get 200 (format "exploration/%d" trashed-id))))
+      (is (=? {:archived false, :can_restore false, :can_delete false}
+              (mt/user-http-request :crowberto :get 200 (format "exploration/%d" live-id)))))))
 
 (deftest exploration-get-permissions-test
   (testing "Only the creator (or a superuser) can GET an exploration"
@@ -1169,7 +1178,7 @@
                  :stored_result_id     sr-id})))
 
 (defn- mark-done! [query-id]
-  (t2/update! :model/ExplorationQuery query-id {:status "done"}))
+  (t2/update! :model/ExplorationQuery :id query-id {:status "done"}))
 
 (deftest exploration-query-result-streams-stored-result-test
   (testing "GET /query/:id streams the stored worker result as JSON"
@@ -1221,7 +1230,7 @@
             qid    (-> resp :threads first :queries first :id)
             ;; stands in for a driver error carrying SQL and row values the reader can't query
             secret "SECRET_VALUE_FROM_DRIVER_ERROR"]
-        (t2/update! :model/ExplorationQuery qid {:status "error" :error_message secret})
+        (t2/update! :model/ExplorationQuery :id qid {:status "error" :error_message secret})
         (testing "GET /query/:id — the endpoint that already allowlists its 409 payload"
           (let [body (mt/user-http-request u :get 409 (format "exploration/query/%d" qid))]
             (is (not (str/includes? (pr-str body) secret)))
@@ -1232,6 +1241,31 @@
             (is (not (str/includes? (pr-str body) secret))
                 "the raw driver error must not reach anyone who can read the exploration")
             (is (= "This query failed to run." (:error_message q)))))))))
+
+(deftest exploration-lens-stamps-never-reach-the-client-test
+  (testing "GET /:id strips the lens stamp and resolved source ids from every thread and every query"
+    (mt/with-temp [:model/User u      {:email "stamps@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp      (create-exploration! u
+                                           {:name "stamped"
+                                            :metrics [{:card_id (:id metric)
+                                                       :dimension_mappings [{:dimension_id (duid "d1")
+                                                                             :table_id     1
+                                                                             :target       ["field" 1 nil]}]}]
+                                            :dimensions [{:dimension_id (duid "d1")}]})
+            thread-id (-> resp :threads first :id)
+            qid       (-> resp :threads first :queries first :id)
+            stamp     {:data_access_token {} :resolved_source_ids {:table-ids #{(mt/id :venues)}}}]
+        (store-fake-result! qid {:status :completed :data {:cols [{:name "x"}] :rows [[1]]} :row_count 1})
+        (t2/update! :model/ExplorationQuery :id qid (assoc stamp :status "done"))
+        (t2/update! :model/ExplorationThread :id thread-id stamp)
+        (let [body (mt/user-http-request u :get 200 (str "exploration/" (:id resp)))
+              keys-in-body (atom #{})]
+          (is (= [qid] (->> body :threads (mapcat :queries) (map :id)))
+              "sanity: queries are present")
+          (walk/postwalk (fn [x] (when (map? x) (swap! keys-in-body into (keys x))) x) body)
+          (is (not (contains? @keys-in-body :data_access_token)))
+          (is (not (contains? @keys-in-body :resolved_source_ids))))))))
 
 (deftest exploration-query-result-permissions-test
   (testing "GET /query/:id enforces the parent exploration's read check"
@@ -1351,6 +1385,44 @@
     (mt/with-temp [:model/User u {:email "page-hide-404@example.com"}]
       (mt/user-http-request u :put 404 "exploration/pages/hidden" {:page_ids [9999999] :hidden true}))))
 
+(deftest exploration-explore-further-stamps-union-resolved-source-ids-test
+  (testing "a block with two metric cards stamps its drill thread with every table either card reads, the same tables
+            its token is computed over"
+    (mt/with-temp [:model/User u {:email "explore-further-union@example.com"}
+                   :model/Card venues-metric (venues-metric-card (:id u))
+                   :model/Card products-metric {:type          :metric
+                                                :creator_id    (:id u)
+                                                :dataset_query (lib/->legacy-MBQL
+                                                                (let [mp (mt/metadata-provider)]
+                                                                  (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                                      (lib/aggregate (lib/count)))))}]
+      (let [body     {:name       "union drill"
+                      :metrics    [{:card_id (:id venues-metric) :dimension_mappings (venues-dimension-mappings)}
+                                   {:card_id (:id products-metric)
+                                    :dimension_mappings [{:dimension_id (duid "price")
+                                                          :table_id     (mt/id :products)
+                                                          :target       ["field" (mt/id :products :price) nil]}]}]
+                      :dimensions [{:dimension_id (duid "price") :display_name "Price"}]}
+            created  (create-exploration! u body)
+            page-id  (some :id (filter #(str/includes? (:name %) "Price")
+                                       (-> created :threads first :blocks first :pages)))
+            _        (mt/user-http-request u :post 200 (format "exploration/%d/explore-further" (:id created))
+                                           {:page_id         page-id
+                                            :explore_filters [{:operator      "="
+                                                               :field_ref     ["field" (mt/id :venues :price) nil]
+                                                               :value         2
+                                                               :display_value "2"}]})
+            new      (t2/select-one :model/ExplorationThread :exploration_id (:id created) :position 1)]
+        (is (= {:table-ids       #{(mt/id :venues) (mt/id :products)}
+                :table-query-ids #{(mt/id :venues) (mt/id :products)}}
+               (dissoc (:resolved_source_ids new) :query-digest)))
+        (testing "stamped from the first card's query as it reads back, which is what the content gate adjudicates"
+          (is (= {:table-ids       #{(mt/id :venues) (mt/id :products)}
+                  :table-query-ids #{(mt/id :venues) (mt/id :products)}}
+                 (query-perms/verified-resolved-source-ids
+                  (t2/select-one-fn :dataset_query :model/Card :id (:id venues-metric))
+                  (:resolved_source_ids new)))))))))
+
 (deftest exploration-explore-further-creates-filtered-thread-test
   (testing "POST /:id/explore-further copies the clicked block into a new filtered thread"
     (mt/with-temp [:model/User u {:email "explore-further@example.com"}
@@ -1384,6 +1456,11 @@
             "explore-further does not create a second Summary document")
         (is (= (:id orig-thread) (:id orig)))
         (is (= 1 (:position new)))
+        (testing "the drill thread's lens stamp carries the resolved source ids of the metric it drills, which never
+                  reaches the client"
+          (is (= {:table-ids #{(mt/id :venues)} :table-query-ids #{(mt/id :venues)}}
+                 (dissoc (t2/select-one-fn :resolved_source_ids :model/ExplorationThread :id (:id new)) :query-digest)))
+          (is (not-any? #(contains? % :resolved_source_ids) (cons new new-queries))))
         (testing "the drill thread records the page it was drilled from (sidebar nesting)"
           (is (= page-id (:source_page_id new)))
           (is (nil? (:source_page_id orig))))
@@ -1582,7 +1659,7 @@
                     :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (let [sr-id  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                        :exploration_query_id qid)
               before (t2/select :model/StoredResultUse :stored_result_id sr-id)
@@ -1640,7 +1717,7 @@
                           :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (let [doc   (mt/user-http-request u :post 200
                                           (format "exploration/%d/summary/append" expl-id)
                                           (assoc append-display+viz :exploration_query_ids [qid]))
@@ -1674,8 +1751,8 @@
         (let [doc (t2/select-one :model/Document :id doc-id)]
           ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-card!`
           ;; to blow up *after* the composite StoredResult has been inserted, exercising the rollback.
-          (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
-                        queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
+          (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
+                                      queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
             (is (thrown? Throwable
                          (eqr/create-ephemeral-card-for-exploration-queries!
                           [qid] doc-id (:collection_id doc) u
@@ -1708,13 +1785,13 @@
         (store-fake-result! qid qp-out)
         (mark-done! qid)
         ;; Give the EQ a real dataset_query so create-card! has a database_id to inherit.
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                           :exploration_query_id qid)
               doc       (t2/select-one :model/Document :id doc-id)
               ;; Stub the perms check (the synthetic EQ has no inline dataset_query) so we exercise
               ;; the real create-card! / stored_result write path.
-              result    (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+              result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
                           (eqr/create-ephemeral-card-for-exploration-queries!
                            [qid] doc-id (:collection_id doc) u
                            {:display "bar" :visualization-settings {}}))
@@ -1748,7 +1825,7 @@
                     :row_count 2}]
         (store-fake-result! qid qp-out)
         (mark-done! qid)
-        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
         (mt/user-http-request u :post 200
                               (format "exploration/%d/summary/append" eid)
                               (assoc append-display+viz :exploration_query_ids [qid]))
@@ -2302,7 +2379,7 @@
             that leaves canceled_at NULL"
     (mt/with-model-cleanup [:model/ExplorationQuery :model/ExplorationThread :model/Exploration :model/Card]
       (let [{:keys [thread-id]} (minimal-cancel-fixture! (mt/user->id :rasta) 1)
-            _    (t2/update! :model/ExplorationThread thread-id
+            _    (t2/update! :model/ExplorationThread :id thread-id
                              {:completed_at (t/offset-date-time)})
             resp (mt/user-http-request :rasta :post 200 (str "exploration/thread/" thread-id "/cancel"))]
         (is (nil? (:canceled_at resp))
@@ -2609,7 +2686,7 @@
                   :dimensions    [{:dimension-id (duid "price") :display-name "Price"}]})]
         ;; Mark the source thread as a follow-up so the next drill is nested. Any real page works;
         ;; a made-up id would violate the source_page_id FK.
-        (t2/update! :model/ExplorationThread (:thread-id src) {:source_page_id (:page-id src)})
+        (t2/update! :model/ExplorationThread :id (:thread-id src) {:source_page_id (:page-id src)})
         (mt/user-http-request :crowberto :post 200
                               (str "exploration/" (:exploration-id src) "/explore-further")
                               {:page_id         (:page-id src)
@@ -2809,15 +2886,15 @@
           (is (pos? (t2/count :model/ExplorationQuery :exploration_thread_id tid))
               "its materialized queries are untouched"))
         (testing "a canceled thread with a query still mid-QP-execution returns 409"
-          (t2/update! :model/ExplorationThread tid
+          (t2/update! :model/ExplorationThread :id tid
                       {:canceled_at  (t/offset-date-time)
                        :completed_at (t/offset-date-time)})
-          (t2/update! :model/ExplorationQuery eq-id {:status "running" :started_at (t/offset-date-time)})
+          (t2/update! :model/ExplorationQuery :id eq-id {:status "running" :started_at (t/offset-date-time)})
           (mt/user-http-request u :post 409 (format "exploration/thread/%d/restart" tid))
           (is (some? (t2/select-one-fn :completed_at :model/ExplorationThread :id tid))
               "the terminal stamp survives — nothing was reset"))
         (testing "once no query is mid-execution, restart succeeds and leaves the thread claimable"
-          (t2/update! :model/ExplorationQuery eq-id {:status "canceled"})
+          (t2/update! :model/ExplorationQuery :id eq-id {:status "canceled"})
           (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" tid))
           (let [thread (t2/select-one :model/ExplorationThread :id tid)]
             ;; exactly the state the planning worker's claim-unplanned-thread! predicate claims:
@@ -2860,7 +2937,7 @@
     (doseq [qid qids]
       (store-fake-result! qid qp-out)
       (mark-done! qid)
-      (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)}))
+      (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)}))
     {:exploration-id (:id resp) :document-id (-> resp :document :id) :query-ids qids}))
 
 (defn- combine-with-perms-stubbed!
@@ -2868,7 +2945,7 @@
   create hold no data perms, and `create-card!` runs the same check — the existing single-query
   test stubs it for the same reason. Tests that are *about* the permission check don't use this."
   [& args]
-  (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+  (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
     (apply eqr/create-ephemeral-card-for-exploration-queries! args)))
 
 (deftest composite-snapshot-carries-a-data-access-token-test
@@ -2892,6 +2969,39 @@
                (t2/select-one-fn :data_access_token :model/StoredResult :id (:stored-result-id result)))
             "the composite carries the same lens its sources were computed under")))))
 
+(deftest composite-snapshot-stamps-every-sources-resolved-source-ids-test
+  (testing "A multi-query composite is stamped with the union of its sources' resolved source ids, under its own
+            query's digest, so the read gate holds a viewer to every source's tables without a live preprocess"
+    (mt/with-temp [:model/User u {:email "composite-sources@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
+            doc       (t2/select-one :model/Document :id document-id)
+            [sr-1 sr-2] (map #(t2/select-one :model/StoredResult
+                                             :id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                                                   :exploration_query_id %))
+                             query-ids)
+            checkins-q (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
+                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                                (lib/aggregate (lib/count)))))]
+        ;; The first source carries a verified stamp naming an extra table, so only a read of the stamp (not a
+        ;; live resolve) puts `products` in the union; the second has no stamp and reads a different table.
+        (t2/update! :model/StoredResult :id (:id sr-1)
+                    {:resolved_source_ids (query-perms/stamped-resolved-source-ids
+                                           (:dataset_query sr-1)
+                                           {:table-ids #{(mt/id :venues) (mt/id :products)}})})
+        (t2/update! :model/StoredResult :id (:id sr-2) {:dataset_query checkins-q :resolved_source_ids nil})
+        (let [result    (combine-with-perms-stubbed!
+                         query-ids document-id (:collection_id doc) u
+                         {:display "bar" :visualization-settings {}})
+              composite (t2/select-one :model/StoredResult :id (:stored-result-id result))
+              verified  (query-perms/verified-resolved-source-ids (:dataset_query composite)
+                                                                  (:resolved_source_ids composite))]
+          (is (some? verified)
+              "the stamp verifies against the composite row's own query")
+          (is (= #{(mt/id :venues) (mt/id :products) (mt/id :checkins)}
+                 (:table-ids verified))
+              "and covers the first source's stamped tables plus the unstamped second source's resolved table"))))))
+
 (deftest composite-refuses-to-blend-different-data-access-lenses-test
   (testing "Sources computed under different lenses have no single honest stamp, so the combine is refused
             rather than persisted under one of them"
@@ -2901,14 +3011,14 @@
             doc    (t2/select-one :model/Document :id document-id)
             sr-2   (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                      :exploration_query_id (second query-ids))]
-        (t2/update! :model/StoredResult sr-2 {:data_access_token {:sandbox {1 "deadbeef"}}})
+        (t2/update! :model/StoredResult :id sr-2 {:data_access_token {:sandbox {1 "deadbeef"}}})
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"different data-access contexts"
              (combine-with-perms-stubbed!
               query-ids document-id (:collection_id doc) u
               {:display "bar" :visualization-settings {}})))
         (testing "and a source with no recorded lens at all is refused too"
-          (t2/update! :model/StoredResult sr-2 {:data_access_token nil})
+          (t2/update! :model/StoredResult :id sr-2 {:data_access_token nil})
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo #"no recorded data-access context"
                (combine-with-perms-stubbed!
@@ -2929,10 +3039,10 @@
                                              (lib/aggregate (lib/count)))))]
         ;; Give the second source a genuinely different query, so "checked the first one" and
         ;; "checked them all" are distinguishable.
-        (t2/update! :model/ExplorationQuery (second query-ids) {:dataset_query other-q})
+        (t2/update! :model/ExplorationQuery :id (second query-ids) {:dataset_query other-q})
         (let [checked (atom [])]
-          (with-redefs [query-perms/check-run-permissions-for-query
-                        (fn [q] (swap! checked conj q) nil)]
+          (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query
+                                      (fn [q] (swap! checked conj q) nil)]
             (eqr/create-ephemeral-card-for-exploration-queries!
              query-ids document-id (:collection_id doc) u
              {:display "bar" :visualization-settings {}}))

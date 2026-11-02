@@ -1,10 +1,16 @@
+import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
+import {
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { MetabotAgentTurnDisplayError } from "metabase/metabot/state";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
@@ -22,25 +28,39 @@ const defaultProps: ComponentProps<typeof MetabotInlineSQLPrompt> = {
   onValueChange: jest.fn(),
 };
 
-function setup(
-  props?: Partial<ComponentProps<typeof MetabotInlineSQLPrompt>>,
-  options?: { isAdmin?: boolean },
-) {
-  const { isAdmin = true } = options ?? {};
+interface SetupOpts {
+  props?: Partial<ComponentProps<typeof MetabotInlineSQLPrompt>>;
+  isAdmin?: boolean;
+  isConfigured?: boolean;
+}
+
+function setup({
+  props,
+  isAdmin = true,
+  isConfigured = false,
+}: SetupOpts = {}) {
   const settings = mockSettings({
-    "llm-metabot-configured?": false,
+    "llm-metabot-configured?": isConfigured,
     "metabot-enabled?": true,
   });
 
   setupUserMetabotPermissionsEndpoint();
   setupEnterprisePlugins();
 
-  renderWithProviders(<MetabotInlineSQLPrompt {...defaultProps} {...props} />, {
-    storeInitialState: createMockState({
-      settings,
-      currentUser: createMockUser({ is_superuser: isAdmin }),
-    }),
-  });
+  const { rerender } = renderWithProviders(
+    <MetabotInlineSQLPrompt {...defaultProps} {...props} />,
+    {
+      storeInitialState: createMockState({
+        settings,
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+      }),
+    },
+  );
+
+  return {
+    rerender: (nextProps: SetupOpts["props"]) =>
+      rerender(<MetabotInlineSQLPrompt {...defaultProps} {...nextProps} />),
+  };
 }
 
 describe("MetabotInlineSQLPrompt", () => {
@@ -62,8 +82,36 @@ describe("MetabotInlineSQLPrompt", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens the AI provider configuration modal from the configure link", async () => {
+    setupLlmProvidersEndpoint();
+    setupLlmProviderTypesEndpoint();
+    setup();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "connect to a model" }),
+    );
+
+    expect(
+      await screen.findByTestId("ai-provider-configuration-modal"),
+    ).toBeInTheDocument();
+  });
+
+  it("disables the generate button until a prompt is typed", async () => {
+    const { rerender } = setup({ isConfigured: true });
+
+    expect(
+      await screen.findByTestId("metabot-inline-sql-generate"),
+    ).toBeDisabled();
+
+    rerender({ value: "   " });
+    expect(screen.getByTestId("metabot-inline-sql-generate")).toBeDisabled();
+
+    rerender({ value: "select all users" });
+    expect(screen.getByTestId("metabot-inline-sql-generate")).toBeEnabled();
+  });
+
   it("shows the admin message when the user cannot configure AI", async () => {
-    setup(undefined, { isAdmin: false });
+    setup({ isAdmin: false });
 
     expect(
       await screen.findByText(
@@ -71,4 +119,34 @@ describe("MetabotInlineSQLPrompt", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it.each<{ replacement: string; error: MetabotAgentTurnDisplayError }>([
+    {
+      replacement: "error",
+      error: { type: "message", message: "Sorry, I ran into an error." },
+    },
+    {
+      replacement: "interruption notice",
+      error: {
+        type: "aborted",
+        message: "Response from Metabot was interrupted",
+      },
+    },
+  ])(
+    "replaces the working status with the $replacement when loading ends",
+    async ({ error }) => {
+      const { rerender } = setup({
+        props: { isLoading: true },
+        isConfigured: true,
+      });
+      expect(
+        await screen.findByRole("button", { name: "Stop generating" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Working on it...");
+
+      rerender({ isLoading: false, error });
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      expect(screen.getByText(error.message)).toBeInTheDocument();
+    },
+  );
 });

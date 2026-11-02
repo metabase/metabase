@@ -1,10 +1,15 @@
+import { translateEntityId } from "embedding-sdk-bundle/lib/translate-entity-id";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type {
   SdkActionDefinition,
   SdkActionId,
   SdkActionInput,
+  SdkLegacyActionDefinition,
 } from "embedding-sdk-bundle/types/action";
-import { executeAction as executeActionMutation } from "metabase/api/action";
+import {
+  executeAction as executeActionMutation,
+  executeUnsavedAction as executeUnsavedActionMutation,
+} from "metabase/api/action";
 import { isDataApp, isDataAppDev } from "metabase/embedding-sdk/config";
 import type {
   BaseEntityId,
@@ -48,35 +53,69 @@ const parseActionId = (
 
 const isActionDefinition = (
   input: SdkActionInput,
-): input is SdkActionDefinition => isObject(input) && "action" in input;
+): input is SdkActionDefinition => isObject(input) && "entityId" in input;
 
-/**
- * The action that actually runs. Outside the dev preview the synchronized copy
- * replaces the authored action: the copy is what grants an app's viewers
- * permission to run it, through the collection its model lives in.
- */
-function toExecutableActionId(input: SdkActionInput): SdkActionId {
-  if (!isActionDefinition(input)) {
-    if (isDataApp()) {
-      throw new Error(
-        `Action ${input} was passed to \`useAction\` as a raw id. A data app must pass the \`defineAction(...)\` export, so the synchronized action runs.`,
-      );
-    }
+const isLegacyActionDefinition = (
+  input: SdkActionInput,
+): input is SdkLegacyActionDefinition =>
+  isObject(input) && "action" in input && isObject(input.action);
 
-    return input;
-  }
-
-  if (isDataAppDev() || !isDataApp()) {
-    return input.action.id;
-  }
-
-  if (input.copiedActionId === null || input.copiedActionId === undefined) {
+function toRawActionId(input: SdkActionId): SdkActionId {
+  if (isDataApp()) {
     throw new Error(
-      "This action has not been synchronized. Run `npm run sync-resources` and rebuild.",
+      `Action ${input} was passed to \`useAction\` as a raw id. A data app must pass a \`defineAction(...)\` definition.`,
     );
   }
 
-  return input.copiedActionId;
+  return input;
+}
+
+async function executeDefinedAction(
+  reduxStore: SdkStore,
+  definition: SdkActionDefinition,
+  parameters: ActionParametersPayload,
+): Promise<ExecuteActionResult> {
+  if (isDataAppDev()) {
+    return reduxStore
+      .dispatch(
+        executeUnsavedActionMutation.initiate({
+          action: {
+            name: definition.kind,
+            type: "implicit",
+            kind: definition.kind,
+            table_id: definition.table.id,
+          },
+          // Forwarded unchanged: the SDK keeps the parameter bag loose, and the
+          // endpoint validates the values server-side.
+          parameters: parameters as ParametersForActionExecution,
+        }),
+      )
+      .unwrap();
+  }
+
+  return executeSavedAction(reduxStore, definition.entityId, parameters);
+}
+
+async function executeSavedAction(
+  reduxStore: SdkStore,
+  actionId: SdkActionId,
+  parameters: ActionParametersPayload,
+): Promise<ExecuteActionResult> {
+  const id =
+    typeof actionId === "number"
+      ? actionId
+      : await translateEntityId(reduxStore, "action", actionId);
+
+  return reduxStore
+    .dispatch(
+      executeActionMutation.initiate({
+        id,
+        // Forwarded unchanged: the SDK keeps the parameter bag loose, and the
+        // endpoint validates the values server-side.
+        parameters: parameters as ParametersForActionExecution,
+      }),
+    )
+    .unwrap();
 }
 
 /**
@@ -92,10 +131,18 @@ export const executeAction =
     actionId,
     parameters = {},
   }: ExecuteActionParams): Promise<ExecuteActionResult> => {
+    if (isActionDefinition(actionId)) {
+      return executeDefinedAction(reduxStore, actionId, parameters);
+    }
+
+    if (isLegacyActionDefinition(actionId)) {
+      return executeSavedAction(reduxStore, actionId.action.id, parameters);
+    }
+
     return reduxStore
       .dispatch(
         executeActionMutation.initiate({
-          id: parseActionId(toExecutableActionId(actionId)),
+          id: parseActionId(toRawActionId(actionId)),
           // Forwarded unchanged: the SDK keeps the parameter bag loose, and the
           // endpoint validates the values server-side.
           parameters: parameters as ParametersForActionExecution,

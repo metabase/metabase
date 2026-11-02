@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import {
   Button,
+  type ButtonProps,
   Flex,
   Group,
   Icon,
@@ -21,6 +22,7 @@ type ListFilterPopoverProps = {
   onApply: () => void;
   onClear: () => void;
   children: ReactNode;
+  buttonProps?: ButtonProps;
 };
 
 /** Filter button + popover shell for list pages: an Indicator-dotted trigger,
@@ -30,6 +32,7 @@ export const ListFilterPopover = ({
   onOpen,
   onApply,
   onClear,
+  buttonProps,
   children,
 }: ListFilterPopoverProps) => {
   const [opened, setOpened] = useState(false);
@@ -60,12 +63,13 @@ export const ListFilterPopover = ({
       onChange={setOpened}
     >
       <Popover.Target>
-        <Indicator disabled={!hasActiveFilters} size={8} offset={8}>
+        <Indicator disabled={!hasActiveFilters} size={8} offset={12}>
           <Button
-            variant="default"
+            size="lg"
             leftSection={<Icon name="filter" />}
             aria-label={t`Show filters`}
             onClick={handleTriggerClick}
+            {...buttonProps}
           >
             {t`Filter`}
           </Button>
@@ -75,9 +79,7 @@ export const ListFilterPopover = ({
         <Stack gap="xxl" w={300}>
           {children}
           <Group gap="lg" grow>
-            <Button variant="default" onClick={handleClear}>
-              {t`Clear filters`}
-            </Button>
+            <Button onClick={handleClear}>{t`Clear filters`}</Button>
             <Button variant="filled" onClick={handleApply}>
               {t`Apply`}
             </Button>

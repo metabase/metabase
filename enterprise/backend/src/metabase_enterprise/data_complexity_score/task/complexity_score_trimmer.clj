@@ -6,9 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,9 +24,11 @@
   (let [deleted (data-complexity-score.db/delete-scores-older-than! retention-months)]
     (log/infof "Data Complexity Score cleanup complete. Deleted %d rows." (or deleted 0))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Delete old Data Complexity Score snapshots"}
-  DataComplexityScoreTrimmer [_ctx]
+(task/defjob DataComplexityScoreTrimmer
+  "Delete old Data Complexity Score snapshots"
+  {:saved-class "metabase_enterprise.data_complexity_score.task.complexity_score_trimmer.DataComplexityScoreTrimmer"
+   :concurrent? false}
+  [_ctx]
   (trim-old-complexity-score-data!))
 
 (defmethod task/init! ::DataComplexityScoreTrimmer [_]

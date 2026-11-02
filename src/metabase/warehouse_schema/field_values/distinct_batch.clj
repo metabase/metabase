@@ -42,6 +42,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *batch-size*
   "Number of per-field arms unioned into one query. Keeps query text well under driver limits."
   50)

@@ -9,6 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *cache*
   "Cache atom bound by [[with-cache]], or nil to read through to the app DB on every call."
   nil)

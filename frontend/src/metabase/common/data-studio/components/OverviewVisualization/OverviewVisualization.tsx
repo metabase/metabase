@@ -22,8 +22,7 @@ export function MetricCardVisualization({
   isLoading,
   className,
 }: MetricCardVisualizationProps) {
-  const buildQuestion = useQuestionFromCard();
-  const question = useMemo(() => buildQuestion(card), [card, buildQuestion]);
+  const question = useQuestionFromCard(card);
 
   const rawSeries = useMemo(
     () => (data ? [{ card, data: data.data }] : null),

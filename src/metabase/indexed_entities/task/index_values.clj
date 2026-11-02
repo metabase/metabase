@@ -17,12 +17,8 @@
 
 (set! *warn-on-reflection* true)
 
-;; reference list of possible model-index :state values; not consulted by code
-#_{:clj-kondo/ignore [:unused-private-var]}
-;; Possible values for the :state field on model index records.
-;; Unused, but kept here for reference.
-(def ^:private model-index-states
-  #{"indexed" "initial" "error" "overflow"})
+;; Possible values for the :state field on model index records:
+#_#{"indexed" "initial" "error" "overflow"}
 
 (defn- should-deindex?
   "Whether to unindex the the model indexing job.
@@ -46,9 +42,11 @@
           (indexed-entities.db/delete-model-index! model-index-id)))
       (model-index/add-values! model-index))))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Refresh model indexed columns"}
-  ModelIndexRefresh [job-context]
+(task/defjob ModelIndexRefresh
+  "Refresh model indexed columns"
+  {:saved-class "metabase.indexed_entities.task.index_values.ModelIndexRefresh"
+   :concurrent? false}
+  [job-context]
   (let [{:strs [model-index-id]} (qc/from-job-data job-context)]
     (refresh-index! model-index-id)))
 

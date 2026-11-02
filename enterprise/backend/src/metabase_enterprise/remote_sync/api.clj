@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.events :as remote-sync.events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -15,6 +16,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
@@ -38,7 +40,8 @@
                               current)
                       {:status-code     409
                        :branch_mismatch true
-                       :current_branch  current})))
+                       :current_branch  current
+                       :response/keys   #{:branch_mismatch :current_branch}})))
     requested-branch))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
@@ -61,10 +64,12 @@
        ;; the branch the client believes is currently active; rejected if it disagrees with the
        ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
        ;; target (it differs from this on a branch switch); `expected_branch` is only the assertion.
-       [:expected_branch ms/NonBlankString]]]
+       ;; Optional because headless clients (the `mb` CLI) hold no cached view that can go stale.
+       [:expected_branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (check-branch-matches-setting! expected_branch)
+  (when expected_branch
+    (check-branch-matches-setting! expected_branch))
   (let [branch-name (or branch (settings/remote-sync-branch))
         user-id     api/*current-user-id*
         {task-id :id}
@@ -177,12 +182,24 @@
      :force_push_casualties  force-push-casualties
      :reason                 (some-> reason name)}))
 
+(defn- present-task
+  "Hydrate `task` for the API: its status and the initiating user trimmed to what the UI shows."
+  [task]
+  (-> task
+      (t2/hydrate :status :initiated_by_user)
+      (update :initiated_by_user #(some-> % (select-keys [:id :first_name :last_name :email])))))
+
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"
   []
   (api/check-superuser)
-  (when-let [task (remote-sync.task/most-recent-task)]
-    (t2/hydrate task :status)))
+  (when-let [task (some-> (remote-sync.task/most-recent-task) present-task)]
+    (if (= :timed-out (:status task))
+      ;; The owning worker is gone (its heartbeat stopped), so close the row now rather than leaving it to the
+      ;; next task creation. Idempotent and safe to race across nodes and polling tabs.
+      (do (remote-sync.task/supersede-stale-tasks!)
+          (present-task (remote-sync.task/most-recent-task)))
+      task)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"
@@ -191,7 +208,7 @@
   (let [task (remote-sync.task/most-recent-task)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
-    (t2/hydrate (remote-sync.task/most-recent-task) :status)))
+    (present-task (remote-sync.task/most-recent-task))))
 
 (api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
   "Test whether the Remote Sync credentials can reach the git repository.
@@ -235,11 +252,22 @@
         (throw (ex-info (impl/source-error-message e)
                         {:status-code 400} e))))))
 
+(defn- with-library-synced
+  "Adds the Library to `settings` collections as synced when they leave read-write sync on and custom collections are off."
+  [settings]
+  (let [library (collections/library-collection)]
+    (cond-> settings
+      (and library
+           (not (settings/remote-sync-custom-collections-enabled))
+           (= :read-write (get settings :remote-sync-type (settings/remote-sync-type)))
+           (not (str/blank? (get settings :remote-sync-url (settings/remote-sync-url)))))
+      (assoc-in [:collections (:id library)] true))))
+
 (api.macros/defendpoint :put "/settings" :- remote-sync.schema/SettingsUpdateResponse
   "Update Remote Sync related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   {:keys [remote-sync-type collections] :as settings}
+   {:keys [remote-sync-type] :as settings}
    :- [:map {:closed true}
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
@@ -267,7 +295,8 @@
   (api/check-400 (not (and (remote-sync.object/dirty?) (= :read-only remote-sync-type)))
                  "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")
   ;; Filter out no-op collection changes before checking read-only mode or running bulk-set
-  (let [collections (when (seq collections)
+  (let [{:keys [collections] :as settings} (with-library-synced settings)
+        collections (when (seq collections)
                       (let [current-states (into {}
                                                  (map (juxt :id :is_remote_synced))
                                                  (remote-sync.db/collection-sync-states (keys collections)))]
@@ -296,6 +325,7 @@
                                  :error       (ex-message e)
                                  :status-code 400)
                           e)))))
+    (remote-sync.events/sync-transforms-tracking!)
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}
                             :user-id api/*current-user-id*})

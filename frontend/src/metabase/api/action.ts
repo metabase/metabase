@@ -5,6 +5,7 @@ import type {
   CreateActionRequest,
   ExecuteActionRequest,
   ExecuteDashcardActionRequest,
+  ExecuteUnsavedActionRequest,
   GetActionRequest,
   ListActionsRequest,
   ParametersForActionExecution,
@@ -55,31 +56,18 @@ export const actionApi = Api.injectEndpoints({
       query: (body) => ({
         method: "PUT",
         url: `/api/action/${body.id}`,
-        // The action editor passes the full WritebackAction it fetched
-        // (including server-managed fields like `creator`, `created_at`,
-        // `database_enabled_actions`, ...). The backend routes anything
-        // outside the Action columns to the type-specific update table
-        // (query_action / implicit_action / http_action), where those
-        // columns don't exist and the request 500s. Whitelist only the
-        // fields that the API endpoint actually accepts.
         body: _.pick(body, [
           "id",
           "archived",
-          "body",
-          "database_id",
+          "collection_id",
           "dataset_query",
           "description",
-          "error_handle",
-          "headers",
           "kind",
           "model_id",
           "name",
           "parameter_mappings",
           "parameters",
-          "public_uuid",
-          "response_handle",
-          "template",
-          "url",
+          "table_id",
           "visualization_settings",
         ]),
       }),
@@ -90,6 +78,21 @@ export const actionApi = Api.injectEndpoints({
               idTag("action", action.id),
             ])
           : [],
+      onQueryStarted: async (
+        { id, ...patch },
+        { dispatch, queryFulfilled },
+      ) => {
+        const patchResult = dispatch(
+          actionApi.util.updateQueryData("getAction", { id }, (draft) => {
+            Object.assign(draft, patch);
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     deleteAction: builder.mutation<WritebackAction, WritebackActionId>({
       query: (id) => ({
@@ -147,6 +150,16 @@ export const actionApi = Api.injectEndpoints({
         body: { parameters },
       }),
     }),
+    executeUnsavedAction: builder.mutation<
+      ActionExecutionResult,
+      ExecuteUnsavedActionRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/action/execute",
+        body,
+      }),
+    }),
     prefetchActionValues: builder.query<
       ParametersForActionExecution,
       PrefetchActionValuesRequest
@@ -201,6 +214,7 @@ export const {
     deleteActionPublicLink,
     createActionPublicLink,
     executeAction,
+    executeUnsavedAction,
     prefetchActionValues,
     executeDashcardAction,
     prefetchDashcardValues,

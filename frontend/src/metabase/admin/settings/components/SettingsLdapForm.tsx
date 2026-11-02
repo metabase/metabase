@@ -1,12 +1,19 @@
+import type { FormikHelpers } from "formik";
 import { useCallback, useMemo } from "react";
 import { c, t } from "ttag";
+import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
+import { SettingsGroupMappingSection } from "metabase/admin/settings/auth/components/GroupMappings";
 import {
   getDefaultPlaceholder,
+  getEnvNoticeProps,
   getExtraFormFieldProps,
+  getStoredFieldValue,
+  resetFieldsToInitial,
 } from "metabase/admin/settings/utils";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -39,28 +46,31 @@ import type {
 
 import { useUpdateLdapMutation } from "../api/ldap";
 
-import { LdapGroupMappingSection } from "./LdapGroupMappingSection";
-
-const testParentheses: TestConfig<string | null | undefined> = {
-  name: "test-parentheses",
-  message: "Check your parentheses",
-  test: (value) =>
-    (value?.match(/\(/g) || []).length === (value?.match(/\)/g) || []).length,
-};
-
 // the membership filter is hidden while group mapping is off, so its check must not block the page then
-const getLdapSchema = (isGroupMappingOn: boolean) =>
-  Yup.object({
-    "ldap-port": Yup.number().integer().nullable(),
-    "ldap-user-filter": Yup.string().nullable().test(testParentheses),
+const getLdapSchema = (isGroupMappingOn: boolean) => {
+  const parenthesesTest: TestConfig<string | null | undefined> = {
+    name: "test-parentheses",
+    message: t`Check your parentheses`,
+    test: (value) =>
+      (value?.match(/\(/g) || []).length === (value?.match(/\)/g) || []).length,
+  };
+  const portMessage = t`Port must be a whole number between 1 and 65535`;
+  return Yup.object({
+    "ldap-port": Yup.number()
+      .integer(portMessage)
+      .min(1, portMessage)
+      .max(65535, portMessage)
+      .nullable(),
+    "ldap-user-filter": Yup.string().nullable().test(parenthesesTest),
     "ldap-group-membership-filter": isGroupMappingOn
-      ? Yup.string().nullable().test(testParentheses)
+      ? Yup.string().nullable().test(parenthesesTest)
       : Yup.string().nullable(),
   });
+};
 
-// an empty port means the default, so the form allows null where the setting does not
+// the port field holds the input's text, and an empty port means the default
 export type LdapFormValues = Omit<LdapSettingValues, "ldap-port"> & {
-  "ldap-port": number | null;
+  "ldap-port": string | null;
 };
 
 type LdapSettingValues = Pick<
@@ -89,6 +99,11 @@ const LDAP_ATTRIBUTE_KEYS = [
   "ldap-attribute-firstname",
   "ldap-attribute-lastname",
 ] as const;
+
+const GROUP_MAPPING_FIELD_KEYS = [
+  "ldap-group-base",
+  "ldap-group-membership-filter",
+] satisfies (keyof LdapFormValues)[];
 
 // the backend copy for a few fields predates the design, so the page supplies its own description
 const withDescription = (
@@ -122,14 +137,20 @@ export const SettingsLdapForm = () => {
     settingDetails?.["ldap-port"]?.default ?? FALLBACK_LDAP_PORT;
 
   const handleSubmit = useCallback(
-    (values: LdapFormValues) => {
-      return updateLdapSettings({
-        ...values,
+    async (values: LdapFormValues, helpers: FormikHelpers<LdapFormValues>) => {
+      // hidden group fields stay out of the save, so they cannot fail the connection test unseen
+      const valuesToSave = isGroupMappingOn
+        ? values
+        : _.omit(values, GROUP_MAPPING_FIELD_KEYS);
+      await updateLdapSettings({
+        ...valuesToSave,
         "ldap-port": Number(values["ldap-port"] ?? defaultPort),
         "ldap-enabled": true,
       }).unwrap();
+      // the form ignores refetches, so the saved values become its baseline
+      helpers.resetForm({ values });
     },
-    [updateLdapSettings, defaultPort],
+    [updateLdapSettings, defaultPort, isGroupMappingOn],
   );
 
   if (isLoadingDetails || isLoadingValues) {
@@ -153,9 +174,8 @@ export const SettingsLdapForm = () => {
         initialValues={getFormValues(settingDetails, settingValues)}
         onSubmit={handleSubmit}
         validationSchema={schema}
-        enableReinitialize
       >
-        {({ dirty }) => (
+        {({ dirty, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
               <SettingsSection
@@ -183,8 +203,7 @@ export const SettingsLdapForm = () => {
                   <FormRadioGroup
                     name="ldap-security"
                     label={t`LDAP security`}
-                    {...getExtraFormFieldProps(settingDetails["ldap-security"])}
-                    description={null}
+                    {...getEnvNoticeProps(settingDetails["ldap-security"])}
                   >
                     <Stack mt="xxs" gap="sm">
                       <Radio value="none" label={t`None`} />
@@ -212,6 +231,7 @@ export const SettingsLdapForm = () => {
                   />
                 </Stack>
               </SettingsSection>
+              <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
               <SettingsSection
                 title={t`User schema`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
@@ -241,10 +261,6 @@ export const SettingsLdapForm = () => {
                   />
                 </Stack>
               </SettingsSection>
-              {/* the card saves on its own, so it stays out of the form's values */}
-              <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning
-                disabled={!isConfigured}
-              />
               <CollapsibleSettingsSection
                 title={t`Attributes`}
                 description={t`Map LDAP attributes to the email, first name, and last name fields in ${applicationName}`}
@@ -278,9 +294,25 @@ export const SettingsLdapForm = () => {
                   />
                 </Stack>
               </CollapsibleSettingsSection>
-              <LdapGroupMappingSection
+              <SettingsGroupMappingSection
+                syncSettingKey="ldap-group-sync"
+                mappingsSettingKey="ldap-group-mappings"
+                description={t`Automatically assign people to ${applicationName} groups based on their LDAP group membership`}
+                tenancy="internal"
+                nameLabel={t`LDAP group name`}
+                namePlaceholder="cn=people,ou=groups,dc=example,dc=org"
+                namesValidatedOnSave
                 data-testid="ldap-group-mapping-section"
                 disabled={!isConfigured}
+                onToggle={(enabled) => {
+                  if (!enabled) {
+                    resetFieldsToInitial(
+                      setFieldValue,
+                      initialValues,
+                      GROUP_MAPPING_FIELD_KEYS,
+                    );
+                  }
+                }}
               >
                 <FormTextInput
                   name="ldap-group-base"
@@ -293,7 +325,7 @@ export const SettingsLdapForm = () => {
                   )}
                 />
                 <PLUGIN_LDAP_FORM_FIELDS.LdapGroupMembershipFilter />
-              </LdapGroupMappingSection>
+              </SettingsGroupMappingSection>
               <Flex justify="end" gap="md">
                 <Box>
                   <FormErrorMessage />
@@ -305,6 +337,7 @@ export const SettingsLdapForm = () => {
                 />
               </Flex>
             </Stack>
+            <LeaveRouteConfirmModal isEnabled={dirty && !isSubmitting} />
           </Form>
         )}
       </FormProvider>
@@ -316,21 +349,17 @@ export const getFormValues = (
   settingDetails: SettingDefinitionMap,
   settingValues: EnterpriseSettings,
 ): LdapFormValues => {
-  // unset fields stay empty so the default shows as the placeholder; env-locked ones show the env value
-  const storedValue = (key: LdapTextKey): string | null => {
-    const setting = settingDetails[key];
-    if (setting?.is_env_setting) {
-      return settingValues[key] ?? null;
-    }
-    return setting?.value ?? null;
-  };
+  const storedValue = (key: LdapTextKey): string | null =>
+    getStoredFieldValue(settingDetails[key], settingValues[key]);
 
-  const portSetting = settingDetails["ldap-port"];
+  const port = getStoredFieldValue(
+    settingDetails["ldap-port"],
+    settingValues["ldap-port"],
+  );
+
   const values: LdapFormValues = {
     "ldap-host": storedValue("ldap-host"),
-    "ldap-port": portSetting?.is_env_setting
-      ? settingValues["ldap-port"]
-      : (portSetting?.value ?? null),
+    "ldap-port": port === null ? null : String(port),
     "ldap-security": settingValues["ldap-security"] ?? "none",
     "ldap-bind-dn": storedValue("ldap-bind-dn"),
     "ldap-password": storedValue("ldap-password"),

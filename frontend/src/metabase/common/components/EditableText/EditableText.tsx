@@ -1,19 +1,28 @@
+import cx from "classnames";
 import type {
   ChangeEvent,
   FocusEvent,
   FocusEventHandler,
   HTMLAttributes,
+  JSX,
   KeyboardEvent,
   MouseEvent,
   Ref,
 } from "react";
-import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import {
+  createElement,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { usePrevious } from "react-use";
 
 import { Markdown } from "metabase/common/components/Markdown";
 import { Box, type BoxProps } from "metabase/ui";
 
-import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
+import S from "./EditableText.module.css";
 
 export type EditableTextAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -29,6 +38,7 @@ export interface EditableTextProps extends BoxProps, EditableTextAttributes {
   isMultiline?: boolean;
   isDisabled?: boolean;
   isMarkdown?: boolean;
+  as?: keyof JSX.IntrinsicElements;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
@@ -36,7 +46,7 @@ export interface EditableTextProps extends BoxProps, EditableTextAttributes {
   "data-testid"?: string;
 }
 
-const EditableTextInner = forwardRef(function EditableText(
+export const EditableText = forwardRef(function EditableText(
   {
     initialValue,
     placeholder,
@@ -51,6 +61,8 @@ const EditableTextInner = forwardRef(function EditableText(
     onFocus,
     onBlur,
     "data-testid": dataTestId,
+    as,
+    className,
     ...props
   }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
@@ -134,12 +146,15 @@ const EditableTextInner = forwardRef(function EditableText(
 
   return (
     <Box
-      component={EditableTextRoot}
+      // Box cannot take a union of element names as its component
+      renderRoot={(rootProps) => createElement(as ?? "div", rootProps)}
+      className={cx(S.root, S.border, className, {
+        [S.editable]: !isDisabled,
+        [S.editing]: isEditing && !isDisabled,
+        [S.mirror]: !shouldShowMarkdown,
+      })}
       onClick={isMarkdown ? handleRootElementClick : undefined}
       ref={ref}
-      isEditing={isEditing}
-      isDisabled={isDisabled}
-      isEditingMarkdown={!shouldShowMarkdown}
       data-value={`${displayValue}\u00A0`}
       data-testid="editable-text"
       tabIndex={isDisabled ? -1 : 0}
@@ -162,7 +177,8 @@ const EditableTextInner = forwardRef(function EditableText(
       {shouldShowMarkdown ? (
         <Markdown>{inputValue}</Markdown>
       ) : (
-        <EditableTextArea
+        <textarea
+          className={S.textarea}
           ref={inputRef}
           value={inputValue}
           placeholder={placeholder}
@@ -182,7 +198,3 @@ const EditableTextInner = forwardRef(function EditableText(
 });
 
 const shouldPassKeyToTextarea = (key: string) => key !== "Enter";
-
-export const EditableText = Object.assign(EditableTextInner, {
-  Root: EditableTextRoot,
-});

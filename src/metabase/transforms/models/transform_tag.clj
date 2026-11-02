@@ -20,14 +20,14 @@
 
 (defmethod mi/can-read? :model/TransformTag
   ([_instance]
-   (api/is-data-analyst?))
+   (api/entitled-data-analyst?))
   ([_model _pk]
-   (api/is-data-analyst?)))
+   (api/entitled-data-analyst?)))
 
 (defmethod mi/can-write? :model/TransformTag
   ([instance]
    (or api/*is-superuser?*
-       (and api/*is-data-analyst?*
+       (and (api/entitled-data-analyst?)
             (let [transforms (transform/transforms-with-tags [(:id instance)])]
               (every? mi/can-write? transforms)))))
   ([_model pk]
@@ -36,17 +36,7 @@
 
 (defmethod mi/can-create? :model/TransformTag
   [_model _instance]
-  (api/is-data-analyst?))
-
-(defn schedules-for-transforms
-  "Map each id in `transform-ids` to the cron schedules of the active jobs that run it via shared tags.
-  Ids with no such job are absent."
-  [transform-ids]
-  (when (seq transform-ids)
-    (reduce (fn [m {:keys [transform_id schedule]}]
-              (update m transform_id (fnil conj #{}) schedule))
-            {}
-            (transforms.db/active-job-schedules-for-transforms transform-ids))))
+  (api/entitled-data-analyst?))
 
 (defn tag-name-exists?
   "Check if a tag with the given name already exists"
@@ -73,7 +63,8 @@
 
 (t2/define-before-update :model/TransformTag [tag]
   (if (or (nil? (:built_in_type tag))
-          mi/*deserializing?*)
+          mi/*deserializing?*
+          (empty? (dissoc (t2/changes tag) :updated_at)))
     tag
     (-> (merge (translate-name tag) ;; translated default names
                {:built_in_type nil} ;; never translate this again
@@ -108,8 +99,7 @@
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]
   {:copy [:entity_id :built_in_type]
-   :transform {:name {:export str :import identity}
-               :created_at (serdes/date)}})
+   :transform {:name {:export str :import identity}}})
 
 (defmethod serdes/storage-path "TransformTag" [tt _ctx]
   [{:label "transforms"} {:label "transform_tags"} {:label (:name tt) :key (:entity_id tt)}])

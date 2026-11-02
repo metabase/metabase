@@ -4,15 +4,15 @@ import { forwardRef, useCallback } from "react";
 
 import type { FileInputProps } from "metabase/common/components/FileInput";
 import { FileInput } from "metabase/common/components/FileInput";
-import { FormField } from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { FormField, type FormFieldProps } from "metabase/forms";
 
 export type FormFileInputEncoding = "base64";
 
-export interface FormFileInputProps extends Omit<
-  FileInputProps,
-  "value" | "onChange" | "onBlur"
-> {
+export interface FormFileInputProps
+  extends
+    Omit<FileInputProps, "value" | "onChange" | "onBlur">,
+    Pick<FormFieldProps, "mb" | "gap"> {
   name: string;
   encoding?: FormFileInputEncoding;
   title?: string;
@@ -26,6 +26,8 @@ export const FormFileInput = forwardRef(function FormFileInput(
     encoding,
     className,
     style,
+    mb,
+    gap,
     title,
     description,
     optional,
@@ -48,6 +50,8 @@ export const FormFileInput = forwardRef(function FormFileInput(
       ref={ref}
       className={className}
       style={style}
+      mb={mb}
+      gap={gap}
       title={title}
       description={description}
       htmlFor={id}

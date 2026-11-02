@@ -75,12 +75,12 @@ export function ListViewColumnsSidebar({
     <Stack p="2.5rem">
       <Group justify="space-between" align="center" h="1.5rem">
         <Text fw="bold">{t`Customize List layout`}</Text>
-        <Button size="xs" variant="subtle" onClick={onDone}>{t`Done`}</Button>
+        <Button variant="subtle" size="sm" onClick={onDone}>{t`Done`}</Button>
       </Group>
       <Stack gap="lg">
         <TextInput
           placeholder={t`Find a column...`}
-          leftSection={<Icon name="search" size={14} c="text-disabled" />}
+          leftSection={<Icon name="search" size={14} c="text-secondary" />}
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
         />
@@ -98,7 +98,7 @@ export function ListViewColumnsSidebar({
             />
           ))}
           {filtered.length === 0 ? (
-            <Text size="sm" c="text-disabled">{t`No available columns`}</Text>
+            <Text size="sm" c="text-secondary">{t`No available columns`}</Text>
           ) : null}
         </Stack>
       </Stack>{" "}

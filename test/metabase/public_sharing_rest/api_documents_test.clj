@@ -72,7 +72,7 @@
                      :model/Card {card2-id :id} {:name "Card 2"
                                                  :dataset_query (mt/mbql-query venues {:limit 10})
                                                  :document_id (:id document)}]
-        (t2/update! :model/Document (:id document)
+        (t2/update! :model/Document :id (:id document)
                     {:document (documents.test-util/cards->prose-mirror-ast [card1-id card2-id])})
         (let [result (mt/client :get 200 (str "public/document/" (:public_uuid document)))]
           (testing "response includes cards field"
@@ -112,7 +112,7 @@
             (is (= 200
                    (:status (mt/client-full-response :get (str "public/document/" uuid))))))
           (testing "Document is not accessible after archiving"
-            (t2/update! :model/Document (:id document) {:archived true})
+            (t2/update! :model/Document :id (:id document) {:archived true})
             (is (= "Not found."
                    (mt/client :get 404 (str "public/document/" uuid))))))))))
 
@@ -134,7 +134,7 @@
                        :model/Card card {:name "Test Card"
                                          :dataset_query (mt/mbql-query venues {:limit 5})
                                          :document_id (:id document)}]
-          (t2/update! :model/Document (:id document)
+          (t2/update! :model/Document :id (:id document)
                       {:document (documents.test-util/cards->prose-mirror-ast [(:id card)])})
           (let [result (mt/client :get 202 (format "public/document/%s/card/%d" (:public_uuid document) (:id card)))]
             (is (some? result))
@@ -158,7 +158,7 @@
                      :model/Card card {:name "Export Test Card"
                                        :dataset_query (mt/mbql-query venues {:limit 5})
                                        :document_id (:id document)}]
-        (t2/update! :model/Document (:id document)
+        (t2/update! :model/Document :id (:id document)
                     {:document (documents.test-util/cards->prose-mirror-ast [(:id card)])})
         (testing "Can export card results as CSV"
           (let [response (mt/client-full-response :post (format "public/document/%s/card/%d/csv"

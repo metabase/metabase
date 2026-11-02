@@ -1,0 +1,23 @@
+.input {
+  order: 1;
+
+  &:focus {
+    outline: none;
+  }
+
+  &::file-selector-button {
+    padding-top: 0.5rem;
+    padding-right: 2rem;
+    visibility: hidden;
+  }
+}
+
+.button {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.375rem;
+  user-select: none;
+}
+
+.input:focus-visible + .button {
+  outline: 2px solid var(--mb-color-input-focus);
+}

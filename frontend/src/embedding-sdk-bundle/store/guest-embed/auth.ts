@@ -4,8 +4,8 @@ import { createAction } from "@reduxjs/toolkit";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
-import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils/request-session-token";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
+import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils/request-session-token";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { decodeJwt } from "metabase/utils/jwt";
 

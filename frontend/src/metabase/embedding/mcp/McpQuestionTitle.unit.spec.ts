@@ -14,7 +14,6 @@ const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         {
           type: "column",
           name: "CREATED_AT",
-          sourceName: "ORDERS",
           unit: "month",
         },
       ],

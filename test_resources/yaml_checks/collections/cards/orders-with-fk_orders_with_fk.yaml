@@ -1,7 +1,6 @@
 name: Orders With FK
 description: Query with FK in result_metadata
 entity_id: orders-with-fk
-created_at: '2026-01-01T00:00:00.000000Z'
 creator_id: test@metabase.com
 display: table
 archived: false
@@ -60,7 +59,5 @@ result_metadata:
   name: user_id
   semantic_type: type/FK
 serdes/meta:
-- id: orders-with-fk
-  label: orders_with_fk
-  model: Card
+- model: Card
 type: question
