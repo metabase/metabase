@@ -1,2 +1,17 @@
-http://localhost*
-https://admin.google.com
+# Temporary lychee excludes; the weekly link check reports ones no longer needed.
+# A `# expect:` line names the failure the next pattern is excluded for: a status
+# code or the start of lychee's error text. Any other failure gets reported.
+# login walls: redirect to sign-in for a client without a session
+# expect: 302
+^https://admin\.google\.com
+# expect: 307
+^https://console\.mistral\.ai/
+# bot walls: 403 for non-browser clients; the config now accepts 403, so the recheck says when these can go
+# expect: 403
+^https://(www|dev)\.mysql\.com/
+# expect: 403
+^https://platform\.deepseek\.com/
+# expect: 403
+^https://console\.x\.ai/
+# expect: 403
+^https://www\.oreilly\.com/
