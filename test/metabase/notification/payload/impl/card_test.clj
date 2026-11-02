@@ -149,16 +149,41 @@
                                                                                        :column "count"}}}
                        :notification-card {:send_condition :has_result}
                        :handlers          [@notification.tu/default-email-handler]}]
-        (notification.tu/test-send-notification!
-         notification
-         {:channel/email
-          (fn [[email :as emails]]
-            (is (= 1 (count emails)))
-            (is (= {notification.tu/default-card-name true
-                    "its goal of"                     false}
-                   (-> (mt/summarize-multipart-single-email email card-name-regex #"its goal of")
-                       :message
-                       first))))})))))
+        (mt/with-log-messages-for-level [messages [metabase.channel.render :warn]]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [[email :as emails]]
+              (is (= 1 (count emails)))
+              (is (= {notification.tu/default-card-name true
+                      "its goal of"                     false}
+                     (-> (mt/summarize-multipart-single-email email card-name-regex #"its goal of")
+                         :message
+                         first))))})
+          (testing "and warns once that the goal can't be resolved"
+            (is (=? [(re-pattern (str "Dynamic goal graph\\.goal_value can't be resolved \\(query-failed\\): "
+                                      "card \\d+, column count\\. Chart card \\d+, display line"))]
+                    (mapv :message (messages))))))))))
+
+(deftest goal-alert-with-unresolved-dynamic-goal-test
+  (testing "a goal alert whose dynamic goal can't resolve fails before rendering, so it leaves no render warning"
+    (mt/with-temp [:model/Card {goal-card-id :id}
+                   {:dataset_query (mt/native-query {:query "SELECT * FROM NONEXISTENT_TABLE"})}]
+      (notification.tu/with-card-notification
+        [notification {:card              {:dataset_query          (mt/mbql-query orders
+                                                                     {:aggregation [["count"]]
+                                                                      :breakout    [!day.created_at]})
+                                           :display                :line
+                                           :visualization_settings {:graph.show_goal  true
+                                                                    :graph.goal_value {:id     goal-card-id
+                                                                                       :type   "card"
+                                                                                       :column "count"}}}
+                       :notification-card {:send_condition :goal_above}
+                       :handlers          [@notification.tu/default-email-handler]}]
+        (mt/with-log-messages-for-level [messages [metabase.channel.render :warn]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
+                                (notification.tu/test-send-notification! notification {:channel/email (fn [_])})))
+          (is (empty? (messages))))))))
 
 (deftest card-with-rows-saved-to-disk-test
   (testing "whether the rows of a card saved to disk or in memory, all channels should work\n"

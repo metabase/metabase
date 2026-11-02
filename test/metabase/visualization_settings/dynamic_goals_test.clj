@@ -126,6 +126,12 @@
     (are [refs] (= :query-failed (unresolved-reason {:id 1 :type "card" :column "total"} refs))
       {"card" {"1" (get-in referenced-entities ["card" "2"])}}
       {"card" {"1" {:status "completed"}}}))
+  (testing ":too-many-rows"
+    (are [error-type] (= :too-many-rows
+                         (unresolved-reason {:id 1 :type "card" :column "total"}
+                                            {"card" {"1" {:status "failed" :error_type error-type :error "boom"}}}))
+      "too-many-rows"
+      :too-many-rows))
   (testing ":column-not-found"
     (is (= :column-not-found (unresolved-reason {:id 1 :type "card" :column "nope"} referenced-entities))))
   (testing ":not-a-number"
@@ -334,6 +340,49 @@
       (let [card     {:id 2 :display :line :visualization_settings card-viz}
             dashcard {:card_id 1 :visualization_settings card-viz}]
         (is (= [card dashcard data] (dynamic-goals/resolve-drawn-goals card dashcard data)))))))
+
+(deftest ^:parallel unresolved-goals-test
+  (let [failed {:id 2 :type "card" :column "total"}
+        data   {:cols                [{:name "total"} {:name "label"}]
+                :rows                [[5 "x"]]
+                :referenced_entities referenced-entities}]
+    (testing "every failing goal the chart draws, with its setting and reason"
+      (is (= [{:setting :scalar.segments :reason :query-failed :entity-type "card" :entity-id 2 :column "total"}
+              {:setting :scalar.segments :reason :column-not-found :entity-type nil :entity-id nil :column "nope"}
+              {:setting :scalar.segments :reason :not-a-number :entity-type nil :entity-id nil :column "label"}]
+             (dynamic-goals/unresolved-goals
+              {:id 1 :display :scalar :visualization_settings {:scalar.segments [{:min ref-a :max failed}
+                                                                                 {:min "total" :max "nope"}
+                                                                                 {:min "label"}]}}
+              nil
+              data))))
+    (testing "a goal in both the card's and the dashcard's settings is listed once"
+      (is (= [{:setting :graph.goal_value :reason :query-failed :entity-type "card" :entity-id 2 :column "total"}]
+             (dynamic-goals/unresolved-goals
+              {:id 1 :display :line :visualization_settings {:graph.show_goal true :graph.goal_value failed}}
+              {:card_id 1 :visualization_settings {:graph.goal_value failed}}
+              data))))
+    (testing "nothing for goals the chart doesn't draw, literals, or series cards"
+      (are [card dashcard] (empty? (dynamic-goals/unresolved-goals card dashcard data))
+        {:id 1 :display :line :visualization_settings {:graph.show_goal false :graph.goal_value failed}}  nil
+        {:id 1 :display :gauge :visualization_settings {:graph.show_goal true :graph.goal_value failed}}  nil
+        {:id 1 :display :custom:foo :visualization_settings {:progress.goal failed}}                     nil
+        {:id 1 :display :progress :visualization_settings {:progress.goal 10}}                           nil
+        {:id 2 :display :progress :visualization_settings {:progress.goal failed}}                       {:card_id 1}))
+    (testing "a visualizer checks its nested references but not its column names, which name merged columns"
+      (is (= [{:setting :progress.goal :reason :query-failed :entity-type "card" :entity-id 2 :column "total"}]
+             (dynamic-goals/unresolved-goals
+              {:id 1 :display :line :visualization_settings {:graph.show_goal true :graph.goal_value ref-b}}
+              {:card_id                1
+               :visualization_settings {:visualization {:display  "progress"
+                                                        :settings {:progress.goal failed}}}}
+              data)))
+      (is (empty? (dynamic-goals/unresolved-goals
+                   {:id 1 :display :progress}
+                   {:card_id                1
+                    :visualization_settings {:visualization {:display  "progress"
+                                                             :settings {:progress.goal "COLUMN_9"}}}}
+                   data))))))
 
 (deftest ^:parallel goal-references-test
   (testing "every referenced entity column, hidden and visualizer-nested goals included, once each"

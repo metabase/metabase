@@ -141,12 +141,25 @@
          :viz-settings       [card-viz dash-viz]
          :effective-settings (merge card-viz dash-viz)}))))
 
+(defn describe-goal-source
+  "`card 1, column total` for a goal referencing another entity's column (`entity-type` set), `column total` for one
+  naming a column of the chart's own result."
+  [entity-type entity-id column]
+  (if entity-type
+    (format "%s %s, column %s" entity-type entity-id column)
+    (format "column %s" column)))
+
 (defn- unresolved!
   [reason {:keys [id type column]}]
-  (throw (ex-info (if type
-                    (format "Unresolved dynamic goal (%s): %s %s, column %s" (name reason) type id column)
-                    (format "Unresolved dynamic goal (%s): column %s" (name reason) column))
+  (throw (ex-info (format "Unresolved dynamic goal (%s): %s" (name reason) (describe-goal-source type id column))
                   {:type ::unresolved-goal, :reason reason, :entity-type type, :entity-id id, :column column})))
+
+(defn- unresolved-goal-data
+  "The ex-data of `e` when it's an `::unresolved-goal`, else nil."
+  [e]
+  (let [data (ex-data e)]
+    (when (= ::unresolved-goal (:type data))
+      data)))
 
 (defn- first-row-value
   "Return the value in the first row of `column` in `data`.
@@ -164,17 +177,17 @@
   "Resolve `goal-value` against `referenced-entities` (a query result's `[:data :referenced_entities]`,
   keyed by entity type and then by id *string*). Literal numbers and self-column names pass through
   unchanged; an entity reference becomes the referenced column's first-row value. Throws
-  `::unresolved-goal` with `:reason` `:never-ran`/`:query-failed`/`:column-not-found`/`:not-a-number`
-  when the reference can't produce a finite number."
+  `::unresolved-goal` with `:reason` `:never-ran`/`:query-failed`/`:too-many-rows`/`:column-not-found`/
+  `:not-a-number` when the reference can't produce a finite number."
   [goal-value referenced-entities]
   (if-let [{entity-type :type, :keys [id column] :as ref} (goal-source goal-value)]
-    (let [{:keys [status data] :as result} (get-in referenced-entities [entity-type (str id)])]
+    (let [{:keys [status data error_type] :as result} (get-in referenced-entities [entity-type (str id)])]
       ;; no entry at all: the entity was never queried (cancelled mid-run, or the caller derived its
       ;; specs from different settings than the ones being resolved here)
       (when-not result
         (unresolved! :never-ran ref))
       (when-not (and data (some-> status name (= "completed")))
-        (unresolved! :query-failed ref))
+        (unresolved! (if (some-> error_type name (= "too-many-rows")) :too-many-rows :query-failed) ref))
       (first-row-value data column ref))
     goal-value))
 
@@ -196,7 +209,7 @@
   (try
     (resolve-fn goal-value)
     (catch clojure.lang.ExceptionInfo e
-      (when-not (= ::unresolved-goal (:type (ex-data e)))
+      (when-not (unresolved-goal-data e)
         (throw e)))))
 
 (defn resolve-segments
@@ -258,3 +271,34 @@
        (cond-> data
          (not visualizer?) (resolve-in [:viz-settings]))])
     [card dashcard data]))
+
+(defn- goal-failure
+  "Why `goal-value` can't resolve against `data`: its `::unresolved-goal` ex-data minus `:type`, or nil. Column names
+  are only checked when `check-columns?`."
+  [goal-value data check-columns?]
+  (try
+    (cond
+      (goal-source goal-value)                  (resolve-goal-value goal-value (:referenced_entities data))
+      (and check-columns? (string? goal-value)) (resolve-self-column-value goal-value data))
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (or (some-> (unresolved-goal-data e) (dissoc :type))
+          (throw e)))))
+
+(defn unresolved-goals
+  "The goals `card` draws on `dashcard` (see [[goal-scope]]) that can't resolve against `data`, as distinct
+  `{:setting :reason :entity-type :entity-id :column}` maps. A visualizer's column-name goals are skipped: its chart
+  reads columns merged from several cards, not `data`'s."
+  [card dashcard data]
+  (when-let [{:keys [display viz-settings effective-settings]} (goal-scope card dashcard)]
+    (let [check-columns? (nil? (visualizer-chart dashcard))]
+      (into []
+            (comp (mapcat (fn [viz]
+                            (for [[setting kind] (shown-goal-settings display effective-settings)
+                                  goal-value     (values-in viz {setting kind})]
+                              [setting goal-value])))
+                  (keep (fn [[setting goal-value]]
+                          (some-> (goal-failure goal-value data check-columns?)
+                                  (assoc :setting setting))))
+                  (distinct))
+            viz-settings))))
