@@ -68,6 +68,18 @@ describe("static progress chart with a dynamic goal", () => {
     expect(root).toHaveTextContent("Goal 250");
   });
 
+  it("formats the goal with this chart's column settings", () => {
+    const root = setup({
+      settings: {
+        ...SETTINGS,
+        column_settings: { '["name","count"]': { prefix: "$" } },
+      },
+      referencedEntities: createMockReferencedEntitiesResults({ value: 2500 }),
+    });
+
+    expect(root).toHaveTextContent("Goal $2,500");
+  });
+
   it("measures progress against a goal of 0 for a reference the dataset has not answered", () => {
     expect(setup()).toHaveTextContent("Goal 0");
   });
