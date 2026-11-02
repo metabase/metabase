@@ -25,6 +25,7 @@
    [metabase.settings.core :as setting]
    [metabase.task.core :as task]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
@@ -178,29 +179,60 @@
     (or (entity-retrieval.reconcile/with-index-read-lock
           datasource
           (fn [conn]
-            (let [library-classes (into #{}
-                                        (map (fn [{:keys [entity_type entity_local_id]}]
-                                               (entity-retrieval/entity-class entity_type entity_local_id)))
-                                        (spec/member-entities :library-index))]
-              {:busy false
-             :data (if-not (entity-retrieval.index-table/vectors-table-exists? conn)
-                     []
-                     (->> (jdbc/execute!
-                           conn
-                           [(format (str "SELECT doc_id, entity_type, entity_local_id, doc_type, doc_text, "
-                                         "vector_dims(doc_embedding) AS vector_dimensions, "
-                                         "md5(vector_send(doc_embedding)) AS vector_hash "
-                                         "FROM %s "
-                                         "ORDER BY entity_type, entity_local_id, doc_type, doc_text, doc_id")
-                                    (entity-retrieval.index-table/vectors-table-sql))]
-                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-                          (filter (fn [{:keys [entity_type entity_local_id]}]
-                                    (contains? library-classes
-                                               (entity-retrieval/entity-class entity_type entity_local_id))))
-                          (drop offset)
-                          (take 51)
-                          vec))})))
+            (if-not (entity-retrieval.index-table/vectors-table-exists? conn)
+              {:busy false, :data []}
+              (let [members (->> (spec/member-entities :library-index)
+                                 (map (fn [{:keys [entity_type entity_local_id]}]
+                                        (let [[entity-type id] (entity-retrieval/entity-class entity_type entity_local_id)]
+                                          {:entity_type entity-type, :entity_local_id id})))
+                                 set)]
+                {:busy false
+                 :data (jdbc/execute!
+                        conn
+                        [(format (str "WITH members AS (SELECT * FROM jsonb_to_recordset(CAST(? AS jsonb)) "
+                                      "AS m(entity_type text, entity_local_id bigint)), page AS ("
+                                      "SELECT v.* FROM %s v JOIN members m ON m.entity_local_id = v.entity_local_id "
+                                      "AND m.entity_type = CASE WHEN v.entity_type IN ('question', 'metric', 'model') "
+                                      "THEN 'card' ELSE v.entity_type END "
+                                      "ORDER BY v.entity_type, v.entity_local_id, v.doc_type, v.doc_text, v.doc_id "
+                                      "LIMIT 51 OFFSET ?) "
+                                      "SELECT doc_id, entity_type, entity_local_id, doc_type, doc_text, "
+                                      "vector_dims(doc_embedding) AS vector_dimensions, "
+                                      "md5(vector_send(doc_embedding)) AS vector_hash FROM page "
+                                      "ORDER BY entity_type, entity_local_id, doc_type, doc_text, doc_id")
+                                 (entity-retrieval.index-table/vectors-table-sql))
+                         (json/encode (vec members)) offset]
+                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})}))))
         {:busy true, :data []})))
+
+(defn- index-entity-settled?
+  [entity-type entity-local-id]
+  (let [datasource (semantic.db.datasource/ensure-initialized-data-source!)]
+    (or (entity-retrieval.reconcile/with-index-read-lock
+          datasource
+          (fn [conn]
+            (let [member (spec/member-entity :library-index entity-type entity-local-id)
+                  entity (some->> member vector (spec/hydrate :library-index) first)
+                  desired (if entity
+                            (try
+                              (spec/project :library-index entity)
+                              (catch Exception e
+                                (if (spec/data-defect? e)
+                                  (spec/base-index-docs entity)
+                                  (throw e))))
+                            [])
+                  [class id] (entity-retrieval/entity-class entity-type entity-local-id)
+                  types (if (= class "card") ["card" "question" "metric" "model"] [class])
+                  stored (if (entity-retrieval.index-table/vectors-table-exists? conn)
+                           (jdbc/execute! conn
+                                          [(format (str "SELECT doc_id FROM %s WHERE entity_local_id = ? "
+                                                        "AND entity_type IN (SELECT jsonb_array_elements_text(CAST(? AS jsonb)))")
+                                                   (entity-retrieval.index-table/vectors-table-sql))
+                                           id (json/encode types)]
+                                          {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                           [])]
+              {:busy false, :settled (= (set (map :doc_id desired)) (set (map :doc_id stored)))})))
+        {:busy true, :settled false})))
 
 (defn- comparison-search
   [engine query]
@@ -309,9 +341,19 @@
                  "Library retrieval is unavailable; check its pgvector and embedding configuration.")
   (update (library-index-entries (or offset 0)) :data vec))
 
-(api.macros/defendpoint :get "/index/vector/:doc-id" :- :any
+(api.macros/defendpoint :get "/index/settled/:entity-type/:entity-local-id" :- :any
+  "Check whether a single entity's current documents have reached the index."
+  [{:keys [entity-type entity-local-id]} :- [:map
+                                             [:entity-type [:string {:api/regex #"[a-z-]+"}]]
+                                             [:entity-local-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-400 (entity-retrieval.ee/available?) "Library retrieval is unavailable.")
+  (index-entity-settled? entity-type entity-local-id))
+
+(api.macros/defendpoint :get "/index/vector" :- :any
   "Return the encoded vector for one index document."
-  [{:keys [doc-id]} :- [:map [:doc-id :string]]]
+  [_route-params
+   {:keys [doc_id]} :- [:map [:doc_id ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (entity-retrieval.ee/available?) "Library retrieval is unavailable.")
   (let [datasource (semantic.db.datasource/ensure-initialized-data-source!)]
@@ -321,7 +363,7 @@
             (api/check-404
              (jdbc/execute-one! conn
                                 [(format "SELECT encode(vector_send(doc_embedding), 'base64') AS vector FROM %s WHERE doc_id = ?"
-                                         (entity-retrieval.index-table/vectors-table-sql)) doc-id]
+                                         (entity-retrieval.index-table/vectors-table-sql)) doc_id]
                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
         (throw (ex-info "Index is busy." {:status-code 503})))))
 
