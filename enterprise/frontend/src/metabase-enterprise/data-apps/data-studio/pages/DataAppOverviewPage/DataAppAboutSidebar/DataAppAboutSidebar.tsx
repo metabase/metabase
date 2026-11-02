@@ -132,7 +132,7 @@ function DataAppRepositoryRow({ repoUrl, slug }: DataAppRepositoryRowProps) {
     return (
       <MetadataRow icon="git_branch">
         <MetadataRowLink href={location.url}>
-          <span className={CS.linkWrappable}>{location.url}</span>
+          <span className={CS.textBreakAll}>{location.url}</span>
         </MetadataRowLink>
       </MetadataRow>
     );
@@ -144,11 +144,12 @@ function DataAppRepositoryRow({ repoUrl, slug }: DataAppRepositoryRowProps) {
       rightSection={
         <CopyButton
           value={location.text}
+          aria-label={t`Copy repository location`}
           className={cx(CS.textBrandHover, CS.flex)}
         />
       }
     >
-      <span className={CS.linkWrappable}>{location.text}</span>
+      <span className={CS.textBreakAll}>{location.text}</span>
     </MetadataRow>
   );
 }

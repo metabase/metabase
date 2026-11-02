@@ -64,7 +64,9 @@ describe("DataAppAboutSidebar", () => {
       screen.queryByRole("link", { name: folder }),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Copy" }));
+    await user.click(
+      screen.getByRole("button", { name: "Copy repository location" }),
+    );
     expect(await navigator.clipboard.readText()).toBe(folder);
   });
 
