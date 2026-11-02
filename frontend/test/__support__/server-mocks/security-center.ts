@@ -3,7 +3,11 @@ import fetchMock from "fetch-mock";
 import type { HealthCheck, HealthCheckId } from "metabase-types/api";
 
 export const setupHealthChecksEndpoint = (checks: HealthCheck[]) => {
-  fetchMock.get("path:/api/ee/security-center/health-checks", { checks });
+  fetchMock.get(
+    "path:/api/ee/security-center/health-checks",
+    { checks },
+    { name: "health-checks-list" },
+  );
 };
 
 export const setupHealthChecksErrorEndpoint = () => {
@@ -28,10 +32,11 @@ export const setupRecheckHealthChecksEndpoint = (checks: HealthCheck[]) => {
 
 export const setupRecheckHealthCheckErrorEndpoint = (
   checkId: HealthCheckId,
+  status = 500,
 ) => {
   fetchMock.post(
     `path:/api/ee/security-center/health-checks/${checkId}/recheck`,
-    { status: 500 },
+    { status },
   );
 };
 

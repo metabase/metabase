@@ -262,6 +262,16 @@ describe("HealthChecksPage", () => {
     expect(getItemTexts()).toEqual(["Broken", "Unsure", "Fine"]);
   });
 
+  it("shows the items of a passing check without collapsing them", async () => {
+    await setup({ checks: [PASSING_CHECK] });
+    await openGroup(/Passed/);
+
+    expect(screen.getByText("Redirect is on")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Passed \(1\)/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it.each<{ checkId: HealthCheckId; item: HealthCheckItem; href: string }>([
     {
       checkId: "read-only-connections",
@@ -490,6 +500,26 @@ describe("HealthChecksPage", () => {
     expect(getCardTitles()).toEqual(["Encryption key"]);
   });
 
+  it("removes a check that no longer applies when it is re-checked", async () => {
+    setupRecheckHealthCheckErrorEndpoint(FAILING_CHECK.id, 404);
+    await setup({ checks: [FAILING_CHECK, PASSING_CHECK] });
+    fetchMock.modifyRoute("health-checks-list", {
+      response: { checks: [PASSING_CHECK] },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "sync icon Re-check" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText("Encryption key")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("All security checks pass")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Failed to re-check. Please try again."),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows an error when re-check all fails", async () => {
     setupRecheckHealthChecksErrorEndpoint();
     await setup({ checks: [FAILING_CHECK] });
@@ -518,6 +548,11 @@ describe("HealthChecksPage", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText("An error occurred")).toBeInTheDocument();
+    expect(
+      screen.getByText("Something went wrong loading health checks."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "sync icon Re-check all" }),
+    ).toBeDisabled();
   });
 });

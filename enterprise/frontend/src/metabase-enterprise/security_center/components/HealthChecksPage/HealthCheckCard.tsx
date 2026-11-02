@@ -109,6 +109,8 @@ const HealthCheckItems = ({ check }: HealthCheckItemsProps) => {
   const [isPassedOpened, setIsPassedOpened] = useState(false);
   const { problems, passed } = splitHealthCheckItems(check.items);
   const passedCount = passed.length;
+  const isPassedCollapsible = problems.length > 0 && passedCount > 0;
+  const isPassedShown = !isPassedCollapsible || isPassedOpened;
 
   return (
     <Stack gap="sm">
@@ -119,7 +121,7 @@ const HealthCheckItems = ({ check }: HealthCheckItemsProps) => {
           item={item}
         />
       ))}
-      {passedCount > 0 && (
+      {isPassedCollapsible && (
         <UnstyledButton
           aria-expanded={isPassedOpened}
           onClick={() => setIsPassedOpened(!isPassedOpened)}
@@ -133,7 +135,7 @@ const HealthCheckItems = ({ check }: HealthCheckItemsProps) => {
           </Group>
         </UnstyledButton>
       )}
-      {isPassedOpened &&
+      {isPassedShown &&
         passed.map((item, index) => (
           <HealthCheckItemRow
             key={getHealthCheckItemKey(item, index)}
@@ -203,7 +205,7 @@ export const HealthCheckCard = ({
           <Button
             variant="subtle"
             leftSection={
-              isRechecking ? <Loader size="xs" /> : <Icon name="sync" />
+              isRechecking ? <Loader size="1rem" /> : <Icon name="sync" />
             }
             disabled={isRecheckDisabled}
             onClick={() => onRecheck(check.id)}

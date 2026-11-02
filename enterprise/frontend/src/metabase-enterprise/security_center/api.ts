@@ -70,6 +70,8 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: `/api/ee/security-center/health-checks/${checkId}/recheck`,
       }),
+      invalidatesTags: (_result, error) =>
+        error ? [listTag("security-health-check")] : [],
       onQueryStarted: async (checkId, { dispatch, queryFulfilled }) => {
         try {
           const { data: recheckedCheck } = await queryFulfilled;

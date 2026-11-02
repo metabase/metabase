@@ -18,6 +18,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import type { HealthCheck, HealthCheckId } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import {
   trackAllHealthChecksRecheckClicked,
@@ -116,8 +117,66 @@ const HealthChecksSummary = ({
   );
 };
 
+type HealthChecksContentProps = Pick<
+  HealthCheckGroupProps,
+  "recheckingCheckIds" | "isRecheckingAll" | "onRecheck"
+> & {
+  checks: HealthCheck[];
+  error: unknown;
+};
+
+const HealthChecksContent = ({
+  checks,
+  error,
+  ...groupProps
+}: HealthChecksContentProps) => {
+  if (error) {
+    return (
+      <EmptyState
+        icon="warning_triangle_filled"
+        message={t`Something went wrong loading health checks.`}
+      />
+    );
+  }
+
+  if (checks.length === 0) {
+    return <EmptyState message={t`No health checks apply to this instance.`} />;
+  }
+
+  const { failing, unknown, passed } = groupHealthChecks(checks);
+
+  return (
+    <Stack gap="lg">
+      <HealthChecksSummary
+        passedCount={passed.length}
+        totalCount={checks.length}
+      />
+      <HealthCheckGroup
+        title={t`Failing`}
+        checks={failing}
+        isDefaultOpened
+        {...groupProps}
+      />
+      <HealthCheckGroup
+        title={t`Couldn't check`}
+        checks={unknown}
+        isDefaultOpened={false}
+        {...groupProps}
+      />
+      <HealthCheckGroup
+        title={t`Passed`}
+        checks={passed}
+        isDefaultOpened={false}
+        {...groupProps}
+      />
+    </Stack>
+  );
+};
+
 export const HealthChecksPage = () => {
-  const { data, isLoading, error } = useListHealthChecksQuery();
+  const { data, isLoading, error } = useListHealthChecksQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const [recheck] = useRecheckHealthCheckMutation();
   const [recheckAll, { isLoading: isRecheckingAll }] =
     useRecheckHealthChecksMutation();
@@ -141,8 +200,10 @@ export const HealthChecksPage = () => {
     setRecheckingCheckIds((ids) => new Set(ids).add(checkId));
     try {
       await recheck(checkId).unwrap();
-    } catch {
-      showRecheckError();
+    } catch (error) {
+      if (!isObject(error) || error.status !== 404) {
+        showRecheckError();
+      }
     } finally {
       setRecheckingCheckIds((ids) => {
         const nextIds = new Set(ids);
@@ -162,13 +223,7 @@ export const HealthChecksPage = () => {
   };
 
   const checks = data?.checks ?? [];
-  const { failing, unknown, passed } = groupHealthChecks(checks);
   const isRechecking = isRecheckingAll || recheckingCheckIds.size > 0;
-  const groupProps = {
-    recheckingCheckIds,
-    isRecheckingAll,
-    onRecheck: handleRecheck,
-  };
 
   return (
     <Stack gap="lg" data-testid="health-checks-page">
@@ -177,7 +232,7 @@ export const HealthChecksPage = () => {
         <Button
           variant="subtle"
           leftSection={
-            isRecheckingAll ? <Loader size="xs" /> : <Icon name="sync" />
+            isRecheckingAll ? <Loader size="1rem" /> : <Icon name="sync" />
           }
           disabled={isRechecking || checks.length === 0}
           onClick={handleRecheckAll}
@@ -185,35 +240,14 @@ export const HealthChecksPage = () => {
           {t`Re-check all`}
         </Button>
       </Group>
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
-        {checks.length === 0 ? (
-          <EmptyState message={t`No health checks apply to this instance.`} />
-        ) : (
-          <Stack gap="lg">
-            <HealthChecksSummary
-              passedCount={passed.length}
-              totalCount={checks.length}
-            />
-            <HealthCheckGroup
-              title={t`Failing`}
-              checks={failing}
-              isDefaultOpened
-              {...groupProps}
-            />
-            <HealthCheckGroup
-              title={t`Couldn't check`}
-              checks={unknown}
-              isDefaultOpened={false}
-              {...groupProps}
-            />
-            <HealthCheckGroup
-              title={t`Passed`}
-              checks={passed}
-              isDefaultOpened={false}
-              {...groupProps}
-            />
-          </Stack>
-        )}
+      <LoadingAndErrorWrapper loading={isLoading}>
+        <HealthChecksContent
+          checks={checks}
+          error={error}
+          recheckingCheckIds={recheckingCheckIds}
+          isRecheckingAll={isRecheckingAll}
+          onRecheck={handleRecheck}
+        />
       </LoadingAndErrorWrapper>
     </Stack>
   );
