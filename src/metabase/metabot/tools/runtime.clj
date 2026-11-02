@@ -175,6 +175,11 @@
 
 ;;; ------------------------------------------------ Rendering -----------------------------------------------------
 
+(def ^:private undeclared-failure-sentence
+  "How the model's text about an ordinary exception that no tool declared starts, and all that a later
+  turn replays of it (see [[replay-text]])."
+  "This call failed with an unexpected error.")
+
 (defn- unrecoverable-output
   "What the model is told about an unrecoverable failure, which never includes the failure's own text.
 
@@ -186,8 +191,7 @@
   we wrote, and it gives the model something stable to refer to if it says anything at all."
   [code]
   (if (undeclared? code)
-    (str "This call failed with an unexpected error. Don't retry the same call. "
-         "Try another approach, or tell the user it failed.")
+    (str undeclared-failure-sentence " Don't retry the same call. Try another approach, or tell the user it failed.")
     (str "This call failed and the user was shown the error (" code "). Don't retry it.")))
 
 (def ^:private leak-patterns
@@ -243,6 +247,17 @@
                (< max-output-length (count output)) (subs 0 max-output-length))
      :error  (cond-> {:class class :code code}
                user-message (assoc :user-message user-message))}))
+
+(defn replay-text
+  "The text that a later turn replays to the model for the failure [[::outcome]] `outcome`.
+
+  An ordinary exception that no tool declared replays as one neutral sentence. Its live text also
+  tells the model not to make the same call again, and that holds only for the turn that failed: by a
+  later turn the cause may be gone. Every other failure replays the text the model read live."
+  [{:keys [output error]}]
+  (if (undeclared? (:code error))
+    undeclared-failure-sentence
+    output))
 
 ;;; ------------------------------------------------ Invocation ----------------------------------------------------
 

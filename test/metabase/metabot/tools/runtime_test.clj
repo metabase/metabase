@@ -259,6 +259,15 @@
     (is (= {:class :unrecoverable :code ::out-of-ink :user-message "Out of ink."}
            (:error (invoke "write" {:declared true}))))))
 
+(deftest ^:parallel a-later-turn-replays-only-that-an-undeclared-failure-happened-test
+  (testing "the live instruction not to retry is for the turn that failed, so a later turn replays one neutral sentence"
+    (is (= "This call failed with an unexpected error."
+           (tools.runtime/replay-text (invoke "crash" {})))))
+  (testing "every other failure replays the text the model read live"
+    (doseq [[tool-name args] [["boom" {:id 9}] ["give_up" {}] ["write" {}] ["jvm_failure" {:kind "overflow"}]]]
+      (let [outcome (invoke tool-name args)]
+        (is (= (:output outcome) (tools.runtime/replay-text outcome)) tool-name)))))
+
 (deftest ^:parallel a-wrong-handler-result-is-our-bug-not-the-models-test
   (is (= {:class :unrecoverable :code :internal} (:error (invoke "bad_shape" {})))))
 
