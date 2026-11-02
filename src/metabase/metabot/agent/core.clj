@@ -374,29 +374,29 @@
   (cond-> item
     (not (:id item)) (assoc :id (str (random-uuid)))))
 
-(defn- ensure-question-query-id
-  "Give the query of a saved question an ID of its own, as `:query_id`.
-  The question's `:id` is the card ID, and `run_query` runs the saved version of the card by that ID. The query on
+(defn- ensure-card-query-id
+  "Give the query of a saved question or model an ID of its own, as `:query_id`.
+  The item's `:id` is the card ID, and `run_query` runs the saved version of the card by that ID. The query on
   screen can be different from the saved version, so the SQL edit tools get it by a different ID."
   [item]
   (cond-> item
-    (and (= "question" (normalize-type (:type item))) (map? (:query item)))
+    (and (#{"question" "model"} (normalize-type (:type item))) (map? (:query item)))
     (assoc :query_id (str (random-uuid)))))
 
 (defn- assign-context-ids
-  "Assign IDs to all viewing context items that lack one, and to the queries of saved questions.
+  "Assign IDs to all viewing context items that lack one, and to the queries of saved questions and models.
   Must be called before both seed-state and enrich-context-for-template
   so they share consistent IDs."
   [context]
-  (update context :user_is_viewing #(mapv (comp ensure-question-query-id ensure-context-item-id) %)))
+  (update context :user_is_viewing #(mapv (comp ensure-card-query-id ensure-context-item-id) %)))
 
 (defn- extract-query-from-context-item
   "Extract [query-id query] from viewing context item."
   [{:keys [id type query query_id]}]
   (when (map? query)
     (case (normalize-type type)
-      ("adhoc" "native") (when id [(str id) query])
-      "question"         (when query_id [query_id query])
+      ("adhoc" "native")   (when id [(str id) query])
+      ("question" "model") (when query_id [query_id query])
       nil)))
 
 (defn- seed-state
