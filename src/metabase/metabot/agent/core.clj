@@ -25,6 +25,7 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.self.schema :as self.schema]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
    [metabase.util.i18n :refer [tru]]
@@ -220,37 +221,38 @@
   (some #(= (:type %) :error) parts))
 
 (def ^:private max-undeclared-failures
-  "How many tool failures that no tool declared a turn survives when its model can answer in text. The next one ends
-  it, which stops a retry loop."
+  "How many ordinary exceptions that no tool declared a turn survives when its model can answer in text. The next one
+  ends it, which stops a retry loop."
   1)
 
 (defn- undeclared-failure?
-  "Whether `part` is a tool call that failed in a way no tool declared, which the runtime reports as `:internal`."
+  "Whether `part` is a tool call that failed with an ordinary exception no tool declared."
   [part]
   (and (= (:type part) :tool-output)
-       (= :internal (get-in part [:result :error :code]))))
+       (tools.runtime/undeclared? (get-in part [:result :error :code]))))
 
 (defn- terminal-error-message
   "The user-facing message that ends the turn after this iteration's tool calls, or nil if the turn goes on.
 
-  A declared unrecoverable failure is one only the user can act on, such as a permission denial, so
-  the turn ends. The message is the `:user-message` the tool chose; a tool that set none gets the
-  generic one, because `:output` is written for the model and says only that the call failed.
+  An unrecoverable failure ends the turn: one only the user can act on, such as a permission denial,
+  or one the model can't work around, such as a JVM error. The message is the `:user-message` the
+  tool chose; a tool that set none gets the generic one, because `:output` is written for the model
+  and says only that the call failed.
 
-  A failure no tool declared ends the turn only when `undeclared-failures`, the turn's count of them
-  with this iteration's included, passes [[max-undeclared-failures]]. In a `profile` that requires a
-  tool call the first one ends it, because that model can't answer in text after it. The message is
-  then the generic one."
+  An ordinary exception that no tool declared ([[undeclared-failure?]]) ends the turn only when
+  `undeclared-failures`, the turn's count of them with this iteration's included, passes
+  [[max-undeclared-failures]]. In a `profile` that requires a tool call the first one ends it,
+  because that model can't answer in text after it. The message is then the generic one."
   [profile parts undeclared-failures]
-  (let [declared (some (fn [part]
+  (let [terminal (some (fn [part]
                          (when (and (= (:type part) :tool-output)
                                     (= :unrecoverable (get-in part [:result :error :class]))
                                     (not (undeclared-failure? part)))
                            (get-in part [:result :error])))
                        parts)
         allowed  (if (:required-tool-call? profile) 0 max-undeclared-failures)]
-    (when (or declared (< allowed undeclared-failures))
-      (or (not-empty (:user-message declared))
+    (when (or terminal (< allowed undeclared-failures))
+      (or (not-empty (:user-message terminal))
           (tru "Something went wrong.")))))
 
 (defn- should-continue?

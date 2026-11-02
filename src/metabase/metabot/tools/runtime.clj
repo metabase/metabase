@@ -53,6 +53,11 @@
    :jvm-error          :unrecoverable
    :interrupted        :unrecoverable})
 
+(defn undeclared?
+  "Whether `code` is `:internal`, the code of an ordinary exception that no tool declared."
+  [code]
+  (= :internal code))
+
 ;;; ------------------------------------------------ Schemas -------------------------------------------------------
 
 (mr/def ::ctx
@@ -166,7 +171,7 @@
   stop rather than to explain. The code is safe to include because it is ours, a closed vocabulary
   we wrote, and it gives the model something stable to refer to if it says anything at all."
   [code]
-  (if (= :internal code)
+  (if (undeclared? code)
     (str "This call failed with an unexpected error. Don't retry the same call. "
          "Try another approach, or tell the user it failed.")
     (str "This call failed and the user was shown the error (" code "). Don't retry it.")))
