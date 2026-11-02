@@ -343,6 +343,8 @@ jobs:
           echo "MB_DATABRICKS_TEST_${name}=${!var}" >> "$GITHUB_ENV"
         done
     - uses: actions/checkout@v7
+    - name: Diagnostic — OAuth secret length
+      run: echo "oauth secret length=${#MB_DATABRICKS_TEST_OAUTH_SECRET}"
     - name: Test Databricks driver
       id: test-driver
       uses: ./.github/actions/test-driver
