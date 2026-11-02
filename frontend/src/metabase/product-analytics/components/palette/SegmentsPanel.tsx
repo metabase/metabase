@@ -178,7 +178,7 @@ const PaletteSection = ({
     table === undefined
       ? t`Link a Customers or Users table to the person column first.`
       : undefined;
-  // Who can edit or remove segments in Data Studio can do it from here.
+  // Who can create, edit or remove segments in Data Studio can do it from here.
   const canWriteSegments = useSelector(
     (state) =>
       table !== undefined && getUserCanWriteSegments(state, table.is_published),
@@ -270,12 +270,16 @@ const PaletteSection = ({
                 : undefined
             }
             onEditDraft={() => setEditingDraftId(segment.key)}
-            onSaveDraft={() => {
-              const draft = findDraft(segment.key);
-              if (draft !== undefined) {
-                setModal({ draft });
-              }
-            }}
+            onSaveDraft={
+              canWriteSegments
+                ? () => {
+                    const draft = findDraft(segment.key);
+                    if (draft !== undefined) {
+                      setModal({ draft });
+                    }
+                  }
+                : undefined
+            }
             onDiscardDraft={() => {
               const draft = findDraft(segment.key);
               if (draft === undefined) {
