@@ -1,9 +1,6 @@
 (ns metabase.sso.common-test
   (:require
    [clojure.test :refer :all]
-   ;; redefs clojure.tools.logging/log* to capture log calls; util.log macros bottom out there
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [clojure.tools.logging]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sso.common :as integrations.common]
@@ -133,24 +130,19 @@
 
 (deftest sync-groups-test-10
   (testing "Make sure the delete last admin exception is catched"
-    (mt/with-log-level :warn
+    (mt/with-log-messages-for-level [messages :warn]
       (mt/with-user-in-groups [user [(perms-group/admin)]]
-        (let [log-warn-count (atom #{})]
-          (mt/with-dynamic-fn-redefs [t2/delete!
-                                      (fn [model & _args]
-                                        (when (= model :model/PermissionsGroupMembership)
-                                          (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
-                                                          {:status-code 400}))))
-                                      clojure.tools.logging/log*
-                                      (fn [_logger level _throwable msg]
-                                        (when (:= level :warn)
-                                          (swap! log-warn-count conj msg)))]
-            ;; make sure sync run without throwing exception
-            (integrations.common/sync-group-memberships! user #{} #{(perms-group/admin)})
-            ;; make sure we log a msg for that
-            (is (@log-warn-count
-                 (str "Attempted to remove the last admin during group sync! "
-                      "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")))))))))
+        (mt/with-dynamic-fn-redefs [t2/delete!
+                                    (fn [model & _args]
+                                      (when (= model :model/PermissionsGroupMembership)
+                                        (throw (ex-info (str perms/fail-to-remove-last-admin-msg)
+                                                        {:status-code 400}))))]
+          ;; make sure sync run without throwing exception
+          (integrations.common/sync-group-memberships! user #{} #{(perms-group/admin)})
+          ;; make sure we log a msg for that
+          (is (some #{(str "Attempted to remove the last admin during group sync! "
+                           "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")}
+                    (map :message (messages)))))))))
 
 (deftest sync-groups-2-arity-unchanged-memberships-test
   (testing "2-arity version: does syncing group memberships leave existing memberships in place if nothing has changed?"

@@ -18,7 +18,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     cy.signInAsAdmin();
   });
 
-  it("should be able to use a static list source with a dropdown or a search box", () => {
+  it("should be able to use a static list source with a dropdown or a search box, and restore it when the type changes back", () => {
     H.createQuestionAndDashboard({
       questionDetails: targetQuestion,
     }).then(({ body: { dashboard_id } }) => {
@@ -52,6 +52,21 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
     H.filterWidget().eq(1).findByText("Twenty").should("be.visible");
     H.getDashboardCard().findByText("4").should("be.visible");
+
+    cy.log("static list values are cleared and restored when the type changes");
+    H.editDashboard();
+    editFilter("Number");
+
+    editFilterType("Text or Category", "Is");
+    H.checkFilterListSourceHasValue({ values: [] });
+
+    mapFilterToQuestion("Email");
+    setFilterSourceFromConnectedFields();
+
+    editFilterType("Number", "Equal to");
+    H.checkFilterListSourceHasValue({
+      values: [["10", "Ten"], ["20", "Twenty"], "30"],
+    });
   });
 
   it("should allow to use a card source with numeric columns and single or multiple values", () => {
@@ -125,6 +140,28 @@ const mapFilterToQuestion = (column = "Quantity") => {
   cy.findByText("Select…").click();
   H.popover().within(() => cy.findByText(column).click());
 };
+
+function setFilterSourceFromConnectedFields() {
+  H.sidebar().findByText("Edit").click();
+  H.modal().within(() => {
+    cy.findByText("From connected fields").click();
+    cy.button("Done").click();
+  });
+}
+
+function editFilter(name) {
+  cy.findByTestId("edit-dashboard-parameters-widget-container")
+    .findByText(name)
+    .click();
+}
+
+function editFilterType(type, subType) {
+  H.sidebar().findByText("Filter or parameter type").next().click();
+  H.selectDropdown().findByText(type).click();
+
+  H.sidebar().findByText("Filter operator").next().click();
+  H.selectDropdown().findByText(subType).click();
+}
 
 const filterDashboard = ({ index, isLabeled = false, isDropdown = false }) => {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering

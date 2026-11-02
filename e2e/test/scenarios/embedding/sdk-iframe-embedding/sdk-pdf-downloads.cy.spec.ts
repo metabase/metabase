@@ -40,7 +40,7 @@ describe("scenarios > embedding > sdk iframe embedding > pdf downloads", () => {
 
   describe("Dashboard PDF downloads", () => {
     beforeEach(() => {
-      H.prepareSdkIframeEmbedTest({ signOut: true });
+      H.prepareSdkIframeEmbedTest();
     });
 
     it("should download dashboard as PDF with analytics tracking", () => {

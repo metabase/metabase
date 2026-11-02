@@ -185,7 +185,12 @@ export const ChartSettingFieldPicker = ({
         rightSection={
           <>
             {!disabled && (
-              <ActionIcon c="text-secondary" size="sm" radius="xl" p={0}>
+              <ActionIcon
+                variant="subtle"
+                c="text-secondary"
+                size="sm"
+                radius="xl"
+              >
                 <Icon name="chevrondown" />
               </ActionIcon>
             )}

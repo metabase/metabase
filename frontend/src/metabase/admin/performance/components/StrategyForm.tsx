@@ -28,6 +28,7 @@ import {
   Flex,
   Group,
   Icon,
+  Modal,
   Select,
   Stack,
   Text,
@@ -216,9 +217,7 @@ const StrategyFormBody = ({
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
         {layout === "modal" && (
-          <Box pt="lg">
-            <StrategySelectorHeading headingId={headingId} />
-          </Box>
+          <StrategySelectorHeading headingId={headingId} />
         )}
         <Box
           className={cx({
@@ -226,6 +225,7 @@ const StrategyFormBody = ({
             [PerformanceAppStyles.FormBoxSidebar]: layout === "sidebar",
             [S.modalBody]: layout === "modal",
           })}
+          pt={layout === "default" ? "xxxl" : undefined}
         >
           {shouldShowName && (
             <Box lh="1rem" pt="lg" c="text-secondary">
@@ -239,7 +239,7 @@ const StrategyFormBody = ({
               </Group>
             </Box>
           )}
-          <Stack maw="35rem" gap="xxl">
+          <Stack maw="35rem" gap={layout === "modal" ? "xl" : "xxl"}>
             <StrategySelector
               targetId={targetId}
               model={targetModel}
@@ -339,28 +339,23 @@ const FormButtons = ({
 
   if (layout === "modal") {
     return (
-      <Group
-        justify={canInvalidate ? "space-between" : "flex-end"}
-        wrap="nowrap"
-        mt="xxl"
-        gap="lg"
-      >
+      <Modal.Footer>
         {canInvalidate && (
-          <PLUGIN_CACHING.InvalidateNowButton
-            targetId={targetId}
-            targetModel={targetModel}
-            targetName={targetName}
-          />
+          <Box mr="auto">
+            <PLUGIN_CACHING.InvalidateNowButton
+              targetId={targetId}
+              targetModel={targetModel}
+              targetName={targetName}
+            />
+          </Box>
         )}
-        <Group gap="lg" wrap="nowrap">
-          <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
-          <FormSubmitButton
-            label={buttonLabels.save}
-            variant="filled"
-            data-testid="strategy-form-submit-button"
-          />
-        </Group>
-      </Group>
+        <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
+        <FormSubmitButton
+          label={buttonLabels.save}
+          variant="filled"
+          data-testid="strategy-form-submit-button"
+        />
+      </Modal.Footer>
     );
   }
 

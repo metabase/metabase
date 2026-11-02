@@ -336,10 +336,10 @@
         (insert-query! bad-hash bad-payload)
         (insert-query-execution! good-hash (t/offset-date-time "2026-04-13T12:00Z"))
         (insert-query-execution! bad-hash (t/offset-date-time "2026-04-13T13:00Z"))
-        (with-redefs [lib-be/normalize-query (fn [stored-query]
-                                               (if (= stored-query bad-payload)
-                                                 (throw (ex-info "kaboom" {:q stored-query}))
-                                                 (original stored-query)))]
+        (mt/with-dynamic-fn-redefs [lib-be/normalize-query (fn [stored-query]
+                                                             (if (= stored-query bad-payload)
+                                                               (throw (ex-info "kaboom" {:q stored-query}))
+                                                               (original stored-query)))]
           (mt/with-temporary-setting-values [usage-metadata-last-completed-day "2026-04-12"]
             (let [result (usage-metadata.batch/process-day! bucket-date)]
               (testing "the bad row is recorded as :normalize-error skip"

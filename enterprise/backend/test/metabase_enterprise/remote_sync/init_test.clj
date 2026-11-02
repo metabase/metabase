@@ -6,9 +6,12 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.init :as init]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
+   [metabase.settings.core :as setting]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -17,7 +20,8 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each th/clean-remote-sync-state)
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections th/clean-remote-sync-state)
 
 (defn- capture-async-import! []
   (let [calls (atom [])]
@@ -40,6 +44,22 @@
         (mt/with-dynamic-fn-redefs [impl/async-import! capture]
           (#'init/remote-sync-init)
           (is (empty? @calls)))))))
+
+(deftest pin-remote-sync-custom-collections-enabled-test
+  (testing "First startup stores whether custom collections are already synced"
+    (doseq [synced? [true false]]
+      (testing (pr-str synced?)
+        (mt/with-temporary-setting-values [:remote-sync-url                        "https://github.com/foo/bar.git"
+                                           :remote-sync-custom-collections-enabled nil]
+          (mt/with-temp [:model/Collection _ {:location "/" :is_remote_synced synced?}]
+            (settings/pin-remote-sync-custom-collections-enabled!)
+            (is (= :database (setting/get-raw-value-source :remote-sync-custom-collections-enabled)))
+            (is (= synced? (settings/remote-sync-custom-collections-enabled))))))))
+  (testing "Later startups keep stored value"
+    (mt/with-temporary-setting-values [:remote-sync-url                 nil
+                                       :remote-sync-custom-collections-enabled true]
+      (settings/pin-remote-sync-custom-collections-enabled!)
+      (is (true? (settings/remote-sync-custom-collections-enabled))))))
 
 (deftest remote-sync-init-read-only-without-branch-throws-test
   (testing "Read-only with enabled sync but no branch throws"
@@ -129,7 +149,7 @@
 (deftest remote-sync-shutdown-fails-this-jvms-running-tasks-test
   (testing "shutdown fails every task whose worker runs in this JVM and leaves a stale open row from elsewhere untouched"
     (let [other-id (new-task-id)
-          _        (t2/update! :model/RemoteSyncTask other-id
+          _        (t2/update! :model/RemoteSyncTask :id other-id
                                {:last_progress_report_at (t/minus (t/offset-date-time) (t/hours 2))})
           own-id   (new-task-id)
           release  (promise)
@@ -153,7 +173,7 @@
   (testing "boot closes open task rows whose owner has been silent past the window and leaves fresh ones alone"
     (mt/with-temporary-setting-values [:remote-sync-url nil]
       (let [stale-id (new-task-id)
-            _        (t2/update! :model/RemoteSyncTask stale-id
+            _        (t2/update! :model/RemoteSyncTask :id stale-id
                                  {:last_progress_report_at (t/minus (t/offset-date-time) (t/hours 2))})
             fresh-id (new-task-id)]
         (#'init/remote-sync-init)
@@ -283,3 +303,5 @@
        (fn [_entry]
          (#'init/remote-sync-init)
          (is (zero? (glossary-rso-count))))))))
+
+;;; ------------------------------------------- Data app ledger backfill -------------------------------------------

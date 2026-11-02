@@ -14,9 +14,21 @@ describe("getSdkSandboxMode", () => {
     expect(getSdkSandboxMode()).toBe("hosted");
   });
 
-  it('returns "blank" for the react-sdk npm package (not EAJS)', () => {
+  it('returns "blank" for the react-sdk npm package without a sandbox url', () => {
     EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = false;
     expect(getSdkSandboxMode()).toBe("blank");
+  });
+
+  it("returns the sandbox url for the react-sdk npm package when it is passed", () => {
+    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = false;
+    expect(getSdkSandboxMode("/metabase-sandbox.html")).toEqual({
+      iframeSrc: "/metabase-sandbox.html",
+    });
+  });
+
+  it('ignores the sandbox url and returns "hosted" when running as EAJS', () => {
+    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
+    expect(getSdkSandboxMode("/metabase-sandbox.html")).toBe("hosted");
   });
 });
 

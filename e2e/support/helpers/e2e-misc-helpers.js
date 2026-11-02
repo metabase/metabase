@@ -1,5 +1,9 @@
 import { pickEntity } from "./e2e-collection-helpers";
-import { modal, undoToast } from "./e2e-ui-elements-helpers";
+import {
+  closeNavigationSidebar,
+  modal,
+  undoToast,
+} from "./e2e-ui-elements-helpers";
 
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
@@ -130,6 +134,7 @@ function visitQuestionById(id, { onBeforeLoad } = {}) {
     url: `/question/${id}`,
     onBeforeLoad,
   });
+  closeNavigationSidebar();
 
   cy.wait("@" + metadataAlias);
   cy.wait("@" + alias);
@@ -152,6 +157,7 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
   }
 
   cy.visit(`/model/${id}`);
+  closeNavigationSidebar();
 
   cy.wait("@" + alias);
 }
@@ -240,6 +246,7 @@ function visitDashboardById(dashboard_id, config) {
         url: `/dashboard/${dashboard_id}`,
         qs: config.params,
       });
+      closeNavigationSidebar();
 
       // dashcardTimeout lets callers widen the per-query wait window for dashboards with
       // many cards, whose tail queries stagger past cy.wait's 5s default under CPU load
@@ -253,6 +260,7 @@ function visitDashboardById(dashboard_id, config) {
       //  - the one which user doesn't have access to
       // the last request will always be `GET /api/dashboard/:dashboard_id`
       cy.visit(`/dashboard/${dashboard_id}`);
+      closeNavigationSidebar();
 
       cy.wait(`@${dashboardAlias}`);
     }
@@ -460,5 +468,34 @@ export const onNextAnchorClick = (callback) => {
       callback(this);
       window.HTMLAnchorElement.prototype.click = originalClick;
     };
+  });
+};
+
+/**
+ * Replaces anchor clicks with a stub, so the app does not open the link.
+ * Call `assertAnchorClicked` after the click to examine the anchor.
+ */
+export const stubAnchorClick = () => {
+  cy.window().then((window) => {
+    cy.stub(window.HTMLAnchorElement.prototype, "click").as("anchorClick");
+  });
+};
+
+/**
+ * Makes sure that the app clicked one anchor with these attributes.
+ * Use it after `stubAnchorClick`.
+ */
+export const assertAnchorClicked = ({
+  href,
+  target = "_blank",
+  rel = "noopener",
+}) => {
+  cy.get("@anchorClick").should((stub) => {
+    expect(stub).to.have.been.calledOnce;
+
+    const anchor = stub.firstCall.thisValue;
+    expect(anchor.getAttribute("href")).to.equal(href);
+    expect(anchor.getAttribute("target")).to.equal(target);
+    expect(anchor.getAttribute("rel")).to.equal(rel);
   });
 };

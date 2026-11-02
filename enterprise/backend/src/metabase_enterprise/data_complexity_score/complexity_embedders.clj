@@ -5,7 +5,7 @@
   `{normalized-name -> ^floats vector}`, omitting entities without a known vector."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.embeddings.client :as embeddings]
+   [metabase-enterprise.search.embeddings.client :as embeddings]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -55,7 +55,7 @@
   "Return `v` as a `float[]`, copying only when it isn't already one.
 
   ai-service / openai providers already return primitive `float[]` (see `decode-embeddings`
-  in `metabase-enterprise.semantic-search.embedding`), so the common path skips the copy."
+  in `metabase-enterprise.search.semantic.embedding`), so the common path skips the copy."
   ^floats [v]
   (if (instance? floats-class v) v (float-array v)))
 

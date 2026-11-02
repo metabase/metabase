@@ -50,6 +50,20 @@ describe("BrowseMetrics (OSS)", () => {
     expect(screen.getByText("Read the docs")).toBeInTheDocument();
   });
 
+  it("The Browse metrics page shows an error message if the search endpoint throws an error", async () => {
+    setup({ searchError: true });
+
+    const page = screen.getByLabelText("Metrics");
+    expect(
+      await within(page).findByText("An error occurred"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Create Metrics to define the official way to calculate important numbers for your team",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("displays the Our Analytics collection if it has a metric", async () => {
     setup({ metricCount: 25 });
     const table = await screen.findByRole("table", {

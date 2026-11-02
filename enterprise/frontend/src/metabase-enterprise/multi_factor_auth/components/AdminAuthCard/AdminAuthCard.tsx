@@ -21,17 +21,14 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import {
   useGetMfaAdminOverviewQuery,
   useGetMfaStatusQuery,
 } from "metabase-enterprise/api";
 import type { MfaAdminOverview } from "metabase-types/api";
 
-import {
-  ACCOUNT_AUTHENTICATION_PATH,
-  ENROLLED_USERS_PATH,
-  UNENROLLED_USERS_PATH,
-} from "../../constants";
+import { ENROLLED_USERS_PATH, UNENROLLED_USERS_PATH } from "../../constants";
 
 const ENFORCEMENT_OPTIONS = ["optional", "required", "required-date"] as const;
 type EnforcementOption = (typeof ENFORCEMENT_OPTIONS)[number];
@@ -213,7 +210,7 @@ export function AdminAuthCard() {
                 <Anchor
                   key="enroll"
                   component={Link}
-                  to={ACCOUNT_AUTHENTICATION_PATH}
+                  to={Urls.accountAuthentication()}
                 >{t`Set up two-factor authentication`}</Anchor>
               )} for your own account before requiring it, so you don't log yourself out.`}
             </Text>

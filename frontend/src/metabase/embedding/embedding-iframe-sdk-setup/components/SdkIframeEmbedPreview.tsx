@@ -111,8 +111,9 @@ const SdkIframeEmbedPreviewInner = () => {
       colors: Object.fromEntries(
         getConfigurableThemeColors().map((color) => [
           color.key,
-          applicationColors?.[color.originalColorKey] ??
-            defaultMetabaseColors[color.originalColorKey],
+          (color.settingKey
+            ? applicationColors?.[color.settingKey]
+            : undefined) ?? defaultMetabaseColors[color.tokenKey],
         ]),
       ),
     };

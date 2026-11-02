@@ -7,19 +7,21 @@
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn- action-database-joins
-  "The joins from `action` to the Database `db` of its query, or of its model Card for an implicit action."
+  "The joins from `action` to the Database `db` of its query, or for an implicit action of its model Card or its table."
   []
-  [[(t2/table-name :model/QueryAction) :qa] [:= :qa.action_id :action.id]
-   [(t2/table-name :model/Card) :card]      [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
-   [(t2/table-name :model/Database) :db]    [:= :db.id [:coalesce :qa.database_id :card.database_id]]])
+  [[(t2/table-name :model/QueryAction) :qa]    [:= :qa.action_id :action.id]
+   [(t2/table-name :model/Card) :card]         [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
+   [(t2/table-name :model/ImplicitAction) :ia] [:= :ia.action_id :action.id]
+   [(t2/table-name :model/Table) :tbl]         [:= :tbl.id :ia.table_id]
+   [(t2/table-name :model/Database) :db]       [:= :db.id [:coalesce :qa.database_id :card.database_id :tbl.db_id]]])
 
 (mu/defn database-for-action
-  "The Database the Action with `action-id` runs against: its query's, or its model's for an implicit action, or nil."
+  "The Database the Action with `action-id` runs against: its query's, or its model's or table's for an implicit action,
+  or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/Database {:select    [:db.*]
                                   :from      [[(t2/table-name :model/Action) :action]]
@@ -66,10 +68,25 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id))
 
+(mu/defn collection-namespace
+  "The namespace of the Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
+
+(mu/defn collection-namespace-with-entity-id
+  "The namespace of the Collection with `entity-id`, or nil."
+  [entity-id :- :string]
+  (t2/select-one-fn :namespace [:model/Collection :namespace] :entity_id entity-id))
+
 (mu/defn unarchived-collection-exists?
   "Whether the unarchived Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :archived false))
+
+(mu/defn action-collection-id
+  "The Collection id of the Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one-fn :collection_id [:model/Action :collection_id] :id action-id))
 
 (mu/defn action-model-id
   "The model Card id of the Action with `action-id`, or nil."
@@ -100,7 +117,7 @@
 (mu/defn dashcard-dashboard-id
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] dashcard-id))
+  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :id [:auto/param dashcard-id]))
 
 (mu/defn dashcard-action-id
   "The Action id of the DashboardCard with `dashcard-id`, or nil."
@@ -126,7 +143,7 @@
   "Apply `changes` to the Action with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/action.for-update]
-  (t2/update! :model/Action action-id changes))
+  (t2/update! :model/Action :id action-id changes))
 
 (mu/defn insert-query-action!
   "Insert the QueryAction `action`, returning the number inserted."
@@ -142,13 +159,13 @@
   "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/query-action.update]
-  (t2/update! :model/QueryAction action-id changes))
+  (t2/update! :model/QueryAction :action_id action-id changes))
 
 (mu/defn update-implicit-action!
   "Apply `changes` to the ImplicitAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/implicit-action.update]
-  (t2/update! :model/ImplicitAction action-id changes))
+  (t2/update! :model/ImplicitAction :action_id action-id changes))
 
 (mu/defn delete-query-action!
   "Delete the QueryAction of the Action with `action-id`, returning the number deleted."
@@ -169,6 +186,16 @@
   "The QueryAction of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/QueryAction :action_id action-id))
+
+(mu/defn implicit-action-table-id
+  "The Table id of the ImplicitAction of the Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one-fn :table_id [:model/ImplicitAction :table_id] :action_id action-id))
+
+(mu/defn tables-with-fields
+  "The Tables with `table-ids`, with their Fields hydrated."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/hydrate (tables table-ids) :fields))
 
 (mu/defn implicit-actions
   "The ImplicitActions of the Actions with `action-ids`."
@@ -195,11 +222,6 @@
   [entity-id :- :string]
   (t2/select :model/Action :entity_id entity-id))
 
-(mu/defn unarchived-actions-for-models
-  "The unarchived Actions whose `:model_id` is in `model-ids`."
-  [model-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Action :model_id [:in model-ids] :archived false))
-
 (mu/defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
@@ -224,7 +246,7 @@
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] dashboard-id))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
 
 (mu/defn destination-database-exists-for-router?
   "Whether the Database with `database-id` has routing destinations."

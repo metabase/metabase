@@ -11,6 +11,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
@@ -924,6 +925,20 @@
       driver
       clause))))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :case]
+  [driver clause]
+  ;; Bigquery requires all case expressions to have the same type, so coerce all temporal expressions to the same type
+  (let [[tag & args :as form] ((get-method sql.qp/->honeysql [:sql :case]) driver clause)]
+    (if-let [target-type (temporal-type form)]
+      (into [tag]
+            (map-indexed (fn [i arg]
+                           (let [arg-type (when (odd? i) (temporal-type arg))]
+                             (if (and arg-type (not= arg-type target-type))
+                               (->temporal-type target-type arg)
+                               arg))))
+            args)
+      form)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Other Driver / SQLDriver Method Implementations                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -987,15 +1002,16 @@
       new-form
       ((get-method ->temporal-type :default) target-type original-form))))
 
+(defmethod sql.qp/use-ctes-for-stages? :bigquery-cloud-sdk
+  [_driver]
+  true)
+
 (defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
-  ;; `timestamp_add()` doesn't support month/quarter/year, so cast it to `datetime` so we can use `datetime_add()`
-  ;; instead in those cases.
-  (let [hsql-form (cond->> hsql-form
-                    (and (= (temporal-type hsql-form) :timestamp)
-                         (not (contains? (temporal-type->supported-units :timestamp) unit)))
-                    (h2x/cast :datetime))]
-    (add-interval-form hsql-form amount unit)))
+  ;; `timestamp_add()` doesn't support month/quarter/year, `add-interval-form` casts it to
+  ;; `datetime` so we can use `datetime_add()` instead in those cases. We then cast it back
+  ;; to the original temporal type if needed.
+  (->temporal-type (temporal-type hsql-form) (add-interval-form hsql-form amount unit)))
 
 (defmethod driver/mbql->native :bigquery-cloud-sdk
   [driver outer-query]
@@ -1100,3 +1116,13 @@
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Time]
   [_driver _semantic_type expr]
   (h2x/->time expr))
+
+;; BigQuery infers untyped `NULL` in `UNION ALL` as `INT64` and then rejects the union against
+;; sibling `TIMESTAMP` / `STRING` columns. Emit `CAST(NULL AS <type>)` so the branch's null-padded
+;; column carries the same type as its counterpart in the full-breakout branch.
+(defmethod sql.pivot/null-pad-breakout-hsql :bigquery-cloud-sdk
+  [_driver [_tag opts _id-or-name] _breakout-expr]
+  (when-let [base-type (or (:effective-type opts) (:base-type opts))]
+    (try
+      (h2x/cast (bigquery.common/base-type->bigquery-type base-type) nil)
+      (catch IllegalArgumentException _ nil))))

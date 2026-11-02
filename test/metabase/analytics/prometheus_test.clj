@@ -9,6 +9,7 @@
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -200,7 +201,7 @@
              ;; start once scraping is under way, so a wedged guard is what this thread would run into
              (when (true? (deref first-scrape timeout-ms false))
                (try
-                 (sql-jdbc.conn/db->pooled-connection-spec db)
+                 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
                  (deliver warehouse-built true)
                  (catch Exception e
                    (swap! errors conj e))))))
@@ -214,7 +215,7 @@
           (is (empty? @errors))
           (finally
             (reset! stop? true)
-            (sql-jdbc.conn/invalidate-pool-for-db! db)))))))
+            (sql-jdbc.conn/invalidate-pool-for-db! (:id db))))))))
 
 (deftest email-collector-test
   (testing "Registry has email metrics registered"

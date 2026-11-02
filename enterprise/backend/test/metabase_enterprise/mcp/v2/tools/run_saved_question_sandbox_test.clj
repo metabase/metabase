@@ -68,7 +68,7 @@
     (set (map #(nth % idx) rows))))
 
 (defn- run-saved-question [card-id parameters]
-  (registry/call-tool nil (str (random-uuid)) "run_saved_question"
+  (registry/call-tool v2.tu/all-scopes (str (random-uuid)) "run_saved_question"
                       (cond-> {:id card-id :row_limit 2000}
                         parameters (assoc :parameters parameters))))
 

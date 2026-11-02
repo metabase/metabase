@@ -32,10 +32,11 @@ export const useBulkBookmark = (
     try {
       await Promise.all(
         itemsToBookmark.map(async (item) => {
-          await createBookmark({
-            id: item.id,
-            type: getItemBookmarkType(item),
-          }).unwrap();
+          const type = getItemBookmarkType(item);
+          if (type == null) {
+            return;
+          }
+          await createBookmark({ id: item.id, type }).unwrap();
           trackCollectionItemBookmarked(item);
         }),
       );

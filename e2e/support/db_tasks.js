@@ -5,10 +5,13 @@ import { Roles } from "./test_roles";
 import * as testTables from "./test_tables";
 
 const dbClients = {};
+const existingWritableDbs = new Set();
 
 function getDbClient(connectionConfig) {
   const connectionId =
-    connectionConfig.client + connectionConfig.connection.database;
+    connectionConfig.client +
+    connectionConfig.connection.database +
+    connectionConfig.connection.user;
 
   // we only need to create one client per db per run
   if (!dbClients[connectionId]) {
@@ -19,6 +22,11 @@ function getDbClient(connectionConfig) {
 }
 
 export async function connectAndQueryDB({ connectionConfig, query }) {
+  const writableDbType = getWritableDbType(connectionConfig);
+  if (writableDbType) {
+    await createWritableDb({ type: writableDbType });
+  }
+
   const dbClient = getDbClient(connectionConfig);
 
   const result = await dbClient.raw(query);
@@ -33,12 +41,24 @@ export async function connectAndQueryDB({ connectionConfig, query }) {
   }
 }
 
+function getWritableDbType(connectionConfig) {
+  return Object.keys(WRITABLE_DB_CONFIG).find((type) => {
+    const { client, connection } = WRITABLE_DB_CONFIG[type];
+    return (
+      client === connectionConfig.client &&
+      connection.database === connectionConfig.connection.database
+    );
+  });
+}
+
 /**
  * For postgres, drops all schemas except for public, and drops all tables from the public schema.
  *
  * For mysql, drops all user created tables from the writable_db database.
  */
 export async function resetWritableDb({ type = "postgres" }) {
+  await createWritableDb({ type });
+
   const dbClient = getDbClient(WRITABLE_DB_CONFIG[type]);
 
   if (type === "postgres") {
@@ -67,7 +87,7 @@ export async function resetWritableDb({ type = "postgres" }) {
     }
 
     for (const table of tables) {
-      await dbClient.raw(`DROP TABLE public.${table.name};`);
+      await dbClient.raw(`DROP TABLE IF EXISTS public.${table.name} CASCADE;`);
     }
   } else if (type === "mysql") {
     const { rows: tables } = await dbClient.raw(
@@ -85,7 +105,66 @@ export async function resetWritableDb({ type = "postgres" }) {
   return null;
 }
 
+function getAdminConnectionConfig(type) {
+  return {
+    postgres: QA_DB_CONFIG.postgres,
+    mysql: {
+      ...QA_DB_CONFIG.mysql,
+      connection: { ...QA_DB_CONFIG.mysql.connection, user: "root" },
+    },
+  }[type];
+}
+
+async function writableDbExists(type) {
+  if (existingWritableDbs.has(type)) {
+    return true;
+  }
+
+  const dbName = WRITABLE_DB_CONFIG[type].connection.database;
+
+  const dbCheckQuery = {
+    postgres: `SELECT FROM pg_database WHERE datname = '${dbName}';`,
+    mysql: `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${dbName}'`,
+  }[type];
+
+  const { rows } = await connectAndQueryDB({
+    connectionConfig: getAdminConnectionConfig(type),
+    query: dbCheckQuery,
+  });
+
+  const exists = rows.length > 0;
+  if (exists) {
+    existingWritableDbs.add(type);
+  }
+
+  return exists;
+}
+
+async function assertWritableDbExists(type) {
+  if (!(await writableDbExists(type))) {
+    const dbName = WRITABLE_DB_CONFIG[type].connection.database;
+    throw new Error(
+      `The ${type} "${dbName}" database does not exist. Restore the "${type}-writable" snapshot or call setupWritableDB("${type}") first.`,
+    );
+  }
+}
+
+export async function createWritableDb({ type = "postgres" }) {
+  if (!(await writableDbExists(type))) {
+    const dbName = WRITABLE_DB_CONFIG[type].connection.database;
+    await connectAndQueryDB({
+      connectionConfig: getAdminConnectionConfig(type),
+      query: `CREATE DATABASE ${dbName};`,
+    });
+    existingWritableDbs.add(type);
+  }
+
+  return null;
+}
+
 export async function resetTable({ type = "postgres", table = "testTable1" }) {
+  await assertWritableDbExists(type);
+
   const dbClient = getDbClient(WRITABLE_DB_CONFIG[type]);
   return testTables?.[table]?.(dbClient);
 }
@@ -94,6 +173,10 @@ export async function createTestRoles({
   type = "postgres",
   isWritable = false,
 }) {
+  if (isWritable) {
+    await assertWritableDbExists(type);
+  }
+
   const config = isWritable ? WRITABLE_DB_CONFIG : QA_DB_CONFIG;
   const dbClient = getDbClient(config[type]);
 

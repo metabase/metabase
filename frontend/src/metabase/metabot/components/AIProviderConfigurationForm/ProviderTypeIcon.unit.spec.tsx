@@ -34,6 +34,7 @@ describe("ProviderTypeIcon", () => {
     "google",
     "azure",
     "bedrock",
+    "ollama",
   ] as const)("renders the vendor logo for %s", (type) => {
     renderWithProviders(<ProviderTypeIcon type={type} />);
 
@@ -41,12 +42,15 @@ describe("ProviderTypeIcon", () => {
     expect(screen.getByRole("presentation")).toBeInTheDocument();
   });
 
-  it("falls back to a generic icon for vLLM, which is a server rather than a vendor", () => {
-    renderWithProviders(<ProviderTypeIcon type="vllm" />);
+  it.each(["vllm", "openai-compatible"] as const)(
+    "falls back to a generic icon for %s, which names no vendor",
+    (type) => {
+      renderWithProviders(<ProviderTypeIcon type={type} />);
 
-    expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
-    expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
-  });
+      expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
+      expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
+    },
+  );
 
   it("falls back to a generic icon for a type the frontend does not know yet", () => {
     // the registry is the backend's, so it can serve a type this union does not list yet;

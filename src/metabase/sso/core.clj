@@ -8,6 +8,7 @@
    [metabase.sso.oidc.check]
    [metabase.sso.oidc.state]
    [metabase.sso.settings]
+   [metabase.sso.slack-connect]
    [potemkin :as p]))
 
 (p/import-vars
@@ -23,13 +24,19 @@
   check-oidc-configuration]
  [metabase.sso.oidc.state
   wrap-oidc-redirect
-  clear-oidc-state-cookie]
+  clear-oidc-state-cookie
+  valid-redirect-url?
+  validate-redirect-url!]
  [metabase.sso.settings
   google-auth-client-id
   google-auth-enabled
   send-new-sso-user-admin-email?
   sso-enabled?
   sso-source-enabled?]
+ [metabase.sso.slack-connect
+  disconnect-slack-account!
+  slack-account-status
+  slack-connect-identity-active?]
  [metabase.sso.ldap.settings
   ldap-enabled])
 

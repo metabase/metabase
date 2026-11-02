@@ -15,6 +15,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
 (deftest extract-model-and-id
@@ -146,7 +147,7 @@
             :type :metric
             :dataset_query (metric-query a-id)}]
           ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
-          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
+          (t2/update! :model/Card :id a-id {:dataset_query (metric-query b-id)})
           (let [result (#'search.ingestion/execute-all-function-attrs
                         (search.spec/spec "card")
                         {:dataset_query (json/encode (metric-query a-id))
@@ -263,3 +264,104 @@
                           first)]
           (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
                   result)))))))
+
+(defn- queued-updates!
+  "Run `f` with a fresh ingestion queue swapped in, and return the updates that end up on it."
+  [f]
+  (let [test-queue (queue/delay-queue)]
+    (with-redefs [search.ingestion/queue           test-queue
+                  search.ingestion/pending-updates (atom 0)]
+      (f test-queue))
+    (mapv :value test-queue)))
+
+(deftest await-pending-updates-waits-for-in-flight-batch-test
+  (let [test-queue     (queue/delay-queue)
+        listener-name (str (random-uuid))
+        processing    (promise)
+        release-batch (promise)
+        indexed       (atom [])
+        update        ["card" [:= :this.id 1]]
+        later-update  ["card" [:= :this.id 2]]]
+    (with-redefs [search.ingestion/queue           test-queue
+                  search.ingestion/pending-updates (atom 0)
+                  search.ingestion/listener-name   listener-name]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines (constantly [:search.engine/appdb])
+         search.ingestion/bulk-ingest! (fn [updates]
+                                         (deliver processing true)
+                                         (deref release-batch 5000 ::timeout)
+                                         (swap! indexed into updates))]
+        (search.ingestion/start-listener!)
+        (try
+          (search.ingestion/ingest-maybe-async! [update] false)
+          (is (true? (deref processing 2000 ::timeout)))
+          (is (empty? test-queue))
+          (is (false? (search.ingestion/await-pending-updates! 10))
+              "An empty queue does not mean the worker finished indexing")
+          (mt/with-log-messages-for-level [messages [metabase.search.ingestion :warn]]
+            (search.ingestion/wait-for-idle! :settle-ms 0 :timeout-ms 10 :poll-ms 1)
+            (is (=? [{:message #"wait-for-idle! timed out.*"}] (messages))
+                "The running batch prevents the queue from being idle"))
+          (testing "Discarding queued work preserves the running batch"
+            (search.ingestion/ingest-maybe-async! [later-update later-update] false)
+            (search.ingestion/clear-queue!)
+            (is (empty? test-queue))
+            (is (false? (search.ingestion/await-pending-updates! 10))))
+          (deliver release-batch true)
+          (is (true? (search.ingestion/await-pending-updates! 2000)))
+          (is (= [update] @indexed))
+          (testing "New updates remain tracked after clearing the queue"
+            (search.ingestion/ingest-maybe-async! [later-update] false)
+            (is (true? (search.ingestion/await-pending-updates! 2000)))
+            (is (= [update later-update] @indexed)))
+          (finally
+            (deliver release-batch true)
+            (queue/stop-listening! listener-name)))))))
+
+(deftest await-pending-updates-after-ingestion-error-test
+  (let [listener-name (str (random-uuid))
+        attempted     (promise)]
+    (with-redefs [search.ingestion/queue           (queue/delay-queue)
+                  search.ingestion/pending-updates (atom 0)
+                  search.ingestion/listener-name   listener-name]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines (constantly [:search.engine/appdb])
+         search.ingestion/bulk-ingest! (fn [_updates]
+                                         (deliver attempted true)
+                                         (throw (ex-info "Indexing failed" {})))]
+        (search.ingestion/start-listener!)
+        (try
+          (search.ingestion/ingest-maybe-async! [["card" [:= :this.id 1]]] false)
+          (is (true? (search.ingestion/await-pending-updates! 2000)))
+          (is (true? (deref attempted 2000 ::timeout)))
+          (finally
+            (queue/stop-listening! listener-name)))))))
+
+(deftest ingest-maybe-async!-queues-after-commit-test
+  ;; The worker reads each updated row back from the app DB. If an update reaches the queue before its transaction
+  ;; commits, and the transaction takes longer than the queue delay, the worker finds no row and the entity is
+  ;; silently left out of the index (GDGT-3326).
+  (let [update ["collection" [:= 1 :this.id]]]
+    (testing "async updates made inside a transaction are only queued once it commits"
+      (let [queued (queued-updates!
+                    (fn [test-queue]
+                      (t2/with-transaction [_conn]
+                        (search.ingestion/ingest-maybe-async! [update] false)
+                        (testing "nothing is queued while the transaction is still open"
+                          (is (empty? test-queue))
+                          (is (true? (search.ingestion/await-pending-updates! 0)))))))]
+        (is (= [update] queued))))
+    (testing "nothing is queued when the transaction rolls back"
+      (let [queued (queued-updates!
+                    (fn [_test-queue]
+                      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"rollback"
+                                            (t2/with-transaction [_conn]
+                                              (search.ingestion/ingest-maybe-async! [update] false)
+                                              (throw (ex-info "rollback" {})))))
+                      (is (true? (search.ingestion/await-pending-updates! 0)))))]
+        (is (= [] queued))))
+    (testing "outside a transaction the update is queued immediately"
+      (is (= [update]
+             (queued-updates!
+              (fn [_test-queue]
+                (search.ingestion/ingest-maybe-async! [update] false))))))))

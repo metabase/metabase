@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
@@ -7,29 +8,22 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 
 import { ConversationFilters } from "./ConversationFilters";
 
-function setup({
-  retentionDays,
-  date = null,
-}: {
+type SetupOpts = {
   retentionDays: number | null;
   date?: string | null;
-}) {
+  filters?: Omit<
+    ComponentProps<typeof ConversationFilters>,
+    "date" | "onDateChange"
+  >;
+};
+
+function setup({ retentionDays, date = null, filters }: SetupOpts) {
   setupEnterprisePlugins();
   renderWithProviders(
     <ConversationFilters
       date={date}
       onDateChange={() => undefined}
-      user={null}
-      onUserChange={() => undefined}
-      group={null}
-      onGroupChange={() => undefined}
-      groupNoFilterValue="all"
-      tenant={null}
-      onTenantChange={() => undefined}
-      userOptions={[]}
-      groupOptions={[]}
-      tenantOptions={[]}
-      hasTenants={false}
+      {...filters}
     />,
     {
       storeInitialState: createMockState({
@@ -171,5 +165,31 @@ describe("ConversationFilters date dropdown", () => {
       "January 2, 2026",
     );
     expect(screen.getByLabelText("End date")).toHaveValue("March 15, 2026");
+  });
+});
+
+describe("ConversationFilters selects", () => {
+  it("shows only the filters a page passes", () => {
+    setup({
+      retentionDays: null,
+      filters: {
+        groupFilter: {
+          value: null,
+          options: [{ value: "1", label: "All groups" }],
+          noFilterValue: "1",
+          onChange: () => undefined,
+        },
+      },
+    });
+
+    expect(screen.getByTestId("conversation-filters-group-select")).toHaveValue(
+      "All groups",
+    );
+    expect(
+      screen.queryByTestId("conversation-filters-user-select"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("conversation-filters-tenant-select"),
+    ).not.toBeInTheDocument();
   });
 });

@@ -1,0 +1,7 @@
+.tick {
+  border-top: 1px dashed var(--mb-color-border-neutral);
+}
+
+.axis {
+  border-top: 1px solid var(--mb-color-border-neutral);
+}

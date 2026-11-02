@@ -1,12 +1,13 @@
 import { t } from "ttag";
 
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useAdminSetting } from "metabase/settings";
 import { SettingHeader } from "metabase/settings-components";
 import { Box } from "metabase/ui";
 
 import { ImageToggle } from "../ImageToggle";
 
-import { MetabotIcon } from "./MetabotToggleWidget.styled";
+import S from "./MetabotToggleWidget.module.css";
 
 export const MetabotToggleWidget = () => {
   const { value, updateSetting } = useAdminSetting("show-metabot");
@@ -25,7 +26,7 @@ export const MetabotToggleWidget = () => {
           });
         }}
       >
-        <MetabotIcon variant={value ? "happy" : "sad"} />
+        <MetabotLogo className={S.icon} variant={value ? "happy" : "sad"} />
       </ImageToggle>
     </Box>
   );

@@ -138,6 +138,7 @@ const setup = ({
   const dashcard = createMockDashboardCard({
     ...card,
     dashboard_id: card.dashboard_id ?? undefined,
+    parameter_mappings: [],
   });
 
   setupCardQueryDownloadEndpoint(card, "json");

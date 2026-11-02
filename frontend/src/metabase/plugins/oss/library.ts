@@ -13,7 +13,6 @@ import type {
   Collection,
   CollectionId,
   CollectionItem,
-  CollectionNamespace,
   CollectionType,
   DatabaseId,
   GetLibraryCollectionResponse,
@@ -49,19 +48,16 @@ export type UnpublishTablesModalProps = {
   onClose: () => void;
 };
 
-export type CollectionPermissionsModalProps = {
-  opened: boolean;
-  collectionId: CollectionId;
-  namespace?: CollectionNamespace | null;
-  onClose: () => void;
-};
-
 export type LibraryCollectionType =
   | "library"
   | "library-data"
-  | "library-metrics";
+  | "library-metrics"
+  | "library-dashboards";
 
-export type LibrarySubCollectionType = "library-data" | "library-metrics";
+export type LibrarySubCollectionType =
+  | "library-data"
+  | "library-metrics"
+  | "library-dashboards";
 
 export type GetEntityPickerSyntheticLibraryItemFunction = {
   (params: {
@@ -80,6 +76,7 @@ export type GetEntityPickerSyntheticLibraryItemFunction = {
 type LibraryPlugin = {
   isEnabled: boolean;
   getDataStudioLibraryRoutes: (IsAdmin: ComponentType) => ReactNode;
+  getDataStudioDashboardRoutes: () => ReactNode;
   useGetLibraryCollection: (params?: { skip?: boolean }) => {
     data: undefined | LibraryCollection;
     isLoading: boolean;
@@ -107,7 +104,6 @@ type LibraryPlugin = {
   }) => OmniPickerItem[] | undefined;
   getEntityPickerSyntheticLibraryItem: GetEntityPickerSyntheticLibraryItemFunction;
   CreateLibraryModal: ComponentType<CreateLibraryModalProps>;
-  CollectionPermissionsModal: ComponentType<CollectionPermissionsModalProps>;
   PublishTablesModal: ComponentType<PublishTablesModalProps>;
   UnpublishTablesModal: ComponentType<UnpublishTablesModalProps>;
   useGetLibraryCollectionQuery: UseQuery<
@@ -129,6 +125,7 @@ type LibraryPlugin = {
 const getDefaultPluginLibrary = (): LibraryPlugin => ({
   isEnabled: false,
   getDataStudioLibraryRoutes: () => null,
+  getDataStudioDashboardRoutes: () => null,
   useGetLibraryCollection: () => ({ isLoading: false, data: undefined }),
   useGetLibraryChildCollectionByType: () => ({
     data: undefined,
@@ -143,9 +140,6 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   CreateLibraryModal:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<CreateLibraryModalProps>,
-  CollectionPermissionsModal:
-    // Unjustified type cast. FIXME
-    PluginPlaceholder as ComponentType<CollectionPermissionsModalProps>,
   PublishTablesModal:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<PublishTablesModalProps>,

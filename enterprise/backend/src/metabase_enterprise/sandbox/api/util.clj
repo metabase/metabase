@@ -90,8 +90,9 @@
 
 (defenterprise sandboxed-user?
   "Returns true if the currently logged in user has any enforced sandboxes. Throws an exception if no current user is
-  bound."
-  :feature :sandboxes
+  bound. Uses `:feature :none` so callers can recognize a sandboxed user even when the `:sandboxes` feature is
+  temporarily unavailable (e.g. during a transient token-check failure) and fail closed instead of leaking data."
+  :feature :none
   []
   (boolean
    (when-not *is-superuser?*

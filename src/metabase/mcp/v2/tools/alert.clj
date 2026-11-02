@@ -379,8 +379,7 @@
   "An alert is a scheduled run of its question with the results delivered, so establishing one — or
    redirecting where one delivers — needs the same scope that seeing those results in-session
    would. The send itself happens later, tokenlessly, under the creator's permissions; this check
-   at write time is the only place the token's scopes can bound that deferred execution. No-op for
-   unscoped callers (cookie sessions bind the unrestricted sentinel, which matches everything)."
+   at write time is the only place the token's scopes can bound that deferred execution."
   [token-scopes action]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
     (common/throw-insufficient-scope!
@@ -418,24 +417,50 @@
 
 (def ^:private alert-write-args-schema
   [:map {:closed true}
-   [:method [:enum "create" "update"]]
-   [:id {:optional true} [:maybe [:or :int :string]]]
-   [:card_id {:optional true} [:maybe [:or :int :string]]]
+   [:method
+    [:enum {:description (str "\"create\" makes a new alert (requires `card_id` and `schedule`); "
+                              "\"update\" edits the one named by `id`, changing only the fields you pass.")}
+     "create" "update"]]
+   [:id {:optional true}
+    [:maybe [:or
+             [:int {:description "Numeric id of the alert to update."}]
+             [:string {:description "The same numeric id as a string. Alerts have no entity_id."}]]]]
+   [:card_id {:optional true}
+    [:maybe [:or
+             [:int {:description "Numeric id of the saved question the alert runs. Fixed at creation."}]
+             [:string {:description "21-character entity_id of the saved question the alert runs. Fixed at creation."}]]]]
    [:condition {:optional true}
-    [:maybe [:map {:closed true}
+    [:maybe [:map {:closed true
+                   :description (str "When the alert sends. Defaults to sending whenever the question returns "
+                                     "rows; the goal conditions need a goal line on the question's chart.")}
              [:type {:optional true} [:maybe [:enum "has_result" "goal_above" "goal_below"]]]
              [:send_once {:optional true} [:maybe :boolean]]]]]
    [:schedule {:optional true}
-    [:maybe [:map {:closed true}
+    [:maybe [:map {:closed true
+                   :description (str "When the question runs, in the instance's report time zone. Required on "
+                                     "create; never a cron string.")}
              [:schedule_type [:enum "hourly" "daily" "weekly" "monthly"]]
              [:schedule_hour {:optional true} [:maybe [:int {:min 0 :max 23}]]]
              [:schedule_minute {:optional true} [:maybe [:int {:min 0 :max 59}]]]
              [:schedule_day {:optional true} [:maybe [:enum "mon" "tue" "wed" "thu" "fri" "sat" "sun"]]]
              [:schedule_frame {:optional true} [:maybe [:enum "first" "mid" "last"]]]]]]
-   [:channel {:optional true} [:maybe [:enum "email" "slack"]]]
-   [:slack_channel {:optional true} [:maybe [:string {:min 1}]]]
-   [:recipients {:optional true} [:maybe [:sequential [:or :int [:string {:min 1}]]]]]
-   [:active {:optional true} [:maybe :boolean]]])
+   [:channel {:optional true}
+    [:maybe [:enum {:description (str "Where to deliver: \"email\" (default) with `recipients`, or \"slack\" with "
+                                      "`slack_channel`. Passing any of channel, slack_channel, or recipients on "
+                                      "update replaces the alert's delivery; omit all three to leave it alone.")}
+             "email" "slack"]]]
+   [:slack_channel {:optional true}
+    [:maybe [:string {:min 1
+                      :description "Slack channel name to post to, e.g. \"#data-team\". Required for channel \"slack\"."}]]]
+   [:recipients {:optional true}
+    [:maybe [:sequential {:description (str "Who gets the email: numeric user ids, or email addresses. Defaults "
+                                            "to you. On update this replaces the current list. Not used for "
+                                            "channel \"slack\".")}
+             [:or :int [:string {:min 1}]]]]]
+   [:active {:optional true}
+    [:maybe [:boolean {:description (str "false pauses the alert, true resumes it (resuming needs the "
+                                         "agent:query:run scope). Defaults to true on create. Alerts have no "
+                                         "archived state and cannot be deleted here.")}]]]])
 
 (registry/deftool alert-write
   "Create or update an alert: a notification sent on a schedule when a saved question's results meet a condition.
@@ -452,10 +477,13 @@
   archived state, and this tool cannot delete one. An alert's question is fixed at creation. Creating an alert, changing
   its delivery or its schedule, resuming a paused one, or clearing send_once additionally requires the agent:query:run
   scope — the alert runs the question and delivers its results. Pausing one never does. Alerts are for saved questions; use subscription_write to schedule a whole dashboard."
-  {:name         "alert_write"
-   :scope        metabot.scope/agent-delivery-write
-   :annotations  {:readOnlyHint false :destructiveHint false}
-   :args         alert-write-args-schema}
+  {:name           "alert_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-delivery-write
+   ;; `destructiveHint`: an update can replace the recipients.
+   ;; `openWorldHint`: it sends to email addresses and Slack channels outside Metabase.
+   :annotations    {:readOnlyHint false, :destructiveHint true, :openWorldHint true}
+   :args           alert-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write {:create-required [:card_id :schedule]} args)]
     (common/success-content

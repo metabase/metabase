@@ -308,8 +308,11 @@
              field-cols   (fields-columns query stage-number options)
              ;; ... then calculate metadata for this stage
              cols         (cond
+                            ;; An aggregating stage doesn't actually return its `:fields` columns -- SQL would
+                            ;; project them alongside a GROUP BY / aggregations, which the preprocessing middleware
+                            ;; `drop-fields-in-summaries` strips before compilation (#62539).
                             summary-cols
-                            (concat summary-cols field-cols)
+                            summary-cols
 
                             field-cols
                             (reduce

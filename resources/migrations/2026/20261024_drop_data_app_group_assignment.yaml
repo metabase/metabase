@@ -1,0 +1,61 @@
+## A group can open a data app when it can read the app's resource collection, so the collection grants alone record
+## who has access. No instance runs data apps in production yet, so the group assignments are dropped without moving
+## them into grants, and a rollback brings the table back empty.
+
+databaseChangeLog:
+  - changeSet:
+      id: pmgj27
+      author: ranquild
+      comment: Drop data app group assignments, replaced by grants on the app's resource collection
+      changes:
+        - dropTable:
+            tableName: data_app_group_assignment
+      rollback:
+        - createTable:
+            tableName: data_app_group_assignment
+            remarks: Permission group assignments for data apps
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    primaryKeyName: pk_data_app_group_assignment
+              - column:
+                  name: data_app_id
+                  remarks: Data app receiving access through the assigned group
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: permission_group_id
+                  remarks: Permission group assigned to the data app
+                  type: int
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: data_app_group_assignment
+            columnNames: data_app_id, permission_group_id
+            constraintName: uq_data_app_group_assignment
+        - createIndex:
+            tableName: data_app_group_assignment
+            indexName: idx_data_app_group_assignment_group
+            columns:
+              - column:
+                  name: permission_group_id
+        - addForeignKeyConstraint:
+            baseTableName: data_app_group_assignment
+            baseColumnNames: data_app_id
+            referencedTableName: data_app
+            referencedColumnNames: id
+            constraintName: fk_data_app_group_assignment_app
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: data_app_group_assignment
+            baseColumnNames: permission_group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_data_app_group_assignment_group
+            onDelete: CASCADE

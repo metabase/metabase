@@ -5,17 +5,16 @@
    [metabase.util.match :as match]))
 
 (defn substitute-persisted-query
-  "Removes persisted information if user is sandboxed or uses connection impersonation. `:persisted-info/native` is set
-  in [[metabase.query-processor.middleware.fetch-source-query]].
-
-  Sandboxing is detected by the presence of a :query-permissions/sandboxed-table key anywhere in the provided query
+  "Removes persisted information if user is sandboxed, uses connection impersonation, or is routed to a Destination
+  Database. `:persisted-info/native` is set in [[metabase.query-processor.middleware.fetch-source-query]].
 
   It may be be possible to use the persistence cache with sandboxing and/or impersonation at a later date with further
   work, but for now we skip the cache in these cases."
   [query]
   (if (and api/*current-user-id*
            (or (match/match-one query {:query-permissions/sandboxed-table &truthy} true)
-               (perms/impersonation-enforced-for-db? (:database query))))
+               (perms/impersonation-enforced-for-db? (:database query))
+               (:destination-database/id query)))
     (match/replace query
       {:persisted-info/native &truthy}
       ;; Signal to the SQL QP's independent persisted-cache lookup that it should not use the cache for this

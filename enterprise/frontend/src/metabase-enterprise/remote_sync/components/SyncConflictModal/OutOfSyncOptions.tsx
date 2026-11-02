@@ -95,7 +95,7 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
   );
 
   return (
-    <Box mt="xxl">
+    <Box>
       <Text fw="bold" mb="sm" pb="xxs">{t`Choose how to proceed:`}</Text>
       <Radio.Group
         // Unjustified type cast. FIXME

@@ -14,6 +14,7 @@ import { usePrevious, useUnmount } from "react-use";
 import { isEqual, noop } from "underscore";
 
 import { isAbortError } from "metabase/api/client";
+import { isEmbedding } from "metabase/embedding/config";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
 import { type NavigateFunction, navigate } from "metabase/router";
@@ -26,6 +27,7 @@ import type {
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
+import { cancelFetchDashboard } from "../actions";
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
 import type { DashboardActionKey } from "../components/DashboardHeader/DashboardHeaderButtonRow/types";
@@ -54,6 +56,11 @@ type DashboardActionButtonList = DashboardActionKey[] | null;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
+  /**
+   * The dashboard the host already fetched for `dashboardId`. The provider
+   * loads it instead of fetching it again; a forced refetch still fetches.
+   */
+  prefetchedDashboard?: Dashboard;
   parameterQueryParams?: ParameterValuesMap;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
@@ -89,6 +96,8 @@ export type DashboardContextOwnProps = {
    * instead of being filtered out. Used by the SDK for internal navigation.
    */
   enableEntityNavigation?: boolean;
+  /** Whether the dashboard offers Events menus and session visibility controls */
+  withTimelineEvents?: boolean;
 };
 
 export type DashboardContextOwnResult = {
@@ -106,7 +115,7 @@ export type DashboardContextProps = DashboardContextOwnProps &
 type ContextProps = DashboardContextProps & ReduxProps;
 
 export type DashboardContextReturned = DashboardContextOwnResult &
-  Omit<DashboardContextOwnProps, "dashboardId"> &
+  Omit<DashboardContextOwnProps, "dashboardId" | "prefetchedDashboard"> &
   ReduxProps &
   Required<DashboardControls> &
   DashboardContextErrorState &
@@ -132,6 +141,7 @@ const DashboardContextProviderInner = forwardRef(
   function DashboardContextProviderInner(
     {
       dashboardId,
+      prefetchedDashboard,
       parameterQueryParams = {},
       onLoad,
       onLoadWithoutCards,
@@ -163,6 +173,7 @@ const DashboardContextProviderInner = forwardRef(
       clickActionMode = undefined,
       withFooter = true,
       enableEntityNavigation = true, // true in core app, SDK passes it down as false
+      withTimelineEvents = false,
 
       // redux selectors
       dashboard,
@@ -200,7 +211,7 @@ const DashboardContextProviderInner = forwardRef(
     const previousTabId = usePrevious(selectedTabId);
     const previousParameterValues = usePrevious(parameterValues);
 
-    const { token } = useEmbeddingEntityContext();
+    const { uuid, token } = useEmbeddingEntityContext();
 
     const { refreshDashboardCardData } = useRefreshDashboard({
       dashboardId,
@@ -250,6 +261,10 @@ const DashboardContextProviderInner = forwardRef(
             options: {
               clearCache: !effectiveIsNavigatingBackToDashboard,
               preserveParameters: effectiveIsNavigatingBackToDashboard,
+              prefetchedDashboard:
+                !forceRefetch && prefetchedDashboard?.id === dashboardId
+                  ? prefetchedDashboard
+                  : undefined,
             },
           })
             .then((result) => {
@@ -266,6 +281,7 @@ const DashboardContextProviderInner = forwardRef(
         initialize,
         isNavigatingBackToDashboard,
         parameterQueryParams,
+        prefetchedDashboard,
         previousDashboardId,
       ],
     );
@@ -317,10 +333,18 @@ const DashboardContextProviderInner = forwardRef(
 
     useEffect(() => {
       if (dashboardId && dashboardId !== previousDashboardId) {
+        cancelFetchDashboardCardData();
         reset();
         fetchData({ dashboardId, token });
       }
-    }, [dashboardId, token, fetchData, previousDashboardId, reset]);
+    }, [
+      dashboardId,
+      token,
+      fetchData,
+      previousDashboardId,
+      cancelFetchDashboardCardData,
+      reset,
+    ]);
 
     useEffect(() => {
       if (dashboard) {
@@ -353,6 +377,7 @@ const DashboardContextProviderInner = forwardRef(
     }, [isLoading, previousIsLoading, dashboard, onLoad, error]);
 
     useUnmount(() => {
+      cancelFetchDashboard();
       cancelFetchDashboardCardData();
       reset();
       closeDashboard();
@@ -450,6 +475,12 @@ const DashboardContextProviderInner = forwardRef(
           clickActionMode,
           withFooter,
           enableEntityNavigation,
+          withTimelineEvents:
+            withTimelineEvents &&
+            !uuid &&
+            !token &&
+            !isGuestEmbed &&
+            !isEmbedding(),
 
           // redux selectors
           selectedTabId,

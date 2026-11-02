@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
+import { act, renderRoutes, renderWithProviders, screen } from "__support__/ui";
 import { Outlet, Route } from "metabase/router";
 
 import {
@@ -206,7 +206,9 @@ describe("lazyModalRoute", () => {
       { initialRoute: "/collection/5" },
     );
 
-    router?.navigate("/collection/5/archive");
+    act(() => {
+      router?.navigate("/collection/5/archive");
+    });
 
     expect(screen.getByText("Collection page")).toBeInTheDocument();
     expect(screen.queryByText("Modal for 5")).not.toBeInTheDocument();

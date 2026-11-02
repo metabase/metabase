@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.v2.storage.util
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.serialization.dump :as dump]
    [metabase.lib.core :as lib]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -51,10 +52,25 @@
   [ctx entity]
   (resolve-path (:unique-name-fns ctx) (serdes/storage-path entity ctx)))
 
+(defn yaml-file-path
+  "The `/`-separated path of the YAML file at the `resolved` storage path."
+  [resolved]
+  (str/join "/" (concat (drop-last resolved) [(str (last resolved) ".yaml")])))
+
+(defn entity-file-path
+  "The path, relative to the export root, of the YAML file the extracted `entity` serializes to in storage context `ctx`."
+  [ctx entity]
+  (yaml-file-path (resolve-storage-path ctx entity)))
+
 (defn without-resources
-  "The `entity` as written to its YAML file, without its `:serdes/resources`."
+  "The `entity` as written to its YAML file: [[serdes/storable]], without its `:serdes/resources`."
   [entity]
-  (dissoc entity :serdes/resources))
+  (serdes/storable (dissoc entity :serdes/resources)))
+
+(defn entity-yaml
+  "The text of the YAML file the extracted `entity` serializes to."
+  [entity]
+  (dump/yaml-content (without-resources entity)))
 
 (defn resource-files
   "Each of `entity`'s `:serdes/resources` as `[path-segments content]`, next to its YAML file at `resolved`."

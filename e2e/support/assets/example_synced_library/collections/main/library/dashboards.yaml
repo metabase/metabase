@@ -1,0 +1,11 @@
+name: Dashboards
+entity_id: librarylibrarydashbrd
+slug: dashboards
+created_at: '2026-09-11T00:00:00Z'
+type: library-dashboards
+parent_id: librarylibrarylibrary
+serdes/meta:
+- id: librarylibrarydashbrd
+  label: dashboards
+  model: Collection
+is_remote_synced: true

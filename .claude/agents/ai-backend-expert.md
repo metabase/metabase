@@ -28,14 +28,14 @@ OSS (`src/metabase/`):
 - `slackbot/` - Metabot in Slack, `/api/metabot/slack`. `metabase.slackbot.db`.
 - `ai_tracing/` - eval-time span capture (`metabase.ai-tracing.core`, `/api/eval-trace`). Separate from production tracing.
 - `agent_lib/` - `metabase.agent-lib.representations`, the portable MBQL 5 form that agents read and write.
-- `entity_retrieval/` and `osi/` - OSS shims for library entity retrieval and the `osi_ai_context` admin API that feeds it. Each has a `db` namespace.
+- `search/entity_retrieval/` and `osi/` - OSS shims for library entity retrieval and the `osi_ai_context` admin API that feeds it. Each has a `db` namespace.
 - `sql_tools/` - SQL parsing (SQLGlot or Macaw) used by `metabase.llm.context` and the SQL tools. Consume it through `metabase.sql-tools.core`.
 
 Enterprise (`enterprise/backend/src/metabase_enterprise/`):
 - `metabot/` - `metabase-enterprise.metabot.permissions` (per-group permission resolution), `.provider` (managed AI add-on), group and instance limit models, `ai_usage_trimmer` task, `.db`.
 - `metabot_analytics/` - `/api/ee/metabot-analytics` (needs `:audit-app`), `.db`.
 - `mcp/`, `agent_api/` - EE usage logging (`mcp_tool_call_log`, `agent_api_call_log`), `.db` each.
-- `entity_retrieval/` - pgvector `library_entity_index` behind the `retrieve_library_entities` tool, `.db`.
+- `search/entity_retrieval/` - pgvector `library_entity_index` behind the `retrieve_library_entities` tool, `.db`.
 
 ## Invariants and landmines
 
@@ -50,7 +50,7 @@ Enterprise (`enterprise/backend/src/metabase_enterprise/`):
 - Tool-specific instructions live in skills (`metabase.metabot.skills`, `resources/metabot/skills/`), not in the system prompt. Keep the cached system-prompt prefix stable.
 - Conversation writes that race need `metabase.metabot.persistence/with-conversation-lock` (a `FOR UPDATE` row lock).
 - `metabase.ai-tracing.core` captures only under its eval binding. Do not use it for production observability.
-- `metabase.metabot.tools.deftool` builds HTTP tool endpoints, not agent tools. Its only caller is its own test. Do not use it as the pattern for new agent tools.
+- Agent tools are declared with `metabase.metabot.tools.core/deftool` and report failure by throwing: `defrecoverable` for something the agent can work around, `unrecoverable!` for something only the user can act on. `metabase.metabot.tools.runtime/invoke` decides which audience hears about a failure and in what words — tool code never writes the model-facing text for an undeclared error. Not every tool has been migrated yet; the older ones still use `mu/defn` plus `metabase.metabot.tools.util/handle-agent-error`.
 
 ## How to work
 

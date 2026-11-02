@@ -92,7 +92,10 @@ export function useMcpFeedback({
         submittedContext.prompt === feedbackContextRef.current.prompt &&
         submittedContext.query === feedbackContextRef.current.query
       ) {
-        sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+        sendToast({
+          variant: "negative",
+          message: t`Failed to submit feedback`,
+        });
       }
     } finally {
       setIsSubmittingFeedback(false);

@@ -17,6 +17,6 @@
   [database :- i/DatabaseInstance]
   (let [driver  (driver.u/database->driver database)
         version (driver/dbms-version driver database)]
-    (when (not= version (:dbms_version database))
+    (when (not= version (:dbms-version database))
       (sync.db/update-database! (:id database) {:dbms_version version}))
     version))

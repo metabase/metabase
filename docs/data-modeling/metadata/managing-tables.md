@@ -11,7 +11,7 @@ redirect_from:
 
 _Data Studio > Connected data_
 
-![Data structure](../images/data-structure.png)
+![Connected data](../images/data-structure.png)
 
 You can manage table settings and metadata to make it easier for people to work with your data in **Data Studio > Connected data**.
 

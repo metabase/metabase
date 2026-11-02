@@ -108,7 +108,7 @@ For each attempt (up to 3):
 3. Write a minimal failing test that demonstrates the bug
 4. Run the test to confirm it fails:
    - **Backend**: `./bin/test-agent :only '[namespace/test-name]'`
-   - **Frontend**: `bun run test-unit-keep-cljs path/to/file.unit.spec.ts`
+   - **Frontend**: `bun run test-unit-keep-cljs --testPathPatterns=path/to/file.unit.spec.ts`
 5. Save the test changes as a patch: `git diff > {{OUTPUT_DIR}}/test-diff.patch`
 
 If you can't write a useful test (complex setup, external dependencies), note the reason and skip to Phase 4.

@@ -12,7 +12,7 @@
   "Call zero-arg `f` with [[premium-features/transform-metered-as]] redefined to return
    the given fixed `bucket` string."
   [bucket f]
-  (with-redefs [premium-features/transform-metered-as (constantly bucket)]
+  (mt/with-dynamic-fn-redefs [premium-features/transform-metered-as (constantly bucket)]
     (f)))
 
 (deftest transform-locked?-no-bucket-test

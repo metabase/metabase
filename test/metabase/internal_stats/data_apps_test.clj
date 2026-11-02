@@ -32,9 +32,6 @@
           (is (= 2 (- (:data-app-count (sut/data-app-stats)) before))))
         (testing "an app the admin disabled is out of service, so it doesn't count"
           (create! :enabled false)
-          (is (= 2 (- (:data-app-count (sut/data-app-stats)) before))))
-        (testing "a draft is not served, so it doesn't count even when enabled"
-          (create! :draft true)
           (is (= 2 (- (:data-app-count (sut/data-app-stats)) before)))))
       (finally
         (t2/delete! :data_app :name [:in @app-names])))))

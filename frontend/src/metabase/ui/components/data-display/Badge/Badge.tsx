@@ -4,7 +4,7 @@ import {
 } from "@mantine/core";
 import { type ComponentPropsWithoutRef, forwardRef } from "react";
 
-import type { DerivedColorKey } from "metabase/ui/colors/types/theme";
+import type { WhitelabelColorKey } from "metabase/ui/colors/constants/whitelabel-colors";
 
 export type BadgeColor =
   | "neutral"
@@ -17,7 +17,7 @@ export interface BadgeProps
   extends
     Omit<MantineBadgeProps, "color">,
     Omit<ComponentPropsWithoutRef<"div">, keyof MantineBadgeProps | "color"> {
-  color?: BadgeColor | DerivedColorKey;
+  color?: BadgeColor | WhitelabelColorKey;
   /** Render as a small solid dot. Used as a status indicator. */
   indicator?: boolean;
 }

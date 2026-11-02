@@ -135,13 +135,13 @@
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] dashboard-id))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
 
 (mu/defn update-card!
   "Apply `changes` to the Card with `card-id`."
   [card-id :- ::lib.schema.id/card
    changes :- (mut/select-keys ::queries.schema/card.update [:collection_position :collection_id :public_uuid :made_public_by_id])]
-  (t2/update! :model/Card card-id changes))
+  (t2/update! :model/Card :id card-id changes))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
@@ -169,12 +169,6 @@
                       [:or [:not= :collection_id new-collection-id-or-nil]
                        (when new-collection-id-or-nil
                          [:= :collection_id nil])]]}))
-
-(mu/defn set-cards-collection-raw!
-  "Move the Cards with `card-ids` to the Collection with `collection-id` without running model hooks."
-  [card-ids :- [:set ::lib.schema.id/card]
-   collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! (t2/table-name :model/Card) {:id [:in card-ids]} {:collection_id collection-id}))
 
 (mu/defn stored-result
   "The StoredResult with `id`, or nil."

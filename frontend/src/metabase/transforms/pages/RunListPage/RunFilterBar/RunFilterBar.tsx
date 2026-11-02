@@ -1,6 +1,11 @@
 import { t } from "ttag";
 
 import type { RelativeIntervalDirection } from "metabase/querying/common/types";
+import { RunMethodFilterWidget } from "metabase/transforms/components/RunMethodFilterWidget";
+import { StatusFilterWidget } from "metabase/transforms/components/StatusFilterWidget";
+import { TimeFilterWidget } from "metabase/transforms/components/TimeFilterWidget";
+import { TransformFilterWidget } from "metabase/transforms/components/TransformFilterWidget";
+import { getRunStatusOptions } from "metabase/transforms/utils";
 import { Group } from "metabase/ui";
 import type {
   Transform,
@@ -13,11 +18,7 @@ import type {
 
 import type { TransformRunFilterOptions } from "../types";
 
-import { RunMethodFilterWidget } from "./RunMethodFilterWidget";
-import { StatusFilterWidget } from "./StatusFilterWidget";
 import { TagFilterWidget } from "./TagFilterWidget";
-import { TimeFilterWidget } from "./TimeFilterWidget";
-import { TransformFilterWidget } from "./TransformFilterWidget";
 
 const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
   "past",
@@ -83,6 +84,7 @@ export function RunFilterBar({
       <StatusFilterWidget
         label={t`Status`}
         statuses={filterOptions.statuses ?? []}
+        options={getRunStatusOptions()}
         onChange={handleStatusesChange}
       />
       <RunMethodFilterWidget

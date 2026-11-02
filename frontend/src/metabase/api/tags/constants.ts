@@ -12,6 +12,7 @@ export const TAG_TYPES = [
   "cloud-migration",
   "collection",
   "collection-tree",
+  "content-diagnostics-finding",
   "content-translation",
   "dashboard",
   "dashboard-question-candidates",
@@ -101,4 +102,5 @@ export const TAG_TYPE_MAPPING = {
   pulse: "subscription",
   transform: "transform",
   exploration: "exploration",
+  "data-app": "data-app",
 } as const;

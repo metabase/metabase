@@ -639,6 +639,11 @@
     ((map remap-fn) rf)
     rf))
 
+(defn- cols-internal-columns-info
+  "The [[internal-columns-info]] of the result columns `cols`."
+  [cols]
+  (internal-columns-info (map #(lib-be/instance->metadata % :metadata/column) cols)))
+
 (mu/defn remap-results :- ::qp.schema/rff
   "Post-processing middleware. Handles `::external-remaps` added by [[add-remapped-columns-middleware]]; transforms
   results and adds additional metadata based on these remaps, as well as internal (human-readable values) remaps."
@@ -647,12 +652,18 @@
   (if disable-remaps?
     rff
     (fn remap-results-rff* [metadata]
-      (let [lib-cols           (map
-                                #(lib-be/instance->metadata % :metadata/column)
-                                (:cols metadata))
-            internal-cols-info (internal-columns-info lib-cols)
+      (let [internal-cols-info (cols-internal-columns-info (:cols metadata))
             metadata           (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)]
         (remap-results-xform internal-cols-info (rff metadata))))))
+
+(mu/defn remap-cols :- [:maybe ::qp.schema/result-metadata.columns]
+  "The result columns `cols` of the preprocessed `query` with the remapping metadata [[remap-results]] adds to the
+  results of running it."
+  [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware, :as _query} :- ::lib.schema/query
+   cols                                                                          :- [:maybe ::qp.schema/result-metadata.columns]]
+  (if (or disable-remaps? (empty? cols))
+    cols
+    (vec (:cols (add-remapped-to-and-from-metadata {:cols cols} external-remaps (cols-internal-columns-info cols))))))
 
 (defn disable-remaps
   "Sets the value of the disable-remaps? option in this query."

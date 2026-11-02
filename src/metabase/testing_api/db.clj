@@ -21,6 +21,24 @@
    last-viewed-at  :- ms/TemporalInstant]
   (t2/update! :model/Dashboard :id dashboard-id {:last_viewed_at last-viewed-at}))
 
+(mu/defn set-document-last-viewed-at!
+  "Set `last_viewed_at` of the Document with `document-id`."
+  [document-id    :- ms/PositiveInt
+   last-viewed-at :- ms/TemporalInstant]
+  (t2/update! :model/Document :id document-id {:last_viewed_at last-viewed-at}))
+
+(mu/defn set-transform-created-at!
+  "Set `created_at` of the Transform with `transform-id`."
+  [transform-id :- ::lib.schema.id/transform
+   created-at   :- ms/TemporalInstant]
+  (t2/update! :model/Transform :id transform-id {:created_at created-at}))
+
+(mu/defn set-transform-run-times!
+  "Set `start_time` and `end_time` of every TransformRun of the Transform with `transform-id`."
+  [transform-id :- ::lib.schema.id/transform
+   run-time     :- ms/TemporalInstant]
+  (t2/update! :model/TransformRun :transform_id transform-id {:start_time run-time :end_time run-time}))
+
 (mu/defn delete-all-security-advisories!
   "Delete every SecurityAdvisory."
   []
@@ -59,8 +77,8 @@
   (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]}))
 
 (mu/defn insert-metabot-conversation!
-  "Insert the MetabotConversation `row`."
-  [row :- ::metabot.schema/metabot-conversation.update]
+  "Insert the MetabotConversation `row`. A conversation carries its own id: the app DB does not mint one."
+  [row :- ::metabot.schema/metabot-conversation]
   (t2/insert! :model/MetabotConversation row))
 
 (mu/defn insert-metabot-message!
@@ -77,10 +95,11 @@
   "Set the `tenant_id` of the User with `user-id`."
   [user-id   :- ::lib.schema.id/user
    tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User user-id {:tenant_id tenant-id}))
+  (t2/update! :model/User :id user-id {:tenant_id tenant-id}))
 
-(mu/defn delete-ai-usage-logs-for-user-and-source!
-  "Delete the AiUsageLog rows of the User with `user-id` from `source`, returning the number deleted."
-  [user-id :- ::lib.schema.id/user
-   source  :- :string]
-  (t2/delete! :model/AiUsageLog :user_id user-id :source source))
+(mu/defn delete-ai-usage-logs-for-user-and-conversation!
+  "Delete the AiUsageLog rows of the User with `user-id` in the conversation `conversation-id`, returning the number
+  deleted."
+  [user-id         :- ::lib.schema.id/user
+   conversation-id :- :string]
+  (t2/delete! :model/AiUsageLog :user_id user-id :conversation_id conversation-id))

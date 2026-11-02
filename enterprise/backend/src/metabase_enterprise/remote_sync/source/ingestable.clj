@@ -29,7 +29,8 @@
 
 (defn- ingest-content
   [file-content]
-  (serialization/read-timestamps (yaml/parse-string file-content {:key-fn serialization/parse-key})))
+  (serdes/restore-path
+   (serialization/read-timestamps (yaml/parse-string file-content {:key-fn serialization/parse-key}))))
 
 (defn- ingest-all
   "Returns {:entities {stripped-hierarchy {:content <yaml-string> :path <repo-path>}}, :errors [Exception...]}.

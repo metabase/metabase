@@ -775,6 +775,7 @@
   "Fetch an exploration with its thread, selections, and generated queries."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [expl (api/read-check (get-exploration-or-404 id))]
+    (events/publish-event! :event/exploration-read {:object-id id :user-id api/*current-user-id*})
     (hydrate-exploration expl)))
 
 (api.macros/defendpoint :put "/:id" :- ::HydratedExploration

@@ -5,11 +5,4 @@ table_id:
 - PUBLIC
 - orders
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: orders
-  model: Table
-- id: total
-  model: Field
+- model: Field

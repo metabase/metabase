@@ -28,7 +28,6 @@
 
 (set! *warn-on-reflection* true)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *actions-test-data-tables*
   #{"categories"})
 
@@ -171,7 +170,7 @@
                      (row-count))))
             (testing "delete row"
               (is (= [1]
-                     (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (data/id))
+                     (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (data/id)))
                                     (delete-categories-1-query)))))
             (testing "after"
               (is (= [[74]]

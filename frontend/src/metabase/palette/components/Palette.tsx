@@ -60,7 +60,7 @@ export const PaletteContainer = ({
   locationQuery: SearchQuery;
 }) => {
   const { query } = useKBar();
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
   const searchText = typeof locationQuery.q === "string" ? locationQuery.q : "";
 
   const {

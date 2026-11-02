@@ -32,6 +32,7 @@ import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ItemsTable } from "metabase/common/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { usePagination } from "metabase/common/hooks/use-pagination";
@@ -341,7 +342,8 @@ const CollectionItemsTableContent = ({
   onSelectedFiltersChange,
   onItemsSortingChange,
 }: CollectionItemsTableContentProps) => {
-  const { data, isFetching } = useListCollectionItemsQuery(itemsQuery);
+  const { data, isFetching, isLoading, error } =
+    useListCollectionItemsQuery(itemsQuery);
 
   const items = data?.data ?? [];
   const totalMatchingItems = data?.total;
@@ -368,14 +370,22 @@ const CollectionItemsTableContent = ({
   const hasSearchText = searchText.trim().length > 0 || hasSearchQuery;
   const hasActiveFilters = hasSearchText || selectedFilters != null;
   const isSearching = isFetching && hasSearchQuery;
-  const isEmpty = !isFetching && items.length === 0 && !hasActiveFilters;
+  const hasNoItems = !isFetching && !error && items.length === 0;
+  const isEmpty = hasNoItems && !hasActiveFilters;
 
   if (isEmpty) {
     return <EmptyContentComponent collection={collection} />;
   }
 
-  const showNoResults = !isFetching && hasActiveFilters && items.length === 0;
+  const showNoResults = hasNoItems && hasActiveFilters;
   const showTable = !showNoResults;
+  // Shared by the skeleton and the loaded table, so both render the same header and columns.
+  const sharedTableProps = {
+    collection,
+    sortingOptions: itemsSorting,
+    onToggleSelected: toggleItem,
+    visibleColumnsMap,
+  };
 
   return (
     <>
@@ -392,27 +402,32 @@ const CollectionItemsTableContent = ({
       {showNoResults && <CollectionNoResults hasSearchText={hasSearchText} />}
       {showTable && (
         <Box data-testid="collection-table">
-          <ItemsTable
-            databases={databases}
-            bookmarks={bookmarks}
-            createBookmark={createBookmark}
-            deleteBookmark={deleteBookmark}
-            items={items}
-            collection={collection}
-            sortingOptions={itemsSorting}
-            onSortingOptionsChange={onItemsSortingChange}
-            selectedItems={selected}
-            hasUnselected={hasUnselected}
-            getIsSelected={getIsSelected}
-            onToggleSelected={toggleItem}
-            onDrop={clear}
-            onMove={handleMove}
-            onCopy={handleCopy}
-            onSelectAll={handleSelectAll}
-            onSelectNone={clear}
-            onClick={onClick}
-            visibleColumnsMap={visibleColumnsMap}
-          />
+          <DelayedLoadingAndErrorWrapper
+            error={error}
+            loading={isLoading}
+            loader={
+              <ItemsTable withSkeleton items={[]} {...sharedTableProps} />
+            }
+          >
+            <ItemsTable
+              {...sharedTableProps}
+              databases={databases}
+              bookmarks={bookmarks}
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
+              items={items}
+              onSortingOptionsChange={onItemsSortingChange}
+              selectedItems={selected}
+              hasUnselected={hasUnselected}
+              getIsSelected={getIsSelected}
+              onDrop={clear}
+              onMove={handleMove}
+              onCopy={handleCopy}
+              onSelectAll={handleSelectAll}
+              onSelectNone={clear}
+              onClick={onClick}
+            />
+          </DelayedLoadingAndErrorWrapper>
           <div
             className={cx(
               CS.flex,

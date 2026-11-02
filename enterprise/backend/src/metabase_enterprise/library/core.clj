@@ -8,4 +8,4 @@
 
 (p/import-vars
  [metabase-enterprise.library.validation
-  check-allowed-content])
+  check-library-content])

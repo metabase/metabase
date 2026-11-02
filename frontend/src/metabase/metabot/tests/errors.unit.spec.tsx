@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { within } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 
 import {
@@ -31,6 +31,49 @@ describe("metabot > errors", () => {
       ["agent", METABOT_ERR_MSG.default],
     ]);
     expect(await input()).toHaveTextContent("Who is your favorite?");
+  });
+
+  it("logs an unexpected error from the agent request", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const thrownError = new TypeError("Failed to fetch");
+    setup();
+    fetchMock.post(`path:/api/metabot/agent-streaming`, {
+      throws: thrownError,
+    });
+
+    try {
+      await enterChatMessage("Who is your favorite?");
+
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", METABOT_ERR_MSG.default],
+      ]);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(thrownError);
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
+  });
+
+  it("does not log the 409 conversation-out-of-sync error", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    setup();
+    fetchMock.post(`path:/api/metabot/agent-streaming`, 409);
+
+    try {
+      await enterChatMessage("Who is your favorite?");
+
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", METABOT_ERR_MSG.outOfSync],
+      ]);
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 
   it("should show a validation error message for bad requests", async () => {
@@ -127,6 +170,7 @@ describe("metabot > errors", () => {
     "ai_provider_billing",
     "ai_provider_rate_limit",
     "ai_provider_auth",
+    "ai_provider_unavailable",
   ])("should show the backend message for %s errors", async (errorCode) => {
     setup();
     mockAgentEndpoint({
@@ -150,6 +194,75 @@ describe("metabot > errors", () => {
       ["user", "Who is your favorite?"],
       ["agent", /The AI provider rejected the request because of a billing/],
     ]);
+  });
+
+  it("should show the full-chat notice for ai_provider_context_full errors", async () => {
+    setup();
+    mockAgentEndpoint({
+      events: [
+        {
+          type: "error",
+          errorText:
+            "This conversation has reached its maximum length and can't continue. Please start a new chat.",
+        },
+        {
+          type: "finish",
+          finishReason: "error",
+          messageMetadata: { errorCode: "ai_provider_context_full" },
+        },
+      ],
+    });
+
+    await enterChatMessage("Who is your favorite?");
+
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", /This conversation has reached its maximum length/],
+    ]);
+    const notice = await screen.findByTestId("metabot-long-chat-notice");
+    expect(notice).toHaveTextContent(/This chat has reached the/);
+    expect(
+      within(notice).getByTestId("metabot-long-chat-new-chat"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-chat-input")).not.toBeInTheDocument();
+  });
+
+  it("should not offer a retry for ai_provider_context_full errors", async () => {
+    setup();
+    mockAgentEndpoint({
+      events: [
+        {
+          type: "error",
+          errorText:
+            "This conversation has reached its maximum length and can't continue. Please start a new chat.",
+        },
+        {
+          type: "finish",
+          finishReason: "error",
+          messageMetadata: { errorCode: "ai_provider_context_full" },
+        },
+      ],
+    });
+
+    await enterChatMessage("Who is your favorite?");
+
+    expect(
+      await screen.findByTestId("metabot-long-chat-notice"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-chat-message-retry"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should offer a retry for other errors", async () => {
+    setup();
+    mockAgentEndpoint({ events: erroredResponse });
+
+    await enterChatMessage("Who is your favorite?");
+
+    expect(
+      await screen.findByTestId("metabot-chat-message-retry"),
+    ).toBeInTheDocument();
   });
 
   it("should mask streamed errors with a generic message", async () => {

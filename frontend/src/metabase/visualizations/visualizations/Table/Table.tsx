@@ -3,9 +3,10 @@ import { useCallback, useMemo } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import hiddenFieldImage from "assets/img/hidden-field.png?url";
+import hiddenFieldImage2x from "assets/img/hidden-field@2x.png?url";
 import CS from "metabase/css/core/index.css";
 import { useQuestionFromCardBuilder } from "metabase/metadata-store";
-import { getSubpathSafeUrl } from "metabase/urls";
 import {
   type VisibleTableData,
   getVisibleTableData,
@@ -23,7 +24,7 @@ interface TableProps extends VisualizationProps {
 }
 
 function TableComponent(props: TableProps) {
-  const { series, settings, isShowingDetailsOnlyColumns, isDashboard } = props;
+  const { series, settings, isShowingDetailsOnlyColumns } = props;
 
   const question = useSyncedQuestion(series);
 
@@ -67,7 +68,7 @@ function TableComponent(props: TableProps) {
   const areAllColumnsHidden = data.cols.length === 0;
 
   if (areAllColumnsHidden) {
-    return <AllFieldsHiddenMessage isDashboard={isDashboard} />;
+    return <AllFieldsHiddenMessage />;
   }
 
   return (
@@ -96,14 +97,7 @@ function useSyncedQuestion(series: VisualizationProps["series"]) {
   }, [series, buildQuestionRef]);
 }
 
-function AllFieldsHiddenMessage({ isDashboard }: { isDashboard: boolean }) {
-  const allFieldsHiddenImageUrl = getSubpathSafeUrl(
-    "app/assets/img/hidden-field.png",
-  );
-  const allFieldsHiddenImage2xUrl = getSubpathSafeUrl(
-    "app/assets/img/hidden-field@2x.png",
-  );
-
+function AllFieldsHiddenMessage() {
   return (
     <div
       className={cx(
@@ -114,16 +108,16 @@ function AllFieldsHiddenMessage({ isDashboard }: { isDashboard: boolean }) {
         CS.flex,
         CS.flexColumn,
         CS.layoutCentered,
-        { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
+        CS.textSlate,
       )}
     >
       <img
         data-testid="Table-all-fields-hidden-image"
         width={99}
-        src={allFieldsHiddenImageUrl}
+        src={hiddenFieldImage}
         srcSet={`
-          ${allFieldsHiddenImageUrl}   1x,
-          ${allFieldsHiddenImage2xUrl} 2x
+          ${hiddenFieldImage}   1x,
+          ${hiddenFieldImage2x} 2x
         `}
         className={CS.mb2}
       />

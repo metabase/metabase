@@ -35,7 +35,7 @@
 
 (defn- call-tool!
   "Drive `tool` through the real dispatch seam as `user` (test-user keyword or user id) with
-   bearer-style `scopes` (nil = internal caller, which bypasses the scope gate). `session-id` is
+   bearer-style `scopes`. `session-id` is
    fresh per call unless the caller threads one through, so query handles are scoped like a real
    client's."
   ([user scopes tool args] (call-tool! user scopes tool args (str (random-uuid))))
@@ -136,20 +136,20 @@
 (deftest ^:parallel malli-validation-test
   (testing "GHY-4146: schema-level failures are teaching errors from the registry, not handler crashes"
     (testing "missing method"
-      (is (str/starts-with? (tool-error (call-tool! :crowberto nil "metric_write" {}))
+      (is (str/starts-with? (tool-error (call-tool! :crowberto v2.tu/all-scopes "metric_write" {}))
                             "Invalid arguments")))
     (testing "a method outside the enum (there is no delete — archive instead)"
-      (is (str/starts-with? (tool-error (call-tool! :crowberto nil "metric_write" {:method "delete"}))
+      (is (str/starts-with? (tool-error (call-tool! :crowberto v2.tu/all-scopes "metric_write" {:method "delete"}))
                             "Invalid arguments")))
     (testing "an unknown key on the closed schema"
-      (is (str/starts-with? (tool-error (call-tool! :crowberto nil "metric_write" {:method "create" :bogus 1}))
+      (is (str/starts-with? (tool-error (call-tool! :crowberto v2.tu/all-scopes "metric_write" {:method "create" :bogus 1}))
                             "Invalid arguments")))
     (testing "a non-map definition never reaches the handler"
-      (is (str/starts-with? (tool-error (call-tool! :crowberto nil "metric_write"
+      (is (str/starts-with? (tool-error (call-tool! :crowberto v2.tu/all-scopes "metric_write"
                                                     {:method "create" :name "x" :definition "not a query"}))
                             "Invalid arguments")))
     (testing "card_type is not an argument — a metric_write call always writes a metric"
-      (is (str/starts-with? (tool-error (call-tool! :crowberto nil "metric_write"
+      (is (str/starts-with? (tool-error (call-tool! :crowberto v2.tu/all-scopes "metric_write"
                                                     {:method "create" :name "x" :card_type "question"
                                                      :definition (count-definition)}))
                             "Invalid arguments")))))
@@ -564,8 +564,7 @@
     (is (re-find #"^Insufficient scope to call tool: \"metric_write\"\."
                  (tool-error (call-tool! :crowberto #{"agent:metric:create" "agent:metric:update"} "metric_write"
                                          {:method "update" :id 13371337 :name "x"})))))
-  ;; GHY-4225: the metabot permission wildcards no longer bear on v2. In-app callers reach
-  ;; v2 through cookie sessions bound to the unrestricted sentinel, and OAuth tokens draw
+  ;; GHY-4225: the metabot permission wildcards no longer bear on v2. OAuth tokens draw
   ;; their scopes from the tool registry (`registered-scopes`), not from
   ;; `user-metabot-perms->scopes` — so the old wildcard coupling was already vestigial here.
   )
@@ -629,8 +628,10 @@
                                                      :collection_position bad-position}))
                             "Invalid arguments")))))
 
-(deftest ^:parallel internal-caller-bypasses-scopes-test
-  (testing "GHY-4146: a cookie-session caller (the unrestricted sentinel) is not scope-gated"
-    (is (re-find #"not found"
-                 (tool-error (call-tool! :crowberto #{::scope/unrestricted} "metric_write"
-                                         {:method "update" :id 13371337 :name "x"}))))))
+(deftest ^:parallel scopeless-callers-are-refused-test
+  (testing "GHY-4942: nil scopes, the unrestricted sentinel, and wildcards name no scope, so the gate refuses them"
+    (doseq [scopes [nil #{::scope/unrestricted} #{"*"} #{"agent:*"}]]
+      (testing (pr-str scopes)
+        (is (re-find #"^Insufficient scope to call tool: \"metric_write\"\."
+                     (tool-error (call-tool! :crowberto scopes "metric_write"
+                                             {:method "update" :id 13371337 :name "x"}))))))))

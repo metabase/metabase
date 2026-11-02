@@ -58,31 +58,7 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("queries", () => {
-    it("should create a question based on a published table", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
-      cy.visit("/");
-      H.newButton().click();
-      H.popover().within(() => {
-        cy.findByText("Question").should("be.visible");
-        cy.findByText("SQL query").should("not.exist");
-        cy.findByText("Question").click();
-      });
-      H.popover().within(() => {
-        cy.findByText("Products").should("be.visible");
-        cy.findByText("Orders").should("not.exist");
-        cy.findByText("Products").click();
-      });
-      H.visualize();
-      H.assertQueryBuilderRowCount(200);
-
-      H.saveQuestion("Test question", { wrapId: true });
-      H.visitQuestion("@questionId");
-      H.assertQueryBuilderRowCount(200);
-    });
-
-    it("should create a question with explicit joins when not all FK tables are published", () => {
+    it("should create questions with explicit and implicit joins when not all FK tables are published", () => {
       H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
 
       cy.signIn("nodata");
@@ -101,12 +77,8 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.saveQuestion("Test question", { wrapId: true });
       H.visitQuestion("@questionId");
       H.assertQueryBuilderRowCount(1);
-    });
 
-    it("should create a question with implicit joins when not all FK tables are published", () => {
-      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
-
-      cy.signIn("nodata");
+      cy.log("Implicit joins");
       H.visitQuestionAdhoc(ordersQuestionDetails, { mode: "notebook" });
       H.getNotebookStep("data").button("Filter").click();
       H.popover().within(() => {
@@ -127,7 +99,7 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should create a question with a table segment", () => {
+    it("should create questions with a table segment and a table metric", () => {
       H.createSegment({
         name: "ID segment",
         definition: {
@@ -137,6 +109,14 @@ describe("scenarios > data studio > table collection permissions", () => {
             "source-table": PRODUCTS_ID,
             filter: ["=", ["field", PRODUCTS.ID, null], 1],
           },
+        },
+      });
+      H.createQuestion({
+        name: "Count metric",
+        type: "metric",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
         },
       });
       H.publishTables({ table_ids: [PRODUCTS_ID] });
@@ -151,20 +131,8 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.saveQuestion("Test question", { wrapId: true });
       H.visitQuestion("@questionId");
       H.assertQueryBuilderRowCount(1);
-    });
 
-    it("should create a question with a table metric", () => {
-      H.createQuestion({
-        name: "Count metric",
-        type: "metric",
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-        },
-      });
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
+      cy.log("Table metric");
       H.visitQuestionAdhoc(productsQuestionDetails, { mode: "notebook" });
       H.getNotebookStep("data").button("Summarize").click();
       H.popover().within(() => {
@@ -200,37 +168,12 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should be able to drill-thru", () => {
+    it("should use list field values, x-ray, drill-thru, and create a question on a published table", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
 
       cy.signIn("nodata");
-      H.visitQuestionAdhoc(productsQuestionDetails);
-      H.tableInteractive().findByText("82.75").click();
-      H.popover().findByText("=").click();
-      H.assertQueryBuilderRowCount(1);
-    });
-  });
 
-  describe("x-rays", () => {
-    it("should be able to x-ray a table", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
-      H.visitQuestionAdhoc(productsByTimeQuestionDetails);
-      H.cartesianChartCircle().first().click();
-      H.popover().findByText("Automatic insights…").click();
-      H.popover().findByText("X-ray").click();
-      H.main()
-        .findByText(/A closer look at number of Products/)
-        .should("be.visible");
-    });
-  });
-
-  describe("field values", () => {
-    it("should be able to use list field values", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
+      cy.log("List field values");
       H.visitQuestionAdhoc(productsQuestionDetails);
       H.tableHeaderClick("Category");
       H.popover().within(() => {
@@ -239,8 +182,45 @@ describe("scenarios > data studio > table collection permissions", () => {
         cy.button("Add filter").click();
       });
       H.assertQueryBuilderRowCount(53);
-    });
 
+      cy.log("X-ray");
+      H.visitQuestionAdhoc(productsByTimeQuestionDetails);
+      H.cartesianChartCircle().first().click();
+      H.popover().findByText("Automatic insights…").click();
+      H.popover().findByText("X-ray").click();
+      H.main()
+        .findByText(/A closer look at number of Products/)
+        .should("be.visible");
+
+      cy.log("Drill-thru");
+      H.visitQuestionAdhoc(productsQuestionDetails);
+      H.tableInteractive().findByText("82.75").click();
+      H.popover().findByText("=").click();
+      H.assertQueryBuilderRowCount(1);
+
+      cy.log("Create a question");
+      cy.visit("/");
+      H.newButton().click();
+      H.popover().within(() => {
+        cy.findByText("Question").should("be.visible");
+        cy.findByText("SQL query").should("not.exist");
+        cy.findByText("Question").click();
+      });
+      H.popover().within(() => {
+        cy.findByText("Products").should("be.visible");
+        cy.findByText("Orders").should("not.exist");
+        cy.findByText("Products").click();
+      });
+      H.visualize();
+      H.assertQueryBuilderRowCount(200);
+
+      H.saveQuestion("Test question", { wrapId: true });
+      H.visitQuestion("@questionId");
+      H.assertQueryBuilderRowCount(200);
+    });
+  });
+
+  describe("field values", () => {
     it("should be able to use search field values", () => {
       H.publishTables({ table_ids: [PEOPLE_ID] });
 
@@ -262,7 +242,7 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("remapping", () => {
-    it("should automatically publish all tables referenced by FK remapping, recursively", () => {
+    it("should automatically publish and unpublish all tables referenced by FK remapping, recursively", () => {
       cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
         name: "Product ID",
         type: "external",
@@ -299,24 +279,10 @@ describe("scenarios > data studio > table collection permissions", () => {
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
       H.tableInteractive().should("be.visible");
       H.tableHeaderColumn("Product ID").should("be.visible");
-    });
 
-    it("should automatically unpublish all tables referenced by FK remapping, recursively", () => {
-      cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-        name: "Product ID",
-        type: "external",
-        human_readable_field_id: PRODUCTS.TITLE,
-      });
-      cy.request("PUT", `/api/field/${PRODUCTS.RATING}`, {
-        semantic_type: "type/FK",
-        fk_target_field_id: REVIEWS.ID,
-      });
-      cy.request("POST", `/api/field/${PRODUCTS.RATING}/dimension`, {
-        name: "Rating",
-        type: "external",
-        human_readable_field_id: REVIEWS.REVIEWER,
-      });
-      H.publishTables({ table_ids: [ORDERS_ID, PEOPLE_ID] });
+      cy.log("Unpublish");
+      cy.signInAsAdmin();
+      H.publishTables({ table_ids: [PEOPLE_ID] });
       H.DataModel.visitDataStudio();
       H.DataModel.TablePicker.getTable("Reviews").click();
       cy.findByRole("button", { name: /Unpublish/ }).click();
@@ -407,16 +373,6 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("sandboxing", () => {
-    it("should be able to access a published sandboxed table", () => {
-      H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
-      sandboxProductsOnCategory();
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("sandboxed");
-      H.visitQuestionAdhoc(productsQuestionDetails);
-      H.assertQueryBuilderRowCount(54);
-    });
-
     it("should be able to use list field values with sandboxing", () => {
       H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
       sandboxProductsOnCategory();
@@ -424,6 +380,7 @@ describe("scenarios > data studio > table collection permissions", () => {
 
       cy.signIn("sandboxed");
       H.visitQuestionAdhoc(productsQuestionDetails);
+      H.assertQueryBuilderRowCount(54);
       H.tableHeaderClick("Category");
       H.popover().within(() => {
         cy.findByText("Filter by this column").click();
@@ -432,6 +389,9 @@ describe("scenarios > data studio > table collection permissions", () => {
         cy.findByText("Widget").click();
         cy.button("Add filter").click();
       });
+      H.queryBuilderFiltersPanel()
+        .findByText("Category is Widget")
+        .should("be.visible");
       H.assertQueryBuilderRowCount(54);
     });
 
@@ -454,6 +414,9 @@ describe("scenarios > data studio > table collection permissions", () => {
         cy.findByText("Widget").click();
         cy.button("Add filter").click();
       });
+      H.queryBuilderFiltersPanel()
+        .findByText("Category is Widget")
+        .should("be.visible");
       H.assertQueryBuilderRowCount(54);
     });
   });
@@ -471,7 +434,7 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("unpublishing", () => {
-    it("should not be able to access a previously published table when it is unpublished", () => {
+    it("should not be able to access or create questions when the only published table is unpublished", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
       H.DataModel.visitDataStudio();
       H.DataModel.TablePicker.getTable("Products").click();
@@ -482,17 +445,7 @@ describe("scenarios > data studio > table collection permissions", () => {
       cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
       assertQueryPermissionError();
-    });
 
-    it("should not be able to create questions when all published tables are unpublished", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-      H.DataModel.visitDataStudio();
-      H.DataModel.TablePicker.getTable("Products").click();
-      cy.findByRole("button", { name: /Unpublish/ }).click();
-      H.modal().findByText("Unpublish this table").click();
-      H.undoToast().findByText("Unpublished").should("be.visible");
-
-      cy.signIn("nodata");
       cy.visit("/");
       H.newButton().click();
       H.popover().within(() => {
@@ -503,20 +456,14 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("losing token features", () => {
-    it("should not be able to query previously published tables", () => {
+    it("should not be able to query previously published tables or create questions", () => {
       H.publishTables({ table_ids: [PRODUCTS_ID] });
       H.deleteToken();
 
       cy.signIn("nodata");
       H.visitQuestionAdhoc(productsQuestionDetails);
       assertQueryPermissionError();
-    });
 
-    it("should not be able to create questions even if there are published tables", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-      H.deleteToken();
-
-      cy.signIn("nodata");
       cy.visit("/");
       H.newButton().click();
       H.popover().within(() => {

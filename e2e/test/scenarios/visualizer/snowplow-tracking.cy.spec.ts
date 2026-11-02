@@ -101,9 +101,10 @@ describe("scenarios > visualizer > snowplow tracking", () => {
         triggered_from: "visualizer-modal",
       });
 
-      // change the visualization type
+      // change the visualization type (the question is already a line chart,
+      // and re-selecting the current type isn't a change)
       cy.log("change the visualization type");
-      H.selectVisualization("line");
+      H.selectVisualization("area");
       H.expectUnstructuredSnowplowEvent({
         event: "visualizer_data_changed",
         event_detail: "visualizer_viz_type_changed",

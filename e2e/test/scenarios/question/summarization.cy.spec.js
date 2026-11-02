@@ -179,6 +179,7 @@ describe("scenarios > question > summarize", () => {
             {
               type: "operator",
               operator: "sum",
+              name: "sum_2",
               args: [{ type: "column", name: "TOTAL" }],
             },
           ],
@@ -186,7 +187,6 @@ describe("scenarios > question > summarize", () => {
             {
               type: "column",
               name: "CREATED_AT",
-              sourceName: "ORDERS",
               unit: "year",
             },
           ],
@@ -195,7 +195,6 @@ describe("scenarios > question > summarize", () => {
               direction: "desc",
               type: "column",
               name: "sum",
-              displayName: "Sum of Subtotal",
             },
           ],
         },

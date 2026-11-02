@@ -1,0 +1,13 @@
+/* The full-width wrapper must not block clicks on the page beneath it */
+.clickThrough {
+  pointer-events: none;
+}
+
+.toastCard {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2.5rem;
+  pointer-events: auto;
+}

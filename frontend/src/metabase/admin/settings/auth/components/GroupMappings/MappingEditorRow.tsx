@@ -151,7 +151,7 @@ export function MappingEditorRow({
           </Flex>
         </Flex>
         {errorMessage != null && (
-          <Text id={errorId} role="alert" c="error" fz="sm">
+          <Text id={errorId} role="alert" c="feedback-negative" fz="sm">
             {errorMessage}
           </Text>
         )}

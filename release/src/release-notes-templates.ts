@@ -1,4 +1,3 @@
-
 export const githubReleaseTemplate = `## Upgrading
 
 > Before you upgrade, back up your Metabase application database!

@@ -43,9 +43,8 @@ describe("scenarios > admin > settings > SSO > OIDC", () => {
     cy.wait("@checkConnection");
     H.undoToast().findByText("OIDC connection is valid").should("be.visible");
 
-    cy.log("Saving checks again and creates the provider with group sync off");
+    cy.log("Saving creates the provider with group sync off");
     cy.button("Save and enable").click();
-    cy.wait("@checkConnection");
     cy.wait("@createProvider").its("request.body.key").should("equal", "okta");
 
     cy.log("The page switches to its configured state");

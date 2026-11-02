@@ -108,6 +108,43 @@ export const BasicGrid: Story = () => {
   return <DataGrid {...tableProps} />;
 };
 
+export const StripedGrid: Story = () => {
+  const columns: ColumnOptions<SampleDataType>[] = useMemo(
+    () => [
+      {
+        id: "id",
+        name: "ID",
+        accessorFn: (row) => row.id,
+      },
+      {
+        id: "name",
+        name: "Name",
+        accessorFn: (row) => row.name,
+      },
+      {
+        id: "category",
+        name: "Category",
+        accessorFn: (row) => row.category,
+      },
+      {
+        id: "price",
+        name: "Price",
+        accessorFn: (row) => row.price,
+        formatter: (value) => `$${value}`,
+        align: "right",
+      },
+    ],
+    [],
+  );
+
+  const tableProps = useDataGridInstance({
+    data: sampleData,
+    columnsOptions: columns,
+  });
+
+  return <DataGrid {...tableProps} striped />;
+};
+
 export const CustomStylesGrid: Story = () => {
   const getHeaderTemplate = (name: string) => {
     return function Header() {

@@ -102,12 +102,11 @@
 
 ;; ----------------------------------------- API Endpoints for viewing a transient dashboard ----------------
 
-(defn- adhoc-query-read-check
+(defn adhoc-query-read-check
+  "Return `query` if the user has data and source card permissions; otherwise throw a 403."
   [query]
   (api/check-403
-   (query-perms/check-data-perms (:dataset_query query)
-                                 (query-perms/required-perms-for-query (:dataset_query query))
-                                 :throw-exceptions? false))
+   (query-perms/can-run-query? (:dataset_query query)))
   query)
 
 (defn- ensure-int

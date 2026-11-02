@@ -6,7 +6,6 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-  within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -115,18 +114,12 @@ describe("TaskRunDetailsPage", () => {
 
     await waitForLoaderToBeRemoved();
 
-    const copyButtons = screen.getAllByTestId("copy-button");
+    const copyButtons = screen.getAllByRole("button", { name: "Copy" });
 
-    const startedAtCopyIcon = within(copyButtons[0]).getByRole("img", {
-      name: "copy icon",
-    });
-    await userEvent.click(startedAtCopyIcon);
+    await userEvent.click(copyButtons[0]);
     expect(copyMock).toHaveBeenCalledWith(startedAt);
 
-    const endedAtCopyIcon = within(copyButtons[1]).getByRole("img", {
-      name: "copy icon",
-    });
-    await userEvent.click(endedAtCopyIcon);
+    await userEvent.click(copyButtons[1]);
     expect(copyMock).toHaveBeenCalledWith(endedAt);
   });
 });

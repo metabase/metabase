@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.startup.core :as startup]
    [metabase.util.http :as u.http]
@@ -97,7 +98,7 @@
             (setting/set-value-of-type! :string :slack-bug-report-channel (process-files-channel-name channel-name))))
 
 (defsetting attachment-table-row-limit
-  (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
+  "Maximum number of rows to render in an alert or subscription image."
   :visibility :internal
   :type       :positive-integer
   :default    20
@@ -118,7 +119,7 @@
   :base       setting/uuid-nonce-base)
 
 (defsetting notification-link-base-url
-  (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
+  "By default \"Site Url\" is used in notification links, but can be overridden."
   :encryption :when-encryption-key-set
   :visibility :internal
   :type       :string
@@ -283,6 +284,11 @@
                   (throw (ex-info (tru "Cannot enable smtp-override when it is not configured.") {:status-code 400})))
                 (setting/set-value-of-type! :boolean :smtp-override-enabled new-value)))
 
+(defn smtp-override-active?
+  "Whether email goes out through the custom SMTP server instead of the primary one."
+  []
+  (and (smtp-override-enabled) (premium-features/is-hosted?)))
+
 (defsetting email-max-recipients-per-second
   (deferred-tru "The maximum number of recipients, summed across emails, that can be sent per second.
                 Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.")
@@ -306,11 +312,11 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     #(boolean (email-smtp-host))
+  :getter     #(boolean (if (smtp-override-active?) (email-smtp-host-override) (email-smtp-host)))
   :doc        false)
 
 (defsetting surveys-enabled
-  (deferred-tru "Enable or disable surveys")
+  "Enable or disable surveys"
   :type       :boolean
   :default    true
   :export?    false
@@ -318,11 +324,11 @@
   :audit      :getter)
 
 (defsetting http-channel-allowed-networks
-  (deferred-tru (str "Controls which types of hosts are allowed as HTTP channel destinations.\n"
-                     "Options:\n"
-                     "- external-only (default - only external hosts)\n"
-                     "- allow-private (external + private networks but NOT localhost)\n"
-                     "- allow-all (no restrictions including localhost).\n"))
+  (str "Controls which types of hosts are allowed as HTTP channel destinations.\n"
+       "Options:\n"
+       "- external-only (default - only external hosts)\n"
+       "- allow-private (external + private networks but NOT localhost)\n"
+       "- allow-all (no restrictions including localhost).\n")
   :type       :keyword
   :visibility :internal
   :default    :external-only

@@ -321,7 +321,6 @@ export const NativeQueryModal = ({
       onClose={onClose}
       size="95%"
       title={t`Edit SQL Query`}
-      padding="xl"
       classNames={{
         content: S.modalContent,
         body: S.modalBody,

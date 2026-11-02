@@ -1,7 +1,8 @@
 (ns metabase.channel.render.util
   (:require
    [clojure.string :as str]
-   [hiccup.core :refer [h html]]
+   [hiccup.core :refer [html]]
+   [hiccup.util :as hiccup.util]
    [metabase.channel.render.style :as style]
    [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]
@@ -244,6 +245,6 @@
          {:style (style/style {:margin-bottom "4px"})}
          [:span {:style (style/style {:color style/color-text-dark
                                       :padding-right "8px"})}
-          (h name)]
+          (hiccup.util/escape-html name)]
          [:span {:style (style/style {:color style/color-text-medium})}
-          (h value-str)]])])))
+          (hiccup.util/escape-html value-str)]])])))

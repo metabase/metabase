@@ -27,14 +27,11 @@
    [:semantic-version {:optional true} [:or
                                         [:sequential :int]
                                         [:map {:closed true} [:major :int] [:minor :int]]]]
-   [:cloud            {:optional true} :boolean]])
+   [:cloud            {:optional true} :boolean]
+   [:single-node      {:optional true} :boolean]])
 
 (mr/def ::database.write-data-details
   "The `:write_data_details` column of a Database, decoded."
-  [:or ms/DatabaseDetails ::database.undecryptable-column])
-
-(mr/def ::database.admin-details
-  "The `:admin_details` column of a Database, decoded."
   [:or ms/DatabaseDetails ::database.undecryptable-column])
 
 (mr/def ::database
@@ -88,7 +85,6 @@
    [:router_database_id          {:optional true} [:maybe ::lib.schema.id/database]]
    [:provider_name               {:optional true} [:maybe :string]]
    [:write_data_details          {:optional true} [:maybe ::database.write-data-details]]
-   [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
 (mr/def ::database-or-metadata

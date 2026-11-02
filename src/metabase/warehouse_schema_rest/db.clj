@@ -52,7 +52,7 @@
   "Apply `changes` to the Dimension with `id`."
   [id      :- ::lib.schema.id/dimension
    changes :- (mut/select-keys ::warehouse-schema.schema/dimension.update [:type :name :human_readable_field_id])]
-  (t2/update! :model/Dimension id changes))
+  (t2/update! :model/Dimension :id id changes))
 
 (mu/defn rename-dimension-for-field!
   "Set the name of the Dimension of the Field with `field-id`."
@@ -138,7 +138,7 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."

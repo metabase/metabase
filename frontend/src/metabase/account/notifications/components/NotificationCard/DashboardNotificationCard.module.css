@@ -16,6 +16,7 @@
 
 .icon {
   cursor: pointer;
+  flex-shrink: 0;
 
   &:hover {
     color: var(--mb-color-text-secondary);

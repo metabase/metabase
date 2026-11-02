@@ -173,7 +173,7 @@
      ["WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
       "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
       "If you decide to continue to use H2, please be sure to back up the database file regularly."
-      "For more information, see https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"]))))
+      "For more information, see https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2"]))))
 
 (defn db-file
   "Path to our H2 DB file from env var or app config."

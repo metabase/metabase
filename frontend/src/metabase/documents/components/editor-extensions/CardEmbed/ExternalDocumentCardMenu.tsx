@@ -48,6 +48,7 @@ export const ExternalDocumentCardMenu = ({
     >
       <Menu.Target>
         <ActionIcon
+          variant="subtle"
           size="xs"
           className={cx({
             [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,

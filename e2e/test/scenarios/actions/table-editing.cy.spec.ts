@@ -11,8 +11,8 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { resetSnowplow } from "e2e/support/helpers/e2e-snowplow-helpers";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { dayjs } from "metabase/dayjs";
+import { DataPermissionValue } from "metabase-types/api/permissions";
 
 const { H } = cy;
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -172,6 +172,7 @@ describe("scenarios > actions > table editing", () => {
         );
 
         cy.visit(`/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`);
+        H.closeNavigationSidebar();
       });
 
       cy.log("wait for the grid to be interactive");
@@ -640,6 +641,7 @@ function getTableEditIcon(tableName: RegExp) {
   return cy
     .findByTestId("browse-schemas")
     .contains(tableName)
+    .closest('[data-testid="browse-card"]')
     .realHover()
     .findByTestId("edit-table-icon");
 }
