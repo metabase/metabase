@@ -48,3 +48,14 @@ export const getHealthCheckItemUrl = (
       ({ item }) => Urls.groupDataPermissions(item.entity_id),
     )
     .otherwise(() => null);
+
+export const getHealthCheckItemKey = (item: HealthCheckItem, index: number) =>
+  item.entity_type ? `${item.entity_type}-${item.entity_id}` : String(index);
+
+export const getHealthCheckSettingsUrl = (checkId: HealthCheckId) =>
+  match(checkId)
+    .with("https-site-url", "https-redirect", () => Urls.generalSettings())
+    .with("sso-login", "scim-provisioning", "mfa-required", () =>
+      Urls.authenticationSettings(),
+    )
+    .otherwise(() => null);

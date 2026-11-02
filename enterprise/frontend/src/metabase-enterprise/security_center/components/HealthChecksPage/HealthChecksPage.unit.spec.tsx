@@ -137,6 +137,14 @@ describe("HealthChecksPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("does not show all clear when there are no checks", async () => {
+    await setup({ checks: [] });
+
+    expect(
+      screen.queryByText("All security checks pass"),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens failing checks and collapses the other groups", async () => {
     await setup({ checks: [FAILING_CHECK, UNKNOWN_CHECK, PASSING_CHECK] });
 
@@ -253,6 +261,40 @@ describe("HealthChecksPage", () => {
       ).toHaveAttribute("href", href);
     },
   );
+
+  it.each<{ checkId: string; href: string }>([
+    { checkId: "https-site-url", href: "/admin/settings/general" },
+    { checkId: "https-redirect", href: "/admin/settings/general" },
+    { checkId: "sso-login", href: "/admin/settings/authentication" },
+    { checkId: "scim-provisioning", href: "/admin/settings/authentication" },
+    { checkId: "mfa-required", href: "/admin/settings/authentication" },
+  ])("links $checkId to its settings", async ({ checkId, href }) => {
+    await setup({ checks: [{ ...FAILING_CHECK, id: checkId }] });
+
+    expect(screen.getByRole("link", { name: "Open settings" })).toHaveAttribute(
+      "href",
+      href,
+    );
+  });
+
+  it("does not link settings for a check fixed outside the UI", async () => {
+    await setup({ checks: [FAILING_CHECK] });
+
+    expect(
+      screen.queryByRole("link", { name: "Open settings" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not link settings for a passing check", async () => {
+    await setup({ checks: [PASSING_CHECK] });
+
+    await openGroup(/Passed/);
+
+    expect(screen.getByText("HTTPS redirect")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Open settings" }),
+    ).not.toBeInTheDocument();
+  });
 
   it("shows the name of an object without a page as plain text", async () => {
     await setup({

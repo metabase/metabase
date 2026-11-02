@@ -11,6 +11,8 @@ import type {
   SendTestNotificationRequest,
 } from "metabase-types/api";
 
+export const RECHECK_ALL_HEALTH_CHECKS_CACHE_KEY = "recheck-all-health-checks";
+
 export const securityCenterApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     listSecurityAdvisories: builder.query<ListAdvisoriesResponse, void>({

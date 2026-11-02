@@ -29,9 +29,18 @@ import type {
 } from "metabase-types/api";
 
 import { trackHealthCheckRecheckClicked } from "../../analytics";
-import { useRecheckHealthCheckMutation } from "../../api";
+import {
+  RECHECK_ALL_HEALTH_CHECKS_CACHE_KEY,
+  useRecheckHealthCheckMutation,
+  useRecheckHealthChecksMutation,
+} from "../../api";
 
-import { getHealthCheckItemUrl, splitHealthCheckItems } from "./utils";
+import {
+  getHealthCheckItemKey,
+  getHealthCheckItemUrl,
+  getHealthCheckSettingsUrl,
+  splitHealthCheckItems,
+} from "./utils";
 
 const STATUS_BADGE_COLOR: Record<HealthCheckStatus, BadgeColor> = {
   fail: "negative",
@@ -111,7 +120,11 @@ const HealthCheckItems = ({ check }: HealthCheckItemsProps) => {
   return (
     <Stack gap="sm">
       {problems.map((item, index) => (
-        <HealthCheckItemRow key={index} checkId={check.id} item={item} />
+        <HealthCheckItemRow
+          key={getHealthCheckItemKey(item, index)}
+          checkId={check.id}
+          item={item}
+        />
       ))}
       {passedCount > 0 && (
         <UnstyledButton
@@ -129,7 +142,11 @@ const HealthCheckItems = ({ check }: HealthCheckItemsProps) => {
       )}
       {isPassedOpened &&
         passed.map((item, index) => (
-          <HealthCheckItemRow key={index} checkId={check.id} item={item} />
+          <HealthCheckItemRow
+            key={getHealthCheckItemKey(item, index)}
+            checkId={check.id}
+            item={item}
+          />
         ))}
     </Stack>
   );
@@ -142,6 +159,10 @@ type HealthCheckCardProps = {
 export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
   const [recheck, { isLoading: isRechecking }] =
     useRecheckHealthCheckMutation();
+  const [, { isLoading: isRecheckingAll }] = useRecheckHealthChecksMutation({
+    fixedCacheKey: RECHECK_ALL_HEALTH_CHECKS_CACHE_KEY,
+  });
+  const settingsUrl = getHealthCheckSettingsUrl(check.id);
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(check.docs.page, {
     anchor: check.docs.anchor,
   });
@@ -183,6 +204,11 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
           <Box>
             <Text fw="bold" mb="xs">{t`How to fix`}</Text>
             <Text c="text-secondary">{check.remediation}</Text>
+            {settingsUrl && (
+              <Anchor component={Link} to={settingsUrl} size="sm">
+                {t`Open settings`}
+              </Anchor>
+            )}
           </Box>
         )}
         <Group gap="lg">
@@ -191,7 +217,7 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
             leftSection={
               isRechecking ? <Loader size="xs" /> : <Icon name="sync" />
             }
-            disabled={isRechecking}
+            disabled={isRechecking || isRecheckingAll}
             onClick={handleRecheck}
           >
             {t`Re-check`}

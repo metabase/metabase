@@ -23,6 +23,7 @@ import {
   trackHealthChecksPageViewed,
 } from "../../analytics";
 import {
+  RECHECK_ALL_HEALTH_CHECKS_CACHE_KEY,
   useListHealthChecksQuery,
   useRecheckHealthChecksMutation,
 } from "../../api";
@@ -80,7 +81,7 @@ const HealthChecksSummary = ({
   passedCount,
   totalCount,
 }: HealthChecksSummaryProps) => {
-  const isAllClear = passedCount === totalCount;
+  const isAllClear = totalCount > 0 && passedCount === totalCount;
 
   return (
     <Card p="lg" withBorder>
@@ -102,7 +103,9 @@ const HealthChecksSummary = ({
 export const HealthChecksPage = () => {
   const { data, isLoading, error } = useListHealthChecksQuery();
   const [recheckAll, { isLoading: isRechecking }] =
-    useRecheckHealthChecksMutation();
+    useRecheckHealthChecksMutation({
+      fixedCacheKey: RECHECK_ALL_HEALTH_CHECKS_CACHE_KEY,
+    });
   const [sendToast] = useToast();
 
   useEffect(() => {
