@@ -27,39 +27,47 @@
 
 ;;; ## API Endpoints
 
+(def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
+
 (def ^:private login-throttlers
-  {:username   (throttle/make-throttler :username)
+  {:username     (throttle/make-throttler :username)
    ;; IP Address doesn't have an actual UI field so just show error by username
-   :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
+   :ip-address   (throttle/make-throttler :username, :attempts-threshold 50)
+   :ldap-account (throttle/make-throttler :username)})
 
 (def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
 (def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
 (mu/defn- ldap-login :- [:maybe [:map [:key ms/UUIDString]]]
-  "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
-  authenticated."
+  "Return a new Session for a directory user, `nil` when local login should be tried, or throw when the directory login
+  is refused."
   [username password device-info :- request/DeviceInfo]
-  (when (sso/ldap-enabled)
-    (let [result (auth-identity/login! :provider/ldap
-                                       {:username username
-                                        :password password
-                                        :device-info device-info})]
-      (cond
-        ;; Fallback when the ldap operation fails
-        (contains? #{:ldap-error :server-error} (:error result))
-        nil
+  (when-let [{:keys [dn]} (and (sso/ldap-enabled) (u/ignore-exceptions (sso/find-user username)))]
+    (letfn [(do-login []
+              (let [result (auth-identity/login! :provider/ldap
+                                                 {:username username
+                                                  :password password
+                                                  :device-info device-info})]
+                (cond
+                  ;; Fallback when the ldap operation fails
+                  (contains? #{:ldap-error :server-error} (:error result))
+                  nil
 
-        (= (:error result) :invalid-credentials)
-        (throw (ex-info (str password-fail-message)
-                        {:status-code 401
-                         :errors {:password password-fail-snippet}}))
+                  (= (:error result) :invalid-credentials)
+                  (throw (ex-info (str password-fail-message)
+                                  {:status-code 401
+                                   :errors {:password password-fail-snippet}}))
 
-        (:success? result)
-        (:session result)
+                  (:success? result)
+                  (:session result)
 
-        :else
-        (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
-                                                 :status-code 401}))))))
+                  :else
+                  (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
+                                                           :status-code 401})))))]
+      (if throttling-disabled?
+        (do-login)
+        (throttle/with-throttling [(login-throttlers :ldap-account) (u/lower-case-en dn)]
+          (do-login))))))
 
 (mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
@@ -75,8 +83,6 @@
       (:success? result) (:session result)
       :else (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                      :status-code 401})))))
-
-(def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
 (defn- throttle-check
   "Pass through to `throttle/check` but will not check if `throttling-disabled?` is true"
