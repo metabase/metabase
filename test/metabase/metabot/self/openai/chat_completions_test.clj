@@ -1115,3 +1115,27 @@
                  (chat-completions/models-catalog "Mistral" {:status 200 :body {:object "list"}})
                  (catch clojure.lang.ExceptionInfo e (ex-data e)))]
       (is (= {:api-error true :status-code 400 :error-code :malformed-model-catalog} data)))))
+
+(deftest ^:parallel missing-usage-finish-metadata-test
+  (let [events [{:id "c1", :choices [{:delta {:content "answer"}}]}
+                {:choices [{:delta {}, :finish_reason "length"}]}]
+        convert #(self.core/completion-safe-eduction
+                  (chat-completions/chat-completions->aisdk-chunks-xf)
+                  (chat-completions/usage-once %))]
+    (testing "an early finish without usage still reaches downstream once"
+      (let [parts (into [] (convert events))]
+        (is (=? [{:type :usage, :finish-reason "length", :raw-finish-reason "length"
+                  :usage {:promptTokens 0, :completionTokens 0}}]
+                (filterv #(= :usage (:type %)) parts)))))
+    (testing "reported usage is emitted once and is not replaced with zero"
+      (let [parts (into [] (convert (conj events {:usage {:prompt_tokens 3, :completion_tokens 4}})))]
+        (is (=? [{:type :usage, :finish-reason "length"
+                  :usage {:promptTokens 3, :completionTokens 4}}]
+                (filterv #(= :usage (:type %)) parts)))))
+    (testing "cancellation on the closing text block emits no synthetic usage"
+      (let [seen (atom [])]
+        (reduce (fn [acc part]
+                  (swap! seen conj (:type part))
+                  (if (= :text-end (:type part)) (reduced acc) acc))
+                nil (convert events))
+        (is (= [:start :text-start :text-delta :text-end] @seen))))))

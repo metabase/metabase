@@ -1877,6 +1877,43 @@
         (is (=? {:error-code "structured-output-incomplete", :finish-reason "length"}
                 (ex-data (structured-call-error))))))))
 
+(deftest call-llm-structured-no-usage-length-test
+  (llm.tu/with-default-connections
+    (let [text-event {:id "c1", :choices [{:delta {:content answer-text}}]}
+          tool-event {:choices [{:delta {:tool_calls [{:index 0, :id "call-1"
+                                                       :function {:name "json", :arguments "{"}}]}}]}
+          finish-event {:choices [{:delta {}, :finish_reason "length"}]}
+          stream (fn [events]
+                   (fn [_] (self.core/completion-safe-eduction
+                            (chat-completions/chat-completions->aisdk-chunks-xf)
+                            (chat-completions/usage-once events))))]
+      (testing "a truncated tool call takes priority over valid text when usage is missing"
+        (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)
+                                    openrouter/openrouter (stream [text-event tool-event finish-event])]
+          (is (=? {:error-code "structured-output-incomplete", :finish-reason "length"}
+                  (ex-data (structured-call-error))))))
+      (testing "complete JSON in text remains usable on a length stop"
+        (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)
+                                    openrouter/openrouter (stream [text-event finish-event])]
+          (is (= {:answer "42"} (structured-call-error))))))))
+
+(deftest call-llm-structured-claude-no-usage-length-test
+  (llm.tu/with-default-connections
+    (let [events [{:type "message_start", :message {:id "m1"}}
+                  {:type "content_block_start", :index 0, :content_block {:type "text"}}
+                  {:type "content_block_delta", :index 0, :delta {:type "text_delta", :text answer-text}}
+                  {:type "content_block_stop", :index 0}
+                  {:type "content_block_start", :index 1
+                   :content_block {:type "tool_use", :id "call-1", :name "json"}}
+                  {:type "content_block_delta", :index 1, :delta {:type "input_json_delta", :partial_json "{"}}
+                  {:type "message_delta", :delta {:stop_reason "max_tokens"}}]]
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)
+                                  openrouter/openrouter
+                                  (fn [_] (self.core/completion-safe-eduction
+                                           (self.claude/claude->aisdk-chunks-xf) events))]
+        (is (=? {:error-code "structured-output-incomplete", :finish-reason "length"}
+                (ex-data (structured-call-error))))))))
+
 (deftest call-llm-structured-draft-json-before-unclosed-block-test
   (llm.tu/with-default-connections
     (testing "a closed JSON block is used when an unclosed block after it was cut off by a length stop"
@@ -2380,6 +2417,30 @@
           (is (= "ai_usage_limit_reached" (:error-code (ex-data ex))))
           (is (zero? @adapter-calls)
               "provider adapter must not be reached when usage limit is hit"))))))
+
+(deftest call-llm-structured-with-trace-usage-limit-request-id-test
+  (testing "the current agent loop is excluded from its own usage limit"
+    (let [request-id "00000000-0000-0000-0000-000000000001"
+          seen (atom [])
+          response (test-util/mock-llm-response
+                    [{:type :tool-input, :id "call-1", :function "json", :arguments {:answer "42"}}])]
+      (mt/with-dynamic-fn-redefs [usage/check-usage-limits! (fn [& [id]]
+                                                              (when id
+                                                                (swap! seen conj id)
+                                                                (when (not= id request-id) "limit")))
+                                  scope/resolve-user-permissions (constantly scope/all-yes-permissions)
+                                  self.claude/claude (constantly response)]
+        (is (= {:answer "42"} (:result (try-structured-call {:request-id request-id}))))
+        (is (= :metabot/usage-limit-reached
+               (:type (ex-data (try-structured-call {:request-id "another-loop"})))))
+        (is (= [request-id "another-loop"] @seen))))))
+
+(deftest call-llm-structured-with-trace-warns-on-missing-request-id-test
+  (mt/with-dynamic-fn-redefs [usage/check-usage-limits! (constantly "limit")]
+    (let [messages (log.capture/with-log-messages-for-level [messages [metabase.metabot.self :warn]]
+                     (try-structured-call {})
+                     (messages))]
+      (is (some #(str/includes? (:message %) "invoked without :request-id") messages)))))
 
 (deftest call-llm-structured-with-trace-throws-on-permission-denied-test
   (testing ":required-permission is checked against the caller's metabot perms; a missing

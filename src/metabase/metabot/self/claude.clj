@@ -184,8 +184,11 @@
            (if (reduced? result)
              result
              (let [result (cond-> result
-                            ;; flush last-known usage if stream ended before message_delta.
-                            @last-usage (rf (usage-part)))]
+                            ;; Preserve an early stop even when the provider omitted token usage.
+                            (or @last-usage
+                                (contains? #{"length" "content-filter"}
+                                           (core/stop-reason->finish-reason stop-reasons @stop-reason)))
+                            (rf (usage-part)))]
                (if (reduced? result) result (rf result))))))
         ([result {t :type :keys [message content_block delta error index] :as chunk}]
          (let [block-type (when content_block
