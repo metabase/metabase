@@ -3155,7 +3155,8 @@
            transforms
            transforms.base
            util}
-   :model-imports #{:model/Transform
+   :model-imports #{:model/Collection
+                    :model/Transform
                     :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun

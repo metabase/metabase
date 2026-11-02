@@ -2283,3 +2283,97 @@
                          :last_run :status)))
               (testing "cancelling a transform with no running run is a 404"
                 (mt/user-http-request :crowberto :post 404 (format "transform/%s/cancel" id))))))))))
+
+;;; ------------------------------------------------------------
+;;; DELETE /api/transform/collection/:id
+;;; ------------------------------------------------------------
+
+(deftest delete-transforms-folder-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
+                   :model/Collection {subfolder-id :id} {:name      "Subfolder"
+                                                         :namespace :transforms
+                                                         :location  (format "/%d/" folder-id)}
+                   :model/Transform  {transform-id :id} {:collection_id folder-id}
+                   :model/Transform  {nested-id :id}    {:collection_id subfolder-id}]
+      (mt/user-http-request :crowberto :delete 204 (format "transform/collection/%d" folder-id))
+      (testing "the folder, its subfolder and the transforms in them are gone"
+        (is (false? (t2/exists? :model/Collection :id [:in [folder-id subfolder-id]])))
+        (is (false? (t2/exists? :model/Transform :id [:in [transform-id nested-id]])))))))
+
+(deftest delete-empty-transforms-folder-test
+  (mt/with-temp [:model/Collection {folder-id :id} {:name "Folder" :namespace :transforms}]
+    (mt/user-http-request :crowberto :delete 204 (format "transform/collection/%d" folder-id))
+    (is (false? (t2/exists? :model/Collection :id folder-id)))))
+
+(deftest delete-transforms-folder-rejects-other-collections-test
+  (mt/with-temp [:model/Collection {collection-id :id} {:name "Not a transforms folder"}]
+    (is (= "Only a transforms folder can be deleted this way."
+           (mt/user-http-request :crowberto :delete 400 (format "transform/collection/%d" collection-id))))
+    (is (t2/exists? :model/Collection :id collection-id))))
+
+(mt/when-ee-evailable
+ (deftest delete-transforms-folder-needs-write-permission-on-its-transforms-test
+   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+     (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
+                    :model/Collection {subfolder-id :id} {:name      "Subfolder"
+                                                          :namespace :transforms
+                                                          :location  (format "/%d/" folder-id)}
+                    :model/Transform  {transform-id :id} {:collection_id subfolder-id}]
+       (let [url (format "transform/collection/%d" folder-id)]
+         (testing "a user who is not a data analyst cannot delete the folder"
+           (mt/user-http-request :rasta :delete 403 url)
+           (is (t2/exists? :model/Transform :id transform-id)))
+         (mt/with-data-analyst-role! (mt/user->id :lucky)
+           (testing "an analyst without transforms permission on the database cannot delete the folder"
+             (mt/user-http-request :lucky :delete 403 url)
+             (is (t2/exists? :model/Collection :id subfolder-id))
+             (is (t2/exists? :model/Transform :id transform-id)))
+           (with-transform-db-perms!
+             (testing "with transforms permission the analyst can delete the folder"
+               (mt/user-http-request :lucky :delete 204 url)
+               (is (false? (t2/exists? :model/Collection :id [:in [folder-id subfolder-id]])))
+               (is (false? (t2/exists? :model/Transform :id transform-id)))))))))))
+
+(deftest delete-transforms-folder-blocked-by-transform-without-premium-feature-test
+  (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
+                 :model/Transform  {transform-id :id} {:collection_id folder-id}]
+    (mt/with-premium-features #{}
+      (testing "a transform whose premium feature is off blocks the delete of its folder, also for a superuser"
+        (mt/user-http-request :crowberto :delete 403 (format "transform/collection/%d" folder-id))
+        (is (t2/exists? :model/Collection :id folder-id))
+        (is (t2/exists? :model/Transform :id transform-id))))))
+
+(defn- create-and-run-transform!
+  "Create a transform in the folder `folder-id` that writes the table `table-name`, run it as `user`, and return it."
+  [user folder-id table-name]
+  (let [transform (mt/user-http-request user :post 200 "transform"
+                                        {:name          table-name
+                                         :collection_id folder-id
+                                         :source        {:type "query" :query (make-query "Gadget")}
+                                         :target        {:type "table" :schema (get-test-schema) :name table-name}})]
+    (test-run! user (:id transform))
+    transform))
+
+(deftest delete-transforms-folder-with-tables-test
+  (testing "DELETE /api/transform/collection/:id keeps the output tables, unless delete-tables=true"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transforms-api-users! [user]
+            (with-transform-db-perms!
+              (with-transform-cleanup! [kept-table    "folder_kept_table"
+                                        dropped-table "folder_dropped_table"]
+                (mt/with-temp [:model/Collection {kept-folder-id :id}    {:name "Kept tables" :namespace :transforms}
+                               :model/Collection {dropped-folder-id :id} {:name "Dropped tables" :namespace :transforms}]
+                  (let [kept    (create-and-run-transform! user kept-folder-id kept-table)
+                        dropped (create-and-run-transform! user dropped-folder-id dropped-table)]
+                    (testing "without delete-tables, the transform is gone and its table stays"
+                      (mt/user-http-request user :delete 204 (format "transform/collection/%d" kept-folder-id))
+                      (is (false? (t2/exists? :model/Transform :id (:id kept))))
+                      (is (true? (transforms-base.u/target-table-exists? kept))))
+                    (testing "with delete-tables=true, the transform and its table are gone"
+                      (mt/user-http-request user :delete 204
+                                            (format "transform/collection/%d?delete-tables=true" dropped-folder-id))
+                      (is (false? (t2/exists? :model/Transform :id (:id dropped))))
+                      (is (false? (transforms-base.u/target-table-exists? dropped))))))))))))))
