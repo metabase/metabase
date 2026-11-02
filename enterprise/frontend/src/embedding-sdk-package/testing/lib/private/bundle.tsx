@@ -15,8 +15,6 @@ import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/typ
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import type { MetabaseTestOptions } from "embedding-sdk-package/testing/components/MetabaseTestProvider";
 
-import { formatDate, formatDateRange } from "./dates";
-
 type ChildrenProps = { children?: ReactNode };
 
 // eslint-disable-next-line metabase/no-literal-metabase-strings -- the default name a real instance reports
@@ -66,90 +64,69 @@ function ChildrenOutput({ children }: ChildrenProps) {
   return <>{children}</>;
 }
 
-function rejectWithNoMock(bundleFunctionName: string) {
-  return Promise.reject(
-    new Error(
-      // eslint-disable-next-line metabase/no-literal-metabase-strings -- developer-facing error naming SDK components
-      `No mock for ${bundleFunctionName}. Pass a mock for the data this component requests to MetabaseTestProvider.`,
-    ),
-  );
+function throwNoMock(bundleExportName: string): never {
+  throw new Error(`No mock for ${bundleExportName}.`);
 }
 
 export function createMockSdkBundle({
-  CollectionBrowser,
-  CreateDashboardModal,
-  CreateQuestion,
-  DateRangeCalendar,
-  DateRangePopover,
-  EditableDashboard,
-  InteractiveDashboard,
-  InteractiveQuestion,
-  MetabotQuestion,
-  StaticDashboard,
-  StaticQuestion,
+  CollectionBrowser = EmptyOutput,
+  CreateDashboardModal = EmptyOutput,
+  CreateQuestion = EmptyOutput,
+  DateRangeCalendar = EmptyOutput,
+  DateRangePopover = ChildrenOutput,
+  EditableDashboard = EmptyOutput,
+  InteractiveDashboard = EmptyOutput,
+  InteractiveQuestion = ChildrenOutput,
+  MetabotQuestion = EmptyOutput,
+  StaticDashboard = EmptyOutput,
+  StaticQuestion = ChildrenOutput,
   user = null,
   loginStatus = SIGNED_IN_STATUS,
   applicationName = DEFAULT_APPLICATION_NAME,
   availableFonts = NO_FONTS,
 }: MetabaseTestOptions): MetabaseEmbeddingSdkBundleExports {
-  const CreateQuestionOutput = CreateQuestion ?? EmptyOutput;
-  const DateRangeCalendarOutput = DateRangeCalendar ?? EmptyOutput;
-  const DateRangePopoverOutput = DateRangePopover ?? ChildrenOutput;
-  const InteractiveQuestionOutput = InteractiveQuestion ?? ChildrenOutput;
-  const StaticQuestionOutput = StaticQuestion ?? ChildrenOutput;
-
   return {
-    CollectionBrowser: CollectionBrowser ?? EmptyOutput,
-    CreateDashboardModal: CreateDashboardModal ?? EmptyOutput,
+    CollectionBrowser,
+    CreateDashboardModal,
     CreateQuestion: (props?: CreateQuestionProps) => (
-      <CreateQuestionOutput {...props} />
+      <CreateQuestion {...props} />
     ),
     DateRangeCalendar: (props: DateRangeCalendarProps) => (
-      <DateRangeCalendarOutput {...props} />
+      <DateRangeCalendar {...props} />
     ),
     DateRangePopover: (props: DateRangePopoverProps) => (
-      <DateRangePopoverOutput {...props} />
+      <DateRangePopover {...props} />
     ),
-    EditableDashboard: EditableDashboard ?? EmptyOutput,
-    InteractiveDashboard: InteractiveDashboard ?? EmptyOutput,
+    EditableDashboard,
+    InteractiveDashboard,
     InteractiveQuestion: Object.assign(
-      (props: InteractiveQuestionProps) => (
-        <InteractiveQuestionOutput {...props} />
-      ),
+      (props: InteractiveQuestionProps) => <InteractiveQuestion {...props} />,
       INTERACTIVE_QUESTION_SUBCOMPONENTS,
     ),
     ComponentProvider: memo(ChildrenOutput),
-    MetabotQuestion: MetabotQuestion ?? EmptyOutput,
+    MetabotQuestion,
     SdkDebugInfo: EmptyOutput,
-    StaticDashboard: StaticDashboard ?? EmptyOutput,
+    StaticDashboard,
     StaticQuestion: Object.assign(
-      (props: StaticQuestionProps) => <StaticQuestionOutput {...props} />,
+      (props: StaticQuestionProps) => <StaticQuestion {...props} />,
       STATIC_QUESTION_SUBCOMPONENTS,
     ),
-    MetabotSubscriber: () => null,
-    SdkThemeProviderWithStore: ChildrenOutput,
-    getSdkStore: () => {
-      throw new Error(
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- developer-facing error naming SDK components
-        "MetabaseTestProvider does not support MetabaseProvider. Render the component under test without it.",
-      );
-    },
-    resolveDatasetQuery: () => () => rejectWithNoMock("resolveDatasetQuery"),
-    queryDataset: () => () => rejectWithNoMock("queryDataset"),
-    queryQuestion: () => () => rejectWithNoMock("queryQuestion"),
-    createDashboard: () => () => rejectWithNoMock("createDashboard"),
-    executeAction: () => () => rejectWithNoMock("executeAction"),
+    MetabotSubscriber: () => throwNoMock("MetabotSubscriber"),
+    SdkThemeProviderWithStore: () => throwNoMock("SdkThemeProviderWithStore"),
+    getSdkStore: () => throwNoMock("getSdkStore"),
+    resolveDatasetQuery: () => () => throwNoMock("resolveDatasetQuery"),
+    queryDataset: () => () => throwNoMock("queryDataset"),
+    queryQuestion: () => () => throwNoMock("queryQuestion"),
+    createDashboard: () => () => throwNoMock("createDashboard"),
+    executeAction: () => () => throwNoMock("executeAction"),
     getApplicationName: () => applicationName,
     getAvailableFonts: () => availableFonts,
     getLoginStatus: () => loginStatus,
     getUser: () => user,
-    useInitData: () => undefined,
-    useLogVersionInfo: () => undefined,
-    validateFunctionSchema: () => ({
-      validateParameters: () => ({ success: true }),
-      validateReturnValue: () => ({ success: true }),
-    }),
-    formatDate,
-    formatDateRange,
+    useInitData: () => throwNoMock("useInitData"),
+    useLogVersionInfo: () => throwNoMock("useLogVersionInfo"),
+    validateFunctionSchema: () => throwNoMock("validateFunctionSchema"),
+    formatDate: () => throwNoMock("formatDate"),
+    formatDateRange: () => throwNoMock("formatDateRange"),
   };
 }
