@@ -218,14 +218,11 @@ jobs:
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
       - name: Configure OSI generation demo for this PR environment
-        if: ${{ !inputs.self_hosting }}
+        if: ${{ !inputs.self_hosting && !inputs.stats_dump }}
         run: |
-          # Let the token saved in the app DB win over the PR environment's
-          # default license, which does not include the Library features.
-          yq -i 'select(.kind == "Metabase").spec.configuration.envVars |=
-                   (map(select(.name != "MB_PREMIUM_EMBEDDING_TOKEN")) + [
-                     {"name": "MB_ENABLE_OSI_GENERATION_DEMO", "value": "true"}
-                   ])' ./metabase.yml
+          yq -i 'select(.kind == "Metabase").spec.configuration.envVars += [
+                   {"name": "MB_ENABLE_OSI_GENERATION_DEMO", "value": "true"}
+                 ]' ./metabase.yml
       - name: Inject stats-dump env vars into Deployment YAML
         if: ${{ !inputs.self_hosting && inputs.stats_dump }}
         env:
