@@ -246,13 +246,20 @@
                     (is (some #(= (:id external-users-group) (:id %)) external-groups))))))))))
     (testing "when tenants feature is disabled"
       (mt/with-temporary-setting-values [use-tenants false]
-        (mt/with-temp [:model/PermissionsGroup regular-group {:name "Regular Group" :is_tenant_group false}]
+        (mt/with-temp [:model/PermissionsGroup regular-group {:name "Regular Group" :is_tenant_group false}
+                       :model/PermissionsGroup tenant-group {:name "Tenant Group" :is_tenant_group true}]
           (let [all-groups (fetch-groups)
                 internal-groups (fetch-groups :tenancy "internal")
                 external-groups (fetch-groups :tenancy "external")
-                regular-id (:id regular-group)]
+                regular-id (:id regular-group)
+                tenant-id (:id tenant-group)
+                all-external-users-id (:id (perms-group/all-external-users))]
             (testing "default behavior excludes tenant groups when tenants disabled"
-              (is (some #(= regular-id (:id %)) all-groups)))
+              (is (some #(= regular-id (:id %)) all-groups))
+              (is (not (some #(= tenant-id (:id %)) all-groups)))
+              (is (not (some #(= all-external-users-id (:id %)) all-groups))))
+            (testing "tenancy=internal also excludes tenant groups"
+              (is (not (some #(= tenant-id (:id %)) internal-groups))))
             (testing "tenancy=internal still works when tenants disabled"
               (is (some #(= regular-id (:id %)) internal-groups)))
             (testing "tenancy=external returns empty when tenants disabled"

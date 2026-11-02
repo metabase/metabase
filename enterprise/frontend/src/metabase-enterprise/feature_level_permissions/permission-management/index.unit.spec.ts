@@ -97,6 +97,53 @@ describe("getFeatureLevelDataPermissions", () => {
     });
   });
 
+  describe("tenant groups", () => {
+    it("drops the table metadata and database permissions in the group view", () => {
+      const permissions = getFeatureLevelDataPermissions({
+        entityId: { databaseId },
+        groupId,
+        groupType: "external",
+        permissions: getPermissionGraph(),
+        dataAccessPermissionValue: DataPermissionValue.UNRESTRICTED,
+        defaultGroup,
+        permissionSubject: "schemas",
+        permissionView: "group",
+      });
+
+      expect(permissions).toHaveLength(1);
+      expect(permissions[0]).toMatchObject({ permission: "download" });
+    });
+
+    it("keeps them in the database view but locks them, since tenant users never manage a database", () => {
+      const permissions = getFeatureLevelDataPermissions({
+        entityId: { databaseId },
+        groupId,
+        groupType: "external",
+        permissions: getPermissionGraph(),
+        dataAccessPermissionValue: DataPermissionValue.UNRESTRICTED,
+        defaultGroup,
+        permissionSubject: "schemas",
+        permissionView: "database",
+      });
+
+      expect(permissions).toHaveLength(3);
+      expect(permissions[0]).toMatchObject({
+        permission: "download",
+        isDisabled: false,
+      });
+      expect(permissions[1]).toMatchObject({
+        permission: "data-model",
+        isDisabled: true,
+        disabledTooltip: "Tenant users cannot manage database permissions",
+      });
+      expect(permissions[2]).toMatchObject({
+        permission: "details",
+        isDisabled: true,
+        disabledTooltip: "Tenant users cannot manage database permissions",
+      });
+    });
+  });
+
   describe("tables subject (schema level)", () => {
     it("returns 2 permissions without transforms regardless of showTransformPermissions", () => {
       PLUGIN_TRANSFORMS.isEnabled = true;

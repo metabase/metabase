@@ -1,12 +1,16 @@
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { setupUserEndpoints } from "__support__/server-mocks";
+import {
+  setupGroupsEndpoint,
+  setupTenantEntpoints,
+  setupUserEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import type { User } from "metabase-types/api";
+import type { Group, Tenant, User } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -26,9 +30,15 @@ export const defaultUser = createMockUser({
 export const setup = ({
   userData,
   enterprisePlugins,
+  external = false,
+  groups = [],
+  tenants = [],
 }: {
   userData: Partial<User>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  external?: boolean;
+  groups?: Omit<Group, "members">[];
+  tenants?: Tenant[];
 }) => {
   setupUserEndpoints(createMockUser(userData));
 
@@ -39,6 +49,7 @@ export const setup = ({
         "token-features": createMockTokenFeatures({
           advanced_permissions: true,
           sandboxes: true,
+          tenants: true,
         }),
       }),
     ),
@@ -48,7 +59,8 @@ export const setup = ({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  fetchMock.get("path:/api/permissions/group", []);
+  setupGroupsEndpoint(groups);
+  setupTenantEntpoints(tenants);
   fetchMock.get("path:/api/permissions/membership", {});
 
   // setupPermissionsGraphEndpoints([]);
@@ -57,6 +69,7 @@ export const setup = ({
     <EditUserModal
       params={{ userId: String(userData.id) }}
       onClose={onCloseSpy}
+      external={external}
     />,
     {
       storeInitialState,
