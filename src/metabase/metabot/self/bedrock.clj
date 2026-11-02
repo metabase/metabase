@@ -400,7 +400,7 @@
   "Like [[model-family]], but throws for models outside the supported families."
   [model]
   (or (model-family model)
-      (throw (ex-info (tru "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported." model)
+      (throw (ex-info (tru "Unsupported Bedrock model {0}. Supported model IDs use the anthropic.* or openai.* prefix; openai.gpt-oss* is not supported." model)
                       {:api-error  true
                        :error-code :unsupported-model
                        :model      model}))))

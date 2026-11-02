@@ -337,14 +337,16 @@
     (doseq [type ["anthropic" "openai" "openrouter" "bedrock" "metabase"]]
       (is (nil? (llm.provider/connection-model type {:api-key "sk-whatever"})) type))))
 
-(deftest config-complete?-test
+(deftest config-complete?-api-key-test
   (testing "API-key types are complete exactly when the key is non-blank"
     (doseq [type ["anthropic" "openai" "openrouter"]]
       (testing type
         (is (true? (llm.provider/config-complete? type {:api-key "sk-whatever"})))
         (is (false? (llm.provider/config-complete? type {:api-key ""})))
         (is (false? (llm.provider/config-complete? type {:api-key nil})))
-        (is (false? (llm.provider/config-complete? type nil))))))
+        (is (false? (llm.provider/config-complete? type nil)))))))
+
+(deftest config-complete?-google-test
   (testing "google needs a service account key on its own, or an OAuth token together with a project ID"
     (is (true? (llm.provider/config-complete? "google" {:service-account-key "{\"type\":\"service_account\"}"})))
     (is (true? (llm.provider/config-complete? "google" {:oauth-access-token "ya29.token"
@@ -357,7 +359,9 @@
       (is (false? (llm.provider/config-complete? "google" {:oauth-access-token "ya29.token"
                                                            :project-id         "  "}))))
     (testing "a project ID alone authenticates nothing"
-      (is (false? (llm.provider/config-complete? "google" {:project-id "my-project"})))))
+      (is (false? (llm.provider/config-complete? "google" {:project-id "my-project"}))))))
+
+(deftest config-complete?-azure-test
   (testing "azure needs an API key and a base URL"
     (is (true? (llm.provider/config-complete? "azure" {:api-key         "azure-key"
                                                        :base-url        "https://r.services.ai.azure.com/openai"
@@ -370,14 +374,18 @@
                   "configured before the connection list existed carries it in the model reference instead, so a "
                   "connection without one still counts as complete")
       (is (true? (llm.provider/config-complete? "azure" {:api-key  "azure-key"
-                                                         :base-url "https://r.services.ai.azure.com/openai"})))))
+                                                         :base-url "https://r.services.ai.azure.com/openai"}))))))
+
+(deftest config-complete?-vllm-test
   (testing "vLLM needs a base URL, and its API key is optional — a server started without --api-key takes none"
     (is (true? (llm.provider/config-complete? "vllm" {:base-url "http://vllm.internal:8000/v1"})))
     (is (true? (llm.provider/config-complete? "vllm" {:base-url "http://vllm.internal:8000/v1"
                                                       :api-key  "local-dev-key"})))
     (is (false? (llm.provider/config-complete? "vllm" {:api-key "local-dev-key"})))
     (is (false? (llm.provider/config-complete? "vllm" {:base-url "  "})))
-    (is (false? (llm.provider/config-complete? "vllm" nil))))
+    (is (false? (llm.provider/config-complete? "vllm" nil)))))
+
+(deftest config-complete?-bedrock-test
   (testing "bedrock takes both AWS keys or none: a keyless connection signs with the AWS default credentials chain"
     (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                                          :secret-access-key "test-secret"})))
@@ -387,7 +395,9 @@
       (is (false? (llm.provider/config-complete? "bedrock" {:access-key-id "AKIAIOSFODNN7EXAMPLE"})))
       (is (false? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                                             :secret-access-key ""})))
-      (is (false? (llm.provider/config-complete? "bedrock" {:secret-access-key "test-secret"})))))
+      (is (false? (llm.provider/config-complete? "bedrock" {:secret-access-key "test-secret"}))))))
+
+(deftest config-complete?-managed-test
   (testing "the managed type carries no credentials and is complete exactly when the LLM proxy is configured"
     (mt/with-premium-features #{:metabase-ai-managed}
       (mt/with-temporary-setting-values [llm-proxy-base-url "https://proxy.example.com"]
