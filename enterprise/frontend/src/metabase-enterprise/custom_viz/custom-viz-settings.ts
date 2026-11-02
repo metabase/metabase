@@ -148,13 +148,14 @@ function toHostDefinition(
         // A built-in widget renders these in the host, so no sandbox object may reach it.
         return isComponentWidget(widget) ? props : copyPluginProps(props);
       }),
-    widget: isComponentWidget(widget)
-      ? wrapPluginWidget(
-          (container, initialProps) => mount(widget, container, initialProps),
-          plugin,
-          prefix,
-        )
-      : widget,
+    widget:
+      typeof widget === "function"
+        ? wrapPluginWidget(
+            (container, initialProps) => mount(widget, container, initialProps),
+            plugin,
+            prefix,
+          )
+        : widget,
   };
 }
 
