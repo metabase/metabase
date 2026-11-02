@@ -61,6 +61,12 @@
    {:context "Snippet references should skip validation"
     :dialect "postgres" :sql "SELECT * FROM {{snippet: common_user_joins}}"
     :expected {:valid? true :dialect "postgres"}}
+   {:context "MotherDuck SQL is validated as DuckDB, including DuckDB-only syntax"
+    :dialect "motherduck" :sql "SELECT a, count(*) FROM t GROUP BY ALL QUALIFY row_number() OVER (ORDER BY a) <= 3"
+    :expected {:valid? true :dialect "motherduck"}}
+   {:context "MotherDuck SQL with syntax errors fails validation"
+    :dialect "motherduck" :sql "SELECT * FORM users"
+    :expected {:valid? false}}
    {:context "Validation should be skipped when no dialect is provided"
     :dialect nil :sql "SELECT * FROM users"
     :expected {:valid? true :dialect nil}}

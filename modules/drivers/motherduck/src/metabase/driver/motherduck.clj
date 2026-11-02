@@ -292,6 +292,16 @@
 ;;; |                                              Query processing                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; The formatter has no DuckDB dialect, and the standard one splits Postgres operators like `->>` and parameters like
+;; `$1`, which DuckDB shares. Format as Postgres.
+(defmethod driver/prettify-native-form :motherduck
+  [_driver native-form]
+  (sql.u/format-sql-and-fix-params :postgres native-form))
+
+;; Native SQL is DuckDB's, which differs from Postgres's in ways that matter to Metabot, such as `/`, `~` and dates.
+(defmethod driver/llm-sql-dialect-resource :motherduck [_]
+  "metabot/prompts/dialects/duckdb.md")
+
 ;; Give string parameters an explicit type so the endpoint can determine result types at prepare
 ;; time. Casting only expression-literal-text-value misses strings in CASE branches and function
 ;; arguments, which also reach this method.

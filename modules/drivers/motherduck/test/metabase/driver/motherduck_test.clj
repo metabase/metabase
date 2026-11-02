@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.motherduck-test
   "SQL compilation and connection tests for the MotherDuck driver."
   (:require
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
@@ -38,6 +39,22 @@
    (java.time LocalDateTime OffsetTime)))
 
 (set! *warn-on-reflection* true)
+
+(deftest ^:parallel prettify-native-form-test
+  (testing "operators and parameters that DuckDB shares with Postgres survive formatting"
+    (is (= ["SELECT"
+            "  y :: int,"
+            "  z ->> 'a',"
+            "  $1"
+            "FROM"
+            "  t"]
+           (str/split-lines (driver/prettify-native-form :motherduck "SELECT y::int, z->>'a', $1 FROM t"))))))
+
+(deftest ^:parallel llm-sql-dialect-resource-test
+  (testing "Metabot gets DuckDB's dialect instructions rather than the inherited Postgres ones"
+    (let [path (driver/llm-sql-dialect-resource :motherduck)]
+      (is (= "metabot/prompts/dialects/duckdb.md" path))
+      (is (some? (io/resource path))))))
 
 ;; Check DuckDB JSON extraction syntax without a database connection.
 (deftest ^:parallel json-query-test
