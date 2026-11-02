@@ -780,6 +780,22 @@
             (is (= ["a" "b" "c"] (collect (reverse names))))
             (is (= ["a" "b" "c"] (collect (shuffle names))))))))))
 
+(deftest keep-first-children-test
+  (let [long-description (apply str (repeat 600 "x"))
+        rows [{:id 1, :name "b", :description nil}
+              {:id 2, :name "a", :description long-description}
+              {:id 3, :name "a", :description long-description}
+              {:id 4, :name "a", :description nil}
+              {:id 5, :name "z", :description "last"}]
+        collect #(reduce @#'table/keep-first-children (sorted-set) %)]
+    (with-redefs [table/max-table-children 3]
+      (let [expected [["a" nil 4] ["a" (subs long-description 0 500) 2]
+                      ["a" (subs long-description 0 500) 3]]]
+        (is (= expected (vec (collect rows))))
+        (is (= expected (vec (collect (reverse rows)))))
+        (is (= expected (vec (collect (shuffle rows)))))
+        (is (every? #(<= (count %) 3) (reductions @#'table/keep-first-children (sorted-set) rows)))))))
+
 (deftest field-path-test
   (testing "a plain column is named by itself"
     (is (= "total" (#'table/field-path {:name "total"})))
