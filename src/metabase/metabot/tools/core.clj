@@ -121,7 +121,10 @@
    [:args         :any]
    [:scope                  {:optional true} [:maybe :string]]
    [:metabot/capabilities   {:optional true} [:maybe [:set :keyword]]]
-   [:metabot/title-fn       {:optional true} [:maybe fn?]]])
+   [:metabot/title-fn       {:optional true} [:maybe fn?]]
+   ;; Set by a tool that saves something. A failure it did not declare may have come after the save,
+   ;; so `metabase.metabot.tools.runtime/invoke` ends the turn instead of letting the model try again.
+   [:metabot/writes?        {:optional true} [:maybe :boolean]]])
 
 (mr/def ::result
   "What [[handle]] returns. Success only — a failure is thrown.

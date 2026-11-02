@@ -17,7 +17,7 @@
   raised it. The runtime's own codes are a closed, unqualified vocabulary, [[runtime-codes]].
   Every unrecoverable failure ends the turn except `:internal`, the code of an ordinary exception no
   tool declared: the agent loop lets a turn survive one of those, or none when its profile requires
-  a tool call."
+  a tool call. A tool that writes gets none either: its undeclared failure is an [[unconfirmed-write]]."
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
@@ -51,12 +51,26 @@
    :scope-denied       :unrecoverable
    :internal           :unrecoverable
    :jvm-error          :unrecoverable
-   :interrupted        :unrecoverable})
+   :interrupted        :unrecoverable
+   :unconfirmed-write  :unrecoverable})
 
 (defn undeclared?
   "Whether `code` is `:internal`, the code of an ordinary exception that no tool declared."
   [code]
   (= :internal code))
+
+(defn- unconfirmed-write
+  "The ToolError to report for `error` from a tool whose declaration sets `:metabot/writes?`.
+
+  A failure that no tool declared, coded by `tools.error/classify`, may have come after the write. It
+  becomes `:unconfirmed-write`, which ends the turn and tells the user to check before trying again,
+  so the model can't write a second time. A declared error passes through unchanged."
+  [{:keys [code] :as error}]
+  (if (#{:internal :jvm-error :interrupted} code)
+    {:class        :unrecoverable
+     :code         :unconfirmed-write
+     :user-message (tru "Something went wrong. The change may have been saved, so check before you try again.")}
+    error))
 
 ;;; ------------------------------------------------ Schemas -------------------------------------------------------
 
@@ -343,7 +357,8 @@
   3. the scope is checked, and a denial is unrecoverable;
   4. the tool runs with the dynamic vars bound from `ctx`, through `tools.core/call`;
   5. its result is validated against `tools.core/result` and its `:output` rendered to a string;
-  6. any exception is classified, logged in full, and rendered for its audience."
+  6. any exception is classified, logged in full, and rendered for its audience; a tool that writes
+     has a failure no tool declared reported as an [[unconfirmed-write]]."
   [entries ctx tool-name args]
   (let [tool-names (:tool-names ctx)]
     (try
@@ -355,6 +370,7 @@
             (->> (checked-result tool-name))
             rendered-output))
       (catch Throwable e
-        (let [error (tools.error/classify e)]
+        (let [error (cond-> (tools.error/classify e)
+                      (get-in entries [tool-name :declaration :metabot/writes?]) unconfirmed-write)]
           (log-failure! tool-name error e)
           (render error tool-names))))))

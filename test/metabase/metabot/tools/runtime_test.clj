@@ -91,6 +91,15 @@
                    "overflow"  (StackOverflowError.)
                    "interrupt" (InterruptedException.))))))
 
+(def ^:private writing-tool
+  (tool {:name "write" :description "Writes, then fails."
+         :args [:map {:closed true} [:declared {:optional true} :boolean]]
+         :metabot/writes? true}
+        (fn [{:keys [declared]} _]
+          (if declared
+            (tools.error/unrecoverable! ::out-of-ink {:user-message "Out of ink."})
+            (throw (ex-info "Connection reset after the commit" {}))))))
+
 (def ^:private bad-shape-tool
   (tool {:name "bad_shape" :description "Returns something that is not a result."
          :args [:map {:closed true}]}
@@ -127,7 +136,8 @@
 
 (def ^:private entries
   (tools/entries [happy-tool recoverable-tool unrecoverable-tool silent-unrecoverable-tool
-                  crashing-tool jvm-failing-tool bad-shape-tool scoped-tool memory-tool multi-item-tool]))
+                  crashing-tool jvm-failing-tool writing-tool bad-shape-tool scoped-tool memory-tool
+                  multi-item-tool]))
 
 (def ^:private all-tool-names
   (into #{"search" "read_resource"} (keys entries)))
@@ -236,6 +246,18 @@
       (doseq [secret ["SELECT" "secrets" "clojure.lang" "hunter2"]]
         (is (not (str/includes? (:output outcome) secret))
             (str "leaked " secret))))))
+
+(deftest ^:parallel a-tool-that-writes-ends-the-turn-on-an-undeclared-failure-test
+  (testing "the write may have happened, so the user is told to check before trying again"
+    (is (= {:output "This call failed and the user was shown the error (:unconfirmed-write). Don't retry it."
+            :error  {:class        :unrecoverable
+                     :code         :unconfirmed-write
+                     :user-message (str "Something went wrong. The change may have been saved, "
+                                        "so check before you try again.")}}
+           (invoke "write" {}))))
+  (testing "a declared error passes through"
+    (is (= {:class :unrecoverable :code ::out-of-ink :user-message "Out of ink."}
+           (:error (invoke "write" {:declared true}))))))
 
 (deftest ^:parallel a-wrong-handler-result-is-our-bug-not-the-models-test
   (is (= {:class :unrecoverable :code :internal} (:error (invoke "bad_shape" {})))))
@@ -407,12 +429,13 @@
             :scope-denied      :unrecoverable
             :internal          :unrecoverable
             :jvm-error         :unrecoverable
-            :interrupted       :unrecoverable}
+            :interrupted       :unrecoverable
+            :unconfirmed-write :unrecoverable}
            tools.runtime/runtime-codes))
     (testing "and every one of them is reachable through invoke"
       ;; The scoped case needs a ctx that grants nothing; the rest run under the default
       ;; unrestricted one.
-      (is (= #{:unknown-tool :invalid-arguments :scope-denied :internal :jvm-error :interrupted}
+      (is (= #{:unknown-tool :invalid-arguments :scope-denied :internal :jvm-error :interrupted :unconfirmed-write}
              (set (keep (fn [[tool-name args overrides]]
                           (get-in (tools.runtime/invoke entries (ctx overrides) tool-name args)
                                   [:error :code]))
@@ -421,4 +444,5 @@
                          ["scoped" {} {:user-scope #{}}]
                          ["crash" {}]
                          ["jvm_failure" {:kind "overflow"}]
-                         ["jvm_failure" {:kind "interrupt"}]])))))))
+                         ["jvm_failure" {:kind "interrupt"}]
+                         ["write" {}]])))))))

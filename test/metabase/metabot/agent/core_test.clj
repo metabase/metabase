@@ -26,6 +26,7 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
@@ -343,23 +344,12 @@
   [{:type    "code_editor"
     :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}])
 
-(defn- run-sql-turn!
-  "Run one turn whose LLM responses call `create_sql_query` against `database-id` and then answer in text, while the
-  user views `viewing`, by default a SQL editor. `calls` holds the call IDs of each response, by default one response
-  with one call. `writer`, when given, receives the turn as SSE lines, the way the chat endpoint streams it. Return the
-  LLM requests and the turn's parts."
-  [profile-id database-id & {:keys [viewing calls writer] :or {viewing sql-editor-viewing, calls [["t1"]]}}]
-  (let [requests  (atom [])
-        responses (mapv (fn [ids]
-                          (mapv (fn [id]
-                                  {:type      :tool-input
-                                   :id        id
-                                   :function  "create_sql_query"
-                                   :arguments {:database_id database-id
-                                               :sql_query   "SELECT 1"
-                                               :title       "Results"}})
-                                ids))
-                        calls)]
+(defn- run-turn!
+  "Run one turn of `profile-id` that starts with the user's `message`. The LLM returns `responses` in order and then
+  answers \"Sorry.\" in text. `context` is the request's context. `writer`, when given, receives the turn as SSE lines,
+  the way the chat endpoint streams it. Return the LLM requests and the turn's parts."
+  [profile-id message responses & {:keys [context writer]}]
+  (let [requests (atom [])]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
       ;; the tool executor lives inside `call-llm`, so redef the transport to let the tool run
@@ -368,17 +358,37 @@
                                                            (get responses (dec (count (swap! requests conj request)))
                                                                 [{:type :text :text "Sorry."}])))]
         (let [turn  (run-agent-loop
-                     {:messages   [{:role :user :content "Query that database"}]
+                     {:messages   [{:role :user :content message}]
                       :state      {}
                       :profile-id profile-id
-                      :context    {:capabilities    ["permission:write_sql_queries"]
-                                   :user_is_viewing viewing}})
+                      :context    context})
               parts (if writer
                       (let [streamed (atom [])]
                         (transduce (comp (u/tee-xf streamed) (self.core/parts->aisdk-sse-xf)) writer turn)
                         @streamed)
                       (into [] turn))]
           {:llm-calls (count @requests) :requests @requests :parts parts})))))
+
+(defn- run-sql-turn!
+  "Run one turn whose LLM responses call `create_sql_query` against `database-id` and then answer in text, while the
+  user views `viewing`, by default a SQL editor. `calls` holds the call IDs of each response, by default one response
+  with one call. `writer` is as for [[run-turn!]]."
+  [profile-id database-id & {:keys [viewing calls writer] :or {viewing sql-editor-viewing, calls [["t1"]]}}]
+  (run-turn! profile-id
+             "Query that database"
+             (mapv (fn [ids]
+                     (mapv (fn [id]
+                             {:type      :tool-input
+                              :id        id
+                              :function  "create_sql_query"
+                              :arguments {:database_id database-id
+                                          :sql_query   "SELECT 1"
+                                          :title       "Results"}})
+                           ids))
+                   calls)
+             :context {:capabilities    ["permission:write_sql_queries"]
+                       :user_is_viewing viewing}
+             :writer  writer))
 
 (deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
   (testing "the SQL profile ends the turn when no SQL editor is open, and tells the user why"
@@ -468,6 +478,36 @@
             (is (= 1 llm-calls))
             (is (= :terminal-error (:finish-reason (last parts))))
             (is (some #(= "Something went wrong." (:text %)) parts))))))))
+
+(defn- note-tool
+  "A tool named `save_note` that fails on every call with an exception no tool declared. Its declaration says it
+  writes when `writes?` is true."
+  [writes?]
+  (reify tools.core/Tool
+    (declaration [_]
+      (cond-> {:name "save_note" :description "Saves a note." :args [:map {:closed true}]}
+        writes? (assoc :metabot/writes? true)))
+    (handle [_ _args _ctx]
+      (throw (ex-info "Connection reset after the commit" {})))))
+
+(deftest a-tool-that-writes-gets-no-second-try-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [get-profile (mt/original-fn #'profiles/get-profile)]
+      (doseq [[label writes? expected-calls finish-reason text]
+              [["a tool that writes ends the turn at once, since the write may have happened" true 1 :terminal-error
+                "Something went wrong. The change may have been saved, so check before you try again."]
+               ["a tool that only reads keeps its second try" false 2 :stop "Sorry."]]]
+        (testing label
+          (mt/with-dynamic-fn-redefs [profiles/get-profile (fn [profile-id]
+                                                             (assoc (get-profile profile-id)
+                                                                    :tools [(note-tool writes?)]))]
+            (let [{:keys [llm-calls parts]}
+                  (run-turn! :internal "Save a note" [[{:type :tool-input :id "t1" :function "save_note"
+                                                        :arguments {}}]])]
+              (is (= expected-calls llm-calls))
+              (is (= finish-reason (:finish-reason (last parts))))
+              (is (= text (apply str (keep #(when (= :text (:type %)) (:text %)) parts)))
+                  "what the user reads"))))))))
 
 (deftest the-turn-stops-when-the-client-leaves-during-a-tool-call-test
   (mt/with-current-user (mt/user->id :crowberto)
