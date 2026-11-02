@@ -3971,6 +3971,7 @@
            transforms.base
            util
            util.graph
+           visualization-settings
            warehouse-schema-overlay
            enterprise/permissions.sandbox}
    :model-imports #{:model/Action
