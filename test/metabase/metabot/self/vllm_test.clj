@@ -1350,7 +1350,7 @@
 
 (deftest ^:parallel io-guarded-translates-only-source-failures-test
   (let [guarded #(adapter/io-guarded % (fn [error]
-                                (#'vllm/stream-io-ex (:copy @#'vllm/vllm-server) error 1000)))]
+                                         (#'vllm/stream-io-ex (:copy @#'vllm/vllm-server) error 1000)))]
     (testing "a transport failure while consuming the stream becomes a vLLM error"
       (let [e (try (reduce (fn [_ _] nil) nil (guarded (reducible-of [1 2] (IOException. "socket died"))))
                    (catch Exception e e))]
