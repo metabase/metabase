@@ -168,8 +168,10 @@
 (p/import-vars
  [metabase.permissions.data-access-token
   data-access-token
+  digest
   data-access-compatible?
   data-access-token-transform
+  data-access-token-reader
   routing-token-for-db])
 
 ;;; import these vars with different names to make their purpose more obvious.

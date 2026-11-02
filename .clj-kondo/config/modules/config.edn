@@ -2292,7 +2292,7 @@
 
   query-permissions
   {:team "Security Engineering"
-   :api  #{metabase.query-permissions.core}
+   :api  #{metabase.query-permissions.core metabase.query-permissions.schema}
    :uses #{api
            lib
            lib.be
