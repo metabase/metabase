@@ -6,13 +6,12 @@ import os from "node:os";
 import path from "node:path";
 
 import { projectOf, projects, root } from "./jest-config.ts";
-import {
-  type FileDone,
-  type FileResult,
-  type FileStarted,
-  type MessageFromWorker,
-  type MessageToWorker,
-  RECYCLE_EXIT_CODE,
+import type {
+  FileDone,
+  FileResult,
+  FileStarted,
+  MessageFromWorker,
+  MessageToWorker,
 } from "./types.ts";
 
 export type PoolOptions = {
@@ -152,17 +151,28 @@ export function createPool({
       onFileDone({ file, durationMs: 0, result: crashResult(code) });
       finished();
     }
-    // A worker that dies before it asks for a file would die again.
-    if (code !== 0 && code !== RECYCLE_EXIT_CODE) {
+    // A worker that dies before it asks for a file would die again. The
+    // files that are left fail, and jest still writes its reports.
+    if (!worker.started && code !== 0) {
       startupFailures += 1;
       if (startupFailures > MAX_STARTUP_FAILURES) {
         console.error(
           `[pool] ${startupFailures} workers in a row died before they took a file, giving up`,
         );
-        process.exit(1);
+        failQueuedFiles(code);
+        return;
       }
     }
     fill();
+  };
+
+  const failQueuedFiles = (code: number | null) => {
+    for (const name of projectNames) {
+      for (const file of queues[name].splice(0)) {
+        onFileDone({ file, durationMs: 0, result: startupFailureResult(code) });
+        finished();
+      }
+    }
   };
 
   const spawn = (projectName: string) => {
@@ -258,16 +268,33 @@ function workerArguments(settings: NodeJS.ProcessEnv): string[] {
 }
 
 function crashResult(code: number | null): FileResult {
+  return failedFileResult(
+    "(the worker crashed)",
+    `the worker exited with code ${code} while this file ran`,
+  );
+}
+
+function startupFailureResult(code: number | null): FileResult {
+  return failedFileResult(
+    "(no worker started)",
+    `workers kept exiting with code ${code} before they took a file`,
+  );
+}
+
+function failedFileResult(test: string, message: string): FileResult {
   return {
     passed: 0,
     failed: 1,
     skipped: 0,
+    todo: 0,
     passedTests: [],
     skippedTests: [],
+    todoTests: [],
+    suiteErrors: [],
     failures: [
       {
-        test: "(the worker crashed)",
-        message: `the worker exited with code ${code} while this file ran`,
+        test,
+        message,
         stack: "",
         frames: [],
         output: "",
