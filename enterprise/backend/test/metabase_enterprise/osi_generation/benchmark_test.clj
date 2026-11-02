@@ -28,6 +28,7 @@
    [metabase.collections.test-utils :as collections.tu]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.entity-retrieval.spec :as spec]
+   [metabase.lib.core :as lib]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
@@ -215,6 +216,39 @@
                                                      :model      :model/Measure
                                                      :table      :missing-table
                                                      :entity     {}})))))))
+
+(deftest ^:parallel billed-tax-judgment-test
+  (let [queries (into {} (map (juxt :id identity)) (:queries (corpus/load-corpus)))]
+    (is (= 1 (get-in queries [:q-billed-last-month :judged :tax-collected])))
+    (is (nil? (get-in queries [:q-invoiced-total :judged :tax-collected])))
+    (is (= "what did we bill customers last month" (get-in queries [:q-billed-last-month :prompt])))
+    (testing "rescoring a tax-only ranking reflects the revised judgment"
+      (let [judged (get-in queries [:q-billed-last-month :judged])]
+        (is (= 0 (metrics/hit-at-k (dissoc judged :tax-collected) [:tax-collected] 1)))
+        (is (= 1 (metrics/hit-at-k judged [:tax-collected] 1)))
+        (is (= (/ 1.0 3) (metrics/recall-at-k judged [:tax-collected] 10)))))))
+
+(deftest corpus-payment-definitions-test
+  (mt/with-premium-features #{:library :library-retrieval}
+    (mt/with-dynamic-fn-redefs [search/update! (constantly nil)]
+      (corpus/with-corpus-library [ids (corpus/load-corpus)]
+        (let [table-id (get-in ids [:payment-attempts :entity_local_id])
+              field-id #(t2/select-one-fn :id :model/Field :table_id table-id :name %)
+              clauses  (fn [model key]
+                         (let [id (get-in ids [key :entity_local_id])
+                               definition (t2/select-one-fn :definition model :id id)]
+                           (->> (lib/->legacy-MBQL definition)
+                                (tree-seq coll? seq)
+                                (filter #(and (vector? %) (#{:= :>} (first %))))
+                                (map (fn [[op field value]] [op (second field) value]))
+                                set)))]
+          (is (= #{[:> (field-id "retry_number") 0]
+                   [:= (field-id "outcome") "succeeded"]}
+                 (clauses :model/Measure :recovered-revenue)))
+          (is (= #{[:> (field-id "retry_number") 0]
+                   [:= (field-id "outcome") "failed"]
+                   [:= (field-id "retry_state") "pending"]}
+                 (clauses :model/Segment :dunning-queue))))))))
 
 (deftest ^:parallel every-entity-has-a-baseline-test
   (testing "the baseline covers every corpus entity — the baseline arm is not silently half a no-metadata arm"

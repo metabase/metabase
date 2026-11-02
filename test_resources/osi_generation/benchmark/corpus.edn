@@ -125,6 +125,7 @@
 
   ;; the child-vocabulary breaker: name, description and fields are all mechanical — nothing here says
   ;; dunning, recovery or involuntary churn. Those words reach this table only through its children.
+  ;; A retry follows a failed attempt; pending means the retry window is still open.
   {:corpus-key :payment-attempts
    :model      :model/Table
    :collection :data
@@ -135,6 +136,8 @@
                                {:name "invoice_id" :base_type :type/BigInteger}
                                {:name "amount_cents" :base_type :type/Integer}
                                {:name "response_code" :base_type :type/Text}
+                               {:name "outcome" :base_type :type/Text}
+                               {:name "retry_state" :base_type :type/Text}
                                {:name "retry_number" :base_type :type/Integer}
                                {:name "attempted_at" :base_type :type/DateTime}]}}
 
@@ -180,11 +183,13 @@
    :model      :model/Measure
    :table      :payment-attempts
    :entity     {:name            "Recovered Revenue"
-                :description     "Amount from retried attempts that succeeded after an earlier failure."
-                :aggregate-field "amount_cents"}}
+                :description     "Amount from successful retried attempts after an earlier failure; each retry is an attempt."
+                :aggregate-field "amount_cents"
+                :filters         [{:field "retry_number", :op :>, :value 0}
+                                  {:field "outcome", :op :=, :value "succeeded"}]}}
 
-  ;; the over-generalization control: an adjacent parent. Tax is not revenue, and the queries asking for
-  ;; invoiced or billed revenue judge this 0, so parent vocabulary absorbed wholesale costs rank there.
+  ;; the over-generalization control: an adjacent parent. Tax is not revenue, and the query asking for
+  ;; invoiced revenue judges this 0, so parent vocabulary absorbed wholesale costs rank there.
   {:corpus-key :tax-collected
    :model      :model/Measure
    :table      :invoices
@@ -204,9 +209,11 @@
    :model      :model/Segment
    :table      :payment-attempts
    :entity     {:name         "Dunning Queue"
-                :description  "Failed attempts still inside the retry window."
+                :description  "Failed retried attempts still inside the retry window."
                 :filter-field "retry_number"
-                :filter-value 0}}
+                :filter-value 0
+                :filters      [{:field "outcome", :op :=, :value "failed"}
+                               {:field "retry_state", :op :=, :value "pending"}]}}
 
   ;; the only prose the coupons table can reach: coupons itself has no description.
   {:corpus-key :campaign-offers

@@ -86,7 +86,7 @@
   :recovered-revenue
   {:synonyms     ["dunning recovery" "recovered payments" "revenue won back"]
    :examples     ["recovered amount by month"]
-   :instructions "Sums attempts that succeeded after an earlier failure on the same invoice; amounts in cents."}
+   :instructions "Sums successful retried attempts after an earlier failure; amounts are in cents and count attempts."}
 
   :tax-collected
   {:synonyms     ["sales tax" "tax charged"]
@@ -101,7 +101,7 @@
   :dunning-queue
   {:synonyms     ["failed payments awaiting retry" "dunning backlog"]
    :examples     ["invoices in dunning this week"]
-   :instructions "Attempts that failed with retries left; a row leaves once a retry succeeds or the window closes."}
+   :instructions "Failed retried attempts with a pending retry state; excludes successes and closed retry windows."}
 
   :campaign-offers
   {:synonyms     ["promo campaigns" "campaign discounts" "marketing offers"]
