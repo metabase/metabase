@@ -11,6 +11,7 @@ import {
   HoverParent,
   TableInfoIcon,
 } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { hasTableInfoPopover } from "metabase/common/components/MetadataInfo/TableInfoPopover";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
@@ -112,7 +113,11 @@ export const DataSelectorTablePicker = ({
       table && selectedTable ? table.id === selectedTable.id : false;
 
     const renderItemIcon = ({ table }: { table: DataSelectorTable }) =>
-      table ? <TableInfoIcon table={table} position="top-start" /> : null;
+      hasTableInfoPopover(table) ? (
+        <TableInfoIcon table={table} position="top-start" />
+      ) : (
+        <Icon name="table" />
+      );
 
     const renderItemWrapper = (content: ReactNode) => (
       <HoverParent>{content}</HoverParent>

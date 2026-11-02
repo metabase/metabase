@@ -13,6 +13,11 @@ export type TableInfoPopoverProps = Omit<PopoverProps, "content"> &
     };
   };
 
+/** Whether `TableInfoPopover` renders for this table. When it doesn't, its children aren't rendered either. */
+export function hasTableInfoPopover(table: TableInfoPopoverProps["table"]) {
+  return Boolean(table.description) && !isVirtualCardId(table.id);
+}
+
 export function TableInfoPopover({
   children,
   disabled,
@@ -21,9 +26,7 @@ export function TableInfoPopover({
   table,
   ...rest
 }: TableInfoPopoverProps) {
-  const shouldHavePopover = table.description && !isVirtualCardId(table.id);
-
-  if (!shouldHavePopover) {
+  if (!hasTableInfoPopover(table)) {
     return null;
   }
 
