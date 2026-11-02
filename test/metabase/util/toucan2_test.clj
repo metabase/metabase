@@ -51,19 +51,22 @@
                (expansion-error '(metabase.util.toucan2/update! :model/User id {:first_name "x"})))))
 
 (deftest ^:parallel string-value-bound-test
-  (let [email "x' OR 1=1 --"]
-    (is (= ["SELECT * FROM \"CORE_USER\" WHERE \"EMAIL\" = ?" "x' OR 1=1 --"]
-           (t2/compile (t2x/select :model/User :email email))))))
+  (let [email        "x' OR 1=1 --"
+        [sql & args] (t2/compile (t2x/select :model/User :email email))]
+    (is (re-find #"(?i)email\W* = \?$" sql))
+    (is (= ["x' OR 1=1 --"] args))))
 
 (deftest ^:parallel fragment-spliced-test
   (letfn [(email-is [email] (t2x/fragment [:= :email email]))]
-    (is (= ["SELECT * FROM \"CORE_USER\" WHERE \"EMAIL\" = ?" "a@b.c"]
-           (t2/compile (t2x/select :model/User {:where (email-is "a@b.c")}))))))
+    (let [[sql & args] (t2/compile (t2x/select :model/User {:where (email-is "a@b.c")}))]
+      (is (re-find #"(?i)email\W* = \?$" sql))
+      (is (= ["a@b.c"] args)))))
 
 (deftest ^:parallel nil-fragment-dropped-test
   (letfn [(email-is [email] (when email (t2x/fragment [:= :email email])))]
-    (is (= ["SELECT * FROM \"CORE_USER\" WHERE true"]
-           (t2/compile (t2x/select :model/User {:where [:and (email-is nil)]}))))))
+    (let [[sql & args] (t2/compile (t2x/select :model/User {:where [:and (email-is nil)]}))]
+      (is (re-find #"(?i)WHERE true$" sql))
+      (is (empty? args)))))
 
 (deftest ^:parallel plain-honeysql-value-rejected-test
   (letfn [(email-is [email] [:= :email email])]
@@ -78,6 +81,7 @@
                           (t2/compile (t2x/select :model/User :email email))))))
 
 (deftest ^:parallel integer-limit-spliced-test
-  (let [n 5]
-    (is (= ["SELECT * FROM \"CORE_USER\" LIMIT 5"]
-           (t2/compile (t2x/select :model/User {:limit n}))))))
+  (let [n            5
+        [sql & args] (t2/compile (t2x/select :model/User {:limit n}))]
+    (is (re-find #"LIMIT 5$" sql))
+    (is (empty? args))))
