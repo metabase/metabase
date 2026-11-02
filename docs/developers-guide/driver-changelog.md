@@ -14,6 +14,17 @@ title: Driver interface changelog
 - `metabase.driver/disallowed-connection-parameters` names now match ignoring percent-encoding, `_ . - +` and
   whitespace as well as case.
 
+- A driver must compile `:limit` and `:page` to a real row bound in the SQL it runs.
+  `metabase.driver.sql-jdbc.execute/execute-reducible-query` now uses that bound. If the final stage's `:limit` or
+  `:page :items` equals the QP row cap, it calls `.setMaxRows` with the cap plus one. This applies only to a cap
+  below `Integer/MAX_VALUE`. If the reduce reads as many rows as the bound, it does not cancel the `Statement`.
+
+- If `cancelation-poisons-connection?` returns `true`, `execute-reducible-query` also discards the `Connection` after
+  the QP's `canceled-chan` fires during the query. This occurs with or without a `Statement` cancel.
+
+- `:redshift` now overrides `cancelation-poisons-connection?` to `true`. So Metabase discards the Redshift
+  `Connection` after a QP cancel or a `Statement` cancel.
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
