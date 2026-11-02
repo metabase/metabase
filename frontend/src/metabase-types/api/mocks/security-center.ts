@@ -1,6 +1,8 @@
 import type {
   Advisory,
   EmailChannelSpec,
+  HealthCheck,
+  HealthCheckItem,
   SlackChannelSpec,
 } from "metabase-types/api";
 
@@ -62,3 +64,27 @@ export function createAdvisory(overrides: Partial<Advisory> = {}): Advisory {
     ...overrides,
   };
 }
+
+export const createMockHealthCheckItem = (
+  overrides: HealthCheckItem = { status: "pass" },
+): HealthCheckItem => ({
+  message: "Test item",
+  ...overrides,
+});
+
+export const createMockHealthCheck = (
+  overrides: Partial<HealthCheck> = {},
+): HealthCheck => ({
+  id: "https-redirect",
+  severity: "medium",
+  title: "Requests are redirected to HTTPS",
+  description: "Plain HTTP exposes sessions.",
+  remediation: "Turn on the redirect in Admin settings.",
+  docs: { page: "configuring-metabase/settings" },
+  requires_restart: false,
+  status: "pass",
+  running: false,
+  checked_at: "2026-10-29T10:00:00Z",
+  items: [createMockHealthCheckItem()],
+  ...overrides,
+});

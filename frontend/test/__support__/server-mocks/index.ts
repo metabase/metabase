@@ -50,6 +50,7 @@ export * from "./remote-sync";
 export * from "./replacement";
 export * from "./revision";
 export * from "./search";
+export * from "./security-center";
 export * from "./segment";
 export * from "./session";
 export * from "./session-management";
