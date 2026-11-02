@@ -267,8 +267,8 @@
 
 (defpipeline-error unresolved-join-alias-field!
   "A reference through a join alias named a column that join does not return."
-  ;; No step: the message already lists the columns the join returns, and for a grouped join those
-  ;; are its breakouts and aggregations, not a table's fields.
+  ;; No step: the message already lists the columns the join returns, and says how to reach another
+  ;; table's column through a plain table join.
   [])
 
 (defrecoverable column-not-returned!

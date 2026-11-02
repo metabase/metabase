@@ -3056,7 +3056,11 @@
                                                       (resolved-columns mp (get query "database") (get join "stages") content-store
                                                                         (format "join %s" (pr-str alias))))]
                                         :when cols]
-                                    {:alias alias :cols cols :named-refs named-refs :path-refs path-refs}))
+                                    {:alias      alias
+                                     :cols       cols
+                                     :named-refs named-refs
+                                     :path-refs  path-refs
+                                     :plain?     (plain-table-join? join)}))
         alias->cols          (into {} (map (juxt :alias :cols)) checks)]
     {:stage    (cond->> stage
                  (seq alias->cols)
@@ -3066,28 +3070,43 @@
                                        (alias->cols (get (nth node 1) "join-alias")))]
                       (maybe-fill-cross-stage-types node cols)
                       node))))
-     :problems (vec (for [{:keys [alias cols named-refs path-refs]} checks
+     :problems (vec (for [{:keys [alias cols named-refs path-refs plain?]} checks
                           :let  [bad (bad-join-alias-refs mp cols named-refs path-refs import-resolver)]
                           :when (seq bad)]
-                      {:stage      (repr/original-stage-index query idx)
-                       :join-alias alias
-                       :clauses    (vec bad)
-                       :columns    (vec (distinct (map #(field-target-name mp (nth % 2)) bad)))
-                       :available  (mapv :name cols)}))}))
+                      {:stage        (repr/original-stage-index query idx)
+                       :join-alias   alias
+                       :clauses      (vec bad)
+                       :columns      (vec (distinct (map #(field-target-name mp (nth % 2)) bad)))
+                       :available    (mapv :name cols)
+                       ;; which advice the message gives: names, the join's columns, or another table's columns
+                       :named?       (boolean (some (set named-refs) bad))
+                       :plain?       plain?
+                       :other-table? (boolean (and plain? (some (set path-refs) bad)))}))}))
 
 (defn- unresolved-join-alias-fields-error
+  "The `:agent-error?` for join-alias refs naming columns their joins don't return.
+  The advice after the list depends on how each ref went wrong, so a ref to another table through a plain table join
+  isn't told about display labels or grouped joins."
   [problems]
   (ex-info
-   (format "Some join column references name a column their join doesn't return: %s. Reference a join column by its machine name (e.g. an aggregation is `min`, `count`, `sum` - never its display label like `Min of X`), and only columns the join returns: a grouped join returns just its breakouts and aggregations."
-           (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
-                            (format "stage %s, join %s doesn't return %s (available: %s)"
-                                    stage
-                                    (quoting/quoted join-alias)
-                                    (str/join ", " (map quoting/quoted columns))
-                                    (str/join ", " (map quoting/quoted available))))))
+   (str (format "Some join column references name a column their join doesn't return: %s."
+                (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
+                                 (format "stage %s, join %s doesn't return %s (available: %s)"
+                                         stage
+                                         (quoting/quoted join-alias)
+                                         (str/join ", " (map quoting/quoted columns))
+                                         (str/join ", " (map quoting/quoted available))))))
+        (when (some :named? problems)
+          " Reference a join column by its machine name (e.g. an aggregation is `min`, `count`, `sum` - never its display label like `Min of X`).")
+        (when (some (complement :plain?) problems)
+          " Reference only columns the join returns: a grouped join returns just its breakouts and aggregations.")
+        (when (some :other-table? problems)
+          (str " A join of a single table returns only that table's columns. To use another table's column, drop"
+               " `join-alias`, or set `source-field-join-alias` to the join's alias to reach that table through the"
+               " join's foreign key.")))
    {:agent-error? true
     :error        :unresolved-join-alias-field
-    :problems     problems}))
+    :problems     (mapv #(dissoc % :named? :plain? :other-table?) problems)}))
 
 (defn- repair-join-alias-refs*
   "Pass 4.7: type the join-alias string field refs of every stage from the referenced joins'

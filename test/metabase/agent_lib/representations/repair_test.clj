@@ -4360,8 +4360,23 @@
     (testing "a path ref through a plain table join to another table's column of the same name raises"
       (is (= [[0 "Plain" ["PEOPLE.ID"]]]
              (join-problems (plain-filtering ["Sample" "PUBLIC" "PEOPLE" "ID"])))))
+    (testing "the error says how to reach the other table, without the advice for names or grouped joins"
+      (let [message (:message (repair-error (plain-filtering ["Sample" "PUBLIC" "PEOPLE" "ID"])))]
+        (is (str/includes? message "set `source-field-join-alias` to the join's alias"))
+        (is (not-any? #(str/includes? message %) ["display label" "grouped join"]))))
+    (testing "a path ref there in the join's own fields raises too"
+      (is (= [[0 "Plain" ["PEOPLE.ID"]]]
+             (join-problems (query (orders-stage {"joins" [(assoc (join "Plain" [(orders-stage {})])
+                                                                  "fields" [["field" {} ["Sample" "PUBLIC" "PEOPLE" "ID"]]])]}))))))
     (testing "a path ref to the joined table's own column is accepted"
-      (is (nil? (repair-error (plain-filtering (conj orders "ID"))))))))
+      (is (nil? (repair-error (plain-filtering (conj orders "ID"))))))
+    (testing "a path ref to a column of a join nested in the joined stage is accepted"
+      (let [people ["Sample" "PUBLIC" "PEOPLE"]
+            inner  (assoc (join "People" [(stage {"source-table" people})])
+                          "conditions" [["=" {} (orders-col "USER_ID") (join-ref "People" (conj people "ID"))]]
+                          "fields" "all")]
+        (is (nil? (repair-error (query (orders-stage {"joins"   [(join "Outer" [(orders-stage {"joins" [inner]})])]
+                                                      "filters" [["not-null" {} (join-ref "Outer" (conj people "ID"))]]})))))))))
 
 (deftest ^:parallel join-alias-field-type-idempotent-test
   (let [once (repair* first-order-query)]
@@ -4379,7 +4394,9 @@
                :error        :unresolved-join-alias-field
                :problems     [{:stage 0 :join-alias "First" :clauses [total-ref] :columns ["TOTAL"] :available ["USER_ID" "min"]}]}
               e))
-      (is (re-find #"join \"First\" doesn't return \"TOTAL\" \(available: \"USER_ID\", \"min\"\)" (:message e)))))
+      (is (re-find #"join \"First\" doesn't return \"TOTAL\" \(available: \"USER_ID\", \"min\"\)" (:message e)))
+      (is (str/includes? (:message e) "a grouped join returns just its breakouts and aggregations"))
+      (is (not (str/includes? (:message e) "source-field-join-alias")))))
   (testing "every bad ref is reported in one error, across refs, joins, and stages"
     (is (= [[0 "First" ["nope" "ORDERS.TOTAL"]] [0 "Second" ["nada"]] [1 "First" ["zilch"]]]
            (join-problems
