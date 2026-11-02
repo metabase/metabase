@@ -15,6 +15,7 @@ export { useMetabaseQuery } from "./use-metabase-query";
 export { useMetabaseQueryObject } from "./use-metabase-query-object";
 export type {
   DefinedQuery,
+  LegacyQuestionSource,
   MetabaseLocalFieldReference,
   MetabaseBreakout,
   MetabaseDynamicColumn,

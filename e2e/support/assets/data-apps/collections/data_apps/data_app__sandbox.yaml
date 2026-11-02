@@ -1,0 +1,6 @@
+name: 'Data App: sandbox'
+entity_id: sandboxAppCollection1
+slug: data_app__sandbox
+namespace: data-apps
+serdes/meta:
+- model: Collection
