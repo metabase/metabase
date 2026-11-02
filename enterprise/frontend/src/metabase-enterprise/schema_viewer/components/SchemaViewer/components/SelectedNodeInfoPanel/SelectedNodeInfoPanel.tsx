@@ -1,5 +1,5 @@
 import { Panel } from "@xyflow/react";
-import { useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { Card } from "metabase/ui";
@@ -17,7 +17,8 @@ type SelectedNodeInfoPanelProps = {
   onClose: () => void;
 };
 
-export function SelectedNodeInfoPanel({
+/** Memoized: its props stay stable while a table is dragged. */
+export const SelectedNodeInfoPanel = memo(function SelectedNodeInfoPanel({
   nodes,
   selectedNodeId,
   onClose,
@@ -69,4 +70,4 @@ export function SelectedNodeInfoPanel({
       </Card>
     </Panel>
   );
-}
+});

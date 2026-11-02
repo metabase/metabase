@@ -1,0 +1,41 @@
+.hideMinimapControl {
+  position: absolute;
+  right: calc(var(--minimap-margin) + 0.5rem);
+  bottom: calc(
+    var(--minimap-margin) + var(--minimap-height) - var(--minimap-toggle-size) -
+      0.5rem
+  );
+  z-index: calc(var(--canvas-element-z-index) + 1);
+}
+
+.showMinimapControl {
+  z-index: var(--canvas-element-z-index);
+}
+
+.toggleButton {
+  width: var(--minimap-toggle-size);
+  height: var(--minimap-toggle-size);
+}
+
+/* React Flow's panel is absolutely positioned, which also contains the indicator. */
+.minimap {
+  overflow: hidden;
+  margin: var(--minimap-margin);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.viewportIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 1px solid var(--mb-color-core-brand);
+  pointer-events: none;
+  visibility: hidden;
+}

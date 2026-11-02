@@ -1,5 +1,5 @@
 import { useHotkeys } from "@mantine/hooks";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -10,7 +10,6 @@ import {
   TextInput,
   useCombobox,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";
@@ -36,8 +35,18 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
 
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
-    onDropdownOpen: () => combobox.updateSelectedOptionIndex("active"),
   });
+
+  // Highlight the first match on open and on every query change so Enter
+  // jumps to it, like Mantine Autocomplete's `selectFirstOptionOnDropdownOpen`
+  // and `selectFirstOptionOnChange`. Runs after render, once the options are
+  // in the DOM.
+  const { dropdownOpened, selectFirstOption } = combobox;
+  useEffect(() => {
+    if (dropdownOpened) {
+      selectFirstOption();
+    }
+  }, [dropdownOpened, query, selectFirstOption]);
 
   useHotkeys([
     [
@@ -53,17 +62,14 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
   const allItems = useMemo<SearchItem[]>(
     () =>
       nodes.map((node) => {
-        const { name, display_name, fields } = node.data;
+        const { name, display_name, foreignKeyCount } = node.data;
         const label = formatTableLabel(name, display_name);
         const text = formatTableLabelText(name, display_name);
-        const fkCount = fields.filter((f) =>
-          Lib.isForeignKey(Lib.legacyColumnTypeInfo(f)),
-        ).length;
         return {
           id: node.id,
           label,
           text,
-          fkCount,
+          fkCount: foreignKeyCount,
           haystack: [text, name, display_name ?? ""]
             .filter(Boolean)
             .map((s) => s.toLowerCase()),
@@ -112,7 +118,6 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
           onChange={(event) => {
             setQuery(event.currentTarget.value);
             combobox.openDropdown();
-            combobox.updateSelectedOptionIndex();
           }}
           onFocus={() => {
             setQuery("");
@@ -127,7 +132,13 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
           }}
         />
       </Combobox.Target>
-      <Combobox.Dropdown p={0} data-testid="schema-viewer-node-search-dropdown">
+      {/* The dropdown scrolls, which makes it a Tab stop in Chrome; it is
+          navigated with the arrow keys from the input instead. */}
+      <Combobox.Dropdown
+        p={0}
+        tabIndex={-1}
+        data-testid="schema-viewer-node-search-dropdown"
+      >
         {filteredItems.length === 0 ? (
           <Combobox.Empty>{t`No tables found`}</Combobox.Empty>
         ) : (

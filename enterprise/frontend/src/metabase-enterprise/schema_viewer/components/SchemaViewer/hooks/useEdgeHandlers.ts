@@ -4,6 +4,7 @@ import { useCallback, useRef } from "react";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
 
 const EMPTY_FIELD_IDS: Set<number> = new Set();
+const NO_EDGE_IDS: ReadonlySet<string> = new Set();
 
 type UseEdgeHandlersArgs = {
   zoomToNode: (nodeId: string) => void;
@@ -58,8 +59,27 @@ export function useEdgeHandlers({
     [setNodes],
   );
 
-  const handleEdgeClick = useCallback(
-    (_event: React.MouseEvent, edge: SchemaViewerFlowEdge) => {
+  const selectEdges = useCallback(
+    (edgeIds: ReadonlySet<string>) => {
+      setEdges((currentEdges) =>
+        currentEdges.map((edge) => {
+          const selected = edgeIds.has(edge.id);
+          return selected === Boolean(edge.selected)
+            ? edge
+            : { ...edge, selected };
+        }),
+      );
+    },
+    [setEdges],
+  );
+
+  /**
+   * Selects `edge`. Clicking an already selected edge moves the camera to
+   * its source, then its target, alternating on each click.
+   */
+  const clickEdge = useCallback(
+    (edge: SchemaViewerFlowEdge) => {
+      selectEdges(new Set([edge.id]));
       setSelectedFieldIds(getEdgeFieldIds(edge));
 
       if (!edge.selected) {
@@ -72,17 +92,15 @@ export function useEdgeHandlers({
       const targetNodeId = nextSide === "source" ? edge.source : edge.target;
       zoomToNode(targetNodeId);
     },
-    [zoomToNode, setSelectedFieldIds],
+    [zoomToNode, selectEdges, setSelectedFieldIds],
   );
 
   const clearEdgeSelection = useCallback(() => {
-    setEdges((currentEdges) =>
-      currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
-    );
+    selectEdges(NO_EDGE_IDS);
     setSelectedFieldIds(EMPTY_FIELD_IDS);
-  }, [setEdges, setSelectedFieldIds]);
+  }, [selectEdges, setSelectedFieldIds]);
 
-  return { handleEdgeClick, clearEdgeSelection };
+  return { clickEdge, clearEdgeSelection, selectEdges };
 }
 
 function getEdgeFieldIds(edge: SchemaViewerFlowEdge): Set<number> {

@@ -1,3 +1,5 @@
+import { Position } from "@xyflow/react";
+
 import * as Lib from "metabase-lib";
 import type {
   ErdEdge,
@@ -9,7 +11,11 @@ import type {
 } from "metabase-types/api";
 
 import { HEADER_HEIGHT_PX, NODE_WIDTH_PX, ROW_HEIGHT_PX } from "../constants";
-import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
+import type {
+  SchemaViewerFlowEdge,
+  SchemaViewerFlowNode,
+  SchemaViewerNodeHandle,
+} from "../types";
 
 type FlowGraph = {
   nodes: SchemaViewerFlowNode[];
@@ -37,29 +43,39 @@ export function getNodeHeight(fieldCount: number): number {
   return HEADER_HEIGHT_PX + fieldCount * ROW_HEIGHT_PX;
 }
 
-// Sort fields so PKs come first, then FKs, then the rest
-function sortFields(fields: ErdField[]): ErdField[] {
-  return [...fields].sort((a, b) => {
-    const aPK = Lib.isPrimaryKey(Lib.legacyColumnTypeInfo(a));
-    const bPK = Lib.isPrimaryKey(Lib.legacyColumnTypeInfo(b));
-    const aFK = Lib.isForeignKey(Lib.legacyColumnTypeInfo(a));
-    const bFK = Lib.isForeignKey(Lib.legacyColumnTypeInfo(b));
+type FieldRank = 0 | 1 | 2 | 3;
 
-    if (aPK && !bPK) {
-      return -1;
-    }
-    if (!aPK && bPK) {
-      return 1;
-    }
-    if (aFK && !bFK) {
-      return -1;
-    }
-    if (!aFK && bFK) {
-      return 1;
-    }
+const LINKED_FOREIGN_KEY_RANK: FieldRank = 1;
 
+/** PKs, then FKs with a known target table, then other FKs, then the rest. */
+function getFieldRank(field: ErdField): FieldRank {
+  const typeInfo = Lib.legacyColumnTypeInfo(field);
+  if (Lib.isPrimaryKey(typeInfo)) {
     return 0;
-  });
+  }
+  if (Lib.isForeignKey(typeInfo)) {
+    return field.fk_target_table_id != null ? LINKED_FOREIGN_KEY_RANK : 2;
+  }
+  return 3;
+}
+
+function sortFields(fields: ErdField[]): {
+  fields: ErdField[];
+  linkedForeignKeyRows: { start: number; count: number };
+} {
+  const ranked = fields
+    .map((field) => ({ field, rank: getFieldRank(field) }))
+    .sort((a, b) => a.rank - b.rank);
+  const start = ranked.findIndex(
+    ({ rank }) => rank === LINKED_FOREIGN_KEY_RANK,
+  );
+  const count = ranked.filter(
+    ({ rank }) => rank === LINKED_FOREIGN_KEY_RANK,
+  ).length;
+  return {
+    fields: ranked.map(({ field }) => field),
+    linkedForeignKeyRows: { start: Math.max(start, 0), count },
+  };
 }
 
 type TableEdgeRoles = {
@@ -78,27 +94,100 @@ const EMPTY_ROLES: TableEdgeRoles = {
 // here (not from CSS), because otherwise React Flow inlines it with "0" value (even when
 // set to `null`).
 const NODE_Z_INDEX = 2;
+const HANDLE_SIZE_PX = 1;
+
+function getFieldHandles(
+  fields: readonly ErdField[],
+  roles: TableEdgeRoles,
+): SchemaViewerNodeHandle[] {
+  const handles: SchemaViewerNodeHandle[] = [];
+  const handleKeys = new Set<string>();
+
+  const addHandle = (handle: SchemaViewerNodeHandle) => {
+    const key = `${handle.type}:${handle.id}`;
+    if (!handleKeys.has(key)) {
+      handles.push(handle);
+      handleKeys.add(key);
+    }
+  };
+
+  fields.forEach((field, rowIndex) => {
+    const y =
+      HEADER_HEIGHT_PX +
+      rowIndex * ROW_HEIGHT_PX +
+      (ROW_HEIGHT_PX - HANDLE_SIZE_PX) / 2;
+    const leftHandle = {
+      x: -HANDLE_SIZE_PX / 2,
+      y,
+      width: HANDLE_SIZE_PX,
+      height: HANDLE_SIZE_PX,
+    };
+    const rightHandle = {
+      ...leftHandle,
+      x: NODE_WIDTH_PX - HANDLE_SIZE_PX / 2,
+    };
+
+    if (roles.targetFieldIds.has(field.id)) {
+      addHandle({
+        ...leftHandle,
+        id: getFieldHandleId(field.id),
+        type: "target",
+        position: Position.Left,
+      });
+    }
+    if (roles.selfRefTargetFieldIds.has(field.id)) {
+      addHandle({
+        ...rightHandle,
+        id: getFieldHandleId(field.id, "right"),
+        type: "target",
+        position: Position.Right,
+      });
+    }
+    if (roles.sourceFieldIds.has(field.id)) {
+      addHandle({
+        ...rightHandle,
+        id: getFieldHandleId(field.id),
+        type: "source",
+        position: Position.Right,
+      });
+    }
+  });
+
+  return handles;
+}
 
 function toFlowNode(
   node: ErdNode,
   roles: TableEdgeRoles,
 ): SchemaViewerFlowNode {
+  const { fields, linkedForeignKeyRows } = sortFields(node.fields);
+  const height = getNodeHeight(fields.length);
+  const handles = getFieldHandles(fields, roles);
+  const foreignKeyCount = fields.filter((field) =>
+    Lib.isForeignKey(Lib.legacyColumnTypeInfo(field)),
+  ).length;
+
   return {
     id: getNodeId(node),
     type: "schemaViewerTable",
     position: { x: 0, y: 0 },
+    width: NODE_WIDTH_PX,
+    height,
+    // Dimensions are fixed, so React Flow never needs to wait for a
+    // ResizeObserver measurement before treating the node as initialized.
+    measured: { width: NODE_WIDTH_PX, height },
     zIndex: NODE_Z_INDEX,
     data: {
       ...node,
-      fields: sortFields(node.fields),
-      sourceFieldIds: roles.sourceFieldIds,
-      targetFieldIds: roles.targetFieldIds,
-      selfRefTargetFieldIds: roles.selfRefTargetFieldIds,
+      fields,
+      handles,
+      foreignKeyCount,
+      linkedForeignKeyRows,
       selectedFieldIds: new Set(),
     },
     style: {
       width: NODE_WIDTH_PX,
-      height: getNodeHeight(node.fields.length),
+      height,
       opacity: 0, // Hide until positioned by dagre layout
     },
   };

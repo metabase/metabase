@@ -5,6 +5,7 @@ import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import type { ConcreteTableId, ErdField } from "metabase-types/api";
 
 import { SchemaViewerContext } from "../../SchemaViewerContext";
+import { createSchemaViewerDetailsStore } from "../../hooks/useSchemaViewerDetails";
 
 import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
 
@@ -15,24 +16,19 @@ type ContextOverrides = {
 
 type SetupOpts = {
   field?: Partial<ErdField>;
-  isSource?: boolean;
-  isTarget?: boolean;
-  isSelfRefTarget?: boolean;
   isSelectedInEdge?: boolean;
   context?: ContextOverrides;
 };
 
 function setup({
   field: fieldOverrides = {},
-  isSource = false,
-  isTarget = false,
-  isSelfRefTarget = false,
   isSelectedInEdge = false,
   context: contextOverrides = {},
 }: SetupOpts = {}) {
   const expandToTable = jest.fn();
   const zoomToNode = jest.fn();
   const selectNode = jest.fn();
+  const selectEdges = jest.fn();
 
   const field: ErdField = {
     id: 10,
@@ -50,12 +46,14 @@ function setup({
   const value = {
     visibleTableIds:
       contextOverrides.visibleTableIds ?? new Set<ConcreteTableId>(),
+    detailsStore: createSchemaViewerDetailsStore(),
     expandingTableIds:
       contextOverrides.expandingTableIds ?? new Set<ConcreteTableId>(),
     expandToTable,
     selectedNodeId: null,
     selectNode,
     zoomToNode,
+    selectEdges,
   };
 
   renderWithProviders(
@@ -63,16 +61,13 @@ function setup({
       <SchemaViewerContext.Provider value={value}>
         <SchemaViewerFieldRow
           field={field}
-          isSource={isSource}
-          isTarget={isTarget}
-          isSelfRefTarget={isSelfRefTarget}
           isSelectedInEdge={isSelectedInEdge}
         />
       </SchemaViewerContext.Provider>
     </ReactFlowProvider>,
   );
 
-  return { expandToTable, zoomToNode };
+  return { expandToTable, zoomToNode, selectEdges };
 }
 
 describe("SchemaViewerFieldRow", () => {
@@ -169,6 +164,24 @@ describe("SchemaViewerFieldRow", () => {
       });
       await userEvent.click(screen.getByText("user_id"));
       expect(zoomToNode).toHaveBeenCalledWith("table-99");
+    });
+
+    it("clicking an FK field whose target is on canvas selects the connecting edge in either ordering", async () => {
+      const { selectEdges } = setup({
+        field: {
+          id: 10,
+          semantic_type: "type/FK",
+          fk_target_table_id: 99,
+          fk_target_field_id: 999,
+        },
+        context: {
+          visibleTableIds: new Set([99]),
+        },
+      });
+      await userEvent.click(screen.getByText("user_id"));
+      expect(selectEdges).toHaveBeenCalledWith(
+        new Set(["edge-10-999", "edge-999-10"]),
+      );
     });
   });
 

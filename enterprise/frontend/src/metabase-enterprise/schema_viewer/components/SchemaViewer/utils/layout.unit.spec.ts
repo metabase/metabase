@@ -1,6 +1,11 @@
 import type { SchemaViewerFlowNode } from "../types";
 
-import { applyLayout } from "./layout";
+import {
+  type PreparedLayout,
+  applyLayout,
+  completeLayoutSynchronously,
+  prepareLayout,
+} from "./layout";
 import { makeFlowNode } from "./test-utils";
 
 type NodeOverrides = {
@@ -36,6 +41,143 @@ function rectsOverlap(
     a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
   );
 }
+
+function getDagrePreparation(prepared: PreparedLayout) {
+  if (prepared.kind !== "dagre") {
+    throw new Error(`Expected Dagre preparation, received ${prepared.kind}`);
+  }
+  return prepared;
+}
+
+function getCompletePreparation(prepared: PreparedLayout) {
+  if (prepared.kind !== "complete") {
+    throw new Error(`Expected complete preparation, received ${prepared.kind}`);
+  }
+  return prepared;
+}
+
+describe("prepareLayout", () => {
+  it("prepares fresh layout as Dagre work", () => {
+    const nodes = [makeNode("table-1"), makeNode("table-2")];
+    const edges = [{ source: "table-1", target: "table-2" }];
+
+    const prepared = prepareLayout({ mode: "fresh", nodes, edges });
+
+    expect(prepared.kind).toBe("dagre");
+    const dagre = getDagrePreparation(prepared);
+    expect(dagre.graph.nodes.map(({ id }) => id)).toEqual([
+      "table-1",
+      "table-2",
+    ]);
+    expect(dagre.graph.edges).toEqual(edges);
+  });
+
+  it("completes a connected incremental merge without Dagre", () => {
+    const existing = placedNode("table-1", { x: 100, y: 200 });
+    const incoming = [existing, makeNode("table-2")];
+
+    const prepared = prepareLayout({
+      mode: "merge",
+      incoming,
+      current: [existing],
+      edges: [{ source: "table-1", target: "table-2" }],
+    });
+
+    expect(prepared.kind).toBe("complete");
+    const complete = getCompletePreparation(prepared);
+    expect(complete.result.preservedExistingPositions).toBe(true);
+    expect(
+      complete.result.nodes.find(({ id }) => id === "table-1")?.position,
+    ).toEqual({ x: 100, y: 200 });
+  });
+
+  it.each([
+    {
+      name: "there is no current canvas",
+      incoming: [makeNode("table-1")],
+      current: [],
+      edges: [],
+    },
+    {
+      name: "an existing node was removed",
+      incoming: [makeNode("table-1")],
+      current: [makeNode("table-1"), makeNode("table-2")],
+      edges: [],
+    },
+    {
+      name: "an added node is disconnected",
+      incoming: [makeNode("table-1"), makeNode("table-2")],
+      current: [makeNode("table-1")],
+      edges: [],
+    },
+  ])(
+    "prepares merge as Dagre work when $name",
+    ({ incoming, current, edges }) => {
+      expect(
+        prepareLayout({ mode: "merge", incoming, current, edges }).kind,
+      ).toBe("dagre");
+    },
+  );
+
+  it("completes focus synchronously when every node is in the focal cluster", () => {
+    const focal = placedNode("table-1", { x: 500, y: 500 });
+    const neighbor = makeNode("table-2");
+
+    const prepared = prepareLayout({
+      mode: "focus",
+      focalId: focal.id,
+      nodes: [focal, neighbor],
+      edges: [{ source: focal.id, target: neighbor.id }],
+    });
+
+    expect(prepared.kind).toBe("complete");
+    const complete = getCompletePreparation(prepared);
+    expect(
+      complete.result.nodes.find(({ id }) => id === focal.id)?.position,
+    ).toEqual(focal.position);
+  });
+
+  it("sends only the focal side cluster through Dagre", () => {
+    const focal = placedNode("table-1", { x: 500, y: 500 });
+    const neighbor = makeNode("table-2");
+    const sideA = makeNode("table-3");
+    const sideB = makeNode("table-4");
+    const nodes = [sideB, focal, neighbor, sideA];
+
+    const prepared = prepareLayout({
+      mode: "focus",
+      focalId: focal.id,
+      nodes,
+      edges: [
+        { source: focal.id, target: neighbor.id },
+        { source: neighbor.id, target: sideA.id },
+        { source: sideA.id, target: sideB.id },
+      ],
+    });
+
+    expect(prepared.kind).toBe("dagre");
+    const dagre = getDagrePreparation(prepared);
+    expect(dagre.graph.nodes.map(({ id }) => id)).toEqual([sideB.id, sideA.id]);
+    expect(dagre.graph.edges).toEqual([{ source: sideA.id, target: sideB.id }]);
+
+    const result = completeLayoutSynchronously(dagre);
+    expect(result.nodes.map(({ id }) => id)).toEqual(nodes.map(({ id }) => id));
+    expect(result.nodes.find(({ id }) => id === focal.id)?.position).toEqual(
+      focal.position,
+    );
+    const rects = result.nodes.map((node) => ({
+      x: node.position.x,
+      y: node.position.y,
+      w: node.width!,
+      h: node.height!,
+    }));
+    for (let first = 0; first < rects.length; first++) {
+      for (let second = first + 1; second < rects.length; second++) {
+        expect(rectsOverlap(rects[first], rects[second])).toBe(false);
+      }
+    }
+  });
+});
 
 describe("applyLayout — fresh mode", () => {
   it("positions every node and reports no preserved positions", () => {

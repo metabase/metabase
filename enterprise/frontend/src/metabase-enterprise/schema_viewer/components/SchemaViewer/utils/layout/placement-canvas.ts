@@ -265,8 +265,9 @@ function getStyleDimension(
 }
 
 /**
- * Resolves dimensions from the placement cache first, falling back to style
- * dimensions and then default table-card dimensions.
+ * Resolves dimensions from the placement cache first, then from React Flow's
+ * direct fixed geometry. Style/default fallbacks keep legacy test fixtures
+ * compatible; worker-bound layouts validate direct geometry separately.
  */
 function getNodeDimensions(
   node: SchemaViewerFlowNode,
@@ -274,8 +275,9 @@ function getNodeDimensions(
 ): NodeDimensions {
   return (
     dimensionsById?.get(node.id) ?? {
-      width: getStyleDimension(node, "width") ?? NODE_WIDTH_PX,
-      height: getStyleDimension(node, "height") ?? HEADER_HEIGHT_PX,
+      width: node.width ?? getStyleDimension(node, "width") ?? NODE_WIDTH_PX,
+      height:
+        node.height ?? getStyleDimension(node, "height") ?? HEADER_HEIGHT_PX,
     }
   );
 }
