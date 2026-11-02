@@ -208,7 +208,10 @@
   (testing "Postgres's hosting providers aren't recognized, but its field groups are kept"
     (is (=? {:providers    []
              :field-groups [{:id "host-and-port"}]}
-            (driver/extra-info :motherduck)))))
+            (driver/extra-info :motherduck))))
+  (testing "it's listed as an official driver, with no third-party contact"
+    (is (= "official" (driver.u/driver-source "motherduck")))
+    (is (nil? (driver/contact-info :motherduck)))))
 
 ;; Messages as the live endpoint sends them; `live-connection-errors-test` checks the endpoint still does.
 (deftest ^:parallel humanize-connection-error-message-test

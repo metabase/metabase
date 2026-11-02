@@ -2,9 +2,6 @@ info:
   name: Metabase MotherDuck Driver
   version: 1.0.0
   description: Allows Metabase to connect to MotherDuck over the Postgres wire protocol.
-contact-info:
-  name: MotherDuck
-  address: support@motherduck.com
 driver:
   name: motherduck
   display-name: MotherDuck
