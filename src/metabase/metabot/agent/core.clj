@@ -226,7 +226,8 @@
   1)
 
 (defn- undeclared-failure?
-  "Whether `part` is a tool call that failed with an ordinary exception no tool declared."
+  "Whether `part` is a tool call that failed with an ordinary exception no tool declared. A tool that writes reports
+  one as `:unconfirmed-write` instead, which ends the turn (see `tools.runtime/invoke`)."
   [part]
   (and (= (:type part) :tool-output)
        (tools.runtime/undeclared? (get-in part [:result :error :code]))))
@@ -234,10 +235,10 @@
 (defn- terminal-error-message
   "The user-facing message that ends the turn after this iteration's tool calls, or nil if the turn goes on.
 
-  An unrecoverable failure ends the turn: one only the user can act on, such as a permission denial,
-  or one the model can't work around, such as a JVM error. The message is the `:user-message` the
-  tool chose; a tool that set none gets the generic one, because `:output` is written for the model
-  and says only that the call failed.
+  An unrecoverable failure ends the turn: one only the user can act on, such as a permission denial
+  or a failed write that may have been saved, or one the model can't work around, such as a JVM
+  error. The message is the error's `:user-message`; an error without one gets the generic one,
+  because `:output` is written for the model and says only that the call failed.
 
   An ordinary exception that no tool declared ([[undeclared-failure?]]) ends the turn only when
   `undeclared-failures`, the turn's count of them with this iteration's included, passes
