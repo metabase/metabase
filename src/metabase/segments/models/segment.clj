@@ -26,6 +26,8 @@
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
+(set! *warn-on-reflection* true)
+
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 

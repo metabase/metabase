@@ -88,7 +88,7 @@ export const AlertListItem = ({
         )}
         {user && (
           <>
-            <Text size="sm" c="text-disabled">
+            <Text size="sm" c="text-secondary">
               •
             </Text>
             <Text size="sm" c="inherit">

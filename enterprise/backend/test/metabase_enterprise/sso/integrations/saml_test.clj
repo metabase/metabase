@@ -534,6 +534,7 @@
                                                  {:request-options {:redirect-strategy :none}}
                                                  :redirect redirect-url)]
                  (testing (format "\n%s should not redirect" redirect-url)
+                   ;; The rejection is returned as a plain-text body, so the whole body is the message.
                    (is (= "Invalid redirect URL" get-response))))))))))))
 
 (deftest login-create-account-test

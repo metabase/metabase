@@ -1520,8 +1520,12 @@
                                   :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000002"}})
                 (let [events (snowplow-test/pop-event-data-and-user-id!)
                       tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
-                  (is (=? [{:data {"event"  "agent_used_tool"
-                                   "result" "error"}}]
+                  (is (=? [{:data {"event"         "agent_used_tool"
+                                   "result"        "error"
+                                   "event_details" {"tool_name"   "search"
+                                                    "step"        1
+                                                    "error_class" "validation"
+                                                    "error_code"  "invalid-arguments"}}}]
                           tool-events)))))))))))
 
 (deftest token-usage-snowplow-test

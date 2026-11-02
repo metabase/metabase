@@ -148,7 +148,7 @@ export const CustomGeoJSONWidget = () => {
       {!hasCustomMaps && (
         <Stack p="xxl" align="center" gap="lg">
           <Image w={120} h={120} src={noResultsSource} />
-          <Text fw="700" c="text-disabled">{t`No custom maps yet`}</Text>
+          <Text fw="700" c="text-secondary">{t`No custom maps yet`}</Text>
         </Stack>
       )}
 
@@ -490,7 +490,7 @@ const EditMap = ({
               CS.flex,
               CS.layoutCentered,
               CS.textBold,
-              CS.textLight,
+              CS.textSecondary,
               CS.textCentered,
             )}
           >

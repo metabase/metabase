@@ -69,10 +69,7 @@
   ;; second probe here could disagree with that one and leave the agent with no discovery tool.
   (into #{}
         (remove nil?)
-        [(when (or (not (premium-features/is-hosted?))
-                   (premium-features/has-feature? :transforms-basic))
-           :feature-transforms)
-         (when (premium-features/has-feature? :semantic-search)
+        [(when (premium-features/has-feature? :semantic-search)
            :feature-semantic-search)
          (when (metabot.settings/metabot-query-execution-enabled?)
            :feature-query-execution)]))

@@ -1286,6 +1286,67 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
+      "metabase-enterprise.action-v2.execute-form.action-description" : {
+        "type" : "object",
+        "properties" : {
+          "parameters" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.action-v2.execute-form.describe-param"
+            }
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "title", "parameters" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.action-v2.execute-form.describe-param" : {
+        "type" : "object",
+        "properties" : {
+          "readonly" : {
+            "type" : "boolean"
+          },
+          "database_default" : { },
+          "optional" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "value_options" : {
+            "type" : "array",
+            "items" : { }
+          },
+          "input_type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.action-v2.execute-form.input-type"
+          },
+          "value" : { },
+          "semantic_type" : {
+            "type" : "string"
+          },
+          "human_readable_field_id" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "nullable" : {
+            "type" : "boolean"
+          },
+          "field_id" : {
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "id", "display_name", "input_type", "optional", "readonly" ]
+      },
+      "metabase-enterprise.action-v2.execute-form.input-type" : {
+        "type" : "string",
+        "enum" : [ "boolean", "date", "datetime", "dropdown", "float", "integer", "text", "textarea", "time" ]
+      },
       "metabase-enterprise.data-complexity-score.api.node" : {
         "anyOf" : [ {
           "type" : "object",
@@ -23029,7 +23090,7 @@
         "additionalProperties" : false
       },
       "metabase.metabot.schema.query" : {
-        "description" : "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn state.",
+        "description" : "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn\n  state. Normalizing repairs a structured query that lost its `:lib/*` keys, so every tool reads a valid MBQL 5 query;\n  see [[query-repair/repair-stripped-query]].",
         "$ref" : "#/components/schemas/metabase.lib.util.query-like"
       },
       "metabase.metabot.schema.row-value" : {
@@ -29920,13 +29981,6 @@
               "type" : "null"
             } ]
           },
-          "target-incremental-strategy" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.transforms.schema.target-incremental-strategy"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "type" : {
             "const" : "table"
           }
@@ -30763,6 +30817,11 @@
         },
         "required" : [ "schedule_type" ],
         "additionalProperties" : false
+      },
+      "metabase.warehouse-schema-rest.api.table.data-authority-read" : {
+        "description" : "Schema for returning a table data authority type.",
+        "type" : "string",
+        "enum" : [ "computed", "unknown", "authoritative", "unconfigured", "ingested" ]
       },
       "metabase.warehouse-schema-rest.api.table.data-authority-write" : {
         "description" : "Schema for writing a valid table data authority.",
@@ -42299,7 +42358,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.action-v2.execute-form.action-description"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -56190,14 +56256,14 @@
                                   },
                                   "effective-type" : {
                                     "oneOf" : [ {
-                                      "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+                                      "type" : "string"
                                     }, {
                                       "type" : "null"
                                     } ]
                                   },
                                   "semantic-type" : {
                                     "oneOf" : [ {
-                                      "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+                                      "type" : "string"
                                     }, {
                                       "type" : "null"
                                     } ]
@@ -65124,7 +65190,7 @@
       "post" : {
         "operationId" : "post-api-premium-features-token-refresh",
         "summary" : "POST /api/premium-features/token/refresh",
-        "description" : "Clear all token caches and re-check the premium features token against the MetaStore.\n  Returns the fresh token status. Useful for the frontend after a purchase so that new features\n  are recognized without waiting for the cache TTL.",
+        "description" : "Re-check the premium features token against the MetaStore and return the fresh token status. Useful for the\n  frontend after a purchase so that new features are recognized without waiting for the next scheduled refresh.\n\n  When the check fails, returns an unvalidated status whose `:error-details` says why, so the caller knows the check\n  failed. The status this instance holds is left as it was, so feature checks keep using it.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -70443,7 +70509,20 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data_authority" : {
+                      "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-read"
+                    }
+                  },
+                  "required" : [ "data_authority" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -71282,7 +71361,17 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
