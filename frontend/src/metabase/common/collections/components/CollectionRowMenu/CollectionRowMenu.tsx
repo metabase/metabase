@@ -26,12 +26,18 @@ type CollectionRowMenuProps = {
   collection: Collection;
   onOpenModal: (modal: CollectionRowModalState) => void;
   customArchiveMessage?: string;
+  /** Replaces the "Archive" item with "Delete" for a collection that is deleted, not archived. */
+  onDelete?: (collection: Collection) => void;
+  /** With `onDelete`: `false` hides the "Delete" item. "Archive" stays hidden. */
+  canDelete?: boolean;
 };
 
 export function CollectionRowMenu({
   collection,
   onOpenModal,
   customArchiveMessage,
+  onDelete,
+  canDelete = true,
 }: CollectionRowMenuProps) {
   const isAdmin = useSelector(getUserIsAdmin);
   const remoteSyncReadOnly = useSelector(
@@ -98,7 +104,16 @@ export function CollectionRowMenu({
               {t`Change permissions`}
             </Menu.Item>
           )}
-          {showEditOptions && (
+          {showEditOptions && onDelete != null && canDelete && (
+            <Menu.Item
+              leftSection={<Icon name="trash" />}
+              onClick={() => onDelete(collection)}
+              c="feedback-negative"
+            >
+              {t`Delete`}
+            </Menu.Item>
+          )}
+          {showEditOptions && onDelete == null && (
             <Menu.Item
               leftSection={<Icon name="archive" />}
               onClick={() =>

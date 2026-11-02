@@ -1,3 +1,4 @@
+import type { CollectionRowModalState } from "metabase/common/collections/components/CollectionRowModal";
 import type {
   Collection,
   IconName,
@@ -21,6 +22,7 @@ export type TreeNode = {
   collection?: Collection;
   url?: string;
   can_read?: boolean;
+  can_write?: boolean;
   warningTooltip?: string;
 };
 
@@ -37,3 +39,16 @@ export function getCollectionNodeId(collectionId: number): string {
 export function getTransformNodeId(transformId: number): string {
   return `transform-${transformId}`;
 }
+
+export type FolderTransform = Pick<Transform, "id" | "name" | "can_write"> &
+  Partial<Pick<Transform, "target">>;
+
+export type DeleteTransformsFolderModalState = {
+  type: "delete";
+  collection: Collection;
+  transforms: FolderTransform[];
+};
+
+export type TransformsFolderModalState =
+  | CollectionRowModalState
+  | DeleteTransformsFolderModalState;

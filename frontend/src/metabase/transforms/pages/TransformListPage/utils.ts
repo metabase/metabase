@@ -18,6 +18,7 @@ import type {
 } from "metabase-types/api";
 
 import {
+  type FolderTransform,
   type TreeNode,
   getCollectionNodeId,
   getTransformNodeId,
@@ -152,6 +153,7 @@ export function buildTreeData(
       owner_email: transform.owner_email,
       transformId: transform.id,
       can_read: transform.can_read,
+      can_write: transform.can_write,
     };
   }
 
@@ -161,6 +163,22 @@ export function buildTreeData(
   );
 
   return [...rootFolders, ...rootTransforms];
+}
+
+/** The transforms in a folder node and its subfolders, in tree order. */
+export function getTransformsInFolder(node: TreeNode): FolderTransform[] {
+  return (node.children ?? []).flatMap((child) =>
+    child.nodeType === "transform" && child.transformId != null
+      ? [
+          {
+            id: child.transformId,
+            name: child.name,
+            can_write: child.can_write,
+            target: child.target,
+          },
+        ]
+      : getTransformsInFolder(child),
+  );
 }
 
 export function getDefaultExpandedIds(
