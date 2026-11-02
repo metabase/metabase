@@ -1260,7 +1260,7 @@ function DatePickerValueInput({
           )}
         </span>
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown className={S.datePickerDropdown}>
         {type === "specific" && (
           <SpecificDatePicker
             {...pickerProps}

@@ -184,8 +184,9 @@
   font-weight: normal;
 }
 
+/* 4px above and below the 24px line: 32px rows, as in the design. */
 .option {
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  padding: 0.25rem var(--mantine-spacing-sm);
 }
 
 .sectionHeader {
@@ -301,7 +302,10 @@
   margin-left: auto;
   padding-left: var(--mantine-spacing-md);
   color: var(--mb-color-text-secondary);
-  font-size: var(--mantine-font-size-sm);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 0.75rem;
+  /* The symbols as the user types them: "!=", not the "≠" ligature. */
+  font-variant-ligatures: none;
 }
 
 .optionDescription {
@@ -389,6 +393,16 @@
    in place. The pill is the containing block of the dropdown. */
 .pillDropdown {
   left: -1px !important;
+}
+
+/* The dropdowns of a pill are inside the pill, so they inherit its small text.
+   They get the text of the app back. */
+.pillDropdown,
+.histogramDropdown,
+.datePickerDropdown {
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.5rem;
+  overflow-wrap: normal;
 }
 
 /* A dropdown with a panel on the right, like the US states map. */
