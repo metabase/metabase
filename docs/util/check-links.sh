@@ -12,7 +12,8 @@
 #
 # Without --external, links to other sites are skipped, which is how CI runs it
 # (.github/workflows/docs-links.yml). Needs lychee (https://lychee.cli.rs) and jq. Set LINKS_REPORT to a
-# file to also collect every failure there (.github/workflows/docs-links-site.yml files it as a Linear issue).
+# file to also collect every failure there (.github/workflows/docs-links-site.yml files it as a Linear issue),
+# and LINKS_EXCLUDED to collect the external urls lychee skipped, which that workflow rechecks.
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
@@ -82,11 +83,17 @@ print_failures() {
                   | $failures[] | "\(.file)\t\(.line)\t\(.url)\t\($first[.url].text // .text)"' <<<"$report")
 }
 
+save_excluded() {
+  [ "$external" -eq 1 ] && [ -n "${LINKS_EXCLUDED:-}" ] || return 0
+  jq -r '.excluded_map // {} | .[][].url | select(test("^https?://"))' <<<"$1" >> "$LINKS_EXCLUDED"
+}
+
 check_docs() {
   echo "Checking links in docs/"
   local report total count
   report=$(lychee docs "${lychee_args[@]}" --no-progress --format json || true)
   print_failures "$report" || return 1
+  save_excluded "$report"
   echo "Checked $total links in docs/, $count broken"
   [ "$count" -eq 0 ]
 }
@@ -168,6 +175,7 @@ check_nav() {
   report=$(lychee "${lychee_args[@]}" --root-dir "$root" --fallback-extensions md,html \
                   --include-fragments --no-progress --format json "$rendered" || true)
   print_failures "$report" "$locations" || return 1
+  save_excluded "$report"
   echo "Checked $total nav urls, $count broken"
   [ "$count" -eq 0 ]
 }

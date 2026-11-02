@@ -60,7 +60,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           LINKS_REPORT: external-links.txt
+          LINKS_EXCLUDED: excluded-links.txt
         run: docs/util/check-links.sh --external
+
+      # lychee reads .lycheeignore only from its working directory, so rechecking from elsewhere drops just those excludes.
+      - name: Recheck the links .lycheeignore skips
+        id: recheck
+        continue-on-error: true
+        working-directory: ${{ runner.temp }}
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          sort -u "$GITHUB_WORKSPACE/excluded-links.txt" |
+            lychee --config "$GITHUB_WORKSPACE/.lychee/config.toml" --no-progress --format json \
+              --output "$GITHUB_WORKSPACE/recheck-links.json" -
 
       # The 7-day cache eviction window equals the weekly gap, so the quarantine travels as an artifact instead.
       - name: Restore the link quarantine
@@ -96,7 +110,9 @@ jobs:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: fc363549-4f40-41ed-8f41-8fba461606ab # GRO
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        run: bun .github/scripts/report-links.ts --external external-links.txt --quarantine link-quarantine.json site-links.txt
+        run: |
+          bun .github/scripts/report-links.ts --external external-links.txt --quarantine link-quarantine.json \
+            --excluded excluded-links.txt --recheck recheck-links.json site-links.txt
 
       - name: Save the link quarantine
         if: ${{ !cancelled() && github.ref == 'refs/heads/master' }}
