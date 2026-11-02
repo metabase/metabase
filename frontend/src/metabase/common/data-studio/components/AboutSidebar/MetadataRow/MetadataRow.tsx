@@ -10,7 +10,7 @@ interface MetadataRowProps {
   children: ReactNode;
   /** Empty-state styling: muted icon and text. */
   muted?: boolean;
-  /** Shown at the end of the row, beside the value even when it wraps. */
+  /** Shown at the right edge of the row, beside the value even when it wraps. */
   rightSection?: ReactNode;
 }
 
@@ -31,7 +31,7 @@ export function MetadataRow({
       >
         <Icon name={icon} size={12} c={color} />
       </Center>
-      <Text component="span" c={color} className={S.text}>
+      <Text component="span" c={color} flex={1}>
         {children}
       </Text>
       {rightSection}
