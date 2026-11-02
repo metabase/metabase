@@ -101,11 +101,16 @@
   FK + join label (via `->result-column`) so a drilled-into field/dimension detail tells the LLM
   exactly how to reference the column."
   [query col field-id limit]
-  {:structured-output (merge {:result-type    :field-metadata
-                              :field_id       field-id
-                              :value_metadata (field-statistics query col limit)}
-                             (select-keys (metabot.tools.u/->result-column query col)
-                                          [:portable_fk :table_reference]))})
+  (let [;; `field-id` is the field ID, maybe as a string, or a column alias. A column with a field ID that is found by
+        ;; its alias is a later column of one field, see `column-field-ids`.
+        column-id (if (= (str field-id) (str (:id col)))
+                    (:id col)
+                    field-id)]
+    {:structured-output (merge {:result-type    :field-metadata
+                                :field_id       field-id
+                                :value_metadata (field-statistics query col limit)}
+                               (select-keys (metabot.tools.u/->result-column query col column-id)
+                                            [:portable_fk :table_reference]))}))
 
 (def ^:private max-suggested-field-ids 100)
 

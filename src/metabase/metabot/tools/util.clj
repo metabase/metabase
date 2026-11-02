@@ -119,7 +119,9 @@
   The representations-format notebook query tool expects fields to be referenced by this path
   rather than by numeric id.
 
-  The 3-arity uses `field-id` as the `field_id`, see [[->result-columns]]."
+  The 3-arity uses `field-id` as the `field_id`, see [[->result-columns]]. When `field-id` is the alias of a later
+  column of one physical field, the column gets no `:portable_fk`: the path names the field, and on a card stage the
+  field resolves to the first column."
   ([query column]
    (->result-column query column (column-field-id column)))
   ([query column field-id]
@@ -127,8 +129,9 @@
          effective-type    (some-> (:effective-type column) u/qualified-name)
          semantic-type     (some-> (:semantic-type column) u/qualified-name)
          coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)
-         portable-fk       (try (column-portable-fk query column)
-                                (catch Exception _ nil))
+         portable-fk       (when (= field-id (column-field-id column))
+                             (try (column-portable-fk query column)
+                                  (catch Exception _ nil)))
          fk-target-fk      (try (fk-target-portable-fk query column)
                                 (catch Exception _ nil))]
      (-> {:field_id field-id

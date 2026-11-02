@@ -547,12 +547,20 @@
               fields (get-in resources [0 :content :structured-output :fields])]
           (is (= [created-at-id "CREATED_AT_2" "count"]
                  (map :field_id fields)))
-          (testing "a drill-in on each field ID returns that column"
-            (are [field-id] (=? {:structured-output {:field_id field-id}}
-                                (field-stats/field-values {:entity-type "question" :entity-id card-id
-                                                           :field-id field-id :limit 5}))
-              created-at-id
-              "CREATED_AT_2")))))))
+          (testing "a drill-in on each field ID returns that column, and only the first column has a portable path"
+            (are [field-id portable-fk?] (= {:field_id field-id :portable-fk? portable-fk?}
+                                            (let [{:keys [field_id portable_fk]}
+                                                  (:structured-output
+                                                   (field-stats/field-values {:entity-type "question"
+                                                                              :entity-id   card-id
+                                                                              :field-id    field-id
+                                                                              :limit       5}))]
+                                              {:field_id field_id :portable-fk? (vector? portable_fk)}))
+              created-at-id  true
+              "CREATED_AT_2" false))
+          (testing "only the first column gets the portable path of the field"
+            (is (= [true false false]
+                   (map (comp vector? :portable_fk) fields)))))))))
 
 (deftest read-dashboard-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
