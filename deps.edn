@@ -17,7 +17,7 @@
   cheshire/cheshire                         {:mvn/version "6.2.0"}             ; fast JSON encoding (used by Ring JSON middleware)
   clj-bom/clj-bom                           {:mvn/version "0.1.2"}              ; handle BOMs in imported CSVs
   clj-commons/clj-yaml                      {:mvn/version "1.0.29"}             ; Clojure wrapper for YAML library SnakeYAML
-  clj-commons/iapetos                       {:mvn/version "0.1.14"}             ; prometheus metrics
+  clj-commons/iapetos                       {:mvn/version "0.1.15"}             ; prometheus metrics
   clj-http/clj-http                         {:mvn/version "3.13.1"              ; HTTP client
                                              :exclusions  [commons-codec/commons-codec
                                                            commons-io/commons-io
