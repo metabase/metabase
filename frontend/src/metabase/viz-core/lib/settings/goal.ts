@@ -60,6 +60,7 @@ export function getGraphGoalSettingsSection() {
 
 // Matches the chart's goal line tooltip: y-axis formatting without the column's
 // `scale` multiplier, which applies to series data but not to the goal line
+// This is due to a pre-existing bug: https://github.com/metabase/metabase/issues/86067
 function getGoalFormatOptions(
   cols: DatasetColumn[],
   settings: ComputedVisualizationSettings,
