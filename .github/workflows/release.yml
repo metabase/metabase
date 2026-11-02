@@ -463,7 +463,7 @@ jobs:
         with:
           title: Updating the ${{ matrix.edition }} Docker Hub README for
           version: ${{ inputs.version }}
-          warning: true
+          level: warning
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
 
@@ -734,6 +734,5 @@ jobs:
         with:
           title: Publishing
           version: ${{ inputs.version }}
-          needs: ${{ toJSON(needs) }}
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

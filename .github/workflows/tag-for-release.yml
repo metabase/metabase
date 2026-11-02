@@ -324,6 +324,5 @@ jobs:
         with:
           title: Tagging
           version: ${{ inputs.version }}
-          needs: ${{ toJSON(needs) }}
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

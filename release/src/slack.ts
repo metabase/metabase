@@ -342,12 +342,6 @@ export function githubRunLink(
 
 export type ReleaseStatus = "failure" | "success";
 
-export function getStatusReactions(status: ReleaseStatus) {
-  return status === "failure"
-    ? { add: "x", remove: "very-green-check" }
-    : { add: "very-green-check", remove: "x" };
-}
-
 export async function sendReleaseSlackMessage({
   channelName,
   version,
@@ -384,12 +378,17 @@ export async function sendReleaseSlackMessage({
   const ts = thread?.id || response.ts || "";
 
   if (status && ts) {
-    const { add, remove } = getStatusReactions(status);
+    if (status === "success") {
+      await slack.reactions
+        .remove({ channel: channelId, name: "x", timestamp: ts })
+        .catch(() => {});
+    }
     await slack.reactions
-      .remove({ channel: channelId, name: remove, timestamp: ts })
-      .catch(() => {});
-    await slack.reactions
-      .add({ channel: channelId, name: add, timestamp: ts })
+      .add({
+        channel: channelId,
+        name: status === "success" ? "very-green-check" : "x",
+        timestamp: ts,
+      })
       .catch(console.warn);
   }
 

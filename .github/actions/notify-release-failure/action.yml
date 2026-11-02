@@ -1,5 +1,5 @@
 name: Notify release failure
-description: Sends one failure message to the release thread and marks the thread as failed
+description: Sends a failure or warning message to the release thread
 
 inputs:
   title:
@@ -9,14 +9,10 @@ inputs:
     description: Release version to find the release thread. Empty posts to the channel.
     required: false
     default: ""
-  needs:
-    description: toJSON(needs) of the calling job. Empty sends no job list.
+  level:
+    description: failure marks the thread as failed. warning does not block the release or change the thread reaction.
     required: false
-    default: "{}"
-  warning:
-    description: Send a warning that does not block the release and does not change the thread reaction
-    required: false
-    default: "false"
+    default: failure
   slack-channel:
     description: Slack release channel name
     required: true
@@ -34,8 +30,7 @@ runs:
       env:
         TITLE: ${{ inputs.title }}
         VERSION: ${{ inputs.version }}
-        NEEDS: ${{ inputs.needs }}
-        WARNING: ${{ inputs.warning }}
+        LEVEL: ${{ inputs.level }}
         SLACK_RELEASE_CHANNEL: ${{ inputs.slack-channel }}
         SLACK_BOT_TOKEN: ${{ inputs.slack-bot-token }}
       with:
@@ -43,20 +38,14 @@ runs:
           const { sendReleaseSlackMessage, githubRunLink, getGenericVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const { owner, repo } = context.repo;
-          const { TITLE: title, VERSION: version } = process.env;
-          const isWarning = process.env.WARNING === 'true';
-          const jobs = Object.entries(JSON.parse(process.env.NEEDS))
-            .filter(([, job]) => ['failure', 'cancelled'].includes(job.result))
-            .map(([name, job]) => `${name} (${job.result})`)
-            .join(', ');
+          const { TITLE: title, VERSION: version, LEVEL: level } = process.env;
           const label = version ? `${title} ${getGenericVersion(version)} failed` : `${title} failed`;
           const runLink = githubRunLink(label, context.runId.toString(), owner, repo);
-          const text = isWarning ? `${runLink}. The release is not blocked.` : runLink;
 
           await sendReleaseSlackMessage({
             channelName: process.env.SLACK_RELEASE_CHANNEL,
             version: version || undefined,
-            emoji: isWarning ? 'warning' : 'x',
-            message: jobs ? `${text}\n${jobs}` : text,
-            status: isWarning ? undefined : 'failure',
+            ...(level === 'warning'
+              ? { emoji: 'warning', message: `${runLink}. The release is not blocked.` }
+              : { emoji: 'x', message: runLink, status: 'failure' }),
           });

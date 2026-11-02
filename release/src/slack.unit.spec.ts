@@ -1,4 +1,4 @@
-import { buildAutoReleaseSkipMessage, getStatusReactions } from "./slack";
+import { buildAutoReleaseSkipMessage } from "./slack";
 
 describe("buildAutoReleaseSkipMessage", () => {
   const baseArgs = {
@@ -106,18 +106,5 @@ describe("buildAutoReleaseSkipMessage", () => {
 
     expect(message).toContain("v53");
     expect(message).not.toContain("v54");
-  });
-});
-
-describe("getStatusReactions", () => {
-  it("swaps the success and failure reactions", () => {
-    expect(getStatusReactions("failure")).toEqual({
-      add: "x",
-      remove: "very-green-check",
-    });
-    expect(getStatusReactions("success")).toEqual({
-      add: "very-green-check",
-      remove: "x",
-    });
   });
 });
