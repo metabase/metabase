@@ -1,6 +1,5 @@
-# Sites behind Cloudflare (npm, OpenAI, claude.ai) answer CI runners with a 403 challenge; a dead page answers 404.
-accept = ["200..=204", "403", "429"]
-# npm pages are behind that challenge, but the registry answers 404 for a missing package.
+accept = ["200..=204", "429"]
+# npm pages answer CI runners with a Cloudflare 403 challenge, but the registry answers 404 for a missing package.
 remap = ["^https://www\\.npmjs\\.com/package/(.+)$ https://registry.npmjs.org/$1"]
 # Temporary excludes live in .lycheeignore, which the weekly check rechecks.
 exclude = [

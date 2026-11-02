@@ -6,7 +6,7 @@
 ^https://admin\.google\.com
 # expect: 307
 ^https://console\.mistral\.ai/
-# bot walls: 403 for non-browser clients; the config now accepts 403, so the recheck says when these can go
+# bot walls: 403 for non-browser clients, fine in a browser
 # expect: 403
 ^https://(www|dev)\.mysql\.com/
 # expect: 403
@@ -15,3 +15,8 @@
 ^https://console\.x\.ai/
 # expect: 403
 ^https://www\.oreilly\.com/
+# expect: 403
+^https://platform\.openai\.com/
+# redirects to the npm page, which the registry remap can't reach
+# expect: 403
+^https://metaba\.se/sdk-npm$
