@@ -217,6 +217,23 @@ describe("file-paths.yaml", () => {
   });
 
   it.each([
+    ".clj-kondo/config/modules/config.edn",
+    ".clj-kondo/src/hooks/common/modules.clj",
+    ".github/CODEOWNERS",
+    ".github/team.json",
+    "mage/src/mage/modules.clj",
+  ])("checks the generated CODEOWNERS block when %s changes", (path) => {
+    expect(matches("project_codeowners_checks", path)).toBe(true);
+  });
+
+  it.each(["src/metabase/search/core.clj", "dev/src/dev/module_explorer.clj"])(
+    "does not check the CODEOWNERS block when %s changes",
+    (path) => {
+      expect(matches("project_codeowners_checks", path)).toBe(false);
+    },
+  );
+
+  it.each([
     "loki.config.js",
     ".storybook/story-files.cjs",
     ".storybook/preview.tsx",
@@ -266,7 +283,6 @@ describe("file-paths.yaml", () => {
     "frontend/build/shared/esbuild/side-effect-free-modules-plugin.js",
     "rspack.main.config.js",
     "bun.lock",
-    "locales/fr.po",
     "snowplow/events/event.yaml",
     "patches/@cypress+grep+6.0.0.patch",
   ])("runs all E2E specs when %s changes", (file) => {
@@ -293,6 +309,16 @@ describe("file-paths.yaml", () => {
     expect(matches("ci_scripts", file)).toBe(true);
   });
 
+  it.each(["locales/translations.pin", "locales/fr.po"])(
+    "only lints i18n when %s changes",
+    (file) => {
+      const matched = Object.keys(filters).filter((name) =>
+        matches(name, file),
+      );
+      expect(matched).toEqual(["all_changed", "i18n"]);
+    },
+  );
+
   it("runs the module cycles test when a cluster is named", () => {
     expect(
       matches(
@@ -313,6 +339,7 @@ describe("file-paths.yaml", () => {
     "src/metabase/queries/core.clj",
     "resources/migrations/001_update_migrations.yaml",
     ".github/workflows/backend.yml",
+    ".github/CODEOWNERS",
   ])("runs the Mage tests when %s changes", (file) => {
     expect(matches("mage_tests", file)).toBe(true);
   });

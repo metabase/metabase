@@ -4,7 +4,6 @@ all_changed:
   - "**"
 
 default: &default
-  - "locales/**"
   - "bin/**/!(*.md)"
 
 workflows: &workflows
@@ -217,6 +216,16 @@ project_ratchet_checks: &project_ratchet_checks
   - ".clj-kondo/ratchets-test.edn"
   - ".clj-kondo/config/modules/ratchets.edn"
 
+# Inputs of the generated CODEOWNERS block.
+# Mage Tests also run for these files and catch a change that stops mage.modules from loading.
+project_codeowners_checks: &project_codeowners_checks
+  - *project_tests_infra
+  - ".clj-kondo/config/modules/config.edn"
+  - ".clj-kondo/src/hooks/common/modules.clj"
+  - ".github/CODEOWNERS"
+  - ".github/team.json"
+  - "mage/src/mage/modules.clj"
+
 project_migration_checks: &project_migration_checks
   - *project_tests_infra
   - "bin/lint-migrations-file/**"
@@ -226,6 +235,7 @@ project_migration_checks: &project_migration_checks
 
 mage_tests:
   - *project_backend_checks
+  - *project_codeowners_checks
   - *project_ratchet_checks
   - *project_migration_checks
   - "mage/**"
@@ -363,6 +373,7 @@ codeql:
 
 i18n:
   - *default
+  - "locales/**"
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
   - ".github/workflows/lint.yml"

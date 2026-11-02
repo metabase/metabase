@@ -43,22 +43,53 @@ defineQuery({
   breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
 });
 
-const actionWithInvalidId = {
-  action: { ...TEST_SCHEMA.actions.createOrder, id: true },
+const actionWithInvalidEntityId = {
+  entityId: true,
+  kind: "row/create",
+  table: TEST_SCHEMA.tables.orders,
 } as const;
 
-// @ts-expect-error action ids are numbers or entity IDs
-defineAction(actionWithInvalidId);
+// @ts-expect-error an action's entity ID is a string
+defineAction(actionWithInvalidEntityId);
 
-// @ts-expect-error action definitions must reference a generated action
-defineAction({ action: TEST_SCHEMA.tables.orders });
+// @ts-expect-error action definitions name a table from the app's schema
+defineAction({ entityId: "ordersEntity", kind: "row/create", table: 1 });
 
-const CreateOrder = defineAction({
-  action: TEST_SCHEMA.actions.createOrder,
+// @ts-expect-error action definitions need the entity ID of the action a production build runs
+defineAction({ kind: "row/create", table: TEST_SCHEMA.tables.orders });
+
+defineAction({
+  entityId: "ordersEntity",
+  // @ts-expect-error an implicit action creates, updates or deletes a row
+  kind: "row/upsert",
+  table: TEST_SCHEMA.tables.orders,
 });
 
-const UpdateOrder = defineAction({
-  action: TEST_SCHEMA.actions.updateOrder,
+const CreateOrder = defineAction({
+  entityId: "createOrderEntity",
+  kind: "row/create",
+  table: TEST_SCHEMA.tables.orders,
+});
+
+const REVIEWS_TABLE = {
+  type: "table",
+  id: 3,
+  fields: {
+    reviewId: {
+      type: "column",
+      fieldId: 300,
+      tableId: 3,
+      name: "Review ID",
+      slug: "review_id",
+      jsType: "number",
+    },
+  },
+} as const;
+
+const CreateReview = defineAction({
+  entityId: "createReviewEntity",
+  kind: "row/create",
+  table: REVIEWS_TABLE,
 });
 
 // --------
@@ -237,7 +268,11 @@ function InvalidTypeFixtures() {
   useMetabaseQueryObject({ ...staticQuery, limit: 10 });
 
   // @ts-expect-error a data app's action is a `defineAction` definition, never an inline object
-  useDataAppAction({ action: TEST_SCHEMA.actions.createOrder });
+  useDataAppAction({
+    entityId: "createOrderEntity",
+    kind: "row/create",
+    table: TEST_SCHEMA.tables.orders,
+  });
 
   // @ts-expect-error a copy of a definition is not the definition
   useDataAppAction({ ...CreateOrder });
@@ -245,11 +280,11 @@ function InvalidTypeFixtures() {
   // @ts-expect-error a data app never names an action by id
   useDataAppAction(51);
 
-  // @ts-expect-error pass the `defineAction` export, not the schema entry
-  useDataAppAction(TEST_SCHEMA.actions.createOrder);
+  // @ts-expect-error pass the `defineAction` export, not a table
+  useDataAppAction(TEST_SCHEMA.tables.orders);
 
-  // @ts-expect-error the SDK hook takes a definition object or an id, not the schema entry
-  useAction(TEST_SCHEMA.actions.createOrder);
+  // @ts-expect-error the SDK hook takes a definition object or an id, not a table
+  useAction(TEST_SCHEMA.tables.orders);
 
   // @ts-expect-error the definition's parameter slugs are the only keys
   useAction(CreateOrder).execute({ stauts: "shipped" });
@@ -257,8 +292,8 @@ function InvalidTypeFixtures() {
   // @ts-expect-error a parameter value is typed by its `jsType`
   useAction(CreateOrder).execute({ status: 1 });
 
-  // @ts-expect-error required parameters cannot be omitted
-  useAction(UpdateOrder).execute({});
+  // @ts-expect-error a parameter is keyed by its column's slug, not its lowercased name
+  useAction(CreateReview).execute({ "review id": 1 });
 
   // @ts-expect-error `result` is discriminated by the action's kind
   void useAction(CreateOrder).result?.["rows-updated"];
