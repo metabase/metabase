@@ -15,8 +15,9 @@
 (deftest ^:parallel cross-database-hint-test
   (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table]]
     (testing error
-      (is (= (str "Neither a notebook query nor a SQL query can combine data from two databases. Tell the user "
-                  "that one query cannot combine data from these two databases, and say what you can do instead.")
+      (is (= (str "Neither a notebook query nor a SQL query can combine data from two databases in Metabase (two "
+                  "different `database_id`s). Tell the user that one query cannot combine data from these two "
+                  "databases, and say what you can do instead.")
              (recovery-hints/recovery-hint {:error error}))))))
 
 (deftest ^:parallel ambiguous-database-name-hint-test
