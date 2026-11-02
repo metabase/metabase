@@ -737,82 +737,92 @@
                          (contains? tracking-opts-input :cache?)    (assoc :cache? (:cache? tracking-opts-input))
                          (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
     (try
-    (with-span :info {:name      :metabot.agent/call-llm-structured
-                      :model     model
-                      :msg-count (count input)}
-      (with-retries
-        tracking-opts
-        (fn []
-          (let [attempt-usage (atom {:input-tokens 0, :output-tokens 0})
-                parts    (into []
-                               (comp (core/aisdk-xf)
-                                     (report-aisdk-errors-xf tracking-opts)
-                                     (report-token-usage-xf tracking-opts)
-                                     (map (fn [{:keys [type usage] :as part}]
-                                            (when (= type :usage)
-                                              (let [next-usage {:input-tokens (:promptTokens usage 0)
-                                                                :output-tokens (:completionTokens usage 0)}]
-                                                (swap! total-usage #(merge-with + % (merge-with - next-usage @attempt-usage)))
-                                                (reset! attempt-usage next-usage)))
-                                            part)))
-                               (stream-fn streaming-opts))
-                result   (some (fn [{:keys [type arguments]}]
-                                 (when (= type :tool-input)
-                                   arguments))
-                               parts)
-                error    (some (fn [{:keys [type error]}]
-                                 (when (= type :error)
-                                   error))
-                               parts)
-                unparsed (core/unparsed-arguments result)
-                ;; Only `length` or `content-filter` can turn up here: `"tool-calls"` needs a `:finish`
-                ;; part, which the agent loop emits and this single-shot path never runs.
-                incomplete-reason (core/parts->incomplete-finish-reason parts)
-                ;; Only malformed JSON can be a cut-off tool call. A non-object reply parsed in full.
-                malformed?        (contains? unparsed :raw-arguments)]
-            (cond
-              ;; A tool call cut off mid-JSON is not a model emitting bad JSON — the turn ran out of
-              ;; room — so report why it stopped. Only `length` reroutes this branch: a content filter
-              ;; ends the turn without truncating the JSON it already sent.
-              (and malformed? (= incomplete-reason "length"))
-              (throw (incomplete-structured-output-error parts incomplete-reason))
+      (with-span :info {:name      :metabot.agent/call-llm-structured
+                        :model     model
+                        :msg-count (count input)}
+        (with-retries
+          tracking-opts
+          (fn []
+            (let [attempt-usage (atom {:input-tokens 0, :output-tokens 0})
+                  partial-arguments (atom {})
+                  parts    (into []
+                                 (comp (map (fn [{:keys [type toolCallId inputTextDelta] :as chunk}]
+                                              (case type
+                                                :tool-input-start (swap! partial-arguments assoc toolCallId false)
+                                                :tool-input-delta (swap! partial-arguments update toolCallId #(or % (boolean (not-empty inputTextDelta))))
+                                                :tool-input-available (swap! partial-arguments dissoc toolCallId)
+                                                nil)
+                                              chunk))
+                                       (core/aisdk-xf)
+                                       (report-aisdk-errors-xf tracking-opts)
+                                       (report-token-usage-xf tracking-opts)
+                                       (map (fn [{:keys [type usage] :as part}]
+                                              (when (= type :usage)
+                                                (let [next-usage {:input-tokens (:promptTokens usage 0)
+                                                                  :output-tokens (:completionTokens usage 0)}]
+                                                  (swap! total-usage #(merge-with + % (merge-with - next-usage @attempt-usage)))
+                                                  (reset! attempt-usage next-usage)))
+                                              part)))
+                                 (stream-fn streaming-opts))
+                  result   (some (fn [{:keys [type arguments]}]
+                                   (when (= type :tool-input)
+                                     arguments))
+                                 parts)
+                  error    (some (fn [{:keys [type error]}]
+                                   (when (= type :error)
+                                     error))
+                                 parts)
+                  unparsed (core/unparsed-arguments result)
+                  ;; Only `length` or `content-filter` can turn up here: `"tool-calls"` needs a `:finish`
+                  ;; part, which the agent loop emits and this single-shot path never runs.
+                  incomplete-reason (core/parts->incomplete-finish-reason parts)
+                  ;; Only malformed JSON can be a cut-off tool call. A non-object reply parsed in full.
+                  malformed?        (contains? unparsed :raw-arguments)]
+              (cond
+                ;; A tool call cut off mid-JSON is not a model emitting bad JSON — the turn ran out of
+                ;; room — so report why it stopped. Only `length` reroutes this branch: a content filter
+                ;; ends the turn without truncating the JSON it already sent.
+                (and (= incomplete-reason "length")
+                     (or malformed?
+                         (some ::core/discarded-tool-arguments? parts)
+                         (some true? (vals @partial-arguments))))
+                (throw (incomplete-structured-output-error parts incomplete-reason))
 
-              ;; The tool call's arguments were malformed JSON or valid JSON that isn't an object. Reject them
-              ;; rather than handing the parse sentinel back to the caller as if it were a structured result.
-              unparsed
-              (throw (ex-info (if malformed?
-                                "LLM returned malformed JSON in its structured tool call"
-                                "LLM returned a JSON value that is not an object in its structured tool call")
-                              (merge {:parts      parts
-                                      :error-code "structured-output-invalid"}
-                                     unparsed)))
+                ;; The tool call's arguments were malformed JSON or valid JSON that isn't an object. Reject them
+                ;; rather than handing the parse sentinel back to the caller as if it were a structured result.
+                unparsed
+                (throw (ex-info (if malformed?
+                                  "LLM returned malformed JSON in its structured tool call"
+                                  "LLM returned a JSON value that is not an object in its structured tool call")
+                                (merge {:parts      parts
+                                        :error-code "structured-output-invalid"}
+                                       unparsed)))
 
-              result
-              {:result result :parts parts :usage @total-usage}
+                result
+                {:result result :parts parts :usage @total-usage}
 
-              ;; The provider failed mid-stream and emitted an `:error` part instead of throwing
-              ;; (e.g. an OpenAI `response.failed`). Surface its message and code so callers/logs
-              ;; see the real cause rather than a misleading "no tool call".
-              error
-              (throw (ex-info (or (:message error) "LLM stream returned an error")
-                              {:parts parts :error error :error-code "llm-stream-error"}))
+                ;; The provider failed mid-stream and emitted an `:error` part instead of throwing
+                ;; (e.g. an OpenAI `response.failed`). Surface its message and code so callers/logs
+                ;; see the real cause rather than a misleading "no tool call".
+                error
+                (throw (ex-info (or (:message error) "LLM stream returned an error")
+                                {:parts parts :error error :error-code "llm-stream-error"}))
 
-              ;; No tool call. Use JSON from the text when it matches the schema, also when the turn
-              ;; stopped early: JSON that the model completed before the stop, in the whole reply or in
-              ;; a fenced block, is usable.
-              :else
-              (if-let [output (structured-output-in-text parts json-schema)]
-                (do (log/info "LLM answered in text instead of calling the structured-output tool"
-                              {:provider          provider
-                               :model             model
-                               :tag               (:tag tracking-opts-input)
-                               :finish-reason     incomplete-reason
-                               :raw-finish-reason (core/parts->raw-finish-reason parts)})
-                    {:result output :parts parts :usage @total-usage})
-                (throw (no-structured-output-error parts incomplete-reason))))))))
+                ;; No tool call. Use JSON from the text when it matches the schema, also when the turn
+                ;; stopped early: JSON that the model completed before the stop, in the whole reply or in
+                ;; a fenced block, is usable.
+                :else
+                (if-let [output (structured-output-in-text parts json-schema)]
+                  (do (log/info "LLM answered in text instead of calling the structured-output tool"
+                                {:provider          provider
+                                 :model             model
+                                 :tag               (:tag tracking-opts-input)
+                                 :finish-reason     incomplete-reason
+                                 :raw-finish-reason (core/parts->raw-finish-reason parts)})
+                      {:result output :parts parts :usage @total-usage})
+                  (throw (no-structured-output-error parts incomplete-reason))))))))
       (catch Exception error
-        (throw (ex-info (ex-message error) (assoc (ex-data error) :usage @total-usage) error)))))
-)
+        (throw (ex-info (ex-message error) (assoc (ex-data error) :usage @total-usage) error))))))
 
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`

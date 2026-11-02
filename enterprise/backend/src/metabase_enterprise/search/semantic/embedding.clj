@@ -242,6 +242,8 @@
   {:connection-timeout 10000
    :socket-timeout     60000})
 
+;; The source follows model write hooks into asynchronously scheduled reconciliation.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *embedding-request-source*
   "Bound to identify the operation that caused an embedding request; nil (the default) records \"unknown\".
   Reconcile scheduling captures this value so queued work retains the cause of the write that dirtied it."
@@ -559,7 +561,8 @@
             start-ms             (u/start-timer)
             {:keys [usage embeddings]}
             (call-through-embedder-breaker
-             #(let [{:keys [usage data]} (-> (http/post endpoint request)
+             #(let [_ (record-embedding-request! provider model-name)
+                    {:keys [usage data]} (-> (http/post endpoint request)
                                              :body
                                              (json/decode true))]
                 {:usage usage

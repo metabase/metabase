@@ -20,9 +20,9 @@
   per run."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.osi-generation.db :as db]
    [metabase-enterprise.osi-generation.settings :as settings]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -114,12 +114,7 @@
   the per-run tracker cannot see. Attributed by `ai_usage_log.source` = [[settings/usage-source]]
   so it counts every node's runs, not just this one."
   [^java.time.Instant since]
-  (or (:sum (t2/query-one {:select [[[:sum :total_tokens] :sum]]
-                           :from   [:ai_usage_log]
-                           :where  [:and
-                                    [:= :source settings/usage-source]
-                                    [:>= :created_at since]]}))
-      0))
+  (db/tokens-spent settings/usage-source since))
 
 (defn window-budget
   "The tightest configured persistent token-window allowance, or nil when both quotas are unset.

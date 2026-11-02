@@ -736,7 +736,7 @@
                             :candidates    [{:content {:parts [{:text "partial"}]}}]
                             :usageMetadata {:promptTokenCount 17 :candidatesTokenCount 2}})
                   (throw (ex-info "google stream interrupted" {}))))]
-    (mt/with-dynamic-fn-redefs [google/google-raw (constantly raw)]
+    (mt/with-dynamic-fn-redefs [google/google-raw (constantly [:google raw])]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"google stream interrupted"
                             (reduce (fn [acc part] (swap! parts conj part) acc)
                                     nil
@@ -750,7 +750,7 @@
         raw   (reify clojure.lang.IReduceInit
                 (reduce [_ _rf _init]
                   (throw (ex-info "google stream interrupted before output" {}))))]
-    (mt/with-dynamic-fn-redefs [google/google-raw (constantly raw)]
+    (mt/with-dynamic-fn-redefs [google/google-raw (constantly [:google raw])]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"interrupted before output"
                             (reduce (fn [acc part] (swap! parts conj part) acc)
                                     nil

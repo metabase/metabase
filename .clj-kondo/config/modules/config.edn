@@ -4207,8 +4207,20 @@
 
   enterprise/osi-generation
   {:team "Metabot"
-   :api #{metabase-enterprise.osi-generation.init}
-   :uses #{metabot metabot.llm settings util}}
+   :api #{metabase-enterprise.osi-generation.api metabase-enterprise.osi-generation.init}
+   :uses #{analytics.interface
+           api
+           app-db
+           metabot
+           metabot.llm
+           osi
+           premium-features
+           search.entity-retrieval
+           settings
+           task
+           util
+           enterprise/search.semantic}
+   :model-imports #{:model/OsiAiContext}}
 
   enterprise/permissions
   {:team "Security Engineering"

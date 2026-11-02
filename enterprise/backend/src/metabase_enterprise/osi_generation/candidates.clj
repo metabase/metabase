@@ -9,11 +9,11 @@
   ownership states fail closed. An entity that has left the library is never a candidate (its metadata
   is kept, never regenerated)."
   (:require
+   [metabase-enterprise.osi-generation.db :as db]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.spec :as spec]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,11 +33,7 @@
                             entities)]
     (mapcat (fn [[entity-type ids]]
               (mapcat (fn [id-chunk]
-                        (t2/query {:select [:*]
-                                   :from   [:osi_ai_context]
-                                   :where  [:and
-                                            [:= :entity_type entity-type]
-                                            [:in :entity_local_id (vec id-chunk)]]}))
+                        (db/raw-contexts entity-type (vec id-chunk)))
                       (partition-all row-query-chunk-size ids)))
             ids-by-type)))
 
