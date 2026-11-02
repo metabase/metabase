@@ -56,5 +56,6 @@ export const ITERATION_5_DIRECTIONS: FilterDirection[] = [
         appliesOnVisualize: true,
       }),
     initialExample: REALISTIC_EXAMPLES[0],
+    hasStageSeparatorSetting: true,
   },
 ];

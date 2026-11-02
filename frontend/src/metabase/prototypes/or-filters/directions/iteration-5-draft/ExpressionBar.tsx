@@ -4,6 +4,7 @@ import {
   type MouseEvent,
   type ReactNode,
   type RefObject,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -48,6 +49,7 @@ import {
 } from "./draft-pill/DraftFilterPill";
 import type { SuggestionGroup } from "./draft-pill/types";
 import { getDraftStateFromFilter } from "./draft-pill/utils";
+import { type StageSeparator, StageSeparatorContext } from "./settings";
 
 export type ExpressionBarProps = {
   query: Lib.Query;
@@ -902,13 +904,9 @@ export function ExpressionBar({
               onClick={() => moveCaret(tokens.length)}
             />
           ),
-          // The dash parts the filters on the rows from the filters on the summary.
+          // The separator parts the filters on the rows from the filters on the summary.
           ...(trailing && tokens.length > 0
-            ? [
-                <span key="stage-dash" className={S.stageDash} aria-hidden>
-                  –
-                </span>,
-              ]
+            ? [<StageSeparatorMark key="stage-separator" />]
             : []),
           ...(trailing
             ? [
@@ -1525,4 +1523,47 @@ function hasTopLevelOr(tokens: Token[]): boolean {
     }
     return depth === 0 && token.type === "op" && token.op === "or";
   });
+}
+
+const STAGE_GLYPHS: Record<
+  Exclude<StageSeparator, "hairline" | "then">,
+  string
+> = {
+  dash: "–",
+  arrow: "→",
+  chevron: "›",
+  guillemet: "»",
+};
+
+/** Parts the rows' filters from the summary's, as the prototype settings say. Never a token. */
+function StageSeparatorMark() {
+  const separator = useContext(StageSeparatorContext);
+
+  if (separator === "hairline") {
+    return (
+      <span className={S.stageSeparator} aria-hidden>
+        <span className={S.stageHairline} />
+      </span>
+    );
+  }
+
+  if (separator === "then") {
+    return (
+      <span className={cx(S.stageSeparator, S.stageThen)} aria-hidden>
+        {t`then`}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={cx(
+        S.stageSeparator,
+        separator === "dash" ? S.stageDash : S.stageGlyph,
+      )}
+      aria-hidden
+    >
+      {STAGE_GLYPHS[separator]}
+    </span>
+  );
 }

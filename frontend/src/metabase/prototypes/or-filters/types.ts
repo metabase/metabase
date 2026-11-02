@@ -63,4 +63,6 @@ export type FilterDirection = {
   hasCompactReadingOn?: boolean;
   /** Offers the "Implicit AND" setting (ANDs never shown nor typed), switched on when the direction opens. */
   hasImplicitAndSetting?: boolean;
+  /** Offers the "Stage separator" setting: what parts the rows' filters from the summary's. */
+  hasStageSeparatorSetting?: boolean;
 };
