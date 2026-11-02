@@ -1,10 +1,10 @@
-import { type ComponentType, lazy } from "react";
+import type { ComponentType } from "react";
 import { isValidElementType } from "react-is";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { isStorybookActive } from "metabase/env";
-import { retry } from "metabase/utils/retry";
+import { lazyChunk } from "metabase/utils/lazy-chunk";
 import type {
   IconName,
   RawSeries,
@@ -150,20 +150,8 @@ export function getRegisteredComponent(
     return undefined;
   }
 
-  const component = lazy(() =>
-    retry(loadComponent, {
-      maxRetries: 2,
-      shouldRetry: () => true,
-      delayMs: (attempt) => 300 * 2 ** attempt,
-    })
-      .then((Chart) => ({ default: Chart }))
-      .catch((error) => {
-        // React keeps a rejected lazy rejected for the life of the object, so
-        // reusing this one would fail every later render until a reload. Drop
-        // it and the next render builds one that downloads again.
-        lazyComponents.delete(identifier);
-        throw error;
-      }),
+  const component = lazyChunk(() =>
+    loadComponent().then((Chart) => ({ default: Chart })),
   );
   lazyComponents.set(identifier, component);
   return component;

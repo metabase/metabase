@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect } from "react";
+import { Suspense, useCallback, useEffect } from "react";
 
 import {
   closeEmbedSetupModal,
@@ -6,15 +6,16 @@ import {
 } from "metabase/embedding/store/embed-setup-modal";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
+import { lazyChunk } from "metabase/utils/lazy-chunk";
 
 // These reach the dashboard actions and selectors, so they load when a modal opens rather than with the app.
-const SdkIframeEmbedSetupModal = lazy(() =>
+const SdkIframeEmbedSetupModal = lazyChunk(() =>
   import("./SdkIframeEmbedSetupModal").then(({ SdkIframeEmbedSetupModal }) => ({
     default: SdkIframeEmbedSetupModal,
   })),
 );
 
-const LegacyStaticEmbeddingModal = lazy(() =>
+const LegacyStaticEmbeddingModal = lazyChunk(() =>
   import("./LegacyStaticEmbeddingModal").then(
     ({ LegacyStaticEmbeddingModal }) => ({
       default: LegacyStaticEmbeddingModal,

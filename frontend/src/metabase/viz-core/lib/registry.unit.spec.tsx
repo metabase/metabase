@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import React, { Component, Suspense } from "react";
 
+import { setChunkErrorFallback } from "metabase/utils/lazy-chunk";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import {
@@ -53,7 +54,16 @@ describe("registerVisualization", () => {
 });
 
 describe("a chunk that fails to download", () => {
-  it("retries, and does not keep handing back the failed component", async () => {
+  beforeEach(() => {
+    setChunkErrorFallback(() => <div>chart unavailable</div>);
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    setChunkErrorFallback(() => null);
+  });
+
+  it("retries, then renders the fallback in place of the chart", async () => {
     // A cast is needed because the registry is keyed by the known display types.
     const display = "download-fails" as VisualizationDisplay;
     const definition = createDefinition(display);
@@ -61,7 +71,7 @@ describe("a chunk that fails to download", () => {
     let attempts = 0;
     registerVisualization(definition, () => {
       attempts += 1;
-      return Promise.reject(new Error("chunk load failed"));
+      return Promise.reject(new Error("Loading chunk 42 failed."));
     });
 
     const failing = getRegisteredComponent(display);
@@ -75,18 +85,38 @@ describe("a chunk that fails to download", () => {
 
     // The retry backoff runs longer than the default findBy timeout.
     expect(
-      await screen.findByText("chunk load failed", undefined, {
+      await screen.findByText("chart unavailable", undefined, {
         timeout: 5000,
       }),
     ).toBeInTheDocument();
-    // The initial attempt plus two retries.
-    expect(attempts).toBe(3);
+    // The initial attempt plus four retries.
+    expect(attempts).toBe(5);
+  });
 
-    // A new object, so the next render downloads again rather than reusing a
-    // lazy React has permanently marked as rejected.
-    const retried = getRegisteredComponent(display);
-    expect(retried).toBeDefined();
-    expect(retried).not.toBe(failing);
+  it("reports a chart that throws once loaded rather than retrying it", async () => {
+    // A cast is needed because the registry is keyed by the known display types.
+    const display = "chart-throws" as VisualizationDisplay;
+    const definition = createDefinition(display);
+
+    let attempts = 0;
+    registerVisualization(definition, () => {
+      attempts += 1;
+      return Promise.reject(new Error("the chart itself is broken"));
+    });
+
+    const failing = getRegisteredComponent(display);
+    render(
+      <ChunkErrorBoundary>
+        <Suspense fallback={<div>loading</div>}>
+          {failing ? React.createElement(failing) : null}
+        </Suspense>
+      </ChunkErrorBoundary>,
+    );
+
+    expect(
+      await screen.findByText("the chart itself is broken"),
+    ).toBeInTheDocument();
+    expect(attempts).toBe(1);
   });
 });
 

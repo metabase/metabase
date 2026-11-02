@@ -1,4 +1,6 @@
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
+
+import { lazyChunk } from "metabase/utils/lazy-chunk";
 
 import type { QueryEditorProps } from "./QueryEditor";
 
@@ -17,7 +19,7 @@ const importQueryEditor = () =>
  */
 export const loadQueryEditor = () => importQueryEditor();
 
-const LazyQueryEditor = lazy(() =>
+const LazyQueryEditor = lazyChunk(() =>
   importQueryEditor().then(({ QueryEditor }) => ({ default: QueryEditor })),
 );
 
