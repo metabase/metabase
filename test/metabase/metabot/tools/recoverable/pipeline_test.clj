@@ -283,6 +283,10 @@
           (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
           (is (= "metabase://database/<numeric id>/tables" (recovery-uri text))))))))
 
+(def ^:private cross-database-recovery
+  (str "Neither a notebook query nor a SQL query can combine data from two databases. Tell the user that one "
+       "query cannot combine data from these two databases, and say what you can do instead."))
+
 (deftest both-surfaces-name-the-same-ids-test
   (testing "for every pipeline code, the Agent API hint names an id exactly when Metabot's payload carries it"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -403,10 +407,7 @@
 (deftest ^:parallel cross-database-recovery-test
   (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment]]
     (testing error
-      (is (= (str "Query failed.\n"
-                  "A query can only reference saved questions, models, metrics, measures and segments "
-                  "from its own database. Use one from that database, or change the source to a table "
-                  "in the referenced item's database.")
+      (is (= (str "Query failed.\n" cross-database-recovery)
              (pipeline-error-text! error))))))
 
 (deftest ^:parallel ambiguous-database-name-recovery-test

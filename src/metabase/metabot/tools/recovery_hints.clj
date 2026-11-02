@@ -108,7 +108,7 @@
     "Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
 
     (:cross-database-card :cross-database-measure :cross-database-segment)
-    "A query can only reference saved questions, models, metrics, measures and segments from its own database. Use one from that database, or change the source to a table in the referenced item's database."
+    (:text recoverable.pipeline/cross-database-step)
 
     :unknown-database
     "Use the exact database name as reported by search / `read_resource` (it appears as the first element of every portable FK, e.g. `source-table: [<db-name>, <schema>, <table>]`)."

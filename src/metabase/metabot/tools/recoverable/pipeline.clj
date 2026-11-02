@@ -154,11 +154,11 @@
    :text (str "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an "
               "entity_id string.")})
 
-(def ^:private cross-database-step
+(def cross-database-step
+  "The recovery step for a query that references a table, card, measure or segment in another database."
   {:uses #{}
-   :text (str "A query can only reference saved questions, models, metrics, measures and segments "
-              "from its own database. Use one from that database, or change the source to a table "
-              "in the referenced item's database.")})
+   :text (str "Neither a notebook query nor a SQL query can combine data from two databases. Tell the user that "
+              "one query cannot combine data from these two databases, and say what you can do instead.")})
 
 (defn- card-fields-step
   "Return a recovery step listing `what` from the source card, or nil when `payload` names no card."
