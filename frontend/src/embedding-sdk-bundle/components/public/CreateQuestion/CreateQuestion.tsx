@@ -15,7 +15,7 @@ export type CreateQuestionProps = Omit<
   "children"
 >;
 
-const CreateQuestionInner = (props: CreateQuestionProps = {}) => (
+const CreateQuestionInner = (props: CreateQuestionProps) => (
   <InteractiveQuestion {...props} questionId="new" />
 );
 

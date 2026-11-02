@@ -1,6 +1,5 @@
 import { type ReactNode, memo } from "react";
 
-import type { CreateQuestionProps } from "embedding-sdk-bundle/components/public/CreateQuestion";
 import type { DateRangeCalendarProps } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
 import type { DateRangePopoverProps } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 import type {
@@ -88,9 +87,7 @@ export function createMockSdkBundle({
   return {
     CollectionBrowser,
     CreateDashboardModal,
-    CreateQuestion: (props?: CreateQuestionProps) => (
-      <CreateQuestion {...props} />
-    ),
+    CreateQuestion,
     DateRangeCalendar: (props: DateRangeCalendarProps) => (
       <DateRangeCalendar {...props} />
     ),
