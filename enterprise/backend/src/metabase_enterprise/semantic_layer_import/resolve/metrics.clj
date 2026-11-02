@@ -73,8 +73,8 @@
                         (unsupported/throw-reason "count-where over the non-boolean column %s" (pr-str column-name)))
                       (lib/= column true))
                     column))
-      :sql      (let [value (sql/expression->mbql (:dialect env) expr resolve-column
-                                                  {:condition? (= operator :count-where)})]
+      :sql      (let [->mbql (if (= operator :count-where) sql/condition->mbql sql/value->mbql)
+                      value  (->mbql (:dialect env) expr resolve-column)]
                   (if (lib/clause? value)
                     value
                     (literal-unsupported (pr-str value)))))))
@@ -386,13 +386,13 @@
 
     :derived
     (let [by-name (m/index-by #(or (:alias %) (:metric %)) (:inputs ir))
-          value   (sql/expression->mbql (:dialect env) expr
-                                        (fn [identifier]
-                                          (if-let [input (get by-name identifier)]
-                                            (input-leaf context outcomes input)
-                                            (unsupported/throw-reason "%s is not one of the metric's inputs (%s)"
-                                                                      (pr-str identifier)
-                                                                      (str/join ", " (map pr-str (keys by-name)))))))]
+          value   (sql/value->mbql (:dialect env) expr
+                                   (fn [identifier]
+                                     (if-let [input (get by-name identifier)]
+                                       (input-leaf context outcomes input)
+                                       (unsupported/throw-reason "%s is not one of the metric's inputs (%s)"
+                                                                 (pr-str identifier)
+                                                                 (str/join ", " (map pr-str (keys by-name)))))))]
       (if (lib/clause? value)
         value
         (unsupported/throw-reason "expr %s is the constant %s, not arithmetic over the inputs"

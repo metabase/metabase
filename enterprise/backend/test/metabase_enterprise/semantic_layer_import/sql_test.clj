@@ -28,7 +28,7 @@
 (defn- condition-reason
   "Why the SQL condition `sql` is reported, or the filter clause it converts to."
   [sql]
-  (reason #(sql/expression->mbql "postgres" sql resolve-name {:condition? true})))
+  (reason #(sql/condition->mbql "postgres" sql resolve-name)))
 
 (deftest ^:parallel jinja-test
   (testing "Jinja anywhere in the SQL, a string literal included: dbt renders the template before the warehouse sees it"
@@ -52,7 +52,7 @@
     (is (re-find #"^could not parse \"name =\"" (condition-reason "name ="))))
   (testing "an unsupported reason the column callback throws propagates as it is"
     (is (= "no such column"
-           (reason #(sql/expression->mbql "postgres" "name" (fn [_identifier]
-                                                              (unsupported/throw-reason "no such column")))))))
+           (reason #(sql/value->mbql "postgres" "name" (fn [_identifier]
+                                                         (unsupported/throw-reason "no such column")))))))
   (testing "SQL that converts comes back as the converter returns it"
-    (is (= :upper (first (sql/expression->mbql "postgres" "upper(name)" resolve-name))))))
+    (is (= :upper (first (sql/value->mbql "postgres" "upper(name)" resolve-name))))))

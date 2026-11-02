@@ -1,9 +1,9 @@
 # SQL to MBQL
 
 The `sql-to-mbql` module converts SQL in a warehouse's dialect to MBQL, as Lib clauses. For now it converts one SQL
-expression on its own, with no surrounding `SELECT`: the argument of an aggregation, a computed column or a filter's
-condition, such as `sales / target` or `status = 'Shipped' AND amount > 0`. A whole query, with its `FROM`, joins and
-`GROUP BY`, does not convert.
+expression on its own, with no surrounding `SELECT`: a computed column or a filter's condition, such as `sales / target`
+or `status = 'Shipped' AND amount > 0`, or an aggregate expression, the shape a semantic layer's metric takes, such as
+`SUM(net_amount) / COUNT(DISTINCT order_id)`. A whole query, with its `FROM`, joins and `GROUP BY`, does not convert.
 
 ## Usage
 
@@ -13,10 +13,14 @@ The API is `metabase.sql-to-mbql.core`:
 (require '[metabase.sql-to-mbql.core :as sql-to-mbql])
 
 ;; a value: a Lib expression, or a literal as itself
-(sql-to-mbql/expression->mbql "postgres" "sales / nullif(quantity, 0)" resolve-column)
+(sql-to-mbql/value->mbql "postgres" "sales / nullif(quantity, 0)" resolve-column)
 
 ;; a condition: a Lib filter clause
-(sql-to-mbql/expression->mbql "postgres" "status = 'Shipped' AND amount > 0" resolve-column {:condition? true})
+(sql-to-mbql/condition->mbql "postgres" "status = 'Shipped' AND amount > 0" resolve-column)
+
+;; an aggregate expression: one Lib aggregation clause
+(sql-to-mbql/aggregation->mbql "postgres" "SUM(amount) FILTER (WHERE status = 'Shipped') / COUNT(DISTINCT order_id)"
+                               resolve-column)
 ```
 
 - The dialect is a sqlglot dialect name, which `metabase.sql-tools.core/driver->dialect` gives for a driver, or nil for
@@ -26,8 +30,10 @@ The API is `metabase.sql-to-mbql.core`:
   returns the Lib ref for the column. A column used twice is resolved twice, and each call has to return a new ref,
   since every ref carries its own `:lib/uuid`. The ref's type matters: an integer division, a cast to an integer and a
   bare column in a condition are read by it (see below), and a ref of type `:type/*` is a column of unknown type.
-- With `:condition? true`, the SQL is read where SQL expects a boolean (a `WHERE`, a `WHEN`) and comes back as a filter
-  clause; a bare boolean column there is `column = true`. Otherwise it is a value, and a comparison is not one.
+- `condition->mbql` reads the SQL where SQL expects a boolean (a `WHERE`, a `WHEN`) and returns a filter clause; a bare
+  boolean column there is `column = true`. `aggregation->mbql` reads it as an aggregate expression and returns one
+  aggregation clause, in which every column is inside an aggregate (see "Aggregations" below). `value->mbql` reads it as
+  a value, which a comparison is not, nor is an aggregate.
 
 SQL outside the subset below throws an exception that `sql-to-mbql/unsupported?` recognises, whose message names the
 construct and says why. The converter reports rather than approximates: where the Lib clause would return other rows
@@ -90,6 +96,32 @@ clauses from its tree. `metabase-enterprise.semantic-layer-import` is the module
 
 Anything outside that subset is reported, naming the construct.
 
+### Aggregations
+
+`aggregation->mbql` takes a SQL aggregate expression, and converts it to one Lib aggregation clause. Each
+aggregate's argument is converted with the row-level subset above, so `SUM(price * (1 - discount))` and
+`AVG(CAST(sal AS DOUBLE PRECISION))` convert, and what is reported at row level stays reported inside an aggregate.
+
+- `SUM`, `AVG`, `MIN`, `MAX`, `MEDIAN`, `COUNT(DISTINCT x)` and `PERCENTILE_CONT(p) WITHIN GROUP (ORDER BY x)` (with
+  `p` a literal from 0 to 1), as `sum`, `avg`, `min`, `max`, `median`, `distinct` and `percentile`; `STDDEV_POP` and
+  `VAR_POP` as `stddev` and `var`, which Metabase compiles to the population statistics;
+- `COUNT(*)`, `COUNT(t.*)`, `COUNT(1)` and `SUM(1)` as `count`, the row count. `COUNT(x)` counts the rows where `x` is
+  not null, as `count-where` over `IS NOT NULL`, the way the semantic layer import spells it;
+- a filtered aggregate, as `sum-where`, `count-where` or `distinct-where`, whether written with `FILTER (WHERE c)` or as
+  the `CASE` idiom: `SUM(CASE WHEN c THEN x ELSE 0 END)` and `SUM(CASE WHEN c THEN x END)` are `sum-where`,
+  `SUM(CASE WHEN c THEN 1 ELSE 0 END)`, `COUNT(CASE WHEN c THEN 1 END)` and `COUNT(*) FILTER (WHERE c)` are
+  `count-where`, `COUNT(DISTINCT CASE WHEN c THEN x END)` is `distinct-where`, and `COUNT(CASE WHEN c THEN x END)`
+  counts the rows where `c` holds and `x` is not null. `AVG(CASE WHEN c THEN 1 ELSE 0 END)` is `share`, the fraction
+  of rows `c` holds for. Any other `CASE` is aggregated as the value it is;
+- arithmetic, `nullif`, `coalesce` and the functions of the row-level subset over aggregates, so that
+  `SUM(a) / NULLIF(SUM(b), 0)`, `COALESCE(SUM(x), 0)` and `ROUND(SUM(a) / COUNT(*), 2)` are each one aggregation. The
+  row-level checks apply between aggregates too: `SUM(quantity) / COUNT(*)` over an integer column is reported on a
+  warehouse that truncates the quotient, and `SUM(x)::NUMBER` on Snowflake is a cast that rounds.
+
+A column outside an aggregate (`SUM(price) + price`, or a metric naming another metric by its name), an expression with
+no aggregate in it, an aggregate nested in another, a window function, and an aggregate Metabase has no exact
+equivalent for are reported; the table below has each.
+
 ## Weeks
 
 `date_trunc('week', ...)` on most warehouses truncates to the ISO week, which starts on Monday. A Metabase `week`
@@ -112,6 +144,25 @@ What the subset leaves out, and what it would take:
 | a non-boolean column standing alone as a condition | a condition that is just `status`, `case when status then 1 end` | A bare column in a boolean position is read as `column = true`, which is right for a boolean column (`WHERE is_returned`) and nothing else: the warehouse rejects an integer or text there, where `[:= x true]` would run and match nothing. A column whose ref is typed as anything but boolean is reported; one of unknown type is trusted. | Nothing: this is a mistake in the SQL. |
 | a `LIKE`, `SIMILAR TO` or regex pattern that is not a string literal | `like prefix \|\| '%'`, `~ pattern` | A pattern that is a column or an expression cannot be taken apart into Lib's string filters, and the regex fallback needs the regex as a literal too. | Extend MBQL with a `like` clause taking an expression as the pattern. |
 | a `LIKE` pattern with a backslash and no `ESCAPE`, on a dialect whose default escape character the converter does not know | `like '100\%'` on Druid, or with no dialect | The pattern means `100%` where a backslash is the default escape character and `100\` followed by anything where it is not. The converter knows the answer for Postgres, Redshift, MySQL, BigQuery, Spark/Databricks, Hive and ClickHouse (a backslash) and for Snowflake, SQL Server, Oracle, SQLite and Trino/Presto (none); elsewhere it reports rather than guess. A `[` in a SQL Server pattern, which opens a character class, is reported too. | Write `ESCAPE` in the SQL, or add the dialect to the converter's table (`default-like-escape`). |
+| a column outside an aggregate, in an aggregation | `SUM(price) + price`, `total_amount / order_count` where those are other metrics' names, `CASE WHEN status = 'x' THEN SUM(amount) END` | An aggregation has one value per group, and a column has one per row, so a column outside an aggregate has no one value. A semantic layer's metric that names another metric arrives this way, since the converter sees identifiers only. | Inline the metric it names, as the semantic layer import does with a field's expression; or extend the import with `[:metric ...]` references for names it knows to be metrics. |
+| an aggregation with no aggregate in it | `100`, `1 + 1`, `NULL` | It is a value, not an aggregation. | Nothing: this is a mistake in the SQL. |
+| an aggregate nested in another, in its argument or its `FILTER` | `SUM(MAX(price))`, `SUM(CASE WHEN c THEN MAX(x) END)`, `SUM(x) FILTER (WHERE COUNT(*) > 1)` | Nesting aggregates has no meaning in one query; a warehouse rejects it. | Nothing. |
+| a window function | `SUM(SUM(x)) OVER (ORDER BY d)`, `RANK() OVER (PARTITION BY s ORDER BY SUM(x) DESC)`, `SUM(x) - LAG(SUM(x), 1) OVER (ORDER BY y, m)` | Its value depends on the other rows of the result, which one aggregation clause has no say over: a running total needs the query's own breakout as its ordering. Semantic layers write "cumulative" and period-over-period metrics this way. | Convert a `SUM(SUM(x)) OVER (ORDER BY ... ROWS UNBOUNDED PRECEDING)` to `cum-sum` where the ordering is the query's time breakout, and `LAG` to `offset`, once the caller supplies that breakout. |
+| `FILTER (WHERE c)` over anything but a sum or a count | `AVG(x) FILTER (WHERE c)`, `MIN(x) FILTER (WHERE c)`, `MEDIAN(x) FILTER (WHERE c)`, `STDDEV_POP(x) FILTER (WHERE c)` | Metabase's filtered aggregations are `sum-where`, `count-where` and `distinct-where`; there is no filtered `avg`, `min`, `max`, `median`, `percentile` or `stddev`. | Convert `AVG(x) FILTER (WHERE c)` as `sum-where / count-where` over `c AND x IS NOT NULL`; extend MBQL with the rest. |
+| a sample standard deviation or variance | `STDDEV(x)`, `STDDEV_SAMP(x)`, `VARIANCE(x)`, `VAR_SAMP(x)` | Metabase compiles `stddev` and `var` to `STDDEV_POP` and `VAR_POP`, the population statistics, which divide by n where the sample ones divide by n - 1, so the number would differ. `STDDEV_POP` and `VAR_POP` convert. | Extend MBQL with sample statistics, or a population/sample option. |
+| an approximate aggregate | `APPROX_COUNT_DISTINCT(x)`, `APPROX_PERCENTILE(x, 0.5)` | It returns an estimate, where Metabase's `distinct` and `percentile` are exact, so the number would differ. | Convert to the exact aggregation where the caller accepts a different, exact number. |
+| a discrete percentile | `PERCENTILE_DISC(0.9) WITHIN GROUP (ORDER BY x)` | It picks a value from the data, where Metabase's `percentile` compiles to `PERCENTILE_CONT`, which interpolates between two, so the number would differ. A `PERCENTILE_CONT` whose fraction is not a literal from 0 to 1 is reported too. | Extend MBQL's `percentile` with a discrete option. |
+| `DISTINCT` under anything but `COUNT`, or a `COUNT` of several expressions | `SUM(DISTINCT x)`, `AVG(DISTINCT x)`, `COUNT(DISTINCT *)`, `COUNT(DISTINCT a, b)`, `COUNT(a, b)`, `SUM(*)` | Metabase has `distinct` and `distinct-where`, over one expression, and nothing else distinct; `*` is no value. | Extend MBQL with a distinct option on `sum` and `avg`, and a `distinct` over several expressions. |
+| an aggregate function with no MBQL aggregation of the same meaning | `STRING_AGG(x, ',')`, `ARRAY_AGG(x)`, `BOOL_OR(x)`, `SAFE_DIVIDE(SUM(a), SUM(b))` on BigQuery, a UDF over an aggregate | As at row level: nothing to map onto. `SAFE_DIVIDE` is a function, not an aggregate, and `x / NULLIF(y, 0)` says the same thing in a way that converts. | Extend MBQL. |
+
+## Filtered aggregates and empty groups
+
+A filtered aggregate converts with a difference in what it returns for a group no row of which passes the filter.
+`SUM(x) FILTER (WHERE c)` and `SUM(CASE WHEN c THEN x END)` are null there, and `SUM(CASE WHEN c THEN x ELSE 0 END)` is
+0; the `sum-where` all three convert to compiles to `SUM(CASE WHEN c THEN x ELSE 0 END)`, so it is 0 for all three.
+`count-where` and `distinct-where` agree with their SQL, which counts 0, and `SUM(1)`, converted as `count`, is 0 where
+the SQL is null over no rows at all. A metric card returns one of these numbers for an empty group where the warehouse
+returns null, and the sum of the groups is the same.
 
 ## Concatenation and nulls
 

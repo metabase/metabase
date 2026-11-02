@@ -1,8 +1,8 @@
 (ns metabase-enterprise.semantic-layer-import.sql
   "The import's side of the warehouse SQL in the IR, which [[metabase.sql-to-mbql.core]] converts to Lib expressions
   and filter clauses: what an IR `expr` is ([[parse-expr]]), whether SQL still contains Jinja ([[jinja?]]), and
-  [[expression->mbql]], the conversion with what it cannot convert thrown with [[unsupported/throw-reason]], which the
-  resolve stage turns into a report entry. See [SQL in the IR](sql.md)."
+  [[value->mbql]], [[condition->mbql]] and [[aggregation->mbql]], the conversions with what they cannot convert thrown
+  with [[unsupported/throw-reason]], which the resolve stage turns into a report entry. See [SQL in the IR](sql.md)."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.semantic-layer-import.unsupported :as unsupported]
@@ -58,26 +58,45 @@
   [sql :- :string]
   (boolean (re-find #"\{\{|\{%|\{#" sql)))
 
-(mu/defn expression->mbql :- ::sql-to-mbql/expression
-  "[[sql-to-mbql/expression->mbql]] for the SQL of an IR aggregation's, dimension's or key's `expr`, a derived metric's
-  arithmetic or a filter, in `dialect`, with `options` passed on. SQL that still contains Jinja (see [[jinja?]]) and
-  SQL the converter cannot convert are thrown with [[unsupported/throw-reason]]. An exception `resolve-column` throws,
-  an unsupported reason of the import's own among them, propagates as it is."
-  ([dialect        :- ::sql-to-mbql/dialect
-    sql            :- :string
-    resolve-column :- ::sql-to-mbql/resolve-column]
-   (expression->mbql dialect sql resolve-column nil))
+(mu/defn- convert :- ::sql-to-mbql/expression
+  "`(->mbql dialect sql resolve-column)`, `->mbql` one of the converter's functions ([[sql-to-mbql/value->mbql]],
+  [[sql-to-mbql/condition->mbql]] or [[sql-to-mbql/aggregation->mbql]]), for the SQL in the IR. SQL that still
+  contains Jinja (see [[jinja?]]) and SQL the converter cannot convert are thrown with [[unsupported/throw-reason]]. An
+  exception `resolve-column` throws, an unsupported reason of the import's own among them, propagates as it is."
+  [->mbql         :- ifn?
+   dialect        :- ::sql-to-mbql/dialect
+   sql            :- :string
+   resolve-column :- ::sql-to-mbql/resolve-column]
+  ;; sqlglot reads `{{ ... }}` as a struct literal, so catch Jinja the filter renderer did not recognise first
+  (when (jinja? sql)
+    (unsupported/throw-reason "could not parse %s: it still contains Jinja" (pr-str sql)))
+  (try
+    (->mbql dialect sql resolve-column)
+    (catch ExceptionInfo e
+      (if (sql-to-mbql/unsupported? e)
+        (unsupported/throw-reason (ex-message e))
+        (throw e)))))
 
-  ([dialect        :- ::sql-to-mbql/dialect
-    sql            :- :string
-    resolve-column :- ::sql-to-mbql/resolve-column
-    options        :- ::sql-to-mbql/options]
-   ;; sqlglot reads `{{ ... }}` as a struct literal, so catch Jinja the filter renderer did not recognise first
-   (when (jinja? sql)
-     (unsupported/throw-reason "could not parse %s: it still contains Jinja" (pr-str sql)))
-   (try
-     (sql-to-mbql/expression->mbql dialect sql resolve-column options)
-     (catch ExceptionInfo e
-       (if (sql-to-mbql/unsupported? e)
-         (unsupported/throw-reason (ex-message e))
-         (throw e))))))
+(mu/defn value->mbql :- ::sql-to-mbql/expression
+  "[[sql-to-mbql/value->mbql]] for the SQL of an IR aggregation's, dimension's or key's `expr`, or a derived metric's
+  arithmetic, in `dialect`; see [[convert]] for what is thrown."
+  [dialect        :- ::sql-to-mbql/dialect
+   sql            :- :string
+   resolve-column :- ::sql-to-mbql/resolve-column]
+  (convert sql-to-mbql/value->mbql dialect sql resolve-column))
+
+(mu/defn condition->mbql :- ::sql-to-mbql/condition
+  "[[sql-to-mbql/condition->mbql]] for the SQL of an IR filter, or of a `:count-where` aggregation's `expr`, in
+  `dialect`; see [[convert]] for what is thrown."
+  [dialect        :- ::sql-to-mbql/dialect
+   sql            :- :string
+   resolve-column :- ::sql-to-mbql/resolve-column]
+  (convert sql-to-mbql/condition->mbql dialect sql resolve-column))
+
+(mu/defn aggregation->mbql :- ::sql-to-mbql/aggregation
+  "[[sql-to-mbql/aggregation->mbql]] for the SQL of an IR aggregation written as a whole aggregate expression, a
+  semantic layer's metric, in `dialect`; see [[convert]] for what is thrown."
+  [dialect        :- ::sql-to-mbql/dialect
+   sql            :- :string
+   resolve-column :- ::sql-to-mbql/resolve-column]
+  (convert sql-to-mbql/aggregation->mbql dialect sql resolve-column))

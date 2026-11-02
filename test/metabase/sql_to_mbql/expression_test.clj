@@ -45,20 +45,20 @@
 (defn- condition
   "The filter clause the SQL condition `sql` converts to in `dialect`, uuids removed; the reason when it is reported."
   [dialect sql]
-  (reason #(without-uuids (sql-to-mbql.expression/expression->mbql dialect sql resolve-name {:condition? true}))))
+  (reason #(without-uuids (sql-to-mbql.expression/condition->mbql dialect sql resolve-name))))
 
 (defn- expression
   "The expression the SQL value expression `sql` converts to in `dialect`, uuids removed; the reason when it is
   reported."
   [dialect sql]
-  (reason #(without-uuids (sql-to-mbql.expression/expression->mbql dialect sql resolve-name))))
+  (reason #(without-uuids (sql-to-mbql.expression/value->mbql dialect sql resolve-name))))
 
 (defn- where-sql
   "The `WHERE` clause of the H2 SQL a query filtered by the converted condition `sql` (in the Postgres dialect)
   compiles to, with the column spelled `name`."
   [sql]
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-                  (lib/filter (sql-to-mbql.expression/expression->mbql "postgres" sql resolve-name {:condition? true}))
+                  (lib/filter (sql-to-mbql.expression/condition->mbql "postgres" sql resolve-name))
                   (lib/aggregate (lib/count)))]
     (driver/with-driver :h2
       (-> (qp.compile/compile query)
@@ -253,7 +253,7 @@
       "current_date"      [:today {}])))
 
 (deftest ^:parallel condition-option-test
-  (testing "a comparison is a condition: a filter clause with :condition?, and reported as a value"
+  (testing "a comparison is a condition: a filter clause as one, and reported as a value"
     (is (= [:= {} venue-name "a"] (condition "postgres" "name = 'a'")))
     (is (= "name = 'a' (EQ) is not supported" (expression "postgres" "name = 'a'"))))
   (testing "a value comes back as a Lib expression, or as itself when it is a literal"
@@ -267,12 +267,12 @@
   (testing "what does not convert throws an exception unsupported? recognises, and no other exception is one"
     (is (sql-to-mbql.expression/unsupported?
          (try
-           (sql-to-mbql.expression/expression->mbql "postgres" "greatest(name, 'a')" resolve-name)
+           (sql-to-mbql.expression/value->mbql "postgres" "greatest(name, 'a')" resolve-name)
            (catch clojure.lang.ExceptionInfo e
              e))))
     (is (not (sql-to-mbql.expression/unsupported? (ex-info "boom" {}))))
     (is (not (sql-to-mbql.expression/unsupported? (Exception. "boom")))))
   (testing "an exception the column callback throws propagates as it is"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^boom$"
-                          (sql-to-mbql.expression/expression->mbql "postgres" "name"
-                                                                   (fn [_identifier] (throw (ex-info "boom" {}))))))))
+                          (sql-to-mbql.expression/value->mbql "postgres" "name"
+                                                              (fn [_identifier] (throw (ex-info "boom" {}))))))))

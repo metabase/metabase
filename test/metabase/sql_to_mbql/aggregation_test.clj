@@ -1,5 +1,5 @@
 (ns metabase.sql-to-mbql.aggregation-test
-  "The aggregation mode of [[metabase.sql-to-mbql.core/expression->mbql]] (QRES-11): a SQL aggregate expression, the
+  "[[metabase.sql-to-mbql.core/aggregation->mbql]] (QRES-11): a SQL aggregate expression, the
   shape an Apache Ossie metric takes (`SUM(lineitem.net_amount_kept) / COUNT(DISTINCT lineitem.l_orderkey)`), as one
   Lib aggregation clause. The SQL is the [[corpus]], the metrics of public Ossie example projects, so that the tests
   cover the SQL a real import meets; a handful of constructed edge cases are marked as such. The row-level subset is
@@ -146,25 +146,25 @@
   ([sql]
    (aggregation "postgres" sql))
   ([dialect sql]
-   (reason #(without-uuids (sql-to-mbql/expression->mbql dialect sql resolve-column {:aggregation? true})))))
+   (reason #(without-uuids (sql-to-mbql/aggregation->mbql dialect sql resolve-column)))))
 
 (defn- expression
   "The expression the SQL value expression `sql` converts to on Postgres, uuids removed; the reason when it is
   reported."
   [sql]
-  (reason #(without-uuids (sql-to-mbql/expression->mbql "postgres" sql resolve-column))))
+  (reason #(without-uuids (sql-to-mbql/value->mbql "postgres" sql resolve-column))))
 
 (defn- condition
   "The filter clause the SQL condition `sql` converts to on Postgres, uuids removed; the reason when it is reported."
   [sql]
-  (reason #(without-uuids (sql-to-mbql/expression->mbql "postgres" sql resolve-column {:condition? true}))))
+  (reason #(without-uuids (sql-to-mbql/condition->mbql "postgres" sql resolve-column))))
 
 (defn- aggregation-sql
   "The aggregation of the H2 SQL a query aggregated by the converted `sql` (in the Postgres dialect) compiles to, with
   the columns spelled as the corpus does."
   [sql]
   (let [query (-> (lib/query metadata-provider (lib.metadata/table metadata-provider table-id))
-                  (lib/aggregate (sql-to-mbql/expression->mbql "postgres" sql resolve-column {:aggregation? true})))]
+                  (lib/aggregate (sql-to-mbql/aggregation->mbql "postgres" sql resolve-column)))]
     (driver/with-driver :h2
       (-> (qp.compile/compile query)
           :query
@@ -312,11 +312,10 @@
     :sql "SUM(CASE WHEN orders.o_orderkey IS NOT NULL THEN 1 ELSE 0 END)" :converts? true}])
 
 (deftest ^:parallel corpus-test
-  (testing "every metric in the corpus converts to a valid aggregation clause, or is reported with a reason, as the corpus says"
+  (testing "every metric in the corpus converts to a valid aggregation clause, or is reported, as the corpus says"
     (doseq [{:keys [from sql dialect converts?]} corpus]
       (testing (str from ": " sql)
-        (let [result (reason #(sql-to-mbql/expression->mbql (or dialect "postgres") sql resolve-column
-                                                            {:aggregation? true}))]
+        (let [result (reason #(sql-to-mbql/aggregation->mbql (or dialect "postgres") sql resolve-column))]
           (if converts?
             (is (mr/validate ::lib.schema.aggregation/aggregation result)
                 (str "expected an aggregation clause, got " (pr-str result)))
@@ -324,7 +323,7 @@
                 (str "expected a reason, got " (pr-str result)))))))))
 
 (deftest ^:parallel plain-aggregate-test
-  (testing "an aggregate over a column, qualified by its dataset or not: the qualifier is dropped before the callback sees the name"
+  (testing "an aggregate over a column, qualified by its dataset or not: the callback sees the column name alone"
     (are [sql clause] (= clause (aggregation sql))
       "SUM(lineitem.net_amount_kept)"     [:sum {} (col "net_amount_kept")]
       "SUM(amount)"                       [:sum {} (col "amount")]
@@ -340,7 +339,7 @@
       "COUNT(1)"
       "SUM(1)"
       "COUNT(orders.*)"))
-  (testing "COUNT of a column counts the rows where it is not null, as count-where, the way the semantic layer import spells it"
+  (testing "COUNT of a column counts the rows where it is not null, as count-where, the way the import spells it"
     (are [sql clause] (= clause (aggregation sql))
       "COUNT(comm)"     [:count-where {} [:not-null {} (col "comm")]]
       "COUNT(order_id)" [:count-where {} [:not-null {} (col "order_id")]]))
@@ -363,7 +362,7 @@
     (are [sql clause] (= clause (aggregation sql))
       "STDDEV_POP(amount)" [:stddev {} (col "amount")]
       "VAR_POP(amount)"    [:var {} (col "amount")]))
-  (testing "and the sample statistics, which divide by n - 1, are reported rather than silently become the population ones"
+  (testing "and the sample statistics, which divide by n - 1, are reported rather than become the population ones"
     (are [sql] (re-find #"(?i)sample" (aggregation sql))
       "STDDEV(amount)"
       "STDDEV_SAMP(amount)"
@@ -559,7 +558,7 @@
       [:abs {} [:- {} [:sum {} (col "amount")] [:sum {} (col "comm")]]])))
 
 (deftest ^:parallel integer-division-test
-  (testing "an integer sum over a count is an integer division, truncated where the warehouse truncates, and is reported there as it is between columns"
+  (testing "an integer sum over a count is an integer division, reported where the warehouse truncates it"
     (are [sql] (re-find #"divides an integer by an integer" (aggregation "postgres" sql))
       "SUM(items.quantity) / COUNT(DISTINCT users.id)"
       "SUM(ss_quantity) / COUNT(*)"
@@ -580,7 +579,7 @@
            (aggregation "postgres" "CAST(SUM(orders.subtotal) AS DECIMAL) / COUNT(DISTINCT customers.customer_id)")))))
 
 (deftest ^:parallel bare-column-test
-  (testing "a column outside an aggregate has no one value in an aggregation, and is reported: a metric naming another metric arrives this way"
+  (testing "a column outside an aggregate has no one value in an aggregation; a metric naming another arrives so"
     (are [sql] (re-find #"outside an aggregate" (aggregation sql))
       "SUM(price) + price"
       "amount"
@@ -596,7 +595,7 @@
       "NULL")))
 
 (deftest ^:parallel nested-aggregate-test
-  (testing "an aggregate inside an aggregate, in its argument or its filter, has no meaning in one query and is reported"
+  (testing "an aggregate inside an aggregate, in its argument or its filter, has no meaning in one query: reported"
     (are [sql] (re-find #"(?i)nested|inside" (aggregation sql))
       "SUM(MAX(price))"
       "SUM(COUNT(DISTINCT customer_id))"
@@ -605,11 +604,13 @@
       "SUM(amount) FILTER (WHERE amount > AVG(amount))")))
 
 (deftest ^:parallel window-function-test
-  (testing "a window function's value depends on the other rows of the result, which one aggregation clause has no say over, and is reported"
+  (testing "a window function's value depends on the other rows of the result, which one aggregation has no say over"
     (are [sql] (re-find #"(?i)window" (aggregation sql))
-      "SUM(SUM(store_sales.ss_ext_sales_price)) OVER (ORDER BY date_dim.d_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)"
+      (str "SUM(SUM(store_sales.ss_ext_sales_price)) OVER (ORDER BY date_dim.d_date ROWS BETWEEN UNBOUNDED PRECEDING"
+           " AND CURRENT ROW)")
       "RANK() OVER (PARTITION BY store.s_store_sk ORDER BY SUM(store_sales.ss_ext_sales_price) DESC)"
-      "SUM(store_sales.ss_ext_sales_price) - LAG(SUM(store_sales.ss_ext_sales_price), 1) OVER (ORDER BY date_dim.d_year, date_dim.d_moy)"
+      (str "SUM(store_sales.ss_ext_sales_price) - LAG(SUM(store_sales.ss_ext_sales_price), 1)"
+           " OVER (ORDER BY date_dim.d_year, date_dim.d_moy)")
       "RANK() OVER (PARTITION BY users.id ORDER BY SUM(items.quantity) DESC)"
       "RANK() OVER (ORDER BY revenue DESC NULLS LAST)"
       "SUM(amount) FILTER (WHERE status = 'completed') OVER ()")))
@@ -652,10 +653,9 @@
 
 (deftest ^:parallel distinct-uuids-test
   (testing "a column used more than once gets a ref of its own each time, so no two clauses share a uuid"
-    (let [clause (sql-to-mbql/expression->mbql "postgres"
-                                               "SUM(amount) FILTER (WHERE amount > 0) / NULLIF(SUM(amount), 0)"
-                                               resolve-column
-                                               {:aggregation? true})
+    (let [clause (sql-to-mbql/aggregation->mbql "postgres"
+                                                "SUM(amount) FILTER (WHERE amount > 0) / NULLIF(SUM(amount), 0)"
+                                                resolve-column)
           uuids  (keep #(when (map? %) (:lib/uuid %)) (tree-seq coll? seq clause))]
       (is (= 3 (count (filter #(= (col "amount") %) (filter vector? (tree-seq coll? seq (without-uuids clause)))))))
       (is (= (count uuids) (count (set uuids)))))))

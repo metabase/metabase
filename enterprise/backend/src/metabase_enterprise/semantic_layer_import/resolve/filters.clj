@@ -2,7 +2,7 @@
   "The resolve stage's filters: a metric's `::ir/filter`s as Lib filter clauses.
 
   A filter is SQL in the warehouse's dialect with a placeholder identifier for each reference to the semantic layer's
-  own objects. [[sql/expression->mbql]] parses the SQL, as a condition, in the dialect of the config's `:driver`; a
+  own objects. [[sql/condition->mbql]] parses the SQL in the dialect of the config's `:driver`; a
   placeholder resolves to what its reference names (see [[reference-clause]]) and any other identifier to a column of
   the metric's table. A dimension reached with an empty path, or through one of the table's aliases, is one of the
   table's own; one reached through a join is on the table the join leads to (see [[resolve.columns/join-context]]). A
@@ -127,13 +127,12 @@
   "The Lib filter clause for one `::ir/filter`."
   [{:keys [env resolve-column] :as context} :- ::resolve.columns/context
    {:keys [sql references]}                 :- ::ir/filter]
-  (sql/expression->mbql (:dialect env)
-                        sql
-                        (fn [identifier]
-                          (if-let [reference (get references identifier)]
-                            (reference-clause context reference)
-                            (resolve-column identifier)))
-                        {:condition? true}))
+  (sql/condition->mbql (:dialect env)
+                       sql
+                       (fn [identifier]
+                         (if-let [reference (get references identifier)]
+                           (reference-clause context reference)
+                           (resolve-column identifier)))))
 
 (mu/defn filter-clauses :- [:sequential ::lib.schema.expression/boolean]
   "The Lib filter clauses for `filters`, each failure saying which filter, as the source wrote it."
