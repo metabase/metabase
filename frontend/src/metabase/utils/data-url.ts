@@ -7,10 +7,11 @@ interface ParsedDataUri {
 export function parseDataUri(
   url: string | null | undefined,
 ): ParsedDataUri | null {
-  // https://regexr.com/8e8gt
+  // data:[<mediatype>][;base64],<data> (RFC 2397)
+  // The header groups must not match "," so that the first comma is what separates
+  // the header from the data, and the data itself may contain any further commas.
   const match =
-    url &&
-    url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,((?:(?!\1|,).)*)$/);
+    url && url.match(/^data:(?:([^;,]+)(?:;([^;,]+))?)?(;base64)?,(.*)$/);
   if (match) {
     let [, mimeType, charset, base64, data]: (string | undefined)[] = match;
     if (charset === "base64" && !base64) {
