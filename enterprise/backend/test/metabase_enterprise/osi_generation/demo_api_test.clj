@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.search.entity-retrieval.mirror :as entity-retrieval.mirror]
    [metabase.search.entity-retrieval.spec :as spec]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
@@ -255,8 +256,10 @@
                @search-context))))))
 
 (deftest library-retrieval-search-test
-  (with-redefs [tools.entity-retrieval/retrieve-library-entities-tool
-                (fn [input]
+  (with-redefs [tools/handle
+                (fn [tool input context]
+                  (is (= tools.entity-retrieval/retrieve-library-entities-tool tool))
+                  (is (= {} context))
                   (is (= {:user_search_prompt "monthly revenue", :limit 10} input))
                   {:structured-output {:total_count 1
                                        :weak_match  false
@@ -301,3 +304,54 @@
         (is (= 200 (:status response)))
         (is (= content-type (get-in response [:headers "Content-Type"])))
         (is (re-find (re-pattern expected) (:body response)))))))
+
+(deftest ^:synchronized pgvector-index-inspection-and-clear-test
+  (when semantic.db.datasource/db-url
+    (let [suffix (System/nanoTime)
+          ds (semantic.db.datasource/ensure-initialized-data-source!)
+          model {:provider "mock", :model-name "demo", :vector-dimensions 4, :embedding-space-id "demo-test"}
+          tables {:vectors (str "osi_demo_vectors_" suffix)
+                  :meta    (str "osi_demo_meta_" suffix)}
+          legacy {:vectors (str "osi_demo_legacy_vectors_" suffix)
+                  :meta    (str "osi_demo_legacy_meta_" suffix)}]
+      (binding [entity-retrieval.index-table/*tables* tables]
+        (try
+          (with-redefs [entity-retrieval.index-table/legacy-tables legacy
+                        spec/member-entities (constantly [{:entity_type "metric", :entity_local_id 7}])]
+            (is (= :created (entity-retrieval.index-table/ensure-tables! ds model)))
+            (doseq [n (range 55)]
+              (jdbc/execute! ds [(format (str "INSERT INTO %s "
+                                              "(doc_id, entity_type, entity_local_id, doc_type, doc_text, doc_embedding) "
+                                              "VALUES (?, 'metric', 7, 'name', ?, '[1,2,3,4]'::vector)")
+                                         (entity-retrieval.index-table/vectors-table-sql))
+                                 (format "doc%03d" n) (format "name%03d" n)]))
+            (jdbc/execute! ds [(format (str "INSERT INTO %s "
+                                           "(doc_id, entity_type, entity_local_id, doc_type, doc_text, doc_embedding) "
+                                           "VALUES ('excluded', 'table', 999, 'name', 'outside', '[1,2,3,4]'::vector)")
+                                      (entity-retrieval.index-table/vectors-table-sql))])
+            (let [first-page (#'osi-generation/library-index-entries 0)
+                  next-page  (#'osi-generation/library-index-entries 50)
+                  vector     (#'osi-generation/library-index-vector "doc000")]
+              (is (= 51 (count (:data first-page))))
+              (is (= 5 (count (:data next-page))))
+              (is (= "doc050" (:doc_id (first (:data next-page)))))
+              (is (every? #(not (contains? % :vector_base64)) (:data first-page)))
+              (is (seq (:vector vector))))
+            (with-open [writer (jdbc/get-connection ds)]
+              (let [lock-id (var-get #'entity-retrieval.reconcile/reconcile-lock-id)]
+                (jdbc/execute! writer [(format "SELECT pg_advisory_lock(%d)" lock-id)])
+                (try
+                  (is (= {:busy true, :data []} (#'osi-generation/library-index-entries 0)))
+                  (finally
+                    (jdbc/execute! writer [(format "SELECT pg_advisory_unlock(%d)" lock-id)])))))
+            (is (= {:deleted 56} (entity-retrieval.reconcile/clear-index! ds)))
+            (is (= :missing (entity-retrieval.index-table/index-status ds model)))
+            (let [full-runs (atom 0)]
+              (with-redefs-fn {#'entity-retrieval.reconcile/reconcile-against-appdb!
+                               (fn [_ _] (swap! full-runs inc) {:inserted 0, :deleted 0, :unchanged 0})}
+                #(entity-retrieval.reconcile/reconcile-entity! ds (constantly model) "metric" 7))
+              (is (= 1 @full-runs) "the next targeted sync must rebuild the full index")))
+          (finally
+            (jdbc/execute! ds [(format "DROP TABLE IF EXISTS %s, %s"
+                                       (entity-retrieval.index-table/vectors-table-sql)
+                                       (entity-retrieval.index-table/meta-table-sql))])))))))

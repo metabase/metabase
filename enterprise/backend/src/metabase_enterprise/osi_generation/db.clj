@@ -37,3 +37,40 @@
                            :from   [:ai_usage_log]
                            :where  [:and [:= :source source] [:>= :created_at since]]}))
       0))
+
+(defn context-count
+  "Count contexts, optionally restricted by data source."
+  [data-source]
+  (if data-source
+    (t2/count :model/OsiAiContext :data_source data-source)
+    (t2/count :model/OsiAiContext)))
+
+(defn contexts
+  "Return context rows with the selected columns."
+  [model]
+  (t2/select model))
+
+(defn context
+  "Find the selected context row for an entity."
+  [model entity-type entity-local-id]
+  (t2/select-one model :entity_type entity-type :entity_local_id entity-local-id))
+
+(defn update-description!
+  "Update the description of one Library entity."
+  [model entity-local-id description]
+  (t2/update! model :id entity-local-id {:description description}))
+
+(defn generation-runs
+  "Return the latest task history rows for the generation task."
+  [model task-name]
+  (t2/select model :task task-name {:limit 25, :order-by [[:started_at :desc] [:id :desc]]}))
+
+(defn delete-contexts!
+  "Delete all AI contexts and return the number deleted."
+  []
+  (t2/delete! :model/OsiAiContext))
+
+(defn delete-finished-runs!
+  "Delete completed task history for the generation task, preserving running rows."
+  [task-name]
+  (t2/delete! :model/TaskHistory :task task-name :status [:not= :started]))
