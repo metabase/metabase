@@ -28,6 +28,7 @@ import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered
 import {
   type ReferencedEntityKind,
   getGoalErrorMessage,
+  getTooManyRowsMessage,
   resolveGoalValue,
 } from "metabase/viz-core";
 import type {
@@ -132,14 +133,10 @@ export const GoalValueInput = ({
   const sourceInfo = useReferencedEntity(foreignRef);
   const currentSource = useDynamicGoalSource(value);
   const sourceUrl = isEmbedding() ? undefined : sourceInfo.url;
-  const resolveEntityColumnValue = useEntityColumnValues(
-    datasetQuery,
-    data,
-    entity,
-    {
+  const { hasTooManyRows, resolveColumnValue: resolveEntityColumnValue } =
+    useEntityColumnValues(datasetQuery, data, entity, {
       enabled: menuLevel === "entity" && entityInfo.columns.length > 0,
-    },
-  );
+    });
 
   const resolved = useAnsweredGoalValue({
     data,
@@ -457,18 +454,30 @@ export const GoalValueInput = ({
                 .with({ columns: [] }, () => (
                   <Menu.Item disabled>{t`No numeric columns`}</Menu.Item>
                 ))
-                .otherwise(({ columns }) => {
-                  return columns.map((column) => (
-                    <GoalColumnMenuItem
-                      key={column.name}
-                      formatOptions={formatOptions}
-                      label={column.label}
-                      resolvedValue={resolveEntityColumnValue(column.name)}
-                      selected={foreignRef?.column === column.name}
-                      onClick={() => selectEntityColumn(column.name)}
-                    />
-                  ));
-                })}
+                .otherwise(({ columns, kind }) => (
+                  <>
+                    {hasTooManyRows && (
+                      <Menu.Label
+                        c="feedback-negative"
+                        maw={COLUMN_MENU_MIN_WIDTH}
+                      >
+                        {getTooManyRowsMessage(kind)}
+                      </Menu.Label>
+                    )}
+
+                    {columns.map((column) => (
+                      <GoalColumnMenuItem
+                        key={column.name}
+                        disabled={hasTooManyRows}
+                        formatOptions={formatOptions}
+                        label={column.label}
+                        resolvedValue={resolveEntityColumnValue(column.name)}
+                        selected={foreignRef?.column === column.name}
+                        onClick={() => selectEntityColumn(column.name)}
+                      />
+                    ))}
+                  </>
+                ))}
             </>
           )}
         </Menu.Dropdown>
