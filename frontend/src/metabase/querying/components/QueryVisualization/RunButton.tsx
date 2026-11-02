@@ -51,7 +51,9 @@ export const RunButton = forwardRef(function RunButton(
       })}
       data-testid="run-button"
       aria-label={ariaLabel}
+      // aria-hidden and tabIndex needed because S.hidden only changes opacity (for a transition to work)
       aria-hidden={hidden}
+      tabIndex={hidden ? -1 : undefined}
       onClick={isRunning ? onCancel : onRun}
     >
       <Icon className={S.icon} name={icon} size={iconSize} />
