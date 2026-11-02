@@ -13,8 +13,8 @@
   doing nothing: an exception nobody declared is unrecoverable with the code `:internal`, and the
   model never reads text that nobody wrote for it. An unrecoverable error has no `:message` key at
   all, which makes forwarding a foreign exception message to the agent impossible rather than merely
-  discouraged. The agent still hears about the first `:internal` failure of a turn, in a fixed
-  sentence, so that it can try another way; the second ends the turn.
+  discouraged. The agent still reads a fixed sentence for an `:internal` failure, so that it can try
+  another way when the agent loop lets the turn go on.
 
   Each recoverable error is declared once with [[defrecoverable]], which records it in the catalog
   here. The catalog is what lets one test cover every declared error, and what lets a converter

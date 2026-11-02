@@ -155,8 +155,8 @@
 (defn- unrecoverable-output
   "What the model is told about an unrecoverable failure, which never includes the failure's own text.
 
-  `:internal` is a failure no tool declared. The agent loop carries on after the first one in a turn,
-  so the model is told to try another way rather than make the same call again.
+  `:internal` is a failure no tool declared. The agent loop can carry on after one, so the model is
+  told to try another way rather than make the same call again.
 
   For any other code the user is shown the real error on another channel, so the model's job is to
   stop rather than to explain. The code is safe to include because it is ours, a closed vocabulary

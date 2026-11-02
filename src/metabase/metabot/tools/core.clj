@@ -16,8 +16,8 @@
   model a sentence nobody wrote.
 
   Everything a tool does about a failure is written at the call site. A failure it does nothing
-  about is undeclared: the model learns only that the call failed, and a second such failure ends
-  the turn. What a tool can do instead:
+  about is undeclared: the model learns only that the call failed, and the agent loop decides
+  whether the turn goes on. What a tool can do instead:
 
   - *relay a foreign error*: a converter ([[with-entity]], [[with-pipeline-errors]]) turns one known
     shape into a declared recoverable error. A shape a converter does not recognise passes through

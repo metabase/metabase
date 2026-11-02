@@ -222,7 +222,7 @@
                                        {:instructions "chart it"}))))))))
 
 (deftest generate-content-internal-failure-error-test
-  (testing "a second failure inside Metabase while the chart query runs ends the turn with the generic error"
+  (testing "a failure inside Metabase while the chart query runs ends the turn with the generic error"
     (let [db-id (mt/id)
           calls (atom 0)]
       (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
@@ -238,24 +238,27 @@
                                     qp/process-query mut/reject-app-db-lookup
                                     openrouter/openrouter
                                     (fn [_]
-                                      (mut/mock-llm-response
-                                       [{:type      :tool-input
-                                         :id        (str "t" (swap! calls inc))
-                                         :function  "document_construct_sql_chart"
-                                         :arguments {:database_id  db-id
-                                                     :name         "Orders"
-                                                     :description  "Count of orders"
-                                                     :analysis     "Simple count"
-                                                     :approach     "Direct SQL"
-                                                     :sql          "SELECT COUNT(*) FROM ORDERS"
-                                                     :viz_settings {:chart_type "bar"}}}]))]
+                                      (if (= 1 (swap! calls inc))
+                                        (mut/mock-llm-response
+                                         [{:type      :tool-input
+                                           :id        "t1"
+                                           :function  "document_construct_sql_chart"
+                                           :arguments {:database_id  db-id
+                                                       :name         "Orders"
+                                                       :description  "Count of orders"
+                                                       :analysis     "Simple count"
+                                                       :approach     "Direct SQL"
+                                                       :sql          "SELECT COUNT(*) FROM ORDERS"
+                                                       :viz_settings {:chart_type "bar"}}}])
+                                        (mut/mock-llm-response
+                                         [{:type :text :text "Chart created"}])))]
           (is (= {:draft_card  nil
                   :description nil
                   :error       "Something went wrong."}
                  (mt/user-http-request :crowberto
                                        :post 200 "metabot/document/generate-content"
                                        {:instructions "chart it"})))
-          (is (= 2 @calls)))))))
+          (is (= 1 @calls)))))))
 
 (deftest generate-content-snowplow-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections

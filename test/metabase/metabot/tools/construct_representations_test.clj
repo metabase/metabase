@@ -359,7 +359,7 @@
                     :error {:class :recoverable
                             :code :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query}}
                    outcome))
-            (is (nil? (#'agent/terminal-error-message [{:type :tool-output :result outcome}] 0)))))))))
+            (is (nil? (#'agent/terminal-error-message {} [{:type :tool-output :result outcome}] 0)))))))))
 
 (deftest metadata-lookup-failures-are-internal-errors-test
   (with-mp-and-stubs!

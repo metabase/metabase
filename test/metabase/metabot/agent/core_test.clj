@@ -301,30 +301,36 @@
                     (unrecoverable-part "a" "No native permission.")]
         undeclared {:type :tool-output :id "d" :result mut/internal-failure}]
     (testing "reads the user-facing message off an unrecoverable failure"
-      (is (= "No native permission." (#'agent/terminal-error-message denial 0))))
+      (is (= "No native permission." (#'agent/terminal-error-message {} denial 0))))
     (testing "a recoverable failure is not terminal — the model can still self-correct"
       (is (nil? (#'agent/terminal-error-message
+                 {}
                  [{:type :tool-output :id "b" :result {:output "syntax error"
                                                        :error {:class :recoverable :code :x}}}]
                  0))))
     (testing "and neither is a success"
       (is (nil? (#'agent/terminal-error-message
+                 {}
                  [{:type :tool-output :id "b" :result {:output "fine"}}]
                  0))))
     (testing "an unrecoverable failure with no :user-message gets the generic one, so the user is
              always told something"
       (is (= "Something went wrong."
-             (#'agent/terminal-error-message [(unrecoverable-part "c" nil)] 0))))
+             (#'agent/terminal-error-message {} [(unrecoverable-part "c" nil)] 0))))
     (testing "the first denial wins when an iteration produces several"
       (is (= "first" (#'agent/terminal-error-message
+                      {}
                       [(unrecoverable-part "a" "first")
                        (unrecoverable-part "b" "second")]
                       0))))
     (testing "a failure no tool declared is terminal only once it is the turn's second"
-      (is (nil? (#'agent/terminal-error-message [undeclared] 1)))
-      (is (= "Something went wrong." (#'agent/terminal-error-message [undeclared] 2)))
+      (is (nil? (#'agent/terminal-error-message {} [undeclared] 1)))
+      (is (= "Something went wrong." (#'agent/terminal-error-message {} [undeclared] 2)))
+      (testing "or its first, in a profile that requires a tool call"
+        (is (= "Something went wrong."
+               (#'agent/terminal-error-message {:required-tool-call? true} [undeclared] 1))))
       (testing "and a denial in the same iteration still shows its own message"
-        (is (= "No native permission." (#'agent/terminal-error-message (into [undeclared] denial) 2)))))
+        (is (= "No native permission." (#'agent/terminal-error-message {} (into [undeclared] denial) 2)))))
     (testing "should-continue? is unaffected — the gate lives in loop-step, per profile"
       (is (#'agent/should-continue? 0 20 #{} denial)))))
 
@@ -443,11 +449,12 @@
           (is (= 2 llm-calls))
           (is (some #{(:output mut/internal-failure)} (tree-seq coll? seq (:input (second requests)))))
           (is (= :stop (:finish-reason (last parts))))))
-      (testing "the second ends the turn with the generic message"
-        (doseq [[label calls] {"in a later iteration"  [["t1"] ["t2"]]
-                               "in the same iteration" [["t1" "t2"]]}]
+      (testing "the turn ends with the generic message"
+        (doseq [[label profile-id calls] [["on the second, in a later iteration" :internal [["t1"] ["t2"]]]
+                                          ["on the second, in the same iteration" :internal [["t1" "t2"]]]
+                                          ["on the first, in a profile that requires a tool call" :sql [["t1"]]]]]
           (testing label
-            (let [{:keys [llm-calls parts]} (run-sql-turn! :internal (mt/id) :calls calls)]
+            (let [{:keys [llm-calls parts]} (run-sql-turn! profile-id (mt/id) :calls calls)]
               (is (= (count calls) llm-calls))
               (is (= :terminal-error (:finish-reason (last parts))))
               (is (some #(= "Something went wrong." (:text %)) parts)))))))))

@@ -220,7 +220,8 @@
   (some #(= (:type %) :error) parts))
 
 (def ^:private max-undeclared-failures
-  "How many tool failures that no tool declared a turn survives. The next one ends it, which stops a retry loop."
+  "How many tool failures that no tool declared a turn survives when its model can answer in text. The next one ends
+  it, which stops a retry loop."
   1)
 
 (defn- undeclared-failure?
@@ -237,15 +238,18 @@
   generic one, because `:output` is written for the model and says only that the call failed.
 
   A failure no tool declared ends the turn only when `undeclared-failures`, the turn's count of them
-  with this iteration's included, passes [[max-undeclared-failures]]. The message is then the generic one."
-  [parts undeclared-failures]
+  with this iteration's included, passes [[max-undeclared-failures]]. In a `profile` that requires a
+  tool call the first one ends it, because that model can't answer in text after it. The message is
+  then the generic one."
+  [profile parts undeclared-failures]
   (let [declared (some (fn [part]
                          (when (and (= (:type part) :tool-output)
                                     (= :unrecoverable (get-in part [:result :error :class]))
                                     (not (undeclared-failure? part)))
                            (get-in part [:result :error])))
-                       parts)]
-    (when (or declared (< max-undeclared-failures undeclared-failures))
+                       parts)
+        allowed  (if (:required-tool-call? profile) 0 max-undeclared-failures)]
+    (when (or declared (< allowed undeclared-failures))
       (or (not-empty (:user-message declared))
           (tru "Something went wrong.")))))
 
@@ -694,7 +698,7 @@
           ;; is not part of it. A tool that wants the agent to carry on past a failure declares it
           ;; recoverable, which is a choice made at the error, where the reason for it is visible.
           (let [undeclared-failures (+ undeclared-failures (count (filter undeclared-failure? parts)))
-                terminal-error      (terminal-error-message parts undeclared-failures)]
+                terminal-error      (terminal-error-message profile parts undeclared-failures)]
             (cond
               @consumer-stopped?
               ;; consumer signalled early termination (e.g. client disconnect / cancellation)
