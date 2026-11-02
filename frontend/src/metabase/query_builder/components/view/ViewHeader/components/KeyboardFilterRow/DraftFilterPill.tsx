@@ -138,7 +138,11 @@ interface DraftFilterPillProps {
   /** The user finished the filter. */
   onSubmit: (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
   /** The AI created new filters from the text of the pill. */
-  onSubmitFilters: (filters: Lib.ExpressionClause[]) => void;
+  /**
+   * The user picked many filters at once, like from the AI. `logic` tells how
+   * they combine, like "0 or 1", and is undefined when they all apply with AND.
+   */
+  onSubmitFilters: (filters: Lib.ExpressionClause[], logic?: string) => void;
   /** The user closed the pill and keeps what is applied. */
   onDone: () => void;
   /** The user discarded the changes in the pill. */
@@ -790,7 +794,7 @@ function ColumnInput({
       options: [
         {
           value: AI_FILTERS_OPTION,
-          label: t`Create filters for “${trimmedText}”`,
+          label: t`Ask AI`,
           icon: "ai",
         },
       ],

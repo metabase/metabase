@@ -37,6 +37,7 @@ import {
   type Token,
   filterToken,
   getFilterLabel,
+  getLogicTokens,
   getParenDepths,
   getSummaryStageIndex,
   hasTopLevelOr,
@@ -495,17 +496,28 @@ export function ExpressionBar({
   };
 
   // The AI's filters from one request go in as "a and b and …" at the caret.
-  const handlePickFilters = (filterables: Lib.Filterable[]) => {
-    let next = { tokens, caret: caretIndex };
-    filterables.forEach((filterable, index) => {
-      if (index > 0) {
-        next = insertToken(next.tokens, next.caret, opToken("and"));
-      }
-      next = insertToken(
-        next.tokens,
-        next.caret,
-        filterToken(toFilterClause(query, stageIndex, filterable)),
+  const handlePickFilters = (filterables: Lib.Filterable[], logic?: string) => {
+    const filterTokens = filterables.map((filterable) =>
+      filterToken(toFilterClause(query, stageIndex, filterable)),
+    );
+    // Prototype: the AI can combine its filters with OR. Without a valid
+    // logic, the filters apply together with AND.
+    const logicTokens =
+      logic != null ? getLogicTokens(logic, filterTokens) : undefined;
+    const newTokens =
+      logicTokens ??
+      filterTokens.flatMap((token, index) =>
+        index > 0 ? [opToken("and"), token] : [token],
       );
+    // An OR next to other filters goes in parentheses, so that it does not
+    // change what the other filters mean.
+    const groupedTokens =
+      tokens.length > 0 && hasTopLevelOr(newTokens)
+        ? [OPEN_PAREN, ...newTokens, CLOSE_PAREN]
+        : newTokens;
+    let next = { tokens, caret: caretIndex };
+    groupedTokens.forEach((token) => {
+      next = insertToken(next.tokens, next.caret, token);
     });
     setTokens(next.tokens);
     setCaret(next.caret);

@@ -230,7 +230,7 @@ export type AiFiltersState =
 interface UseAiFiltersOpts {
   query: Lib.Query;
   stageIndex: number;
-  onFilters: (filters: Lib.ExpressionClause[]) => void;
+  onFilters: (filters: Lib.ExpressionClause[], logic?: string) => void;
 }
 
 /**
@@ -293,7 +293,10 @@ export function useAiFilters({
         return;
       }
       setState({ status: "idle" });
-      onFilters(filters.filter((filter) => filter != null));
+      onFilters(
+        filters.filter((filter) => filter != null),
+        response.logic,
+      );
     } catch {
       setState({
         status: "error",

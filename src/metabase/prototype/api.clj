@@ -76,6 +76,7 @@
                                                [:column :int]
                                                [:operator :string]
                                                [:values [:sequential :string]]]]]
+      [:logic {:optional true} :string]
       [:reason {:optional true} :string]]
   "Prototype: turn a natural language `prompt`, like \"pro customers in the EU\", into one or more filters on the
   `columns` that the client sends. The `id` of a column is the client's key for it."

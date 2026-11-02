@@ -64,6 +64,8 @@ export type PrototypeFiltersResponse =
   | {
       status: "ok";
       filters: { column: number; operator: string; values: string[] }[];
+      /** How the filters combine, like "0 or (1 and 2)". All AND without it. */
+      logic?: string;
     }
   | { status: "rejected"; reason: string };
 

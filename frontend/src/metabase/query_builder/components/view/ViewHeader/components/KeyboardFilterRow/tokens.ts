@@ -352,6 +352,43 @@ export function getParenDepths(tokens: readonly Token[]): number[] {
   });
 }
 
+/**
+ * Prototype: the tokens of a logic expression from the AI, like "0 or (1 and
+ * 2)", where the numbers are the indexes of `filterTokens`. Undefined when the
+ * expression does not use each filter exactly once, or does not parse.
+ */
+export function getLogicTokens(
+  logic: string,
+  filterTokens: readonly Token[],
+): Token[] | undefined {
+  const words = logic.toLowerCase().match(/\d+|and|or|\(|\)|\S/g) ?? [];
+  const usedIndexes = new Set<number>();
+  const tokens: Token[] = [];
+  for (const word of words) {
+    if (word === "and" || word === "or") {
+      tokens.push(opToken(word));
+    } else if (word === "(") {
+      tokens.push(OPEN_PAREN);
+    } else if (word === ")") {
+      tokens.push(CLOSE_PAREN);
+    } else {
+      const index = Number(word);
+      const filterToken = filterTokens[index];
+      if (!Number.isInteger(index) || filterToken == null) {
+        return undefined;
+      }
+      if (usedIndexes.has(index)) {
+        return undefined;
+      }
+      usedIndexes.add(index);
+      tokens.push(filterToken);
+    }
+  }
+  return usedIndexes.size === filterTokens.length && parseTokens(tokens).ok
+    ? tokens
+    : undefined;
+}
+
 export function hasTopLevelOr(tokens: readonly Token[]): boolean {
   let depth = 0;
   return tokens.some((token) => {

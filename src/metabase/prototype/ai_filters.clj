@@ -3,6 +3,7 @@
   The client sends the columns that the query can filter on, with their operators. The LLM picks the columns, the
   operators and the values in one call, with no agent loop."
   (:require
+   [clojure.string :as str]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.prototype.db :as prototype.db]
@@ -18,7 +19,8 @@
   {:type       "object"
    ;; The filters come first, so that the model builds them before it decides the status.
    :properties {:filters {:type        "array"
-                          :description "The filters. They all apply together, with AND. Empty when rejected."
+                          :description "The filters. They apply together with AND, unless `logic` says otherwise.
+Empty when rejected."
                           :items       {:type       "object"
                                         :properties {:column   {:type        "integer"
                                                                 :description "The `id` of the column."}
@@ -29,6 +31,9 @@ column."}
                                                                 :description "The values, as strings."
                                                                 :items       {:type "string"}}}
                                         :required   ["column" "operator" "values"]}}
+                :logic   {:type        "string"
+                          :description "How the filters combine, by their index from 0, with `and`, `or` and
+parentheses. Example: `0 and (1 or 2)`. Leave it empty when all the filters apply together with AND."}
                 :reason  {:type        "string"
                           :description "Why the request was rejected, in one short sentence for the user."}
                 :status  {:type        "string"
@@ -47,8 +52,13 @@ Rules:
   joins these tables. Never reject a request because of a missing join or relation between tables.
 - When many columns fit, pick the most direct one. Example: for \"EU customers\", a column like \"Is EU Member\"
   is better than a list of country codes.
-- All filters apply together, with AND. For alternatives on one column, like \"US or Canada\", use one filter with
-  a `multi` operator and many values. Do not make two filters on the same column for this.
+- The filters apply together with AND by default. For alternatives on one column, like \"US or Canada\", use one
+  filter with a `multi` operator and many values. Do not make two filters on the same column for this.
+- For alternatives that one filter cannot express, use `logic`. Example: \"pro customers or customers from
+  France\" gives the filters 0: Plan is Pro and 1: Country is FR, with the logic `0 or 1`. \"Pro customers from
+  France or Germany with a high lifetime value\" needs no `or`: Country is FR, DE is one filter, so leave `logic`
+  empty. In `logic`, use each filter exactly once, by its index from 0, with `and`, `or` and parentheses. `and`
+  binds stronger than `or`, so use parentheses when the request groups an `or`, like `0 and (1 or 2)`.
 - When the request names a table, like \"product price\", use the column of that table.
 - The value kind of an operator tells how many values to give:
   - `none`: no values.
@@ -73,6 +83,10 @@ Rules:
 - Regions, like Eastern Europe, Southeast Asia, Latin America, the Middle East or the Midwest, are groups of places
   too. When no column names the region exactly, use a column of countries or states with the list of its members.
   A region does not need its own column. A broader column, like a continent, is not a match for a smaller region.
+- Places that share a trait are groups too, like francophone or Spanish-speaking countries, euro countries,
+  landlocked countries, island nations, oil exporters, monarchies or coastal states. Use a column of countries or
+  states with the list of the places that have the trait, from your world knowledge. The trait does not need its
+  own column, like a language or a currency column. Never reject such a request because of a missing column.
 - Do not invent constraints that the request does not ask for.
 - Return `rejected`, with no filters, when the request is gibberish, is not a filter, or a part of it cannot be
   expressed with the given columns and operators. Do not guess a column for it. Give a short, neutral reason that
@@ -136,13 +150,13 @@ Rules:
        "\n\nRequest: " prompt))
 
 (defn- matching-values
-  "The `values` that are in `known-values`, in the spelling of `known-values`, or nil when one of them is not
-  there. Case does not matter."
+  "The `values` that are in `known-values`, in the spelling of `known-values`, or nil when none of them is there.
+  Case does not matter. A group of places, like \"francophone countries\", can name places that the data does
+  not have, so the values that are not known are left out."
   [values known-values]
   (let [by-lower (into {} (map (juxt u/lower-case-en identity)) known-values)
-        matched  (mapv #(by-lower (u/lower-case-en %)) values)]
-    (when (every? some? matched)
-      (vec (distinct matched)))))
+        matched  (keep #(by-lower (u/lower-case-en %)) values)]
+    (not-empty (vec (distinct matched)))))
 
 (defn- valid-count? [value-kind values]
   (case value-kind
@@ -165,6 +179,20 @@ Rules:
                      values)]
         (when (and values (valid-count? value_kind values))
           {:column column :operator operator :values values})))))
+
+(defn- valid-logic?
+  "True when `logic` is an expression of `and`, `or` and parentheses that uses each of the `filter-count` filters
+  exactly once, by its index. The client checks the grammar again when it reads the logic."
+  [logic filter-count]
+  (boolean
+   (when (string? logic)
+     (let [tokens  (re-seq #"\d+|and|or|\(|\)" (u/lower-case-en logic))
+           indexes (keep #(when (re-matches #"\d+" %) (parse-long %)) tokens)]
+       (and (= (count indexes) filter-count)
+            (= (set indexes) (set (range filter-count)))
+            ;; Nothing but the tokens and spaces.
+            (= (apply str tokens) (str/replace (u/lower-case-en logic) #"\s+" ""))
+            (some #{"or"} tokens))))))
 
 (defn suggest-filters
   "Ask the LLM for the filters of a natural language request. Returns `{:status \"ok\" :filters [...]}` or
@@ -190,8 +218,8 @@ Rules:
         ;; Keys below the top level of a structured response are strings.
         raw-filters        (map #(update-keys % keyword) (:filters response))
         filters            (into [] (keep #(validate-filter columns-by-id known-values-by-id %)) raw-filters)]
-    (log/infof "Prototype filters: %s -> %s %s, valid %s"
-               (pr-str prompt) (:status response) (pr-str raw-filters) (pr-str filters))
+    (log/infof "Prototype filters: %s -> %s %s, logic %s, valid %s"
+               (pr-str prompt) (:status response) (pr-str raw-filters) (pr-str (:logic response)) (pr-str filters))
     (cond
       ;; The model can leave out the status when it gives filters.
       (or (= "rejected" (:status response)) (empty? raw-filters))
@@ -204,4 +232,5 @@ Rules:
        :reason "Some of these filters could not be created with the columns of this question."}
 
       :else
-      {:status "ok" :filters filters})))
+      (cond-> {:status "ok" :filters filters}
+        (valid-logic? (:logic response) (count filters)) (assoc :logic (:logic response))))))
