@@ -609,6 +609,83 @@ describe("ValuesSourceModal", () => {
         ).toBeChecked();
         expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
       });
+
+      it("should not copy the previous card's values to a custom list", async () => {
+        mockGetBoundingClientRect();
+        const cards = [
+          createMockCard({
+            id: 1,
+            name: "Products",
+            result_metadata: [
+              createMockField({
+                id: 2,
+                display_name: "Category",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+              }),
+            ],
+          }),
+          createMockCard({
+            id: 3,
+            name: "People",
+            result_metadata: [
+              createMockField({
+                id: 4,
+                display_name: "Source",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+              }),
+            ],
+          }),
+        ];
+        await setup({
+          parameter: createMockUiParameter({
+            values_source_type: "card",
+            values_source_config: {
+              card_id: 1,
+              value_field: ["field", 2, null],
+            },
+          }),
+          parameterValues: createMockParameterValues({
+            values: [["A"], ["B"], ["C"]],
+          }),
+          cards,
+          rootCollectionItems: cards.map(({ id, name }) =>
+            createMockCollectionItem({ id, name, model: "card" }),
+          ),
+        });
+        const pickCard = async (currentName: RegExp, nextName: string) => {
+          await userEvent.click(
+            screen.getByRole("button", { name: currentName }),
+          );
+          const picker = await screen.findByTestId("entity-picker-modal");
+          await userEvent.click(await within(picker).findByText(nextName));
+          await userEvent.click(
+            await within(picker).findByTestId("entity-picker-select-button"),
+          );
+          await waitForLoaderToBeRemoved();
+        };
+
+        await pickCard(/Products/, "People");
+        await userEvent.click(
+          await screen.findByPlaceholderText(/Pick a column/),
+        );
+        await userEvent.click(
+          await screen.findByRole("option", { name: "Source" }),
+        );
+        expect(
+          await screen.findByRole("textbox", { name: "Values" }),
+        ).toHaveValue("A\nB\nC");
+
+        // Products is cached by now, so this pick doesn't show the loader
+        await pickCard(/People/, "Products");
+        expect(await screen.findByText("Pick a column")).toBeInTheDocument();
+
+        await userEvent.click(
+          screen.getByRole("radio", { name: "Custom list" }),
+        );
+        expect(screen.getByRole("textbox")).toHaveValue("");
+      });
     });
 
     describe("list source", () => {

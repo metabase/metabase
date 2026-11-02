@@ -700,7 +700,7 @@ const useParameterValues = ({
   }, [isValidSource, handleFetchValues]);
 
   return {
-    values: value?.values ?? [],
+    values: isValidSource && !loading ? (value?.values ?? []) : [],
     isLoading: loading,
     isError: !!error,
   };
