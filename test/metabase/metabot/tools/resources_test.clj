@@ -547,17 +547,25 @@
               fields (get-in resources [0 :content :structured-output :fields])]
           (is (= [created-at-id "CREATED_AT_2" "count"]
                  (map :field_id fields)))
-          (testing "a drill-in on each field ID returns that column, and only the first column has a portable path"
-            (are [field-id portable-fk?] (= {:field_id field-id :portable-fk? portable-fk?}
-                                            (let [{:keys [field_id portable_fk]}
-                                                  (:structured-output
-                                                   (field-stats/field-values {:entity-type "question"
-                                                                              :entity-id   card-id
-                                                                              :field-id    field-id
-                                                                              :limit       5}))]
-                                              {:field_id field_id :portable-fk? (vector? portable_fk)}))
-              created-at-id  true
-              "CREATED_AT_2" false))
+          (testing "a drill-in on each field ID resolves its own column, and only the first column has a portable path"
+            ;; Both columns have Field 14, so the output is the same for both. Record the alias of the resolved column.
+            (let [output-fn (mt/original-fn #'field-stats/field-metadata-output)
+                  drill-in  (fn [field-id]
+                              (let [alias (atom nil)]
+                                (mt/with-dynamic-fn-redefs [field-stats/field-metadata-output
+                                                            (fn [query col field-id limit]
+                                                              (reset! alias (:lib/desired-column-alias col))
+                                                              (output-fn query col field-id limit))]
+                                  (let [{:keys [portable_fk]} (:structured-output
+                                                               (field-stats/field-values {:entity-type "question"
+                                                                                          :entity-id   card-id
+                                                                                          :field-id    field-id
+                                                                                          :limit       5}))]
+                                    {:column-alias @alias :portable-fk? (vector? portable_fk)}))))]
+              (are [field-id column-alias portable-fk?] (= {:column-alias column-alias :portable-fk? portable-fk?}
+                                                           (drill-in field-id))
+                created-at-id  "CREATED_AT"   true
+                "CREATED_AT_2" "CREATED_AT_2" false)))
           (testing "only the first column gets the portable path of the field"
             (is (= [true false false]
                    (map (comp vector? :portable_fk) fields)))))))))
