@@ -1,0 +1,271 @@
+/* Prototype: the filter expression bar, flush inside the filter row. */
+.barRoot {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.bar {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 0.375rem;
+  min-height: 2rem;
+  cursor: text;
+}
+
+.barInvalid {
+  box-shadow: inset 0 -2px 0 var(--mb-color-feedback-negative);
+}
+
+/* The bar's own wrapper around a filter pill: the focus ring of the arrow keys. */
+.filterToken {
+  display: inline-flex;
+  border-radius: 1rem;
+}
+
+/* A pill the arrow keys landed on: Enter opens its editor. */
+.filterToken:focus,
+.filterToken:has(> :focus) {
+  outline: 2px solid var(--mb-color-core-filter);
+  outline-offset: 1px;
+}
+
+/* OR: a small bordered circle between the pills, close to them. */
+.op {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0 0.25rem;
+  padding: 0;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 50%;
+  background: none;
+  color: var(--mb-color-core-filter);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.5rem;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background-color 120ms,
+    color 120ms;
+}
+
+.op:hover {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+/* Parentheses: tall, light brackets in the filter color that wrap the pills they group. */
+.paren {
+  margin: 0 0.0625rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.25rem;
+  background: none;
+  color: var(--mb-color-core-filter);
+  font-family: inherit;
+  font-weight: 300;
+  font-size: 1.625rem;
+  line-height: 1.5rem;
+  transform: scaleY(1.1);
+  cursor: pointer;
+}
+
+.paren:hover {
+  color: var(--mb-color-feedback-negative);
+}
+
+.tokenError {
+  outline: 2px solid var(--mb-color-feedback-negative);
+  outline-offset: 1px;
+  border-radius: 1rem;
+}
+
+/* Click targets between tokens: clicking one puts the caret there. */
+.gap {
+  align-self: stretch;
+  width: 0.125rem;
+  cursor: text;
+}
+
+/* Stands in for a gap, so moving the caret never shifts the tokens around it. */
+.caretSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 0.125rem;
+}
+
+/* The draft pill needs the same room around it as a pill beside a pill. */
+.caretSlot:has(> :not(.typingIdle)),
+.caretSlot:has(> .typingIdle:focus-within) {
+  padding: 0 0.375rem;
+}
+
+/* Between pills, the empty draft is only a caret: no room is made until there is text. */
+.caretSlotMid:has([data-testid="draft-filter-pill"] input[data-empty]) {
+  padding: 0;
+
+  /* The caret takes no room and draws over the gap, so the pills on either side stay put. */
+  & [data-testid="draft-filter-pill"] {
+    width: 0;
+    min-width: 0;
+    min-height: 0;
+    border-width: 0;
+    justify-content: center;
+  }
+
+  & input[data-empty] {
+    flex: none;
+    width: 2px;
+    min-width: 0;
+  }
+}
+
+/* The same for the closed caret: an empty one between pills only draws over the gap. */
+.caretSlotMid:has(> .typingIdle:not(.typingText)) {
+  padding: 0;
+
+  & .typingIdle {
+    width: 0;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  & .input {
+    flex: none;
+  }
+}
+
+/* The caret's input: bare text while it could be `or` or a paren. */
+.typing {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Only typed text needs room beside the neighbouring tokens. */
+.typingText {
+  padding: 0 0.125rem;
+}
+
+/* Unfocused and empty: keeps the input focusable without taking space. */
+.typingIdle:not(:focus-within) {
+  width: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.input {
+  min-width: 2px;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  caret-color: var(--mb-color-core-filter);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.input::placeholder {
+  color: var(--mb-color-text-secondary);
+  font-weight: normal;
+}
+
+@keyframes flash {
+  0%,
+  40% {
+    box-shadow: 0 0 0 3px var(--mb-color-core-filter);
+  }
+
+  100% {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}
+
+/* Filters a drill just appended pulse once, to show where they landed. */
+.flash {
+  animation: flash 1.6s ease-out;
+}
+
+/* Clicks fall through to the bar, which puts the caret at the end. */
+.placeholder {
+  color: var(--mb-color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  pointer-events: none;
+}
+
+/* While editing, each parenthesized group gets its own indented row. */
+.barExpanded {
+  /* Same as the folded bar: placing the caret never changes the bar's height. */
+  row-gap: 0.375rem;
+}
+
+.rowBreak {
+  flex-basis: 100%;
+  height: 0;
+}
+
+/* The summary's bar after the rows', spaced like pills joined by an implicit AND. */
+.trailing {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+
+  &:not(:first-child) {
+    margin-left: 0.25rem;
+  }
+}
+
+/* After the separator, its own margins do the spacing: the same on both sides of it. */
+.bar .stageSeparator + .trailing:not(:first-child) {
+  margin-left: 0;
+}
+
+/* "then" between the filters on the rows and the filters on the summary: spelled like the
+   connectors but never clickable and never uppercase. Not a token. */
+.stageSeparator {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  margin: 0 0.5rem;
+  color: var(--mb-color-text-tertiary);
+  font-size: 0.75rem;
+  font-weight: 400;
+  font-style: italic;
+  opacity: 0.7;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* The summary's own bar, flush inside the rows bar's trailing slot. */
+.barNestedRoot {
+  /* Avoid an inline baseline changing the wrapper's height as the caret moves. */
+  display: flex;
+  flex: none;
+}
+
+.barNested {
+  display: inline-flex;
+  flex: none;
+  min-height: 0;
+  padding: 0;
+  border: none;
+}
+
+/* A pill's editor: the same border as the draft pill's suggestion list, a Mantine Combobox. */
+.pillDropdown.pillDropdown {
+  border: 1px solid var(--popover-border-color);
+}

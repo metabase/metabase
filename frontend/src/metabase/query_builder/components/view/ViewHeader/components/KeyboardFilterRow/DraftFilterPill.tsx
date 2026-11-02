@@ -1,5 +1,6 @@
 import { useClickOutside, useViewportSize } from "@mantine/hooks";
 import { skipToken } from "@reduxjs/toolkit/query/react";
+import cx from "classnames";
 import type { KeyboardEvent, ReactNode } from "react";
 import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
@@ -75,6 +76,22 @@ const COLUMN_OPTIONS_MAX_HEIGHT = "30rem";
 
 export type DraftChangeSource = "selection" | "typing";
 
+/** Why the user left the pill without a filter. */
+export type CancelReason = "escape" | "back" | "click-outside";
+
+/** What the pill knows when a key is pressed in its column step. */
+export type ColumnKeyState = {
+  text: string;
+  /** An option in the list is highlighted, so Enter picks it. */
+  hasSelectedOption: boolean;
+};
+
+/** Options from `leadingGroups`/`trailingGroups` start with this; they go to `onSelectExtra`. */
+export const EXTRA_OPTION_PREFIX = "extra:";
+
+/** Shared by the empty filter bar and the draft's column input. */
+export const getFilterPlaceholder = () => t`Type to add a filter, OR, (, )…`;
+
 interface DraftFilterPillProps {
   query: Lib.Query;
   stageIndex: number;
@@ -83,6 +100,24 @@ interface DraftFilterPillProps {
   initialState?: DraftState;
   /** The part of the filter to edit first, or undefined for the values. */
   initialEditedPart?: "column" | "operator";
+  /** The text in the input when the pill opens. */
+  initialText?: string;
+  /** False between the pills of a bar, so the caret slots in without moving them. */
+  hasPlaceholder?: boolean;
+  /** Extra options above and below the columns, picked with `onSelectExtra`. */
+  leadingGroups?: SuggestionGroup[];
+  trailingGroups?: SuggestionGroup[];
+  onSelectExtra?: (value: string) => void;
+  /** The text typed in the column step, as it changes. */
+  onColumnTextChange?: (text: string) => void;
+  /**
+   * Runs before the pill's own keys in the column step. True stops the pill
+   * and the list from handling the key.
+   */
+  onColumnKeyDown?: (
+    event: KeyboardEvent<HTMLInputElement>,
+    state: ColumnKeyState,
+  ) => boolean;
   /** Called with the filter in the pill each time the user changes it. */
   onDraftChange: (
     filter: Lib.ExpressionClause | undefined,
@@ -95,7 +130,7 @@ interface DraftFilterPillProps {
   /** The user closed the pill and keeps what is applied. */
   onDone: () => void;
   /** The user discarded the changes in the pill. */
-  onCancel: () => void;
+  onCancel: (reason: CancelReason) => void;
   /** The user removed the filter with the cross of the pill. */
   onRemove: () => void;
 }
@@ -110,6 +145,13 @@ export function DraftFilterPill({
   filter,
   initialState,
   initialEditedPart,
+  initialText = "",
+  hasPlaceholder = true,
+  leadingGroups,
+  trailingGroups,
+  onSelectExtra,
+  onColumnTextChange,
+  onColumnKeyDown,
   onDraftChange,
   onSubmit,
   onSubmitFilters,
@@ -120,7 +162,7 @@ export function DraftFilterPill({
   const [draft, setDraft] = useState<DraftState>(
     () => initialState ?? { values: [] },
   );
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText);
   // The column or the operator that the user changes in a complete filter,
   // while the other parts of the filter stay in the pill.
   const [editedPart, setEditedPart] = useState(initialEditedPart);
@@ -162,6 +204,9 @@ export function DraftFilterPill({
   const handleTextChange = (newText: string) => {
     aiValues.reset();
     aiFilters.reset();
+    if (step === "column") {
+      onColumnTextChange?.(newText);
+    }
     if (isAiPrompt(newText)) {
       // A request to the AI can have commas, and it is not a value.
       setText(newText);
@@ -217,7 +262,7 @@ export function DraftFilterPill({
       return;
     }
     if (!submit()) {
-      onCancel();
+      onCancel("click-outside");
     }
   });
 
@@ -270,7 +315,7 @@ export function DraftFilterPill({
     } else if (step === "operator") {
       updateDraft({ values: [] });
     } else {
-      onCancel();
+      onCancel("back");
     }
   };
 
@@ -296,6 +341,12 @@ export function DraftFilterPill({
     hasSelectedOption: boolean,
     firstOptionValue: string | undefined,
   ) => {
+    if (
+      step === "column" &&
+      onColumnKeyDown?.(event, { text, hasSelectedOption })
+    ) {
+      return true;
+    }
     if (isAiFiltersMode) {
       if (event.key === "Enter") {
         aiFilters.ask(getAiPromptText(text));
@@ -319,7 +370,7 @@ export function DraftFilterPill({
         if (editedPart != null) {
           editPart(undefined);
         } else {
-          onCancel();
+          onCancel("escape");
         }
         return true;
       case "Backspace":
@@ -382,7 +433,7 @@ export function DraftFilterPill({
       }
     } else if (event.key === "Escape") {
       event.preventDefault();
-      onCancel();
+      onCancel("escape");
     } else if (
       event.key === "Backspace" &&
       index === 0 &&
@@ -447,7 +498,7 @@ export function DraftFilterPill({
     >
       <div
         ref={pillRef}
-        className={S.draftPill}
+        className={cx(S.draftPill, { [S.draftPillBare]: step === "column" })}
         data-testid="draft-filter-pill"
       >
         {isAiFiltersMode && (
@@ -458,12 +509,17 @@ export function DraftFilterPill({
             query={query}
             stageIndex={stageIndex}
             text={text}
-            placeholder={column?.label ?? t`Search filters`}
+            placeholder={
+              column?.label ?? (hasPlaceholder ? getFilterPlaceholder() : "")
+            }
             onTextChange={handleTextChange}
             onSelect={(newColumn) =>
               updateDraft(changeDraftColumn(draft, newColumn))
             }
             onSelectSegment={onSubmit}
+            leadingGroups={leadingGroups}
+            trailingGroups={trailingGroups}
+            onSelectExtra={onSelectExtra}
             isAiMode={isAiFiltersMode}
             // A filter that the user edits keeps its place, so the AI only
             // creates new filters.
@@ -606,6 +662,9 @@ interface ColumnInputProps {
   onTextChange: (text: string) => void;
   onSelect: (column: NonNullable<DraftState["column"]>) => void;
   onSelectSegment: (segment: Lib.SegmentMetadata) => void;
+  leadingGroups?: SuggestionGroup[];
+  trailingGroups?: SuggestionGroup[];
+  onSelectExtra?: (value: string) => void;
   /** The text is a request to the AI, so the pill shows no column list. */
   isAiMode: boolean;
   /** Asks the AI for filters from the text. Undefined when not available. */
@@ -625,6 +684,9 @@ function ColumnInput({
   onTextChange,
   onSelect,
   onSelectSegment,
+  leadingGroups = NO_GROUPS,
+  trailingGroups = NO_GROUPS,
+  onSelectExtra,
   isAiMode,
   onAskAi,
   onKeyDown,
@@ -660,8 +722,12 @@ function ColumnInput({
   );
   const isAiAvailable = onAskAi != null;
   const groups = useMemo(() => {
-    const searchGroups =
-      relatedGroup != null ? [...modeGroups, relatedGroup] : modeGroups;
+    const searchGroups = [
+      ...leadingGroups,
+      ...modeGroups,
+      ...(relatedGroup != null ? [relatedGroup] : []),
+      ...trailingGroups,
+    ];
     const trimmedText = text.trim();
     if (!isAiAvailable || trimmedText.length === 0) {
       return searchGroups;
@@ -683,11 +749,22 @@ function ColumnInput({
     return isAiFiltersPrompt(trimmedText)
       ? [aiGroup, ...searchGroups]
       : [...searchGroups, aiGroup];
-  }, [modeGroups, relatedGroup, text, isAiAvailable]);
+  }, [
+    leadingGroups,
+    modeGroups,
+    relatedGroup,
+    trailingGroups,
+    text,
+    isAiAvailable,
+  ]);
 
   const handleSelect = (key: string) => {
     if (key === AI_FILTERS_OPTION) {
       onAskAi?.();
+      return;
+    }
+    if (key.startsWith(EXTRA_OPTION_PREFIX)) {
+      onSelectExtra?.(key);
       return;
     }
     const item = getItem(key);
