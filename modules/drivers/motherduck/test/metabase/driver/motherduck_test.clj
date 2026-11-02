@@ -259,6 +259,19 @@
         (finally
           (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))
 
+;; pgjdbc sets the session time zone to the JVM's, but the endpoint's `SHOW TIMEZONE` always answers UTC. Tests run
+;; on a UTC JVM, so use another zone to tell them apart.
+(deftest db-default-timezone-test
+  (mt/test-driver :motherduck
+    (try
+      (mt/with-system-timezone-id! "Asia/Tokyo"
+        ;; A new pool opens its connections in the JVM's current time zone.
+        (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
+        (is (= "Asia/Tokyo"
+               (driver/db-default-timezone :motherduck (lib.metadata/database (mt/metadata-provider))))))
+      (finally
+        (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))))
+
 (mt/defdataset pk-leak-a
   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
 

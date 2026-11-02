@@ -88,6 +88,18 @@
 
     ((get-method driver/humanize-connection-error-message :postgres) driver messages)))
 
+;; pgjdbc sets the session time zone to the JVM's at connection time. The endpoint's `SHOW TIMEZONE` always answers
+;; UTC regardless, but `current_setting` reports the session's actual time zone.
+(defmethod driver/db-default-timezone :motherduck
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^Connection conn]
+     (with-open [stmt (.prepareStatement conn "SELECT current_setting('TimeZone')")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (.getString rset 1))))))
+
 ;; Postgres lists hosting providers to recognize from the host name; none of them host MotherDuck.
 (defmethod driver/extra-info :motherduck
   [driver]
