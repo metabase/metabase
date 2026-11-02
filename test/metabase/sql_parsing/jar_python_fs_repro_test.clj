@@ -8,7 +8,10 @@
   `Files/newByteChannel`, which returns an in-memory `ByteArrayChannel` for compressed entries."
   (:require
    [clojure.test :refer :all]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-parsing.graal :as graal]
+   [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util.files :as u.files])
   (:import
    (java.io FileOutputStream)
@@ -16,6 +19,7 @@
    (java.nio.file Files StandardOpenOption)
    (java.nio.file.attribute FileAttribute)
    (java.util EnumSet)
+   (java.util.concurrent TimeoutException)
    (java.util.zip ZipEntry ZipOutputStream)
    (org.graalvm.polyglot.io FileSystem)))
 
@@ -46,3 +50,14 @@
                   "Channel must not be a FileChannel — that implies temp-file extraction beside the jar."))))
         (finally
           (Files/deleteIfExists zip-file))))))
+
+(deftest timeout-comes-from-setting-test
+  (testing "Python calls run under the timeout set by MB_SQL_PARSING_TIMEOUT_MS."
+    (let [timeout-ms (atom nil)]
+      (mt/with-temp-env-var-value! [mb-sql-parsing-timeout-ms 1234]
+        (dynamic-redefs/with-dynamic-fn-redefs [graal/with-timeout* (fn [ms _]
+                                                                      (reset! timeout-ms ms)
+                                                                      :metabase.sql-parsing.graal/timeout)]
+          (is (thrown-with-msg? TimeoutException #"after 1234ms"
+                                (sql-parsing/referenced-tables "postgres" "SELECT 1")))))
+      (is (= 1234 @timeout-ms)))))
