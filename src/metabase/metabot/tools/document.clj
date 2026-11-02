@@ -7,6 +7,7 @@
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
@@ -132,7 +133,9 @@
                               :cause        e})
 
                             :else
-                            (chosen-database-not-found! {:database-id database-id}))))]
+                            (tools.error/throw-recoverable! ::chosen-database-not-found
+                                                            {:database-id database-id}
+                                                            {:cause e}))))]
     (when-not (or (seq mentioned-ids)
                   (sql.common/native-query-access? database-id))
       (chosen-database-without-sql-access! {:database-id database-id}))

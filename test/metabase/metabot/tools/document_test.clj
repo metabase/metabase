@@ -113,7 +113,14 @@
             (testing (str "the model chose it for " user ", so the model is sent to choose another")
               (is (= {:class :recoverable :code ::document-tools/chosen-database-not-found}
                      (:error (invoke-document-tool "document_schema_collect" {:database_id database-id}
-                                                   (mentions {}))))))))))))
+                                                   (mentions {})))))
+              (testing "and the logs keep the refusal"
+                (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                     (tools/handle document-tools/document-schema-collect-tool
+                                                   {:database_id database-id}
+                                                   {:memory-atom (atom (mentions {}))})))]
+                  (is (= (if (= user :crowberto) 404 403)
+                         (:status-code (ex-data (ex-cause e))))))))))))))
 
 (deftest document-schema-collect-chosen-database-without-sql-access-test
   (testing "the user can read the database but can't write SQL against it"
