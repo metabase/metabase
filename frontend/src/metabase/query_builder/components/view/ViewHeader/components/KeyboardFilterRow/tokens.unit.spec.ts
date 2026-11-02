@@ -139,6 +139,11 @@ describe("parseTokens", () => {
       tokens: [a, b],
       position: 1,
     },
+    {
+      name: "two filters without an operator inside a group",
+      tokens: [OPEN_PAREN, a, b, CLOSE_PAREN],
+      position: 2,
+    },
   ])("rejects $name at the offending position", ({ tokens, position }) => {
     expect(parseTokens(tokens)).toMatchObject({
       ok: false,
@@ -336,18 +341,17 @@ describe("matchLogic", () => {
     ["o", "OR"],
     ["OR", "OR"],
     ["|", "OR"],
+    ["an", "AND"],
+    ["&&", "AND"],
     ["(", "("],
     [")", ")"],
   ])("matches %p to %p", (text, label) => {
     expect(matchLogic(text)?.label).toBe(label);
   });
 
-  it.each(["", "  ", "and", "total", "ora"])(
-    "matches nothing for %p",
-    (text) => {
-      expect(matchLogic(text)).toBeUndefined();
-    },
-  );
+  it.each(["", "  ", "total", "ora"])("matches nothing for %p", (text) => {
+    expect(matchLogic(text)).toBeUndefined();
+  });
 });
 
 describe("getSummaryStageIndex", () => {

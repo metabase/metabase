@@ -36,6 +36,7 @@ import {
   LOGIC_KEYWORDS,
   OPEN_PAREN,
   type Token,
+  endsOperand,
   filterToken,
   getFilterLabel,
   getLogicTokens,
@@ -53,6 +54,7 @@ import {
   removePillAt,
   removeTokenAt,
   replaceTokenAt,
+  startsOperand,
   toFilterClause,
   writeTokens,
 } from "./tokens";
@@ -97,6 +99,7 @@ const LOGIC_OPTION_PREFIX = EXTRA_OPTION("logic");
 const SERIES_OPTION_PREFIX = EXTRA_OPTION("series");
 
 const LOGIC_LABELS: Record<string, string> = {
+  AND: "AND",
   OR: "OR",
   "(": "( Start a group",
   ")": ") End the group",
@@ -266,6 +269,11 @@ export function ExpressionBar({
     return [];
   };
 
+  // Two operands with no connector between them, like after an AND was
+  // removed: the slot there keeps them apart until one is typed.
+  const isMissingConnectorAt = (index: number) =>
+    endsOperand(tokens[index - 1]) && startsOperand(tokens[index]);
+
   // A hidden AND takes no room, so the caret steps over it with its neighbor.
   const caretLeftOf = (index: number) =>
     isHiddenAnd(tokens[index - 1]) && index > 1 ? index - 2 : index - 1;
@@ -285,15 +293,20 @@ export function ExpressionBar({
     return tokens[at] != null && !isHiddenAnd(tokens[at]) ? at : undefined;
   };
 
-  // Two operators can't sit side by side, so next to one the logic row offers none.
-  // ANDs are implicit here: an OR may take the place of one next to the caret.
-  const isTokenAllowed = (token: Token) =>
-    !isOpToken(token, "and") &&
-    (!isOpToken(token) ||
-      ((!isOpToken(tokens[caretIndex - 1]) ||
-        isOpToken(tokens[caretIndex - 1], "and")) &&
-        (!isOpToken(tokens[caretIndex]) ||
-          isOpToken(tokens[caretIndex], "and"))));
+  // An AND is implicit while it is the only connector, so it can't be typed
+  // then. Next to one connector a typed one takes its place; between two
+  // there is no room for another.
+  const isTokenAllowed = (token: Token) => {
+    if (!isOpToken(token)) {
+      return true;
+    }
+    if (isOpToken(token, "and") && !hasOr) {
+      return false;
+    }
+    return !(
+      isOpToken(tokens[caretIndex - 1]) && isOpToken(tokens[caretIndex])
+    );
+  };
 
   // The text typed in the pill's column step, for the logic row: a typed
   // keyword lights up, and Space or Enter enters it, unless the arrow keys
@@ -484,15 +497,14 @@ export function ExpressionBar({
     if (!isTokenAllowed(token)) {
       return;
     }
-    const isReplacingAnd = isOpToken(token);
-    const isAndBefore =
-      isReplacingAnd && isOpToken(tokens[caretIndex - 1], "and");
-    const isAndAfter = isReplacingAnd && isOpToken(tokens[caretIndex], "and");
-    const at = isAndBefore ? caretIndex - 1 : caretIndex;
+    const isReplacingOp = isOpToken(token);
+    const isOpBefore = isReplacingOp && isOpToken(tokens[caretIndex - 1]);
+    const isOpAfter = isReplacingOp && isOpToken(tokens[caretIndex]);
+    const at = isOpBefore ? caretIndex - 1 : caretIndex;
     const without = tokens.filter(
       (_token, index) =>
-        !(isAndBefore && index === caretIndex - 1) &&
-        !(isAndAfter && index === caretIndex),
+        !(isOpBefore && index === caretIndex - 1) &&
+        !(isOpAfter && index === caretIndex),
     );
     const next = insertToken(without, at, token);
     setTokens(next.tokens);
@@ -892,6 +904,7 @@ export function ExpressionBar({
       key="caret"
       index={caretIndex}
       isAtEnd={caretIndex === tokens.length && !canExitRight}
+      isWide={isMissingConnectorAt(caretIndex)}
     >
       {caretView}
     </CaretSlot>
@@ -941,6 +954,7 @@ export function ExpressionBar({
               <Gap
                 key={`gap-${index}`}
                 index={index}
+                isWide={isMissingConnectorAt(index)}
                 onClick={() => moveCaret(index)}
               />
             ),
@@ -1173,15 +1187,21 @@ function SeriesFilterDraft({
 function CaretSlot({
   index,
   isAtEnd,
+  isWide,
   children,
 }: {
   index: number;
   isAtEnd: boolean;
+  /** Holds room between two operands that have no connector yet. */
+  isWide: boolean;
   children: ReactNode;
 }) {
   return (
     <span
-      className={cx(S.caretSlot, { [S.caretSlotMid]: !isAtEnd })}
+      className={cx(S.caretSlot, {
+        [S.caretSlotMid]: !isAtEnd,
+        [S.slotWide]: isWide,
+      })}
       {...{ [SLOT_ATTR]: index }}
     >
       {children}
@@ -1189,10 +1209,18 @@ function CaretSlot({
   );
 }
 
-function Gap({ index, onClick }: { index: number; onClick: () => void }) {
+function Gap({
+  index,
+  isWide = false,
+  onClick,
+}: {
+  index: number;
+  isWide?: boolean;
+  onClick: () => void;
+}) {
   return (
     <span
-      className={S.gap}
+      className={cx(S.gap, { [S.slotWide]: isWide })}
       {...{ [SLOT_ATTR]: index }}
       onClick={(event) => {
         event.stopPropagation();

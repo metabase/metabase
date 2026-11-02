@@ -161,6 +161,17 @@
   }
 }
 
+/* Two operands with no connector between them: the slot keeps a connector's
+   worth of room, so the pills never touch. Wins over the zero-width caret rules. */
+.gap.slotWide,
+.caretSlot.slotWide,
+.caretSlotMid.slotWide:has([data-testid="draft-filter-pill"] input[data-empty]),
+.caretSlotMid.slotWide:has(> .typingIdle:not(.typingText)) {
+  width: auto;
+  min-width: 1.75rem;
+  padding: 0 var(--mantine-spacing-xs);
+}
+
 /* The caret's input: bare text while it could be `or` or a paren. */
 .typing {
   display: inline-flex;

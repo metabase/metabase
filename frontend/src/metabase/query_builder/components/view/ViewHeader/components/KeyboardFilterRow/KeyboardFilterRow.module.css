@@ -85,7 +85,9 @@
     display: none;
   }
 
+  /* Between pills the input hugs its text: no 2rem minimum opening a gap. */
   & .input {
+    min-width: 0;
     padding: 0;
     background: none;
   }

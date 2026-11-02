@@ -205,6 +205,9 @@ export function parseTokens(tokens: readonly Token[]): ParseResult {
         return fail(t`Empty parentheses`);
       }
       const inner = parseOr();
+      if (startsOperand(peek())) {
+        return fail(t`Two filters need an "and" or "or" between them`);
+      }
       if (!isParenToken(peek(), "close")) {
         return fail(t`Missing closing parenthesis`);
       }
@@ -443,8 +446,9 @@ export type LogicKeyword = {
   spellings: string[];
 };
 
-/** `and` is never typed: it is implicit between operands. */
+/** The bar offers AND only while ANDs are visible, beside an OR. */
 export const LOGIC_KEYWORDS: LogicKeyword[] = [
+  { label: "AND", token: opToken("and"), spellings: ["and", "&&"] },
   { label: "OR", token: opToken("or"), spellings: ["or", "||"] },
   { label: "(", token: OPEN_PAREN, spellings: ["("] },
   { label: ")", token: CLOSE_PAREN, spellings: [")"] },
