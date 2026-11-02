@@ -165,10 +165,15 @@ export function ExpressionBar({
   // over the new query, which the reset then undoes, forever.
   const isSelfCommitRef = useRef(false);
   const skipFlashRef = useRef(false);
+  // A draft shows no error while it is typed. An apply that fails turns
+  // validation on: the error shows and follows every edit until the next
+  // successful apply.
+  const [isValidating, setIsValidating] = useState(false);
   const [syncedTokens, setSyncedTokens] = useState(committedTokens);
   if (syncedTokens !== committedTokens) {
     setSyncedTokens(committedTokens);
     setTokens(committedTokens);
+    setIsValidating(false);
     if (isSelfCommitRef.current) {
       isSelfCommitRef.current = false;
       skipFlashRef.current = true;
@@ -209,9 +214,11 @@ export function ExpressionBar({
   const baseQuery = draftQuery ?? query;
   const canApply = isDirty || draftQuery != null;
   const parsed = useMemo(() => parseTokens(tokens), [tokens]);
-  const errorPosition = parsed.ok ? undefined : parsed.position;
   const ownError = parsed.ok ? undefined : parsed.error;
   const error = ownError ?? trailingError;
+  const shownError = isValidating ? error : undefined;
+  const shownErrorPosition =
+    isValidating && !parsed.ok ? parsed.position : undefined;
   useEffect(() => {
     onErrorChange?.(ownError);
   }, [ownError, onErrorChange]);
@@ -586,7 +593,12 @@ export function ExpressionBar({
   ]);
 
   const commit = () => {
-    if (error == null && canApply) {
+    // An expression that does not parse blocks the apply and shows why.
+    if (error != null) {
+      setIsValidating(true);
+      return;
+    }
+    if (canApply) {
       onChange(writeTokens(baseQuery, stageIndex, tokens));
     }
     close();
@@ -890,7 +902,7 @@ export function ExpressionBar({
       <Box
         ref={barRef}
         className={cx(S.bar, {
-          [S.barInvalid]: error != null && !isNested,
+          [S.barInvalid]: shownError != null && !isNested,
           [S.barExpanded]: isExpanded && hasGroups,
           [S.barNested]: isNested,
         })}
@@ -969,7 +981,7 @@ export function ExpressionBar({
                 token={token}
                 depth={parenDepths[index]}
                 isAndHidden={!hasOr}
-                hasError={index === errorPosition}
+                hasError={index === shownErrorPosition}
                 isFlashed={
                   token.type === "filter" &&
                   flashed.has(getFilterLabel(query, stageIndex, token.clause))
@@ -1045,18 +1057,13 @@ export function ExpressionBar({
           )}
         {!isNested && (
           <Group gap="sm" ml="auto" pl="md" wrap="nowrap">
-            {error != null && (
+            {shownError != null && (
               <Text size="sm" c="feedback-negative" lh="1">
-                {error}
+                {shownError}
               </Text>
             )}
             {canApply && !isAutoApply && (
-              <Button
-                size="compact-sm"
-                variant="filled"
-                disabled={error != null}
-                onClick={commit}
-              >
+              <Button size="compact-sm" variant="filled" onClick={commit}>
                 {t`Apply`}
               </Button>
             )}
