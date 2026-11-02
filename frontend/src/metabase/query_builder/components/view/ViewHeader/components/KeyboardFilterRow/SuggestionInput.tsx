@@ -463,7 +463,8 @@ function isTextInput(target: EventTarget) {
 
 function OptionLabel({ option }: { option: SuggestionOption }) {
   return (
-    <Flex align="center" gap="sm" miw={0}>
+    // A hint goes to the right end, so the label takes the whole row.
+    <Flex align="center" gap="sm" miw={0} w={option.hint ? "100%" : undefined}>
       {option.icon && <Icon name={option.icon} />}
       {option.leftSection}
       <span className={S.optionLabel} title={option.label}>
@@ -472,6 +473,7 @@ function OptionLabel({ option }: { option: SuggestionOption }) {
       {option.description && (
         <span className={S.optionDescription}>{option.description}</span>
       )}
+      {option.hint && <span className={S.optionHint}>{option.hint}</span>}
     </Flex>
   );
 }

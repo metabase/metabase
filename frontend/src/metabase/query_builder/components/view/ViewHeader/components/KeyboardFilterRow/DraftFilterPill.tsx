@@ -71,6 +71,7 @@ import {
   getDraftFilterClause,
   getMaxValueCount,
   getOperatorAliases,
+  getOperatorHint,
   getPillOperatorLabel,
   isValidValue,
   parseDatePickerValue,
@@ -1373,6 +1374,7 @@ function getOperatorGroups(
       value: operator.key,
       label: operator.label,
       aliases: getOperatorAliases(operator),
+      hint: getOperatorHint(operator),
       isChecked: operator.key === currentOperator?.key,
     });
   }

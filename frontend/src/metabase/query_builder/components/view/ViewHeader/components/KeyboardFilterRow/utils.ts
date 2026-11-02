@@ -283,10 +283,10 @@ function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
 
   if (Lib.isNumeric(column)) {
     if (Lib.isCoordinate(column)) {
-      return getCoordinateOperators(column);
+      return arrangeOperators(getCoordinateOperators(column), NUMBER_LAYOUT);
     }
-    return getNumberOperatorOptions(column).map(
-      ({ operator, displayName }) => ({
+    const numberOperators = getNumberOperatorOptions(column).map(
+      ({ operator, displayName }): DraftOperator => ({
         key: operator,
         label: displayName,
         valueKind: getNumberValueKind(operator),
@@ -300,11 +300,12 @@ function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
         },
       }),
     );
+    return arrangeOperators(numberOperators, NUMBER_LAYOUT);
   }
 
   if (Lib.isStringOrStringLike(column)) {
-    return getStringOperatorOptions(column).map(
-      ({ operator, displayName }) => ({
+    const stringOperators = getStringOperatorOptions(column).map(
+      ({ operator, displayName }): DraftOperator => ({
         key: operator,
         label: displayName,
         valueKind:
@@ -319,9 +320,67 @@ function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
           getStringFilterClause(operator, column, values, {}),
       }),
     );
+    return arrangeOperators(stringOperators, STRING_LAYOUT);
   }
 
   return undefined;
+}
+
+/**
+ * Prototype: the order of the operators in the list, in groups that a divider
+ * splits, and the short labels of the design, like "empty".
+ */
+type OperatorLayout = { key: string; label?: () => string }[][];
+
+const STRING_LAYOUT: OperatorLayout = [
+  [{ key: "=" }, { key: "!=" }],
+  [{ key: "contains" }, { key: "does-not-contain" }],
+  [{ key: "starts-with" }, { key: "ends-with" }],
+  [
+    { key: "is-empty", label: () => t`empty` },
+    { key: "not-empty", label: () => t`not empty` },
+  ],
+];
+
+const NUMBER_LAYOUT: OperatorLayout = [
+  [{ key: "between" }],
+  [{ key: "=" }, { key: "!=" }],
+  [{ key: ">" }, { key: ">=" }, { key: "<" }, { key: "<=" }],
+  [
+    { key: "is-null", label: () => t`empty` },
+    { key: "not-null", label: () => t`not empty` },
+  ],
+];
+
+/**
+ * The operators in the order of the layout, with their groups and lower-case
+ * labels. Operators that the layout does not list go last, in a group of their
+ * own.
+ */
+function arrangeOperators(
+  operators: DraftOperator[],
+  layout: OperatorLayout,
+): DraftOperator[] {
+  const byKey = new Map(operators.map((operator) => [operator.key, operator]));
+  const arranged = layout.flatMap((items, group) =>
+    items.flatMap(({ key, label }) => {
+      const operator = byKey.get(key);
+      return operator != null
+        ? [
+            {
+              ...operator,
+              label: label?.() ?? operator.label.toLowerCase(),
+              group,
+            },
+          ]
+        : [];
+    }),
+  );
+  const listedKeys = new Set(layout.flat().map(({ key }) => key));
+  const rest = operators
+    .filter(({ key }) => !listedKeys.has(key))
+    .map((operator) => ({ ...operator, group: layout.length }));
+  return [...arranged, ...rest];
 }
 
 // Prototype: "inside" needs a second column, latitude and longitude, so only
@@ -368,6 +427,21 @@ const OPERATOR_ALIASES: Partial<Record<string, string[]>> = {
   "<=": ["<=", "=<", "≤"],
   between: [".."],
 };
+
+/** The math symbol of a number operator, shown next to it in the list. */
+const OPERATOR_HINTS: Partial<Record<string, string>> = {
+  between: "..",
+  "=": "=",
+  "!=": "!=",
+  ">": ">",
+  ">=": ">=",
+  "<": "<",
+  "<=": "<=",
+};
+
+export function getOperatorHint(operator: DraftOperator) {
+  return operator.isNumeric ? OPERATOR_HINTS[operator.key] : undefined;
+}
 
 /** Symbols that find an operator in the operator search, like "!=". */
 export function getOperatorAliases(operator: DraftOperator) {

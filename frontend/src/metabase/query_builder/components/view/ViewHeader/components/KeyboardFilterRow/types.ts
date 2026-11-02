@@ -13,6 +13,8 @@ export type SuggestionOption = {
   aliases?: string[];
   /** Shown after the label in grey, like a state code. */
   description?: string;
+  /** Shown at the right end of the option, like the symbol of an operator. */
+  hint?: string;
   isChecked?: boolean;
   /** Some, but not all, of the values that this option selects are checked. */
   isIndeterminate?: boolean;

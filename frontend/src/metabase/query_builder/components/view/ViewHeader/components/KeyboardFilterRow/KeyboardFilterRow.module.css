@@ -296,6 +296,14 @@
   white-space: nowrap;
 }
 
+.optionHint {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: var(--mantine-spacing-md);
+  color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-sm);
+}
+
 .optionDescription {
   flex: none;
   color: var(--mb-color-text-secondary);
