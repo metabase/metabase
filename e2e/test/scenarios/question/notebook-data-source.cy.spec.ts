@@ -183,6 +183,15 @@ describe("scenarios > notebook > data source", () => {
       H.popover().findByText("Orders").click();
       H.join();
       H.popover().findByText("Products").click();
+
+      // Picking the join table auto-selects the FK condition, and that lands after the
+      // popover closes. Clicking Visualize before it does runs the un-joined query; the
+      // join then marks the result dirty, and the run overlay covers the results table.
+      H.getNotebookStep("join").within(() => {
+        cy.findByLabelText("Left column").should("contain", "Product ID");
+        cy.findByLabelText("Right column").should("contain", "ID");
+      });
+
       H.visualize();
       H.tableHeaderColumn("User ID").should("be.visible");
       H.tableHeaderColumn("Products → ID").should("be.visible");
@@ -421,7 +430,10 @@ describe("issue 28106", () => {
 
         H.entityPickerModalLevel(3).should("contain", "Animals");
 
-        cy.get("@schemasList").scrollTo("bottom");
+        // The list only renders the rows near the viewport, so one scroll reaches the
+        // bottom of what is rendered, not the bottom of the list. Scroll until the
+        // list stops growing.
+        scrollToBottom("@schemasList");
 
         // assert scrolling worked and the last item is visible
         H.entityPickerModalItem(2, "Schema Z").should("be.visible");
@@ -558,4 +570,18 @@ function assertDataPickerEntitySelected(level: number, name: string) {
 
 function assertDataPickerEntityNotSelected(level: number, name: string) {
   H.entityPickerModalItem(level, name).should("not.have.attr", "data-active");
+}
+
+function scrollToBottom(alias: string, previousScrollTop = -1, attempt = 0) {
+  if (attempt === 20) {
+    throw new Error(`${alias} is still growing after ${attempt} scrolls.`);
+  }
+
+  cy.get(alias)
+    .scrollTo("bottom")
+    .then(([element]) => {
+      if (element.scrollTop !== previousScrollTop) {
+        scrollToBottom(alias, element.scrollTop, attempt + 1);
+      }
+    });
 }
