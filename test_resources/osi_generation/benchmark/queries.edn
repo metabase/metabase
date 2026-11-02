@@ -12,6 +12,8 @@
 ;; Growing the corpus re-runs the judgment pass over every prompt, not just the new ones: an entity
 ;; added later can be a defensible answer to a query written earlier, and leaving it ungraded would
 ;; score a correct retrieval as wrong. The prompts themselves stay frozen.
+;; Judgment revision: tax-collected is defensible for billed-last-month (sales tax is billed), but
+;; remains irrelevant to invoiced-total revenue. Prior runs need rescoring under these judgments.
 ;;
 ;; :holdout true|false — holdout queries are excluded from any PR-6 prompt iteration and reported as a
 ;; separate column; if the visible and holdout columns diverge, the prompt is being tuned to the
@@ -37,7 +39,7 @@
   {:id      :q-billed-last-month
    :prompt  "what did we bill customers last month"
    :holdout false
-   :judged  {:invoices 2, :invoice-revenue 1}}
+   :judged  {:invoices 2, :invoice-revenue 1, :tax-collected 1}}
 
   {:id      :q-invoiced-total
    :prompt  "total invoiced revenue so far this year"
@@ -121,7 +123,7 @@
    :holdout false
    :judged  {:escalated 2, :support-tickets 1}}
 
-  ;; the control's own query. The invoiced-revenue queries above judge tax-collected 0, so a measure
+  ;; the control's own query. The invoiced-revenue query above judges tax-collected 0, so a measure
   ;; that borrowed its parent's billing vocabulary is punished there and gains nothing here.
   {:id      :q-sales-tax
    :prompt  "how much sales tax did we charge over the year"
