@@ -793,7 +793,12 @@ export function ExpressionBar({
   );
 
   return (
-    <Box className={cx({ [S.barNotebookRoot]: isInNotebook })}>
+    <Box
+      className={cx({
+        [S.barNotebookRoot]: isInNotebook,
+        [S.barNestedRoot]: isNested,
+      })}
+    >
       <Box
         ref={barRef}
         className={cx(S.bar, {

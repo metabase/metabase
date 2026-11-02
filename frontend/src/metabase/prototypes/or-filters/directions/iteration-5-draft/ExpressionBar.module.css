@@ -430,6 +430,11 @@
 }
 
 /* The summary's own bar, flush inside the rows bar's trailing slot. */
+.barNestedRoot {
+  /* Avoid an inline baseline changing the wrapper's height as the caret moves. */
+  display: flex;
+}
+
 .barNested {
   display: inline-flex;
   padding: 0;

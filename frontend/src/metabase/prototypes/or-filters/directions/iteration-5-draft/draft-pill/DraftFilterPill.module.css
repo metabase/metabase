@@ -100,7 +100,7 @@
 .draftPillBare {
   /* As tall as a filter pill, so opening the caret never grows the bar. */
   min-height: 1.5rem;
-  padding-inline: 0;
+  padding: 0;
   border-width: 0;
   border-color: transparent;
   background-color: transparent;
