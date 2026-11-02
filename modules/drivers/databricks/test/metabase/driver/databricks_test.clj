@@ -752,7 +752,6 @@
   ;; Locally, MB_DATABRICKS_TEST_WIF_TOKEN_FILE can point to a JWT on disk as a fallback.
   (mt/test-driver
     :databricks
-    (is false "WIF-LIVE sentinel: test body executed")
     (when-let [wif-user (wif-user-or-skip)]
       (let [audience (tx/db-test-env-var-or-throw :databricks :wif-audience)]
         (when-let [token (or (mint-github-actions-oidc-token audience)

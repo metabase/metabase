@@ -343,8 +343,6 @@ jobs:
           echo "MB_DATABRICKS_TEST_${name}=${!var}" >> "$GITHUB_ENV"
         done
     - uses: actions/checkout@v7
-    - name: Diagnostic — OAuth secret length
-      run: echo "oauth secret length=${#MB_DATABRICKS_TEST_OAUTH_SECRET}"
     - name: Test Databricks driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -353,7 +351,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
-          :fail-fast? false
+          :fail-fast? true
         runner-index: ${{ matrix.runner-index }}
         runner-count: ${{ strategy.job-total }}
         jvms-per-runner: '2'
