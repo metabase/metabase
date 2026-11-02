@@ -1,6 +1,13 @@
 import fetchMock from "fetch-mock";
 
-import type { HealthCheck, HealthCheckId } from "metabase-types/api";
+import type { Advisory, HealthCheck, HealthCheckId } from "metabase-types/api";
+
+export const setupSecurityAdvisoriesEndpoint = (advisories: Advisory[]) => {
+  fetchMock.get("path:/api/ee/security-center", {
+    advisories,
+    last_checked_at: null,
+  });
+};
 
 export const setupHealthChecksEndpoint = (checks: HealthCheck[]) => {
   fetchMock.get(

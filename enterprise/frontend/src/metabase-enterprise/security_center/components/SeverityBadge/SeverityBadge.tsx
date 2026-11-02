@@ -1,7 +1,23 @@
-import { Badge } from "metabase/ui";
+import { match } from "ts-pattern";
+import { t } from "ttag";
+
+import { Badge, type BadgeColor } from "metabase/ui";
 import type { AdvisorySeverity } from "metabase-types/api";
 
-import { getSeverityColor, getSeverityLabel } from "../../utils";
+const SEVERITY_COLORS: Record<AdvisorySeverity, BadgeColor> = {
+  critical: "negative",
+  high: "negative",
+  medium: "warning",
+  low: "positive",
+};
+
+const getSeverityLabel = (severity: AdvisorySeverity) =>
+  match(severity)
+    .with("critical", () => t`Critical`)
+    .with("high", () => t`High`)
+    .with("medium", () => t`Medium`)
+    .with("low", () => t`Low`)
+    .exhaustive();
 
 type SeverityBadgeProps = {
   severity: AdvisorySeverity;
@@ -16,7 +32,7 @@ export const SeverityBadge = ({
 
   return (
     <Badge
-      color={getSeverityColor({ isAffecting, severity })}
+      color={isAffecting ? SEVERITY_COLORS[severity] : "neutral"}
       tt={isCritical ? "uppercase" : undefined}
       size="sm"
     >

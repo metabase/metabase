@@ -273,7 +273,12 @@ describe("HealthChecksPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it.each<{ checkId: HealthCheckId; item: HealthCheckItem; href: string }>([
+  it.each<{
+    checkId: HealthCheckId;
+    item: HealthCheckItem;
+    actionName: string;
+    href: string;
+  }>([
     {
       checkId: "read-only-connections",
       item: {
@@ -282,7 +287,19 @@ describe("HealthChecksPage", () => {
         entity_id: 1,
         entity_name: "Warehouse",
       },
+      actionName: "Open database",
       href: "/admin/databases/1",
+    },
+    {
+      checkId: "read-only-connections",
+      item: {
+        status: "unknown",
+        entity_type: "database",
+        entity_id: 2,
+        entity_name: "Analytics",
+      },
+      actionName: "Open database",
+      href: "/admin/databases/2",
     },
     {
       checkId: "all-users-permissions",
@@ -292,6 +309,7 @@ describe("HealthChecksPage", () => {
         entity_id: "root",
         entity_name: "Our analytics",
       },
+      actionName: "Open permissions",
       href: "/admin/permissions/collections/root",
     },
     {
@@ -302,20 +320,49 @@ describe("HealthChecksPage", () => {
         entity_id: 1,
         entity_name: "All Users",
       },
+      actionName: "Open permissions",
       href: "/admin/permissions/data/group/1",
     },
   ])(
-    "links a $item.entity_type of $checkId to its page",
-    async ({ checkId, item, href }) => {
+    "links a $item.status $item.entity_type of $checkId to its page",
+    async ({ checkId, item, actionName, href }) => {
       await setup({
         checks: [{ ...FAILING_CHECK, id: checkId, items: [item] }],
       });
 
+      const row = screen.getByTestId("health-check-item");
       expect(
-        screen.getByRole("link", { name: item.entity_name }),
+        within(row).getByRole("link", { name: actionName }),
       ).toHaveAttribute("href", href);
+      expect(
+        within(row).queryByRole("link", { name: item.entity_name }),
+      ).not.toBeInTheDocument();
     },
   );
+
+  it("does not link an object that passes", async () => {
+    await setup({
+      checks: [
+        {
+          ...FAILING_CHECK,
+          id: "all-users-permissions",
+          items: [
+            createMockHealthCheckItem({
+              status: "pass",
+              entity_type: "group",
+              entity_id: 1,
+              entity_name: "All Users",
+            }),
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByText("All Users")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Open permissions" }),
+    ).not.toBeInTheDocument();
+  });
 
   it.each<{ checkId: HealthCheckId; href: string }>([
     { checkId: "https-site-url", href: "/admin/settings/general" },
@@ -351,7 +398,7 @@ describe("HealthChecksPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the name of an object without a page as plain text", async () => {
+  it("does not link an object the check has no page for", async () => {
     await setup({
       checks: [
         {
@@ -370,7 +417,7 @@ describe("HealthChecksPage", () => {
 
     expect(screen.getByText("Warehouse")).toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: "Warehouse" }),
+      screen.queryByRole("link", { name: "Open database" }),
     ).not.toBeInTheDocument();
   });
 
@@ -408,7 +455,9 @@ describe("HealthChecksPage", () => {
       screen.getByRole("button", { name: "sync icon Re-check" }),
     );
 
-    expect(await screen.findByText("2 of 2 checks pass")).toBeInTheDocument();
+    expect(
+      await screen.findByText("All security checks pass"),
+    ).toBeInTheDocument();
     expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith(FAILING_CHECK.id);
   });
@@ -439,7 +488,10 @@ describe("HealthChecksPage", () => {
       screen
         .getAllByTestId("health-check-item")
         .map((item) => item.textContent),
-    ).toEqual(["All UsersCan query Warehouse", "All UsersCan query Analytics"]);
+    ).toEqual([
+      "All UsersCan query WarehouseOpen permissions",
+      "All UsersCan query AnalyticsOpen permissions",
+    ]);
   });
 
   it("disables re-check on every card while all checks are re-checked", async () => {

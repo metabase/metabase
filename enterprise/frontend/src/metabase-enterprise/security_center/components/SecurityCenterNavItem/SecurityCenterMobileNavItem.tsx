@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
 import { AdminNavLink } from "metabase/nav/components/AdminNavbar/AdminNavLink";
-import { Box, Flex } from "metabase/ui";
+import { Flex } from "metabase/ui";
 
-import { useListSecurityAdvisoriesQuery } from "../../api";
-import { isAffected } from "../../utils";
+import { SecurityCenterBadge } from "./SecurityCenterBadge";
 
 const PATH = "/admin/security-center";
 
@@ -15,10 +14,6 @@ interface SecurityCenterMobileNavItemProps {
 export function SecurityCenterMobileNavItem({
   currentPath,
 }: SecurityCenterMobileNavItemProps) {
-  const { data: advisoriesResponse } = useListSecurityAdvisoriesQuery();
-  const advisories = advisoriesResponse?.advisories ?? [];
-  const hasActive = advisories.some(isAffected);
-
   return (
     <AdminNavLink
       to={PATH}
@@ -27,16 +22,7 @@ export function SecurityCenterMobileNavItem({
     >
       <Flex align="center" gap="0.375rem">
         {t`Security`}
-        {hasActive && (
-          <Box
-            w={8}
-            h={8}
-            miw={8}
-            bg="feedback-negative"
-            style={{ borderRadius: "50%", flexShrink: 0 }}
-            data-testid="security-center-badge"
-          />
-        )}
+        <SecurityCenterBadge />
       </Flex>
     </AdminNavLink>
   );

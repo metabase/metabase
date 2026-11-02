@@ -81,7 +81,11 @@ export const securityCenterApi = EnterpriseApi.injectEndpoints({
               undefined,
               (draft) => {
                 draft.checks = draft.checks.map((check) =>
-                  check.id === checkId ? recheckedCheck : check,
+                  check.id === checkId &&
+                  Date.parse(recheckedCheck.checked_at) >=
+                    Date.parse(check.checked_at)
+                    ? recheckedCheck
+                    : check,
                 );
               },
             ),

@@ -1,8 +1,8 @@
 import { Link } from "metabase/common/components/Link";
-import { Anchor, FixedSizeIcon, Flex, Group, Stack, Text } from "metabase/ui";
+import { Button, FixedSizeIcon, Flex, Group, Stack, Text } from "metabase/ui";
 import type { HealthCheckId, HealthCheckItem } from "metabase-types/api";
 
-import { getHealthCheckItemUrl, getStatusInfo } from "./utils";
+import { getHealthCheckItemAction, getStatusInfo } from "./utils";
 
 const ROW_LINE_HEIGHT = "1.25rem";
 
@@ -16,7 +16,8 @@ export const HealthCheckItemRow = ({
   item,
 }: HealthCheckItemRowProps) => {
   const { label, icon, iconColor } = getStatusInfo(item.status);
-  const url = getHealthCheckItemUrl(checkId, item);
+  const isPassing = item.status === "pass";
+  const action = isPassing ? null : getHealthCheckItemAction(checkId, item);
 
   return (
     <Group
@@ -30,23 +31,28 @@ export const HealthCheckItemRow = ({
       <Flex h={ROW_LINE_HEIGHT} align="center">
         <FixedSizeIcon name={icon} c={iconColor} aria-label={label} />
       </Flex>
-      <Stack gap="xxs" miw={0}>
-        {item.entity_name &&
-          (url ? (
-            <Anchor component={Link} to={url} fw="bold" lh={ROW_LINE_HEIGHT}>
-              {item.entity_name}
-            </Anchor>
-          ) : (
-            <Text fw="bold" lh={ROW_LINE_HEIGHT}>
-              {item.entity_name}
-            </Text>
-          ))}
+      <Stack gap="xxs" miw={0} flex={1}>
+        {item.entity_name && (
+          <Text fw="bold" lh={ROW_LINE_HEIGHT}>
+            {item.entity_name}
+          </Text>
+        )}
         {item.message && (
           <Text c="text-secondary" lh={ROW_LINE_HEIGHT}>
             {item.message}
           </Text>
         )}
       </Stack>
+      {action && (
+        <Button
+          component={Link}
+          to={action.url}
+          variant="subtle"
+          size="compact-sm"
+        >
+          {action.label}
+        </Button>
+      )}
     </Group>
   );
 };

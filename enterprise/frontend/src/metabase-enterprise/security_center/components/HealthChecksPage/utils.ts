@@ -66,22 +66,36 @@ export const partitionItemsByProblem = (items: HealthCheckItem[]) =>
     (item) => item.status !== "pass",
   );
 
-export const getHealthCheckItemUrl = (
+type HealthCheckItemAction = {
+  label: string;
+  url: string;
+};
+
+export const getHealthCheckItemAction = (
   checkId: HealthCheckId,
   item: HealthCheckItem,
-) =>
+): HealthCheckItemAction | null =>
   match({ checkId, item })
     .with(
       { checkId: "read-only-connections", item: { entity_type: "database" } },
-      ({ item }) => Urls.viewDatabase(item.entity_id),
+      ({ item }) => ({
+        label: t`Open database`,
+        url: Urls.viewDatabase(item.entity_id),
+      }),
     )
     .with(
       { checkId: "all-users-permissions", item: { entity_type: "collection" } },
-      ({ item }) => Urls.collectionPermissions(item.entity_id),
+      ({ item }) => ({
+        label: t`Open permissions`,
+        url: Urls.collectionPermissions(item.entity_id),
+      }),
     )
     .with(
       { checkId: "all-users-permissions", item: { entity_type: "group" } },
-      ({ item }) => Urls.groupDataPermissions(item.entity_id),
+      ({ item }) => ({
+        label: t`Open permissions`,
+        url: Urls.groupDataPermissions(item.entity_id),
+      }),
     )
     .otherwise(() => null);
 

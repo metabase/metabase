@@ -1,7 +1,3 @@
-import { match } from "ts-pattern";
-import { t } from "ttag";
-
-import type { BadgeColor } from "metabase/ui";
 import { compareVersions, getMajorVersion } from "metabase/utils/version";
 import type {
   Advisory,
@@ -115,32 +111,4 @@ export function sortAdvisories(advisories: Advisory[]): SortedAdvisories {
   notAffecting.sort(sortBySeverityAndDate);
 
   return { affecting, notAffecting };
-}
-
-export function getSeverityColor({
-  isAffecting,
-  severity,
-}: {
-  isAffecting: boolean;
-  severity: AdvisorySeverity;
-}): BadgeColor {
-  if (!isAffecting) {
-    return "neutral";
-  }
-
-  return match(severity)
-    .with("critical", () => "negative" as const)
-    .with("high", () => "negative" as const)
-    .with("medium", () => "warning" as const)
-    .with("low", () => "positive" as const)
-    .exhaustive();
-}
-
-export function getSeverityLabel(severity: AdvisorySeverity): string {
-  return match(severity)
-    .with("critical", () => t`Critical`)
-    .with("high", () => t`High`)
-    .with("medium", () => t`Medium`)
-    .with("low", () => t`Low`)
-    .exhaustive();
 }

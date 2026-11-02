@@ -13,6 +13,7 @@ type HealthChecksSummaryProps = {
 export const HealthChecksSummary = ({ checks }: HealthChecksSummaryProps) => {
   const passedCount = checks.filter((check) => check.status === "pass").length;
   const isAllClear = passedCount === checks.length;
+  const isFailing = checks.some((check) => check.status === "fail");
 
   if (isAllClear) {
     return (
@@ -25,7 +26,7 @@ export const HealthChecksSummary = ({ checks }: HealthChecksSummaryProps) => {
     );
   }
 
-  const { icon, iconColor } = getStatusInfo("fail");
+  const { icon, iconColor } = getStatusInfo(isFailing ? "fail" : "unknown");
 
   return (
     <Card p="lg" withBorder>
