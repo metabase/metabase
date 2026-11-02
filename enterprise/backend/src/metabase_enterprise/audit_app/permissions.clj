@@ -51,8 +51,7 @@
   ;; Check if the user has access to the analytics collection, since this should be coupled with access to the
   ;; audit database in general.
   (when-not (mi/can-read? (audit/default-audit-collection))
-    (throw (ex-info (tru "You do not have access to the audit database")
-                    {:type qp.error-type/missing-required-permissions, :query outer-query})))
+    (throw (query-perms/perms-exception (tru "You do not have access to the audit database") nil {:query outer-query})))
   ;; query->source-table-ids returns a set of table IDs or a map with the key `:native?`
   (when (= query-type :native)
     (throw (ex-info (tru "Native queries are not allowed on the audit database")
