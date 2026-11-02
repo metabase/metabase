@@ -530,6 +530,8 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
         rerunQuery: false,
       });
       onOpenModal(MODAL_TYPES.SAVE);
+      // the save modal saves the model, so this click must not show "Saved"
+      saveButtonRef.current?.resetState();
     } else if (canBeDataset) {
       await handleInitialSave(questionWithMetadata);
     } else {

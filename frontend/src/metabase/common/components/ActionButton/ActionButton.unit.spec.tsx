@@ -2,6 +2,7 @@ import { act } from "@testing-library/react";
 import { useRef } from "react";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { defer } from "metabase/utils/promise";
 
 import {
   ActionButton,
@@ -175,6 +176,41 @@ describe("ActionButton", () => {
     // Should be back to normal state immediately, and stay there even after timer would have fired
     expect(screen.getByText("Save")).toBeInTheDocument();
   });
+
+  it.each([
+    { settle: "resolve", errorLogCount: 0 },
+    { settle: "reject", errorLogCount: 1 },
+  ] as const)(
+    "should not show the result when the action settles with $settle after resetState (metabase#75461)",
+    async ({ settle, errorLogCount }) => {
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const action = defer<void>();
+      const { resetState } = await setupWithRef({
+        actionFn: () => action.promise,
+      });
+
+      const button = screen.getByRole("button");
+      act(() => {
+        button.click();
+      });
+      expect(button).toHaveAttribute("data-action-status", "pending");
+
+      act(() => {
+        resetState();
+      });
+      await act(async () => {
+        action[settle]();
+      });
+
+      expect(button).toHaveAttribute("data-action-status", "idle");
+      expect(screen.getByText("Save")).toBeInTheDocument();
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(errorLogCount);
+
+      consoleErrorSpy.mockRestore();
+    },
+  );
 
   it("should cancel promise on unmount", async () => {
     const actionFn = jest.fn().mockReturnValue(
