@@ -452,6 +452,7 @@
 (events/derive! ::collection-change-event :metabase/event)
 (events/derive! :event/collection-create ::collection-change-event)
 (events/derive! :event/collection-update ::collection-change-event)
+(events/derive! :event/collection-delete ::collection-change-event)
 
 (defn- hydrate-collection-details
   "Hydrates details for a Collection."
@@ -515,7 +516,8 @@
                  "delete"
                  (case topic
                    :event/collection-create "create"
-                   :event/collection-update "update"))]
+                   :event/collection-update "update"
+                   :event/collection-delete "delete"))]
     (when (and (= topic :event/collection-update)
                (spec/library-collection? object))
       (handle-library-sync-status-change! is-remote-synced?))

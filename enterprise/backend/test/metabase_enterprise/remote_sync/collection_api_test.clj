@@ -163,19 +163,20 @@
                         (is (= #{} (into #{} (filter subtree) (exported-entity-ids src)))
                             "no file from the archived subtree stays on the remote"))))))))))))))
 
-(deftest archive-transforms-folder-removes-its-transforms-from-remote-test
-  (testing "GHY-4399: archiving a Transforms folder removes the transforms in it from the remote on the next push.
-            Transforms have no archived column, so only their folder being archived says they left."
+(deftest delete-transforms-folder-removes-its-transforms-from-remote-test
+  (testing "GDGT-3440: deleting a Transforms folder removes the folder and the transforms in it from the remote on the
+            next push. A transforms folder cannot be archived; each deleted transform publishes its own delete event."
     (test-helpers/clean-remote-sync-state
      (fn []
        (test-helpers/commit-with-temp
         (fn []
-          (mt/with-premium-features #{:remote-sync :transforms-basic}
+          (mt/with-premium-features #{:remote-sync :transforms-basic :hosting}
             (mt/with-model-cleanup [:model/Transform :model/Collection]
               (let [src (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})]
                 (mt/with-temporary-setting-values [remote-sync-url        "https://github.com/test/repo.git"
                                                    remote-sync-token      "test-token"
                                                    remote-sync-branch     "main"
+                                                   remote-sync-type       :read-write
                                                    remote-sync-transforms true]
                   (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly src)]
                     (let [folder       (mt/user-http-request :crowberto :post 200 "collection"
@@ -195,7 +196,7 @@
                       (is (=? {:outcome {:kind "pushed"}} (push-via-api!)) "first push pushes")
                       (is (= subtree (into #{} (filter subtree) (exported-entity-ids src)))
                           "precondition: the folder and its transform are on the remote")
-                      (mt/user-http-request :crowberto :put 200 (str "collection/" (:id folder)) {:archived true})
+                      (mt/user-http-request :crowberto :delete 204 (str "transform/collection/" (:id folder)))
                       (is (=? {:outcome {:kind "pushed"}} (push-via-api!)) "second push pushes")
                       (is (= #{} (into #{} (filter subtree) (exported-entity-ids src)))
-                          "no file from the archived folder stays on the remote")))))))))))))
+                          "no file from the deleted folder stays on the remote")))))))))))))

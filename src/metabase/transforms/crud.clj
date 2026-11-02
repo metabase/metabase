@@ -255,7 +255,7 @@
       ;; One delete per Transform, so each one publishes its delete events. The Collection `before-delete` hook
       ;; deletes the subfolders.
       (run! delete-transform! transforms)
-      ;; Remote sync reads the folder row when it handles the event, so publish before the rows go.
+      ;; Remote sync reads the folder row when it handles the event, so publish before the folder rows go.
       (doseq [folder folders]
         (events/publish-event! :event/collection-delete {:object folder :user-id api/*current-user-id*}))
       (transforms.db/delete-collection! (:id collection)))
