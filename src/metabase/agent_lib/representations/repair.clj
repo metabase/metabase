@@ -2823,7 +2823,9 @@
     2. the same match with surrounding double quotes stripped, giving the stripped spelling;
     3. a loose `:name` match that folds case and hyphens/whitespace to underscores, but **only
        when exactly one** real column matches - so `count-where` resolves to `count_where`;
-    4. a loose `:display-name` match (same folding, same one-hit guard) - so a ref the LLM
+    4. with `join-alias`, the same loose match on the desired alias without its `join-alias__` prefix -
+       so `Sum` finds a joined `sum` that the previous stage deduplicated to `sum_2`;
+    5. a loose `:display-name` match (same folding, same one-hit guard) - so a ref the LLM
        wrote with the UI label (`\"Max of Instance Has SC\"`) recovers the machine name (`max`).
 
   Genuine ambiguity (more than one loose hit) is left unmatched at each layer.
@@ -2833,27 +2835,29 @@
   ([cols col-name]
    (match-cross-stage-column cols col-name nil))
   ([cols col-name join-alias]
-   (let [stripped  (strip-surrounding-double-quotes col-name)
-         find-on   (fn [k n] (some #(when (= n (k %)) %) cols))
-         exact     (fn [n] (some #(find-on % n) [:desired-alias :deduplicated-name :name]))
-         lib-match (fn [n] (or (when join-alias (exact (str join-alias "__" n)))
-                               (exact n)))
-         loose-on  (fn [key-fn raw]
-                     (let [target (normalize-col-key raw)
-                           hits   (when target
-                                    (filter #(= target (normalize-col-key (key-fn %))) cols))]
-                       (when (= 1 (count hits))
-                         (first hits))))]
+   (let [stripped   (strip-surrounding-double-quotes col-name)
+         find-on    (fn [k n] (some #(when (= n (k %)) %) cols))
+         exact      (fn [n] (some #(find-on % n) [:desired-alias :deduplicated-name :name]))
+         prefix     (when join-alias (str join-alias "__"))
+         unprefixed (fn [col]
+                      (let [desired-alias (:desired-alias col)]
+                        (when (and prefix desired-alias (str/starts-with? desired-alias prefix))
+                          (subs desired-alias (count prefix)))))
+         lib-match  (fn [n] (or (when prefix (exact (str prefix n)))
+                                (exact n)))
+         loose-on   (fn [key-fn raw]
+                      (let [target (normalize-col-key raw)
+                            hits   (when target
+                                     (filter #(= target (normalize-col-key (key-fn %))) cols))]
+                        (when (= 1 (count hits))
+                          (first hits))))]
      (if-let [[spelling match] (some #(when-let [match (lib-match %)] [% match])
                                      (distinct [col-name stripped]))]
        [spelling (:types match)]
        (when-let [match (or (loose-on :name stripped)
+                            (when prefix (loose-on unprefixed stripped))
                             (loose-on :display-name stripped))]
-         (let [desired-alias (:desired-alias match)
-               prefix        (when join-alias (str join-alias "__"))
-               spelling      (if (and prefix desired-alias (str/starts-with? desired-alias prefix))
-                               (subs desired-alias (count prefix))
-                               (:name match))]
+         (let [spelling (or (unprefixed match) (:name match))]
            ;; A deduplicated name can denote another column after lib adds the join prefix.
            (when (or (nil? join-alias) (= match (lib-match spelling)))
              [spelling (:types match)])))))))

@@ -4271,6 +4271,15 @@
       (is (= out (repair* (assoc-in q ["stages" 2 "filters" 0 2 2] "\"min\"")))))
     (is (= out (repair* out)))))
 
+(deftest ^:parallel previous-stage-join-alias-deduplicated-loose-name-test
+  (let [q   (query min-total-by-user-stage
+                   (stage {"joins" [(assoc (join "Prev" [first-orders-stage] :lhs user-id-by-name) "fields" "all")]})
+                   (stage {"filters" [["not-null" {} (join-ref "Prev" "Min")]]}))
+        out (repair* q)]
+    (testing "a loosely spelled ref to a deduplicated join column matches the name after the join prefix"
+      (is (=? (typed (join-ref "Prev" "min") "type/Date") (get-in out ["stages" 2 "filters" 0 2]))))
+    (is (= out (repair* out)))))
+
 (deftest ^:parallel previous-stage-join-alias-prefixed-name-precedence-test
   (let [joined (update first-orders-stage "aggregation" conj ["max" {"name" "min_2"} (orders-col "TOTAL")])
         q      (query min-total-by-user-stage
