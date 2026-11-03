@@ -1,5 +1,6 @@
 (ns metabase.global-system.system-test
   (:require
+   [clojure.pprint :as pprint]
    [clojure.test :refer :all]
    [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system])
@@ -282,3 +283,11 @@
                                 (is (= :bound-db @db-handle)))))))
   (testing "the write inside went to the root"
     (is (= :written-root-db @db-handle))))
+
+(deftest handle-prints-test
+  (testing "a handle prints, even when its component was never installed"
+    (is (= {:pr     "#<ComponentHandle :metabase.global-system.system-test/never-installed>"
+            :pprint "#<ComponentHandle :metabase.global-system.system-test/never-installed>"}
+           (let [handle (system/mutable-component-handle ::never-installed)]
+             {:pr     (pr-str handle)
+              :pprint (pprint/write handle :stream nil)})))))

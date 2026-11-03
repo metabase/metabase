@@ -8,9 +8,11 @@
    An unbound component reads straight through to its root, so binding or changing one component never affects
    another."
   (:require
+   [clojure.pprint :as pprint]
    [metabase.global-system.mutable-component :as mc])
   (:import
-   (clojure.lang IDeref)))
+   (clojure.lang IDeref)
+   (java.io Writer)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,7 +61,9 @@
     @box
     (root-value @roots k)))
 
-(defrecord ComponentHandle [k]
+;; A deftype, not a record: a record would be a map as well as an IDeref, and a handle is neither a value nor a
+;; lookup.
+(deftype ComponentHandle [k]
   IDeref
   (deref [_] (current-value k))
 
@@ -85,6 +89,15 @@
   (without-binding [_ thunk]
     (clojure.core/binding [*bound-boxes* (dissoc *bound-boxes* k)]
       (thunk))))
+
+;; Prints the key alone. The IDeref defaults would deref the handle, which throws when the component has no value.
+(defmethod print-method ComponentHandle
+  [^ComponentHandle handle ^Writer w]
+  (.write w (str "#<ComponentHandle " (pr-str (.-k handle)) ">")))
+
+(defmethod pprint/simple-dispatch ComponentHandle
+  [handle]
+  (print-method handle *out*))
 
 (defn mutable-component-handle
   "Make a handle for the component stored under `k` in the global system."
