@@ -30,36 +30,7 @@ The app we build in this guide only shows data, so it works with any database th
 
 You do these steps once.
 
-### 1. Make sure you have tables published to your Library
-
-Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your Library. If you haven't created your semantic layer yet:
-
-1. Click the **grid** icon in the upper right, and select **Data studio**.
-2. In the left sidebar, click **Semantic layer**. If Metabase asks you to create your semantic layer, click **Create my semantic layer**.
-3. Look in the **Data** section. If the tables that your app needs are there, go to [step 2](#2-connect-your-metabase-to-a-git-repository).
-4. Otherwise, [publish the tables](../data-modeling/semantic-layer/published-tables.md#publish-a-table-from-the-semantic-layer) that your app needs. Publish only tables that you know have trustworthy data.
-
-If your Metabase already syncs in Read-only mode, and the tables that your app needs aren't published, build your apps on a development Metabase in Read-write mode instead. See [Choose where to build apps](./build.md#choose-where-to-build-apps).
-
-### 2. Connect your Metabase to a Git repository
-
-Skip this step if your Metabase already syncs with a Git repository.
-
-1. Create a new repository on GitHub, GitLab, or Bitbucket, and initialize it with a README file. See [Set up a repository](../data-modeling/semantic-layer/remote-sync.md#1-set-up-a-repository-to-store-your-content).
-2. Create an access token for the repository. In Read-only mode, Metabase only reads from the repository, so a read-only token is enough. For the permissions that each provider needs, see [Create a token for your production Metabase](../data-modeling/semantic-layer/remote-sync.md#5-create-a-token-for-your-production-metabase). If you select Read-write mode in step 5, create a read-write token instead: see [Create a token for your development Metabase](../data-modeling/semantic-layer/remote-sync.md#2-create-a-token-for-your-development-metabase).
-3. On your Metabase, go to **Admin** > **Settings** > **Remote sync**.
-4. In **Repository URL**, enter the repository's URL, for example `https://github.com/your-org/your-repo`.
-5. Since this is your production Metabase, select **Read-only**. In Read-only mode, every change to the Library goes through Remote Sync: you and your agent can't change the Library in Metabase or with the CLI. If you're only trying out data apps, you can select **Read-write** instead.
-6. In **Access Token**, paste the token.
-7. Click **Set up remote sync**.
-
-Metabase pulls from the repository's default branch, usually `main`.
-
-**Anyone who can push to the repository can change the content in your Metabase, so give write access only to people that you trust as admins.**
-
-The rest of this guide assumes that your Metabase is in Read-only mode.
-
-### 3. Install Node.js
+### 1. Install Node.js
 
 Install [Node.js](https://nodejs.org/) 22.12 or later. To check which version you have, run:
 
@@ -67,7 +38,7 @@ Install [Node.js](https://nodejs.org/) 22.12 or later. To check which version yo
 node --version
 ```
 
-### 4. Install the Metabase CLI, and log in to your production Metabase
+### 2. Install the Metabase CLI, and log in to your production Metabase
 
 Your agent uses the [Metabase CLI](../installation-and-operation/metabase-cli.md) (`mb`) to work with your production Metabase. Install the CLI:
 
@@ -85,7 +56,7 @@ mb auth login --url https://metabase.example.com
 
 The CLI offers to open Metabase in your browser. Sign in with your admin account, and approve the CLI.
 
-### 5. Add the metabase-cli skill to your agent
+### 3. Add the metabase-cli skill to your agent
 
 The [metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill) is the only skill you need to add to your agent. It tells your agent to use the CLI and to load the skills that come with the CLI, including the skills for building data apps. Those bundled skills update when you upgrade the CLI. To add the skill to Claude Code, run:
 
@@ -96,6 +67,37 @@ npx skills add metabase/agent-skills --skill metabase-cli -a claude-code
 For other ways to install the skill, check out [The metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill).
 
 If you can't add the skill to your agent, tell your agent to run `mb skills get data-app` before it starts on the app.
+
+### 4. Make sure you have tables published to your Library
+
+Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your Library. If you haven't created your semantic layer yet, ask your agent to create it for you and add the tables it needs.
+
+You can also create your Library and add tables manually:
+
+1. Click the **grid** icon in the upper right, and select **Data studio**.
+2. In the left sidebar, click **Semantic layer**. If Metabase asks you to create your semantic layer, click **Create my semantic layer**.
+3. Look in the **Data** section. If the tables that your app needs are there, go to [step 5](#5-connect-your-metabase-to-a-git-repository).
+4. Otherwise, [publish the tables](../data-modeling/semantic-layer/published-tables.md#publish-a-table-from-the-semantic-layer) that your app needs. Publish only tables that you know have trustworthy data.
+
+If your Metabase already syncs in Read-only mode, and the tables that your app needs aren't published, build your apps on a development Metabase in Read-write mode instead. See [Choose where to build apps](./build.md#choose-where-to-build-apps).
+
+### 5. Connect your Metabase to a Git repository
+
+Skip this step if your Metabase already syncs with a Git repository.
+
+1. Create a new repository on GitHub, GitLab, or Bitbucket, and initialize it with a README file. See [Set up a repository](../data-modeling/semantic-layer/remote-sync.md#1-set-up-a-repository-to-store-your-content).
+2. Create an access token for the repository. In Read-only mode, Metabase only reads from the repository, so a read-only token is enough. For the permissions that each provider needs, see [Create a token for your production Metabase](../data-modeling/semantic-layer/remote-sync.md#5-create-a-token-for-your-production-metabase). If you plan to select Read-write mode, create a read-write token instead: see [Create a token for your development Metabase](../data-modeling/semantic-layer/remote-sync.md#2-create-a-token-for-your-development-metabase).
+3. On your Metabase, go to **Admin** > **Settings** > **Remote sync**.
+4. In **Repository URL**, enter the repository's URL, for example `https://github.com/your-org/your-repo`.
+5. Since this is your production Metabase, select **Read-only**. In Read-only mode, every change to the Library goes through Remote Sync: you and your agent can't change the Library in Metabase or with the CLI. If you're only trying out data apps, you can select **Read-write** instead.
+6. In **Access Token**, paste the token.
+7. Click **Set up remote sync**.
+
+Metabase pulls from the repository's default branch, usually `main`.
+
+**Anyone who can push to the repository can change the content in your Metabase, so give write access only to people that you trust as admins.**
+
+The rest of this guide assumes that your Metabase is in Read-only mode.
 
 ### 6. Clone the repository
 
