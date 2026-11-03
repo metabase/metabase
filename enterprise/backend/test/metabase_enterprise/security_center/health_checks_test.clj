@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.health-checks :as health-checks]
+   [metabase.permissions.core :as perms]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
@@ -253,3 +254,47 @@
       (mt/with-temporary-setting-values [mfa-enforcement :optional]
         (is (=? {:status :fail, :items [{:status :fail, :message "2FA is not required"}]}
                 (run-check-by-id :mfa-required)))))))
+
+;;; The all-users-permissions check
+
+(deftest all-users-permissions-test
+  (is (true? (health-checks/applicable? (health-checks/check-by-id :all-users-permissions))))
+  (let [group-id (:id (perms/all-users-group))]
+    (testing "passes with two items when All Users can neither curate Our analytics nor query a database"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-no-data-perms-for-all-users!
+          (is (=? {:status :pass
+                   :items  [{:status      :pass
+                             :message     "All Users cannot curate Our analytics"
+                             :entity_type :collection
+                             :entity_id   "root"
+                             :entity_name "Our analytics"}
+                            {:status      :pass
+                             :message     "All Users cannot query any database"
+                             :entity_type :group
+                             :entity_id   group-id
+                             :entity_name "All Users"}]}
+                  (run-check-by-id :all-users-permissions))))))
+    (testing "fails on the collection item when All Users can curate Our analytics"
+      (mt/with-no-data-perms-for-all-users!
+        (is (=? {:status :fail
+                 :items  [{:status :fail, :message "All Users can curate Our analytics", :entity_id "root"}
+                          {:status :pass}]}
+                (run-check-by-id :all-users-permissions)))))
+    (testing "fails on the group item, naming the databases, when All Users can query a database"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Database _ {:name "Warehouse"}]
+          (is (=? {:status :fail
+                   :items  [{:status :pass}
+                            {:status      :fail
+                             :message     #"All Users can query: .*Warehouse.*"
+                             :entity_type :group
+                             :entity_id   group-id}]}
+                  (run-check-by-id :all-users-permissions))))
+        (testing "also for query access on one table only"
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
+            (is (=? {:status :fail
+                     :items  [{:status :pass}
+                              {:status :fail, :message #"All Users can query: .*test-data.*"}]}
+                    (run-check-by-id :all-users-permissions)))))))))

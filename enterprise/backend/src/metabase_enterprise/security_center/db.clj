@@ -85,3 +85,15 @@
   "A map of ID to the ID, names, and email of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-fn->fn :id identity [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
+
+(mu/defn group-queryable-database-names :- [:sequential :string]
+  "The names, in order, of the databases the group with `group-id` can query in any way: a create-queries permission
+  other than `:no` on the database or on one of its tables."
+  [group-id :- ms/PositiveInt]
+  (let [db-ids (t2/select-fn-set :db_id :model/DataPermissions
+                                 :group_id   group-id
+                                 :perm_type  :perms/create-queries
+                                 :perm_value [:not= :no])]
+    (if (seq db-ids)
+      (t2/select-fn-vec :name :model/Database :id [:in db-ids] {:order-by [:name]})
+      [])))

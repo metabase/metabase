@@ -8,7 +8,9 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase.config.core :as config]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.session.core :as session]
@@ -197,6 +199,32 @@
                                        (tru "2FA is required")
                                        (tru "2FA is not required"))])})
 
+(def ^:private all-users-permissions
+  {:id                :all-users-permissions
+   :severity          :medium
+   :title             (deferred-tru "All Users permissions")
+   :description       (deferred-tru "Everyone who signs in gets the permissions of the All Users group.")
+   :remediation       (deferred-tru "Remove Curate on Our analytics and query access to every database from All Users.")
+   :docs-page         "permissions/start"
+   :requires-restart? false
+   :applicable?       (constantly true)
+   :run               (fn []
+                        (let [{group-id :id, group-name :name} (perms/all-users-group)
+                              root-permission (get-in (perms/graph nil #{:root} #{group-id}) [:groups group-id :root])
+                              db-names        (security-center.db/group-queryable-database-names group-id)]
+                          [(assoc (pass-or-fail (not= :write root-permission)
+                                                (tru "All Users cannot curate Our analytics")
+                                                (tru "All Users can curate Our analytics"))
+                                  :entity_type :collection
+                                  :entity_id   "root"
+                                  :entity_name (tru "Our analytics"))
+                           (assoc (pass-or-fail (empty? db-names)
+                                                (tru "All Users cannot query any database")
+                                                (tru "All Users can query: {0}" (str/join ", " db-names)))
+                                  :entity_type :group
+                                  :entity_id   group-id
+                                  :entity_name group-name)]))})
+
 ;;; The registry
 
 (def ^:private checks
@@ -210,7 +238,8 @@
     :https-redirect            https-redirect
     :sso-login                 sso-login
     :scim-provisioning         scim-provisioning
-    :mfa-required              mfa-required}))
+    :mfa-required              mfa-required
+    :all-users-permissions     all-users-permissions}))
 
 (defn all-checks
   "Every registered check, in id order."
