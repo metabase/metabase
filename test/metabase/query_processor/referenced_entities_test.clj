@@ -624,6 +624,38 @@
         (is (= "completed" (:status goal)))
         (is (= [[100]] (get-in goal [:data :rows])))))))
 
+(deftest card-endpoint-archived-source-test
+  (testing "a saved chart's goal still resolves after its source card or measure goes to the trash"
+    (mt/with-temp [:model/Card    {goal-id :id}    {:archived      true
+                                                    :dataset_query (count-query :checkins)}
+                   :model/Measure {measure-id :id} {:archived   true
+                                                    :name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (venues-count-measure)}
+                   :model/Card    {chart-id :id}   (chart-card :scalar {:scalar.segments
+                                                                        [{:min (goal-ref goal-id) :max nil :color "red"}
+                                                                         {:min   {:id measure-id :type "measure" :column "count"}
+                                                                          :max   nil
+                                                                          :color "blue"}]})]
+      (let [referenced-entities (card-query-referenced-entities chart-id)]
+        (is (=? {:status "completed" :data {:rows [[1000]]}}
+                (get-in referenced-entities [:card goal-id])))
+        (is (=? {:status "completed" :data {:rows [[100]]}}
+                (get-in referenced-entities [:measure measure-id])))))))
+
+(deftest card-endpoint-model-source-test
+  (testing "a model source is run like a plain question, so only a model that returns one row resolves"
+    (mt/with-temp [:model/Card {one-row-id :id}   {:type :model :dataset_query (count-query :checkins)}
+                   :model/Card {many-rows-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                   :model/Card {chart-id :id}     (chart-card :scalar {:scalar.segments
+                                                                       [{:min (goal-ref one-row-id) :max nil :color "red"}
+                                                                        {:min (goal-ref many-rows-id) :max nil :color "blue"}]})]
+      (let [referenced-entities (card-query-referenced-entities chart-id)]
+        (is (=? {:status "completed" :data {:rows [[1000]]}}
+                (get-in referenced-entities [:card one-row-id])))
+        (is (=? {:status "failed" :error_type "too-many-rows"}
+                (get-in referenced-entities [:card many-rows-id])))))))
+
 (deftest dataset-endpoint-unreadable-measure-test
   (testing "a referenced measure whose table the caller can't read fails softly without failing the main query"
     ;; measure perms delegate to its table, a different route from the collection perms a card goes through
