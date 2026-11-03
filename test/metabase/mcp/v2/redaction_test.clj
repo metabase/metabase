@@ -255,7 +255,7 @@
                     :col                    0
                     :size_x                 4
                     :size_y                 4
-                    :card                   {:id 12 :name "Executive Payroll"}
+                    :card                   (t2/instance :model/Card {:id 12 :name "Executive Payroll"})
                     :visualization_settings {:card.title          "Executive Payroll by Employee"
                                              :column_settings     {"[\"name\",\"base_salary\"]"
                                                                    {:column_title "Salary"}}
@@ -284,4 +284,10 @@
       (testing "readable: nothing is stripped"
         (let [dc (redact true)]
           (is (= "Executive Payroll by Employee" (get-in dc [:visualization_settings :card.title])))
-          (is (some? (:parameter_mappings dc))))))))
+          (is (some? (:parameter_mappings dc)))))
+      (testing "a bare map in place of a card row is redacted, without asking `mi/can-read?`"
+        (let [dc (with-redefs [mi/can-read? (fn [_] (throw (ex-info "can-read? called" {})))]
+                   (first (:dashcards (redaction/redact-dashboard
+                                       {:dashcards [(assoc dashcard :card {:id 12})]}))))]
+          (is (nil? (:card dc)))
+          (is (= [] (:parameter_mappings dc))))))))
