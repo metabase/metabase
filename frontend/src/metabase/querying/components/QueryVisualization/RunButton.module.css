@@ -29,12 +29,12 @@
 }
 
 .primary {
-  color: var(--mb-color-button_label-filled-brand-default);
+  color: var(--mb-color-text-primary-inverse);
   background: var(--mb-color-button-filled-brand-default);
   border-color: var(--mb-color-button-filled-brand-default);
 
   &:hover {
-    color: var(--mb-color-button_label-filled-brand-default);
+    color: var(--mb-color-text-primary-inverse);
     border-color: var(--mb-color-button-filled-brand-hover);
     background-color: var(--mb-color-button-filled-brand-hover);
   }
