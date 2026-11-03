@@ -36,17 +36,15 @@ function setup({
 }
 
 describe("ResponsiveParametersList", () => {
-  const matchMediaSpy = jest.spyOn(window, "matchMedia");
-
   afterEach(() => {
-    matchMediaSpy.mockRestore();
+    jest.restoreAllMocks();
   });
 
   describe("small screens", () => {
     beforeEach(() => {
-      matchMediaSpy.mockReturnValue(
-        createMockMediaQueryList({ matches: true }),
-      );
+      jest
+        .spyOn(window, "matchMedia")
+        .mockReturnValue(createMockMediaQueryList({ matches: true }));
     });
 
     it("should show the filter button when there are parameters", () => {
@@ -54,6 +52,21 @@ describe("ResponsiveParametersList", () => {
       expect(
         screen.getByRole("button", { name: /Filters/ }),
       ).toBeInTheDocument();
+    });
+
+    it("should count the active filters and render their widgets", () => {
+      setup({
+        parameters: [
+          createMockParameter({ id: "1", name: "Category", value: "Gizmo" }),
+          createMockParameter({ id: "2", name: "Vendor" }),
+        ],
+      });
+
+      expect(
+        screen.getByRole("button", { name: /1 active filter/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Gizmo")).toBeInTheDocument();
+      expect(screen.getByText("Vendor")).toBeInTheDocument();
     });
 
     it("should not show the filter button when there are no parameters", () => {
@@ -66,9 +79,9 @@ describe("ResponsiveParametersList", () => {
 
   describe("large screens", () => {
     beforeEach(() => {
-      matchMediaSpy.mockReturnValue(
-        createMockMediaQueryList({ matches: false }),
-      );
+      jest
+        .spyOn(window, "matchMedia")
+        .mockReturnValue(createMockMediaQueryList({ matches: false }));
     });
 
     it("should not show the filter button for small screens when there are parameters", () => {
