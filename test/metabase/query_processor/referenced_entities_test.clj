@@ -7,10 +7,12 @@
                                           toucan2.tools.with-temp/with-temp {:level :off}}
                         :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.referenced-entities-test]}}}}}}
   (:require
+   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.referenced-entities :as referenced-entities]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -714,3 +716,62 @@
                                                                                         :max   nil
                                                                                         :color "red"}]}})
       (is (= [[100]] (get-in (card-query-referenced-entities chart-id) [:card chart-id :data :rows]))))))
+
+(deftest cached-main-result-gets-fresh-goal-values-test
+  (testing "a main result served from the cache still gets freshly run goal values"
+    (mt/initialize-if-needed! :db)
+    (let [existing-config (t2/select-one :model/CacheConfig :model_id 0 :model "root")]
+      (try
+        ;; with-temp can't create the root config while one exists
+        (when existing-config
+          (t2/delete! :model/CacheConfig :model_id 0 :model "root"))
+        (mt/with-temporary-setting-values [enable-query-caching true]
+          (mt/with-temp [:model/CacheConfig _              {:model_id 0
+                                                            :model    "root"
+                                                            :strategy "ttl"
+                                                            :config   {:multiplier 99999 :min_duration_ms 0}}
+                         :model/Card        {goal-id :id}  {:dataset_query (mt/native-query {:query "SELECT 1 AS \"count\""})}
+                         :model/Card        {chart-id :id} (chart-card :scalar {:scalar.segments [{:min   (goal-ref goal-id)
+                                                                                                   :max   nil
+                                                                                                   :color "red"}]})]
+            (letfn [(run-chart []
+                      (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id)
+                                            {:ignore_cache false}))]
+              (run-chart)
+              (t2/update! :model/Card :id goal-id {:dataset_query (mt/native-query {:query "SELECT 2 AS \"count\""})})
+              (let [response (run-chart)]
+                (testing "the main result came from the cache"
+                  (is (some? (:cached response))))
+                (testing "the goal didn't"
+                  (is (= [[2]] (get-in response [:data :referenced_entities :card goal-id :data :rows]))))))))
+        (finally
+          (when existing-config
+            (t2/insert! :model/CacheConfig existing-config)))))))
+
+(deftest child-canceled-chan-test
+  (let [child-canceled-chan #'referenced-entities/child-canceled-chan]
+    (testing "cancelling the request cancels a nested run"
+      (let [parent (a/promise-chan)
+            child  (child-canceled-chan parent)]
+        (a/>!! parent ::cancel)
+        (is (= ::cancel (first (a/alts!! [child (a/timeout 1000)]))))))
+    (testing "a nested run finishing, which closes its chan, leaves the request cancelable"
+      (let [parent (a/promise-chan)
+            child  (child-canceled-chan parent)]
+        (a/close! child)
+        (is (true? (a/offer! parent ::cancel)))
+        (is (= ::cancel (a/poll! parent)))))
+    (testing "a nested run outside a request gets a chan of its own"
+      (is (some? (child-canceled-chan nil))))))
+
+(deftest canceled-request-runs-no-more-referenced-entities-test
+  (testing "once the client hung up, no more referenced entities run"
+    (let [ran (atom [])]
+      (mt/with-dynamic-fn-redefs [referenced-entities/run-referenced-entity (fn [spec _max-rows]
+                                                                              (swap! ran conj (:id spec))
+                                                                              {:status "completed"})]
+        (binding [qp.pipeline/*canceled-chan* (doto (a/promise-chan) (a/>!! ::cancel))]
+          (is (nil? (#'referenced-entities/referenced-entities-result [{:type "card" :id 1}
+                                                                        {:type "card" :id 2}]
+                                                                       1)))
+          (is (= [] @ran)))))))
