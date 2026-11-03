@@ -65,10 +65,16 @@
 (defn- template-syntax-error
   "The parser message for `{{...}}` or `[[...]]` syntax in `sql` that Metabase rejects, or `nil`.
 
-  This is the strict parse that SQL drivers do before each run. The parser marks its syntax errors with
-  `:type :invalid-query`, and other exceptions are not about the SQL, so they propagate."
+  Metabase cannot make a query when the lax parse of [[lib/recognize-template-tags]] throws. It does the strict parse
+  of SQL drivers before a run only when the query has template tags; it sends other SQL, for example
+  `ARRAY[[1,2],[3,4]]`, to the database as it is. This check uses the same two rules. The strict parse marks its
+  syntax errors with `:type :invalid-query`. Other exceptions are not about the SQL, so they propagate."
   [sql]
-  (when (contains-template-tags? sql)
+  (when (and (contains-template-tags? sql)
+             (try
+               (seq (lib/recognize-template-tags sql))
+               (catch clojure.lang.ExceptionInfo _
+                 true)))
     (try
       (lib/parse-parameters sql)
       nil

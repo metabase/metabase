@@ -68,14 +68,20 @@
    {:context "An unclosed variable should fail validation when no dialect is provided"
     :dialect nil :sql "SELECT * FROM products WHERE category = {{cat"
     :expected {:valid? false :dialect nil :reason :invalid-template-syntax}}
-   {:context "An empty variable should fail validation"
-    :dialect "postgres" :sql "SELECT * FROM products WHERE category = {{}}"
+   {:context "An empty variable in SQL with template tags should fail validation"
+    :dialect "postgres" :sql "SELECT * FROM products WHERE category = {{cat}} AND price = {{}}"
     :expected {:valid? false :dialect "postgres" :reason :invalid-template-syntax
                :error-message #(str/includes? % "expected a param name")}}
-   {:context "An optional clause without a variable should fail validation"
-    :dialect "postgres" :sql "SELECT * FROM products [[WHERE category = 'Widget']]"
+   {:context "An optional clause without a variable in SQL with template tags should fail validation"
+    :dialect "postgres" :sql "SELECT * FROM products WHERE price > {{min}} [[AND category = 'Widget']]"
     :expected {:valid? false :dialect "postgres" :reason :invalid-template-syntax
                :error-message #(str/includes? % "must contain at least one")}}
+   {:context "A nested array literal without template tags should pass validation"
+    :dialect "postgres" :sql "SELECT ARRAY[[1,2],[3,4]] AS m"
+    :expected {:valid? true :dialect "postgres"}}
+   {:context "Brackets in a quoted identifier without template tags should pass validation"
+    :dialect nil :sql "SELECT 1 AS \"[[x]]\""
+    :expected {:valid? true :dialect nil}}
    {:context "Brackets in a string literal should not fail validation"
     :dialect "postgres" :sql "SELECT '[[' AS a, '{{' AS b FROM products"
     :expected {:valid? true :dialect "postgres"}}

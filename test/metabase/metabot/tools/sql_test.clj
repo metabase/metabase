@@ -450,6 +450,16 @@
                 (is (str/includes? output "No changes were saved."))
                 (is (nil? (:structured-output result)))))))))))
 
+(deftest brackets-without-template-tags-test
+  (testing "SQL with `[[` but no template tag passes, because Metabase sends it to the database as it is"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [profile [:internal :sql]
+              tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+        (testing (str profile " / " tool-name)
+          (let [result (invoke-with-proposed-sql profile tool-name (mt/id) "SELECT 1 AS \"[[x]]\"")]
+            (is (nil? (:error result)))
+            (is (= "SELECT 1 AS \"[[x]]\"" (get-in result [:structured-output :query-content])))))))))
+
 (deftest edit-elsewhere-in-sql-with-invalid-template-syntax-test
   (testing "An edit that leaves an existing unclosed tag in place returns a recoverable error, and an edit that closes it succeeds"
     (mt/with-current-user (mt/user->id :crowberto)
