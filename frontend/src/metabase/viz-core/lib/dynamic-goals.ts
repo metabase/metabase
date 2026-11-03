@@ -160,8 +160,7 @@ function getFailedQueryReason(
     .returnType<GoalRefErrorReason>()
     .with("too-many-rows", () => "too-many-rows")
     .with("not-found", () => "source-not-found")
-    .with(undefined, () => "query-failed")
-    .exhaustive();
+    .otherwise(() => "query-failed");
 }
 
 function toNumberOrNull(raw: RowValue | undefined): number | null {
