@@ -483,3 +483,146 @@
   border-left: 1px solid var(--mb-color-border-neutral);
   background-color: var(--mb-color-background_page-secondary);
 }
+
+/* Prototype: in the notebook, the pills are the step's cells: the step colour,
+   6px corners, 10px padding and bold white text, like the summarize pills. The
+   bar sets `data-variant`; the cell around it sets `--notebook-cell-color`. */
+[data-variant="notebook"] {
+  --expression-pill-height: 2.75rem;
+  --expression-pill-color: var(
+    --notebook-cell-color,
+    var(--mb-color-core-filter)
+  );
+
+  & .pill,
+  & .draftPill {
+    min-height: var(--expression-pill-height);
+    padding: 8px 10px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    font-size: inherit;
+    font-weight: bold;
+    line-height: 1.25;
+
+    & .segment {
+      padding: 0 0.125rem;
+      border-radius: 3px;
+    }
+
+    & .columnSegment {
+      border-radius: 3px;
+    }
+  }
+
+  /* Committed: solid, as the notebook's cell items. */
+  & .pill {
+    background-color: var(--expression-pill-color);
+    color: var(--mb-color-text-primary-inverse);
+
+    &:hover {
+      border-color: transparent;
+      background-color: color-mix(
+        in srgb,
+        var(--expression-pill-color),
+        transparent 20%
+      );
+    }
+
+    & .columnSegment,
+    & .operatorSegment,
+    & .conjunction,
+    & .value,
+    & .token {
+      color: var(--mb-color-text-primary-inverse);
+    }
+
+    & .operatorSegment,
+    & .conjunction {
+      opacity: 0.8;
+    }
+
+    & .token {
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-text-primary-inverse) 15%,
+        transparent
+      );
+    }
+
+    & .removeIcon {
+      color: var(--mb-color-text-primary-inverse);
+      border-left-color: color-mix(
+        in srgb,
+        var(--mb-color-text-primary-inverse),
+        transparent 25%
+      );
+    }
+  }
+
+  /* Draft: outlined, as the notebook's "Add …" cell item before it is picked. */
+  & .draftPill {
+    background-color: transparent;
+    color: var(--expression-pill-color);
+    border-color: color-mix(
+      in srgb,
+      var(--expression-pill-color),
+      transparent 75%
+    );
+    box-shadow: none;
+
+    & .input {
+      padding: 0;
+      border-radius: 0;
+      background-color: transparent;
+      color: var(--expression-pill-color);
+      caret-color: var(--expression-pill-color);
+      font-weight: bold;
+
+      &::placeholder {
+        color: var(--expression-pill-color);
+        font-weight: bold;
+        opacity: 0.7;
+      }
+    }
+
+    & .columnSegment {
+      color: var(--expression-pill-color);
+    }
+
+    & .operatorSegment,
+    & .conjunction,
+    & .placeholder {
+      color: var(--expression-pill-color);
+      opacity: 0.8;
+    }
+
+    & .value,
+    & .token,
+    & .valueInput {
+      color: var(--expression-pill-color);
+    }
+
+    & .removeIcon {
+      color: var(--expression-pill-color);
+      border-left-color: color-mix(
+        in srgb,
+        var(--expression-pill-color),
+        transparent 75%
+      );
+    }
+  }
+
+  /* The caret alone keeps the pill's height, so opening it never grows the cell. */
+  & .draftPillBare {
+    min-height: var(--expression-pill-height);
+    padding: 0;
+    border-width: 0;
+    background-color: transparent;
+    box-shadow: none;
+
+    & .input {
+      min-width: 0;
+      padding: 0;
+    }
+  }
+}

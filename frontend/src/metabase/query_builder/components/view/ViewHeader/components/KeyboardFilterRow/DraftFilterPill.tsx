@@ -116,6 +116,8 @@ interface DraftFilterPillProps {
   initialText?: string;
   /** False between the pills of a bar, so the caret slots in without moving them. */
   hasPlaceholder?: boolean;
+  /** The text of the empty column input, when `hasPlaceholder`. */
+  placeholder?: string;
   /** Extra options above and below the columns, picked with `onSelectExtra`. */
   leadingGroups?: SuggestionGroup[];
   trailingGroups?: SuggestionGroup[];
@@ -163,6 +165,7 @@ export function DraftFilterPill({
   initialEditedPart,
   initialText = "",
   hasPlaceholder = true,
+  placeholder = getFilterPlaceholder(),
   leadingGroups,
   trailingGroups,
   onSelectExtra,
@@ -602,9 +605,7 @@ export function DraftFilterPill({
             query={query}
             stageIndex={stageIndex}
             text={text}
-            placeholder={
-              column?.label ?? (hasPlaceholder ? getFilterPlaceholder() : "")
-            }
+            placeholder={column?.label ?? (hasPlaceholder ? placeholder : "")}
             onTextChange={handleTextChange}
             onSelect={(newColumn) =>
               updateDraft(changeDraftColumn(draft, newColumn))
