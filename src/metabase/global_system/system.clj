@@ -39,20 +39,15 @@
   []
   (merge @roots (update-vals *bound-boxes* deref)))
 
-(defn- no-value
-  "The error for a component `k` that has no root in the roots map `rs`."
-  [rs k]
-  (ex-info (str "Component has no value: " k)
-           {:component  k
-            :components (sort (keys rs))}))
-
 (defn- root-value
   "The root value of `k` in the roots map `rs`.
    Throws if `k` was never installed with [[mc/alter-root]]."
   [rs k]
   (if-let [entry (find rs k)]
     (val entry)
-    (throw (no-value rs k))))
+    (throw (ex-info (str "Component has no value: " k)
+                    {:component  k
+                     :components (sort (keys rs))}))))
 
 (defn- current-value
   "The value of `k` visible to this thread: the bound one if `k` is bound here, otherwise the root."
@@ -71,14 +66,8 @@
   (binding [_ new-value thunk]
     (clojure.core/binding [*bound-boxes* (assoc *bound-boxes* k (atom new-value))]
       (thunk)))
-  (reset! [_ new-value]
-    (if-let [box (get *bound-boxes* k)]
-      (clojure.core/reset! box new-value)
-      (do (clojure.core/swap! roots (fn [rs]
-                                      (if (contains? rs k)
-                                        (assoc rs k new-value)
-                                        (throw (no-value rs k)))))
-          new-value)))
+  (reset! [this new-value]
+    (mc/swap!* this (constantly new-value) nil))
   (swap!* [_ f args]
     (if-let [box (get *bound-boxes* k)]
       (apply clojure.core/swap! box f args)
