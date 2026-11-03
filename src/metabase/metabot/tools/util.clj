@@ -584,7 +584,7 @@
     (table-breakouts orders-model-metric-query orders-query) ;=> [created-at-column-with-day-bucket]
 
   A breakout matches a column of the table by field `:id` and FK field id, and keeps its temporal bucket. A breakout
-  on a column that only the card has, like an expression, is dropped."
+  on a column that only the card has, like an expression or a column from an explicit join, is dropped."
   [definition table-query]
   (let [table-columns (into {}
                             (map (juxt (juxt :id :fk-field-id) identity))
@@ -592,7 +592,9 @@
         ;; A card column from an implicit join keeps its FK as `:lib/original-fk-field-id`.
         column-key    (juxt :id (some-fn :fk-field-id :lib/original-fk-field-id))]
     (keep (fn [[clause column]]
-            (when-let [table-column (get table-columns (column-key column))]
+            ;; A column from an explicit join has no FK. On a self-join its key is the base column's key.
+            (when-let [table-column (when-not (:lib/original-join-alias column)
+                                      (get table-columns (column-key column)))]
               (lib/with-temporal-bucket table-column (lib/temporal-bucket clause))))
           (map vector (lib/breakouts definition 0) (lib/breakouts-metadata definition 0)))))
 

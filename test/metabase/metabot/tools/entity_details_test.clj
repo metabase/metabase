@@ -742,6 +742,34 @@
           (is (= metric-id (:id output)))
           (is (nil? (:default_time_dimension_field_id output))))))))
 
+(deftest multi-stage-metric-over-self-joined-model-drops-joined-copy-default-time-dimension-test
+  (testing "A stage 0 breakout on the joined copy of a base table column is not a default time dimension"
+    ;; The joined copy has the field ID of ORDERS.CREATED_AT and no FK, so its ID alone matches the base column.
+    (let [mp          (mt/metadata-provider)
+          orders      (lib.metadata/table mp (mt/id :orders))
+          id          (lib.metadata/field mp (mt/id :orders :id))
+          model-query (lib/join (lib/query mp orders)
+                                (-> (lib/join-clause orders [(lib/= id (lib/with-join-alias id "Peer"))])
+                                    (lib/with-join-alias "Peer")
+                                    (lib/with-join-fields :all)))]
+      (mt/with-temp [:model/Card {model-id :id} {:name "Orders with peer orders" :type :model
+                                                 :dataset_query model-query}]
+        (let [stage0 (lib/query mp (lib.metadata/card mp model-id))
+              column (m/find-first #(and (= (mt/id :orders :created_at) (:id %))
+                                         (= "Peer" (:lib/original-join-alias %)))
+                                   (lib/breakoutable-columns stage0))
+              query  (-> stage0
+                         (lib/breakout (lib/with-temporal-bucket column :day))
+                         (lib/aggregate (lib/count))
+                         lib/append-stage)
+              query  (lib/aggregate query (lib/avg (m/find-first #(= "count" (:name %)) (lib/visible-columns query))))]
+          (mt/with-temp [:model/Card {metric-id :id} {:name "Average daily peer orders" :type :metric
+                                                      :dataset_query query}]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (let [output (metric-output metric-id)]
+                (is (= metric-id (:id output)))
+                (is (nil? (:default_time_dimension_field_id output)))))))))))
+
 (deftest get-metric-details-marks-unreadable-base-table-unavailable-test
   (testing "A table metric with no queryable source is marked unavailable"
     (mt/with-no-data-perms-for-all-users!
