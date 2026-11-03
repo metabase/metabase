@@ -658,3 +658,13 @@
         (is (= "failed" (:status result)))
         (is (= "too-many-rows" (:error_type result)))
         (is (re-find #"more rows than the requested maximum" (:error result)))))))
+
+(deftest dataset-endpoint-spec-limit-test
+  (testing "POST /api/dataset caps how many entities one request can fan out to"
+    (let [query (fn [n]
+                  (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                         :referenced_entities (mapv (fn [id] {:type "card" :id id}) (range 1 (inc n)))))]
+      (testing "20 is allowed"
+        (is (= "completed" (:status (mt/user-http-request :crowberto :post 202 "dataset" (query 20))))))
+      (testing "21 is refused"
+        (mt/user-http-request :crowberto :post 400 "dataset" (query 21))))))
