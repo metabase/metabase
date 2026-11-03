@@ -6,6 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as temp-storage]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -77,6 +78,23 @@
                  :data   {:cols [{:name "count"}]
                           :rows [[1000]]}}
                 (referenced-goal-result part goal-id)))))))
+
+(deftest execute-card-resolves-goals-as-the-creator-test
+  (testing "a notification resolves its card's dynamic goals with the permissions of the user who created it"
+    (mt/with-temp [:model/Collection {secret-id :id} {}
+                   :model/Card       {goal-id :id}   {:collection_id secret-id
+                                                      :dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                   :model/Card       {card-id :id}   (gauge-with-referenced-goal goal-id)]
+      (perms/revoke-collection-permissions! (perms/all-users-group) secret-id)
+      (testing "a creator who can read the goal's source gets its value"
+        (is (= "completed"
+               (:status (referenced-goal-result
+                         (notification.payload.execute/execute-card (mt/user->id :crowberto) card-id)
+                         goal-id)))))
+      (testing "a creator who can't read it gets a failed goal, even though the card itself runs"
+        (let [part (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)]
+          (is (= :completed (get-in part [:result :status])))
+          (is (= "failed" (:status (referenced-goal-result part goal-id)))))))))
 
 (deftest execute-dashboard-subscription-card-keeps-referenced-entities-test
   (testing "execute-dashboard-subscription-card keeps the dynamic goal values the static renderer resolves against"
