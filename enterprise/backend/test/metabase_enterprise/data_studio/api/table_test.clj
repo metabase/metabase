@@ -11,7 +11,6 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -21,12 +20,12 @@
 (defn- user-table
   "The Table with `table-id` as users see it. A bare `t2/select :model/Table` shows what sync wrote."
   [table-id]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id {:from [[(t2/table-name :model/Table) :metabase_table]]}))
 
 (defn- user-tables
   "The Tables with `table-ids` as users see it, ordered by `order-by`."
   [table-ids order-by]
-  (t2/select :model/Table :id [:in table-ids] {:from     [(warehouse-schema-overlay/table-query)]
+  (t2/select :model/Table :id [:in table-ids] {:from     [[(t2/table-name :model/Table) :metabase_table]]
                                                :order-by [order-by]}))
 
 (defn- user-table-fn

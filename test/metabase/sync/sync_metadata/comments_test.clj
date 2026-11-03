@@ -12,7 +12,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -59,13 +58,13 @@
         (mt/with-temp-copy-of-db
           (let [field-id (mt/id "update_desc" "updated_desc")]
             (t2/update! :model/Field :id field-id {:description nil})
-            (field-user-settings/upsert-user-settings {:id field-id} {:description "updated description"})
+            (field-user-settings/upsert-field-user-settings! {:id field-id} {:description "updated description"})
             (sync/sync-table! (t2/select-one :model/Table :id (mt/id "update_desc")))
             (is (= #{{:name (mt/format-name "id"), :description nil}
                      {:name (mt/format-name "updated_desc"), :description "original comment"}}
                    (db->fields (mt/db))))
             (is (= "updated description"
-                   (:description (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))))))))))
+                   (:description (t2/select-one :model/Field :id field-id {:from [[(t2/table-name :model/Field) :metabase_field]]}))))))))))
 
 (tx/defdataset ^:private comment-after-sync
   [["comment_after_sync"

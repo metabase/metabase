@@ -7,7 +7,6 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -15,7 +14,7 @@
   "The `data_sensitivity` a user sees: their own label when they set one, else the classifier's."
   [field-or-id]
   (t2/select-one-fn :data_sensitivity :model/Field :id (u/the-id field-or-id)
-                    {:from [(warehouse-schema-overlay/field-query {:alias :f})]}))
+                    {:from [[(t2/table-name :model/Field) :f]]}))
 
 (defn- sync-label
   "The `data_sensitivity` the classifier itself wrote to `metabase_field`."
@@ -125,8 +124,8 @@
                    :model/Table    table  {:db_id (:id db) :name "app_users"}
                    :model/Field    ssn    {:table_id (:id table) :name "ssn" :base_type :type/Text}
                    :model/Field    notes  {:table_id (:id table) :name "notes" :base_type :type/Text}]
-      (field-user-settings/upsert-user-settings ssn {:data_sensitivity :PUBLIC})
-      (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
+      (field-user-settings/upsert-field-user-settings! ssn {:data_sensitivity :PUBLIC})
+      (field-user-settings/upsert-field-user-settings! notes {:data_sensitivity :PHI})
       (testing "before the scan only the user's label exists"
         (is (nil? (sync-label ssn)))
         (is (nil? (sync-label notes)))
@@ -160,7 +159,7 @@
                  :model/Field    email    {:table_id (:id users) :name "email" :base_type :type/Text}
                  :model/Field    total    {:table_id (:id orders) :name "total" :base_type :type/Float}
                  :model/Field    far      {:table_id (:id foreign) :name "ssn" :base_type :type/Text}]
-    (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
+    (field-user-settings/upsert-field-user-settings! notes {:data_sensitivity :PHI})
     (t2/insert! :model/FieldUserSettings {:field_id (:id email)})
     (sync.data-sensitivity/scan-data-sensitivity! (:id db))
     (sync.data-sensitivity/scan-data-sensitivity! (:id other-db))
@@ -187,7 +186,7 @@
                  :model/Table    table {:db_id (:id db) :name "app_users"}
                  :model/Field    ssn   {:table_id (:id table) :name "ssn" :base_type :type/Text}
                  :model/Field    notes {:table_id (:id table) :name "notes" :base_type :type/Text}]
-    (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
+    (field-user-settings/upsert-field-user-settings! notes {:data_sensitivity :PHI})
     (sync.data-sensitivity/scan-data-sensitivity! (:id db))
     (is (= :PII (sync-label ssn)))
     (mt/with-dynamic-fn-redefs [analyze/infer-data-sensitivity (constantly :SEC_KEY)]

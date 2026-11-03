@@ -5,10 +5,10 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -39,15 +39,15 @@
                  (and (contains? effective column) (not (contains? effective flag)))
                  (assoc flag true)))
              settings
-             warehouse-schema-overlay/field-user-settings-flags))
+             warehouse-schema.user-settings/field-set-flags))
 
 (methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
   [settings]
-  (when (and (every? #(nil? (get settings %)) warehouse-schema-overlay/user-settable-field-columns)
-             (not-any? #(get settings %) (vals warehouse-schema-overlay/field-user-settings-flags)))
+  (when (and (every? #(nil? (get settings %)) warehouse-schema.user-settings/user-settable-field-columns)
+             (not-any? #(get settings %) (vals warehouse-schema.user-settings/field-set-flags)))
     (warehouse-schema.db/delete-field-user-settings! (:field_id settings)))
   settings)
 
@@ -67,11 +67,11 @@
   [settings]
   (delete-when-empty! settings))
 
-(mu/defn upsert-user-settings
+(mu/defn upsert-field-user-settings!
   "Record the user-settable Field columns present in `settings` as the user values of `field`."
   [{:keys [id]} :- ::warehouse-schema.schema/field
    settings     :- ::warehouse-schema.schema/field.update]
-  (let [settings (u/select-keys-when settings :present field/field-user-settings)]
+  (let [settings (u/select-keys-when settings :present warehouse-schema.user-settings/user-settable-field-columns)]
     (when (seq settings)
       (if (warehouse-schema.db/field-user-settings-exist? id)
         (warehouse-schema.db/update-field-user-settings! id (with-set-flags settings settings))
@@ -88,16 +88,16 @@
     (when (seq existing)
       (warehouse-schema.db/update-field-user-settings-custom-positions! (select-keys field-id->position existing)))))
 
-(mu/defn unset-user-settings!
+(mu/defn unset-field-user-settings!
   "Drop the user values of the Field columns `ks` for `field`."
   [{:keys [id]} :- ::warehouse-schema.schema/field
-   ks           :- [:sequential (into [:enum] warehouse-schema-overlay/user-settable-field-columns)]]
+   ks           :- [:sequential (into [:enum] warehouse-schema.user-settings/user-settable-field-columns)]]
   (when (warehouse-schema.db/field-user-settings-exist? id)
     (warehouse-schema.db/update-field-user-settings!
      id
      (into {} (mapcat (fn [k]
                         (cond-> [[k nil]]
-                          (warehouse-schema-overlay/field-user-settings-flags k) (conj [(warehouse-schema-overlay/field-user-settings-flags k) false]))))
+                          (warehouse-schema.user-settings/field-set-flags k) (conj [(warehouse-schema.user-settings/field-set-flags k) false]))))
            ks))))
 
 (defmethod serdes/extract-query "FieldUserSettings" [_model-name {:keys [filter-column filter-ids] :as opts}]
@@ -118,7 +118,7 @@
 (defmethod serdes/load-update! "FieldUserSettings" [model-name ingested local]
   ((get-method serdes/load-update! :default)
    model-name
-   (merge (zipmap warehouse-schema-overlay/user-settable-field-columns (repeat nil)) ingested)
+   (merge (zipmap warehouse-schema.user-settings/user-settable-field-columns (repeat nil)) ingested)
    local))
 
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]

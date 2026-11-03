@@ -5,11 +5,11 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -64,7 +64,7 @@
                  (and (contains? effective column) (not (contains? explicit flag)))
                  (assoc flag true)))
              settings
-             warehouse-schema-overlay/table-user-settings-flags))
+             warehouse-schema.user-settings/table-set-flags))
 
 (defn- enforce-invariants
   "Validate `explicit`, complete its two-column pairs and set its flags, merged into `settings`."
@@ -78,8 +78,8 @@
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
   [settings]
-  (when (and (every? #(nil? (get settings %)) warehouse-schema-overlay/user-settable-table-columns)
-             (not-any? #(get settings %) (vals warehouse-schema-overlay/table-user-settings-flags)))
+  (when (and (every? #(nil? (get settings %)) warehouse-schema.user-settings/user-settable-table-columns)
+             (not-any? #(get settings %) (vals warehouse-schema.user-settings/table-set-flags)))
     (warehouse-schema.db/delete-table-user-settings! (:table_id settings)))
   settings)
 
@@ -99,21 +99,21 @@
   [settings]
   (delete-when-empty! settings))
 
-(mu/defn upsert-user-settings
+(mu/defn upsert-table-user-settings!
   "Record the user-settable Table columns present in `settings` as the user values of `table`."
   [{:keys [id]} :- ::warehouse-schema.schema/table
    settings     :- ::warehouse-schema.schema/table.update]
-  (let [settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)]
+  (let [settings (u/select-keys-when settings :present warehouse-schema.user-settings/user-settable-table-columns)]
     (when (seq settings)
       (if (warehouse-schema.db/table-user-settings-exist? id)
         (warehouse-schema.db/update-table-user-settings! id (with-set-flags settings settings settings))
         (warehouse-schema.db/insert-table-user-settings! (assoc settings :table_id id))))))
 
-(mu/defn upsert-user-settings-for-tables!
-  "[[upsert-user-settings]] for every Table in `table-ids`, in one statement per kind."
+(mu/defn upsert-table-user-settings-for-tables!
+  "[[upsert-table-user-settings!]] for every Table in `table-ids`, in one statement per kind."
   [table-ids :- [:set ::lib.schema.id/table]
    settings  :- ::warehouse-schema.schema/table.update]
-  (let [settings (u/select-keys-when settings :present warehouse-schema-overlay/user-settable-table-columns)]
+  (let [settings (u/select-keys-when settings :present warehouse-schema.user-settings/user-settable-table-columns)]
     (when (and (seq settings) (seq table-ids))
       (let [existing (warehouse-schema.db/table-ids-with-user-settings table-ids)]
         (when-let [missing (not-empty (remove existing table-ids))]
@@ -133,21 +133,21 @@
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
   (t2/with-transaction [_]
-    (upsert-user-settings table {:field_order :custom})
+    (upsert-table-user-settings! table {:field_order :custom})
     (field-user-settings/set-custom-positions! (zipmap field-order (range)))
     (table/update-field-positions! (warehouse-schema.db/table (u/the-id table)))))
 
-(mu/defn unset-user-settings!
+(mu/defn unset-table-user-settings!
   "Drop the user values of the Table columns `ks` for `table`."
   [{:keys [id]} :- ::warehouse-schema.schema/table
-   ks           :- [:sequential (into [:enum] warehouse-schema-overlay/user-settable-table-columns)]]
+   ks           :- [:sequential (into [:enum] warehouse-schema.user-settings/user-settable-table-columns)]]
   (when (warehouse-schema.db/table-user-settings-exist? id)
     (warehouse-schema.db/update-table-user-settings!
      id
      (into {} (mapcat (fn [k]
                         (cond-> [[k nil]]
-                          (warehouse-schema-overlay/table-user-settings-flags k)
-                          (conj [(warehouse-schema-overlay/table-user-settings-flags k) false]))))
+                          (warehouse-schema.user-settings/table-set-flags k)
+                          (conj [(warehouse-schema.user-settings/table-set-flags k) false]))))
            ks))))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------

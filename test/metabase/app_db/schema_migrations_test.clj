@@ -45,7 +45,6 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2])
   (:import
    (liquibase Scope)
@@ -3538,7 +3537,7 @@
             unpublished     (insert-table! "unpublished" false "hidden" "hidden")
             user-visibility (fn [table-id]
                               (t2/select-one-fn :v [:metabase_table
-                                                    [(warehouse-schema-overlay/table-user-visibility-type :metabase_table) :v]]
+                                                    [(u/qualified-key :metabase_table :visibility_type) :v]]
                                                 {:where [:= :metabase_table.id table-id]}))]
         (migrate!)
         (testing "the backfill moves a published table's hidden or technical visibility into its settings row"

@@ -21,7 +21,6 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
@@ -171,7 +170,7 @@
           (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:coercion_strategy :Coercion/String->Integer})
           (sync/sync-database! (:id db))
           (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
-                  (t2/select-one :model/Field :id (:id field) {:from [(warehouse-schema-overlay/field-query)]})))
+                  (t2/select-one :model/Field :id (:id field) {:from [[(t2/table-name :model/Field) :metabase_field]]})))
           (jdbc/execute! db-spec ["ALTER TABLE \"base_type_change_test\" ALTER COLUMN \"string_tbc_int_col\" TYPE int USING \"string_tbc_int_col\"::integer;"])
           (sync/sync-database! (:id db))
           (testing "the base type change unsets the user's coercion, on the Field and for the user"
@@ -312,7 +311,7 @@
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
-                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id {:from [(warehouse-schema-overlay/field-query)]})}))]
+                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id {:from [[(t2/table-name :model/Field) :metabase_field]]})}))]
         (testing "before"
           (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
@@ -334,7 +333,7 @@
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
                       {:keys [semantic_type fk_target_field_id]} (t2/select-one :model/Field :id (mt/id :checkins :user_id)
-                                                                                {:from [(warehouse-schema-overlay/field-query)]})]
+                                                                                {:from [[(t2/table-name :model/Field) :metabase_field]]})]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type
@@ -539,13 +538,13 @@
                   field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
               (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:visibility_type :normal})
               (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id
-                                                              {:from [(warehouse-schema-overlay/field-query)]})))
+                                                              {:from [[(t2/table-name :model/Field) :metabase_field]]})))
                   "Manual change should set visibility_type to :normal"))
             (sync/sync-database! (:id database))
             (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
                   field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
               (is (= :normal (:visibility_type (t2/select-one :model/Field :id field-id
-                                                              {:from [(warehouse-schema-overlay/field-query)]})))
+                                                              {:from [[(t2/table-name :model/Field) :metabase_field]]})))
                   "Second sync should preserve manually set :normal visibility_type"))))))))
 
 (deftest hiding-a-case-variant-table-leaves-the-other-tables-fields-alone-test
@@ -585,13 +584,13 @@
         (testing "should not have FK relationship"
           (is (nil? (:fk_target_field_id flocks-example-bird-name-field)))
           (is (not= :type/FK (:semantic_type flocks-example-bird-name-field))))
-        (field-user-settings/upsert-user-settings
+        (field-user-settings/upsert-field-user-settings!
          {:id (u/the-id flocks-example-bird-name-field)}
          {:semantic_type :type/FK
           :fk_target_field_id (u/the-id birds-example-name-field)})
         (testing "after sync, user-set FK is preserved"
           (sync/sync-database! (mt/id))
-          (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field) {:from [(warehouse-schema-overlay/field-query)]})]
+          (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field) {:from [[(t2/table-name :model/Field) :metabase_field]]})]
             (is (= :type/FK (:semantic_type field-after-sync)))
             (is (= (u/the-id birds-example-name-field) (:fk_target_field_id field-after-sync)))))))))
 

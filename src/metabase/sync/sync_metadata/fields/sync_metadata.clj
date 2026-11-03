@@ -128,7 +128,7 @@
                       old-base-type
                       new-base-type)
            (when-not (= old-base-type :type/*)
-             (field-user-settings/unset-user-settings!
+             (field-user-settings/unset-field-user-settings!
               (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type]))
            {:base_type           new-base-type
             :effective_type      new-base-type
@@ -146,7 +146,7 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-effective-type
                       new-base-type)
-           (field-user-settings/unset-user-settings! (select-keys metabase-field [:id]) [:effective_type :coercion_strategy])
+           (field-user-settings/unset-field-user-settings! (select-keys metabase-field [:id]) [:effective_type :coercion_strategy])
            {:effective_type new-base-type})
          (when new-semantic-type?
            (log/infof "Semantic type of %s has changed from '%s' to '%s'."

@@ -178,7 +178,7 @@
         table-ids       (set (map :id existing-tables))
         set-map         (select-keys body set-ks)]
     (when (seq set-map)
-      (schema.table-user-settings/upsert-user-settings-for-tables! table-ids set-map)
+      (schema.table-user-settings/upsert-table-user-settings-for-tables! table-ids set-map)
       (maybe-sync-unhidden-tables! existing-tables set-map)
       ;; Publish update events for remote sync tracking
       (let [updated-tables (data-studio.db/tables table-ids)]

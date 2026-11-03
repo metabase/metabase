@@ -10,7 +10,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
@@ -21,7 +20,7 @@
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id field-id {:from [[(t2/table-name :model/Field) :metabase_field]]}))
 
 (mu/defn field-in-path
   "The ::warehouse-schema.schema/field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
@@ -33,46 +32,46 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :id [:in field-ids] {:from [[(t2/table-name :model/Field) :metabase_field]]}))
 
 (mu/defn fields-by-id
   "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids] {:from [[(t2/table-name :model/Field) :metabase_field]]}))
 
 (mu/defn field-table-id-rows
   "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [[(t2/table-name :model/Field) :metabase_field]]}))
 
 (mu/defn field-table-id
   "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :table_id :model/Field :id field-id {:from [[(t2/table-name :model/Field) :metabase_field]]}))
 
 (mu/defn field-id-by-name
   "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    parent-id  :- [:maybe ms/PositiveInt]
    field-name :- :string]
-  (t2/select-one-pk :model/Field :name field-name :parent_id parent-id :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-pk :model/Field :name field-name :parent_id parent-id :table_id table-id {:from [[(t2/table-name :model/Field) :metabase_field]]}))
 
 (mu/defn field-values-eligibility
   "The columns deciding whether the ::warehouse-schema.schema/field with `field-id` should have FieldValues, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id
-                 {:from [(warehouse-schema-overlay/field-query)]}))
+                 {:from [[(t2/table-name :model/Field) :metabase_field]]}))
 
 (mu/defn field-ids-for-table
   "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]
+  (t2/select-pks-set :model/Field {:from [[(t2/table-name :model/Field) :metabase_field]]
                                    :where [:= :table_id table-id]}))
 
 (mu/defn active-field-ids-for-table
   "The IDs of the active Fields of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-pks-set :model/Field :table_id table-id :active true {:from [[(t2/table-name :model/Field) :metabase_field]]}))
 
 (defn- field-order-order-by
   [field-order]
@@ -93,7 +92,7 @@
   or `:alphabetical`)."
   [table-id    :- ::lib.schema.id/table
    field-order :- [:enum :custom :smart :database :alphabetical]]
-  (t2/select [:model/Field :id] :table_id table-id {:from     [(warehouse-schema-overlay/field-query)]
+  (t2/select [:model/Field :id] :table_id table-id {:from     [[(t2/table-name :model/Field) :metabase_field]]
                                                     :order-by (field-order-order-by field-order)}))
 
 (mu/defn active-fields-for-tables
@@ -103,7 +102,7 @@
              :active true
              :table_id [:in table-ids]
              :visibility_type [:not= "retired"]
-             {:from [(warehouse-schema-overlay/field-query)]
+             {:from [[(t2/table-name :model/Field) :metabase_field]]
               :order-by field-order-rule}))
 
 (mu/defn pk-field-ids-by-table
@@ -113,7 +112,7 @@
                     :table_id [:in table-ids]
                     :semantic_type (app-db/isa :type/PK)
                     :visibility_type [:not-in ["sensitive" "retired"]]
-                    {:from [(warehouse-schema-overlay/field-query {:alias :f})]}))
+                    {:from [[(t2/table-name :model/Field) :f]]}))
 
 (mu/defn update-field!
   "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
@@ -153,7 +152,7 @@
    (t2/select-fn-set (comp u/lower-case-en :name)
                      :model/Field
                      {:select    [:f.name]
-                      :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
+                      :from      [[(t2/table-name :model/Field) :f]]
                       :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
                       :where     [:and
                                   [:= :f.table_id table-id]
@@ -166,7 +165,7 @@
   []
   (t2/reducible-query
    {:select    [:f.id :f.name :f.display_name [:u.display_name :user_display_name]]
-    :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
+    :from      [[(t2/table-name :model/Field) :f]]
     :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]}))
 
 (mu/defn set-field-display-name!
@@ -197,7 +196,7 @@
   [table-id :- ::lib.schema.id/table]
   (set (t2/select-fn-set :field_id :model/FieldUserSettings
                          {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
-                          :join  [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :u.field_id]]
+                          :join  [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
                           :where [:= :f.table_id table-id]})))
 
 (mu/defn dimension-ids-for-table :- [:set ::lib.schema.id/dimension]
@@ -205,7 +204,7 @@
   [table-id :- ::lib.schema.id/table]
   (set (t2/select-pks-set :model/Dimension
                           {:from  [[(t2/table-name :model/Dimension) :d]]
-                           :join  [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :d.field_id]]
+                           :join  [[(t2/table-name :model/Field) :f] [:= :f.id :d.field_id]]
                            :where [:= :f.table_id table-id]})))
 
 (mu/defn field-user-settings-for-tables
@@ -214,7 +213,7 @@
   (t2/select :model/FieldUserSettings
              {:select   [:u.* [:f.table_id :table_id] [:f.name :field_name]]
               :from     [[(t2/table-name :model/FieldUserSettings) :u]]
-              :join     [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :u.field_id]]
+              :join     [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
               :where    [:in :f.table_id table-ids]
               :order-by [[:f.name :asc]]}))
 
@@ -341,7 +340,7 @@
   "The ::warehouse-schema.schema/field ID, values, and ::warehouse-schema.schema/table ID of the full FieldValues of the normal Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/FieldValues :field_id :values :field.table_id]
-             {:join  [(warehouse-schema-overlay/field-query {:alias :field})
+             {:join  [[(t2/table-name :model/Field) :field]
                       [:= :metabase_fieldvalues.field_id :field.id]]
               :where [:and
                       [:in :field.table_id table-ids]
@@ -424,34 +423,34 @@
 (mu/defn table
   "The ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id {:from [[(t2/table-name :model/Table) :metabase_table]]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in table-ids] {:from [[(t2/table-name :model/Table) :metabase_table]]}))
 
 (mu/defn table-by-name
   "The ::warehouse-schema.schema/table named `table-name` in `schema` of the ::warehouses.schema/database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
-  (t2/select-one :model/Table :name table-name :db_id database-id :schema schema {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :name table-name :db_id database-id :schema schema {:from [[(t2/table-name :model/Table) :metabase_table]]}))
 
 (mu/defn table-name-and-schema
   "The name and schema of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :name :schema] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one [:model/Table :name :schema] :id table-id {:from [[(t2/table-name :model/Table) :metabase_table]]}))
 
 (mu/defn table-database-id
   "The ::warehouses.schema/database ID of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table :id table-id {:from [[(t2/table-name :model/Table) :metabase_table]]}))
 
 (defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
   [database-id]
-  (t2/select :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :db_id database-id :active true {:from [[(t2/table-name :model/Table) :metabase_table]]}))
 
 (defn active-table-schemas
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
@@ -461,7 +460,7 @@
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
     (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                      (merge {:from     [(warehouse-schema-overlay/table-query)]
+                      (merge {:from     [[(t2/table-name :model/Table) :metabase_table]]
                               :order-by [[:%lower.schema :asc]]}
                              (when clauses
                                {:where (into [:and] clauses)})))))
@@ -473,7 +472,7 @@
              :db_id database-id
              :schema schema
              :active true
-             {:from [(warehouse-schema-overlay/table-query)]
+             {:from [[(t2/table-name :model/Table) :metabase_table]]
               :order-by [[:display_name :asc]]}))
 
 (defn active-visible-tables-in-schema
@@ -484,7 +483,7 @@
              :schema schema
              :active true
              :visibility_type nil
-             {:from [(warehouse-schema-overlay/table-query)]
+             {:from [[(t2/table-name :model/Table) :metabase_table]]
               :order-by [[:display_name :asc]]}))
 
 (mu/defn unarchived-segments-for-tables
@@ -526,7 +525,7 @@
   (t2/reducible-query
    {:select    [:t.id :t.name :t.display_name
                 [:u.display_name :user_display_name]]
-    :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
+    :from      [[(t2/table-name :model/Table) :t]]
     :left-join [[(t2/table-name :model/TableUserSettings) :u] [:= :u.table_id :t.id]]}))
 
 (mu/defn set-table-display-name!
