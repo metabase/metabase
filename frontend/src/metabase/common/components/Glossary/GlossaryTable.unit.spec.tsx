@@ -528,4 +528,23 @@ describe("GlossaryTable", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  it("shows an entry the server has not confirmed yet as text, without a delete button", () => {
+    setup({
+      glossary: [
+        makeItem({ id: -1, term: "Boat", definition: "A small vessel" }),
+        makeItem({ id: 2, term: "Alpha", definition: "First" }),
+      ],
+    });
+
+    expect(screen.getByText("Boat")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Boat")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete Boat" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Alpha")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete Alpha" }),
+    ).toBeInTheDocument();
+  });
 });

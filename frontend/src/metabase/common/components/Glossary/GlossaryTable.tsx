@@ -145,18 +145,22 @@ export function GlossaryTable({
                   onCancel={() => setNewRowDraft(null)}
                 />
               )}
-              {visibleItems.map((item) => (
-                <GlossaryRow
-                  key={item.id}
-                  item={item}
-                  readOnly={readOnly}
-                  isTermTaken={(term) =>
-                    isDuplicateTerm(glossary, term, item.id)
-                  }
-                  onEdit={onEdit}
-                  onDeleteClick={setDeletingItem}
-                />
-              ))}
+              {visibleItems.map((item) => {
+                // The API gives an entry a negative id until the server confirms it
+                const isPending = item.id < 0;
+                return (
+                  <GlossaryRow
+                    key={item.id}
+                    item={item}
+                    readOnly={readOnly || isPending}
+                    isTermTaken={(term) =>
+                      isDuplicateTerm(glossary, term, item.id)
+                    }
+                    onEdit={onEdit}
+                    onDeleteClick={setDeletingItem}
+                  />
+                );
+              })}
               {newRowDraft == null && visibleItems.length === 0 && (
                 <tr>
                   <td colSpan={COLUMN_COUNT}>

@@ -103,8 +103,11 @@ async function assertCreateGlossaryTermFlow(server: GlossaryServer) {
       fetchMock.callHistory.called("path:/api/glossary", { method: "POST" }),
     ).toBe(true),
   );
-  // The row shown while the request is pending is replaced by the server's row.
-  const pendingTerm = within(getTable()).getByDisplayValue("Boat");
+  // The pending row is read-only until the server's row replaces it
+  const pendingTerm = within(getTable()).getByText("Boat");
+  expect(
+    within(getTable()).queryByDisplayValue("Boat"),
+  ).not.toBeInTheDocument();
   server.glossary = [BOAT];
   createResponse.resolve(BOAT);
   await waitFor(() => expect(pendingTerm).not.toBeInTheDocument());
