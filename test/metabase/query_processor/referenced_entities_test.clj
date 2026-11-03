@@ -668,3 +668,25 @@
         (is (= "completed" (:status (mt/user-http-request :crowberto :post 202 "dataset" (query 20))))))
       (testing "21 is refused"
         (mt/user-http-request :crowberto :post 400 "dataset" (query 21))))))
+
+(deftest dataset-endpoint-source-with-required-parameter-test
+  (testing "a native source whose required variable has no default fails softly with the server's explanation"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query
+                                              (mt/native-query
+                                               {:query         "SELECT {{n}} AS \"count\""
+                                                :template-tags {"n" {:id           "n"
+                                                                     :name         "n"
+                                                                     :display-name "N"
+                                                                     :type         :number
+                                                                     :required     true}}})}]
+      (let [response (mt/user-http-request
+                      :crowberto :post 202 "dataset"
+                      (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                             :referenced_entities [{:type "card" :id goal-id}]))
+            goal     (ref-entity response :card goal-id)]
+        (is (= "completed" (:status response)))
+        (is (= "failed" (:status goal)))
+        (testing "the FE shows this message as is"
+          (is (string? (:error goal))))
+        (testing "the source exists, so this isn't reported as a missing source"
+          (is (nil? (:error_type goal))))))))
