@@ -195,7 +195,9 @@
 (defn- metric-field-stats
   [metric-id field-id limit]
   (let [query (metabot.tools.u/metric-query metric-id)
-        col (field-column "metric" metric-id field-id (usable-columns (lib/filterable-columns query)))]
+        col (field-column "metric" metric-id field-id
+                          (m/distinct-by metabot.tools.u/column-field-id
+                                         (entity-details/metric-dimension-columns query metric-id)))]
     (check-curated-field-owner! metric-id col)
     (field-metadata-output query col field-id limit)))
 
