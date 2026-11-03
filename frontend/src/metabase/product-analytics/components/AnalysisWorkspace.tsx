@@ -32,6 +32,7 @@ import { useAnalysisState } from "../use-analysis-state";
 import { useAnalysisTimelines } from "../use-analysis-timelines";
 import { useSaveAnalysis } from "../use-save-analysis";
 import { useStableValue } from "../use-stable-value";
+import { useTableSettingsUrl } from "../use-table-settings-url";
 
 import { AnalysisActionsMenu } from "./AnalysisActionsMenu";
 import { AnalysisResult, getAnalysisRawSeries } from "./AnalysisResult";
@@ -39,10 +40,6 @@ import { AnalysisTitle, getNewAnalysisTitle } from "./AnalysisTitle";
 import { AnalysisToolbar } from "./AnalysisToolbar";
 import { ArchivedAnalysisBanner } from "./ArchivedAnalysisBanner";
 import { DisplayPanel } from "./DisplayPanel";
-import {
-  EventTableSettingsModal,
-  useTableSettingsUrl,
-} from "./EventTableSettingsModal";
 import { EventsPanel } from "./EventsPanel";
 import { FilterPills, useFilterCount } from "./FilterPills";
 import { SetupPanel } from "./SetupPanel";
@@ -103,7 +100,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
       _.pick(savedCard?.visualization_settings ?? {}, TIMELINE_SETTING_KEYS),
     );
   const [displayColors, setDisplayColors] = useState<DisplayColors>({});
-  const [isTableSettingsOpen, setIsTableSettingsOpen] = useState(false);
   const handleChangeColor = useCallback(
     (key: string, color: string) =>
       setDisplayColors((colors) => ({ ...colors, [key]: color })),
@@ -130,7 +126,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     spec,
     widgets,
     missing,
-    missingColumnRoles,
+    isTableSetUp,
+    isDatabaseSupported,
     display,
     question,
     vizSettings,
@@ -395,11 +392,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               setupLabel={config.setupLabel}
               widgets={widgets}
               isHinted={isSetupHinted}
-              onOpenTableSettings={
-                table !== undefined
-                  ? () => setIsTableSettingsOpen(true)
-                  : undefined
-              }
               onClose={() => setPanel(null)}
             />
           )}
@@ -417,14 +409,9 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
                 isLoading={query.isLoading}
                 error={query.error}
                 missing={missing}
-                tableSetup={
-                  table !== undefined && missingColumnRoles.length > 0
-                    ? {
-                        dataStudioUrl: tableSettingsUrl,
-                      }
-                    : undefined
-                }
-                onOpenTableSettings={() => setIsTableSettingsOpen(true)}
+                isTableSetUp={isTableSetUp}
+                tableSettingsUrl={tableSettingsUrl}
+                isDatabaseSupported={isDatabaseSupported}
                 setupLabel={config.setupLabel}
                 onOpenSetup={
                   panel !== "setup" ? () => setPanel("setup") : undefined
@@ -476,17 +463,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           isLocationAllowed() || drillActions.isDrilling()
         }
       />
-      {table !== undefined && (
-        <EventTableSettingsModal
-          table={table}
-          widgets={widgets.filter(
-            (widget) => widget.group !== undefined && !widget.hidden,
-          )}
-          stored={stored}
-          opened={isTableSettingsOpen}
-          onClose={() => setIsTableSettingsOpen(false)}
-        />
-      )}
     </SegmentDragProvider>
   );
 };

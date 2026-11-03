@@ -5,7 +5,9 @@ import {
   EVENT_TABLE_SETTINGS,
   getEventTableSections,
   getEventTableSettings,
+  isEventTableSetUp,
 } from "./event-table-settings";
+import { EVERY_EVENT, type PageviewRule } from "./pageviews";
 import { getDefaultPathCleaningRules } from "./path-cleaning";
 import { getSettingWidgets } from "./settings/compute";
 
@@ -26,12 +28,38 @@ const TABLE = createMockTable({
   },
 });
 
+const PAGEVIEW_RULE: PageviewRule = {
+  type: "column_value",
+  column: "event_type",
+  value: 1,
+};
+
+const PAGES_TABLE = createMockTable({
+  ...TABLE,
+  fields: [
+    ...(TABLE.fields ?? []),
+    createMockField({ id: 5, name: "event_type", base_type: "type/Integer" }),
+  ],
+  detected_event_settings: {
+    schema: "metabase-track",
+    settings: {
+      ...TABLE.detected_event_settings?.settings,
+      "columns.url_path": "path",
+      pageviews: PAGEVIEW_RULE,
+    },
+  },
+});
+
 type SetupOpts = {
+  table?: Table;
   eventSettings?: Table["event_settings"];
 };
 
-const setup = ({ eventSettings = {} }: SetupOpts = {}) => {
-  const table = { ...TABLE, event_settings: eventSettings };
+const setup = ({
+  table: baseTable = TABLE,
+  eventSettings = {},
+}: SetupOpts = {}) => {
+  const table = { ...baseTable, event_settings: eventSettings };
   const settings = getEventTableSettings(table);
   const widgets = getSettingWidgets(
     EVENT_TABLE_SETTINGS,
@@ -117,6 +145,99 @@ describe("event table settings", () => {
       });
 
       expect(settings.path_cleaning).toEqual(getDefaultPathCleaningRules());
+    });
+  });
+
+  describe("pageviews", () => {
+    it("defaults to the detected rule", () => {
+      const { settings } = setup({ table: PAGES_TABLE });
+
+      expect(settings.pageviews).toEqual(PAGEVIEW_RULE);
+    });
+
+    it("defaults to none without a detected rule", () => {
+      const { settings } = setup({
+        eventSettings: { "columns.url_path": "path" },
+      });
+
+      expect(settings.pageviews).toBeNull();
+    });
+
+    it("has none without a URL path", () => {
+      const { settings } = setup({
+        table: PAGES_TABLE,
+        eventSettings: { "columns.url_path": null },
+      });
+
+      expect(settings.pageviews).toBeNull();
+    });
+
+    it("makes every event a pageview without an event name", () => {
+      const { settings } = setup({
+        table: PAGES_TABLE,
+        eventSettings: { "columns.event_name": null },
+      });
+
+      expect(settings.pageviews).toEqual(EVERY_EVENT);
+    });
+
+    it("rejects a rule whose value doesn't fit its column", () => {
+      const { settings } = setup({
+        table: PAGES_TABLE,
+        eventSettings: {
+          pageviews: { type: "column_value", column: "event_type", value: "1" },
+        },
+      });
+
+      expect(settings.pageviews).toEqual(PAGEVIEW_RULE);
+    });
+
+    it("keeps a rule on a numeric column with a semantic type", () => {
+      const table = createMockTable({
+        ...PAGES_TABLE,
+        fields: PAGES_TABLE.fields?.map((field) =>
+          field.name === "event_type"
+            ? { ...field, semantic_type: "type/FK" }
+            : field,
+        ),
+      });
+
+      expect(setup({ table }).settings.pageviews).toEqual(PAGEVIEW_RULE);
+    });
+  });
+
+  describe("isEventTableSetUp", () => {
+    const EVENT_TABLE = createMockTable({
+      ...TABLE,
+      entity_type: "entity/EventTable",
+    });
+
+    it("is set up with an event time and a person", () => {
+      expect(isEventTableSetUp(EVENT_TABLE)).toBe(true);
+    });
+
+    it("isn't set up without a person", () => {
+      expect(
+        isEventTableSetUp({
+          ...EVENT_TABLE,
+          event_settings: { "columns.person": null },
+        }),
+      ).toBe(false);
+    });
+
+    it("isn't set up unless it's an event table", () => {
+      expect(
+        isEventTableSetUp({
+          ...EVENT_TABLE,
+          entity_type: "entity/GenericTable",
+        }),
+      ).toBe(false);
+    });
+
+    it("trusts the roles' columns when the table's fields aren't loaded", () => {
+      expect(isEventTableSetUp({ ...EVENT_TABLE, fields: undefined })).toBe(
+        true,
+      );
     });
   });
 });

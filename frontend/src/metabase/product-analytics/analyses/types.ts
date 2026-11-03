@@ -132,7 +132,7 @@ export type AnalysisSettingDefinitions<S> = SettingDefinitions<
 export type MissingSetting = {
   key: string;
   message: string;
-  /** Set in the event table settings, rather than the setup panel. */
+  /** Set on the table in Data Studio, rather than in the setup panel. */
   isTableSetting?: boolean;
 };
 

@@ -17,7 +17,7 @@ So the two can disagree. If we change how queries are built from settings, a sav
 
 Like viz settings, analysis settings are sparse: only what the user changed is saved, and everything else is a default computed on read. With viz settings that's caused trouble, because changing a default changes every existing card that relied on it. We should consider a different approach for analysis settings.
 
-Table settings make this harder to decide. An analysis that never changed its column roles follows the table's (see [event-table-settings.plan.md](event-table-settings.plan.md)), so an admin changing them changes every such analysis:
+Table settings make this harder to decide. Every analysis follows its table's column roles, pageviews and path cleaning, which analyses can't change (see [event-table-settings.plan.md](event-table-settings.plan.md)), so an admin changing them changes every analysis on the table:
 
 - **Against following the table:** someone who saved an analysis was happy with how it looked, and an admin's change later shouldn't change it under them.
 - **For following it:** a fix should reach every analysis, and a table whose columns change shouldn't leave analyses pointing at a column that's gone. For path cleaning especially, analyses that each kept their own copy of the rules would end up with slightly different cleaning scattered across them.

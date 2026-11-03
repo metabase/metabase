@@ -225,7 +225,7 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
       return incomplete([
         {
           key: "columns.event_name",
-          message: t`Pick an event name or URL path column to name each step.`,
+          message: t`Paths needs an event name or URL path column to label each step.`,
           isTableSetting: true,
         },
       ]);

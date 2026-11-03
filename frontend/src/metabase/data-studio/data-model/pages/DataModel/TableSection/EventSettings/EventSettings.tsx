@@ -8,8 +8,8 @@ import {
   EVENT_TABLE_ENTITY_TYPE,
   EVENT_TABLE_SETTINGS,
   type EventTableSection,
+  type EventTableSettingWidget,
   type EventTableSettings,
-  type SettingWidget,
   getDetectedEventSchemaName,
   getEventTableSections,
   getEventTableSettings,
@@ -29,9 +29,11 @@ const WIDGET_STYLE = { marginInline: 0 };
 
 type EventSettingsProps = {
   table: Table;
+  /** For someone who can't edit the table's metadata. */
+  readOnly: boolean;
 };
 
-export function EventSettings({ table }: EventSettingsProps) {
+export function EventSettings({ table, readOnly }: EventSettingsProps) {
   const [updateTable] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
@@ -40,15 +42,14 @@ export function EventSettings({ table }: EventSettingsProps) {
   const hasUserSettings = Object.keys(stored).length > 0;
   const settings = getEventTableSettings(table);
   const hasMissingColumnRoles = getMissingColumnRoles(settings).length > 0;
-  // Saving a table's event settings makes it an event table, so product
-  // analysis offers it.
-  const isMarkingAsEventTable = !isEventTable(table);
+  // Product analysis only uses event tables. The entity type is the one
+  // switch for that, so these settings wait until it's flipped.
+  const isEvent = isEventTable(table);
 
   const saveSettings = async (newStored: EventTableStoredSettings) => {
     const { error } = await updateTable({
       id: table.id,
       event_settings: newStored,
-      ...(isMarkingAsEventTable && { entity_type: EVENT_TABLE_ENTITY_TYPE }),
     });
     if (error) {
       sendErrorToast(t`Failed to update event settings`);
@@ -57,7 +58,24 @@ export function EventSettings({ table }: EventSettingsProps) {
         const { error } = await updateTable({
           id: table.id,
           event_settings: stored,
-          ...(isMarkingAsEventTable && { entity_type: table.entity_type }),
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleUseAsEventTable = async () => {
+    const { error } = await updateTable({
+      id: table.id,
+      entity_type: EVENT_TABLE_ENTITY_TYPE,
+    });
+    if (error) {
+      sendErrorToast(t`Failed to update the table`);
+    } else {
+      sendSuccessToast(t`Entity type updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          entity_type: table.entity_type,
         });
         sendUndoToast(error);
       });
@@ -77,29 +95,65 @@ export function EventSettings({ table }: EventSettingsProps) {
 
   return (
     <Stack gap="lg" data-testid="table-event-settings">
-      {schemaName !== undefined && (
-        <Text c="text-secondary" pt="sm">
-          {t`Detected as a ${schemaName} event table.`}
-        </Text>
-      )}
-      {hasMissingColumnRoles && (
-        <Text c="text-secondary" pt="sm">
-          {t`Pick the required columns to make this table available in product analysis.`}
-        </Text>
-      )}
-      {getEventTableSections(widgets).map((section) => (
-        <EventSettingsSection key={section.id} section={section} />
-      ))}
-      {schemaName !== undefined && hasUserSettings && (
-        // Without a detected schema, there's nothing to reset to.
-        <ResetSettingsButton
-          schemaName={schemaName}
-          onReset={() => saveSettings({})}
+      {!isEvent && (
+        <NotEventTableNotice
+          readOnly={readOnly}
+          onUseAsEventTable={handleUseAsEventTable}
         />
       )}
+      <fieldset className={S.fieldset} disabled={readOnly || !isEvent}>
+        <Stack gap="lg">
+          {schemaName !== undefined && (
+            <Text c="text-secondary" pt="sm">
+              {t`Detected as an event table from ${schemaName}.`}
+            </Text>
+          )}
+          {isEvent && hasMissingColumnRoles && (
+            <Text c="text-secondary" pt="sm">
+              {readOnly
+                ? t`This table needs an event time and a person column before product analysis can use it.`
+                : t`Pick the required columns to make this table available in product analysis.`}
+            </Text>
+          )}
+          {getEventTableSections(widgets).map((section) => (
+            <EventSettingsSection key={section.id} section={section} />
+          ))}
+          {schemaName !== undefined &&
+            hasUserSettings &&
+            !readOnly &&
+            isEvent && (
+              // Without a detected schema, there's nothing to reset to.
+              <ResetSettingsButton
+                schemaName={schemaName}
+                onReset={() => saveSettings({})}
+              />
+            )}
+        </Stack>
+      </fieldset>
     </Stack>
   );
 }
+
+type NotEventTableNoticeProps = {
+  readOnly: boolean;
+  onUseAsEventTable: () => void;
+};
+
+const NotEventTableNotice = ({
+  readOnly,
+  onUseAsEventTable,
+}: NotEventTableNoticeProps) => (
+  <Group justify="space-between" wrap="nowrap" gap="md" className={S.box}>
+    <Text c="text-secondary">
+      {t`Only tables with an Event entity type can be used in product analysis.`}
+    </Text>
+    {!readOnly && (
+      <Button variant="filled" flex="0 0 auto" onClick={onUseAsEventTable}>
+        {t`Set entity type to Event`}
+      </Button>
+    )}
+  </Group>
+);
 
 type ResetSettingsButtonProps = {
   schemaName: string;
@@ -154,7 +208,7 @@ const EventSettingsSection = ({
 );
 
 type EventSettingWidgetProps = {
-  widget: SettingWidget;
+  widget: EventTableSettingWidget;
 };
 
 const EventSettingWidget = ({

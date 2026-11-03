@@ -1,20 +1,21 @@
 # Event table settings
 
-Which column is the timestamp, the person, the session, the event name and the URL path is a fact about the table, not about one analysis. This plan moves those column roles into table metadata, set once per table, and keeps the per-analysis settings as an override. Which events are pageviews, and how their URL paths are cleaned, are table settings the same way (see [Pageviews and path cleaning](#pageviews-and-path-cleaning)).
+Which column is the timestamp, the person, the session, the event name and the URL path is a fact about the table, not about one analysis. This plan moves those column roles into table metadata, set once per table in Data Studio. Analyses only read them. Which events are pageviews, and how their URL paths are cleaned, are table settings the same way (see [Pageviews and path cleaning](#pageviews-and-path-cleaning)).
 
 It answers "Where roles live" and "Whole schemas, not single roles" from the open questions in [analysis-settings.plan.md](analysis-settings.plan.md#open-questions-column-roles), and part of "what's required to be considered an 'event table'" in [product-analytics.md](product-analytics.md).
 
-## Three layers
+## Two layers
 
 A setting's value comes from the first layer that has a valid one:
 
-1. **The analysis.** What the user changed in this analysis, stored in the URL and the saved card. It only applies to this analysis.
-2. **The table, as a user set it.** Set in Data Studio's Events tab. Stored on `metabase_table_user_settings.event_settings`.
-3. **The table, as sync detected it.** Written by sync's table classifier. Stored on `metabase_table.detected_event_settings`.
+1. **The table, as a user set it.** Set in Data Studio's Events tab. Stored on `metabase_table_user_settings.event_settings`.
+2. **The table, as sync detected it.** Written by sync's table classifier. Stored on `metabase_table.detected_event_settings`.
 
 Each layer is validated on read, so a column that no longer exists falls through to the next layer.
 
-There's no guessing in the browser any more: `ROLE_RULES` goes away. A role that nobody set and sync didn't detect is empty. If it's a required role (timestamp or person), Data Studio shows a warning on the Events tab and analyses ask for it, rather than silently picking the first datetime column.
+An earlier version had a third layer on top: an analysis could override the table's settings, in an "Event table settings" modal, and store them in its URL and saved card. It was dropped to keep one place to set them. Analyses ignore table settings stored before then.
+
+There's no guessing in the browser any more: `ROLE_RULES` goes away. A role that nobody set and sync didn't detect is empty. If it's a required role (timestamp or person), Data Studio shows a warning on the Events tab and analyses say the table isn't set up, rather than silently picking the first datetime column.
 
 So Data Studio does have defaults: the detected values. They're real values that sync wrote, with the schema they came from, not a guess the page makes each time it renders.
 
@@ -74,32 +75,33 @@ Writing is table metadata permission, unchanged: admins on OSS, and `manage-tabl
 
 A new shared module, `metabase/event-tables`, sits below both product analytics and Data Studio. Both are feature modules, so neither can import the other. It holds:
 
-- **The typed settings layer**, moved from `product-analytics/settings`: the definition types, the engine wrappers and `withWidgetProps`. It now has two consumers. If a third one appears outside event tables, it belongs in `viz-core`.
-- **The event table setting definitions.** Their context is `EventTableContext` (the table), and `AnalysisContext` extends it. Dependencies between settings are written once and hold in both places. For example, path cleaning will read the URL path role.
-- **The table's computed settings:** the user's values over the detected ones.
+- **The typed settings layer**, moved from `product-analytics/settings`: the definition types, the engine wrappers and `withWidgetProps`. It has two consumers: the event table settings and each analysis's own settings. If a third one appears outside event tables, it belongs in `viz-core`.
+- **The event table setting definitions.** Their context is `EventTableContext` (the table). Dependencies between settings are written once. For example, path cleaning reads the URL path role.
+- **The table's computed settings:** the user's values over the detected ones, and whether the table is set up (an event table with an event time and a person).
 - **The widgets:** the column picker, pageviews and path cleaning.
-- **Sections.** Each definition's `group` puts it in a section: Required, Optional, and Pageviews (optional), which holds the URL path, pageviews and path cleaning. Data Studio and the analysis modal both render them.
+- **Sections.** Each definition's `getSection` puts it in one of Data Studio's three sections: Required, Optional, and Pageviews (optional), which holds the URL path, pageviews and path cleaning. The settings layer takes the section names as a type parameter, so analyses keep theirs (toolbar, setup and advanced).
 
-**Data Studio.** `TableSection` gets an Events tab, right after Details, for tables whose entity type is Event. It shows a warning icon while a required role is empty. The tab renders the definitions with `ChartSettingsWidget`, and a change saves `event_settings`.
+**Data Studio.** `TableSection` gets an Events tab, right after Details, for tables whose entity type is Event. It shows a warning icon until product analysis can use the table: while a required role is empty, or while the table isn't an event table. The tab renders the definitions with `ChartSettingsWidget`, and a change saves `event_settings`. For someone who can't edit the table's metadata, the tab is read-only.
 
 - **Detected schema.** The top of the tab says which schema sync detected ("Detected as a Snowplow event table.").
 - **Reset.** Once the table has saved settings, a "Reset to Snowplow defaults" button at the bottom asks for confirmation, then clears `event_settings`, path cleaning rules included. It's only there with a detected schema, since without one there's nothing to go back to. Table setting changes aren't in the audit log or revision history, so the undo toast is the only way back from a reset.
 
-The tab also shows when a link asks for it, such as product analytics' "Set up in Data Studio" on a table that isn't an event table. Saving there sets the entity type to Event too: setting up a table's events is what makes it an event table, so nobody has to change the entity type first. Entity type stays the one switch, so the table picker can filter by it, and an admin can take a misdetected table out by changing it.
+The tab also shows when a link asks for it, such as product analytics' "Set up in Data Studio" on a table that isn't an event table. There, the tab says only tables with an Event entity type can be used in product analysis, with a "Set entity type to Event" button, and its settings stay disabled until it's clicked. The tab stays while the table is open, so checking the entity type on Details doesn't take it away. Entity type is the one switch: saving a setting never changes it, the table picker filters by it, and an admin can take a misdetected table out by changing it. Changing it away from Event keeps the table's event settings, so changing it back restores them.
 
-**Product analytics.** The `columns.*` settings are the shared definitions, with their defaults read from the table's computed settings. Changing one in an analysis overrides it for that analysis only, and doesn't change the table.
+**Product analytics.** An analysis's computed settings include the table's, read from the table: their definitions have no widget and never accept a stored value. So downstream code reads `settings["columns.person"]` like any other setting, and nothing in an analysis can change it.
 
-- **Event table settings.** A button below the advanced settings, which stays put while they scroll, opens a modal with the table's settings, in the same sections as Data Studio. It explains that they come from the table and that changes only apply to this analysis. An overridden column role has a way back to the table's value; pageviews and path cleaning don't yet. Someone who can edit the table gets a link to Data Studio's Events tab; anyone else is told to ask an admin.
-- **Columns one analysis needs.** The event time and person are required by every analysis, so a table without them isn't set up. Others are required by one analysis, which asks for them like its other settings: Paths needs an event name or a URL path to name its steps, and names them by the pageviews setting (see below). Its message opens the event table settings rather than the setup panel, and the table isn't flagged in Data Studio, since other analyses can use it.
-- **Missing roles.** While the table has no event time or person column, the chart area says the table isn't set up yet, instead of running a query. It offers Data Studio to someone who can edit the table, and picking columns for this analysis to anyone.
+- **Picking a table.** The table picker lists only tables that are set up, and searches only them. The list endpoint returns no fields, so a role's column is assumed to still exist; if it doesn't, the analysis says the table isn't set up. "Browse all" opens the full data picker. Someone who can open Data Studio can pick any table there, to set it up. For anyone else, tables that aren't set up are disabled, with a tooltip that says to ask an admin. Data analysts can open Data Studio but may lack metadata permission on a table; checking that per table would mean a slow request for every table, so their setup screen tells them to ask an admin instead. The data picker leaves out the root and personal collections, which can't hold tables, and keeps the library, which holds published ones.
+- **Missing roles.** A table is set up by the same test everywhere: the picker's, which includes the entity type. While the table isn't an event table, or has no event time or person column, the chart area says the table isn't set up yet, instead of running a query. It links someone who can edit the table to Data Studio's Events tab, and tells anyone else to ask an admin.
+- **Columns one analysis needs.** Others are required by one analysis: Paths needs an event name or a URL path to name its steps, and names them by the pageviews setting (see below). It asks for them the same way, with Data Studio or an admin, and the table isn't flagged in Data Studio, since other analyses can use it.
+- **ClickHouse only.** The prototype's SQL is ClickHouse's. On a table in another database, once it's set up, the chart area says so in place of the chart, and no query runs. Setting up the table still works, so it can be tried anywhere.
 
 ## Later
 
 - **More table settings.** The first-seen column is per table too. It joins with the same pattern, as another definition.
 - **Change history.** Table settings changes aren't logged anywhere, so a mistake can't be looked up or undone after the toast.
 - **Roles as expressions.** See the gaps above, and [Roles as expressions](#roles-as-expressions).
-- **Who can write.** Non-admins on OSS would need a new, lower permission. Changing a table's roles changes every analysis on it that doesn't override them, which is why it stays table metadata permission for now.
-- **Sparse settings.** Analyses only store what the user changed, so they pick up the table's roles when an admin changes them. Whether they should is open. See "Sparse settings" in [post-prototype.md](post-prototype.md#sparse-settings).
+- **Who can write.** Non-admins on OSS would need a new, lower permission. Changing a table's settings changes every analysis on it, which is why it stays table metadata permission for now.
+- **Following the table.** Every analysis follows its table's settings, and none can opt out. Whether a saved analysis should keep the settings it was saved with is open. See "Sparse settings" in [post-prototype.md](post-prototype.md#sparse-settings).
 
 ## Pageviews and path cleaning
 

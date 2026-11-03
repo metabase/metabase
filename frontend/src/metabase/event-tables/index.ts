@@ -24,11 +24,12 @@ export {
   EVENT_TABLE_SETTINGS,
   type EventTableContext,
   type EventTableSection,
+  type EventTableSettingWidget,
   type EventTableSettings,
   getEventTableSettings,
   getEventTableSections,
   getMissingColumnRoles,
-  isColumnRoleKey,
+  isEventTableSetUp,
 } from "./event-table-settings";
 export {
   computeSettings,
@@ -38,7 +39,6 @@ export {
 export type {
   SettingDefinition,
   SettingDefinitions,
-  SettingGroup,
   SettingKey,
   SettingSection,
   SettingWidget,

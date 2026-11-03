@@ -1,11 +1,5 @@
 import { getColumnIcon } from "metabase/common/utils/columns";
-import {
-  type ColumnRoles,
-  type StoredSettings,
-  getEventTableSettings,
-  isColumnIn,
-  isColumnInTable,
-} from "metabase/event-tables";
+import { type ColumnRoles, isColumnIn } from "metabase/event-tables";
 import * as Lib from "metabase-lib";
 import {
   isBoolean,
@@ -15,24 +9,9 @@ import {
   isPK,
   isString,
 } from "metabase-lib/v1/types/utils/isa";
-import type { Field, Table } from "metabase-types/api";
+import type { Field } from "metabase-types/api";
 
 import type { AnalysisContext } from "./types";
-
-/**
- * The person column before the settings are computed: the stored one when
- * the table has it, else the default. Lets the users table load before the
- * settings that read it.
- */
-export const getPersonColumn = (
-  table: Table | undefined,
-  stored: StoredSettings,
-): string | null => {
-  const value = stored["columns.person"];
-  return typeof value === "string" && isColumnInTable(table, value)
-    ? value
-    : getEventTableSettings(table)["columns.person"];
-};
 
 /** A column that describes a person rather than an event. */
 const isUserProperty = (field: Field): boolean =>

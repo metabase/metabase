@@ -219,7 +219,7 @@ const PaletteSection = ({
     const { error } = await updateSegment({
       id: segment.id,
       archived: true,
-      revision_message: t`Removed from event analysis`,
+      revision_message: t`Removed from product analysis`,
     });
     sendToast(
       error

@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { t } from "ttag";
 
 import { getObjectEntries } from "metabase/utils/objects";
@@ -15,6 +16,7 @@ import {
   isColumnInTable,
   isDateColumnInTable,
 } from "./column-roles";
+import { isEventTable } from "./event-schemas";
 import { EVERY_EVENT, type PageviewRule, isPageviewRule } from "./pageviews";
 import {
   type PathCleaningRule,
@@ -25,8 +27,8 @@ import { computeSettings } from "./settings/compute";
 import type {
   SettingDefinition,
   SettingDefinitions,
-  SettingGroup,
   SettingWidget,
+  SettingWidgetProps,
 } from "./settings/types";
 import { withWidgetProps } from "./settings/with-widget-props";
 
@@ -43,25 +45,33 @@ export type EventTableSettings = Record<ColumnRoleKey, string | null> & {
   path_cleaning: PathCleaningRule[];
 };
 
-export const isColumnRoleKey = (key: string): key is ColumnRoleKey =>
-  key.startsWith("columns.");
+/** The sections Data Studio shows the settings in. */
+type EventTableSectionId = "required_columns" | "optional_columns" | "pages";
+
+type EventTableSettingDefinition<K extends keyof EventTableSettings> =
+  SettingDefinition<
+    EventTableContext,
+    EventTableSettings,
+    K,
+    object,
+    EventTableSectionId
+  >;
 
 type ColumnRoleOptions = {
   getTitle: () => string;
-  group: SettingGroup;
+  section: EventTableSectionId;
   isDate?: boolean;
 };
 
 const columnRoleSetting = (
   key: ColumnRoleKey,
-  { getTitle, group, isDate = false }: ColumnRoleOptions,
-): SettingDefinition<EventTableContext, EventTableSettings, ColumnRoleKey> => {
+  { getTitle, section, isDate = false }: ColumnRoleOptions,
+): EventTableSettingDefinition<ColumnRoleKey> => {
   const isValidColumn = isDate ? isDateColumnInTable : isColumnInTable;
-  const isRequired = group === "required_columns";
+  const isRequired = section === "required_columns";
   return {
     getTitle,
-    group,
-    getSection: () => "advanced",
+    getSection: () => section,
     widget: ColumnPickerWidget,
     // Sync's detection is the default, when the column it picked still fits.
     getDefault: ({ table }) => {
@@ -96,45 +106,47 @@ const isPageviewsValid = (
   return value === null || isPageviewRule(value, table);
 };
 
-const pageviewsSetting: SettingDefinition<
-  EventTableContext,
-  EventTableSettings,
-  "pageviews"
-> = withWidgetProps({
-  getTitle: () => t`How do you define a pageview?`,
-  group: "pages",
-  getSection: () => "advanced",
-  widget: PageviewsWidget,
-  getDefault: ({ table }, settings) => {
-    const detected = table?.detected_event_settings?.settings.pageviews;
-    if (isPageviewsValid(detected, table, settings)) {
-      return detected;
-    }
-    // None, unless there's no event name to name the rest by.
-    return isPageviewsValid(null, table, settings) ? null : EVERY_EVENT;
-  },
-  isValid: (value, { table }, settings) =>
-    isPageviewsValid(value, table, settings),
-  getHidden: (_context, settings) =>
-    settings["columns.url_path"] === null ||
-    settings["columns.event_name"] === null,
-  getProps: ({ table }, settings) => ({
-    table,
-    eventNameColumn: settings["columns.event_name"],
-  }),
-  readDependencies: ["columns.url_path", "columns.event_name"],
-});
+type PageviewsWidgetExtraProps = Omit<
+  ComponentProps<typeof PageviewsWidget>,
+  keyof SettingWidgetProps<PageviewRule | null>
+>;
 
-const pathCleaningSetting: SettingDefinition<
-  EventTableContext,
-  EventTableSettings,
-  "path_cleaning"
-> = {
+const pageviewsSetting: EventTableSettingDefinition<"pageviews"> =
+  withWidgetProps<
+    EventTableContext,
+    EventTableSettings,
+    "pageviews",
+    PageviewsWidgetExtraProps,
+    EventTableSectionId
+  >({
+    getTitle: () => t`How do you define a pageview?`,
+    getSection: () => "pages",
+    widget: PageviewsWidget,
+    getDefault: ({ table }, settings) => {
+      const detected = table?.detected_event_settings?.settings.pageviews;
+      if (isPageviewsValid(detected, table, settings)) {
+        return detected;
+      }
+      // None, unless there's no event name to name the rest by.
+      return isPageviewsValid(null, table, settings) ? null : EVERY_EVENT;
+    },
+    isValid: (value, { table }, settings) =>
+      isPageviewsValid(value, table, settings),
+    getHidden: (_context, settings) =>
+      settings["columns.url_path"] === null ||
+      settings["columns.event_name"] === null,
+    getProps: ({ table }, settings) => ({
+      table,
+      eventNameColumn: settings["columns.event_name"],
+    }),
+    readDependencies: ["columns.url_path", "columns.event_name"],
+  });
+
+const pathCleaningSetting: EventTableSettingDefinition<"path_cleaning"> = {
   getTitle: () => t`Path cleaning`,
   getHint: () =>
     t`Each rule replaces every match of its regular expression in the URL path, in order.`,
-  group: "pages",
-  getSection: () => "advanced",
+  getSection: () => "pages",
   widget: PathCleaningWidget,
   getDefault: (_context, settings) =>
     settings["columns.url_path"] != null ? getDefaultPathCleaningRules() : [],
@@ -145,22 +157,22 @@ const pathCleaningSetting: SettingDefinition<
 
 /**
  * Settings that belong to an event table rather than to one analysis. Data
- * Studio edits them on the table; analyses default to them and can override
- * them.
+ * Studio edits them; analyses read them.
  */
 export const EVENT_TABLE_SETTINGS: SettingDefinitions<
   EventTableContext,
-  EventTableSettings
+  EventTableSettings,
+  EventTableSectionId
 > = {
   "columns.timestamp": columnRoleSetting("columns.timestamp", {
     getTitle: () => t`Event time column`,
-    group: "required_columns",
+    section: "required_columns",
     isDate: true,
   }),
   "columns.person": {
     ...columnRoleSetting("columns.person", {
       getTitle: () => t`Person column`,
-      group: "required_columns",
+      section: "required_columns",
     }),
     widget: PersonColumnWidget,
     getProps: ({ table }) => ({
@@ -171,27 +183,30 @@ export const EVENT_TABLE_SETTINGS: SettingDefinitions<
   },
   "columns.event_name": columnRoleSetting("columns.event_name", {
     getTitle: () => t`Event name column`,
-    group: "optional_columns",
+    section: "optional_columns",
   }),
   "columns.session": columnRoleSetting("columns.session", {
     getTitle: () => t`Session column`,
-    group: "optional_columns",
+    section: "optional_columns",
   }),
   "columns.url_path": columnRoleSetting("columns.url_path", {
     getTitle: () => t`URL path column`,
-    group: "pages",
+    section: "pages",
   }),
   pageviews: pageviewsSetting,
   path_cleaning: pathCleaningSetting,
 };
 
-type EventTableGroup = {
+type EventTableSectionTitles = {
   getTitle: () => string;
   getDescription?: () => string;
 };
 
 /** In the order they're shown. */
-const EVENT_TABLE_GROUPS: Record<SettingGroup, EventTableGroup> = {
+const EVENT_TABLE_SECTIONS: Record<
+  EventTableSectionId,
+  EventTableSectionTitles
+> = {
   required_columns: { getTitle: () => t`Required` },
   optional_columns: { getTitle: () => t`Optional` },
   pages: {
@@ -201,26 +216,28 @@ const EVENT_TABLE_GROUPS: Record<SettingGroup, EventTableGroup> = {
   },
 };
 
+export type EventTableSettingWidget = SettingWidget<EventTableSectionId>;
+
 export type EventTableSection = {
-  id: SettingGroup;
+  id: EventTableSectionId;
   title: string;
   description: string | undefined;
-  widgets: SettingWidget[];
+  widgets: EventTableSettingWidget[];
 };
 
 /**
- * The event table settings' widgets, in the sections both of their editors
- * show. Sections without a widget are left out.
+ * The event table settings' widgets in Data Studio's sections. Sections
+ * without a widget are left out.
  */
 export const getEventTableSections = (
-  widgets: readonly SettingWidget[],
+  widgets: readonly EventTableSettingWidget[],
 ): EventTableSection[] =>
-  getObjectEntries(EVENT_TABLE_GROUPS)
-    .map(([id, group]) => ({
+  getObjectEntries(EVENT_TABLE_SECTIONS)
+    .map(([id, section]) => ({
       id,
-      title: group.getTitle(),
-      description: group.getDescription?.(),
-      widgets: widgets.filter((widget) => widget.group === id),
+      title: section.getTitle(),
+      description: section.getDescription?.(),
+      widgets: widgets.filter((widget) => widget.section === id),
     }))
     .filter((section) => section.widgets.length > 0);
 
@@ -235,3 +252,12 @@ export const getMissingColumnRoles = (
   settings: Pick<EventTableSettings, ColumnRoleKey>,
 ): ColumnRole[] =>
   REQUIRED_COLUMN_ROLES.filter((role) => settings[`columns.${role}`] === null);
+
+/**
+ * Whether product analysis can use the table: it's an event table, and every
+ * required role has a column. Without the table's fields, as in a table list,
+ * the roles' columns are assumed to exist.
+ */
+export const isEventTableSetUp = (table: Table): boolean =>
+  isEventTable(table) &&
+  getMissingColumnRoles(getEventTableSettings(table)).length === 0;

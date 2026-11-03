@@ -43,11 +43,11 @@ const getEventFilter = (
 ): Lib.ExpressionClause | Lib.FilterClause => {
   const eventQuery = readEventQuery(metadataProvider, event);
   if (eventQuery === null) {
-    throw new Error(t`The conditions for ${event.name} can't be read.`);
+    throw new Error(t`The conditions for “${event.name}” can't be read.`);
   }
   const [first, ...rest] = Lib.filters(eventQuery, STAGE);
   if (first === undefined) {
-    throw new Error(t`${event.name} has no conditions.`);
+    throw new Error(t`“${event.name}” has no conditions.`);
   }
   return rest.length === 0
     ? first
@@ -135,7 +135,7 @@ const applyFilters = (
     const columnName = columns[COLUMN_ROLE_FOR_GRAIN[cohort.grain]];
     if (columnName === null) {
       throw new Error(
-        t`Pick a column for “${cohort.label}” in Advanced settings.`,
+        t`“${cohort.label}” can't be applied, because this table has no session column.`,
       );
     }
     // An empty cohort matches nothing, rather than everything.
@@ -265,10 +265,10 @@ export const buildBaseQuery = (
 ): BuiltBaseQuery => {
   const tableMetadata = getTableMetadata(metadataProvider, tableId);
   if (columns.timestamp === null) {
-    throw new Error(t`Pick an event time column in Advanced settings.`);
+    throw new Error(t`This table has no event time column.`);
   }
   if (columns.person === null) {
-    throw new Error(t`Pick a person column in Advanced settings.`);
+    throw new Error(t`This table has no person column.`);
   }
 
   const hasLookback = lookbackDays > 0;

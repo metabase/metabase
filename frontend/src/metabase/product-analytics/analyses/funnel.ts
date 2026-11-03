@@ -173,8 +173,8 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
     isValid: (value) => isOneOf(ORDERINGS, value),
     getProps: () => ({
       options: [
-        { name: t`In order, no other actions in between`, value: "strict" },
-        { name: t`In order, other actions allowed in between`, value: "loose" },
+        { name: t`In order, no other events in between`, value: "strict" },
+        { name: t`In order, other events allowed in between`, value: "loose" },
         { name: t`In any order`, value: "any" },
       ],
     }),

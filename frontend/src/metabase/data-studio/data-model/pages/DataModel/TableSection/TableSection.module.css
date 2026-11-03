@@ -23,3 +23,11 @@
     flex-shrink: 0;
   }
 }
+
+/* Groups the event settings so one attribute disables them all. */
+.fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}

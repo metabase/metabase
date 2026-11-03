@@ -5,13 +5,13 @@ import {
   type StoredSettings,
   type UsersTableLink,
   computeSettings,
-  getMissingColumnRoles,
+  getEventTableSettings,
   getSettingWidgets,
   getUsersTableLink,
+  isEventTableSetUp,
 } from "metabase/event-tables";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
-import { getPersonColumn } from "./analyses/column-roles";
 import { getColumnRoles } from "./analyses/common-settings";
 import { getAnalysisConfig } from "./analyses/config";
 import type {
@@ -26,6 +26,9 @@ import type { AnalysisKind } from "./spec/types";
 import { getLookbackDays } from "./sql/analyses/lookback";
 import { useAnalysisQuery } from "./use-analysis-query";
 import { useStableValue } from "./use-stable-value";
+
+// PROTOTYPE: the analyses' SQL is ClickHouse's. Lift this once it's MBQL.
+const SUPPORTED_ENGINE = "clickhouse";
 
 type UseAnalysisArgs<K extends AnalysisKind> = {
   kind: K;
@@ -42,11 +45,11 @@ type UseAnalysisArgs<K extends AnalysisKind> = {
  */
 const useUsersTable = (
   table: Table | undefined,
-  stored: StoredSettings,
 ): { link: UsersTableLink | undefined; usersTable: UsersTable | undefined } => {
   const link = useMemo(
-    () => getUsersTableLink(table, getPersonColumn(table, stored)),
-    [table, stored],
+    () =>
+      getUsersTableLink(table, getEventTableSettings(table)["columns.person"]),
+    [table],
   );
   const metadata = useGetTableQueryMetadataQuery(
     link !== undefined ? { id: link.tableId } : skipToken,
@@ -79,7 +82,7 @@ export const useAnalysis = <K extends AnalysisKind>({
     tableId !== undefined ? { id: tableId } : skipToken,
   );
   const table = tableMetadata.currentData;
-  const { link: usersTableLink, usersTable } = useUsersTable(table, stored);
+  const { link: usersTableLink, usersTable } = useUsersTable(table);
 
   const context = useMemo<AnalysisContext>(
     () => ({ table, usersTable }),
@@ -115,14 +118,17 @@ export const useAnalysis = <K extends AnalysisKind>({
     [config, widgetContext, stored, computed, handleChangeSettings],
   );
 
-  // No analysis runs without these, so they're asked for before anything else.
-  // Until the table loads, nothing is known to be missing.
-  const missingColumnRoles =
-    table !== undefined ? getMissingColumnRoles(computed) : [];
+  // The same test as the table picker's, so a table that's left the picker,
+  // like one that's no longer an event table, asks to be set up again. Until
+  // the table loads, it isn't known not to be set up.
+  const isTableSetUp = table === undefined || isEventTableSetUp(table);
+  // Until the table loads, its database isn't known to be unsupported.
+  const isDatabaseSupported =
+    table === undefined || table.db?.engine === SUPPORTED_ENGINE;
   const flags = createFlagAllocator();
   const specResult = config.toSpec(computed, flags);
   const spec =
-    specResult.status === "ready" && missingColumnRoles.length === 0
+    specResult.status === "ready" && isTableSetUp && isDatabaseSupported
       ? specResult.spec
       : undefined;
   const requiredPeopleSegments = computed.filters.people.map(
@@ -161,7 +167,8 @@ export const useAnalysis = <K extends AnalysisKind>({
     widgets,
     spec,
     missing,
-    missingColumnRoles,
+    isTableSetUp,
+    isDatabaseSupported,
     display: config.getDisplay(computed),
     question: config.getQuestion?.(computed) ?? config.question,
     vizSettings: config.getVizSettings(computed, colors),

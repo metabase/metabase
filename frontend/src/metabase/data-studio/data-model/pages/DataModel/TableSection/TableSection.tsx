@@ -4,11 +4,7 @@ import { t } from "ttag";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
-import {
-  getEventTableSettings,
-  getMissingColumnRoles,
-  isEventTable,
-} from "metabase/event-tables";
+import { isEventTable, isEventTableSetUp } from "metabase/event-tables";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
@@ -82,12 +78,14 @@ const TableSectionBase = ({
   const [modalType, setModalType] = useState<TableModalType>();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
-  // Also when a link asks for the tab: setting up a table's events is what
-  // makes it an event table.
-  const hasEventSettings = isEventTable(table) || activeTab === "events";
-  const hasMissingColumnRoles =
-    hasEventSettings &&
-    getMissingColumnRoles(getEventTableSettings(table)).length > 0;
+  // A link can open the tab on a table that isn't an event table yet, to set
+  // it up. The tab stays while the table is open, so checking the entity type
+  // on Details doesn't take it away.
+  const [wasOpenedOnEvents] = useState(activeTab === "events");
+  const hasEventSettings = isEventTable(table) || wasOpenedOnEvents;
+  // Until product analysis can use the table: it needs the Event entity type
+  // as well as its required columns.
+  const isMissingEventSetup = hasEventSettings && !isEventTableSetUp(table);
   const readOnly = !table.can_write;
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
@@ -162,7 +160,7 @@ const TableSectionBase = ({
               <Tabs.Tab
                 value="events"
                 rightSection={
-                  hasMissingColumnRoles && (
+                  isMissingEventSetup && (
                     <Icon name="warning" c="feedback-warning" />
                   )
                 }
@@ -316,7 +314,7 @@ const TableSectionBase = ({
 
           {hasEventSettings && (
             <Tabs.Panel value="events">
-              <EventSettings table={table} />
+              <EventSettings table={table} readOnly={readOnly} />
             </Tabs.Panel>
           )}
         </Tabs>

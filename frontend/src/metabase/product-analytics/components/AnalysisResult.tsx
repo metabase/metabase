@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useRef } from "react";
+import { type ReactNode, useRef } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
@@ -88,11 +88,14 @@ type AnalysisResultProps = {
   /** Settings still to fill in. When non-empty, this replaces the result. */
   missing: MissingSetting[];
   /** Asks for the table's setup first, when it lacks roles every analysis needs. */
-  tableSetup?: { dataStudioUrl: string | undefined };
+  isTableSetUp: boolean;
+  /** Data Studio's event settings for the table, for someone who can edit them. */
+  tableSettingsUrl: string | undefined;
+  /** False while the table's database can't run the prototype's SQL. */
+  isDatabaseSupported: boolean;
   setupLabel: string;
   /** Omit when the setup panel is already open. */
   onOpenSetup?: () => void;
-  onOpenTableSettings: () => void;
   clickActionsMode: ClickActionsMode;
   /** Shown in place of the chart, once there's a result. */
   placeholder?: string;
@@ -108,10 +111,11 @@ export const AnalysisResult = ({
   isLoading,
   error,
   missing,
-  tableSetup,
+  isTableSetUp,
+  tableSettingsUrl,
+  isDatabaseSupported,
   setupLabel,
   onOpenSetup,
-  onOpenTableSettings,
   clickActionsMode,
   placeholder,
   isDisplayOpen,
@@ -120,7 +124,9 @@ export const AnalysisResult = ({
 }: AnalysisResultProps) => {
   // Errors and loading come first: settings can't be finished without a table.
   const isIncomplete =
-    (missing.length > 0 || tableSetup !== undefined) && !error && !isLoading;
+    (missing.length > 0 || !isTableSetUp) && !error && !isLoading;
+  const isUnsupported =
+    !isIncomplete && !isDatabaseSupported && !error && !isLoading;
   const isShowingVisualization =
     !isIncomplete && !isLoading && !error && rawSeries !== null;
   // A rerun empties `dataset`, so the last chart shown stays up under the
@@ -158,29 +164,31 @@ export const AnalysisResult = ({
           </Tooltip>
         </Group>
         <Stack gap="sm" flex={1} mih={0}>
-          {isIncomplete && tableSetup !== undefined && (
-            <TableSetup
-              dataStudioUrl={tableSetup.dataStudioUrl}
-              onOpenTableSettings={onOpenTableSettings}
-            />
+          {isIncomplete && !isTableSetUp && (
+            <TableSetup tableSettingsUrl={tableSettingsUrl} />
           )}
-          {isIncomplete && tableSetup === undefined && (
+          {isIncomplete && isTableSetUp && (
             <IncompleteSettings
               missing={missing}
               setupLabel={setupLabel}
+              tableSettingsUrl={tableSettingsUrl}
               onOpenSetup={onOpenSetup}
-              onOpenTableSettings={onOpenTableSettings}
             />
           )}
+          {isUnsupported && <UnsupportedDatabase />}
           {!isIncomplete && error && <Alert color="error">{error}</Alert>}
           {!isIncomplete && isLoading && staleSeries === null && (
             <Flex direction="column" flex={1} mih={0}>
               {getChartSkeletonImage(display)}
             </Flex>
           )}
-          {!isIncomplete && !isLoading && !error && rawSeries === null && (
-            <Text c="text-secondary">{t`Results will appear here.`}</Text>
-          )}
+          {!isIncomplete &&
+            !isUnsupported &&
+            !isLoading &&
+            !error &&
+            rawSeries === null && (
+              <Text c="text-secondary">{t`Results will appear here.`}</Text>
+            )}
           {shownSeries !== null && placeholder !== undefined && (
             <Stack align="center" justify="center" flex={1} ta="center">
               <Text c="text-secondary" maw="32rem">
@@ -211,63 +219,102 @@ export const AnalysisResult = ({
 type IncompleteSettingsProps = {
   missing: MissingSetting[];
   setupLabel: string;
+  tableSettingsUrl: string | undefined;
   onOpenSetup?: () => void;
-  onOpenTableSettings: () => void;
 };
 
+/** Settings the table lacks are fixed in Data Studio; the analysis's own, in its setup panel. */
 const IncompleteSettings = ({
   missing,
   setupLabel,
+  tableSettingsUrl,
   onOpenSetup,
-  onOpenTableSettings,
-}: IncompleteSettingsProps) => (
-  <Stack align="center" justify="center" gap="sm" flex={1} ta="center">
-    <Title order={4} c="text-secondary">
-      {t`Finish setting up this analysis`}
-    </Title>
-    {missing.map(({ key, message }) => (
-      <Text key={key} c="text-secondary">
-        {message}
-      </Text>
-    ))}
-    {missing.some((setting) => setting.isTableSetting) ? (
-      <Button variant="filled" onClick={onOpenTableSettings}>
-        {t`Event table settings`}
-      </Button>
-    ) : (
-      onOpenSetup && (
-        <Button variant="filled" onClick={onOpenSetup}>
-          {setupLabel}
-        </Button>
-      )
-    )}
-  </Stack>
-);
-
-type TableSetupProps = {
-  /** Data Studio's settings for the table, for someone who can edit it. */
-  dataStudioUrl: string | undefined;
-  onOpenTableSettings: () => void;
+}: IncompleteSettingsProps) => {
+  const isMissingTableSetting = missing.some(
+    (setting) => setting.isTableSetting,
+  );
+  return (
+    <ResultMessage
+      title={
+        isMissingTableSetting
+          ? t`This table needs additional setup for this analysis`
+          : t`Finish setting up this analysis`
+      }
+    >
+      {missing.map(({ key, message }) => (
+        <Text key={key} c="text-secondary">
+          {message}
+        </Text>
+      ))}
+      {isMissingTableSetting ? (
+        <TableSettingsAction
+          tableSettingsUrl={tableSettingsUrl}
+          linkLabel={t`Edit in Data Studio`}
+          askAdminMessage={t`Ask an admin to update this table's event settings in Data Studio.`}
+        />
+      ) : (
+        onOpenSetup && (
+          <Button variant="filled" onClick={onOpenSetup}>
+            {setupLabel}
+          </Button>
+        )
+      )}
+    </ResultMessage>
+  );
 };
 
-const TableSetup = ({
-  dataStudioUrl,
-  onOpenTableSettings,
-}: TableSetupProps) => (
+type TableSetupProps = {
+  tableSettingsUrl: string | undefined;
+};
+
+const TableSetup = ({ tableSettingsUrl }: TableSetupProps) => (
+  <ResultMessage title={t`This table isn't set up for product analysis yet`}>
+    <TableSettingsAction
+      tableSettingsUrl={tableSettingsUrl}
+      linkLabel={t`Set up in Data Studio`}
+      askAdminMessage={t`Ask an admin to set up this table in Data Studio.`}
+    />
+  </ResultMessage>
+);
+
+type TableSettingsActionProps = {
+  tableSettingsUrl: string | undefined;
+  linkLabel: string;
+  askAdminMessage: string;
+};
+
+/** A table's settings are only set in Data Studio, by someone who can edit the table. */
+const TableSettingsAction = ({
+  tableSettingsUrl,
+  linkLabel,
+  askAdminMessage,
+}: TableSettingsActionProps) =>
+  tableSettingsUrl !== undefined ? (
+    <Button variant="filled" component={ForwardRefLink} to={tableSettingsUrl}>
+      {linkLabel}
+    </Button>
+  ) : (
+    <Text c="text-secondary">{askAdminMessage}</Text>
+  );
+
+const UnsupportedDatabase = () => (
+  <ResultMessage title={t`This prototype only runs on ClickHouse`}>
+    <Text c="text-secondary">
+      {t`Its analyses are written in ClickHouse SQL, so they can't run on this table's database yet.`}
+    </Text>
+  </ResultMessage>
+);
+
+type ResultMessageProps = {
+  title: string;
+  children: ReactNode;
+};
+
+const ResultMessage = ({ title, children }: ResultMessageProps) => (
   <Stack align="center" justify="center" flex={1} ta="center">
     <Title order={4} c="text-secondary">
-      {t`This table isn't set up for event analysis yet`}
+      {title}
     </Title>
-    <Group justify="center" gap="sm">
-      {dataStudioUrl !== undefined ? (
-        <Button variant="filled" component={ForwardRefLink} to={dataStudioUrl}>
-          {t`Set up in Data Studio`}
-        </Button>
-      ) : (
-        <Button variant="filled" onClick={onOpenTableSettings}>
-          {t`Pick columns for this analysis`}
-        </Button>
-      )}
-    </Group>
+    {children}
   </Stack>
 );

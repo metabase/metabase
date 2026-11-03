@@ -3,9 +3,9 @@ import { t } from "ttag";
 import {
   type ColumnRoleKey,
   type ColumnRoles,
-  EVENT_TABLE_SETTINGS,
   type EventTableSettings,
   type SettingDefinition,
+  type SettingSection,
   getEventTableSettings,
   isColumnInTable,
   withWidgetProps,
@@ -39,56 +39,16 @@ export const getColumnRoles = (settings: EventTableSettings): ColumnRoles => ({
 });
 
 /**
- * The table's value for a setting. When the analysis overrides a setting it
- * depends on, and it no longer fits, the setting's own default.
+ * A table setting, as the table has it. Tables' settings are only set in Data
+ * Studio, so a value an analysis stored for one, from before they were, is
+ * never valid.
  */
-const getTableDefault = <K extends keyof EventTableSettings>(
-  key: K,
-  context: AnalysisContext,
-  settings: Partial<CommonSettings>,
-): EventTableSettings[K] => {
-  const definition = EVENT_TABLE_SETTINGS[key];
-  const tableValue = getEventTableSettings(context.table)[key];
-  return definition.isValid(tableValue, context, settings)
-    ? tableValue
-    : definition.getDefault(context, settings);
-};
-
-/**
- * A table setting, defaulting to the table's value: an analysis only keeps
- * what it overrides, so it follows later changes to the table.
- */
-const columnRoleSetting = (
-  key: ColumnRoleKey,
-): SettingDefinition<AnalysisContext, CommonSettings, ColumnRoleKey> => ({
-  ...EVENT_TABLE_SETTINGS[key],
-  getDefault: (context, settings) => getTableDefault(key, context, settings),
+const tableSetting = <V>(read: (settings: EventTableSettings) => V) => ({
+  getSection: (): SettingSection => "advanced",
+  getDefault: ({ table }: AnalysisContext): V =>
+    read(getEventTableSettings(table)),
+  isValid: () => false,
 });
-
-const pageviewsSetting: SettingDefinition<
-  AnalysisContext,
-  CommonSettings,
-  "pageviews"
-> = {
-  ...EVENT_TABLE_SETTINGS.pageviews,
-  getDefault: (context, settings) =>
-    getTableDefault("pageviews", context, settings),
-};
-
-const pathCleaningSetting: SettingDefinition<
-  AnalysisContext,
-  CommonSettings,
-  "path_cleaning"
-> = {
-  ...EVENT_TABLE_SETTINGS.path_cleaning,
-  // Without a URL path, the table has no rules because it has nothing to
-  // clean, not because someone chose none, so a URL path picked here gets
-  // the default rules.
-  getDefault: (context, settings) =>
-    getEventTableSettings(context.table)["columns.url_path"] !== null
-      ? getTableDefault("path_cleaning", context, settings)
-      : EVENT_TABLE_SETTINGS.path_cleaning.getDefault(context, settings),
-};
 
 const COLUMN_FOR_GRAIN: Record<ActorGrain, ColumnRoleKey> = {
   person: "columns.person",
@@ -152,7 +112,7 @@ const isBreakoutValid = (context: AnalysisContext, value: unknown) =>
     : context.usersTable !== undefined);
 
 /**
- * Settings every analysis has: the toolbar controls and the column roles.
+ * Settings every analysis has: the toolbar controls and the table's settings.
  * Pass `granularity: null` for analyses without a time grain, and
  * `breakout: true` for analyses that can split their result by a property.
  */
@@ -218,11 +178,15 @@ export const commonSettings = ({
       usersTable: context.usersTable,
     }),
   }),
-  "columns.timestamp": columnRoleSetting("columns.timestamp"),
-  "columns.person": columnRoleSetting("columns.person"),
-  "columns.event_name": columnRoleSetting("columns.event_name"),
-  "columns.session": columnRoleSetting("columns.session"),
-  "columns.url_path": columnRoleSetting("columns.url_path"),
-  pageviews: pageviewsSetting,
-  path_cleaning: pathCleaningSetting,
+  "columns.timestamp": tableSetting(
+    (settings) => settings["columns.timestamp"],
+  ),
+  "columns.person": tableSetting((settings) => settings["columns.person"]),
+  "columns.event_name": tableSetting(
+    (settings) => settings["columns.event_name"],
+  ),
+  "columns.session": tableSetting((settings) => settings["columns.session"]),
+  "columns.url_path": tableSetting((settings) => settings["columns.url_path"]),
+  pageviews: tableSetting((settings) => settings.pageviews),
+  path_cleaning: tableSetting((settings) => settings.path_cleaning),
 });

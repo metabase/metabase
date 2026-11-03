@@ -2,16 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import type { SettingWidget } from "metabase/event-tables";
-import {
-  Box,
-  Button,
-  Divider,
-  Group,
-  Icon,
-  Paper,
-  Tabs,
-  Title,
-} from "metabase/ui";
+import { Box, Divider, Group, Paper, Tabs, Title } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
 import type { AnalysisPanel } from "../use-analysis-state";
@@ -36,8 +27,6 @@ type SetupPanelProps = {
   widgets: SettingWidget[];
   /** The toolbar button that closes this panel is hovered. */
   isHinted?: boolean;
-  /** Opens the table's settings, from below the advanced settings. */
-  onOpenTableSettings?: () => void;
   onClose: () => void;
 };
 
@@ -51,13 +40,10 @@ export const SetupPanel = ({
   setupLabel,
   widgets,
   isHinted = false,
-  onOpenTableSettings,
   onClose,
 }: SetupPanelProps) => {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
-  const hasAdvanced =
-    onOpenTableSettings !== undefined ||
-    getSectionWidgets(widgets, "advanced").length > 0;
+  const hasAdvanced = getSectionWidgets(widgets, "advanced").length > 0;
   const activeTab = hasAdvanced ? tab : "setup";
 
   return (
@@ -98,28 +84,13 @@ export const SetupPanel = ({
         <Box className={S.scroll} px="xl" pt="xl">
           <SectionWidgets widgets={widgets} section={activeTab} />
         </Box>
-        {activeTab === "advanced" && onOpenTableSettings && (
-          <Box className={S.footer} px="xl" py="md">
-            <Button
-              fullWidth
-              leftSection={<Icon name="table2" />}
-              onClick={onOpenTableSettings}
-            >{t`Event table settings`}</Button>
-          </Box>
-        )}
       </Tabs>
     </Paper>
   );
 };
 
-/** The table's settings show in their own modal, not in the panel. */
 const getSectionWidgets = (widgets: SettingWidget[], section: AnalysisPanel) =>
-  widgets.filter(
-    (widget) =>
-      widget.section === section &&
-      !widget.hidden &&
-      widget.group === undefined,
-  );
+  widgets.filter((widget) => widget.section === section && !widget.hidden);
 
 type SectionWidgetsProps = {
   widgets: SettingWidget[];

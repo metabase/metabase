@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetTableQuery, useListTablesQuery } from "metabase/api";
 import { DataPickerModal } from "metabase/common/components/Pickers";
-import { MiniPickerSearchResults } from "metabase/common/components/Pickers/MiniPicker";
-import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
-import { EVENT_TABLE_ENTITY_TYPE } from "metabase/event-tables";
+import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
+import {
+  EVENT_TABLE_ENTITY_TYPE,
+  isEventTableSetUp,
+} from "metabase/event-tables";
+import { useSelector } from "metabase/redux";
 import {
   Box,
   Button,
@@ -21,8 +24,7 @@ import { isConcreteTableId } from "metabase-types/api";
 import type { ConcreteTableId, Table, TableId } from "metabase-types/api";
 
 import S from "./EventTablePicker.module.css";
-
-const SEARCH_MODELS: MiniPickerPickableItem["model"][] = ["table"];
+import { getEventTablePickerOptions } from "./event-table-picker-options";
 
 const ITEM_CLASS_NAMES = {
   itemLabel: S.itemLabel,
@@ -32,6 +34,13 @@ const ITEM_CLASS_NAMES = {
 const getTableLocation = (table: Table) =>
   table.schema ? `${table.db?.name} (${table.schema})` : table.db?.name;
 
+const matchesSearch = (table: Table, searchQuery: string) => {
+  const query = searchQuery.trim().toLowerCase();
+  return [table.display_name, table.name].some((name) =>
+    name.toLowerCase().includes(query),
+  );
+};
+
 type EventTablePickerProps = {
   tableId: ConcreteTableId | undefined;
   /** Opens the picker on mount, for a page that has no table yet. */
@@ -40,9 +49,10 @@ type EventTablePickerProps = {
 };
 
 /**
- * Offers the tables Metabase knows hold events first; typing searches every
- * table, like the query builder's data picker, and "Browse all" opens the
- * full data picker.
+ * Offers the tables that are set up for product analysis, and searches them.
+ * "Browse all" opens the full data picker, where someone who can set up a
+ * table in Data Studio can pick any table, and anyone else only the set up
+ * ones.
  */
 export const EventTablePicker = ({
   tableId,
@@ -56,10 +66,28 @@ export const EventTablePicker = ({
     tableId !== undefined ? { id: tableId } : skipToken,
   );
   const tables = useListTablesQuery({ "entity-type": EVENT_TABLE_ENTITY_TYPE });
-  const eventTables = (tables.data ?? []).filter((item) =>
-    isConcreteTableId(item.id),
+  const setUpTables = useMemo(
+    () =>
+      (tables.data ?? []).filter(
+        (item) => isConcreteTableId(item.id) && isEventTableSetUp(item),
+      ),
+    [tables.data],
   );
   const isSearching = searchQuery.trim().length > 0;
+  const shownTables = isSearching
+    ? setUpTables.filter((item) => matchesSearch(item, searchQuery))
+    : setUpTables;
+  // Analysts may lack metadata permissions on some tables. Checking each
+  // table costs a slow request, so their setup screen says to ask an admin.
+  const canSetUpTables = useSelector(canAccessDataStudio);
+  const pickerOptions = useMemo(
+    () =>
+      getEventTablePickerOptions({
+        setUpTableIds: new Set(setUpTables.map((item) => item.id)),
+        canSetUpTables,
+      }),
+    [setUpTables, canSetUpTables],
+  );
 
   const handleOpenedChange = (opened: boolean) => {
     setIsOpened(opened);
@@ -75,12 +103,6 @@ export const EventTablePicker = ({
     setIsOpened(false);
     setIsBrowsing(false);
     setSearchQuery("");
-  };
-
-  const handleSearchResultChange = (item: MiniPickerPickableItem) => {
-    if (item.model === "table") {
-      handleChange(item.id);
-    }
   };
 
   const label = table.data?.display_name ?? t`Pick a table`;
@@ -129,39 +151,31 @@ export const EventTablePicker = ({
               pb="sm"
             />
             <Menu.Divider mx="sm" />
-            {isSearching ? (
-              <MiniPickerSearchResults
-                searchQuery={searchQuery}
-                models={SEARCH_MODELS}
-                onChange={handleSearchResultChange}
-              />
-            ) : (
-              <Box px="sm" style={{ overflowY: "auto" }}>
-                <Menu.Label>{t`Event tables`}</Menu.Label>
-                {tables.isLoading && <Loader size="xs" mx="md" my="sm" />}
-                {!tables.isLoading && eventTables.length === 0 && (
-                  <Text size="sm" c="text-secondary" px="md" py="sm">
-                    {t`No tables are marked as event tables yet.`}
-                  </Text>
-                )}
-                {eventTables.map((item) => (
-                  <Menu.Item
-                    key={item.id}
-                    leftSection={<Icon name="table" />}
-                    rightSection={
-                      <Text size="sm" c="text-secondary" miw={0}>
-                        <Ellipsified>{getTableLocation(item)}</Ellipsified>
-                      </Text>
-                    }
-                    fw={item.id === tableId ? "bold" : undefined}
-                    classNames={ITEM_CLASS_NAMES}
-                    onClick={() => handleChange(item.id)}
-                  >
-                    <Ellipsified>{item.display_name}</Ellipsified>
-                  </Menu.Item>
-                ))}
-              </Box>
-            )}
+            <Box px="sm" style={{ overflowY: "auto" }}>
+              <Menu.Label>{t`Event tables`}</Menu.Label>
+              {tables.isLoading && <Loader size="xs" mx="md" my="sm" />}
+              {!tables.isLoading && shownTables.length === 0 && (
+                <Text size="sm" c="text-secondary" px="md" py="sm">
+                  {getEmptyMessage({ isSearching, canSetUpTables })}
+                </Text>
+              )}
+              {shownTables.map((item) => (
+                <Menu.Item
+                  key={item.id}
+                  leftSection={<Icon name="table" />}
+                  rightSection={
+                    <Text size="sm" c="text-secondary" miw={0}>
+                      <Ellipsified>{getTableLocation(item)}</Ellipsified>
+                    </Text>
+                  }
+                  fw={item.id === tableId ? "bold" : undefined}
+                  classNames={ITEM_CLASS_NAMES}
+                  onClick={() => handleChange(item.id)}
+                >
+                  <Ellipsified>{item.display_name}</Ellipsified>
+                </Menu.Item>
+              ))}
+            </Box>
             <Menu.Divider mx="sm" />
             <Box px="sm">
               <Menu.Item
@@ -180,6 +194,8 @@ export const EventTablePicker = ({
           title={t`Pick a table`}
           value={pickerValue}
           models={["table"]}
+          shouldDisableItem={pickerOptions.shouldDisableItem}
+          options={pickerOptions.options}
           onChange={handleChange}
           onClose={() => {
             setIsBrowsing(false);
@@ -190,4 +206,21 @@ export const EventTablePicker = ({
       )}
     </>
   );
+};
+
+type EmptyMessageOptions = {
+  isSearching: boolean;
+  canSetUpTables: boolean;
+};
+
+const getEmptyMessage = ({
+  isSearching,
+  canSetUpTables,
+}: EmptyMessageOptions): string => {
+  if (isSearching) {
+    return t`No event tables match your search.`;
+  }
+  return canSetUpTables
+    ? t`No tables are set up for product analysis yet. Browse all tables to pick one to set up.`
+    : t`No tables are set up for product analysis yet. Ask an admin to set one up in Data Studio.`;
 };

@@ -79,7 +79,7 @@ describe("buildBaseQuery", () => {
 
   it("rejects an event without filters", () => {
     expect(() => getFlagParts(createEventDefinition())).toThrow(
-      "Big order has no conditions.",
+      "“Big order” has no conditions.",
     );
   });
 

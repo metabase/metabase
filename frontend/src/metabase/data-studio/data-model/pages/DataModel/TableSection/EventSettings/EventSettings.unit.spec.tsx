@@ -28,12 +28,22 @@ const TABLE = createMockTable({
 
 type SetupOpts = {
   eventSettings?: Table["event_settings"];
+  entityType?: Table["entity_type"];
+  readOnly?: boolean;
 };
 
-const setup = ({ eventSettings = {} }: SetupOpts = {}) => {
-  const table = { ...TABLE, event_settings: eventSettings };
+const setup = ({
+  eventSettings = {},
+  entityType = TABLE.entity_type,
+  readOnly = false,
+}: SetupOpts = {}) => {
+  const table = {
+    ...TABLE,
+    event_settings: eventSettings,
+    entity_type: entityType,
+  };
   setupTableEndpoints(table);
-  renderWithProviders(<EventSettings table={table} />);
+  renderWithProviders(<EventSettings table={table} readOnly={readOnly} />);
 };
 
 const getLastUpdate = async (): Promise<unknown> =>
@@ -70,7 +80,7 @@ describe("EventSettings", () => {
     setup({ eventSettings: { "columns.url_path": "path" } });
 
     expect(
-      screen.getByText("Detected as a Snowplow event table."),
+      screen.getByText("Detected as an event table from Snowplow."),
     ).toBeInTheDocument();
   });
 
@@ -99,5 +109,70 @@ describe("EventSettings", () => {
     await waitFor(async () =>
       expect(await getLastUpdate()).toEqual({ event_settings: {} }),
     );
+  });
+
+  it("can't be changed by someone who can't edit the table", () => {
+    setup({
+      eventSettings: { "columns.url_path": "path" },
+      readOnly: true,
+    });
+
+    for (const input of screen.getAllByRole("textbox")) {
+      expect(input).toBeDisabled();
+    }
+    expect(
+      screen.queryByRole("button", { name: "Reset to Snowplow defaults" }),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("a table that isn't an event table", () => {
+    it("keeps its settings disabled until it's used as an event table", async () => {
+      setup({ entityType: "entity/GenericTable" });
+
+      expect(
+        screen.getByText(
+          "Only tables with an Event entity type can be used in product analysis.",
+        ),
+      ).toBeInTheDocument();
+      for (const input of screen.getAllByRole("textbox")) {
+        expect(input).toBeDisabled();
+      }
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Set entity type to Event" }),
+      );
+      await waitFor(async () =>
+        expect(await getLastUpdate()).toEqual({
+          entity_type: "entity/EventTable",
+        }),
+      );
+      expect(fetchMock.callHistory.calls(`table-${TABLE.id}-put`)).toHaveLength(
+        1,
+      );
+    });
+
+    it("doesn't offer to change it to someone who can't edit the table", () => {
+      setup({ entityType: "entity/GenericTable", readOnly: true });
+
+      expect(
+        screen.getByText(
+          "Only tables with an Event entity type can be used in product analysis.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Set entity type to Event" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("doesn't mention the entity type on an event table", () => {
+    setup();
+
+    expect(
+      screen.queryByRole("button", { name: "Set entity type to Event" }),
+    ).not.toBeInTheDocument();
+    for (const input of screen.getAllByRole("textbox")) {
+      expect(input).toBeEnabled();
+    }
   });
 });

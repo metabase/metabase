@@ -74,7 +74,7 @@ const getButtonLabel = (
       const count = value.segments.length;
       return count === 1 && first !== undefined
         ? first.label
-        : ngettext(msgid`${count} Segment`, `${count} Segments`, count);
+        : ngettext(msgid`${count} segment`, `${count} segments`, count);
     }
   }
 };
@@ -276,7 +276,7 @@ const PropertyOptions = ({
     <Box w={DROPDOWN_WIDTH}>
       <ListSearchField
         autoFocus
-        placeholder={t`Find...`}
+        placeholder={t`Find…`}
         value={searchText}
         onChange={(event) => setSearchText(event.target.value)}
         onResetClick={() => setSearchText("")}
