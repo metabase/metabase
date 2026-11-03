@@ -478,6 +478,22 @@
                                      [:card goal-id :status])))
           (is (nil? (dashcard-query-referenced-entities dash-id dashcard-id series-id))))))))
 
+(deftest hidden-goal-line-does-not-run-test
+  (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (count-query :checkins)}]
+    (testing "a saved line chart that hides its goal line doesn't run the goal's source"
+      (mt/with-temp [:model/Card {chart-id :id} (chart-card :line {:graph.show_goal  false
+                                                                   :graph.goal_value (goal-ref goal-id)})]
+        (is (nil? (card-query-referenced-entities chart-id)))))
+    (testing "a dashcard that hides the goal line its card shows doesn't run the goal's source"
+      (mt/with-temp [:model/Card      {chart-id :id} (chart-card :line {:graph.show_goal  true
+                                                                        :graph.goal_value (goal-ref goal-id)})
+                     :model/Dashboard {dash-id :id}  {}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id           dash-id
+                                                             :card_id                chart-id
+                                                             :visualization_settings {:graph.show_goal false}}]
+        (is (= "completed" (get-in (card-query-referenced-entities chart-id) [:card goal-id :status])))
+        (is (nil? (dashcard-query-referenced-entities dash-id dashcard-id chart-id)))))))
+
 (deftest public-card-endpoint-referenced-entities-test
   (testing "GET /api/public/card/:uuid/query injects referenced_entities (survives the public result whitelist)"
     (mt/with-temporary-setting-values [enable-public-sharing true]
