@@ -9,6 +9,10 @@ export const setupSecurityAdvisoriesEndpoint = (advisories: Advisory[]) => {
   });
 };
 
+export const setupSecurityAdvisoriesErrorEndpoint = () => {
+  fetchMock.get("path:/api/ee/security-center", { status: 500 });
+};
+
 export const setupHealthChecksEndpoint = (checks: HealthCheck[]) => {
   fetchMock.get(
     "path:/api/ee/security-center/health-checks",

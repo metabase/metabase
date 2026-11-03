@@ -1,6 +1,11 @@
+import type { ReactNode } from "react";
+
 import {
   setupHealthChecksEndpoint,
+  setupNotificationChannelsEndpoints,
   setupSecurityAdvisoriesEndpoint,
+  setupSecurityAdvisoriesErrorEndpoint,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route, redirect } from "metabase/router";
@@ -10,26 +15,36 @@ import {
   createMockHealthCheck,
 } from "metabase-types/api/mocks/security-center";
 
+import { AdvisoriesPage } from "../../advisories/AdvisoriesPage/AdvisoriesPage";
+
 import { SecurityCenterLayout } from "./SecurityCenterLayout";
 
 interface SetupOpts {
   initialRoute?: string;
   advisories?: Advisory[];
   checks?: HealthCheck[];
+  advisoriesPage?: ReactNode;
+  hasAdvisoriesError?: boolean;
 }
 
 const setup = ({
   initialRoute = "/admin/security-center/advisories",
   advisories = [],
   checks = [],
+  advisoriesPage = <div>Advisories page</div>,
+  hasAdvisoriesError = false,
 }: SetupOpts = {}) => {
-  setupSecurityAdvisoriesEndpoint(advisories);
+  if (hasAdvisoriesError) {
+    setupSecurityAdvisoriesErrorEndpoint();
+  } else {
+    setupSecurityAdvisoriesEndpoint(advisories);
+  }
   setupHealthChecksEndpoint(checks);
 
   return renderWithProviders(
     <Route path="/admin/security-center" element={<SecurityCenterLayout />}>
       <Route index element={redirect("advisories")} />
-      <Route path="advisories" element={<div>Advisories page</div>} />
+      <Route path="advisories" element={advisoriesPage} />
       <Route path="health-checks" element={<div>Health checks page</div>} />
     </Route>,
     { withRouter: true, initialRoute },
@@ -92,5 +107,20 @@ describe("SecurityCenterLayout", () => {
     expect(
       within(getNavLink(/Advisories/)).queryByTestId("issue-dot"),
     ).not.toBeInTheDocument();
+  });
+
+  it("renders a page error inside the layout (GDGT-2748)", async () => {
+    setupUserRecipientsEndpoint({ users: [] });
+    setupNotificationChannelsEndpoints({});
+    setup({ advisoriesPage: <AdvisoriesPage />, hasAdvisoriesError: true });
+
+    await waitFor(() => {
+      expect(
+        within(screen.getByTestId("admin-layout-content")).getByText(
+          "Something went wrong loading security advisories.",
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(getNavLink(/Advisories/)).toBeInTheDocument();
   });
 });
