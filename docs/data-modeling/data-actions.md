@@ -8,9 +8,11 @@ redirect_from:
 
 # Data actions
 
+![A table action that inserts a row into the Products table](./images/add-product-data-action.png)
+
 _Data Studio > Data actions_
 
-Data actions let people change the data in your database. For example, a data action can approve a request, or mark an order as refunded.
+Data actions let people change the data in your database. For example, you can create a data action to update a record in a table, like to add/edit/delete a product, customer, or order.
 
 Each data action does one job: it inserts, updates, or deletes rows. An admin sets up the action once, and people can only make the changes that the action allows.
 
@@ -19,7 +21,7 @@ You can run data actions in two ways:
 - **In Data Studio**, to test an action or make a one-off change. See [Run a data action](#run-a-data-action).
 - **As a public form**, to collect data from people outside Metabase, like event sign-ups or feedback. See [Share a data action as a public form](#share-a-data-action-as-a-public-form).
 
-Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md).
+Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md), and you can't add data actions as buttons to dashboards.
 
 If you [sync the Library](./semantic-layer/library.md#versioning-the-library) with [Remote Sync](semantic-layer/remote-sync.md), your data actions sync with it.
 
@@ -46,7 +48,7 @@ You can turn on data actions only for [databases that support them](#databases-t
 2. Click the database.
 3. In the **Data actions** section, turn on **Data actions**.
 
-Actions write to your database, so the database user needs [write privileges](../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). If the database has a [writable connection](../databases/writable-connection.md), actions use it.
+Actions write to your database, so the database user you use to connect to the database needs [write privileges](../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). If the database has a [writable connection](../databases/writable-connection.md), actions use it.
 
 ## Create a data action
 
@@ -71,9 +73,7 @@ Pick a table and an operation, and Metabase builds the form from the table's col
 1. Go to [Data Studio](./data-studio.md#get-to-data-studio) > **Data actions**.
 2. Click **New** > **Table**, and pick a table. The picker only lists tables in databases with data actions turned on.
 3. Under **Operation**, pick **Insert** to add a row, **Update** to change a row, or **Delete** to remove a row. Update and Delete find the row by its primary key, and Update keeps the current value of any field you leave empty.
-4. Click **Save**, enter a **Name** (Metabase suggests one, like "Insert Orders"), pick a **Folder**, and click **Save** again.
-
-![A table action that inserts a row into the Products table](./images/add-product-data-action.png)
+4. Click **Save**, enter a **Name**, pick a **Folder**, and click **Save** again.
 
 ## Run a data action
 
