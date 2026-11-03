@@ -88,9 +88,9 @@
        (is (= :closed-global-db @db-handle))
        (is (= :closed-global-db (scheduler-sees)))))))
 
+;; Holding N components in one var should behave the same as holding each in its own var.
 (deftest ^:synchronized components-are-independent-test
-  (testing "binding one component neither freezes nor hides any other, so that holding N components in one
-            var behaves the same as holding each in its own var"
+  (testing "binding one component neither freezes nor hides any other"
     (do-with-scheduler
      (fn []
        (global-setup!)
@@ -162,16 +162,21 @@
        (is (= :root-other @other-handle))))))
 
 (deftest ^:synchronized unknown-component-test
-  (let [never-set (system/mutable-component-handle ::never-set)]
+  (let [never-set (system/mutable-component-handle ::never-set)
+        no-value  #"Component has no value"]
     (testing "reading a component that was never given a value fails loudly rather than returning nil"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Component has no value"
-           @never-set)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo no-value @never-set)))
     (testing "so do writes, since only alter-root installs a component"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Component has no value" (mc/reset! never-set 1)))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Component has no value" (mc/swap! never-set (fnil inc 0))))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Component has no value" @never-set)))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo no-value (mc/reset! never-set 1)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo no-value (mc/swap! never-set (fnil inc 0)))))
+    (testing "the failed writes leave the component uninstalled"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo no-value @never-set)))
+    (testing "a binding works without a root, and writes inside it go to the binding"
+      (mc/binding never-set 1
+                  (fn []
+                    (is (= 2 (mc/swap! never-set inc)))
+                    (is (= 2 @never-set))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo no-value @never-set)))))
 
 (deftest ^:synchronized nil-binding-test
   (testing "binding a component to nil hides a non-nil root"
@@ -228,8 +233,7 @@
                        (is (= 42 (mc/swap! other-handle inc)))
                        (is (= 42 (scheduler-runs (fn [] @other-handle))))))
          (is (= 42 @other-handle)))
-       (testing "a component bound further out is written in its own binding, so the write outlives an
-                 inner binding of something else"
+       (testing "a component bound further out keeps the write after an inner binding ends"
          (mc/binding other-handle 0
                      (fn []
                        (mc/binding db-handle :bound-db
