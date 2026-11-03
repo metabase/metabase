@@ -70,6 +70,15 @@ describe("useEntityPickerSearch", () => {
     expect(result.current.models).toEqual(["measure", "metric"]);
   });
 
+  it("searches measures and metrics, but not questions, when the instance has both", async () => {
+    setupSearchEndpoints([MEASURE, METRIC, QUESTION]);
+
+    const { result } = setup();
+
+    await waitFor(() => expect(getSearchCalls()).toHaveLength(1));
+    expect(result.current.models).toEqual(["measure", "metric"]);
+  });
+
   // models can't be goal sources
   it("falls back to questions, but not models, when the instance has no measures or metrics", async () => {
     setupSearchEndpoints([QUESTION]);
