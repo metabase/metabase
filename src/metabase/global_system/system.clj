@@ -12,7 +12,9 @@
    [metabase.global-system.mutable-component :as mc])
   (:import
    (clojure.lang IDeref)
-   (java.io Writer)))
+   (java.io Writer)
+   (java.util.concurrent ConcurrentHashMap)
+   (java.util.function Function)))
 
 (set! *warn-on-reflection* true)
 
@@ -49,6 +51,16 @@
                     {:component  k
                      :components (sort (keys rs))}))))
 
+(defonce ^{:doc "Component key -> the lock for that component's root slot."
+           :private true}
+  root-locks
+  (ConcurrentHashMap.))
+
+(defn- root-lock
+  "The lock for the root slot of `k`, the same object every time for a given `k`."
+  [k]
+  (.computeIfAbsent ^ConcurrentHashMap root-locks k (reify Function (apply [_ _] (Object.)))))
+
 (defn- current-value
   "The value of `k` visible to this thread: the bound one if `k` is bound here, otherwise the root."
   [k]
@@ -66,18 +78,25 @@
   (binding [_ new-value thunk]
     (clojure.core/binding [*bound-boxes* (assoc *bound-boxes* k (atom new-value))]
       (thunk)))
-  (reset! [this new-value]
-    (mc/swap!* this (constantly new-value) nil))
-  (swap!* [_ f args]
+  (swap-vals!* [_ f args]
     (if-let [box (get *bound-boxes* k)]
-      (apply clojure.core/swap! box f args)
-      (get (clojure.core/swap! roots (fn [rs] (assoc rs k (apply f (root-value rs k) args)))) k)))
+      (apply swap-vals! box f args)
+      (let [[before after] (swap-vals! roots (fn [rs] (assoc rs k (apply f (root-value rs k) args))))]
+        [(get before k) (get after k)])))
   (alter-root [_ new-value]
-    (let [[before _] (clojure.core/swap-vals! roots assoc k new-value)]
+    (let [[before _] (swap-vals! roots assoc k new-value)]
       (get before k)))
+  (root-entry [_]
+    (find @roots k))
+  (remove-root [_]
+    (swap! roots dissoc k)
+    nil)
   (without-binding [_ thunk]
     (clojure.core/binding [*bound-boxes* (dissoc *bound-boxes* k)]
-      (thunk))))
+      (thunk)))
+  (slot-lock [_]
+    (or (get *bound-boxes* k)
+        (root-lock k))))
 
 ;; Prints the key alone. The IDeref defaults would deref the handle, which throws when the component has no value.
 (defmethod print-method ComponentHandle
