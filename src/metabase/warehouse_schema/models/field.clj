@@ -168,8 +168,8 @@
 (t2/define-before-update :model/Field
   [field]
   (when (false? (:active (t2/changes field)))
-    (warehouse-schema.db/clear-fk-targets-to-field! (:id field))
-    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field)))
+    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field))
+    (warehouse-schema.db/clear-fk-targets-to-field! (:id field)))
   (enforce-effective-type-invariant field))
 
 (t2/define-before-delete :model/Field

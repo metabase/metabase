@@ -160,7 +160,7 @@
    :- [:merge
        ::table-selectors
        [:map {:closed true}
-        [:data_authority {:optional true} [:maybe ::data-authorities]]
+        [:data_authority {:optional true} ::data-authorities]
         [:data_source {:optional true} [:maybe ::data-sources]]
         [:data_layer {:optional true} [:maybe ::data-layers]]
         [:entity_type {:optional true} [:maybe :string]]

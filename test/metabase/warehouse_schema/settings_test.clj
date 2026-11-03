@@ -66,10 +66,8 @@
                      :model/Field {synced-id :id} {:name "bird_watchers", :display_name "Bird Watchers"}]
         (field-user-settings/upsert-field-user-settings! {:id user-set-id} {:display_name "User's Name"})
         (warehouse-schema.settings/humanization-strategy! "none")
-        (testing "the user-set Field's raw display name is left alone, and their own name is what reads back"
-          (is (= "Toucansare Cool" (t2/select-one-fn :display_name :model/Field, :id user-set-id)))
-          (is (= "User's Name" (t2/select-one-fn :display_name :model/Field, :id user-set-id
-                                                 {:from [[(t2/table-name :model/Field) :metabase_field]]}))))
+        (testing "the user-set Field keeps the user's name"
+          (is (= "User's Name" (t2/select-one-fn :display_name :model/Field, :id user-set-id))))
         (testing "a raw display name that differs from the old humanization is left alone"
           (is (= "Some Other Name" (t2/select-one-fn :display_name :model/Field, :id custom-id))))
         (testing "a humanized display name is rewritten to the new strategy"

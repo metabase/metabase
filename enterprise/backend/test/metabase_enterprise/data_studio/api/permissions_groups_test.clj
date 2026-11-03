@@ -7,10 +7,9 @@
    [toucan2.core :as t2]))
 
 (defn- user-table-fn
-  "The value of `column` on the Table with `table-id` as users see it. A bare `t2/select :model/Table` shows sync's."
+  "The value of `column` on the Table with `table-id`."
   [column table-id]
-  (t2/select-one-fn column :model/Table :id table-id
-                    {:from [[(t2/table-name :model/Table) :metabase_table]]}))
+  (t2/select-one-fn column :model/Table :id table-id))
 
 (deftest fetch-groups-test
   (testing "GET /api/permissions/group - Data Analysts group is visible with the feature"

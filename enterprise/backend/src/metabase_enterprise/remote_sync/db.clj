@@ -169,23 +169,18 @@
                                         :limit limit}))
 
 (mu/defn instance
-  "The instance of `model` with `id`, or nil; a Table is read through the overlay."
+  "The instance of `model` with `id`, or nil."
   [model :- :keyword
    id    :- ms/PositiveInt]
-  (t2/select-one model :id id (if (= model :model/Table)
-                                {:from [[(t2/table-name :model/Table) :metabase_table]]}
-                                {})))
+  (t2/select-one model :id id))
 
 (mu/defn instance-with-columns
-  "The `columns` of the instance of `model` with `id`, or nil; a Table is read through the overlay."
+  "The `columns` of the instance of `model` with `id`, or nil."
   [model   :- :keyword
    columns :- [:sequential :keyword]
    id      :- ms/PositiveInt]
   (t2/select-one (into [model] columns)
-                 :id id
-                 (if (= model :model/Table)
-                   {:from [[(t2/table-name :model/Table) :metabase_table]]}
-                   {})))
+                 :id id))
 
 (mu/defn instance-names
   "The `:id` and `:name` of the instances of `model` with `ids`."
@@ -330,25 +325,15 @@
                      :join   [[(t2/table-name :model/Field) :f] [:= :f.id :d.field_id]]
                      :where  [:in :f.table_id table-ids]}))
 
-(mu/defn delete-table-user-settings!
-  "Delete the TableUserSettings of the Tables with `table-ids`, returning the number deleted."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/delete! :model/TableUserSettings :table_id [:in table-ids]))
-
-(mu/defn delete-field-user-settings!
-  "Delete the FieldUserSettings of the Fields with `field-ids`, returning the number deleted."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/delete! :model/FieldUserSettings :field_id [:in field-ids]))
-
 (mu/defn delete-dimensions!
   "Delete the Dimensions of the Fields with `field-ids`, returning the number deleted."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/delete! :model/Dimension :field_id [:in field-ids]))
 
 (mu/defn tables-tracking-details
-  "The `:id`, `:name`, and `:collection_id` of the Tables with `table-ids`, read through the overlay."
+  "The `:id`, `:name`, and `:collection_id` of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :collection_id] :id [:in table-ids] {:from [[(t2/table-name :model/Table) :metabase_table]]}))
+  (t2/select [:model/Table :id :name :collection_id] :id [:in table-ids]))
 
 (mu/defn fields-tracking-details
   "The `:id`, name, table id, collection id, and table name of the Fields with `field-ids`."
@@ -499,8 +484,7 @@
        (t2/exists? :model/Document :collection_id [:in collection-ids])
        (t2/exists? :model/Timeline :collection_id [:in collection-ids])
        (t2/exists? :model/Action :collection_id [:in collection-ids])
-       (t2/exists? :model/Table {:from  [[(t2/table-name :model/Table) :metabase_table]]
-                                 :where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
+       (t2/exists? :model/Table {:where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
 
 (mu/defn remote-synced-subtree-collection-ids
   "The IDs of the remote-synced Collections among `collections` and their descendants."

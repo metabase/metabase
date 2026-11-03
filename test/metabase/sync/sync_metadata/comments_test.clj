@@ -51,8 +51,7 @@
     [["foo"]]]])
 
 (deftest comment-should-not-overwrite-custom-description-test
-  (testing "a user-set description lives in FieldUserSettings and is never overwritten by resyncing, while the raw
-            Field still picks up the comment from the source db"
+  (testing "user-set description is never overwritten by resyncing comment from source db"
     (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
       (mt/dataset update-desc
         (mt/with-temp-copy-of-db
@@ -61,10 +60,10 @@
             (field-user-settings/upsert-field-user-settings! {:id field-id} {:description "updated description"})
             (sync/sync-table! (t2/select-one :model/Table :id (mt/id "update_desc")))
             (is (= #{{:name (mt/format-name "id"), :description nil}
-                     {:name (mt/format-name "updated_desc"), :description "original comment"}}
+                     {:name (mt/format-name "updated_desc"), :description "updated description"}}
                    (db->fields (mt/db))))
-            (is (= "updated description"
-                   (:description (t2/select-one :model/Field :id field-id {:from [[(t2/table-name :model/Field) :metabase_field]]}))))))))))
+            (is (=? {:description "updated description" :description_set true}
+                    (t2/select-one :model/FieldUserSettings :field_id field-id)))))))))
 
 (tx/defdataset ^:private comment-after-sync
   [["comment_after_sync"

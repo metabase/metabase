@@ -20,7 +20,7 @@
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [[(t2/table-name :model/Field) :metabase_field]]}))
+  (t2/select-one :model/Field :id field-id))
 
 (mu/defn field-in-path
   "The ::warehouse-schema.schema/field named by the last of `field-names` (each nested inside the previous, bottom-most first) under
@@ -32,46 +32,44 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [[(t2/table-name :model/Field) :metabase_field]]}))
+  (t2/select :model/Field :id [:in field-ids]))
 
 (mu/defn fields-by-id
   "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids] {:from [[(t2/table-name :model/Field) :metabase_field]]}))
+  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids]))
 
 (mu/defn field-table-id-rows
   "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [[(t2/table-name :model/Field) :metabase_field]]}))
+  (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
 
 (mu/defn field-table-id
   "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [[(t2/table-name :model/Field) :metabase_field]]}))
+  (t2/select-one-fn :table_id :model/Field :id field-id))
 
 (mu/defn field-id-by-name
   "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    parent-id  :- [:maybe ms/PositiveInt]
    field-name :- :string]
-  (t2/select-one-pk :model/Field :name field-name :parent_id parent-id :table_id table-id {:from [[(t2/table-name :model/Field) :metabase_field]]}))
+  (t2/select-one-pk :model/Field :name field-name :parent_id parent-id :table_id table-id))
 
 (mu/defn field-values-eligibility
   "The columns deciding whether the ::warehouse-schema.schema/field with `field-id` should have FieldValues, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id
-                 {:from [[(t2/table-name :model/Field) :metabase_field]]}))
+  (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id))
 
 (mu/defn field-ids-for-table
   "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field {:from [[(t2/table-name :model/Field) :metabase_field]]
-                                   :where [:= :table_id table-id]}))
+  (t2/select-pks-set :model/Field {:where [:= :table_id table-id]}))
 
 (mu/defn active-field-ids-for-table
   "The IDs of the active Fields of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :active true {:from [[(t2/table-name :model/Field) :metabase_field]]}))
+  (t2/select-pks-set :model/Field :table_id table-id :active true))
 
 (defn- field-order-order-by
   [field-order]
@@ -92,8 +90,7 @@
   or `:alphabetical`)."
   [table-id    :- ::lib.schema.id/table
    field-order :- [:enum :custom :smart :database :alphabetical]]
-  (t2/select [:model/Field :id] :table_id table-id {:from     [[(t2/table-name :model/Field) :metabase_field]]
-                                                    :order-by (field-order-order-by field-order)}))
+  (t2/select [:model/Field :id] :table_id table-id {:order-by (field-order-order-by field-order)}))
 
 (mu/defn active-fields-for-tables
   "The active, unretired Fields of the Tables with `table-ids`, in field order."
@@ -102,8 +99,7 @@
              :active true
              :table_id [:in table-ids]
              :visibility_type [:not= "retired"]
-             {:from [[(t2/table-name :model/Field) :metabase_field]]
-              :order-by field-order-rule}))
+             {:order-by field-order-rule}))
 
 (mu/defn pk-field-ids-by-table
   "A map of ::warehouse-schema.schema/table ID to the ID of its visible primary key ::warehouse-schema.schema/field for `table-ids`."
@@ -117,14 +113,22 @@
 (mu/defn update-field!
   "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
-   changes  :- (mut/select-keys ::warehouse-schema.schema/field.update [:position])]
+   changes  :- ::warehouse-schema.schema/field.update]
   (t2/update! :model/Field :id field-id changes))
 
-(mu/defn clear-fk-targets-to-field!
-  "Clear the FK semantic type and target of every ::warehouse-schema.schema/field targeting the ::warehouse-schema.schema/field with `field-id`, returning the number
+(mu/defn update-field-custom-positions!
+  "Set the `custom_position` of each ::warehouse-schema.schema/field in `field-id->position`, returning the number
   updated."
+  [field-id->position :- [:map-of ::lib.schema.id/field :int]]
+  (t2/update! :model/Field :id [:in (keys field-id->position)]
+              {:custom_position (into [:case] (mapcat (fn [[id position]] [[:= :id id] position])) field-id->position)}))
+
+(mu/defn clear-fk-targets-to-field!
+  "Clear the target, and an FK semantic type, of every ::warehouse-schema.schema/field targeting the
+  ::warehouse-schema.schema/field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field]
-  (t2/update! :model/Field {:fk_target_field_id field-id} {:semantic_type nil, :fk_target_field_id nil}))
+  (t2/update! :model/Field {:fk_target_field_id field-id :semantic_type :type/FK} {:semantic_type nil})
+  (t2/update! :model/Field {:fk_target_field_id field-id} {:fk_target_field_id nil}))
 
 (mu/defn delete-child-fields!
   "Delete the Fields nested under the ::warehouse-schema.schema/field with `parent-id`, returning the number deleted."
@@ -182,14 +186,9 @@
   [field-id :- [:maybe ::lib.schema.id/field]]
   (t2/select-one :model/FieldUserSettings :field_id field-id))
 
-(mu/defn field-user-settings-exist?
-  "Whether the ::warehouse-schema.schema/field with `field-id` has a FieldUserSettings row."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldUserSettings :field_id field-id))
-
 (def ^:private field-user-settings-update-keys
   "The columns an insert or update of a FieldUserSettings accepts."
-  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set])
+  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set])
 
 (mu/defn field-ids-with-user-settings-for-table :- [:set ::lib.schema.id/field]
   "The ids of the Fields of the ::warehouse-schema.schema/table with `table-id` that have a FieldUserSettings row."
@@ -247,10 +246,16 @@
 
 (mu/defn clear-user-settings-fk-targets-to-field!
   "Unset the user-set FK semantic type and target of every ::warehouse-schema.schema/field targeting the
-  ::warehouse-schema.schema/field with `field-id`, so the sync values show again. Returns the number updated."
+  ::warehouse-schema.schema/field with `field-id`, by its settings or by its own row, returning the number updated."
   [field-id :- ::lib.schema.id/field]
-  (t2/update! :model/FieldUserSettings {:fk_target_field_id field-id}
-              {:semantic_type nil, :semantic_type_set false, :fk_target_field_id nil, :fk_target_field_id_set false}))
+  (let [changes {:semantic_type nil, :semantic_type_set false, :fk_target_field_id nil, :fk_target_field_id_set false}]
+    (+ (t2/update! :model/FieldUserSettings {:fk_target_field_id field-id} changes)
+       (t2/update! :model/FieldUserSettings
+                   :semantic_type :type/FK
+                   :field_id [:in ^:allow-subquery {:select [:id]
+                                                    :from   [(t2/table-name :model/Field)]
+                                                    :where  [:= :fk_target_field_id field-id]}]
+                   changes))))
 
 ;;; -------------------------------------------- TableUserSettings --------------------------------------------
 
@@ -259,7 +264,7 @@
   [:table_id :created_at :updated_at :display_name :description :entity_type :visibility_type :caveats
    :points_of_interest :data_layer :data_source :owner_email :owner_user_id :field_order :show_in_getting_started
    :data_authority :is_published :collection_id :description_set
-   :visibility_type_set :caveats_set :points_of_interest_set :data_layer_set :data_source_set])
+   :visibility_type_set :data_layer_set :data_source_set])
 
 (mu/defn table-user-settings
   "The TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, or nil (also for a nil `table-id`,
@@ -299,16 +304,6 @@
   "Delete the TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, returning the number deleted."
   [table-id :- ::lib.schema.id/table]
   (t2/delete! :model/TableUserSettings :table_id table-id))
-
-(mu/defn delete-field-user-settings-for-table!
-  "Delete the FieldUserSettings of the Fields of the ::warehouse-schema.schema/table with `table-id`, returning the
-  number deleted."
-  [table-id :- ::lib.schema.id/table]
-  (t2/delete! :model/FieldUserSettings
-              {:where [:exists ^:allow-subquery
-                       {:select 1
-                        :from   [[(t2/table-name :model/Field) :f]]
-                        :where  [:and [:= :f.id :field_id] [:= :f.table_id table-id]]}]}))
 
 (mu/defn table-user-settings-for-tables
   "The TableUserSettings of the Tables with `table-ids`, or every TableUserSettings when nil."
@@ -423,34 +418,46 @@
 (mu/defn table
   "The ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [[(t2/table-name :model/Table) :metabase_table]]}))
+  (t2/select-one :model/Table :id table-id))
+
+(mu/defn update-table!
+  "Apply `changes` to the ::warehouse-schema.schema/table with `table-id`, returning the number updated."
+  [table-id :- ::lib.schema.id/table
+   changes  :- ::warehouse-schema.schema/table.update]
+  (t2/update! :model/Table :id table-id changes))
+
+(mu/defn update-tables!
+  "Apply `changes` to the Tables with `table-ids`, returning the number updated."
+  [table-ids :- [:set ::lib.schema.id/table]
+   changes   :- ::warehouse-schema.schema/table.update]
+  (t2/update! :model/Table :id [:in table-ids] changes))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
-  (t2/select :model/Table :id [:in table-ids] {:from [[(t2/table-name :model/Table) :metabase_table]]}))
+  (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn table-by-name
   "The ::warehouse-schema.schema/table named `table-name` in `schema` of the ::warehouses.schema/database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
-  (t2/select-one :model/Table :name table-name :db_id database-id :schema schema {:from [[(t2/table-name :model/Table) :metabase_table]]}))
+  (t2/select-one :model/Table :name table-name :db_id database-id :schema schema))
 
 (mu/defn table-name-and-schema
   "The name and schema of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :name :schema] :id table-id {:from [[(t2/table-name :model/Table) :metabase_table]]}))
+  (t2/select-one [:model/Table :name :schema] :id table-id))
 
 (mu/defn table-database-id
   "The ::warehouses.schema/database ID of the ::warehouse-schema.schema/table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [[(t2/table-name :model/Table) :metabase_table]]}))
+  (t2/select-one-fn :db_id :model/Table :id table-id))
 
 (defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
   [database-id]
-  (t2/select :model/Table :db_id database-id :active true {:from [[(t2/table-name :model/Table) :metabase_table]]}))
+  (t2/select :model/Table :db_id database-id :active true))
 
 (defn active-table-schemas
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
@@ -460,8 +467,7 @@
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
     (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                      (merge {:from     [[(t2/table-name :model/Table) :metabase_table]]
-                              :order-by [[:%lower.schema :asc]]}
+                      (merge {:order-by [[:%lower.schema :asc]]}
                              (when clauses
                                {:where (into [:and] clauses)})))))
 
@@ -472,8 +478,7 @@
              :db_id database-id
              :schema schema
              :active true
-             {:from [[(t2/table-name :model/Table) :metabase_table]]
-              :order-by [[:display_name :asc]]}))
+             {:order-by [[:display_name :asc]]}))
 
 (defn active-visible-tables-in-schema
   "The active, visible Tables in `schema` of the Database with `database-id`, in display name order."
@@ -483,8 +488,7 @@
              :schema schema
              :active true
              :visibility_type nil
-             {:from [[(t2/table-name :model/Table) :metabase_table]]
-              :order-by [[:display_name :asc]]}))
+             {:order-by [[:display_name :asc]]}))
 
 (mu/defn unarchived-segments-for-tables
   "The unarchived Segments of the Tables with `table-ids`, ordered by name."

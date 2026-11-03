@@ -186,7 +186,7 @@
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:field_order             {:optional true} [:maybe FieldOrder]]
-   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+   [:data_authority          {:optional true} ::data-authority-write]
    [:data_source             {:optional true} [:maybe :string]]
    [:data_layer              {:optional true} [:maybe :string]]
    [:owner_email             {:optional true} [:maybe :string]]

@@ -45,6 +45,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
    [metabase.warehouses.core :as warehouses]
@@ -1121,14 +1122,20 @@
                                            (mt/user-http-request :rasta :get 200
                                                                  (format "database/%d/autocomplete_suggestions" (mt/id))
                                                                  :prefix "price"))))]
-      (testing "a user-set semantic_type replaces the sync value"
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id          field-id
-                                                   :semantic_type     :type/Currency
-                                                   :semantic_type_set true}]
-          (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))))
-      (testing "a user-set sensitive visibility_type hides the Field"
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :visibility_type :sensitive}]
-          (is (nil? (venues-row))))))))
+      (mt/with-temp-vals-in-db :model/Field field-id (select-keys (t2/select-one :model/Field :id field-id)
+                                                                  [:semantic_type :visibility_type])
+        (testing "a user-set semantic_type replaces the sync value"
+          (try
+            (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Currency})
+            (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))
+            (finally
+              (field-user-settings/delete-field-user-settings! [field-id]))))
+        (testing "a user-set sensitive visibility_type hides the Field"
+          (try
+            (field-user-settings/upsert-field-user-settings! {:id field-id} {:visibility_type :sensitive})
+            (is (nil? (venues-row)))
+            (finally
+              (field-user-settings/delete-field-user-settings! [field-id]))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"

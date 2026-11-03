@@ -18,18 +18,17 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- user-table
-  "The Table with `table-id` as users see it. A bare `t2/select :model/Table` shows what sync wrote."
+  "The Table with `table-id`."
   [table-id]
-  (t2/select-one :model/Table :id table-id {:from [[(t2/table-name :model/Table) :metabase_table]]}))
+  (t2/select-one :model/Table :id table-id))
 
 (defn- user-tables
-  "The Tables with `table-ids` as users see it, ordered by `order-by`."
+  "The Tables with `table-ids`, ordered by `order-by`."
   [table-ids order-by]
-  (t2/select :model/Table :id [:in table-ids] {:from     [[(t2/table-name :model/Table) :metabase_table]]
-                                               :order-by [order-by]}))
+  (t2/select :model/Table :id [:in table-ids] {:order-by [order-by]}))
 
 (defn- user-table-fn
-  "The value of `column` on the Table with `table-id` as users see it."
+  "The value of `column` on the Table with `table-id`."
   [column table-id]
   (get (user-table table-id) column))
 

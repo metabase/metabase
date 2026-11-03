@@ -31,6 +31,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (def ^:private curation-features
@@ -1027,15 +1028,13 @@
     (testing "a table published through the Data Studio keeps its published flag in its user settings, and the read
             check sees it: a user with no query permission reads it through its Library collection"
       (mt/with-temp [:model/Collection {lib :id} {:type "library-data" :name "data library"}
-                     :model/Table {table-id :id} {:db_id      (mt/id)
-                                                  :name       "published_by_settings"
-                                                  :schema     "LIBRARY_SCHEMA"
-                                                  :active     true
-                                                  :data_layer :final}
-                     :model/TableUserSettings _ {:table_id      table-id
-                                                 :is_published  true
-                                                 :collection_id lib}
+                     :model/Table {table-id :id :as table} {:db_id      (mt/id)
+                                                            :name       "published_by_settings"
+                                                            :schema     "LIBRARY_SCHEMA"
+                                                            :active     true
+                                                            :data_layer :final}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (table-user-settings/upsert-table-user-settings! table {:is_published true :collection_id lib})
         (mt/with-no-data-perms-for-all-users!
           (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (mt/with-current-user (mt/user->id :rasta)
