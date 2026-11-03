@@ -612,6 +612,7 @@ export function DraftFilterPill({
             aiFilters.state.status !== "error",
           [S.draftPillLoading]: aiFilters.state.status === "loading",
           [S.draftPillError]: aiFilters.state.status === "error",
+          [S.draftPillAi]: isAiFiltersMode,
         })}
         data-testid="draft-filter-pill"
       >

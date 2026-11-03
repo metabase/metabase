@@ -94,10 +94,15 @@
   }
 }
 
-/* Figma "AI Pill" Error: grey, with a warning icon before the request. */
+/* A request to the AI: white, also in the input. Prototype: the Figma has grey
+   there. */
+.draftPillAi .input {
+  background: none;
+}
+
+/* Figma "AI Pill" Error: a warning icon before the request. */
 .draftPillError {
   padding-left: 0.5rem;
-  background-color: var(--mb-color-background_surface-secondary);
   box-shadow: var(--mantine-shadow-xs_outline);
 
   & .input {
