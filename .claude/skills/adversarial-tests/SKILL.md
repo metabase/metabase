@@ -25,9 +25,9 @@ These hold for the whole run, including any agent or `claude -p` process the run
 
 You need `gh` logged in, `bb`, `jq` and `bun`, which the repo's own tooling already needs, and a `claude` CLI that accepts `--restricted` and `--strict-mcp-config`. The blind generator runs as a separate `claude -p` call on Opus, so a run spends tokens beyond this session. Run `claude --help | grep -c restricted` to check the CLI; if it prints 0, step 5 describes the fallback.
 
-A run takes somewhere between 30 and 90 minutes of wall clock. The three runs so far took 40 to 70 minutes each: a few minutes to set up two worktrees, most of the time writing tests, then two to four test runs on each worktree. Backend runs are the slow part, about 70 seconds each for a JVM start plus the tests. The machine is busy with one test process for most of that, so do not start another Jest or test-agent run alongside it.
+A run takes somewhere between 15 and 90 minutes of wall clock. The runs so far took 16 minutes for a five-file frontend PR and 40 to 70 minutes for the other three: a few minutes to set up two worktrees, most of the time writing tests, then two to four test runs on each worktree. Backend runs are the slow part, about 70 seconds each for a JVM start plus the tests. The machine is busy with one test process for most of that, so do not start another Jest or test-agent run alongside it.
 
-The skill has run on three PRs so far: a frontend PR by number, a backend PR by number, and an enterprise backend PR as the current branch. A frontend PR as the current branch has not been run yet, so if that is your first run, expect to hit something small.
+The skill has run on four PRs so far, one in each mode: a frontend PR by number, a backend PR by number, an enterprise backend PR as the current branch and a frontend PR as the current branch.
 
 ## Where things go
 
@@ -72,12 +72,12 @@ For the current branch:
 ```bash
 HEAD_SHA=$(git rev-parse HEAD)
 git status --porcelain   # uncommitted changes are not tested; say so if this prints anything
-gh pr view --repo metabase/metabase \
+gh pr view \
   --json number,title,body,url,baseRefName,headRefName,headRefOid,closingIssuesReferences,isDraft \
   > "$RUN_DIR/context/pr.json" || rm -f "$RUN_DIR/context/pr.json"
 ```
 
-`gh pr view` finds a PR only when the branch tracks it or has the same name as its head branch. A branch made with `git checkout -b <name> FETCH_HEAD` after `git fetch origin pull/<n>/head` gets "no pull requests found". When that happens, search the open PRs for the branch's recent commits, newest first, and take the first PR whose head is one of them:
+Without a PR number, `gh pr view` takes the repository from the checkout's git remote and refuses `--repo` ("argument required when using the --repo flag"). It finds a PR only when the branch tracks it or has the same name as its head branch. A branch made with `git checkout -b <name> FETCH_HEAD` after `git fetch origin pull/<n>/head` gets "no pull requests found". When that happens, search the open PRs for the branch's recent commits, newest first, and take the first PR whose head is one of them:
 
 ```bash
 for sha in $(git rev-list -n 20 HEAD); do
@@ -141,7 +141,7 @@ gh issue view <n> --repo metabase/metabase --json number,title,body \
 
 `gh issue view` also returns pull requests, and a `#<number>` in a PR body is often a related PR. Skip any number whose `gh issue view <n> --json url` URL contains `/pull/`, because another PR's description says nothing about what this one intends.
 
-For Linear issue ids in the body or branch name, match `\b[A-Za-z]{2,5}-[0-9]+\b` and uppercase the result, because branch names are usually lowercase (`sec-1343-model-metadata-positional-names`). Then run `./bin/mage -bot-fetch-issue <ID> > "$RUN_DIR/context/issues/<ID>.md"` when `LINEAR_API_KEY` is set. The pattern also matches ordinary words followed by a number, such as `TRIAL-79483` in the branch `adv-trial-79483`, so delete the file for any id the fetch does not find. Without the key, note in the report which ids were not read.
+For Linear issue ids, match `\b[A-Za-z]{2,5}-[0-9]+\b` in the body, in the local branch name and in `.headRefName` from `context/pr.json` when it exists, and uppercase the result, because branch names are usually lowercase (`sec-1343-model-metadata-positional-names`). In current-branch mode the local branch can be named anything, so the id is often only in `headRefName`. Then run `./bin/mage -bot-fetch-issue <ID> > "$RUN_DIR/context/issues/<ID>.md"` when `LINEAR_API_KEY` is set. The pattern also matches ordinary words followed by a number, such as `TRIAL-79483` in the branch `adv-trial-79483`, so delete the file for any id the fetch does not find. Without the key, note in the report which ids were not read.
 
 ### 4. Name the risks
 
@@ -220,7 +220,7 @@ Fill in `reference/report-template.md` and write it to `report.md`. Inside a sub
 
 1. Copy every generated file to `tests/<generator>/<repo-relative path>.txt`.
 2. Remove both worktrees with `git worktree remove --force <path>`, then run `git worktree prune`.
-3. Delete the sandbox directory.
+3. Delete the sandbox directory, then the now-empty `$WT` directory with `rmdir "$WT"`.
 4. Run `git status --porcelain --untracked-files=all` in your checkout. Nothing outside `local/` may show up from this run.
 
 Tell the user where `report.md` is, give the count table, and list the findings in one line each. If a finding looks like a real bug, say so plainly and give the repro. Do not tell the PR author or post anything, because that decision belongs to the person who ran the skill.

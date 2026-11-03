@@ -49,7 +49,7 @@ The budget is per risk, not a flat count:
 - Medium: one test, two if the risk has two distinct failure modes.
 - Low: none.
 
-A table-driven test (`it.each`, or a `doseq` over a vector of cases in Clojure) counts as one test however many rows it has. Prefer one table-driven or property test per risk over several near-duplicate examples.
+A table-driven test (`it.each`, or a `doseq` over a vector of cases in Clojure) takes one unit of this budget however many rows it has. The report counts Jest test cases instead, so there each `it.each` row counts once. Prefer one table-driven or property test per risk over several near-duplicate examples.
 
 ## Output
 

@@ -27,7 +27,7 @@ Head <short sha>, merge-base <short sha> on <base branch>. Run <run-id>.
 Repro: `tests/<generator>/<path>.txt`, test "<full test name>". Copy it to `<repo-relative path>` and run:
 
 ```bash
-bun run test-unit-keep-cljs --ci --maxWorkers=2 --testTimeout=10000 --runTestsByPath <repo-relative path> -t "<test name>"
+bun run test-unit-keep-cljs --ci --maxWorkers=2 --testTimeout=10000 --runTestsByPath <repo-relative path> -t '<test name>'
 ```
 
 <For a backend test, the run command is `./bin/test-agent :only '[<namespace>/<test name>]'` instead.>
@@ -36,11 +36,11 @@ bun run test-unit-keep-cljs --ci --maxWorkers=2 --testTimeout=10000 --runTestsBy
 
 ## Candidates to keep
 
-These tests pass on the head and fail on the parent commit, and the PR's own tests do not assert the same thing. To keep one, copy it from `tests/` into the spec next to the code and rename it to match its neighbours. Nothing is folded in automatically.
+These tests pass on the head and fail on the parent commit, and neither the PR's own tests nor the existing specs for the changed files assert the same thing. To keep one, copy it from `tests/` into the spec next to the code and rename it to match its neighbours. Nothing is folded in automatically.
 
 | Test | Generator | Pins | Evidence on the parent |
 | --- | --- | --- | --- |
-| `<file>` "<test name>" | <generator> | <the behaviour, in one sentence> | <the parent failure line, or "the export does not exist on the parent"> |
+| `<file>` "<test name>" | <generator> | <the behaviour, in one sentence> | <the parent failure line> |
 
 <If there are none, write "None." under the heading.>
 
@@ -49,6 +49,12 @@ These tests pass on the head and fail on the parent commit, and the PR's own tes
 <Tests that failed on both commits. List first any whose note says "the PR's claim does not hold". Leave the section out if there are none.>
 
 - `<file>` "<test name>" (<generator>): <the failure line>. <One sentence on what it suggests.>
+
+## Behaviour changes where the parent was wrong
+
+<Tests recorded as `invalid` with the note "the parent was wrong". Leave the section out if there are none.>
+
+- `<file>` "<test name>": <the input>, where the parent gave <its broken value> and the head gives <the new value>.
 
 ## Counts
 

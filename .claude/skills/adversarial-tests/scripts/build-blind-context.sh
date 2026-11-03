@@ -51,6 +51,39 @@ clj_surface() {
   (cd "$NEUTRAL_DIR" && bb "$SCRIPT_DIR/clj-surface.bb" "$@")
 }
 
+common_prefix_length() {
+  local i=0
+  while [[ $i -lt ${#1} && $i -lt ${#2} && "${1:$i:1}" == "${2:$i:1}" ]]; do
+    i=$((i + 1))
+  done
+  echo "$i"
+}
+
+# Prints the parent commit's specs named after a changed frontend file, such as Foo.unit.spec.tsx for Foo.tsx.
+# A file with none gets up to three specs from its directory whose names share the longest prefix with its own.
+neighbour_specs() {
+  local dir name spec spec_name
+  local own=()
+  dir=$(dirname "$1")
+  name=$(basename "$1")
+  name=${name%.*}
+  for spec in "$PARENT_DIR/$dir/$name".unit.spec.{ts,tsx,js,jsx} \
+    "$PARENT_DIR/$dir/tests/$name".unit.spec.{ts,tsx,js,jsx}; do
+    [[ -f "$spec" ]] && own+=("${spec#"$PARENT_DIR"/}")
+  done
+  if [[ ${#own[@]} -gt 0 ]]; then
+    printf '%s\n' "${own[@]}"
+    return
+  fi
+  for spec in "$PARENT_DIR/$dir"/*.unit.spec.{ts,tsx,js,jsx} \
+    "$PARENT_DIR/$dir"/tests/*.unit.spec.{ts,tsx,js,jsx}; do
+    [[ -f "$spec" ]] || continue
+    spec_name=$(basename "$spec")
+    spec_name=${spec_name%%.unit.spec.*}
+    printf '%s\t%s\n' "$(common_prefix_length "$name" "$spec_name")" "${spec#"$PARENT_DIR"/}"
+  done | sort -t $'\t' -k1,1nr -k2,2 | sed -n 1,3p | cut -f2
+}
+
 {
   echo "# Context for the blind test generator"
   echo
@@ -107,10 +140,8 @@ clj_surface() {
         echo '```'"$lang"
         ts_surface surface "$path" --touched "$(touched_ranges "$path")"
         echo '```'
-        dir=$(dirname "$path")
-        for spec in "$PARENT_DIR/$dir"/*.unit.spec.ts "$PARENT_DIR/$dir"/*.unit.spec.tsx \
-          "$PARENT_DIR/$dir"/tests/*.unit.spec.ts "$PARENT_DIR/$dir"/tests/*.unit.spec.tsx; do
-          [[ -f "$spec" ]] && harness_files+=("${spec#"$PARENT_DIR"/}")
+        for spec in $(neighbour_specs "$path"); do
+          harness_files+=("$spec")
         done
         ;;
       src/*.clj | src/*.cljc | enterprise/backend/src/*.clj | enterprise/backend/src/*.cljc)

@@ -5,7 +5,7 @@ You are writing tests for a change to Metabase, an open-source BI tool with a Re
 - what the author says the change does: the PR title and description, or the branch's commit messages,
 - the text of any linked issues,
 - the public surface of every changed file at the PR head: component names and prop types, exported function signatures, endpoint paths and their schemas, with bodies elided as `{ … }` or `…`, plus a line naming which declarations the change touched,
-- the setup half of the existing tests next to the changed files, as they were before the change, to show how the code is rendered or called.
+- the setup half of the existing tests for each changed file, as they were before the change, to show how the code is rendered or called. A frontend file with no spec of its own gets up to three specs from its directory instead.
 
 You have the Read and Write tools and nothing else. You cannot open any file except `prompt.md` and `context.md`, and you can only write inside `out/`. Do not try to reach anything else.
 
@@ -68,7 +68,7 @@ Follow these rules for frontend files:
 - Import the code under test with a relative path from the spec's own directory, using the export names from the surface in `context.md`.
 - Use the harness reference in `context.md` for which providers, mocks and fixtures a component needs. Copy its `setup` function into your file if it helps.
 - Query by role, label or visible text. Use a `data-testid` only if the harness reference uses it.
-- For timers, use `jest.useFakeTimers({ advanceTimers: true })` and `act(() => jest.advanceTimersByTime(ms))`, with `act` from `__support__/ui`.
+- For timers, use `jest.useFakeTimers()`, make the user actions through `const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })`, and move time with `act(() => jest.advanceTimersByTime(ms))`, with `act` from `__support__/ui`. Use `jest.useFakeTimers({ advanceTimers: true })` only when the test must also await `findBy*` or `waitFor`, because with it fake time also moves with real time, so a check such as "nothing is saved before the delay" depends on how fast the typing ran.
 - `waitFor` and `findBy*` wait up to 10 seconds in this repo, longer than most timers in the UI. Check a state that must hold right after an action with a plain `expect`.
 - CSS is not loaded in these tests, so `pointer-events: none` and similar styles do not stop a click. A test about a control that ignores clicks checks its label or attributes, or uses the keyboard.
 - No snapshot assertions. No test may need more than 10 seconds.

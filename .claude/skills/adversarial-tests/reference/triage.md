@@ -8,7 +8,7 @@ Run all generated frontend specs in one Jest invocation (label `head-1`), then a
 
 Sort every failure into one of two kinds:
 
-- A harness error means the test never reached its assertion for reasons unrelated to the behaviour under test. Typical causes are a `SUITE_ERROR` line (syntax error, bad import, a module that does not exist at that path), an unmocked endpoint (`No fallback response defined for GET /api/...`), a missing provider or store slice, or a fixture that fails schema validation. On the backend, a namespace that does not compile (`Unable to resolve symbol`, `Could not locate ... on classpath`) shows as `LOAD_ERROR`. One such file stops every backend test in the run, so repair or drop it first and rerun before you sort anything else.
+- A harness error means the test never reached its assertion for reasons unrelated to the behaviour under test. Typical causes are a `SUITE_ERROR` line (syntax error, bad import, a module that does not exist at that path), an unmocked endpoint (`No fallback response defined for GET /api/...`), a missing provider or store slice, or a fixture that fails schema validation. A failed query or selector is a harness error too when the DOM dump in the failure shows the element the test means under another name or in another case, such as `getAllByPlaceholderText("label")` against the placeholder "Label". When the element is not there at all, it is an assertion failure. On the backend, a namespace that does not compile (`Unable to resolve symbol`, `Could not locate ... on classpath`) shows as `LOAD_ERROR`. One such file stops every backend test in the run, so repair or drop it first and rerun before you sort anything else.
 - An assertion failure means the test ran its actions and an `expect` or `is` disagreed. A thrown error from the code under test also counts here, because a crash on a valid input is a result.
 
 ## 2. Repair harness errors, within fixed rules
@@ -19,6 +19,7 @@ You may change only these parts of a test:
 - mock endpoints and their responses, when the response is a well-formed default (an empty list, a mock entity),
 - provider, store and router setup,
 - fixture construction, to make a fixture valid,
+- a query or selector that matches nothing, to match the element the DOM dump shows the test means,
 - timer setup.
 
 You must not change these parts:
@@ -40,7 +41,7 @@ Rerun every spec that has an assertion failure (label `head-2`), filtered with `
 
 Copy every remaining generated file into the parent worktree at the same relative path, and run them all there (label `parent-1`). Rerun the parent failures once (label `parent-2`), and count a test as failing on the parent only if it fails both times.
 
-If the code under test does not exist on the parent (a new file, a new export, a new endpoint), the test fails there by construction. Record the failure kind, because the report quotes it.
+If the code under test does not exist on the parent (a new file, a new export, a new endpoint), the test fails there by construction. Record the failure kind, because section 6 uses it.
 
 ## 5. Give each test one verdict
 
@@ -55,21 +56,27 @@ Give each test the first verdict in this table that applies:
 | passed | failed twice | `candidate`, after the check below | The test pins the PR's behaviour |
 | passed | passed | `discarded` | It cannot tell the PR from its parent |
 
-Tests whose oracle is the parent's behaviour were calibrated on the parent in the generator step, so they pass there by construction. For them, a head failure is a finding and a pass is a discard.
+Tests whose oracle is the parent's behaviour were calibrated on the parent in the generator step, so they pass there by construction. For them, a head failure is a finding, after the check in section 6, and a pass is a discard.
 
-A `pre-existing` test whose oracle is a sentence in this PR's description needs one more look. It means the PR claims a behaviour that neither the head nor the parent has. Keep the verdict, and mark the note "the PR's claim does not hold" so the report lists it first among the pre-existing failures.
+A `pre-existing` test whose oracle is a sentence in this PR's description needs one more look. Once it passes the check in section 6, it means the PR claims a behaviour that neither the head nor the parent has. Keep the verdict, and mark the note "the PR's claim does not hold" so the report lists it first among the pre-existing failures.
 
-## 6. Check every finding and candidate before it counts
+## 6. Check every finding, pre-existing failure and candidate before it counts
 
-Most adversarial failures are test mistakes. Before a test counts as a finding, read the failing assertion and the code it exercises, and answer three questions:
+Most adversarial failures are test mistakes. Before a test counts as a finding or a pre-existing failure, read the failing assertion and the code it exercises, and answer these questions:
 
 1. Does the expected value follow from the oracle? For a stated-intent oracle, does the quoted sentence really say this? For common sense, would a user really expect it?
 2. Did the test do what a user or caller can do? A sequence that no real caller produces, such as calling a handler with arguments the component never passes, does not count.
-3. Is the failure about the behaviour, rather than about the test's own setup? An element that is never found because the test queried the wrong label is a harness error that slipped through.
+3. Is the failure about the behaviour, rather than about the test's own setup? A failed query or selector counts as a problem on the test's side, the same as a harness error, unless the element is missing altogether. An element that is never found because the test queried the wrong label, or the right label in the wrong case, is a harness error that slipped through.
+4. When the oracle is the parent's behaviour, is the parent's own value sound? If the parent's value is plainly broken (`NaN`, an exception, nonsense), a different value on the head is not a finding. For example, the parent saved `NaN` for a typed "-" and the head saved `null`.
 
-If any answer is no, record the test as `invalid` with one sentence saying why. Only tests that pass all three are findings.
+If any answer is no, record the test as `invalid` with one sentence saying why. When question 4 is the reason, start the note with "the parent was wrong", because the report lists these tests as behaviour changes. Only tests that pass every question are findings or pre-existing failures.
 
-For a candidate, check that the PR's own tests do not already assert the same thing. If they do, record it as `discarded` with the note "already covered by <spec and test name>".
+A pre-existing failure that fails question 3 gets one repair under the rules in section 2, logged in `repairs.md`. Run it again on the head and the parent as in sections 3 and 4, and take its verdict from the table in section 5 again. If it still fails on the test's side, record it as `invalid`.
+
+A candidate gets two checks:
+
+- A test that fails on the parent only because a symbol it imports does not exist there (a `SUITE_ERROR` for a missing module, or `... is not a function` or React's "Element type is invalid" for a missing export) pins the symbol, not a behaviour, because any test that imports it fails there. Record it as `discarded` with the note "fails on the parent only because <symbol> does not exist there".
+- Check that neither the PR's own tests nor the existing specs for the changed files already assert the same thing. If one does, record the test as `discarded` with the note "already covered by <spec and test name>".
 
 ## 7. Write triage.tsv
 
