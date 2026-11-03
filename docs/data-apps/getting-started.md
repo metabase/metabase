@@ -99,7 +99,7 @@ If you can't add the skill to your agent, tell your agent to run `mb skills get 
 
 ### 6. Clone the repository
 
-Clone the repository to your computer, and go into its folder. Use your repository's URL:
+Clone your Metabase's Remote Sync repository to your computer, and change into its directory. Use your repository's URL:
 
 ```sh
 git clone https://github.com/your-org/your-repo
@@ -130,7 +130,7 @@ The agent runs commands on your computer, like `mb`, `npm`, and `git`, and it mi
 
 ### 8. Preview the app
 
-The agent starts the [data app preview](./build.md#preview-the-app-on-your-computer) at a `localhost` address on your computer. Open the preview in your browser, and keep the tab open while the agent works: the agent reads the app's errors from the open preview. The preview gets its data from your production Metabase with an admin [API key](../people-and-groups/api-keys.md), so the preview shows what an admin can see, not what the app's viewers can see.
+The agent starts the [data app preview](./build.md#preview-the-app-on-your-computer) at a `localhost` address on your computer. Open the preview in your browser, and keep the tab open while the agent works: the agent reads the app's errors from the open preview. The preview gets its data from your production Metabase with an admin [API key](../people-and-groups/api-keys.md), so the preview shows what an admin can see, not necessarily what the app's viewers can see (you'll assign permissions in another place).
 
 Ask your agent for changes until the app looks the way you want.
 
@@ -149,7 +149,7 @@ The agent will
 - Pushes the branch to your remote repo.
 - Then the agent pulls the branch into your production Metabase via the CLI.
 
-If your agent can't commit or push (for example because you don't trust it), you'll need to run the commands yourself in your clone. Use your app's slug. Add the `.env.local` to your `.gitignore` file to keep the preview's API key out of Git, so commit that file too:
+If your agent can't commit or push (for example because you don't trust it), you'll need to run the commands yourself in your local clone. Use your app's slug. Add the `.env.local` to your `.gitignore` file to keep the preview's API key out of Git, so commit that file too:
 
 ```sh
 git add .gitignore data_apps/<slug> collections/data_apps
@@ -162,6 +162,8 @@ Then, on your production Metabase, [pull the changes](../data-modeling/semantic-
 Open the app at `/apps/<slug>` on your production Metabase, for example `https://metabase.example.com/apps/orders-overview`.
 
 ## Grant permissions to groups
+
+For others to view the app, you'll need to grant them permissions.
 
 ### 10. Add groups to the app
 
