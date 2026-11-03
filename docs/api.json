@@ -56316,6 +56316,54 @@
         "tags" : [ "/api/metabot" ]
       }
     },
+    "/api/metaplow-proxy/send" : {
+      "post" : {
+        "operationId" : "post-api-metaplow-proxy-send",
+        "summary" : "POST /api/metaplow-proxy/send",
+        "description" : "Forward a Metabase Track payload to the configured collector server-side, bypassing the customer page's\n  `connect-src` CSP.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "description" : "a Metabase Track send envelope",
+                "type" : "object",
+                "properties" : {
+                  "payload" : {
+                    "description" : "a Metabase Track event payload",
+                    "type" : "object",
+                    "properties" : {
+                      "website" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    },
+                    "required" : [ "website" ]
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "enum" : [ "event" ]
+                  }
+                },
+                "required" : [ "type", "payload" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/metaplow-proxy" ]
+      }
+    },
     "/api/metric" : {
       "get" : {
         "operationId" : "get-api-metric",
