@@ -986,7 +986,11 @@
 
   The query processor expands a metric `source-card` only when the query references a metric. Otherwise the stage
   reads the metric's aggregated result, so a `count` gives 1 and a base column is not there. This check is stricter:
-  the stage must aggregate this metric."
+  the stage must aggregate this metric.
+
+  A stage that passes this check still goes to [[incompatible-metrics]]. That check accepts the stage for a metric on
+  a table, and refuses it for a metric on a model or a saved question, because the stage's `source-card` is not that
+  card."
   [mp query]
   ;; Not `lib.util/source-card-id`: it validates the query, and this check runs before the gate that explains an
   ;; invalid query.

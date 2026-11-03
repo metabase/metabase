@@ -2446,6 +2446,12 @@
                     (ex-data e)))
             (is (str/includes? (ex-message e) question-eid)
                 "the message names the source card to build the stage on")))
+        (testing "sourcing the metric itself is rejected, also when the stage aggregates the metric"
+          (let [e (is (thrown? clojure.lang.ExceptionInfo
+                               (construct/execute-representations-query
+                                (metric-query-data {"source-card" metric-eid} metric-eid))))]
+            (is (=? {:error :incompatible-metric} (ex-data e)))
+            (is (str/includes? (ex-message e) question-eid))))
         (testing "sourcing the card it was defined on is accepted"
           (let [result (construct/execute-representations-query
                         (metric-query-data {"source-card" question-eid} metric-eid))]
