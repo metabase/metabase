@@ -1,9 +1,10 @@
 import { Accordion, Badge, Stack } from "metabase/ui";
 import type { HealthCheck, HealthCheckStatus } from "metabase-types/api";
 
-import { HealthCheckCard } from "./HealthCheckCard";
+import { HealthCheckCard } from "../HealthCheckCard/HealthCheckCard";
+import { getStatusInfo } from "../utils";
+
 import S from "./HealthCheckGroup.module.css";
-import { getStatusInfo } from "./utils";
 
 type HealthCheckGroupProps = {
   status: HealthCheckStatus;

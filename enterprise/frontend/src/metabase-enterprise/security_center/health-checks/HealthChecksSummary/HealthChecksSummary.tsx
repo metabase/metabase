@@ -4,7 +4,7 @@ import ShieldImage from "assets/img/shield-96x96.svg";
 import { Card, Group, Icon, Stack, Text } from "metabase/ui";
 import type { HealthCheck } from "metabase-types/api";
 
-import { getStatusInfo } from "./utils";
+import { getStatusInfo } from "../utils";
 
 type HealthChecksSummaryProps = {
   checks: HealthCheck[];

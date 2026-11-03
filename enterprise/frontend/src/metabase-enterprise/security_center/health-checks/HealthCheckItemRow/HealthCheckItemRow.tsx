@@ -2,7 +2,7 @@ import { Link } from "metabase/common/components/Link";
 import { Button, FixedSizeIcon, Flex, Group, Stack, Text } from "metabase/ui";
 import type { HealthCheckId, HealthCheckItem } from "metabase-types/api";
 
-import { getHealthCheckItemAction, getStatusInfo } from "./utils";
+import { getHealthCheckItemAction, getStatusInfo } from "../utils";
 
 const ROW_LINE_HEIGHT = "1.25rem";
 

@@ -23,11 +23,10 @@ import {
   useRecheckHealthChecksMutation,
 } from "../../api";
 import { SeverityBadge } from "../../components/SeverityBadge/SeverityBadge";
-
-import { HealthCheckItems } from "./HealthCheckItems";
-import { RecheckButton } from "./RecheckButton";
-import { useRecheckErrorToast } from "./use-recheck-error-toast";
-import { RECHECK_ALL_CACHE_KEY, getHealthCheckSettingsUrl } from "./utils";
+import { HealthCheckItems } from "../HealthCheckItems/HealthCheckItems";
+import { RecheckButton } from "../RecheckButton/RecheckButton";
+import { useRecheckErrorToast } from "../hooks/use-recheck-error-toast";
+import { RECHECK_ALL_CACHE_KEY, getHealthCheckSettingsUrl } from "../utils";
 
 type HealthCheckCardProps = {
   check: HealthCheck;

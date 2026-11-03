@@ -7,9 +7,10 @@ import type {
   HealthCheckItem,
 } from "metabase-types/api";
 
-import { HealthCheckItemRow } from "./HealthCheckItemRow";
+import { HealthCheckItemRow } from "../HealthCheckItemRow/HealthCheckItemRow";
+import { getStatusInfo, partitionItemsByProblem } from "../utils";
+
 import S from "./HealthCheckItems.module.css";
-import { getStatusInfo, partitionItemsByProblem } from "./utils";
 
 type HealthCheckItemRowsProps = {
   checkId: HealthCheckId;

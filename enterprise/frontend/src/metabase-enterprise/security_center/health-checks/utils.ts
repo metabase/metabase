@@ -13,7 +13,7 @@ import type {
   IconName,
 } from "metabase-types/api";
 
-import { compareBySeverity } from "../../utils";
+import { compareBySeverity } from "../utils";
 
 export const HEALTH_CHECK_STATUSES = [
   "fail",

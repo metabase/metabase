@@ -14,16 +14,15 @@ import {
   useListHealthChecksQuery,
   useRecheckHealthChecksMutation,
 } from "../../api";
-
-import { HealthCheckGroup } from "./HealthCheckGroup";
-import { HealthChecksSummary } from "./HealthChecksSummary";
-import { RecheckButton } from "./RecheckButton";
-import { useRecheckErrorToast } from "./use-recheck-error-toast";
+import { HealthCheckGroup } from "../HealthCheckGroup/HealthCheckGroup";
+import { HealthChecksSummary } from "../HealthChecksSummary/HealthChecksSummary";
+import { RecheckButton } from "../RecheckButton/RecheckButton";
+import { useRecheckErrorToast } from "../hooks/use-recheck-error-toast";
 import {
   HEALTH_CHECK_STATUSES,
   RECHECK_ALL_CACHE_KEY,
   getChecksByStatus,
-} from "./utils";
+} from "../utils";
 
 type HealthChecksContentProps = {
   checks: HealthCheck[];
