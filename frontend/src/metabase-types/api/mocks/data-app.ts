@@ -26,10 +26,10 @@ export const createMockDataApp = (opts?: Partial<DataApp>): DataApp => ({
 export const createMockDataAppGroup = (
   opts?: Partial<DataAppGroup>,
 ): DataAppGroup => ({
-  is_tenant_group: false,
   id: 1,
   name: "Support",
   member_count: 0,
+  is_tenant_group: false,
   ...opts,
 });
 

@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
   createMockDataApp,
   createMockDataAppGroup,
@@ -69,17 +69,36 @@ function setup({ useTenants = false, hasTenantsFeature = false } = {}) {
 
 describe("AddDataAppGroupsModal", () => {
   it("includes tenant groups when tenants are enabled and licensed", async () => {
-    setup({ useTenants: true, hasTenantsFeature: true });
+    const { onClose } = setup({ useTenants: true, hasTenantsFeature: true });
 
     await userEvent.click(
       await screen.findByRole("textbox", { name: "Groups" }),
     );
-    await userEvent.click(
-      await screen.findByRole("option", {
-        name: "Tenant support (tenant group)",
-      }),
-    );
+    const tenantOption = await screen.findByRole("option", {
+      name: "Tenant support",
+    });
+
+    expect(
+      within(tenantOption).getByRole("img", { name: "Tenant group" }),
+    ).toHaveClass("Icon-globe");
+    expect(
+      within(screen.getByRole("option", { name: "Finance" })).queryByRole(
+        "img",
+      ),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(tenantOption);
+
+    const tenantPill = screen.getByRole("listitem", { name: "Tenant support" });
+
+    expect(
+      within(tenantPill).getByRole("img", { name: "Tenant group" }),
+    ).toHaveClass("Icon-globe");
+    expect(screen.queryByText(/\(tenant group\)/)).not.toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
 
     const requests = fetchMock.callHistory.calls(
       "path:/api/ee/apps/sales/groups",
@@ -94,6 +113,52 @@ describe("AddDataAppGroupsModal", () => {
       "path:/api/permissions/group",
     )[0];
     expect(new URL(groupRequest.url).searchParams.get("tenancy")).toBeNull();
+  });
+
+  it("searches, selects, and removes groups with the keyboard", async () => {
+    setup();
+
+    const input = await screen.findByRole("textbox", { name: "Groups" });
+
+    await waitFor(() => expect(input).toBeEnabled());
+    await userEvent.type(input, "Fin");
+
+    expect(
+      await screen.findByRole("option", { name: "Finance" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "All Users" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+
+    const pill = screen.getByRole("listitem", { name: "Finance" });
+
+    expect(within(pill).queryByRole("img")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(pill).getByRole("button", { name: "Remove Finance" }),
+    );
+
+    expect(
+      screen.queryByRole("listitem", { name: "Finance" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(input);
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Finance" }),
+    );
+    await userEvent.click(input);
+    await userEvent.keyboard("{Backspace}");
+
+    expect(
+      screen.queryByRole("listitem", { name: "Finance" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.type(input, "Unknown group{Enter}");
+
+    expect(await screen.findByText("No groups found")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
   });
 
   it.each([

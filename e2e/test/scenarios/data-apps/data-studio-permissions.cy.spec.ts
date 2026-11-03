@@ -163,7 +163,7 @@ describe("scenarios > data apps > data studio permissions", () => {
       H.main().findByRole("button", { name: "Add groups" }).click();
       H.modal().findByRole("textbox", { name: "Groups" }).click();
       cy.findByRole("option", {
-        name: "All tenant users (tenant group)",
+        name: "All tenant users",
       }).click();
       H.modal().findByRole("button", { name: "Add" }).click();
       H.main()

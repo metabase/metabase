@@ -8,7 +8,7 @@ import {
   isAdminGroup,
 } from "metabase/common/utils/groups";
 import { useSetting } from "metabase/settings";
-import { Button, Group, Modal, MultiSelect, Stack, Text } from "metabase/ui";
+import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import {
   useAddDataAppGroupsMutation,
   useGetDataAppGroupsQuery,
@@ -17,7 +17,7 @@ import type { DataApp } from "metabase-types/api";
 
 import { trackDataAppGroupAdded } from "../../../analytics";
 
-const DROPDOWN_WIDTH = 300;
+import { AddDataAppsGroupsCombobox } from "./AddDataAppsGroupsCombobox";
 
 type AddDataAppGroupsModalProps = {
   app: DataApp;
@@ -50,10 +50,9 @@ export function AddDataAppGroupsModal({
         )
         .map((group) => ({
           value: String(group.id),
-          label: group.is_tenant_group
-            ? t`${getGroupNameLocalized(group)} (tenant group)`
-            : getGroupNameLocalized(group),
-        })),
+          label: getGroupNameLocalized(group),
+          isTenantGroup: group.is_tenant_group,
+        })) ?? [],
     [groups, assignedGroups, canAssignTenantGroups],
   );
 
@@ -78,16 +77,11 @@ export function AddDataAppGroupsModal({
     >
       <Stack gap="lg" mt="sm">
         <Text>{t`People in these groups will be able to open the app.`}</Text>
-        <MultiSelect
-          aria-label={t`Groups`}
-          placeholder={t`Search for groups to add`}
-          searchable
-          comboboxProps={{ width: DROPDOWN_WIDTH, position: "bottom-start" }}
-          data={options}
+        <AddDataAppsGroupsCombobox
+          options={options}
           value={selectedIds}
           onChange={setSelectedIds}
           disabled={isLoading}
-          data-autofocus
         />
         <Group justify="flex-end" gap="md">
           <Button onClick={onClose}>{t`Cancel`}</Button>
