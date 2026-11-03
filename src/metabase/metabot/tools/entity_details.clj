@@ -376,13 +376,14 @@
                      (lib/breakouts metric-query))
          base-query (when query-needed?
                       (lib/remove-all-breakouts metric-query))
-         ;; Consumer-framed filterable columns (base table + FK-reachable), permission-filtered.
+         ;; Consumer-framed filterable columns (base table + FK-reachable), before the permission filter.
+         all-filterable-cols  (when (and query-needed? with-queryable-dimensions?)
+                                (lib/filterable-columns base-query))
+         ;; The same columns, permission-filtered.
          ;; Computed once and shared by `:queryable-dimensions` and the join-required-dims
          ;; reachability filter below — which needs the FILTERED set, so that a column the user
          ;; cannot read is never treated as "already reachable" nor re-surfaced under a join.
-         base-filterable-cols (when (and query-needed? with-queryable-dimensions?)
-                                (->> (lib/filterable-columns base-query)
-                                     permission-filter-columns))
+         base-filterable-cols (some-> all-filterable-cols permission-filter-columns)
          ;; Definition query (WITH the metric's own joins) — surfaces FK-less join dimensions that
          ;; the consumer-framed `base-query` drops. Built from the card's `:dataset-query`, not from
          ;; `metric-query`, which frames the metric as a source and hides its definition joins.
@@ -427,7 +428,8 @@
                  :default_time_dimension_field_name (:name col)}))
 
        (and query-needed? with-queryable-dimensions?)
-       (assoc :queryable-dimensions (metabot.tools.u/metric-dimensions metric-query queryable-columns))
+       (assoc :queryable-dimensions
+              (metabot.tools.u/metric-dimensions metric-query queryable-columns all-filterable-cols))
 
        (seq join-required-dims)
        (assoc :join-required-dimensions join-required-dims)

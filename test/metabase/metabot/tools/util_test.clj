@@ -379,7 +379,8 @@
               (testing failure
                 (with-redefs-fn {clause-var clause-fn}
                   (fn []
-                    (let [rows (categories (dimensions card-query (lib/filterable-columns card-query)))]
+                    (let [columns (lib/filterable-columns card-query)
+                          rows    (categories (dimensions card-query columns columns))]
                       (is (= 2 (count rows)))
                       (is (every? #(and (nil? (:reference %)) (nil? (:portable_fk %))) rows))
                       (is (every? #(= [db-name "PUBLIC" "CATEGORIES"] (:source_table %)) rows)))))))))))))

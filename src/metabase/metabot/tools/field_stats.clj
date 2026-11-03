@@ -97,24 +97,27 @@
     (build-field-statistics nil (when (and fingerprint (not (query-statistics-restricted? query))) fingerprint) limit)))
 
 (defn- field-metadata-output
-  "Build the `:field-metadata` tool result for `col`, one of `columns` of `query`. Surfaces the column's portable
-  FK + join label, or its `:reference`, as its [[metabot.tools.u/metric-dimension]] row does, so a drilled-into
-  field/dimension detail tells the LLM exactly how to reference the column.
+  "Build the `:field-metadata` tool result for `col`, one of `columns` of `query`. `all-columns` are the columns
+  before the permission filter. Surfaces the column's portable FK + join label, or its `:reference`, as its
+  [[metabot.tools.u/metric-dimension]] row does, so a drilled-into field/dimension detail tells the LLM exactly
+  how to reference the column.
 
   A column without a portable FK, like the renamed copy `NAME_2` or a computed column, carries its emitted string
   `field_id` as `:reference_name`. The reference always comes from the column, never from the requested
   `field-id`. A request for the numeric string `\"48\"` (the field ID of VENUES.NAME) still renders the
   portable FK of VENUES.NAME, not `\"48\"`.
 
-  `columns` are the columns after the permission filter and before the dedup to one column per field ID: they keep
-  every FK route, so a column that a card reaches through two FK columns gets the `:reference` of its own route."
-  [query columns col field-id limit]
+  `columns` are the columns after the permission filter and before the dedup to one column per field ID; they give
+  the label of the column's own FK route. `all-columns` are the same columns before the permission filter; they
+  decide whether a card reaches the column's table through two FK columns, so that the column gets the `:reference`
+  of its own route."
+  [query columns all-columns col field-id limit]
   (let [;; `field-id` is the field ID, maybe as a string, or a column alias. A column with a field ID that is found by
         ;; its alias is a later column of one field, see `column-field-ids`.
         column-id  (if (= (str field-id) (str (:id col)))
                      (:id col)
                      field-id)
-        result-col (metabot.tools.u/metric-dimension query columns col column-id)]
+        result-col (metabot.tools.u/metric-dimension query columns all-columns col column-id)]
     {:structured-output (merge {:result-type    :field-metadata
                                 :field_id       field-id
                                 :value_metadata (field-statistics query col limit)}
@@ -178,11 +181,12 @@
 
 (defn- table-field-stats
   [table-id field-id limit]
-  (let [query   (metabot.tools.u/table-query table-id)
-        columns (usable-columns (lib/visible-columns query))
-        col     (field-column query "table" table-id field-id columns)]
+  (let [query       (metabot.tools.u/table-query table-id)
+        all-columns (lib/visible-columns query)
+        columns     (usable-columns all-columns)
+        col         (field-column query "table" table-id field-id columns)]
     ;; A table query is not over a card, so it has no multi-FK Reference, and the deduplicated columns are enough.
-    (field-metadata-output query columns col field-id limit)))
+    (field-metadata-output query columns all-columns col field-id limit)))
 
 (defn- card-field-stats
   [entity-type card-id field-id limit]
@@ -190,36 +194,43 @@
         ;; which is what `construct_notebook_query` lets a curated card cover (see
         ;; `metabase.metabot.curation`). The definition of a question reads more: a verified `count` over a raw
         ;; table would otherwise serve every column of that table.
-        query    (if (shared/curated-only?)
-                   (metabot.tools.u/card-results-query card-id (keyword entity-type))
-                   (metabot.tools.u/card-query card-id (keyword entity-type)))
-        returned (entity-details/permission-filter-columns (lib/returned-columns query))
-        visible  (when-not (= entity-type "question")
-                   (entity-details/permission-filter-columns (lib/visible-columns query)))
+        query        (if (shared/curated-only?)
+                       (metabot.tools.u/card-results-query card-id (keyword entity-type))
+                       (metabot.tools.u/card-query card-id (keyword entity-type)))
+        all-returned (lib/returned-columns query)
+        all-visible  (when-not (= entity-type "question")
+                       (lib/visible-columns query))
+        returned     (entity-details/permission-filter-columns all-returned)
+        visible      (when all-visible
+                       (entity-details/permission-filter-columns all-visible))
         ;; Result columns keep their own field IDs, see `column-field-ids`. A visible column adds a field ID only
         ;; when no result column has it, and only its first FK route does, as in `usable-columns`.
-        columns  (if (= entity-type "question")
-                   returned
-                   (let [returned-ids (set (metabot.tools.u/column-field-ids returned))]
-                     (concat returned
-                             (->> (m/distinct-by metabot.tools.u/column-field-id visible)
-                                  (remove (comp returned-ids metabot.tools.u/column-field-id))))))
-        col      (field-column query entity-type card-id field-id columns)]
+        columns      (if (= entity-type "question")
+                       returned
+                       (let [returned-ids (set (metabot.tools.u/column-field-ids returned))]
+                         (concat returned
+                                 (->> (m/distinct-by metabot.tools.u/column-field-id visible)
+                                      (remove (comp returned-ids metabot.tools.u/column-field-id))))))
+        col          (field-column query entity-type card-id field-id columns)]
     (check-curated-field-owner! card-id col)
-    ;; Every FK route that the user can see, so that a multi-FK column gets the Reference of its own route.
-    (field-metadata-output query (concat returned visible) col field-id limit)))
+    ;; Every FK route, the visible ones for the label and all of them for the count, so that a multi-FK column gets
+    ;; the Reference of its own route.
+    (field-metadata-output query (concat returned visible) (concat all-returned all-visible) col field-id limit)))
 
 (defn- metric-field-stats
   [metric-id field-id limit]
-  (let [query   (metabot.tools.u/metric-query metric-id)
+  (let [query       (metabot.tools.u/metric-query metric-id)
         ;; Every FK route that the user can see, so that a multi-FK column gets the Reference of its own route.
-        routes  (entity-details/metric-dimension-columns query metric-id)
+        routes      (entity-details/metric-dimension-columns query metric-id)
+        ;; The routes before the permission filter, for the count of FK routes. The explicitly joined columns that
+        ;; `metric-dimension-columns` adds have no FK column, so they do not change the count.
+        all-columns (lib/filterable-columns query)
         ;; Keep the first FK path to each field. A renamed copy on a card stage, like `NAME_2` of `NAME`, has the
         ;; field ID of its field but is its own column, so its output name keeps it.
-        columns (m/distinct-by (juxt metabot.tools.u/column-field-id :name) routes)
-        col     (field-column query "metric" metric-id field-id columns)]
+        columns     (m/distinct-by (juxt metabot.tools.u/column-field-id :name) routes)
+        col         (field-column query "metric" metric-id field-id columns)]
     (check-curated-field-owner! metric-id col)
-    (field-metadata-output query routes col field-id limit)))
+    (field-metadata-output query routes all-columns col field-id limit)))
 
 (defn field-values
   "Return statistics and/or values for a given field of a given entity."

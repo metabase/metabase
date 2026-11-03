@@ -321,26 +321,34 @@
 (defn metric-dimensions
   "Return the dimension rows of a metric for `columns` of its query `query`.
 
-    (metric-dimensions query columns) ;=> [{:field_id 48 :portable_fk [...] ...} {:field_id \"NAME_2\" ...} ...]
+    (metric-dimensions query visible-columns all-columns)
+    ;=> [{:field_id 48 :portable_fk [...] ...} {:field_id \"NAME_2\" ...} ...]
 
   Each row is a [[->result-column]]. A renamed field copy also gets `:source_table`, the portable path of its table.
   On a stage over a card, a column that the card reaches through more than one FK column gets the label of its own FK
   column as `:table_reference`, and a `:reference` field clause that joins through that FK column. When that clause
-  cannot be built, the row has no reference: it keeps only its table, as `:source_table`."
-  [query columns]
-  (let [multi-fk-ids (card-multi-fk-table-ids query columns)]
+  cannot be built, the row has no reference: it keeps only its table, as `:source_table`.
+
+  `all-columns` are the columns of `query` before the permission filter that gives `columns`. They decide which
+  tables the card reaches through more than one FK column: query construction counts every FK column of the card,
+  also the FK columns that a sandbox hides."
+  [query columns all-columns]
+  (let [multi-fk-ids (card-multi-fk-table-ids query all-columns)]
     (mapv #(dimension-row query columns multi-fk-ids % (column-field-id %)) columns)))
 
 (defn metric-dimension
   "Return the [[metric-dimensions]] row of `column`, one of `columns` of `query`, with `field-id` as its `field_id`.
+  See [[metric-dimensions]] for `all-columns`.
 
-    (metric-dimension query columns categories-name 12) ;=> {:field_id 12 :reference [\"field\" {...} [...]] ...}
+    (metric-dimension query columns all-columns categories-name 12)
+    ;=> {:field_id 12 :reference [\"field\" {...} [...]] ...}
 
-  `columns` must keep every FK route to a field: with one route only, no table is reached through more than one FK
-  column, and the row gets no `:reference`. `field-id` can be the alias of a later column of one field, see
-  [[->result-columns]]."
-  [query columns column field-id]
-  (dimension-row query columns (card-multi-fk-table-ids query columns) column field-id))
+  `columns` are the visible columns with every visible FK route to a field, for the label of the route. `all-columns`
+  must keep every FK route, also the hidden ones and the ones that a dedup to one column per field ID removes: with
+  one route only, no table is reached through more than one FK column, and the row gets no `:reference`. `field-id`
+  can be the alias of a later column of one field, see [[->result-columns]]."
+  [query columns all-columns column field-id]
+  (dimension-row query columns (card-multi-fk-table-ids query all-columns) column field-id))
 
 (defn schedule->schedule-map
   "Convert a tool schedule map to the schedule-map format used by cron and pulse channels.
