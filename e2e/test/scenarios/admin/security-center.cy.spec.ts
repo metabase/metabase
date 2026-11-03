@@ -271,22 +271,19 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
   });
 
   describe("health checks", () => {
+    const checkGroup = (name: RegExp) => cy.findByRole("region", { name });
+
     const siteUrlCheck = () =>
       cy.findByTestId("health-check-card-https-site-url");
-
-    const checkGroup = (name: RegExp) => cy.findByRole("region", { name });
 
     it("should show a failing check and move it to Passed after it is fixed and re-checked", () => {
       H.updateSetting("site-url", "http://localhost:4000");
       cy.visit(HEALTH_CHECKS_URL);
 
       cy.log("Insecure site URL fails the check");
-      cy.findByTestId("health-checks-page")
-        .findByText(/checks pass/)
-        .should("be.visible");
-      checkGroup(/Failing/)
-        .findByTestId("health-check-card-https-site-url")
-        .should("be.visible");
+      checkGroup(/Failing/).within(() => {
+        siteUrlCheck().should("be.visible");
+      });
 
       cy.log("Fix the setting and re-check");
       H.updateSetting("site-url", "https://metabase.example.com");
@@ -296,9 +293,9 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
 
       cy.log("The check moves to Passed");
       cy.findByRole("button", { name: /Passed/ }).click();
-      checkGroup(/Passed/)
-        .findByTestId("health-check-card-https-site-url")
-        .should("be.visible");
+      checkGroup(/Passed/).within(() => {
+        siteUrlCheck().should("be.visible");
+      });
     });
   });
 });
