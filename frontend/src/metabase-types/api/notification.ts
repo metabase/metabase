@@ -186,6 +186,12 @@ export type NotificationTickSendEntry = {
   channels: NotificationChannelSendEntry[];
 };
 
+export type SendNotificationStatus = "sent" | "skipped";
+
+export type SendNotificationResponse = {
+  status: SendNotificationStatus;
+};
+
 export type AdminNotificationSortColumn =
   | "id"
   | "last_send"
