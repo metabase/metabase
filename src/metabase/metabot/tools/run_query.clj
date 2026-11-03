@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -372,7 +373,10 @@
       (sql-not-allowed! {:sql-card? sql-card?, :hint hint}))
     (when-not (readable-database? database-id)
       (database-not-found! {:query-id query-id}))
-    (when-not (sql.common/native-query-access? database-id)
+    ;; The QP refuses SQL on the audit database for all users, admins too, but `native-query-access?` says yes for
+    ;; admins there.
+    (when-not (and (not= audit/audit-db-id database-id)
+                   (sql.common/native-query-access? database-id))
       (no-sql-permission! {:query-id query-id, :hint hint}))))
 
 (defn- compiled-sql

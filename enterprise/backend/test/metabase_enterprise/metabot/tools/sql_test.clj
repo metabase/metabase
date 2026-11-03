@@ -27,19 +27,26 @@
                           (qp/process-query (lib/native-query (mt/metadata-provider) "SELECT 1"))))
     (is (false? (sql.common/native-query-access? (mt/id))))))
 
-(defn- run-query!
-  "Call Chat's `run_query` on `query` as the current user, in a conversation of their own, with all Metabot
-   permissions. Return the tool's result, or `{:output <the text the model reads> :error {:class :code}}` on failure."
-  [query]
+(defn- call-tool!
+  "Call the tool `tool-name` of `tool-vars` with `args` as the current user, in a conversation of their own that
+   holds `queries`, with all Metabot permissions. Return the tool's result, or
+   `{:output <the text the model reads> :error {:class :code}}` on failure."
+  [tool-vars queries tool-name args]
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id api/*current-user-id*}]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
               scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
-      (let [entries (tools/->entries [#'tools/run-query-tool
-                                      #'tools/construct-notebook-query-tool
-                                      #'tools/create-sql-query-tool]
-                                     (atom {:conversation-id conversation-id, :state {:queries {"q1" query}}})
+      (let [entries (tools/->entries tool-vars
+                                     (atom {:conversation-id conversation-id, :state {:queries queries}})
                                      nil :internal)]
-        ((:fn (get entries "run_query")) {:query_id "q1"})))))
+        ((:fn (get entries tool-name)) args)))))
+
+(defn- run-query!
+  "Call Chat's `run_query` on `query`. See [[call-tool!]]."
+  [query]
+  (call-tool! [#'tools/run-query-tool #'tools/construct-notebook-query-tool #'tools/create-sql-query-tool]
+              {"q1" query}
+              "run_query"
+              {:query_id "q1"}))
 
 (deftest audit-db-sql-test
   (audit-test/with-audit-db-restoration!
@@ -47,14 +54,25 @@
       (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
                                          metabot-sql-execution-enabled?   true]
         (mt/with-current-user (mt/user->id :crowberto)
-          (testing "the QP refuses SQL on the audit database even for an admin, so Metabot may not run SQL there"
-            (is (true? (sql.common/native-query-access? (mt/id))))
-            (is (false? (sql.common/native-query-access? audit/audit-db-id))))
           (testing "`run_query` refuses SQL on the audit database with a step the model can take"
             (is (= {:class :recoverable, :code ::run-query/no-sql-permission}
                    (:error (run-query! {:database audit/audit-db-id
                                         :type     :native
                                         :native   {:query "SELECT * FROM v_audit_log"}})))))
+          (testing "a SQL tool with no notebook fallback gets the QP's refusal, and the turn does not end"
+            (let [result (call-tool! [#'tools/document-construct-sql-chart-tool]
+                                     {}
+                                     "document_construct_sql_chart"
+                                     {:database_id  audit/audit-db-id
+                                      :name         "Audit log"
+                                      :description  "Audit log rows"
+                                      :analysis     "Show the audit log"
+                                      :approach     "SQL"
+                                      :sql          "SELECT * FROM v_audit_log"
+                                      :viz_settings {:chart_type "table"}})]
+              (is (= {:class :recoverable, :code ::sql.common/query-failed}
+                     (:error result)))
+              (is (re-find #"Native queries are not allowed on the audit database" (:output result)))))
           (testing "the QP's refusal of a table that is not an audit view reaches the model"
             (mt/with-temp [:model/Table table {:db_id audit/audit-db-id}
                            :model/Field _     {:table_id (:id table)}]

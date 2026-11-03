@@ -13,7 +13,6 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.audit-app.core :as audit]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.core :as tools]
@@ -150,8 +149,6 @@
   [database-id]
   (and (int? database-id)
        (some? api/*current-user-id*)
-       ;; The QP refuses SQL on the audit database for all users, admins too.
-       (not= audit/audit-db-id database-id)
        ;; The check the QP makes before it runs SQL. Native permission alone is not enough: the user also needs
        ;; unrestricted data access, and no sandbox on the database from any of their groups.
        (query-perms/can-run-query? {:database database-id
