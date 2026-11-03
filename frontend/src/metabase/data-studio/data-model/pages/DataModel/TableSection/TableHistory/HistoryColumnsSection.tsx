@@ -10,7 +10,6 @@ import {
   type ColumnChangeProfile,
   type HistoryProfile,
   type HistoryVersion,
-  type TableStructure,
   countsDurableKeys,
   filtersCurrentRows,
   getFailedChecks,
@@ -24,7 +23,6 @@ import {
   Box,
   Button,
   Checkbox,
-  Code,
   Group,
   Icon,
   Progress,
@@ -33,7 +31,6 @@ import {
 } from "metabase/ui";
 import type { Field, RowValue, Table } from "metabase-types/api";
 
-import { describeCurrentRule, getCurrentRule } from "./HistoryBindingRows";
 import { HistoryPreviewGrid, type PreviewColumn } from "./HistoryPreviewGrid";
 import {
   type EntityNoun,
@@ -367,132 +364,5 @@ export function HistoryPreviewSection({
         </Stack>
       )}
     </SidebarSection>
-  );
-}
-
-const yamlValue = (value: string | null | undefined) => value ?? "null";
-
-export function getAgentSentences({
-  table,
-  structure,
-  profile,
-  noun,
-  isConfirmed,
-  correctionNames,
-  dataNotes,
-}: {
-  table: Pick<Table, "name" | "fields">;
-  structure: TableStructure;
-  profile: HistoryProfile;
-  noun: EntityNoun;
-  isConfirmed: boolean;
-  correctionNames: string[];
-  dataNotes: string[];
-}) {
-  const fields = table.fields ?? [];
-  const nameOf = (fieldId: number | null) =>
-    fields.find((field) => getRawTableFieldId(field) === fieldId)?.name ??
-    t`an unknown column`;
-  const keyName = profile.durableKeyField.name;
-  const isProposedRule =
-    getCurrentRule(structure) === "latest-per-key" && !isConfirmed;
-  const currentRule = describeCurrentRule(structure, fields);
-
-  const counting = countsDurableKeys(structure.scdType)
-    ? t`Each row of ${table.name} is one version of a ${noun.one}. Count ${noun.other} with distinct ${keyName}, not rows.`
-    : t`Each row of ${table.name} is its own record, so plain counts are right.`;
-  const current = isProposedRule
-    ? t`The current version is probably ${currentRule}, but nobody has confirmed that rule, so say so when you rely on it.`
-    : t`The current version is ${currentRule}, and a version is valid from ${nameOf(structure.history.validFromFieldId)} until ${nameOf(structure.history.validToFieldId)}.`;
-  const attributes = [
-    correctionNames.length > 0
-      ? t`Changes to ${correctionNames.join(", ")} are corrections, so use the latest value; other columns are as they were in each version.`
-      : t`Other columns are as they were in each version.`,
-    ...dataNotes,
-  ].join(" ");
-  return [counting, current, attributes];
-}
-
-export function getAgentYaml({
-  table,
-  structure,
-  correctionNames,
-  dataNotes,
-}: {
-  table: Pick<Table, "fields">;
-  structure: TableStructure;
-  correctionNames: string[];
-  dataNotes: string[];
-}) {
-  const fields = table.fields ?? [];
-  const binding = structure.history;
-  const nameOf = (fieldId: number | null) =>
-    fields.find((field) => getRawTableFieldId(field) === fieldId)?.name;
-  const showsCurrentRecords =
-    filtersCurrentRows(structure.scdType) && binding.currentRowsOnly;
-  return [
-    `history:`,
-    `  durable_key: ${yamlValue(nameOf(binding.durableKeyFieldId))}`,
-    `  valid_from: ${yamlValue(nameOf(binding.validFromFieldId))}`,
-    `  valid_to: ${yamlValue(nameOf(binding.validToFieldId))}`,
-    `  current_flag: ${yamlValue(nameOf(binding.currentFlagFieldId))}`,
-    `  version: ${yamlValue(nameOf(binding.versionFieldId))}`,
-    `scd_type: ${structure.scdType ?? "null"}`,
-    `default_scope: ${showsCurrentRecords ? "{ segment: current_rows }" : "null"}`,
-    ...(correctionNames.length > 0
-      ? [
-          `fields:`,
-          ...correctionNames.map(
-            (name) => `  ${name}: { attribute_scd_type: 1 }`,
-          ),
-        ]
-      : []),
-    ...(dataNotes.length > 0
-      ? [`data_notes:`, ...dataNotes.map((note) => `  - ${note}`)]
-      : []),
-  ].join("\n");
-}
-
-export function HistoryAgentContext({
-  table,
-  profile,
-  noun,
-}: {
-  table: Table;
-  profile: HistoryProfile;
-  noun: EntityNoun;
-}) {
-  const structure = useTableStructures().getTableStructure(table);
-  const { isConfirmed, isCorrectionField } = useHistoryReview(table);
-  const correctionNames = (table.fields ?? [])
-    .filter((field) => isCorrectionField(field))
-    .map((field) => field.name);
-  const dataNotes = getDataNotes(profile, noun);
-  const sentences = getAgentSentences({
-    table,
-    structure,
-    profile,
-    noun,
-    isConfirmed: isConfirmed(structure),
-    correctionNames,
-    dataNotes,
-  });
-
-  return (
-    <CollapsibleSection
-      title={t`What agents read`}
-      summary={t`What Metabot and MB-Code get about this table: three sentences and the exported metadata.`}
-    >
-      <Stack gap="xs">
-        {sentences.map((sentence) => (
-          <Text key={sentence} size="sm">
-            {sentence}
-          </Text>
-        ))}
-      </Stack>
-      <Code block style={{ whiteSpace: "pre-wrap" }}>
-        {getAgentYaml({ table, structure, correctionNames, dataNotes })}
-      </Code>
-    </CollapsibleSection>
   );
 }

@@ -60,39 +60,27 @@ const SUBSCRIPTION_SCHEMA = `table subscription_history
   plan        text
   seats       integer`;
 
-type AgentContext = { sentences: string[]; yaml: string };
-
-const WORKER_CONTEXT: AgentContext = {
-  sentences: [
-    "Each row of worker_position_history is one version of a worker. Count workers with distinct worker_id, not rows.",
-    "The current version is where End Date is empty, and a version is valid from effective_date until end_date.",
-    `Other columns are as they were in each version. ${N.workerCount - N.currentWorkerCount} workers have no current record.`,
-  ],
-  yaml: `history:
+const WORKER_METADATA = `history:
   durable_key: worker_id
   valid_from: effective_date
   valid_to: end_date
   current_flag: null
   version: position_version
 scd_type: 2
-default_scope: { segment: current_rows }`,
-};
+default_scope: { segment: current_rows }
+data_notes:
+  - ${N.workerCount - N.currentWorkerCount} workers have no current record.`;
 
-const SUBSCRIPTION_CONTEXT: AgentContext = {
-  sentences: [
-    "Each row of subscription_history is one version of a subscription. Count subscriptions with distinct id, not rows.",
-    "The current version is probably the latest row per ID, by Updated at, but nobody has confirmed that rule, so say so when you rely on it.",
-    "Other columns are as they were in each version. 1 subscription has two latest rows with the same time.",
-  ],
-  yaml: `history:
+const SUBSCRIPTION_METADATA = `history:
   durable_key: id
   valid_from: updated_at
   valid_to: null
   current_flag: null
   version: updated_at
 scd_type: 2
-default_scope: { segment: current_rows }`,
-};
+current_rule: proposed, not confirmed
+data_notes:
+  - 1 subscription has two latest rows with the same time.`;
 
 type Scenario = {
   id: string;
@@ -101,7 +89,7 @@ type Scenario = {
   without: { steps: ToolStep[]; answer: string; verdict: string };
   with: { steps: ToolStep[]; answer: string; verdict: string };
   schema: string;
-  context: AgentContext;
+  metadata: string;
 };
 
 function getScenarios(): Scenario[] {
@@ -122,7 +110,7 @@ function getScenarios(): Scenario[] {
         steps: [
           {
             id: "1",
-            title: "Read what agents read about worker_position_history",
+            title: "Read the history metadata of worker_position_history",
             status: "ended",
           },
           {
@@ -137,7 +125,9 @@ ${N.workerCount} workers have a record here; ${N.workerCount - N.currentWorkerCo
         verdict: t`Counts distinct workers and applies the current-row rule.`,
       },
       schema: WORKER_SCHEMA,
-      context: WORKER_CONTEXT,
+      metadata: `${WORKER_SCHEMA}
+
+${WORKER_METADATA}`,
     },
     {
       id: "filter",
@@ -167,7 +157,9 @@ ${N.workerCount} workers have a record here; ${N.workerCount - N.currentWorkerCo
         verdict: t`Only current versions, one per worker.`,
       },
       schema: WORKER_SCHEMA,
-      context: WORKER_CONTEXT,
+      metadata: `${WORKER_SCHEMA}
+
+${WORKER_METADATA}`,
     },
     {
       id: "join",
@@ -214,7 +206,9 @@ I'll use the department at submission unless you say otherwise.`,
         verdict: t`Keeps the version the warehouse already recorded, and asks about the date only where it has to.`,
       },
       schema: WORKER_SCHEMA,
-      context: WORKER_CONTEXT,
+      metadata: `${WORKER_SCHEMA}
+
+${WORKER_METADATA}`,
     },
     {
       id: "uncertain",
@@ -235,7 +229,7 @@ I'll use the department at submission unless you say otherwise.`,
         steps: [
           {
             id: "1",
-            title: "Read what agents read about subscription_history",
+            title: "Read the history metadata of subscription_history",
             status: "ended",
           },
           {
@@ -251,7 +245,9 @@ This table keeps one row per change, and nobody has confirmed which row is curre
         verdict: t`Recognizes the history, uses the proposed rule, and says it isn't confirmed.`,
       },
       schema: SUBSCRIPTION_SCHEMA,
-      context: SUBSCRIPTION_CONTEXT,
+      metadata: `${SUBSCRIPTION_SCHEMA}
+
+${SUBSCRIPTION_METADATA}`,
     },
   ];
 }
@@ -262,15 +258,13 @@ function Conversation({
   messages,
   verdict,
   schema,
-  context,
   conversationId,
 }: {
   badge: string;
   badgeColor: "neutral" | "brand";
   messages: MetabotMessage[];
   verdict: string;
-  schema?: string;
-  context?: AgentContext;
+  schema: string;
   conversationId: string;
 }) {
   return (
@@ -292,27 +286,12 @@ function Conversation({
         <Text size="sm" fw="bold">
           {verdict}
         </Text>
-        {schema && (
-          <Stack gap="xs">
-            <Text size="sm" fw="bold" c="text-secondary">
-              {t`What the agent reads`}
-            </Text>
-            <Code block>{schema}</Code>
-          </Stack>
-        )}
-        {context && (
-          <Stack gap="xs">
-            <Text size="sm" fw="bold" c="text-secondary">
-              {t`What agents read`}
-            </Text>
-            {context.sentences.map((sentence) => (
-              <Text key={sentence} size="sm">
-                {sentence}
-              </Text>
-            ))}
-            <Code block>{context.yaml}</Code>
-          </Stack>
-        )}
+        <Stack gap="xs">
+          <Text size="sm" fw="bold" c="text-secondary">
+            {t`What the agent reads`}
+          </Text>
+          <Code block>{schema}</Code>
+        </Stack>
       </Stack>
     </Paper>
   );
@@ -363,7 +342,7 @@ export function AgentComparisonPrototype() {
                 ),
               ]}
               verdict={scenario.with.verdict}
-              context={scenario.context}
+              schema={scenario.metadata}
             />
           </Group>
         </Stack>

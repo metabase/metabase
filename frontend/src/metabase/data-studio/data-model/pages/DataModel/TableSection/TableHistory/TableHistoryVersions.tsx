@@ -36,7 +36,6 @@ import { useHistoryEntitySelection } from "../../contexts/HistoryEntitySelection
 import { CheckCountBadges } from "./CheckCountBadges";
 import { describeCurrentRule } from "./HistoryBindingRows";
 import {
-  HistoryAgentContext,
   HistoryColumnsSection,
   HistoryPreviewSection,
 } from "./HistoryColumnsSection";
@@ -115,7 +114,6 @@ export function TableHistoryVersions({
         noun={noun}
         readOnly={readOnly}
       />
-      <HistoryAgentContext table={table} profile={profile} noun={noun} />
     </Stack>
   );
 }
