@@ -736,6 +736,35 @@
         (is (= "too-many-rows" (:error_type result)))
         (is (re-find #"more rows than the requested maximum" (:error result)))))))
 
+(deftest card-and-dashcard-endpoints-metric-and-measure-sources-test
+  (testing "saved charts resolve a metric grouped for display, and a measure, to their single value"
+    (mt/with-temp [:model/Card    {metric-id :id}  (metric-card true)
+                   :model/Card    {plain-id :id}   (metric-card false)
+                   :model/Measure {measure-id :id} {:name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (venues-count-measure)}]
+      (let [metric-goal  {:id metric-id :type "card" :column "sum"}
+            measure-goal {:id measure-id :type "measure" :column "count"}
+            total        (get-in (reference-card plain-id ["sum"]) [:data :rows])]
+        (testing "on the card endpoint"
+          (mt/with-temp [:model/Card {chart-id :id} (chart-card :line {:graph.show_goal  true
+                                                                       :graph.goal_value metric-goal})]
+            (is (=? {:status "completed" :data {:rows total}}
+                    (get-in (card-query-referenced-entities chart-id) [:card metric-id])))))
+        (testing "on the dashcard endpoint"
+          (mt/with-temp [:model/Card      {chart-id :id} (chart-card :gauge {})
+                         :model/Dashboard {dash-id :id}  {}
+                         :model/DashboardCard {dashcard-id :id} {:dashboard_id           dash-id
+                                                                 :card_id                chart-id
+                                                                 :visualization_settings {:gauge.segments
+                                                                                          [{:min measure-goal
+                                                                                            :max metric-goal}]}}]
+            (let [referenced-entities (dashcard-query-referenced-entities dash-id dashcard-id chart-id)]
+              (is (=? {:status "completed" :data {:rows total}}
+                      (get-in referenced-entities [:card metric-id])))
+              (is (=? {:status "completed" :data {:rows [[100]]}}
+                      (get-in referenced-entities [:measure measure-id]))))))))))
+
 (deftest dataset-endpoint-spec-limit-test
   (testing "POST /api/dataset caps how many entities one request can fan out to"
     (let [query (fn [n]
