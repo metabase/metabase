@@ -316,11 +316,11 @@
         (not (encryption/decryptable-string? value opts)))))
 
 (defn legacy-startup-encryption-disabled?
-  "Whether `MB_DISABLE_LEGACY_STARTUP_ENCRYPTION` is set to true. By default startup encrypts, with a warning, any
-  value that a previous version of Metabase stored unencrypted in an encrypted-at-rest column; when disabled, finding
-  such a value is an error and startup refuses to run instead."
+  "Whether `MB_DISABLE_LEGACY_STARTUP_ENCRYPTION` is unset or true. By default finding a value that a previous version
+  of Metabase stored unencrypted in an encrypted-at-rest column is an error and startup refuses to run; when set to
+  false, startup encrypts such values with a warning instead."
   []
-  (boolean (config/config-bool :mb-disable-legacy-startup-encryption)))
+  (not (false? (config/config-bool :mb-disable-legacy-startup-encryption))))
 
 (defn- handle-legacy-unencrypted-values!
   "What happens when legacy values that a previous version of Metabase stored unencrypted are found in `location` (a
