@@ -429,6 +429,16 @@ export function DraftFilterPill({
         }
         return false;
       case "Tab":
+        // Prototype: in a list of checkboxes, Tab completes the filter, also
+        // with a checkbox highlighted. With typed text, it picks the value.
+        if (
+          step === "value" &&
+          operator?.valueKind === "multi" &&
+          text.trim().length === 0
+        ) {
+          submit();
+          return true;
+        }
         // Tab picks the first matching value, or adds the typed text when
         // nothing matches.
         if (step === "value" && !hasSelectedOption && text.trim().length > 0) {

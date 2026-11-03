@@ -123,7 +123,8 @@ export function SuggestionInput({
   onOptionSubmit,
   onKeyDown,
 }: SuggestionInputProps) {
-  const combobox = useCombobox({ defaultOpened: true });
+  // Prototype: no loop, so ArrowUp on the first option goes back to the input.
+  const combobox = useCombobox({ defaultOpened: true, loop: false });
   const { dropdownRef, dropdownShift } = useDropdownShift(
     combobox.dropdownOpened,
   );
@@ -219,6 +220,12 @@ export function SuggestionInput({
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const hasSelectedOption =
       combobox.dropdownOpened && combobox.getSelectedOptionIndex() !== -1;
+    // Prototype: ArrowUp on the first option leaves the list, and the keys
+    // work on the input again: Enter and Tab complete the filter. The combobox
+    // handles the key after this handler, so the reset waits for it.
+    if (event.key === "ArrowUp" && combobox.getSelectedOptionIndex() === 0) {
+      queueMicrotask(() => combobox.resetSelectedOption());
+    }
     const firstOptionValue = filteredGroups[0]?.options[0]?.value;
     if (onKeyDown?.(event, hasSelectedOption, firstOptionValue)) {
       event.preventDefault();
