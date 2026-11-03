@@ -137,6 +137,13 @@ export function SuggestionInput({
   const hasOptions = filteredGroups.length > 0;
   const hasSuggestions =
     header != null || groups.some((group) => group.options.length > 0);
+  // Parent renders can rebuild the groups while an arrow key is selecting an
+  // option. Reset the highlight only when the available options change.
+  const optionKeys = JSON.stringify(
+    filteredGroups.flatMap((group) =>
+      group.options.map((option) => [option.value, option.disabled]),
+    ),
+  );
 
   // In a single select, Enter picks the first match. In a multi select, Enter
   // with no highlighted option adds the typed text, so nothing is highlighted
@@ -154,7 +161,7 @@ export function SuggestionInput({
   }, [
     selectFirstOption,
     resetSelectedOption,
-    filteredGroups,
+    optionKeys,
     hasOptions,
     isMultiSelect,
     isFirstOptionHighlighted,
