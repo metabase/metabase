@@ -13,6 +13,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.core :as tools]
@@ -160,6 +161,11 @@
                                                                      :edit?         (boolean edit?)})
       :else                               (sql-syntax-error! {:dialect dialect :error-message error-message}))))
 
+(def notebook-instead-step
+  "The recovery step after a refusal to write SQL against a database: build the question in the notebook instead."
+  {:uses #{"construct_notebook_query"}
+   :text "Build the question with `construct_notebook_query` instead. Don't write SQL against this database again."})
+
 (defn native-query-access?
   "Whether the current user may write and run native queries against `database-id`.
   No nil-user escape, unlike `qp.perms/current-user-has-adhoc-native-query-perms?`, and a
@@ -174,8 +180,11 @@
                                     :native   {:query "SELECT 1"}})))
 
 (defn check-native-query-access!
-  "Throw an unrecoverable error unless the user may write native queries against `database-id`."
+  "Throw an unrecoverable error for the audit database or a user without native query permission on `database-id`."
   [database-id]
+  (when (= audit/audit-db-id database-id)
+    (tools/unrecoverable! ::sql-on-audit-database
+                          {:user-message (tru "Metabase does not run SQL on the Internal Metabase Database, for any user.")}))
   (when-not (native-query-access? database-id)
     (tools/unrecoverable! ::no-native-permission
                           {:user-message (tru "You do not have permission to write SQL queries against this database. Native query permissions are required.")

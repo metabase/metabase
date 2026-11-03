@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -790,6 +791,15 @@
                        :page      1
                        :pages     1})
                      "can_write=\"false\"")))
+
+(deftest ^:parallel sql-unavailable-on-the-audit-database-test
+  (doseq [[database-id unavailable?] [[audit/audit-db-id true] [1 false]]
+          [element ->xml entity] [["table" llm-shape/table->xml {:id 10 :name "v_users"}]
+                                  ["model" llm-shape/model->xml {:id 6 :name "People"}]
+                                  ["search result" llm-shape/search-result->xml {:id 6 :type :model :name "People"}]]
+          :let [xml (->xml (assoc entity :database_id database-id))]]
+    (testing (str element " in database " database-id)
+      (is (= unavailable? (str/includes? xml "sql_unavailable=\"true\""))))))
 
 (deftest ^:parallel search-results->xml-test
   (testing "formats multiple search results"
