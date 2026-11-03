@@ -488,8 +488,8 @@
               (reset! rows more)
               true)
           false))
-      (getString [_ ^String column]
-        ^String (get @row column))
+      (^String getString [_ ^String column]
+        (get @row column))
       (close [_]))))
 
 (defn- describe-fields-with-fake-athena
