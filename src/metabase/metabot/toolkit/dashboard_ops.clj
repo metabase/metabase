@@ -452,8 +452,8 @@
     (nil? (:card_id mapping)) (assoc :card_id (:card_id dc))))
 
 (defn- check-patched-mapping!
-  "Throws unless `mapping`, from [[patched-mapping]] and at `idx` in the patch, is a mapping the save accepts, for a
-   parameter on the dashboard and a card `dc` shows."
+  "Throws unless `mapping`, the patch's mapping at `idx` as [[patched-mapping]] shapes it, is one the save accepts,
+   for a parameter on the dashboard and a card `dc` shows."
   [state dc idx mapping]
   (when-let [explanation (mr/explain ::parameters.schema/parameter-mapping mapping)]
     ;; Placed at the mapping's path in the op, as the op schema's own errors are, so a patch with several mappings

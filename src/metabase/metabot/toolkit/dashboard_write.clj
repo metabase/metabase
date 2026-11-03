@@ -139,7 +139,7 @@
    It checks write permission on the dashboard, or create permission on the collection, first after the ops' shape.
    A dry run skips the save's other permission checks, such as moving to a collection and per-field mapping checks.
    Ops edit the layout and parameters, so `attrs` must not carry `:dashcards`, `:tabs` or `:parameters`.
-   A nil `ops` means none were sent; anything else must be a list of ops.
+   A nil `attrs` or `ops` means none were sent; `ops` otherwise must be a list of ops.
    Throws an error from [[dashboard-ops/errors]] when an op is invalid or the save would be rejected."
   [{:keys [dashboard validate-only?] :as opts}]
   ;; Prepared before any branch reads them, so a malformed `ops` fails as :invalid-op rather than crashing a `seq`

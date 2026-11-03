@@ -296,8 +296,9 @@
               "the unreadable card comes back as an id with no name"))))))
 
 (deftest set-series-with-an-unreadable-stored-card-test
-  (testing "a writer can overlay a card the dashboard already holds but they cannot read, as the save allows. The dry
-            run has no row for that card, and its response shows it as an id, as the save's readback does"
+  ;; The save leaves stored card references alone, so a writer can overlay a card the dashboard already holds even
+  ;; when they cannot read it. The dry run fetches no row for that card.
+  (testing "a dry run overlays an unreadable stored card as an id, and the save goes through"
     (mt/with-temp [:model/Collection    {open-id :id}     {}
                    :model/Collection    {locked-id :id}   {}
                    :model/Dashboard     {dash-id :id}     {:name "Sales" :collection_id open-id}
