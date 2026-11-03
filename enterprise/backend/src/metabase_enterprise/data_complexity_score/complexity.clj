@@ -131,12 +131,10 @@
 (defn- table-measure-names
   "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`.
   A measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]].
-
-  The `measure` table was introduced in v59; a CLI run pointed at an older appdb falls back to
-  no measures via [[appdb-source/with-missing-relation-fallback]]."
-  [table-ids]
+  Return `{}` on an appdb older than the `measure` table (v59) when `degraded-signals` is set."
+  [degraded-signals table-ids]
   (appdb-source/with-missing-relation-fallback
-    ::measure-names {}
+    degraded-signals ::measure-names {}
     #(into {}
            (mapcat (fn [chunk]
                      (u/group-by :table_id :name
@@ -163,11 +161,11 @@
    :measure-names (get measure-names id [])})
 
 (defn- library-collection-ids
-  "Set of collection IDs that make up the Library (root + descendants). Empty when the instance
-   has no Library yet, or when the CLI is pointed at an appdb older than the Library feature."
-  []
+  "Set of collection IDs that make up the Library (root + descendants).
+  Empty when the instance has no Library yet, or on an appdb older than the Library when `degraded-signals` is set."
+  [degraded-signals]
   (appdb-source/with-missing-relation-fallback
-    ::library-collection #{}
+    degraded-signals ::library-collection #{}
     #(into #{}
            (when-let [root (collections/library-collection)]
              ;; This is cheaper and less brittle than referencing the collection type constants for every entity type.
@@ -187,18 +185,14 @@
 
 (defn- verified-card-id-set
   "Set of Card ids whose most-recent moderation review is `verified`.
-
-   Tolerates missing schema (very old appdbs) by falling back to an empty set. Because the
-   downstream consumer requires both `curated-only?` to hold AND `verified-ids` to be non-empty
-   before installing the metabot-card predicate, an empty fallback under `curated-only? true`
-   short-circuits to no predicate and the metabot Card catalog becomes empty. That's a deliberate
-   safe-default: we can't honestly tell which Cards are curated, so the metabot Card catalog
-   stays empty rather than silently widening to everything."
-  []
+  Empty on an appdb without `moderation_review` when `degraded-signals` is set."
+  [degraded-signals]
   ;; Called only when `metabot-scope` requests curated-only filtering — avoids a `moderation_review`
   ;; join on the universe Card select by pushing the check into a small auxiliary lookup.
+  ;; The empty fallback narrows rather than widens: with no verified ids, a Card counts as curated only through
+  ;; an official or Library collection, so an unknown verification state never lets every Card in.
   (appdb-source/with-missing-relation-fallback
-    ::verified-cards #{}
+    degraded-signals ::verified-cards #{}
     data-complexity-score.db/verified-card-ids))
 
 (defn- official-collection-id-set
@@ -210,12 +204,40 @@
   "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
    tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
    catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`.
-
-   Falls back to an empty set if the column doesn't exist on an older appdb."
-  []
+   Empty on an appdb without the column when `degraded-signals` is set."
+  [degraded-signals]
   (appdb-source/with-missing-relation-fallback
-    ::routed-databases #{}
+    degraded-signals ::routed-databases #{}
     data-complexity-score.db/routed-child-database-ids))
+
+(defn- universe-table-rows
+  "The universe Table rows, read with user settings applied.
+  When `degraded-signals` is set, an appdb the user-settings overlay cannot read gets the rows from `metabase_table`
+  alone, and an appdb that lacks a scoring column gets `[]`."
+  [degraded-signals]
+  ;; An appdb older than the user-settings table (v64) still keeps user values in `metabase_table`, so the plain
+  ;; read is right there.
+  (appdb-source/with-missing-relation-fallback
+    degraded-signals ::universe-tables []
+    #(let [rows (appdb-source/with-missing-relation-fallback
+                  degraded-signals ::table-user-settings ::unreadable
+                  (fn [] (data-complexity-score.db/universe-tables audit/audit-db-id)))]
+       (if (= rows ::unreadable)
+         (data-complexity-score.db/universe-tables-without-user-settings audit/audit-db-id)
+         rows))))
+
+(def ^:private legacy-data-layers
+  "Pre-v59 medallion `data_layer` values and the values they became.
+  Mirrors `metabase.warehouse-schema.models.table/legacy-data-layer->current`, which the raw Table read skips."
+  {"bronze" "final"
+   "copper" "hidden"
+   "gold"   "final"
+   "silver" "final"})
+
+(defn- normalize-legacy-data-layer
+  "Return `table-row` with a pre-v59 `:data_layer` value replaced by its current value."
+  [table-row]
+  (u/update-if-exists table-row :data_layer #(get legacy-data-layers % %)))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
@@ -239,32 +261,30 @@
    Metabot narrows its retrieval further — it only adds filters, never widens.
    `:curated-only?` mirrors Metabot search's `use_verified_content` filter (see [[curation/curated?]]).
    The caller owns the scope decision (Metabot row lookup); this namespace does not read settings,
-   premium-feature gates, or Metabot rows directly."
-  [{:keys [curated-only? collection-id]}]
+   premium-feature gates, or Metabot rows directly.
+   `degraded-signals` is passed to [[appdb-source/with-missing-relation-fallback]] for every read; nil makes a
+   missing table or column throw."
+  [{:keys [curated-only? collection-id]} degraded-signals]
   ;; An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3× per
   ;; scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]], each a
   ;; `GROUP BY` scan over `metabase_field` / `measure`. We now fetch the universe superset once and
   ;; derive the `:library` and `:metabot` subsets by in-memory filter, which collapses 6 DB round-trips
   ;; + 2 auxiliaries into 4 + up-to-2 and lets the aggregates run once each.
-  (let [library-cids      (library-collection-ids)
+  (let [library-cids      (library-collection-ids degraded-signals)
         metabot-cids      (metabot-collection-scope-ids collection-id)
-        verified-ids      (when curated-only? (verified-card-id-set))
+        verified-ids      (when curated-only? (verified-card-id-set degraded-signals))
         official-cids     (when curated-only? (official-collection-id-set))
-        routed-db-ids     (routed-child-database-id-set)
+        routed-db-ids     (routed-child-database-id-set degraded-signals)
         ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
         ;; `:data_layer`, `:data_authority`) are selected purely to drive the in-memory
         ;; library/metabot derivations below — they're ignored by `->card-entity` /
-        ;; `->table-entity`. Both reads fall back to an empty catalog when the CLI is pointed at an
-        ;; appdb missing one of these columns; cron / API (with
-        ;; [[appdb-source/*tolerate-missing-relations?*]] off) still raise.
+        ;; `->table-entity`.
         universe-cards    (appdb-source/with-missing-relation-fallback
-                            ::universe-cards []
+                            degraded-signals ::universe-cards []
                             #(data-complexity-score.db/universe-cards audit/audit-db-id))
-        universe-tables   (appdb-source/with-missing-relation-fallback
-                            ::universe-tables []
-                            #(data-complexity-score.db/universe-tables audit/audit-db-id))
+        universe-tables   (mapv normalize-legacy-data-layer (universe-table-rows degraded-signals))
         field-counts      (table-field-counts  (mapv :id universe-tables))
-        measure-names     (table-measure-names (mapv :id universe-tables))
+        measure-names     (table-measure-names degraded-signals (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)
         table-entities    (mapv #(->table-entity field-counts measure-names %) universe-tables)
         in-library-card?  (when (seq library-cids)
@@ -608,8 +628,11 @@
                               isn't a single named variant).
     `:metabot-scope`        — `{:curated-only? <bool> :collection-id <nil|Long>}` describing how
                               the internal Metabot filters its retrieval; see [[enumerate-catalogs]].
+    `:degraded-signals`     — an atom of keywords, or nil. When set, a read of a table or column the appdb
+                              lacks falls back to an empty value and adds its signal to the atom instead of
+                              throwing; see [[appdb-source/with-missing-relation-fallback]].
     `:emit-snowplow?`       — whether to publish per-score Snowplow events. Defaults true."
-  [& {:keys [embedder embedding-model-meta text-variant metabot-scope emit-snowplow?]
+  [& {:keys [embedder embedding-model-meta text-variant metabot-scope degraded-signals emit-snowplow?]
       :or {emit-snowplow? true}}]
   ;;; NOTE: we fully materialize vectors of the relevant entities.
   ;;; For very large instances that means holding large lists in memory, but each catalog is consumed
@@ -623,7 +646,7 @@
             ;; metabot ⊆ universe, so fetching each catalog separately duplicated DB work; the
             ;; catalog label `"all"` on the enumerate stage reflects that one pass covers all
             ;; three. Per-catalog timing only applies to the pure scoring step.
-            (time-phase! "enumerate" "all" #(enumerate-catalogs metabot-scope))
+            (time-phase! "enumerate" "all" #(enumerate-catalogs metabot-scope degraded-signals))
             universe-score (time-phase! "score" "universe" #(score-catalog universe embedder))
             library-score  (time-phase! "score" "library"  #(score-catalog library  embedder))
             metabot-score  (time-phase! "score" "metabot"  #(score-catalog metabot  embedder))

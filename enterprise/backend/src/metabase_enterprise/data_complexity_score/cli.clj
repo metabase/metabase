@@ -73,9 +73,9 @@
   (let [f (io/file path)]
     (cond
       (not (.exists f))       (throw (ex-info (str "--representation-dir does not exist: " path)
-                                              {:cli-validation true :path path}))
+                                              {:cli-validation true, :path path}))
       (not (.isDirectory f))  (throw (ex-info (str "--representation-dir must be a directory: " path)
-                                              {:cli-validation true :path path})))))
+                                              {:cli-validation true, :path path})))))
 
 (def ^:private unset
   "Sentinel for `--write-to-appdb` so we can tell 'user didn't pass it' apart from an explicit false."
@@ -132,42 +132,40 @@
       (validate-dir! representation-dir))))
 
 (defn- stamp-degraded-signals
-  "Add `[:meta :degraded-signals]` to `result` when any read fell back during scoring. Lets
-  operators distinguish a real `0` score from a `\"schema too old to score this signal\"` result.
-  No-op when nothing degraded."
+  "Return `result` with the sorted names of the `degraded` signals at `[:meta :degraded-signals]`.
+  Return `result` unchanged when `degraded` is empty."
   [result degraded]
+  ;; Lets operators tell a real `0` from a signal the appdb's schema was too old to read.
   (cond-> result
-    (seq @degraded) (assoc-in [:meta :degraded-signals] (vec (sort (map name @degraded))))))
+    (seq degraded) (assoc-in [:meta :degraded-signals] (vec (sort (map name degraded))))))
 
 (defn- run-appdb-mode!
-  "Score against the live appdb. The read path uses the same Toucan models as the cron, wrapped
-  by [[appdb-source/*tolerate-missing-relations?*]] so tables or columns introduced after the
-  appdb's Metabase version degrade gracefully (e.g. `metabot`, `measure`) instead of crashing
-  the run. The write step is `appdb-source/record-score!` — a single raw `INSERT INTO
-  data_complexity_score`, no transforms, no fingerprint setting advance, no Snowplow event."
+  "Score the live appdb, and insert one score row stamped `\"appdb\"` when `write?`.
+  Return the score, with the names of any signals the appdb's schema was too old to read at
+  `[:meta :degraded-signals]`."
   [write?]
+  ;; Reads of tables or columns newer than the appdb (e.g. `metabot`, `measure`) fall back instead of failing.
+  ;; The only write is one raw INSERT: no model hooks, no fingerprint setting, no Snowplow event.
   (mdb/setup-db-without-migrations!)
   (when write?
     (appdb-source/verify-write-target-shape!))
   ;; `metabase.core.core/init!` does this on the server, but standalone modes skip it. Without it a synonym axis
   ;; configured for the `in-process` provider finds nothing registered and fails with `:provider-not-registered`.
   (embeddings.startup/ensure-in-process-provider!)
-  (let [degraded (atom #{})]
-    (binding [appdb-source/*tolerate-missing-relations?* true
-              appdb-source/*degraded-signals*            degraded]
-      (let [result (stamp-degraded-signals
-                    (complexity/complexity-scores
-                     (assoc (synonym-source/complexity-scores-opts)
-                            :metabot-scope (metabot-scope/internal-metabot-scope)
-                            :emit-snowplow? false))
-                    degraded)]
-        (when write?
-          (appdb-source/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
-        result))))
+  (let [degraded (atom #{})
+        scores   (complexity/complexity-scores
+                  (assoc (synonym-source/complexity-scores-opts)
+                         :metabot-scope    (metabot-scope/internal-metabot-scope degraded)
+                         :degraded-signals degraded
+                         :emit-snowplow?   false))
+        result   (stamp-degraded-signals scores @degraded)]
+    (when write?
+      (appdb-source/insert-score-row! (task.complexity-score/current-fingerprint) "appdb" result))
+    result))
 
 (defn- run-representation-mode!
-  "Score an on-disk serdes export; optionally persist via the same raw-JDBC writer the appdb path
-  uses, stamped `\"representation:<digest>\"`."
+  "Score an on-disk serdes export, and insert one score row stamped `\"representation:<digest>\"` when `write?`.
+  Return the score."
   [{:keys [representation-dir embeddings]} write?]
   (when write?
     (mdb/setup-db-without-migrations!)
@@ -176,9 +174,9 @@
                                                                             :embeddings-path embeddings)
         result                                     (complexity/score-from-entities library universe embedder {})]
     (when write?
-      (appdb-source/record-score! (task.complexity-score/current-fingerprint)
-                                  (str "representation:" digest)
-                                  result))
+      (appdb-source/insert-score-row! (task.complexity-score/current-fingerprint)
+                                      (str "representation:" digest)
+                                      result))
     result))
 
 (defn- with-defaults

@@ -1,47 +1,16 @@
 (ns metabase-enterprise.data-complexity-score.appdb-source
-  "CLI-specific appdb adapter: schema-tolerant reads and raw-JDBC writes for the Data Complexity
-  CLI. Lets one modern jar score the entire cloud fleet's appdbs, including ones running an older
-  Metabase version whose schema lacks tables/columns the modern code references.
-
-  Why a parallel path? The cron and API run against an appdb at the same Metabase version, so they
-  can trust Toucan models end-to-end. The CLI cannot: a v73 binary sampling a v54 appdb may find
-  tables (e.g. `metabot`, `measure`) and columns (e.g. `metabase_table.is_published`) that don't
-  exist yet, and a `:before-insert` hook on a newer model definition mustn't surprise us either.
-
-  Read tolerance — see [[*tolerate-missing-relations?*]] and [[with-missing-relation-fallback]].
-  When the var is true, a Toucan read that fails because its target table or one of its referenced
-  columns doesn't exist falls back to the caller-supplied empty/default value. Off by default so
-  the cron and API still surface schema bugs as exceptions; the CLI binds it true for the duration
-  of its scoring pass.
-
-  Write contract — at most one `INSERT INTO data_complexity_score` per CLI run. No transforms run
-  against the row (`:score_data` is JSON-encoded here, never via `mi/transform-json`), no
-  fingerprint setting is touched, no Snowplow event is published."
+  "Schema-tolerant reads and the raw score write for the Data Complexity CLI.
+  The CLI can run a newer Metabase against an older appdb, so it cannot trust the Toucan models the cron and API use."
   (:require
-   [metabase.app-db.core :as mdb]
+   [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [next.jdbc :as jdbc])
+   [metabase.util.log :as log])
   (:import
-   (java.sql SQLException Timestamp)))
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
 ;;; ----------------------------------- read tolerance --------------------------------------
-
-(def ^:dynamic *tolerate-missing-relations?*
-  "When true, [[with-missing-relation-fallback]] returns the caller's fallback instead of throwing
-  on `table-doesn't-exist` / `column-doesn't-exist` SQL errors. The CLI binds this true around its
-  scoring pass; everything else (cron, API, tests) leaves it false so genuine schema bugs still
-  surface as exceptions."
-  false)
-
-(def ^:dynamic *degraded-signals*
-  "Optional atom (or nil) that [[with-missing-relation-fallback]] `swap!`s a `signal` keyword into
-  whenever it returns the fallback. The CLI binds it so the final score can be stamped with the
-  set of degraded signals — letting operators tell a real `0` from `\"schema too old to score
-  this signal\"`. Default nil because cron / API don't need it (their schema is current)."
-  nil)
 
 ;; SQLState codes that mean "the table or column you referenced isn't there" across the appdb
 ;; backends Metabase supports. Listed explicitly rather than prefix-matched on `42S` so we don't
@@ -49,98 +18,77 @@
 ;; (undefined_table) and `42703` (undefined_column); MySQL uses `42S02` / `42S22`; H2 uses
 ;; `42S02` / `42S22` on the modern JDBC surface and `42102` / `42122` on the legacy one.
 (def ^:private missing-relation-sql-states
-  #{"42P01" "42703" "42102" "42122" "42S02" "42S22"})
+  #{"42102" "42122" "42703" "42P01" "42S02" "42S22"})
 
-(defn- missing-relation-error?
-  "True when `t` (or anything reachable via `getNextException` / `getCause`) is a `SQLException`
-  with a SQLState in [[missing-relation-sql-states]]. We walk both chains: Toucan 2 + next.jdbc
-  hand us a raw `SQLException` today so `getNextException` is enough, but a defensive `getCause`
-  walk costs nothing and protects against future wrappers (e.g. an `ex-info` carrying the SQL
-  exception as `:cause`). Cycle-guarded so a self-referential chain can't loop forever."
-  [^Throwable t]
+(defn- missing-relation-exception
+  "The `SQLException` for a missing table or column that `t` is, or reaches through `getCause` and `getNextException`.
+  Nil when there is none."
+  ^SQLException [^Throwable t]
+  ;; Toucan 2 and next.jdbc throw the raw `SQLException` today. Walking both chains also covers a wrapper that
+  ;; carries it as a cause, and `seen` stops a cyclic chain.
   (loop [pending (list t)
          seen    #{}]
-    (if (empty? pending)
-      false
-      (let [^Throwable cur (first pending)
-            rest-pending   (rest pending)]
-        (cond
-          (or (nil? cur) (contains? seen cur))
-          (recur rest-pending seen)
+    (when-let [[^Throwable cur & more] (seq pending)]
+      (cond
+        (or (nil? cur) (contains? seen cur))
+        (recur more seen)
 
-          (and (instance? SQLException cur)
-               (contains? missing-relation-sql-states (.getSQLState ^SQLException cur)))
-          true
+        (and (instance? SQLException cur)
+             (contains? missing-relation-sql-states (.getSQLState ^SQLException cur)))
+        cur
 
-          :else
-          (recur (cond-> rest-pending
-                   (instance? SQLException cur) (conj (.getNextException ^SQLException cur))
-                   true                         (conj (.getCause cur)))
-                 (conj seen cur)))))))
+        :else
+        (recur (cond-> (conj more (.getCause cur))
+                 (instance? SQLException cur) (conj (.getNextException ^SQLException cur)))
+               (conj seen cur))))))
 
 (defn with-missing-relation-fallback
-  "Run `f`. If [[*tolerate-missing-relations?*]] is true and `f` throws anything reachable
-  through `getNextException` / `getCause` to a SQL `missing-table` / `missing-column` error,
-  log a warning naming `signal` and return `fallback`. Every other throwable propagates.
-
-  We catch `Throwable` (not just `SQLException`) on purpose — Toucan 2 / next.jdbc hand us a raw
-  `SQLException` today, but a future wrapper layer that surfaces the SQL error as the `:cause` of
-  an `ex-info` would otherwise slip past us. `missing-relation-error?` does the cause-walk.
-
-  Pattern at call sites that read tables/columns introduced in a more recent Metabase version
-  than the CLI may be pointed at:
-
-    (with-missing-relation-fallback ::metabot-row nil #(t2/select-one :model/Metabot ...))"
-  [signal fallback f]
-  (if *tolerate-missing-relations?*
+  "Return `(f)`.
+  When `degraded-signals` is an atom, a missing table or column error from `f` instead logs a warning, adds `signal`
+  to the atom, and returns `fallback`.
+  When `degraded-signals` is nil, every error propagates."
+  [degraded-signals signal fallback f]
+  ;; The cron and API pass nil, so a schema bug there still raises. Catch `Throwable` rather than `SQLException`
+  ;; because a wrapper may carry the SQL error as its cause.
+  (if-not degraded-signals
+    (f)
     (try
       (f)
       (catch Throwable t
-        (if (missing-relation-error? t)
+        (if (missing-relation-exception t)
           (do (log/warnf "Data Complexity: %s unavailable on this appdb (%s). Falling back to %s."
                          signal (.getMessage t) (pr-str fallback))
-              (some-> *degraded-signals* (swap! conj signal))
+              (swap! degraded-signals conj signal)
               fallback)
-          (throw t))))
-    (f)))
+          (throw t))))))
 
 ;;; --------------------------------------- writer ------------------------------------------
 
 (defn verify-write-target-shape!
-  "Throws an `ex-info` (with `:cli-validation true`) when the appdb doesn't have
-  `data_complexity_score` with the four columns [[record-score!]] writes. Extra columns are fine
-  — we only check that the names we INSERT all resolve, by running `SELECT … WHERE 1=0` so the
-  database parses the projection without scanning rows.
-
-  Call this before kicking off a slow scoring pass when `--write-to-appdb` is on, so the run
-  fails fast and obviously instead of computing for minutes and then crashing on INSERT."
+  "Return nil when `data_complexity_score` has the columns [[insert-score-row!]] writes.
+  Throw an `ex-info` with `:cli-validation true` when the table or one of those columns is missing.
+  Other errors propagate."
   []
+  ;; Runs before the scoring pass, so a bad target fails at once rather than after minutes of scoring.
+  ;; Extra columns from a newer schema are fine.
   (try
-    (jdbc/execute-one! (mdb/data-source)
-                       ["SELECT fingerprint, source, score_data, created_at
-                         FROM data_complexity_score
-                         WHERE 1 = 0"])
+    (data-complexity-score.db/probe-score-columns)
     nil
-    (catch SQLException e
-      (if (missing-relation-error? e)
+    (catch Throwable t
+      (if-let [e (missing-relation-exception t)]
         (throw (ex-info (str "`data_complexity_score` is missing or doesn't have the columns "
                              "--write-to-appdb needs (fingerprint, source, score_data, created_at). "
                              "Underlying SQL error: " (.getMessage e))
-                        {:cli-validation true
-                         :sql-state      (.getSQLState e)}))
-        (throw e)))))
+                        {:cli-validation true, :sql-state (.getSQLState e)}
+                        t))
+        (throw t)))))
 
-(defn record-score!
-  "Insert one row into `data_complexity_score` via raw JDBC. No Toucan transforms, no model
-  hooks. `score-data` is serialized to JSON here so we don't depend on `mi/transform-json`.
-
-  Returns nil. Callers that need the row (e.g. tests) look it up by `fingerprint`."
-  [fingerprint source score-data]
-  (let [ds  (mdb/data-source)
-        row {:fingerprint fingerprint
-             :source      source
-             :score_data  (json/encode score-data)
-             :created_at  (Timestamp. (System/currentTimeMillis))}]
-    (jdbc/execute-one! ds (mdb/compile {:insert-into [:data_complexity_score]
-                                        :values      [row]}))
-    nil))
+(defn insert-score-row!
+  "Insert one `data_complexity_score` row with `score` encoded as JSON, running no model hooks or transforms.
+  Return nil."
+  [fingerprint source score]
+  ;; `created_at` comes from the column default, so it is in database time like the rows the cron writes.
+  (data-complexity-score.db/insert-score-row! {:fingerprint fingerprint
+                                               :source      source
+                                               :score_data  (json/encode score)})
+  nil)
