@@ -1,8 +1,6 @@
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
-import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { useDocsUrl } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -14,7 +12,8 @@ import {
   useGetSettingsQuery,
   useSetting,
 } from "metabase/settings";
-import { Button, Icon, Stack, Text, useIsInModal } from "metabase/ui";
+import { CollapsibleSettingsSection } from "metabase/settings-components";
+import { Button, Icon, Stack, useIsInModal } from "metabase/ui";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 
 import {
@@ -36,6 +35,7 @@ import { ReadOnlyBranchSection } from "./ReadOnlyBranchSection";
 import { RemoteSyncConflictModal } from "./RemoteSyncConflictModal";
 import { RemoteSyncDependencyModal } from "./RemoteSyncDependencyModal";
 import {
+  RemoteSyncNestedSectionProvider,
   RemoteSyncSettingsSection,
   RemoteSyncSettingsVariantProvider,
 } from "./RemoteSyncSettingsSection";
@@ -64,7 +64,7 @@ export const RemoteSyncSettingsForm = ({
   const { initialValues, libraryCollection } = useRemoteSyncInitialValues();
   const {
     handleSubmit,
-    branchChangeModal,
+    confirmationModal,
     isUpdating,
     isCreatingLibrary,
     unsyncedDependenciesError,
@@ -100,23 +100,37 @@ export const RemoteSyncSettingsForm = ({
           return (
             <Form disabled={!dirty}>
               <Stack gap={isInModal ? "xl" : "xxl"} maw="52rem">
-                {!isModalVariant && !isRemoteSyncEnabled && <SetupGuideLink />}
-
                 <GitSettingsSection />
-                <SyncModeSection dirty={dirtyEntities} />
 
-                {isRemoteSyncEnabled && isReadWrite && !isModalVariant && (
-                  <BranchSwitcherSection dirty={dirtyEntities} />
-                )}
-                {isReadOnly && <ReadOnlyBranchSection />}
-                {isCollectionsSyncEnabled &&
-                  (isRemoteSyncEnabled || isReadWrite) &&
-                  !isModalVariant && <CollectionsToSyncSection />}
-                {isModalVariant && isReadWrite && (
-                  <RemoteSyncSettingsSection title={t`Content to sync`}>
-                    <TopLevelCollectionsList skipCollections />
-                  </RemoteSyncSettingsSection>
-                )}
+                <CollapsibleSettingsSection
+                  title={t`Advanced settings`}
+                  description={
+                    isRemoteSyncEnabled
+                      ? t`Sync mode, branch, and content to sync.`
+                      : t`By default, this instance is read-only and automatically syncs your Library and transforms from the main branch.`
+                  }
+                >
+                  <RemoteSyncNestedSectionProvider value>
+                    <Stack gap="xxl">
+                      <SyncModeSection dirty={dirtyEntities} />
+
+                      {isRemoteSyncEnabled &&
+                        isReadWrite &&
+                        !isModalVariant && (
+                          <BranchSwitcherSection dirty={dirtyEntities} />
+                        )}
+                      {isReadOnly && <ReadOnlyBranchSection />}
+                      {isCollectionsSyncEnabled &&
+                        (isRemoteSyncEnabled || isReadWrite) &&
+                        !isModalVariant && <CollectionsToSyncSection />}
+                      {isModalVariant && isReadWrite && (
+                        <RemoteSyncSettingsSection title={t`Content to sync`}>
+                          <TopLevelCollectionsList skipCollections />
+                        </RemoteSyncSettingsSection>
+                      )}
+                    </Stack>
+                  </RemoteSyncNestedSectionProvider>
+                </CollapsibleSettingsSection>
               </Stack>
               <FormFooter pageProps={{ gap: "lg", maw: "52rem", mt: "xxl" }}>
                 {canDisable && (
@@ -158,30 +172,10 @@ export const RemoteSyncSettingsForm = ({
         }}
       </FormProvider>
 
-      {branchChangeModal}
+      {confirmationModal}
       {disableModal}
 
       <RemoteSyncConflictModal />
     </RemoteSyncSettingsVariantProvider>
-  );
-};
-
-const SetupGuideLink = () => {
-  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins.
-  const { url: docsUrl } = useDocsUrl(
-    "data-modeling/semantic-layer/remote-sync",
-    {
-      anchor: "remote-sync",
-    },
-  );
-
-  return (
-    <Text c="text-secondary" size="sm">
-      {jt`Need help setting this up? Check out our ${(
-        <ExternalLink key="link" href={docsUrl}>
-          {t`setup guide`}
-        </ExternalLink>
-      )}.`}
-    </Text>
   );
 };
