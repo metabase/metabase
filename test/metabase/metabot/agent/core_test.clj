@@ -1760,7 +1760,9 @@
                       :timeline_events []}
         memory (-> (#'agent/init-agent {:profile-id :internal
                                         :context {:user_is_viewing
-                                                  [{:chart_configs [chart-config]}]}})
+                                                  [{:type          "adhoc"
+                                                    :query         query
+                                                    :chart_configs [chart-config]}]}})
                    :memory-atom
                    deref)
 
@@ -1770,8 +1772,10 @@
         chart-key (first (keys charts))]
     (testing "Loaded charts from chart configs into memory"
       (is (string? chart-key))
-      ;; :query_id must match :chart_id — it's how edit_chart later carries a
-      ;; query-id through for this chart (see chart-config->chart, extract-charts).
+      ;; :query_id is the ID that seed-state stores the ad hoc item's query under, which is the item ID.
+      ;; It is how edit_chart later carries a query-id through for this chart (see chart-config->chart,
+      ;; extract-charts).
+      (is (contains? (get-in memory [:state :queries]) chart-key))
       (is (=? {chart-key {:chart_id chart-key
                           :query_id chart-key
                           :timeline_events []
@@ -1782,6 +1786,64 @@
       (is (every? string? (keys chart-configs)))
       (is (=? {chart-configs-key chart-config}
               chart-configs)))))
+
+(deftest edit-chart-of-viewed-saved-card-test
+  ;; A real user, not `mt/as-admin`: tools refuse a caller without a user id.
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [card-id  157
+              query    {:lib/type :mbql/query
+                        :database db-id
+                        :stages   [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+              run-turn (fn [card-type]
+                         (let [shown-id (atom nil)
+                               calls    (atom 0)
+                               parts    (mt/with-dynamic-fn-redefs
+                                          [openrouter/openrouter
+                                           (fn [request]
+                                             (if (= 1 (swap! calls inc))
+                                               (do (reset! shown-id (second (re-find #"Query ID: ([^\s\\\"]+)"
+                                                                                     (pr-str request))))
+                                                   (mut/mock-llm-response
+                                                    [{:type      :tool-input
+                                                      :id        "edit"
+                                                      :function  "edit_chart"
+                                                      :arguments {:chart_id         (str card-id)
+                                                                  :new_viz_settings {:chart_type "table"}
+                                                                  :title            "Results"
+                                                                  :description      "All rows."}}]))
+                                               (mut/mock-llm-response [{:type :text :text "Done."}])))]
+                                          (into [] (run-agent-loop
+                                                    {:messages   [{:role :user :content "Show it as a table"}]
+                                                     :state      {}
+                                                     :profile-id :internal
+                                                     :context    {:user_is_viewing
+                                                                  [{:type          card-type
+                                                                    :id            card-id
+                                                                    :query         query
+                                                                    :chart_configs [{:title        "Results"
+                                                                                     :query        query
+                                                                                     :display_type "bar"}]}]}})))]
+                           {:shown-id @shown-id
+                            :result   (some #(when (and (= :tool-output (:type %)) (= "edit" (:id %))) (:result %))
+                                            parts)
+                            :state    (some #(when (= "state" (:data-type %)) (:data %)) parts)}))]
+          (testing "a saved question's chart points at the query on screen"
+            (let [{:keys [shown-id result state]} (run-turn "question")]
+              (is (nil? (:error result)) (:output result))
+              (is (some? shown-id))
+              (is (= shown-id (get-in state [:charts (str card-id) :query_id])))
+              (testing "and the card ID stays free for run_query to run the saved question"
+                (is (not (contains? (:queries state) (str card-id)))))))
+          (testing "a saved model's query is not seeded, so its chart points at no query"
+            (let [{:keys [result state]} (run-turn "model")]
+              (is (nil? (:error result)) (:output result))
+              (is (nil? (get-in state [:charts (str card-id) :query_id])))
+              (is (not (contains? (:queries state) (str card-id))))
+              (testing "and the chart in the tool output has no query-id attribute"
+                (is (not (str/includes? (:output result) "query-id=")))))))))))
 
 (deftest viewing-context-item-id-persists-once-stored-test
   (let [query  {:database 1 :type :query :query {:source-table 1}}
