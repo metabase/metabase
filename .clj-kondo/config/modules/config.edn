@@ -1191,7 +1191,7 @@
            util.config}}
 
   global-system
-  {:team "Graphy"
+  {:team "Metabot"
    :api #{metabase.global-system.mutable-component
           metabase.global-system.system}
    :uses #{}}
