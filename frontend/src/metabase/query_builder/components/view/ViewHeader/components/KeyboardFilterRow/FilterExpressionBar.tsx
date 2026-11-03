@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
 import { ExpressionBar } from "./ExpressionBar";
-import { getSummaryStageIndex } from "./tokens";
 
 const ROWS_STAGE = 0;
 
@@ -16,10 +15,8 @@ interface FilterExpressionBarProps {
 }
 
 /**
- * Prototype: the rows' filters as one expression, with the summary's filters
- * as a bar of their own after a "then", so they can be or-ed too. Without
- * auto-apply the summary's edits wait for the rows bar's Apply, like its own
- * edits do.
+ * Each filtered stage has its own expression, separated by "then". Without
+ * auto-apply, later stages' edits wait for the rows bar's Apply.
  */
 export function FilterExpressionBar({
   query,
@@ -29,22 +26,47 @@ export function FilterExpressionBar({
   onChange,
 }: FilterExpressionBarProps) {
   const [draftQuery, setDraftQuery] = useState<Lib.Query>();
-  const [summaryError, setSummaryError] = useState<string>();
+  const [stageErrors, setStageErrors] = useState<
+    Record<number, string | undefined>
+  >({});
   const [baseQuery, setBaseQuery] = useState(query);
   if (baseQuery !== query) {
     setBaseQuery(query);
     setDraftQuery(undefined);
+    setStageErrors({});
   }
   const summaryQuery = draftQuery ?? query;
-  const summaryStageIndex = getSummaryStageIndex(query);
-  // Only with summary pills to show, so an empty bar still gets its placeholder.
-  const showsSummaryBar =
-    summaryStageIndex != null &&
-    Lib.stageCount(summaryQuery) > summaryStageIndex &&
-    Lib.filters(summaryQuery, summaryStageIndex).length > 0;
+  // Keep intermediate stages too: more than one summary can have filters.
+  const filteredStages = Lib.stageIndexes(summaryQuery).filter(
+    (stageIndex) =>
+      stageIndex !== ROWS_STAGE &&
+      Lib.filters(summaryQuery, stageIndex).length > 0,
+  );
 
   const handleChange = (nextQuery: Lib.Query) =>
     onChange(Lib.dropEmptyStages(nextQuery));
+
+  const trailing = filteredStages.reduceRight<ReactNode>(
+    (trailing, stageIndex) => (
+      <ExpressionBar
+        key={stageIndex}
+        query={summaryQuery}
+        stageIndex={stageIndex}
+        onChange={isAutoApply ? handleChange : setDraftQuery}
+        onErrorChange={(error) =>
+          setStageErrors((errors) =>
+            errors[stageIndex] === error
+              ? errors
+              : { ...errors, [stageIndex]: error },
+          )
+        }
+        isAutoApply={isAutoApply}
+        isNested
+        trailing={trailing}
+      />
+    ),
+    undefined,
+  );
 
   return (
     <ExpressionBar
@@ -56,19 +78,10 @@ export function FilterExpressionBar({
       onFold={onFold}
       draftQuery={isAutoApply ? undefined : draftQuery}
       onDraftChange={isAutoApply ? handleChange : setDraftQuery}
-      trailingError={showsSummaryBar ? summaryError : undefined}
-      trailing={
-        showsSummaryBar && (
-          <ExpressionBar
-            query={summaryQuery}
-            stageIndex={summaryStageIndex}
-            onChange={isAutoApply ? handleChange : setDraftQuery}
-            onErrorChange={setSummaryError}
-            isAutoApply={isAutoApply}
-            isNested
-          />
-        )
-      }
+      trailingError={filteredStages
+        .map((stageIndex) => stageErrors[stageIndex])
+        .find((error) => error != null)}
+      trailing={trailing}
     />
   );
 }
