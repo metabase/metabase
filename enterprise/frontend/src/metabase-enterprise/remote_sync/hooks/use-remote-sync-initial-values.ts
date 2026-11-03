@@ -11,12 +11,14 @@ import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type { LibraryCollection } from "metabase-types/api";
 
 import {
+  AUTO_IMPORT_KEY,
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
   REMOTE_SYNC_SCHEMA,
   SYNC_LIBRARY_PENDING_KEY,
   TOKEN_KEY,
   TRANSFORMS_KEY,
+  TYPE_KEY,
 } from "../constants";
 import type { RemoteSyncSettingsFormState } from "../types";
 
@@ -69,15 +71,27 @@ export const useRemoteSyncInitialValues = () => {
       collectionSyncMap[collection.id] = collection.is_remote_synced ?? false;
     });
 
+    if (!isRemoteSyncEnabled) {
+      return {
+        ...values,
+        [TOKEN_KEY]: tokenValue,
+        [COLLECTIONS_KEY]: collectionSyncMap,
+        [TYPE_KEY]: settingDetails?.[TYPE_KEY]?.is_env_setting
+          ? values[TYPE_KEY]
+          : "read-only",
+        [AUTO_IMPORT_KEY]: settingDetails?.[AUTO_IMPORT_KEY]?.is_env_setting
+          ? values[AUTO_IMPORT_KEY]
+          : true,
+        [TRANSFORMS_KEY]: PLUGIN_TRANSFORMS.isEnabled || values[TRANSFORMS_KEY],
+        [SYNC_LIBRARY_PENDING_KEY]: !libraryCollection,
+      };
+    }
+
     return {
       ...values,
       [TOKEN_KEY]: tokenValue,
       [COLLECTIONS_KEY]: collectionSyncMap,
-      [TRANSFORMS_KEY]:
-        !isRemoteSyncEnabled && PLUGIN_TRANSFORMS.isEnabled
-          ? true
-          : values[TRANSFORMS_KEY],
-      [SYNC_LIBRARY_PENDING_KEY]: !isRemoteSyncEnabled && !libraryCollection,
+      [SYNC_LIBRARY_PENDING_KEY]: false,
     };
   }, [
     settingValues,

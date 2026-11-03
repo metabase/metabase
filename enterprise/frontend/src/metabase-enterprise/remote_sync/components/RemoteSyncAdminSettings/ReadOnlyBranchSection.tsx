@@ -24,8 +24,7 @@ export const ReadOnlyBranchSection = () => {
           <FormTextInput
             name={BRANCH_KEY}
             placeholder="main"
-            label={t`Sync branch`}
-            labelProps={{ mb: "0.75rem" }}
+            aria-label={t`Sync branch`}
             {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
           />
         </Box>

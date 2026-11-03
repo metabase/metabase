@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useGetSettingsQuery } from "metabase/settings";
+import { useGetSettingsQuery, useSetting } from "metabase/settings";
 import { useCreateLibraryMutation } from "metabase-enterprise/api";
 import { useUpdateRemoteSyncSettingsMutation } from "metabase-enterprise/api/remote-sync";
 import type {
@@ -47,6 +47,7 @@ export const useRemoteSyncSubmit = ({
   variant,
 }: UseRemoteSyncSubmitProps) => {
   const isModalVariant = variant === "settings-modal";
+  const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const { data: settingValues } = useGetSettingsQuery();
   const [
     updateRemoteSyncSettings,
@@ -55,25 +56,26 @@ export const useRemoteSyncSubmit = ({
   const [createLibrary, { isLoading: isCreatingLibrary }] =
     useCreateLibraryMutation();
   const [sendToast] = useToast();
-  const {
-    show: showBranchChangeConfirmation,
-    modalContent: branchChangeModal,
-  } = useConfirmation();
-  const pendingConfirmationSettingsRef =
-    useRef<RemoteSyncConfigurationSettings | null>(null);
+  const { show: showConfirmation, modalContent: confirmationModal } =
+    useConfirmation();
 
-  const handleSubmit = useCallback(
+  const saveSettings = useCallback(
     async (values: RemoteSyncSettingsFormState) => {
+      const isInitialSetup = !isRemoteSyncEnabled;
       const didBranchChange =
         values[BRANCH_KEY] !== settingValues?.[BRANCH_KEY];
+      // Read-only instances take their content from the repository, and the API rejects collection changes for them.
+      const syncsContent = values[TYPE_KEY] !== "read-only";
 
       const collectionsMap: Record<number, boolean> = {
         ...values[COLLECTIONS_KEY],
       };
 
-      const isReadOnly = values[TYPE_KEY] === "read-only";
-      const wantsSyncLibrary = !isReadOnly && values[SYNC_LIBRARY_PENDING_KEY];
-      if (!libraryCollection && wantsSyncLibrary) {
+      if (
+        !libraryCollection &&
+        syncsContent &&
+        values[SYNC_LIBRARY_PENDING_KEY]
+      ) {
         try {
           const newLibrary = await createLibrary().unwrap();
           // A freshly created library always has a numeric id; only seeded collections use string ids.
@@ -88,14 +90,15 @@ export const useRemoteSyncSubmit = ({
       }
 
       const initialCollections = initialValues[COLLECTIONS_KEY] ?? {};
-      const changedCollections: Record<number, boolean> = {};
+      const collectionsToSave: Record<number, boolean> = {};
       for (const [idStr, desired] of Object.entries(collectionsMap)) {
         const id = Number(idStr);
-        if (initialCollections[id] !== desired) {
-          changedCollections[id] = desired;
+        // On first setup the defaults are sent too, so the Library gets marked as synced.
+        if (isInitialSetup || initialCollections[id] !== desired) {
+          collectionsToSave[id] = desired;
         }
       }
-      const hasCollectionChanges = Object.keys(changedCollections).length > 0;
+      const hasCollectionsToSave = Object.keys(collectionsToSave).length > 0;
 
       // Listed key by key so the sync-library-pending form field, which is not a setting, stays out.
       const settingsToSave: RemoteSyncConfigurationSettings = {
@@ -105,72 +108,43 @@ export const useRemoteSyncSubmit = ({
         [TYPE_KEY]: values[TYPE_KEY],
         [BRANCH_KEY]: values[BRANCH_KEY],
         [AUTO_IMPORT_KEY]: values[AUTO_IMPORT_KEY],
-        ...(isReadOnly ? {} : { [TRANSFORMS_KEY]: values[TRANSFORMS_KEY] }),
-        ...(isReadOnly || !hasCollectionChanges
-          ? {}
-          : {
-              [COLLECTIONS_KEY]: changedCollections,
-            }),
+        ...(syncsContent ? { [TRANSFORMS_KEY]: values[TRANSFORMS_KEY] } : {}),
+        ...(syncsContent && hasCollectionsToSave
+          ? { [COLLECTIONS_KEY]: collectionsToSave }
+          : {}),
       };
 
-      const saveSettings = async (
-        settings: RemoteSyncConfigurationSettings,
-      ) => {
-        try {
-          await updateRemoteSyncSettings(settings).unwrap();
+      try {
+        await updateRemoteSyncSettings(settingsToSave).unwrap();
 
-          trackRemoteSyncSettingsChanged({
-            triggeredFrom: isModalVariant ? "data-studio" : "admin-settings",
-          });
-
-          if (
-            didBranchChange &&
-            settingValues?.[BRANCH_KEY] &&
-            values[BRANCH_KEY]
-          ) {
-            trackBranchSwitched({
-              triggeredFrom: "admin-settings",
-            });
-          }
-
-          sendToast({ message: t`Settings saved successfully`, icon: "check" });
-          onSaveSuccess?.();
-        } catch (error) {
-          sendToast({
-            message: getErrorMessage(error, t`Settings could not be saved`),
-            variant: "negative",
-          });
-          throw isRemoteSyncDependencyError(error)
-            ? { ...error, data: { ...error.data, errors: undefined } }
-            : error;
-        }
-      };
-
-      if (didBranchChange) {
-        pendingConfirmationSettingsRef.current = settingsToSave;
-        showBranchChangeConfirmation({
-          title: t`Switch branches?`,
-          message: t`The synced collection will update to match the new branch. Questions that exist in the current branch but not the new one will be removed from any dashboards or content that reference them permanently, even if you switch back.`,
-          confirmButtonText: t`Continue`,
-          confirmButtonProps: {
-            variant: "filled",
-            color: "negative",
-          },
-          onConfirm: async () => {
-            if (pendingConfirmationSettingsRef.current) {
-              await saveSettings(pendingConfirmationSettingsRef.current);
-              pendingConfirmationSettingsRef.current = null;
-            }
-          },
-          onCancel: () => {
-            pendingConfirmationSettingsRef.current = null;
-          },
+        trackRemoteSyncSettingsChanged({
+          triggeredFrom: isModalVariant ? "data-studio" : "admin-settings",
         });
-        return;
+
+        if (
+          didBranchChange &&
+          settingValues?.[BRANCH_KEY] &&
+          values[BRANCH_KEY]
+        ) {
+          trackBranchSwitched({
+            triggeredFrom: "admin-settings",
+          });
+        }
+
+        sendToast({ message: t`Settings saved successfully`, icon: "check" });
+        onSaveSuccess?.();
+      } catch (error) {
+        sendToast({
+          message: getErrorMessage(error, t`Settings could not be saved`),
+          variant: "negative",
+        });
+        throw isRemoteSyncDependencyError(error)
+          ? { ...error, data: { ...error.data, errors: undefined } }
+          : error;
       }
-      await saveSettings(settingsToSave);
     },
     [
+      isRemoteSyncEnabled,
       settingValues,
       initialValues,
       updateRemoteSyncSettings,
@@ -179,8 +153,42 @@ export const useRemoteSyncSubmit = ({
       createLibrary,
       sendToast,
       onSaveSuccess,
-      showBranchChangeConfirmation,
     ],
+  );
+
+  const handleSubmit = useCallback(
+    async (values: RemoteSyncSettingsFormState) => {
+      if (!isRemoteSyncEnabled) {
+        showConfirmation({
+          title: t`Replace this instance's Library and transforms?`,
+          message: t`Setting up remote sync will replace this instance's Library and transforms with the contents of the repository. Any Library content or transforms that aren't in the repository will be removed.`,
+          confirmButtonText: t`Set up remote sync`,
+          confirmButtonProps: {
+            variant: "filled",
+            color: "negative",
+          },
+          onConfirm: () => saveSettings(values),
+        });
+        return;
+      }
+
+      if (values[BRANCH_KEY] !== settingValues?.[BRANCH_KEY]) {
+        showConfirmation({
+          title: t`Switch branches?`,
+          message: t`The synced collection will update to match the new branch. Questions that exist in the current branch but not the new one will be removed from any dashboards or content that reference them permanently, even if you switch back.`,
+          confirmButtonText: t`Continue`,
+          confirmButtonProps: {
+            variant: "filled",
+            color: "negative",
+          },
+          onConfirm: () => saveSettings(values),
+        });
+        return;
+      }
+
+      await saveSettings(values);
+    },
+    [isRemoteSyncEnabled, settingValues, showConfirmation, saveSettings],
   );
 
   const unsyncedDependenciesError = useMemo(
@@ -191,7 +199,7 @@ export const useRemoteSyncSubmit = ({
 
   return {
     handleSubmit,
-    branchChangeModal,
+    confirmationModal,
     isUpdating,
     isCreatingLibrary,
     unsyncedDependenciesError,
