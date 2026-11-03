@@ -7,10 +7,12 @@
                                           toucan2.tools.with-temp/with-temp {:level :off}}
                         :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.referenced-entities-test]}}}}}}
   (:require
+   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.referenced-entities :as referenced-entities]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -745,3 +747,31 @@
         (finally
           (when existing-config
             (t2/insert! :model/CacheConfig existing-config)))))))
+
+(deftest child-canceled-chan-test
+  (let [child-canceled-chan #'referenced-entities/child-canceled-chan]
+    (testing "cancelling the request cancels a nested run"
+      (let [parent (a/promise-chan)
+            child  (child-canceled-chan parent)]
+        (a/>!! parent ::cancel)
+        (is (= ::cancel (first (a/alts!! [child (a/timeout 1000)]))))))
+    (testing "a nested run finishing, which closes its chan, leaves the request cancelable"
+      (let [parent (a/promise-chan)
+            child  (child-canceled-chan parent)]
+        (a/close! child)
+        (is (true? (a/offer! parent ::cancel)))
+        (is (= ::cancel (a/poll! parent)))))
+    (testing "a nested run outside a request gets a chan of its own"
+      (is (some? (child-canceled-chan nil))))))
+
+(deftest canceled-request-runs-no-more-referenced-entities-test
+  (testing "once the client hung up, no more referenced entities run"
+    (let [ran (atom [])]
+      (mt/with-dynamic-fn-redefs [referenced-entities/run-referenced-entity (fn [spec _max-rows]
+                                                                              (swap! ran conj (:id spec))
+                                                                              {:status "completed"})]
+        (binding [qp.pipeline/*canceled-chan* (doto (a/promise-chan) (a/>!! ::cancel))]
+          (is (nil? (#'referenced-entities/referenced-entities-result [{:type "card" :id 1}
+                                                                       {:type "card" :id 2}]
+                                                                      1)))
+          (is (= [] @ran)))))))
