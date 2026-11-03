@@ -6,9 +6,12 @@
   `:applicable?` and `:run`. The registry is read through [[all-checks]], [[check-by-id]]
   and [[check-ids]] only, so the way it is stored can change without touching its callers."
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.security-center.schema :as security-center.schema]
+   [metabase.settings.core :as setting]
+   [metabase.system.core :as system]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -111,6 +114,36 @@
                                        (tru "MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is true")
                                        (tru "MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is not true"))])})
 
+(def ^:private https-site-url
+  {:id                :https-site-url
+   :severity          :high
+   :title             (deferred-tru "HTTPS site URL")
+   :description       (deferred-tru "The site URL is used in email links, auth redirects and embeds.")
+   :remediation       (deferred-tru "Set a site URL that starts with https:.")
+   :docs-page         "configuring-metabase/settings"
+   :requires-restart? false
+   :applicable?       (constantly true)
+   :run               (fn []
+                        (let [site-url (system/site-url)]
+                          [(cond
+                             (nil? site-url)                      (item :fail (tru "Site URL is not set"))
+                             (str/starts-with? site-url "https:") (item :pass (tru "Site URL starts with https:"))
+                             :else                                (item :fail (tru "Site URL does not start with https:")))]))})
+
+(def ^:private https-redirect
+  {:id                :https-redirect
+   :severity          :medium
+   :title             (deferred-tru "Redirect to HTTPS")
+   :description       (deferred-tru "Without the redirect, people can open Metabase over plain HTTP.")
+   :remediation       (deferred-tru "Turn on Redirect to HTTPS in Admin settings.")
+   :docs-page         "configuring-metabase/settings"
+   :requires-restart? false
+   :applicable?       (constantly true)
+   :run               (fn []
+                        [(pass-or-fail (setting/get :redirect-all-requests-to-https)
+                                       (tru "Redirect to HTTPS is on")
+                                       (tru "Redirect to HTTPS is off"))])})
+
 ;;; The registry
 
 (def ^:private checks
@@ -119,7 +152,9 @@
   (validated-registry
    {:encryption-secret-key     encryption-secret-key
     :session-secret-key        session-secret-key
-    :legacy-startup-encryption legacy-startup-encryption}))
+    :legacy-startup-encryption legacy-startup-encryption
+    :https-site-url            https-site-url
+    :https-redirect            https-redirect}))
 
 (defn all-checks
   "Every registered check, in id order."

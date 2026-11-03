@@ -161,3 +161,32 @@
   (testing "fails when it is not set"
     (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption nil]
       (is (= :fail (:status (run-check-by-id :legacy-startup-encryption)))))))
+
+;;; The HTTPS checks
+
+(deftest https-site-url-test
+  (is (true? (health-checks/applicable? (health-checks/check-by-id :https-site-url))))
+  (testing "passes when the site URL starts with https:"
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+      (is (=? {:status :pass, :items [{:status :pass, :message "Site URL starts with https:"}]}
+              (run-check-by-id :https-site-url)))))
+  (testing "fails when the site URL starts with http:"
+    (mt/with-temporary-setting-values [site-url "http://metabase.example.com"]
+      (is (=? {:status :fail, :items [{:status :fail, :message "Site URL does not start with https:"}]}
+              (run-check-by-id :https-site-url)))))
+  (testing "fails when the site URL is not set"
+    (mt/with-temporary-setting-values [site-url nil]
+      (is (=? {:status :fail, :items [{:status :fail, :message "Site URL is not set"}]}
+              (run-check-by-id :https-site-url))))))
+
+(deftest https-redirect-test
+  (is (true? (health-checks/applicable? (health-checks/check-by-id :https-redirect))))
+  (testing "passes when the redirect is on"
+    (mt/with-temporary-setting-values [site-url                       "https://metabase.example.com"
+                                       redirect-all-requests-to-https true]
+      (is (=? {:status :pass, :items [{:status :pass, :message "Redirect to HTTPS is on"}]}
+              (run-check-by-id :https-redirect)))))
+  (testing "fails when the redirect is off"
+    (mt/with-temporary-setting-values [redirect-all-requests-to-https false]
+      (is (=? {:status :fail, :items [{:status :fail, :message "Redirect to HTTPS is off"}]}
+              (run-check-by-id :https-redirect))))))
