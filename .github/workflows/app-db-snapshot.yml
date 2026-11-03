@@ -9,9 +9,16 @@ name: App DB snapshot tests
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths:
+    paths: &snapshot-inputs
+      # what decides the DB a migration run produces. Custom migrations and the Liquibase setup are listed because
+      # changing them leaves every changeset checksum as it was, so nothing else would notice the snapshot is stale.
+      - "deps.edn"
       - "resources/migrations/**"
       - "resources/liquibase*.yaml"
+      - "src/metabase/app_db/custom_migrations.clj"
+      - "src/metabase/app_db/custom_migrations/**"
+      - "src/metabase/app_db/liquibase.clj"
+      - "src/metabase/app_db/liquibase/**"
       - "test_resources/app_db_snapshots/**"
       - "test/metabase/app_db/snapshot_test_util.clj"
       - "test/metabase/app_db/snapshot_test_util/**"
@@ -22,10 +29,7 @@ on:
     branches:
       - master
       - "release-x**"
-    paths:
-      - "resources/migrations/**"
-      - "resources/liquibase*.yaml"
-      - "test_resources/app_db_snapshots/**"
+    paths: *snapshot-inputs
   workflow_dispatch:
 
 concurrency:

@@ -1,14 +1,21 @@
 (ns metabase.app-db.snapshot-test-util
   "Checked-in dumps of an empty application DB that Liquibase has already migrated through a fixed changeset.
 
-  Loading a snapshot into a fresh DB leaves it in exactly the state a full migration run would have: the schema, the
-  rows migrations seed, and the DATABASECHANGELOG/DATABASECHANGELOGLOCK rows. A Liquibase run against the loaded DB
-  therefore applies only the changesets *after* [[through-changeset-id]], which is what makes it usable as a starting
-  point instead of replaying every changeset from `v00.00-000`.
+  Loading a snapshot into a fresh DB leaves it in the state a full migration run through [[through-changeset-id]]
+  would have: the schema, the rows migrations seed, and the DATABASECHANGELOG/DATABASECHANGELOGLOCK rows. A Liquibase
+  run against the loaded DB therefore applies only what the snapshot does not record, which is what makes it usable as
+  a starting point instead of replaying every changeset from `v00.00-000`.
+
+  Two things differ from a fresh install, on purpose. Every changelog row carries the same [[deployment-id]] and
+  [[executed-at]], so that regenerating an unchanged snapshot writes an unchanged file. And there is no
+  `databasechangelog_version`: whatever loads the snapshot backfills its version from the `vNN.` changeset ids, the
+  way it would for an install from before version tracking. That backfill only works while every changeset up to the
+  boundary has a `vNN.` id. A boundary past the first version-less changeset needs the snapshot to carry its version
+  rows instead.
 
   Layout, on the test classpath:
 
-    app_db_snapshots/<version>/meta.edn      {:through-changeset-id \"...\"}
+    app_db_snapshots/<version>/meta.edn      {:through-changeset-id \"...\", :executed-at \"...\"}
     app_db_snapshots/<version>/h2.sql
     app_db_snapshots/<version>/postgres.sql
     app_db_snapshots/<version>/mysql.sql
@@ -22,9 +29,12 @@
   about the file is parsed, so [[load-snapshot!]] cannot be broken by semicolons inside string literals.
   [[metabase.app-db.snapshot-test-util.generate/generate!]] is what writes that shape.
 
-  Because DATABASECHANGELOG carries the MD5 checksum of every changeset it records, editing a migration at or below
-  the snapshot boundary makes Liquibase reject a loaded snapshot. That is intended: those changesets have shipped.
-  Regenerate the snapshot when moving the boundary to a newer checkpoint."
+  Changesets keep arriving before the boundary after a snapshot is cut: backports to older majors, per-feature files
+  dated before it, ids that move. A loaded snapshot does not record them, so Liquibase runs them after the snapshot's
+  own, as it would on an install upgrading to a patch release. Tests stay correct, but each one is time the snapshot
+  no longer saves until it is regenerated. Editing a changeset the snapshot records changes its checksum, and
+  Liquibase then rejects the loaded snapshot. Editing a custom migration's code does not; the drift test in
+  [[metabase.app-db.snapshot-test]] is what notices that."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -62,15 +72,29 @@
 (defn- snapshot-resource [version flavor]
   (io/resource (resource-path version flavor "sql")))
 
+(defn- meta-data [version]
+  (let [resource (io/resource (format "app_db_snapshots/%s/meta.edn" version))]
+    (when-not resource
+      (throw (ex-info "No app DB snapshot metadata on the classpath" {:version version})))
+    (edn/read-string (slurp resource))))
+
 (defn through-changeset-id
   "ID of the last changeset baked into the snapshot for `version`."
   ([]
    (through-changeset-id snapshot-version))
   ([version]
-   (let [resource (io/resource (format "app_db_snapshots/%s/meta.edn" version))]
-     (when-not resource
-       (throw (ex-info "No app DB snapshot metadata on the classpath" {:version version})))
-     (:through-changeset-id (edn/read-string (slurp resource))))))
+   (:through-changeset-id (meta-data version))))
+
+(defn executed-at
+  "The `dateexecuted` every changelog row in the snapshot for `version` carries. Set to the date of the boundary
+  changeset, so the rows read as plausible."
+  ^java.time.OffsetDateTime [version]
+  (java.time.OffsetDateTime/parse (:executed-at (meta-data version))))
+
+(def deployment-id
+  "The `deployment_id` every changelog row in a snapshot carries, in place of the random one Liquibase gives each run.
+  Fits the column's 10 characters."
+  "snapshot")
 
 (defn- legacy-timestamp-handling?
   "Whether this server gives a `TIMESTAMP NOT NULL` column an implicit `DEFAULT CURRENT_TIMESTAMP`.
@@ -160,8 +184,12 @@
       "SET SESSION sql_mode = IFNULL(@mb_snapshot_sql_mode, @@SESSION.sql_mode)"]]
     [drop-changelog-tables []]))
 
-(defn- creates-view? [sql]
-  (boolean (re-find #"(?is)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\b" sql)))
+(defn- creates-view?
+  "Whether `sql` creates a view, including with the `ALGORITHM`, `DEFINER` and `SQL SECURITY` clauses MySQL allows
+  between `CREATE` and `VIEW`."
+  [sql]
+  (boolean (re-find #"(?is)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:ALGORITHM\s*=\s*\w+\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:SQL\s+SECURITY\s+\w+\s+)?VIEW\b"
+                    sql)))
 
 (defn- load-order
   "`[guarded unguarded]`: the snapshot's statements split into those that run under [[session-guards]] and those that
@@ -199,8 +227,6 @@
                        (throw (ex-info "Error loading app DB snapshot statement"
                                        {:version version, :flavor flavor, :statement sql}
                                        e))))))]
-         (doseq [sql before]
-           (.execute stmt sql))
          ;; The whole load goes in one transaction. A snapshot is thousands of statements, and left in autocommit each
          ;; one is a transaction of its own: on Postgres that made loading the snapshot cost more than replaying the
          ;; changelog it stands in for. Statements the MySQL family commits implicitly are unaffected either way.
@@ -209,6 +235,10 @@
              (.setAutoCommit conn false))
            (try
              (try
+               ;; inside the `try`, so that a failing guard still restores the ones before it and a pooled connection
+               ;; never goes back with foreign key checks or strict mode off
+               (doseq [sql before]
+                 (.execute stmt sql))
                (execute! guarded)
                (finally
                  (doseq [sql after]

@@ -5,8 +5,10 @@
   rest produces the same DB as migrating the whole changelog from scratch. That is what these tests check, and it is
   what breaks if someone edits a changeset at or below the boundary without regenerating the snapshot.
 
-  A full replay of the changelog is slow, so the comparison is off unless `MB_APP_DB_SNAPSHOT_DRIFT_TEST=true`; the
-  `app-db-snapshot` CI workflow sets it. Everything else about the snapshot is cheap enough to check every run."
+  The comparison always runs on H2, where a full replay takes seconds: that catches drift Liquibase cannot see, such as
+  an edit to a custom migration's code, on every backend run. The other dialects are slower and only checked when
+  `MB_APP_DB_SNAPSHOT_DRIFT_TEST=true`, which the `app-db-snapshot` CI workflow sets. Everything else about the
+  snapshot is cheap enough to check every run."
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
@@ -14,6 +16,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.custom-migrations :as custom-migrations]
+   [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.app-db.snapshot-test-util :as snapshot]
    [metabase.app-db.snapshot-test-util.generate :as generate]
@@ -22,12 +26,15 @@
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (liquibase.changelog ChangeSet)))
 
 (set! *warn-on-reflection* true)
 
-(defn- drift-test-enabled? []
-  (= "true" (config/config-str :mb-app-db-snapshot-drift-test)))
+(defn- drift-test-enabled? [driver]
+  (or (= driver :h2)
+      (= "true" (config/config-str :mb-app-db-snapshot-drift-test))))
 
 (defn- regeneration-test-enabled? []
   (= "true" (config/config-str :mb-app-db-snapshot-regeneration-test)))
@@ -145,21 +152,35 @@
   same answer re-running the original `CREATE` would give. Views have no defaults, so `column_def` goes with it."
   #{:nullable :is_nullable :column_def})
 
+(defn- view-security
+  "MySQL's `SQL SECURITY` for each view, upper-cased name to `DEFINER` or `INVOKER`. The JDBC metadata does not report
+  it, and a view recreated without the clause silently becomes `DEFINER`. Other dialects have no such setting."
+  [^java.sql.Connection conn db-type]
+  (if (= db-type :mysql)
+    (u/for-map [{:keys [table_name security_type]}
+                (jdbc/query {:connection conn}
+                            ["SELECT table_name, security_type FROM information_schema.views WHERE table_schema = DATABASE()"])]
+      [(u/upper-case-en table_name) security_type])
+    {}))
+
 (defn- view-fingerprint
-  "Each view and the columns it exposes.
+  "Each view, the columns it exposes, and on MySQL its [[view-security]].
 
   The columns are the point: a view whose body could not be resolved when the snapshot loaded still shows up as a
   view, just with nothing in it, and the instance analytics views are only ever read through the app so nothing else
   here would notice."
   [^java.sql.Connection conn db-type]
-  (with-open [rs (.getTables (.getMetaData conn) nil (schema-of db-type) "%" (into-array String ["VIEW"]))]
-    (into (sorted-map)
-          (map (fn [view]
-                 [(u/upper-case-en (:table_name view))
-                  (into (sorted-map)
-                        (map (fn [[col row]] [col (apply dissoc row view-column-ignored-metadata)]))
-                        (columns conn db-type (:table_name view)))]))
-          (jdbc/result-set-seq rs))))
+  (let [security (view-security conn db-type)]
+    (with-open [rs (.getTables (.getMetaData conn) nil (schema-of db-type) "%" (into-array String ["VIEW"]))]
+      (into (sorted-map)
+            (map (fn [view]
+                   (let [view-name (u/upper-case-en (:table_name view))]
+                     [view-name
+                      {:security (get security view-name)
+                       :columns  (into (sorted-map)
+                                       (map (fn [[col row]] [col (apply dissoc row view-column-ignored-metadata)]))
+                                       (columns conn db-type (:table_name view)))}])))
+            (jdbc/result-set-seq rs)))))
 
 (defn- database-attributes
   "Settings that belong to the database itself rather than to anything inside it. No table's DDL carries them, and a
@@ -177,13 +198,22 @@
                                 ["SELECT SETTING_NAME, SETTING_VALUE FROM INFORMATION_SCHEMA.SETTINGS"]))))
 
 (defn- changelog-fingerprint
-  "Which changesets the DB believes it has run, and their checksums. `dateexecuted`, `orderexecuted`, `deployment_id`
-  and the recorded Liquibase version legitimately differ between a replay and a snapshot load, so they are left out."
+  "Which changesets the DB believes it has run, and their checksums, keyed on `[id author filename]`: that is how
+  Liquibase tells changesets apart, and the changelog has ids that appear in more than one file. `dateexecuted`,
+  `orderexecuted`, `deployment_id` and the recorded Liquibase version legitimately differ between a replay and a
+  snapshot load, so they are left out."
   [^java.sql.Connection conn]
   (into (sorted-map)
-        (map (fn [row]
-               [(:id row) (select-keys row [:author :filename :md5sum :exectype])]))
+        (map (fn [{:keys [id author filename] :as row}]
+               [[id author filename] (select-keys row [:md5sum :exectype])]))
         (jdbc/query {:connection conn} ["SELECT id, author, filename, md5sum, exectype FROM DATABASECHANGELOG"])))
+
+(defn- changelog-keys
+  "`[id author filename]` of every changeset in the changelog, in the order Liquibase runs them."
+  [^java.sql.Connection conn]
+  (liquibase/with-liquibase [lb conn]
+    (mapv (fn [^ChangeSet cs] [(.getId cs) (.getAuthor cs) (.getFilePath cs)])
+          (.getChangeSets (.getDatabaseChangeLog lb)))))
 
 (def ^:private generated-columns
   "Columns migrations fill with freshly generated values — NanoIDs, password hashes, salts. Two runs never agree on
@@ -201,8 +231,12 @@
   tried so far happens to agree on it, which is luck rather than a guarantee.
 
   Only the id is dropped. Nothing references either of these, and the rows themselves are still compared, so a
-  seeded row going missing, appearing twice, or changing its `group_id`/`job_id`/`tag_id` still fails."
-  #{"METABOT_PERMISSIONS" "TRANSFORM_JOB_TRANSFORM_TAG"})
+  seeded row going missing, appearing twice, or changing its `group_id`/`job_id`/`tag_id` still fails.
+
+  `databasechangelog_version` is here for a different reason. A loaded snapshot has no version rows, so the first
+  run against it backfills one for the snapshot's deployment, which the per-major split then replaces. That uses up
+  an id a full replay never does, and every later row is numbered one higher."
+  #{"METABOT_PERMISSIONS" "TRANSFORM_JOB_TRANSFORM_TAG" "DATABASECHANGELOG_VERSION"})
 
 (defn- unstable-columns
   "Columns of `table` whose values two separate migration runs cannot be expected to share: wall-clock times, the
@@ -286,14 +320,9 @@
    [#"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"                 "<uuid>"]])
 
 (defn- unstable-values-masked [statement]
-  (as-> statement stmt
-    (reduce (fn [sql [pattern replacement]] (str/replace sql pattern replacement))
-            stmt
-            unstable-literals)
-    ;; the id Liquibase gives the deployment that ran the changesets, and only ever that
-    (cond-> stmt
-      (str/includes? (u/lower-case-en stmt) "databasechangelog")
-      (str/replace #"'\d{10}'" "'<deployment-id>'"))))
+  (reduce (fn [sql [pattern replacement]] (str/replace sql pattern replacement))
+          statement
+          unstable-literals))
 
 (defn- value-tuples
   "The `(...)` tuples of a `VALUES` list, split on the paren closing each one rather than on the commas between them,
@@ -364,72 +393,87 @@
     (mt/test-drivers #{:h2 :mysql :postgres}
       (let [driver driver/*driver*]
         (impl/with-temp-empty-app-db [conn driver]
-          (if-not (snapshot/loadable? conn driver)
-            (log/warnf "No app DB snapshot checked in for %s; skipping" (snapshot/flavor conn driver))
-            (do
-              (snapshot/load-snapshot! conn driver)
-              (let [ids      (snapshot/changeset-ids conn)
-                    boundary (.indexOf ^java.util.List ids (snapshot/through-changeset-id))
-                    ;; compared as sets of ids rather than by count: Liquibase keys a changeset on id, author *and*
-                    ;; filename, so the same id legitimately appears in two changelog files, and DATABASECHANGELOG
-                    ;; then holds fewer distinct ids than there are changesets up to the boundary
-                    expected (set (take (inc boundary) ids))
-                    loaded   (set (keys (changelog-fingerprint conn)))]
-                (is (nat-int? boundary)
-                    "the snapshot's boundary changeset should still exist in the changelog")
-                (is (= expected loaded)
-                    "the snapshot should record exactly the changesets up to and including its boundary, no gaps")))))))))
+          (is (snapshot/loadable? conn driver)
+              (format "a snapshot should be checked in for %s" (snapshot/flavor conn driver)))
+          (when (snapshot/loadable? conn driver)
+            (snapshot/load-snapshot! conn driver)
+            (let [changesets (changelog-keys conn)
+                  in-log     (set changesets)
+                  through    (snapshot/through-changeset-id)
+                  boundary   (u/index-of (comp #{through} first) changesets)
+                  recorded   (into #{}
+                                   (remove (fn [[_id _author filename]]
+                                             (versions/legacy-version-tracking-marker? {:filename filename})))
+                                   (keys (changelog-fingerprint conn)))
+                  missing    (remove recorded (take (inc (or boundary -1)) changesets))]
+              (is (some? boundary)
+                  "the snapshot's boundary changeset should still exist in the changelog")
+              (is (some (comp #{through} first) recorded)
+                  "the snapshot should record its boundary changeset")
+              (is (empty? (remove in-log recorded))
+                  "every changeset the snapshot records should still be in the changelog")
+              (is (= :valid (liquibase/with-liquibase [lb conn]
+                              (.validate lb)
+                              :valid))
+                  "Liquibase should accept the checksums the snapshot records")
+              ;; Not a failure: these run after the snapshot loads, so tests stay correct. Each is time the snapshot
+              ;; no longer saves, and regenerating gets it back.
+              (when (seq missing)
+                (log/infof "app DB snapshot %s [%s] predates %d changesets before its boundary; regenerate it: %s"
+                           snapshot/snapshot-version (snapshot/flavor conn driver) (count missing)
+                           (str/join ", " (map first missing)))))))))))
 
 (deftest snapshot-matches-full-migration-test
   (testing "loading the snapshot and migrating the rest produces the same DB as migrating everything from scratch"
-    (if-not (drift-test-enabled?)
-      (log/warn "MB_APP_DB_SNAPSHOT_DRIFT_TEST is not set; skipping app DB snapshot drift comparison")
-      (mt/test-drivers #{:h2 :mysql :postgres}
-        (let [driver      driver/*driver*
-              through     (snapshot/through-changeset-id)
-              full-ms     (volatile! nil)
-              snapshot-ms (volatile! nil)
-              flavor      (volatile! driver)
-              ;; snapshot side first, so a dialect with no snapshot checked in costs nothing to skip
-              from-snapshot (impl/with-temp-empty-app-db [conn driver]
-                              (vreset! flavor (snapshot/flavor conn driver))
-                              (when (snapshot/loadable? conn driver)
-                                (vreset! snapshot-ms
-                                         (timed (fn []
-                                                  (snapshot/load-snapshot! conn driver)
-                                                  (impl/run-migrations-in-range!
-                                                   conn [through nil] {:inclusive-start? false}))))
-                                (fingerprint conn driver)))]
-          (if-not from-snapshot
-            (log/warnf "No app DB snapshot checked in for %s; skipping parity comparison" @flavor)
-            (let [from-scratch (impl/with-temp-empty-app-db [conn driver]
-                                 ;; the snapshot is dumped without the sample content, the way `setup-db!` builds a
-                                 ;; test app DB, so the replay it is compared against has to leave it out too
-                                 (binding [custom-migrations/*create-sample-content* false]
-                                   (vreset! full-ms
-                                            (timed #(impl/run-migrations-in-range! conn ["v00.00-000" nil]))))
-                                 (fingerprint conn driver))]
-              (log-timings! @flavor @full-ms @snapshot-ms)
-              (testing "same tables"
-                (is (= (set (keys (:schema from-scratch)))
-                       (set (keys (:schema from-snapshot))))))
-              (doseq [table (sort (set/intersection (set (keys (:schema from-scratch)))
-                                                    (set (keys (:schema from-snapshot)))))]
-                (testing (format "%s structure" table)
-                  (is (= (get-in from-scratch [:schema table])
-                         (get-in from-snapshot [:schema table])))))
-              (testing "same views"
-                (is (= (:views from-scratch)
-                       (:views from-snapshot))))
-              (testing "same database-level settings"
-                (is (= (:database from-scratch)
-                       (:database from-snapshot))))
-              (testing "same changesets recorded as run"
-                (is (= (:changelog from-scratch)
-                       (:changelog from-snapshot))))
-              (testing "same seeded rows"
-                (is (= (:data from-scratch)
-                       (:data from-snapshot)))))))))))
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (let [driver driver/*driver*]
+        (if-not (drift-test-enabled? driver)
+          (log/warnf "MB_APP_DB_SNAPSHOT_DRIFT_TEST is not set; skipping app DB snapshot drift comparison for %s" driver)
+          ;; the snapshot is dumped without the sample content, the way `setup-db!` builds a test app DB, so neither
+          ;; side gets it
+          (binding [custom-migrations/*create-sample-content* false]
+            (let [full-ms       (volatile! nil)
+                  snapshot-ms   (volatile! nil)
+                  flavor        (volatile! driver)
+                  from-snapshot (impl/with-temp-empty-app-db [conn driver]
+                                  (vreset! flavor (snapshot/flavor conn driver))
+                                  (when (snapshot/loadable? conn driver)
+                                    (vreset! snapshot-ms
+                                             (timed (fn []
+                                                      (snapshot/load-snapshot! conn driver)
+                                                      ;; the whole changelog, skipping what the snapshot records, so a
+                                                      ;; changeset the snapshot predates runs wherever it sits
+                                                      (impl/run-migrations-in-range!
+                                                       conn ["v00.00-000" nil] {:skip-ran? true}))))
+                                    (fingerprint conn driver)))]
+              (is (some? from-snapshot)
+                  (format "a snapshot should be checked in for %s" @flavor))
+              (when from-snapshot
+                (let [from-scratch (impl/with-temp-empty-app-db [conn driver]
+                                     (vreset! full-ms
+                                              (timed #(impl/run-migrations-in-range! conn ["v00.00-000" nil])))
+                                     (fingerprint conn driver))]
+                  (log-timings! @flavor @full-ms @snapshot-ms)
+                  (testing "same tables"
+                    (is (= (set (keys (:schema from-scratch)))
+                           (set (keys (:schema from-snapshot))))))
+                  (doseq [table (sort (set/intersection (set (keys (:schema from-scratch)))
+                                                        (set (keys (:schema from-snapshot)))))]
+                    (testing (format "%s structure" table)
+                      (is (= (get-in from-scratch [:schema table])
+                             (get-in from-snapshot [:schema table])))))
+                  (testing "same views"
+                    (is (= (:views from-scratch)
+                           (:views from-snapshot))))
+                  (testing "same database-level settings"
+                    (is (= (:database from-scratch)
+                           (:database from-snapshot))))
+                  (testing "same changesets recorded as run"
+                    (is (= (:changelog from-scratch)
+                           (:changelog from-snapshot))))
+                  (testing "same seeded rows"
+                    (is (= (:data from-scratch)
+                           (:data from-snapshot)))))))))))))
 
 (deftest snapshot-is-what-generating-it-today-writes-test
   (testing "the checked-in snapshot is the file a regeneration would write, so nobody has to guess whether it is stale"
@@ -440,10 +484,12 @@
       (log/warn "MB_APP_DB_SNAPSHOT_REGENERATION_TEST is not set; skipping app DB snapshot regeneration check")
       (doseq [flavor server/flavors]
         (testing (name flavor)
-          (let [{:keys [content]} (generate/dump-snapshot! flavor)]
-            (if-let [checked-in (io/resource (snapshot/resource-path snapshot/snapshot-version flavor "sql"))]
-              (is (nil? (first-difference (comparable-statements (slurp checked-in))
-                                          (comparable-statements content)))
-                  (format "the %s snapshot is stale; regenerate it with (snapshot-test-util.generate/generate! %s)"
-                          (name flavor) flavor))
-              (log/warnf "No app DB snapshot checked in for %s; skipping" flavor))))))))
+          (let [checked-in (io/resource (snapshot/resource-path snapshot/snapshot-version flavor "sql"))]
+            (is (some? checked-in)
+                (format "a snapshot should be checked in for %s" (name flavor)))
+            (when checked-in
+              (let [{:keys [content]} (generate/dump-snapshot! flavor)]
+                (is (nil? (first-difference (comparable-statements (slurp checked-in))
+                                            (comparable-statements content)))
+                    (format "the %s snapshot is stale; regenerate it with (snapshot-test-util.generate/generate! %s)"
+                            (name flavor) flavor))))))))))

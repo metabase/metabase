@@ -32,14 +32,19 @@
   "`CREATE OR REPLACE VIEW` for every view in `db`, read back from `information_schema`.
 
   MySQL stores view definitions with every table qualified by the schema they were created in, so the name of the
-  throwaway DB used for generation is stripped out -- otherwise the snapshot would only load into a DB of that name."
+  throwaway DB used for generation is stripped out -- otherwise the snapshot would only load into a DB of that name.
+
+  `view_definition` is only the body, so `SQL SECURITY` is carried over separately. Migrations create the instance
+  analytics views as `INVOKER`, and left out, every view would come back as MySQL's default `DEFINER`. The definer
+  account itself is not carried over: it names whoever generated the snapshot."
   [^java.sql.Connection conn db]
   (let [qualifier (str "`" db "`.")]
-    (for [{:keys [table_name view_definition]}
+    (for [{:keys [table_name view_definition security_type]}
           (jdbc/query {:connection conn}
-                      ["SELECT table_name, view_definition FROM information_schema.views WHERE table_schema = ?
-                        ORDER BY table_name" db])]
-      (format "CREATE OR REPLACE VIEW `%s` AS %s"
+                      ["SELECT table_name, view_definition, security_type FROM information_schema.views
+                        WHERE table_schema = ? ORDER BY table_name" db])]
+      (format "CREATE OR REPLACE SQL SECURITY %s VIEW `%s` AS %s"
+              security_type
               table_name
               (str/replace view_definition qualifier "")))))
 

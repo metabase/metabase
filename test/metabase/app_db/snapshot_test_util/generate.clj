@@ -41,7 +41,22 @@
        (str/join (str ";\n" snapshot/statement-separator "\n") statements)
        ";\n"))
 
-(defn- migrate-and-dump
+(defn- stamp-changelog!
+  "Give every DATABASECHANGELOG row the same `dateexecuted` and `deployment_id`, so that regenerating an unchanged
+  snapshot writes an unchanged file. Liquibase would otherwise record the wall clock and a fresh random deployment id.
+
+  Only the changelog is touched; timestamps in seeded rows are left as the migrations wrote them. The execution order
+  survives in `orderexecuted`, which breaks ties in the `[dateexecuted orderexecuted]` order Liquibase and
+  [[metabase.app-db.liquibase.versions]] read the changelog in."
+  [^java.sql.Connection conn ^java.time.OffsetDateTime executed-at]
+  (with-open [stmt (.prepareStatement conn "UPDATE DATABASECHANGELOG SET DATEEXECUTED = ?, DEPLOYMENT_ID = ?")]
+    (.setObject stmt 1 (.toLocalDateTime executed-at))
+    (.setString stmt 2 snapshot/deployment-id)
+    (.executeUpdate stmt))
+  (when-not (.getAutoCommit conn)
+    (.commit conn)))
+
+(defn- migrate-and-dump!
   "Migrate the empty DB `server` is running -- or an in-memory H2 one, when `server` is nil -- through the snapshot
   boundary and dump it."
   [flavor version server]
@@ -51,7 +66,9 @@
                      (if server
                        (sql-jdbc.conn/connection-details->spec db-type (:details server))
                        {:subprotocol "h2", :classname "org.h2.Driver"
-                        :subname (format "mem:app_db_snapshot_%05d;DB_CLOSE_DELAY=-1" (rand-int 100000))}))]
+                        ;; no DB_CLOSE_DELAY: `conn` stays open through the migration and the dump, and closing it
+                        ;; should free the DB rather than leave a migrated copy in the heap
+                        :subname (format "mem:app_db_snapshot_%05d" (rand-int 100000))}))]
     (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
       ;; the image was chosen for a flavor, but only the running server can confirm it is that flavor -- MariaDB is
       ;; reached as `:mysql`, and which MariaDB flavor it is depends on how it handles timestamps
@@ -66,7 +83,11 @@
       (binding [mdb.connection/*application-db*                (mdb.connection/application-db db-type data-source)
                 custom-migrations.util/*allow-temp-scheduling* false
                 custom-migrations/*create-sample-content*      false]
-        (impl/run-migrations-in-range! conn ["v00.00-000" through]))
+        ;; without version tracking: the snapshot then looks like an install from before `databasechangelog_version`
+        ;; existed, and whatever loads it backfills its version from the `vNN.` ids, the way such an install is
+        ;; upgraded. Migration tests split it into per-major deployments as they would a full replay.
+        (impl/run-migrations-in-range! conn ["v00.00-000" through] {:track-versions? false}))
+      (stamp-changelog! conn (snapshot/executed-at version))
       {:flavor  flavor
        :content (file-content version flavor
                               (dump/dump-statements (flavor->dumper flavor) server conn))})))
@@ -83,8 +104,8 @@
    (dump-snapshot! flavor snapshot/snapshot-version))
   ([flavor version]
    (if (= flavor :h2)
-     (migrate-and-dump flavor version nil)
-     (server/do-with-server! flavor #(migrate-and-dump flavor version %)))))
+     (migrate-and-dump! flavor version nil)
+     (server/do-with-server! flavor #(migrate-and-dump! flavor version %)))))
 
 (defn generate!
   "Regenerate the checked-in snapshot for `flavor` and return the file written.
