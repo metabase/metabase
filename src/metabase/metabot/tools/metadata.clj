@@ -116,7 +116,8 @@
   tools/BatchedTool
   (batched-declaration [_ declaration]
     (assoc declaration
-           :description "Retrieve metadata for up to 5 tables, 5 models, and 5 metrics per call."
+           :description (str "Retrieve metadata for up to 5 tables, 5 models, and 5 metrics per call. "
+                             "A saved question ID can go in `model_ids` or `metric_ids`.")
            :args list-available-fields-schema))
   (batched-args [_ {table-ids :table_ids model-ids :model_ids metric-ids :metric_ids}]
     (into []
