@@ -49,6 +49,10 @@ function seedAllAdvisories() {
   ]);
 }
 
+function securityCenterNav() {
+  return cy.findByTestId("security-center-nav");
+}
+
 function advisoriesPageContent() {
   return cy.findByTestId("advisories-page");
 }
@@ -65,13 +69,13 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     H.deleteToken();
     cy.visit(SECURITY_CENTER_URL);
     cy.findByTestId("admin-navbar").should("be.visible");
-    advisoriesPageContent().should("not.exist");
+    securityCenterNav().should("not.exist");
 
     cy.log("With a token the root opens advisories");
     H.activateToken("pro-self-hosted");
     cy.visit(SECURITY_CENTER_URL);
     cy.url().should("include", ADVISORIES_URL);
-    advisoriesPageContent().should("be.visible");
+    securityCenterNav().should("be.visible");
   });
 
   it("should show nav item with badge and navigate to the security center", () => {

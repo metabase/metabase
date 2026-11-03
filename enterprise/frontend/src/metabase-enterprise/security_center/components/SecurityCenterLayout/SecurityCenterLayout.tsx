@@ -15,7 +15,7 @@ const SecurityCenterNav = () => {
   const { hasAffectingAdvisory, hasFailingCheck } = useSecurityIssues();
 
   return (
-    <AdminNavWrapper>
+    <AdminNavWrapper data-testid="security-center-nav">
       <AdminNavItem
         label={t`Advisories`}
         path={Urls.securityCenterAdvisories()}
