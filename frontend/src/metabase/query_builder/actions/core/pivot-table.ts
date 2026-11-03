@@ -28,11 +28,18 @@ export function computeQuestionPivotTable(options: Options) {
     const hasBreakouts =
       !isQuestionNative && Lib.breakouts(question.query(), -1).length > 0;
 
-    // compute the pivot setting now so we can query the appropriate data
+    // compute the pivot setting now so we can query the appropriate data. Results of a
+    // different query don't describe this query's columns, so reconciling against them
+    // would drop columns the setting already places for the new query.
     if (isPivot && hasBreakouts) {
       const key = "pivot_table.column_split";
 
-      if (rawSeries) {
+      const lastRunQuery = rawSeries?.[0]?.card.dataset_query;
+      if (
+        rawSeries &&
+        lastRunQuery &&
+        Lib.areLegacyQueriesEqual(question.datasetQuery(), lastRunQuery)
+      ) {
         const series = assocIn(rawSeries, [0, "card"], question.card());
         const setting = getQuestionWithDefaultVisualizationSettings(
           question,

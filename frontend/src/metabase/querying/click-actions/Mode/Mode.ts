@@ -20,6 +20,7 @@ type MapClickActions = (
 type ModeOptions = {
   mapActions?: MapClickActions;
   hasColumnShortcutActions?: boolean;
+  onAddColumn?: () => void;
 };
 
 export class Mode implements ClickActionsMode {
@@ -27,13 +28,15 @@ export class Mode implements ClickActionsMode {
   _mapActions?: MapClickActions;
 
   hasColumnShortcutActions?: (props: ClickActionProps) => boolean;
+  onAddColumn?: () => void;
 
   constructor(
     getQueryMode: (question: Question) => QueryClickActionsMode,
-    { mapActions, hasColumnShortcutActions }: ModeOptions = {},
+    { mapActions, hasColumnShortcutActions, onAddColumn }: ModeOptions = {},
   ) {
     this._getQueryMode = getQueryMode;
     this._mapActions = mapActions;
+    this.onAddColumn = onAddColumn;
 
     if (hasColumnShortcutActions) {
       this.hasColumnShortcutActions = (props) =>

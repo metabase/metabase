@@ -247,6 +247,24 @@ export const METABOT_ISSUE_TYPE_VALUES = [
 
 export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
 
+export type SuggestSummaryFormulaRequest = {
+  /** What was typed into the summary well, e.g. `average order total`. */
+  prompt: string;
+  /** `aggregation` for Values, `expression` for the custom columns Rows and Columns group by. */
+  mode: "aggregation" | "expression";
+  /** The columns the formula can reference, by their name in expression syntax (without brackets). */
+  columns: { name: string; type?: string | null }[];
+  metrics?: string[];
+  table_name?: string | null;
+};
+
+export type SuggestSummaryFormulaResponse = {
+  /** Custom expression source without the leading `=`; `null` when no LLM is available or nothing fits. */
+  expression: string | null;
+  name: string | null;
+  error: string | null;
+};
+
 export type MetabotFeedback = {
   message_id: string;
   freeform_feedback?: string;

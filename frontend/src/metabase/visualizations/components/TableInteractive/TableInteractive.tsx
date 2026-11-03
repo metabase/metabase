@@ -64,6 +64,7 @@ import {
 import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isFK, isID, isPK, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
@@ -461,12 +462,17 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   );
 
   const handleAddColumnButtonClick = useMemo(() => {
-    if (
-      !question ||
-      !mode?.hasColumnShortcutActions ||
-      !onVisualizationClick ||
-      isPivoted
-    ) {
+    if (!question || isPivoted) {
+      return undefined;
+    }
+
+    // the host opens its own column editor, e.g. the query builder's formula bar
+    const onAddColumn = mode?.onAddColumn;
+    if (onAddColumn != null) {
+      return () => onAddColumn();
+    }
+
+    if (!mode?.hasColumnShortcutActions || !onVisualizationClick) {
       return undefined;
     }
 
@@ -494,6 +500,29 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const dataGridTheme: DataGridTheme = useMemo(
     () => tableThemeToDataGridTheme(tableTheme, theme?.other?.fontSize),
     [tableTheme, theme?.other?.fontSize],
+  );
+
+  // in the query builder, a header's name can be edited in place; it's stored as the column's
+  // title, so renaming never changes the query, and an empty name goes back to the default
+  const canRenameColumns =
+    queryBuilderMode != null && !isDashboard && !isDocument && !isPivoted;
+  const handleRenameColumn = useCallback(
+    (column: DatasetColumn, title: string) => {
+      const columnKey = getColumnKey(column);
+      const columnSettings = settings["column_settings"] ?? {};
+      const { column_title: _previousTitle, ...otherSettings } =
+        columnSettings[columnKey] ?? {};
+      onUpdateVisualizationSettings({
+        column_settings: {
+          ...columnSettings,
+          [columnKey]:
+            title.length > 0
+              ? { ...otherSettings, column_title: title }
+              : otherSettings,
+        },
+      });
+    },
+    [settings, onUpdateVisualizationSettings],
   );
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
@@ -573,6 +602,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               columnIndex={columnIndex}
               theme={theme}
               renderTableHeader={renderTableHeader}
+              onRename={
+                canRenameColumns
+                  ? (title) => handleRenameColumn(col, title)
+                  : undefined
+              }
+              onRenameStart={() => onVisualizationClick(null)}
             />
           );
         },
@@ -641,6 +676,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     tc,
     highlightedCellKeys,
     isHighlightingActive,
+    canRenameColumns,
+    handleRenameColumn,
+    onVisualizationClick,
   ]);
 
   const handleColumnResize = useCallback(
