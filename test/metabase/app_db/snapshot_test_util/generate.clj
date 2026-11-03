@@ -16,10 +16,11 @@
   The boundary can go no later than the last changeset with a `vNN.` id until this namespace also writes the snapshot's
   `databasechangelog_version` rows, because loading a snapshot backfills its version from those ids.
 
-  On an arm64 Mac, the amd64 `metabase/mariadb:10.6` image has started with a stray `.cache` directory in its data
-  directory, which MariaDB lists as a database named `#mysql50#.cache`.
+  On an arm64 Mac, a fresh container of the amd64 `metabase/mariadb:10.6` image can have a stray `.cache` directory in
+  its data directory, which MariaDB lists as a database named `#mysql50#.cache`.
   A v65 precondition that scans every database then fails while generating `:mariadb-legacy-timestamp`.
-  Removing `/var/lib/mysql/.cache` in the container once it is ready gets past it; CI has not hit this.
+  Removing `/var/lib/mysql/.cache` in the container once it is ready lets generation finish.
+  CI has not hit this.
 
   Generating needs the migration-test harness in [[metabase.app-db.schema-migrations-test.impl]], which itself loads
   snapshots.
