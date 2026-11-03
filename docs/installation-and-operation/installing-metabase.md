@@ -24,6 +24,15 @@ Run Metabase in a [Docker container](./running-metabase-on-docker.md).
 
 If you're self-hosting but don’t use Docker, the JAR is the easiest way to get started, but it might make it more challenging to move to production. See [running the Metabase JAR](./running-the-metabase-jar-file.md).
 
+### Running on Easypanel
+
+[Easypanel](https://easypanel.io) is a self-hosted Docker deployment platform. Metabase has a one-click deployment template there, as an alternative to running the Docker image or JAR file manually:
+
+[![Deploy on Easypanel][easypanel-btn]][easypanel-deploy]
+
+[easypanel-btn]: https://easypanel.io/img/deploy-on-easypanel-40.svg
+[easypanel-deploy]: https://easypanel.io/templates/metabase
+
 ## Air-gapped Metabase
 
 If you're self-hosting because you need an air-gapped environment, check out the [air-gapped edition of Metabase](https://www.metabase.com/product/air-gapping).
