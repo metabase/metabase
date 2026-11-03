@@ -775,3 +775,31 @@
                                                                        {:type "card" :id 2}]
                                                                       1)))
           (is (= [] @ran)))))))
+
+(deftest dataset-endpoint-duplicate-specs-test
+  (testing "specs naming the same entity run it once"
+    (let [ran (atom [])]
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:fields   [$name $price]
+                                                                                      :order-by [[:asc $id]]
+                                                                                      :limit    2})}]
+        (letfn [(goal [specs]
+                  (reset! ran [])
+                  (mt/with-dynamic-fn-redefs [referenced-entities/run-referenced-entity
+                                              (let [run-referenced-entity (mt/original-fn #'referenced-entities/run-referenced-entity)]
+                                                (fn [spec max-rows]
+                                                  (swap! ran conj (:id spec))
+                                                  (run-referenced-entity spec max-rows)))]
+                    (-> (mt/user-http-request :crowberto :post 202 "dataset"
+                                              (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
+                                                     :referenced_entities (mapv #(assoc % :type "card" :id goal-id) specs)))
+                        (ref-entity :card goal-id))))]
+          (testing "and answer the columns all of them asked for"
+            (is (= ["NAME" "PRICE"]
+                   (map :name (get-in (goal [{:columns ["NAME"] :max_rows 2} {:columns ["PRICE"] :max_rows 2}])
+                                      [:data :cols]))))
+            (is (= [goal-id] @ran)))
+          (testing "a spec asking for every column wins over one that narrows them"
+            (is (= 2 (count (get-in (goal [{:columns ["NAME"] :max_rows 2} {:max_rows 2}]) [:data :cols])))))
+          (testing "the largest row limit wins"
+            (is (= "completed" (:status (goal [{:max_rows 1} {:max_rows 2}]))))
+            (is (= "failed" (:status (goal [{:max_rows 1} {:max_rows 1}]))))))))))
