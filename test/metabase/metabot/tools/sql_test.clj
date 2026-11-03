@@ -446,6 +446,8 @@
                     output (:output result)]
                 (is (= {:class :recoverable :code ::sql.common/invalid-template-syntax} (:error result)))
                 (is (str/includes? output "invalid Metabase `{{...}}` or `[[...]]` syntax"))
+                (is (= (= tool-name "edit_sql_query")
+                       (str/includes? output "The problem can be in SQL that this edit did not change.")))
                 (is (str/includes? output "Parser details: \"Invalid query: found '[[' or '{{' with no matching"))
                 (is (str/includes? output "No changes were saved."))
                 (is (nil? (:structured-output result)))))))))))

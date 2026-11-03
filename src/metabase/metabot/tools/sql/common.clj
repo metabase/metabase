@@ -96,10 +96,11 @@
 
 (tools/defrecoverable invalid-template-syntax!
   "The proposed SQL has `{{...}}` or `[[...]]` syntax that Metabase rejects."
-  {:payload [:map {:closed true} [:error-message :string]]}
-  [{:keys [error-message]}]
-  (let [prefix (str "The SQL query has invalid Metabase `{{...}}` or `[[...]]` syntax. The problem can be in SQL "
-                    "that was there before this call. No changes were saved. Parser details: ")
+  {:payload [:map {:closed true} [:error-message :string] [:edit? :boolean]]}
+  [{:keys [error-message edit?]}]
+  (let [prefix (str "The SQL query has invalid Metabase `{{...}}` or `[[...]]` syntax. "
+                    (when edit? "The problem can be in SQL that this edit did not change. ")
+                    "No changes were saved. Parser details: ")
         recovery [{:uses #{} :text (str "Close each `{{` with `}}` and each `[[` with `]]`, put a variable such as "
                                         "`{{name}}` in each `{{...}}` and each `[[...]]`, or remove the clause, then retry.")}]
         budget (tools.runtime/output-budget prefix recovery)]
@@ -146,14 +147,18 @@
    [:action-result {:optional true} ::action-result]])
 
 (defn validated-sql-action!
-  "Return the action result from an operation result, or raise the recoverable error for SQL that failed validation."
-  [{:keys [validation-result action-result]}]
-  (let [{:keys [valid? dialect error-message reason]} validation-result]
-    (cond
-      valid?                              action-result
-      (= :multiple-statements reason)     (multiple-sql-statements! {})
-      (= :invalid-template-syntax reason) (invalid-template-syntax! {:error-message error-message})
-      :else                               (sql-syntax-error! {:dialect dialect :error-message error-message}))))
+  "Return the action result from an operation result, or raise the recoverable error for SQL that failed validation.
+
+  Set `:edit?` when the validated SQL keeps text from before the call, as `edit_sql_query` does."
+  ([operation-result]
+   (validated-sql-action! operation-result {:edit? false}))
+  ([{:keys [validation-result action-result]} {:keys [edit?]}]
+   (let [{:keys [valid? dialect error-message reason]} validation-result]
+     (cond
+       valid?                              action-result
+       (= :multiple-statements reason)     (multiple-sql-statements! {})
+       (= :invalid-template-syntax reason) (invalid-template-syntax! {:error-message error-message :edit? edit?})
+       :else                               (sql-syntax-error! {:dialect dialect :error-message error-message})))))
 
 (defn native-query-access?
   "Whether the current user may write and run native queries against `database-id`.
