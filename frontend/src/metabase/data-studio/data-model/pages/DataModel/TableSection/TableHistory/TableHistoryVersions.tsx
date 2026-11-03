@@ -12,17 +12,18 @@ import {
   type HistoryCheck,
   type HistoryProfile,
   getFailedChecks,
+  getWarningChecks,
+  useHistoryProfile,
   useHistoryReview,
   useHistoryReviewStatus,
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import {
-  Alert,
   Badge,
   Button,
-  Divider,
   Group,
   Icon,
+  Paper,
   Select,
   Stack,
   Text,
@@ -32,21 +33,25 @@ import type { Table } from "metabase-types/api";
 
 import { useHistoryEntitySelection } from "../../contexts/HistoryEntitySelectionContext";
 
+import { CheckCountBadges } from "./CheckCountBadges";
+import { describeCurrentRule } from "./HistoryBindingRows";
 import {
+  HistoryAgentContext,
   HistoryColumnsSection,
   HistoryPreviewSection,
-  HistoryRepresentationSection,
 } from "./HistoryColumnsSection";
 import {
   CHECK_STATUS_ICON,
   type EntityNoun,
+  countOf,
   formatDate,
   getCheckDescription,
+  getCheckScope,
   getCheckTitle,
   getEntityNoun,
 } from "./history-labels";
 
-const MAX_LISTED_ENTITIES = 4;
+const MAX_LISTED_ENTITIES = 3;
 
 export function TableHistoryVersions({
   table,
@@ -64,7 +69,7 @@ export function TableHistoryVersions({
   if (profileState.status === "unbound") {
     return (
       <EmptyState
-        message={t`Pick the durable key and valid from columns in Details to see this table's versions.`}
+        message={t`Pick the entity key and valid from columns in Details to see this table's versions.`}
         spacing="sm"
       />
     );
@@ -83,14 +88,20 @@ export function TableHistoryVersions({
 
   return (
     <Stack gap="xxl" data-testid="table-history-versions">
-      <CoverageSection profile={profile} noun={noun} />
-      <ChecksSection profile={profile} noun={noun} />
-      <HistoryColumnsSection
+      <ReviewBar
+        table={table}
+        profile={profile}
+        isConfirmed={status.isConfirmed}
+        confirmedAt={status.confirmedAt}
+        readOnly={readOnly}
+      />
+      <ChecksSection
         table={table}
         profile={profile}
         noun={noun}
         readOnly={readOnly}
       />
+      <CoverageSection profile={profile} noun={noun} />
       <ExampleSection profile={profile} noun={noun} />
       <HistoryPreviewSection
         table={table}
@@ -98,113 +109,92 @@ export function TableHistoryVersions({
         noun={noun}
         readOnly={readOnly}
       />
-      <HistoryRepresentationSection
+      <HistoryColumnsSection
         table={table}
         profile={profile}
         noun={noun}
-      />
-      <ConfirmSection
-        table={table}
-        profile={profile}
-        isConfirmed={status.isConfirmed}
-        confirmedAt={status.confirmedAt}
         readOnly={readOnly}
       />
+      <HistoryAgentContext table={table} profile={profile} noun={noun} />
     </Stack>
   );
 }
 
-function getCurrentRuleDescription(rule: CurrentRule) {
-  const descriptions: Record<CurrentRule, string> = {
-    "current-flag": t`Where the current flag is true`,
-    "valid-to-is-null": t`Where valid to is empty`,
-    "latest-per-key": t`The latest version per durable key. As a segment this needs a window function.`,
-  };
-  return descriptions[rule];
-}
-
-function CoverageSection({
+function ReviewBar({
+  table,
   profile,
-  noun,
+  isConfirmed,
+  confirmedAt,
+  readOnly,
 }: {
+  table: Table;
   profile: HistoryProfile;
-  noun: EntityNoun;
+  isConfirmed: boolean;
+  confirmedAt: string | null;
+  readOnly: boolean;
 }) {
-  const versionsPerEntity =
-    profile.entityCount > 0 ? profile.rowCount / profile.entityCount : 0;
+  const structure = useTableStructures().getTableStructure(table);
+  const { confirm } = useHistoryReview(table);
+  const failedCount = getFailedChecks(profile).length;
+  const warningCount = getWarningChecks(profile).length;
+  const hasIssues = failedCount > 0 || warningCount > 0;
+
   return (
-    <SidebarSection title={t`Coverage`}>
-      <DetailsTable>
-        <DetailsRow
-          label={noun.other[0].toUpperCase() + noun.other.slice(1)}
-          value={
-            <Stack gap={0} py="xs">
-              <Text fw="bold">{profile.entityCount.toLocaleString()}</Text>
-              <Text size="sm" c="text-secondary">
-                {t`Distinct ${profile.durableKeyField.display_name} values`}
-              </Text>
-            </Stack>
-          }
-        />
-        <DetailsRow
-          label={t`Versions`}
-          value={
-            <Stack gap={0} py="xs">
-              <Text fw="bold">{profile.rowCount.toLocaleString()}</Text>
-              <Text size="sm" c="text-secondary">
-                {t`${versionsPerEntity.toFixed(1)} per ${noun.one} on average, up to ${profile.maxVersionCount}`}
-              </Text>
-            </Stack>
-          }
-        />
-        <DetailsRow
-          label={t`Current versions`}
-          value={
-            <Stack gap={0} py="xs">
-              <Text fw="bold">{profile.currentRowCount.toLocaleString()}</Text>
-              <Text size="sm" c="text-secondary">
-                {getCurrentRuleDescription(profile.currentRule)}
-              </Text>
-            </Stack>
-          }
-        />
-        <DetailsRow
-          label={t`Valid from`}
-          value={t`${formatDate(profile.firstValidFrom)} to ${formatDate(profile.lastValidFrom)}`}
-        />
-      </DetailsTable>
-    </SidebarSection>
+    <Paper withBorder radius="lg" p="lg" data-testid="history-review-bar">
+      <Group justify="space-between" wrap="nowrap" align="center" gap="lg">
+        <Stack gap={4} miw={0}>
+          <Group gap="sm">
+            <Text fw="bold">{t`Review`}</Text>
+            <CheckCountBadges
+              failedCount={failedCount}
+              warningCount={warningCount}
+              isConfirmed={isConfirmed}
+            />
+          </Group>
+          <Text size="sm" c="text-secondary">
+            {isConfirmed
+              ? t`Metadata reviewed by an admin on ${formatDate(confirmedAt)}. Data issues stay visible to analysts as notes.`
+              : getCheckScope(profile, table)}
+          </Text>
+        </Stack>
+        {!isConfirmed && (
+          <Button
+            variant="filled"
+            disabled={readOnly}
+            flex="0 0 auto"
+            onClick={() => confirm(structure)}
+            data-testid="confirm-history-button"
+          >
+            {hasIssues ? t`Confirm metadata anyway` : t`Confirm metadata`}
+          </Button>
+        )}
+      </Group>
+    </Paper>
   );
 }
 
 function ChecksSection({
+  table,
   profile,
   noun,
+  readOnly,
 }: {
+  table: Table;
   profile: HistoryProfile;
   noun: EntityNoun;
+  readOnly: boolean;
 }) {
-  const failedCount = getFailedChecks(profile).length;
   return (
-    <SidebarSection
-      title={t`Checks`}
-      titleAside={
-        failedCount > 0 ? (
-          <Badge color="negative" variant="light">
-            {t`${failedCount} failing`}
-          </Badge>
-        ) : (
-          <Badge color="positive" variant="light">{t`All pass`}</Badge>
-        )
-      }
-    >
+    <SidebarSection title={t`Checks`}>
       <DetailsTable>
         {profile.checks.map((check) => (
           <CheckRow
             key={check.id}
+            table={table}
             check={check}
             profile={profile}
             noun={noun}
+            readOnly={readOnly}
           />
         ))}
       </DetailsTable>
@@ -213,17 +203,23 @@ function ChecksSection({
 }
 
 function CheckRow({
+  table,
   check,
   profile,
   noun,
+  readOnly,
 }: {
+  table: Table;
   check: HistoryCheck;
   profile: HistoryProfile;
   noun: EntityNoun;
+  readOnly: boolean;
 }) {
   const icon = CHECK_STATUS_ICON[check.status];
   const listedKeys = check.entityKeys.slice(0, MAX_LISTED_ENTITIES);
   const hiddenCount = check.entityKeys.length - listedKeys.length;
+  const offersRuleComparison =
+    check.id === "one-current" && check.status === "failed";
 
   return (
     <Group
@@ -235,7 +231,7 @@ function CheckRow({
       data-testid="history-check"
     >
       <Icon name={icon.name} c={icon.color} mt={2} flex="0 0 auto" />
-      <Stack gap="xs" miw={0}>
+      <Stack gap="xs" miw={0} flex={1}>
         <Text fw="bold">{getCheckTitle(check.id)}</Text>
         <Text size="sm" c="text-secondary">
           {getCheckDescription(check, profile, noun)}
@@ -256,8 +252,119 @@ function CheckRow({
             )}
           </Group>
         )}
+        {offersRuleComparison && (
+          <CurrentRuleComparison
+            table={table}
+            check={check}
+            profile={profile}
+            noun={noun}
+            readOnly={readOnly}
+          />
+        )}
       </Stack>
     </Group>
+  );
+}
+
+function getAffectedRecordCount(profile: HistoryProfile, check: HistoryCheck) {
+  return profile.entities
+    .filter((entity) => check.entityKeys.includes(entity.key))
+    .flatMap((entity) => entity.versions)
+    .filter((version) => version.isCurrent).length;
+}
+
+function CurrentRuleComparison({
+  table,
+  check,
+  profile,
+  noun,
+  readOnly,
+}: {
+  table: Table;
+  check: HistoryCheck;
+  profile: HistoryProfile;
+  noun: EntityNoun;
+  readOnly: boolean;
+}) {
+  const { getTableStructure, setHistoryBinding } = useTableStructures();
+  const structure = getTableStructure(table);
+  const fields = table.fields ?? [];
+  const alternative = {
+    ...structure,
+    history: { ...structure.history, currentFlagFieldId: null },
+  };
+  const alternativeState = useHistoryProfile(table, alternative.history, {
+    skip: structure.history.currentFlagFieldId == null,
+  });
+  if (
+    structure.history.currentFlagFieldId == null ||
+    alternativeState.status !== "loaded"
+  ) {
+    return null;
+  }
+  const alternativeProfile = alternativeState.profile;
+  const alternativeConflicts =
+    alternativeProfile.checks.find((item) => item.id === "one-current")
+      ?.entityKeys.length ?? 0;
+  const currentEntityCount = alternativeProfile.entities.filter((entity) =>
+    entity.versions.some((version) => version.isCurrent),
+  ).length;
+  const affectedRecordCount = getAffectedRecordCount(profile, check);
+
+  return (
+    <Paper withBorder radius="md" p="md" mt="xs">
+      <Stack gap="sm">
+        <Text size="sm" fw="bold">{t`Compare current-row rules`}</Text>
+        <Group justify="space-between" wrap="nowrap" gap="md">
+          <Stack gap={2} miw={0}>
+            <Text size="sm">
+              {t`Now: ${describeCurrentRule(structure, fields)}`}
+            </Text>
+            <Text size="sm" c="feedback-negative">
+              {ngettext(
+                msgid`${countOf(check.entityKeys.length, noun)} with two current records, ${affectedRecordCount} record affected`,
+                `${countOf(check.entityKeys.length, noun)} with two current records, ${affectedRecordCount} records affected`,
+                affectedRecordCount,
+              )}
+            </Text>
+          </Stack>
+          <Badge color="neutral" variant="light" flex="0 0 auto">
+            {t`In use`}
+          </Badge>
+        </Group>
+        <Group justify="space-between" wrap="nowrap" gap="md">
+          <Stack gap={2} miw={0}>
+            <Text size="sm">
+              {t`Instead: ${describeCurrentRule(alternative, fields)}`}
+            </Text>
+            <Text
+              size="sm"
+              c={
+                alternativeConflicts > 0
+                  ? "feedback-negative"
+                  : "text-secondary"
+              }
+            >
+              {alternativeConflicts > 0
+                ? t`${countOf(alternativeConflicts, noun)} with two current records`
+                : t`No conflicts. ${countOf(currentEntityCount, noun)} have a current record.`}
+            </Text>
+          </Stack>
+          <Button
+            size="compact-sm"
+            variant="filled"
+            flex="0 0 auto"
+            disabled={readOnly}
+            onClick={() =>
+              setHistoryBinding(table, { currentFlagFieldId: null })
+            }
+            data-testid="use-alternative-current-rule"
+          >
+            {t`Use this rule`}
+          </Button>
+        </Group>
+      </Stack>
+    </Paper>
   );
 }
 
@@ -279,6 +386,62 @@ function EntityLink({
   );
 }
 
+function getCurrentRuleDescription(rule: CurrentRule) {
+  const descriptions: Record<CurrentRule, string> = {
+    "current-flag": t`Where the current flag is true`,
+    "valid-to-is-null": t`Where valid to is empty`,
+    "latest-per-key": t`The latest row per entity key (proposed)`,
+  };
+  return descriptions[rule];
+}
+
+function CoverageSection({
+  profile,
+  noun,
+}: {
+  profile: HistoryProfile;
+  noun: EntityNoun;
+}) {
+  const versionsPerEntity =
+    profile.entityCount > 0 ? profile.rowCount / profile.entityCount : 0;
+  return (
+    <SidebarSection title={t`Coverage`}>
+      <DetailsTable>
+        <DetailsRow
+          label={t`Recorded`}
+          value={
+            <Stack gap={0} py="xs">
+              <Text fw="bold">
+                {t`${countOf(profile.entityCount, noun)} in ${profile.rowCount.toLocaleString()} records`}
+              </Text>
+              <Text size="sm" c="text-secondary">
+                {t`${versionsPerEntity.toFixed(1)} records per ${noun.one} on average, up to ${profile.maxVersionCount}`}
+              </Text>
+            </Stack>
+          }
+        />
+        <DetailsRow
+          label={t`Current`}
+          value={
+            <Stack gap={0} py="xs">
+              <Text fw="bold">
+                {t`${profile.currentRowCount.toLocaleString()} current records`}
+              </Text>
+              <Text size="sm" c="text-secondary">
+                {getCurrentRuleDescription(profile.currentRule)}
+              </Text>
+            </Stack>
+          }
+        />
+        <DetailsRow
+          label={t`Dates`}
+          value={t`${formatDate(profile.firstValidFrom)} to ${formatDate(profile.lastValidFrom)}`}
+        />
+      </DetailsTable>
+    </SidebarSection>
+  );
+}
+
 function ExampleSection({
   profile,
   noun,
@@ -291,7 +454,6 @@ function ExampleSection({
   const entities = [...profile.entities].sort(
     (a, b) => b.versions.length - a.versions.length,
   );
-  const [richest] = entities;
   const options = entities.map((entity) => ({
     value: entity.key,
     label: t`${entity.label ?? entity.key} (${entity.key}), ${entity.versions.length} versions`,
@@ -299,86 +461,15 @@ function ExampleSection({
 
   return (
     <SidebarSection title={t`Look at one ${noun.one}`}>
-      <Text size="sm" c="text-secondary">
-        {t`A quick way to check the bindings: one ${noun.one}'s versions should line up end to end, with one current.`}
-      </Text>
       <Select
         aria-label={t`Pick a ${noun.one}`}
         data={options}
         value={selectedEntityKey}
-        placeholder={t`Pick a ${noun.one}`}
+        placeholder={t`Pick a ${noun.one} to see their versions`}
         searchable
         leftSection={<Icon name="history" />}
         onChange={(entityKey) => setSelectedEntityKey(entityKey)}
       />
-      {richest && selectedEntityKey == null && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          w="fit-content"
-          px={0}
-          onClick={() => setSelectedEntityKey(richest.key)}
-        >
-          {t`Open ${richest.label ?? richest.key}, which has ${richest.versions.length} versions`}
-        </Button>
-      )}
     </SidebarSection>
-  );
-}
-
-function ConfirmSection({
-  table,
-  profile,
-  isConfirmed,
-  confirmedAt,
-  readOnly,
-}: {
-  table: Table;
-  profile: HistoryProfile;
-  isConfirmed: boolean;
-  confirmedAt: string | null;
-  readOnly: boolean;
-}) {
-  const { getTableStructure } = useTableStructures();
-  const { confirm } = useHistoryReview(table);
-  const structure = getTableStructure(table);
-  const failedCount = getFailedChecks(profile).length;
-
-  if (isConfirmed) {
-    return (
-      <Alert
-        color="success"
-        icon={<Icon name="check_filled" />}
-        title={t`History setup confirmed`}
-      >
-        {t`Confirmed by an admin on ${formatDate(confirmedAt)}. Changing a binding asks for a review again.`}
-      </Alert>
-    );
-  }
-
-  return (
-    <Stack gap="md">
-      <Divider />
-      <Group justify="space-between" wrap="nowrap" align="center">
-        <Text size="sm" c="text-secondary">
-          {failedCount > 0
-            ? ngettext(
-                msgid`${failedCount} check still fails. Confirming records that you've seen it and the table is fine to use.`,
-                `${failedCount} checks still fail. Confirming records that you've seen them and the table is fine to use.`,
-                failedCount,
-              )
-            : t`Confirming records that the bindings and checks look right.`}
-        </Text>
-        <Button
-          variant="filled"
-          disabled={readOnly}
-          flex="0 0 auto"
-          onClick={() => confirm(structure)}
-          data-testid="confirm-history-button"
-        >
-          {t`Confirm history setup`}
-        </Button>
-      </Group>
-    </Stack>
   );
 }

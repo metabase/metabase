@@ -35,6 +35,7 @@ import {
 } from "metabase/ui";
 import type { Table, UserId } from "metabase-types/api";
 
+import { HistoryListSummary } from "../../TableSection/TableHistory";
 import { useSelection } from "../../contexts/SelectionContext";
 import {
   type NodeSelection,
@@ -236,7 +237,7 @@ export function TablePickerTreeTable({
       {
         id: "role",
         header: t`Role`,
-        width: 170,
+        width: 280,
         cell: ({ row }) =>
           row.original.type === "table" && row.original.table ? (
             <TableRoleCell table={row.original.table} />
@@ -497,7 +498,9 @@ function TableRoleCell({ table }: { table: Table }) {
   return (
     <Group gap="xs" wrap="nowrap" data-testid="table-role">
       {role ? (
-        <Text truncate>{getTableRoleLabel(role)}</Text>
+        <Text truncate flex="0 0 auto">
+          {getTableRoleLabel(role)}
+        </Text>
       ) : (
         <Text c="text-secondary">{t`No role`}</Text>
       )}
@@ -512,6 +515,7 @@ function TableRoleCell({ table }: { table: Table }) {
           />
         </Tooltip>
       )}
+      <HistoryListSummary table={{ ...table, fields }} />
     </Group>
   );
 }

@@ -3,18 +3,17 @@ import _ from "underscore";
 
 import {
   type HistoryBinding,
-  getAttributeScdTypeDescription,
   isRoleA,
   useHistoryReview,
   useHistoryReviewStatus,
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Code, Group, Select, Stack, Text } from "metabase/ui";
+import { Select, Stack, Text } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, Table } from "metabase-types/api";
 
-import { AttributeScdTypeSelect } from "../TableSection/TableHistory/HistoryColumnsSection";
+import { CorrectionCheckbox } from "../TableSection/TableHistory/HistoryColumnsSection";
 
 const HISTORY_FIELD_ROLES = [
   "durableKeyFieldId",
@@ -28,21 +27,13 @@ type HistoryFieldRole = (typeof HISTORY_FIELD_ROLES)[number];
 
 const NO_ROLE = "none";
 
-const SEMANTIC_TYPE_BY_ROLE: Record<HistoryFieldRole, string> = {
-  durableKeyFieldId: "key: DurableKey",
-  validFromFieldId: "time: ValidFrom",
-  validToFieldId: "time: ValidTo",
-  currentFlagFieldId: "lifecycle: CurrentRowFlag",
-  versionFieldId: "type/Version",
-};
-
 function getHistoryFieldRoleOptions(): {
   value: HistoryFieldRole | typeof NO_ROLE;
   label: string;
 }[] {
   return [
-    { value: NO_ROLE, label: t`An attribute of the entity` },
-    { value: "durableKeyFieldId", label: t`Durable key` },
+    { value: NO_ROLE, label: t`An attribute` },
+    { value: "durableKeyFieldId", label: t`Entity key` },
     { value: "validFromFieldId", label: t`Valid from` },
     { value: "validToFieldId", label: t`Valid to` },
     { value: "currentFlagFieldId", label: t`Current flag` },
@@ -70,15 +61,13 @@ export function FieldHistoryRoleInput({
   const { getTableStructure, setHistoryBinding } = useTableStructures();
   const binding = getTableStructure(table).history;
   const fieldId = getRawTableFieldId(field);
-  const currentRole =
-    HISTORY_FIELD_ROLES.find((role) => binding[role] === fieldId) ?? NO_ROLE;
+  const roles = HISTORY_FIELD_ROLES.filter((role) => binding[role] === fieldId);
+  const labels = getHistoryFieldRoleOptions();
+  const labelOf = (role: HistoryFieldRole) =>
+    labels.find((option) => option.value === role)?.label ?? role;
 
   const handleChange = (value: string | null) => {
-    const cleared = Object.fromEntries(
-      HISTORY_FIELD_ROLES.filter((role) => binding[role] === fieldId).map(
-        (role) => [role, null],
-      ),
-    );
+    const cleared = Object.fromEntries(roles.map((role) => [role, null]));
     const assigned = isHistoryFieldRole(value) ? { [value]: fieldId } : {};
     const update: Partial<HistoryBinding> = { ...cleared, ...assigned };
     if (!_.isEmpty(update)) {
@@ -90,28 +79,23 @@ export function FieldHistoryRoleInput({
     <Stack gap="xs" py="xs">
       <Select
         aria-label={t`Role in the history`}
-        data={getHistoryFieldRoleOptions()}
-        value={currentRole}
+        data={labels}
+        value={roles[0] ?? NO_ROLE}
         allowDeselect={false}
         disabled={disabled}
         onChange={handleChange}
         data-testid="field-history-role-select"
       />
-      {currentRole !== NO_ROLE ? (
-        <Group gap="xs">
-          <Text size="sm" c="text-secondary">{t`Semantic type`}</Text>
-          <Code>{SEMANTIC_TYPE_BY_ROLE[currentRole]}</Code>
-        </Group>
-      ) : (
-        <Text size="sm" c="text-secondary">
-          {t`Same binding as the table's History section.`}
-        </Text>
-      )}
+      <Text size="sm" c="text-secondary">
+        {roles.length > 1
+          ? t`Used as both ${roles.map(labelOf).join(" and ")}.`
+          : t`Same setting as the table's History section.`}
+      </Text>
     </Stack>
   );
 }
 
-export function FieldAttributeScdTypeInput({
+export function FieldCorrectionInput({
   field,
   table,
   disabled,
@@ -121,7 +105,7 @@ export function FieldAttributeScdTypeInput({
   disabled: boolean;
 }) {
   const status = useHistoryReviewStatus(table);
-  const { getAttributeScdType, setAttributeScdType } = useHistoryReview(table);
+  const { isCorrectionField, setCorrectionField } = useHistoryReview(table);
   const profile =
     status?.profileState.status === "loaded"
       ? status.profileState.profile
@@ -129,31 +113,24 @@ export function FieldAttributeScdTypeInput({
   const column = profile?.columns.find(
     (column) => column.field.name === field.name,
   );
-  const { attributeScdType, isOverridden, suggestion } = getAttributeScdType(
-    field,
-    column,
-    profile?.entityCount ?? 0,
-  );
-  const changeSummary = column
-    ? t`Changed ${column.changeCount.toLocaleString()} times across ${column.changedEntityCount.toLocaleString()} keys`
-    : null;
 
   return (
     <Stack gap="xs" py="xs">
-      <AttributeScdTypeSelect
-        label={t`Attribute SCD type`}
-        value={attributeScdType}
+      <CorrectionCheckbox
+        fieldName={field.display_name}
+        checked={isCorrectionField(field)}
         disabled={disabled}
-        onChange={(value) =>
-          setAttributeScdType(getRawTableFieldId(field), value)
+        onChange={(isCorrection) =>
+          setCorrectionField(getRawTableFieldId(field), isCorrection)
         }
       />
-      <Text size="sm" c="text-secondary">
-        {isOverridden
-          ? t`Set by an admin. ${getAttributeScdTypeDescription(attributeScdType)}.`
-          : t`Not set. Suggests type ${suggestion.attributeScdType}: ${suggestion.reason}.`}
-        {changeSummary && ` ${changeSummary}.`}
-      </Text>
+      {column && (
+        <Text size="sm" c="text-secondary">
+          {column.changeCount > 0
+            ? t`Changed ${column.changeCount.toLocaleString()} times across ${column.changedEntityCount.toLocaleString()} keys in the checked rows.`
+            : t`Never changed in the checked rows.`}
+        </Text>
+      )}
     </Stack>
   );
 }

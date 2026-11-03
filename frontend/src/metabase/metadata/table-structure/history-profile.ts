@@ -22,6 +22,7 @@ export const HISTORY_CHECK_IDS = [
   "valid-range",
   "has-current",
   "version-order",
+  "latest-tie",
 ] as const;
 
 export type HistoryCheckId = (typeof HISTORY_CHECK_IDS)[number];
@@ -71,6 +72,7 @@ export type HistoryProfile = {
   checks: HistoryCheck[];
   columns: ColumnChangeProfile[];
   currentRule: CurrentRule;
+  isSampled: boolean;
 };
 
 export type CurrentRule =
@@ -94,7 +96,7 @@ type BoundHistory = {
   currentFlagField: Field | undefined;
 };
 
-const PROFILE_ROW_LIMIT = 10000;
+export const PROFILE_ROW_LIMIT = 10000;
 const SEAM_TOLERANCE_MS = 1000;
 const FAR_FUTURE_PREFIX = "9999";
 const LABEL_RE = /(^|_)(name|title|display_name)$/;
@@ -241,7 +243,21 @@ function isVersionOutOfOrder(versions: HistoryVersion[]) {
     );
 }
 
-function getEntityIssues(versions: HistoryVersion[]): HistoryCheckId[] {
+function hasLatestTie(versions: HistoryVersion[]) {
+  const latest = versions[versions.length - 1];
+  const previous = versions[versions.length - 2];
+  return (
+    latest != null &&
+    previous != null &&
+    latest.validFrom != null &&
+    latest.validFrom === previous.validFrom
+  );
+}
+
+function getEntityIssues(
+  versions: HistoryVersion[],
+  isLatestRowRule: boolean,
+): HistoryCheckId[] {
   const seams = versions
     .slice(1)
     .map((next, index) => compareSeam(versions[index], next));
@@ -253,6 +269,7 @@ function getEntityIssues(versions: HistoryVersion[]): HistoryCheckId[] {
     ["valid-range", versions.some(endsBeforeItStarts)],
     ["has-current", currentCount === 0],
     ["version-order", isVersionOutOfOrder(versions)],
+    ["latest-tie", isLatestRowRule && hasLatestTie(versions)],
   ];
   return issues.filter(([, hasIssue]) => hasIssue).map(([id]) => id);
 }
@@ -265,6 +282,7 @@ const CHECK_STATUS_WHEN_FOUND: Record<HistoryCheckId, HistoryCheckStatus> = {
   "valid-range": "failed",
   "has-current": "warning",
   "version-order": "warning",
+  "latest-tie": "warning",
 };
 
 function getChecks(
@@ -275,8 +293,14 @@ function getChecks(
   const isDurableKeyPerVersion =
     (rowCount > 1 && entities.length === rowCount) ||
     bound.versionField === bound.durableKeyField;
+  const isLatestRowRule = getCurrentRule(bound) === "latest-per-key";
   const checkIds = HISTORY_CHECK_IDS.filter(
-    (id) => id !== "version-order" || bound.versionField != null,
+    (id) =>
+      (id !== "version-order" || bound.versionField != null) &&
+      (id !== "latest-tie" || isLatestRowRule) &&
+      (id !== "overlap" || !isLatestRowRule) &&
+      (id !== "gap" || !isLatestRowRule) &&
+      (id !== "valid-range" || !isLatestRowRule),
   );
   return checkIds.map((id) => {
     if (id === "durable-key") {
@@ -397,7 +421,10 @@ export function buildHistoryProfile(
       key,
       label: labelField ? toText(latest.values[labelField.name]) : null,
       versions,
-      issues: getEntityIssues(versions),
+      issues: getEntityIssues(
+        versions,
+        getCurrentRule(bound) === "latest-per-key",
+      ),
     };
   });
   const versions = entities.flatMap((entity) => entity.versions);
@@ -419,6 +446,7 @@ export function buildHistoryProfile(
     checks: getChecks(entities, readRows.length, bound),
     columns: getColumnProfiles(entities, fields, bound),
     currentRule: getCurrentRule(bound),
+    isSampled: readRows.length >= PROFILE_ROW_LIMIT,
   };
 }
 
@@ -446,6 +474,10 @@ export function useHistoryProfile(
     status: "loaded",
     profile: buildHistoryProfile(data, fields, bound),
   };
+}
+
+export function getWarningChecks(profile: HistoryProfile) {
+  return profile.checks.filter((check) => check.status === "warning");
 }
 
 export function getFailedChecks(profile: HistoryProfile) {

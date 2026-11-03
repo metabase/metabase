@@ -30,17 +30,19 @@ const ISSUE_SEVERITY: Record<HistoryCheckId, "failed" | "warning"> = {
   "valid-range": "failed",
   "has-current": "warning",
   "version-order": "warning",
+  "latest-tie": "warning",
 };
 
 function getIssueMessage(issue: HistoryCheckId, currentCount: number) {
   const messages: Record<HistoryCheckId, string> = {
-    "durable-key": t`Every version looks like its own key.`,
-    "one-current": t`${currentCount} versions are marked current. If Valid to is reliable, clear Current flag so the current version is where Valid to is empty.`,
+    "durable-key": t`Every version looks like its own entity.`,
+    "one-current": t`${currentCount} versions are marked current. Compare current-row rules on the check to pick one that works.`,
     overlap: t`Two versions are valid at the same time, so a date can match both.`,
     gap: t`There's a gap between two versions, so some dates match no version.`,
     "valid-range": t`A version ends before it starts.`,
     "has-current": t`No version is current, so it was probably deleted at the source.`,
     "version-order": t`The version number goes down between two versions.`,
+    "latest-tie": t`Two latest rows share the same time, so which one is current isn't decided.`,
   };
   return messages[issue];
 }

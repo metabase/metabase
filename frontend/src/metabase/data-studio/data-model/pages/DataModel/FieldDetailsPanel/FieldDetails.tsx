@@ -28,7 +28,7 @@ import { trackMetadataChange } from "../../../analytics";
 import { DetailsEditableText } from "../DetailPanel";
 
 import {
-  FieldAttributeScdTypeInput,
+  FieldCorrectionInput,
   FieldHistoryRoleInput,
   useIsHistoryAttribute,
   useIsHistoryTable,
@@ -134,9 +134,9 @@ export function FieldDetails({
           )}
           {isHistoryTable && isHistoryAttribute && (
             <DetailsRow
-              label={t`SCD type`}
+              label={t`Changes`}
               value={
-                <FieldAttributeScdTypeInput
+                <FieldCorrectionInput
                   field={field}
                   table={table}
                   disabled={readOnly}

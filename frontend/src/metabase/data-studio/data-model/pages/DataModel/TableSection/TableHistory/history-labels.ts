@@ -38,13 +38,14 @@ export const formatDate = (value: string | null) =>
 
 export function getCheckTitle(id: HistoryCheckId) {
   const titles: Record<HistoryCheckId, string> = {
-    "durable-key": t`The durable key groups versions`,
+    "durable-key": t`The entity key groups versions`,
     "one-current": t`One current version each`,
     overlap: t`Versions don't overlap`,
     gap: t`No gaps between versions`,
     "valid-range": t`Valid to comes after valid from`,
     "has-current": t`Every key has a current version`,
     "version-order": t`Versions are numbered in order`,
+    "latest-tie": t`One latest row per key`,
   };
   return titles[id];
 }
@@ -60,13 +61,13 @@ export function getCheckDescription(
   if (check.status === "passed") {
     return check.id === "durable-key"
       ? t`${countOf(profile.entityCount, noun)}, with up to ${profile.maxVersionCount} versions each`
-      : t`Holds for every ${noun.one}`;
+      : t`No problems in the checked rows`;
   }
   switch (check.id) {
     case "durable-key":
       return profile.entityCount === profile.rowCount
         ? t`Every ${keyName} appears on one row only, so no versions are grouped. It's probably a per-version key.`
-        : t`${keyName} is also the version key, so each version looks like its own ${noun.one}.`;
+        : t`${keyName} is also the version, so each version looks like its own ${noun.one}.`;
     case "one-current":
       return ngettext(
         msgid`${subject} has more than one current version.`,
@@ -99,8 +100,14 @@ export function getCheckDescription(
       );
     case "has-current":
       return ngettext(
-        msgid`${subject} has no current version, so it was probably deleted at the source.`,
-        `${subject} have no current version, so they were probably deleted at the source.`,
+        msgid`${subject} has no current version, probably removed at the source.`,
+        `${subject} have no current version, probably removed at the source.`,
+        count,
+      );
+    case "latest-tie":
+      return ngettext(
+        msgid`${subject} has two latest rows with the same time, so which one is current isn't decided.`,
+        `${subject} have two latest rows with the same time, so which one is current isn't decided.`,
         count,
       );
   }
@@ -114,3 +121,43 @@ export const CHECK_STATUS_ICON: Record<
   warning: { name: "warning", color: "feedback-warning" },
   failed: { name: "warning_round_filled", color: "feedback-negative" },
 };
+
+export function getCheckScope(
+  profile: HistoryProfile,
+  table: Pick<Table, "estimated_row_count">,
+) {
+  if (!profile.isSampled) {
+    return t`Checked on all ${profile.rowCount.toLocaleString()} records.`;
+  }
+  const total = table.estimated_row_count;
+  return total != null
+    ? t`Checked on a sample of ${profile.rowCount.toLocaleString()} of about ${total.toLocaleString()} records.`
+    : t`Checked on a sample of ${profile.rowCount.toLocaleString()} records.`;
+}
+
+export function getDataNote(check: HistoryCheck, noun: EntityNoun) {
+  const subject = countOf(check.entityKeys.length, noun);
+  const count = check.entityKeys.length;
+  switch (check.id) {
+    case "has-current":
+      return ngettext(
+        msgid`${subject} has no current record.`,
+        `${subject} have no current record.`,
+        count,
+      );
+    case "one-current":
+      return ngettext(
+        msgid`${subject} has two current records.`,
+        `${subject} have two current records.`,
+        count,
+      );
+    case "gap":
+      return ngettext(
+        msgid`${subject} has a gap in their history.`,
+        `${subject} have a gap in their history.`,
+        count,
+      );
+    default:
+      return null;
+  }
+}

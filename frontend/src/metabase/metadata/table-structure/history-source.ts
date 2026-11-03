@@ -8,10 +8,6 @@ export const SCD_TYPES = [0, 1, 2, 3, 4, 5, 6, 7] as const;
 
 export type ScdType = (typeof SCD_TYPES)[number];
 
-export const ATTRIBUTE_SCD_TYPES = [0, 1, 2, 3] as const;
-
-export type AttributeScdType = (typeof ATTRIBUTE_SCD_TYPES)[number];
-
 export const HISTORY_INFERENCE_RULES = [
   "fivetran-history-mode",
   "dbt-snapshot",
@@ -26,7 +22,6 @@ export type ScdTypeInference = {
   scdType: ScdType | null;
   rule: HistoryInferenceRule | null;
   signal: string;
-  corpusTableCount: number | null;
   confidence: "high" | "low";
 };
 
@@ -42,14 +37,6 @@ const VERSION_RE = /(^|_)(version|revision|etag)$/;
 const ID_RE = /^id$/;
 const ENTITY_ID_RE = /^(?!dbt_|_fivetran_).+_id$/;
 
-const CORPUS_TABLE_COUNTS: Record<HistoryInferenceRule, number | null> = {
-  "fivetran-history-mode": 18,
-  "dbt-snapshot": null,
-  "explicit-interval": 100,
-  "key-shape": 764,
-  name: 654,
-};
-
 const nameOf = (field: Field) => field.name.toLowerCase();
 const findMatching = (fields: Field[], pattern: RegExp) =>
   fields.find((field) => pattern.test(nameOf(field)));
@@ -62,13 +49,7 @@ function inferred(
   signal: string,
   confidence: ScdTypeInference["confidence"],
 ): ScdTypeInference {
-  return {
-    scdType,
-    rule,
-    signal,
-    corpusTableCount: CORPUS_TABLE_COUNTS[rule],
-    confidence,
-  };
+  return { scdType, rule, signal, confidence };
 }
 
 function findIntervalPair(fields: Field[]) {
@@ -126,8 +107,8 @@ export function inferScdType({
   if (keyShape) {
     return inferred(
       "key-shape",
-      4,
-      t`Key is ${keyShape[0].name} + ${keyShape[1].name}, with no valid to column`,
+      2,
+      t`Key is ${keyShape[0].name} + ${keyShape[1].name}, so each row is a version and the latest row per ${keyShape[0].name} is current`,
       "low",
     );
   }
@@ -138,7 +119,6 @@ export function inferScdType({
     scdType: null,
     rule: null,
     signal: t`No history columns, key shape or name matched`,
-    corpusTableCount: null,
     confidence: "low",
   };
 }
@@ -160,10 +140,6 @@ export function isScdType(value: unknown): value is ScdType {
   return SCD_TYPES.some((type) => type === value);
 }
 
-export function isAttributeScdType(value: unknown): value is AttributeScdType {
-  return ATTRIBUTE_SCD_TYPES.some((type) => type === value);
-}
-
 export function getScdTypeLabel(scdType: ScdType) {
   const labels: Record<ScdType, string> = {
     0: t`Type 0 · Never changes`,
@@ -178,26 +154,57 @@ export function getScdTypeLabel(scdType: ScdType) {
   return labels[scdType];
 }
 
-export function getAttributeScdTypeLabel(attributeScdType: AttributeScdType) {
-  const labels: Record<AttributeScdType, string> = {
-    0: t`Type 0 · Fixed`,
-    1: t`Type 1 · Overwritten`,
-    2: t`Type 2 · Tracked per version`,
-    3: t`Type 3 · Previous value kept`,
+export function getHistorySignalLabel(rule: HistoryInferenceRule | null) {
+  const labels: Record<HistoryInferenceRule, string> = {
+    "fivetran-history-mode": t`Fivetran history mode`,
+    "dbt-snapshot": t`dbt snapshot`,
+    "explicit-interval": t`Date range columns`,
+    "key-shape": t`id + updated_at key`,
+    name: t`Name only`,
   };
-  return labels[attributeScdType];
+  return rule ? labels[rule] : t`Set by hand`;
 }
 
-export function getAttributeScdTypeDescription(
-  attributeScdType: AttributeScdType,
-) {
-  const descriptions: Record<AttributeScdType, string> = {
-    0: t`Set once and never changes`,
-    1: t`Changes are corrections, so every version shows today's value and grouping uses the durable key`,
-    2: t`Each version keeps its own value`,
-    3: t`A separate column keeps the previous value`,
-  };
-  return descriptions[attributeScdType];
+export const HISTORY_KINDS = [
+  "versions-with-dates",
+  "latest-row-per-key",
+  "not-history",
+] as const;
+
+export type HistoryKind = (typeof HISTORY_KINDS)[number];
+
+export function getHistoryKind(
+  scdType: ScdType | null,
+  hasValidTo: boolean,
+): HistoryKind {
+  if (scdType === 0 || scdType === 1) {
+    return "not-history";
+  }
+  return hasValidTo ? "versions-with-dates" : "latest-row-per-key";
+}
+
+export function getHistoryKindOptions(): {
+  value: HistoryKind;
+  label: string;
+  description: string;
+}[] {
+  return [
+    {
+      value: "versions-with-dates",
+      label: t`One row per version, with dates`,
+      description: t`Each row says when it started and ended being true.`,
+    },
+    {
+      value: "latest-row-per-key",
+      label: t`Latest row per key, older rows kept`,
+      description: t`No end date. The newest row for each key is the current one.`,
+    },
+    {
+      value: "not-history",
+      label: t`Not a history table`,
+      description: t`Every row counts as its own record.`,
+    },
+  ];
 }
 
 export function filtersCurrentRows(scdType: ScdType | null) {

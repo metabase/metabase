@@ -23,7 +23,11 @@ import {
   CUSTOMERS_SNAPSHOT_ROWS,
   DIM_CUSTOMER_ROWS,
 } from "./history-rows";
-import { SUBSCRIPTION_HISTORY_ROWS, WORKER_POSITION_ROWS } from "./worker-rows";
+import {
+  PRICE_HISTORY_ROWS,
+  SUBSCRIPTION_HISTORY_ROWS,
+  WORKER_POSITION_ROWS,
+} from "./worker-rows";
 
 export const WAREHOUSE_ID = 8;
 export const DIM_CUSTOMER_ID = 81;
@@ -33,6 +37,7 @@ export const FCT_ORDERS_ID = 84;
 export const DIM_PRODUCT_ID = 85;
 export const WORKER_POSITION_HISTORY_ID = 86;
 export const SUBSCRIPTION_HISTORY_ID = 87;
+export const PRICE_HISTORY_ID = 88;
 
 export const DIM_CUSTOMER_ID_FIELD_ID = 8102;
 const DIM_CUSTOMER_PLAN_FIELD_ID = 8104;
@@ -376,6 +381,31 @@ const subscriptionHistoryFields = createFields(SUBSCRIPTION_HISTORY_ID, [
   },
 ]);
 
+const priceHistoryFields = createFields(PRICE_HISTORY_ID, [
+  {
+    id: 8801,
+    name: "id",
+    display_name: "ID",
+    ...INTEGER,
+    semantic_type: "type/PK",
+  },
+  { id: 8802, name: "product_id", display_name: "Product ID" },
+  {
+    id: 8803,
+    name: "list_price",
+    display_name: "List Price",
+    ...DECIMAL,
+    semantic_type: "type/Currency",
+  },
+  {
+    id: 8804,
+    name: "currency",
+    display_name: "Currency",
+    semantic_type: "type/Category",
+  },
+  { id: 8805, name: "changed_on", display_name: "Changed On", ...DATE },
+]);
+
 type TableSpec = {
   id: number;
   schema: string;
@@ -388,8 +418,17 @@ type TableSpec = {
 
 const TABLE_SPECS: TableSpec[] = [
   {
+    id: PRICE_HISTORY_ID,
+    schema: "analytics",
+    name: "product_price_history",
+    displayName: "Product Price History",
+    fields: priceHistoryFields,
+    rows: PRICE_HISTORY_ROWS,
+    estimatedRowCount: PRICE_HISTORY_ROWS.length,
+  },
+  {
     id: WORKER_POSITION_HISTORY_ID,
-    schema: "workday_hcm",
+    schema: "analytics",
     name: "worker_position_history",
     displayName: "Worker Position History",
     fields: workerPositionHistoryFields,
@@ -398,7 +437,7 @@ const TABLE_SPECS: TableSpec[] = [
   },
   {
     id: SUBSCRIPTION_HISTORY_ID,
-    schema: "app",
+    schema: "analytics",
     name: "subscription_history",
     displayName: "Subscription History",
     fields: subscriptionHistoryFields,
@@ -416,7 +455,7 @@ const TABLE_SPECS: TableSpec[] = [
   },
   {
     id: CUSTOMERS_SNAPSHOT_ID,
-    schema: "snapshots",
+    schema: "analytics",
     name: "customers_snapshot",
     displayName: "Customers Snapshot",
     fields: customersSnapshotFields,
@@ -425,7 +464,7 @@ const TABLE_SPECS: TableSpec[] = [
   },
   {
     id: ACCOUNT_HISTORY_ID,
-    schema: "salesforce",
+    schema: "analytics",
     name: "account_history",
     displayName: "Account History",
     fields: accountHistoryFields,

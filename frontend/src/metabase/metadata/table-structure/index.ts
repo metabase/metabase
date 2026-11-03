@@ -37,18 +37,18 @@ export {
   usePropertyRegistry,
 } from "./property-registry";
 export {
-  ATTRIBUTE_SCD_TYPES,
-  type AttributeScdType,
+  HISTORY_KINDS,
   type HistoryInferenceRule,
+  type HistoryKind,
   SCD_TYPES,
   type ScdType,
   type ScdTypeInference,
   countsDurableKeys,
   filtersCurrentRows,
-  getAttributeScdTypeDescription,
-  getAttributeScdTypeLabel,
+  getHistoryKind,
+  getHistoryKindOptions,
+  getHistorySignalLabel,
   getScdTypeLabel,
-  isAttributeScdType,
   isScdType,
 } from "./history-source";
 export {
@@ -61,14 +61,13 @@ export {
   type HistoryProfile,
   type HistoryProfileState,
   type HistoryVersion,
+  PROFILE_ROW_LIMIT,
   getFailedChecks,
+  getWarningChecks,
   useHistoryProfile,
 } from "./history-profile";
 export {
-  type AttributeScdTypeState,
-  type AttributeScdTypeSuggestion,
   type HistoryReviewStatus,
-  suggestAttributeScdType,
   useHistoryReview,
   useHistoryReviewStatus,
 } from "./history-review";

@@ -1,15 +1,23 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
+import _ from "underscore";
 
 import { Link } from "metabase/common/components/Link";
 import {
   type CurrentRule,
+  type HistoryBinding,
+  type HistoryKind,
   SCD_TYPES,
   type TableStructure,
   countsDurableKeys,
   filtersCurrentRows,
   getFailedChecks,
+  getHistoryKind,
+  getHistoryKindOptions,
+  getHistorySignalLabel,
   getScdTypeLabel,
+  getWarningChecks,
   isScdType,
+  useHistoryReview,
   useHistoryReviewStatus,
   useTableStructures,
 } from "metabase/metadata/table-structure";
@@ -17,9 +25,9 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Badge,
   Button,
-  Code,
   Group,
   Loader,
+  Radio,
   Select,
   Stack,
   Switch,
@@ -28,10 +36,34 @@ import {
 import * as Urls from "metabase/urls";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
+import { CheckCountBadges } from "./CheckCountBadges";
 import { countOf, getCheckDescription, getEntityNoun } from "./history-labels";
 
-const findFieldName = (fields: Field[], fieldId: FieldId | null) =>
-  fields.find((field) => getRawTableFieldId(field) === fieldId)?.name;
+type PointerKey = keyof Omit<HistoryBinding, "currentRowsOnly">;
+
+function getPointerLabels(): Record<PointerKey, string> {
+  return {
+    durableKeyFieldId: t`Entity key`,
+    validFromFieldId: t`Valid from`,
+    validToFieldId: t`Valid to`,
+    currentFlagFieldId: t`Current flag`,
+    versionFieldId: t`Version`,
+  };
+}
+
+const POINTER_KEYS: PointerKey[] = [
+  "durableKeyFieldId",
+  "validFromFieldId",
+  "validToFieldId",
+  "currentFlagFieldId",
+  "versionFieldId",
+];
+
+const findField = (fields: Field[], fieldId: FieldId | null) =>
+  fields.find((field) => getRawTableFieldId(field) === fieldId);
+
+const displayNameOf = (fields: Field[], fieldId: FieldId | null) =>
+  findField(fields, fieldId)?.display_name ?? t`a column`;
 
 export function getCurrentRule(
   structure: Pick<TableStructure, "history">,
@@ -44,36 +76,113 @@ export function getCurrentRule(
     : "latest-per-key";
 }
 
-export function getCurrentRowsCondition(
+export function describeCurrentRule(
   structure: Pick<TableStructure, "history">,
   fields: Field[],
 ) {
-  const { currentFlagFieldId, validToFieldId, durableKeyFieldId } =
-    structure.history;
+  const {
+    currentFlagFieldId,
+    validToFieldId,
+    durableKeyFieldId,
+    validFromFieldId,
+  } = structure.history;
   switch (getCurrentRule(structure)) {
     case "current-flag":
-      return `${findFieldName(fields, currentFlagFieldId)} = true`;
+      return t`where ${displayNameOf(fields, currentFlagFieldId)} is true`;
     case "valid-to-is-null":
-      return `${findFieldName(fields, validToFieldId)} is null`;
+      return t`where ${displayNameOf(fields, validToFieldId)} is empty`;
     case "latest-per-key":
-      return t`latest version per ${findFieldName(fields, durableKeyFieldId) ?? "key"}`;
+      return t`the latest row per ${displayNameOf(fields, durableKeyFieldId)}, by ${displayNameOf(fields, validFromFieldId)}`;
   }
 }
 
-function getScdTypeOrigin({
-  scdType,
-  scdTypeInference,
-  isScdTypeOverridden,
-}: TableStructure) {
-  if (!isScdTypeOverridden) {
-    return t`Inferred: ${scdTypeInference.signal}`;
-  }
-  return scdType === scdTypeInference.scdType
-    ? t`Confirmed by an admin`
-    : t`Set by an admin`;
+export function getTableHistoryKind(structure: TableStructure) {
+  return getHistoryKind(
+    structure.scdType,
+    structure.history.validToFieldId != null,
+  );
 }
 
-export function ScdTypeInput({
+export function HistoryIntro({ structure }: { structure: TableStructure }) {
+  const intros: Record<HistoryKind, string> = {
+    "versions-with-dates": t`Each row is one version of an entity. Counting rows counts versions, so counts use distinct entity keys.`,
+    "latest-row-per-key": t`Each row is one version of an entity, and the newest row per key is the current one. Counts use distinct entity keys.`,
+    "not-history": t`Every row counts as its own record, so counts stay plain row counts.`,
+  };
+  return (
+    <Text size="sm" c="text-secondary">
+      {intros[getTableHistoryKind(structure)]}
+    </Text>
+  );
+}
+
+export function HistoryKindInput({
+  structure,
+  disabled,
+  onChange,
+  onConfirmGuess,
+}: {
+  structure: TableStructure;
+  disabled: boolean;
+  onChange: (kind: HistoryKind) => void;
+  onConfirmGuess: () => void;
+}) {
+  const { scdTypeInference, isScdTypeOverridden } = structure;
+  const isWeakGuess =
+    !isScdTypeOverridden && scdTypeInference.confidence === "low";
+
+  return (
+    <Stack gap="sm" py="xs">
+      {isWeakGuess && (
+        <Badge color="warning" variant="light" w="fit-content">
+          {t`Needs review`}
+        </Badge>
+      )}
+      <Radio.Group
+        value={getTableHistoryKind(structure)}
+        onChange={(value) => {
+          const option = getHistoryKindOptions().find(
+            (option) => option.value === value,
+          );
+          if (option) {
+            onChange(option.value);
+          }
+        }}
+        aria-label={t`History`}
+      >
+        <Stack gap="sm">
+          {getHistoryKindOptions().map((option) => (
+            <Radio
+              key={option.value}
+              value={option.value}
+              label={option.label}
+              description={option.description}
+              disabled={disabled}
+            />
+          ))}
+        </Stack>
+      </Radio.Group>
+      <Text size="sm" c="text-secondary">
+        {isScdTypeOverridden
+          ? t`Set by an admin`
+          : t`Recognized from ${getHistorySignalLabel(scdTypeInference.rule)}: ${scdTypeInference.signal}`}
+      </Text>
+      {!disabled && isWeakGuess && (
+        <Button
+          size="compact-sm"
+          variant="subtle"
+          w="fit-content"
+          px={0}
+          onClick={onConfirmGuess}
+        >
+          {t`Yes, that's right`}
+        </Button>
+      )}
+    </Stack>
+  );
+}
+
+export function ScdTypeSelect({
   structure,
   disabled,
   onChange,
@@ -82,27 +191,16 @@ export function ScdTypeInput({
   disabled: boolean;
   onChange: (scdType: TableStructure["scdType"]) => void;
 }) {
-  const { scdType, scdTypeInference, isScdTypeOverridden } = structure;
-  const isConfirmedGuess =
-    isScdTypeOverridden && scdType === scdTypeInference.scdType;
-  const needsReview =
-    !isScdTypeOverridden && scdTypeInference.confidence === "low";
-
   return (
     <Stack gap="xs" py="xs">
-      {needsReview && (
-        <Badge color="warning" variant="light" w="fit-content">
-          {t`Needs review`}
-        </Badge>
-      )}
       <Select
         aria-label={t`SCD type`}
         data={SCD_TYPES.map((type) => ({
           value: String(type),
           label: getScdTypeLabel(type),
         }))}
-        value={scdType != null ? String(scdType) : null}
-        placeholder={t`Choose an SCD type`}
+        value={structure.scdType != null ? String(structure.scdType) : null}
+        placeholder={t`Not set`}
         allowDeselect={false}
         disabled={disabled}
         onChange={(value) => {
@@ -114,58 +212,79 @@ export function ScdTypeInput({
         data-testid="table-scd-type-select"
       />
       <Text size="sm" c="text-secondary">
-        {getScdTypeOrigin(structure)}
+        {t`Exported as scd_type. The History setting picks it for you.`}
       </Text>
-      {!isScdTypeOverridden && scdTypeInference.corpusTableCount != null && (
-        <Text size="xs" c="text-secondary">
-          {t`This rule matched ${scdTypeInference.corpusTableCount.toLocaleString()} of the 1,372 history tables in the analysis corpus.`}
-        </Text>
-      )}
-      {!disabled && isScdTypeOverridden && !isConfirmedGuess && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          w="fit-content"
-          px={0}
-          onClick={() => onChange(null)}
-        >
-          {scdTypeInference.scdType != null
-            ? t`Use the inferred type (${getScdTypeLabel(scdTypeInference.scdType)})`
-            : t`Clear the SCD type`}
-        </Button>
-      )}
-      {!disabled && needsReview && scdTypeInference.scdType != null && (
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          w="fit-content"
-          px={0}
-          onClick={() => onChange(scdTypeInference.scdType)}
-        >
-          {t`Yes, this is ${getScdTypeLabel(scdTypeInference.scdType)}`}
-        </Button>
-      )}
     </Stack>
   );
 }
 
-export function CurrentFlagHint({
+export function CurrentRuleHint({
+  table,
+  structure,
+  fields,
+}: {
+  table: Table;
+  structure: TableStructure;
+  fields: Field[];
+}) {
+  const { isConfirmed } = useHistoryReview(table);
+  const description = describeCurrentRule(structure, fields);
+  if (getCurrentRule(structure) !== "latest-per-key") {
+    return (
+      <Text size="sm" c="text-secondary">
+        {t`Current version: ${description}.`}
+      </Text>
+    );
+  }
+  return (
+    <Stack gap={4}>
+      <Group gap="xs" wrap="nowrap" align="flex-start">
+        {!isConfirmed(structure) && (
+          <Badge color="warning" variant="light" flex="0 0 auto">
+            {t`Proposed`}
+          </Badge>
+        )}
+        <Text size="sm" c="text-secondary">
+          {t`Current version: ${description}.`}
+        </Text>
+      </Group>
+      <Text size="sm" c="text-secondary">
+        {t`If two rows share the latest time, which one is current still needs a decision.`}
+      </Text>
+    </Stack>
+  );
+}
+
+export function getSharedPointers(structure: TableStructure) {
+  const labels = getPointerLabels();
+  const bound = POINTER_KEYS.flatMap((key) => {
+    const fieldId = structure.history[key];
+    return fieldId != null ? [{ fieldId, label: labels[key] }] : [];
+  });
+  return Object.values(
+    _.groupBy(bound, (pointer) => String(pointer.fieldId)),
+  ).filter((group) => group.length > 1);
+}
+
+export function SharedPointerNote({
   structure,
   fields,
 }: {
   structure: TableStructure;
   fields: Field[];
 }) {
-  const condition = getCurrentRowsCondition(structure, fields);
-  const messages: Record<CurrentRule, string> = {
-    "current-flag": t`The current version is where ${condition}.`,
-    "valid-to-is-null": t`No current flag, so the current version is where ${condition}.`,
-    "latest-per-key": t`No current flag or valid to, so the current version is the ${condition}.`,
-  };
+  const shared = getSharedPointers(structure);
+  if (shared.length === 0) {
+    return null;
+  }
   return (
-    <Text size="sm" c="text-secondary">
-      {messages[getCurrentRule(structure)]}
-    </Text>
+    <Stack gap={4}>
+      {shared.map((group) => (
+        <Text key={group[0].fieldId} size="sm" c="text-secondary">
+          {t`${displayNameOf(fields, group[0].fieldId)} is used as both ${group.map((pointer) => pointer.label).join(" and ")}.`}
+        </Text>
+      ))}
+    </Stack>
   );
 }
 
@@ -184,22 +303,16 @@ export function DefaultSegmentInput({
   return (
     <Stack gap="xs" py="xs">
       <Switch
-        label={t`Current records`}
+        label={t`Start new questions on current records`}
         checked={appliesToType && structure.history.currentRowsOnly}
         disabled={disabled || !appliesToType}
         onChange={(event) => onChange(event.target.checked)}
         data-testid="history-current-rows-switch"
       />
-      <Group gap="xs">
-        <Code>{getCurrentRowsCondition(structure, fields)}</Code>
-        <Text size="xs" c="text-secondary">
-          {t`segment_role: current_rows, created by sync`}
-        </Text>
-      </Group>
       <Text size="sm" c="text-secondary">
         {appliesToType
-          ? t`New questions start with a removable “Current records only” chip.`
-          : t`Only SCD types 2, 4, 6 and 7 start on current records.`}
+          ? t`Questions open with a removable “Current records only” filter: ${describeCurrentRule(structure, fields)}.`
+          : t`Not used: every row counts as its own record.`}
       </Text>
     </Stack>
   );
@@ -207,6 +320,7 @@ export function DefaultSegmentInput({
 
 export function HistoryVersionsSummary({ table }: { table: Table }) {
   const status = useHistoryReviewStatus(table);
+  const { scdType } = useTableStructures().getTableStructure(table);
   const versionsUrl = Urls.dataStudioData({
     databaseId: table.db_id,
     schemaName: table.schema,
@@ -220,7 +334,7 @@ export function HistoryVersionsSummary({ table }: { table: Table }) {
   const { profileState } = status;
   if (profileState.status === "unbound") {
     return (
-      <Text c="text-secondary">{t`Pick the durable key and valid from columns`}</Text>
+      <Text c="text-secondary">{t`Pick the entity key and valid from columns`}</Text>
     );
   }
   if (profileState.status !== "loaded") {
@@ -229,7 +343,6 @@ export function HistoryVersionsSummary({ table }: { table: Table }) {
 
   const { profile } = profileState;
   const noun = getEntityNoun(table, profile.durableKeyField.name);
-  const failedCount = getFailedChecks(profile).length;
   const durableKeyCheck = profile.checks.find(
     (check) => check.id === "durable-key",
   );
@@ -238,32 +351,24 @@ export function HistoryVersionsSummary({ table }: { table: Table }) {
     <Stack gap="xs" py="xs">
       <Group gap="sm">
         <Text c="text-primary" fw="bold">
-          {t`${countOf(profile.entityCount, noun)} · ${profile.rowCount.toLocaleString()} versions`}
+          {t`${countOf(profile.entityCount, noun)} · ${profile.rowCount.toLocaleString()} records`}
         </Text>
-        {status.isConfirmed ? (
-          <Badge color="positive" variant="light">{t`Confirmed`}</Badge>
-        ) : (
-          failedCount > 0 && (
-            <Badge color="negative" variant="light">
-              {ngettext(
-                msgid`${failedCount} check fails`,
-                `${failedCount} checks fail`,
-                failedCount,
-              )}
-            </Badge>
-          )
-        )}
+        <CheckCountBadges
+          failedCount={getFailedChecks(profile).length}
+          warningCount={getWarningChecks(profile).length}
+          isConfirmed={status.isConfirmed}
+        />
       </Group>
-      <SummaryCountText
-        table={table}
-        failedDurableKeyDescription={
-          durableKeyCheck?.status === "failed"
-            ? getCheckDescription(durableKeyCheck, profile, noun)
-            : null
-        }
-        entityCount={profile.entityCount}
-        durableKeyName={profile.durableKeyField.name}
-      />
+      {durableKeyCheck?.status === "failed" && (
+        <Text size="sm" c="feedback-negative">
+          {getCheckDescription(durableKeyCheck, profile, noun)}
+        </Text>
+      )}
+      <Text size="sm" c="text-secondary">
+        {countsDurableKeys(scdType)
+          ? t`Counting ${noun.other} counts each one once, not every record.`
+          : t`Counts stay plain row counts.`}
+      </Text>
       <Button
         component={Link}
         to={versionsUrl}
@@ -275,33 +380,5 @@ export function HistoryVersionsSummary({ table }: { table: Table }) {
         {t`Review versions`}
       </Button>
     </Stack>
-  );
-}
-
-function SummaryCountText({
-  table,
-  failedDurableKeyDescription,
-  entityCount,
-  durableKeyName,
-}: {
-  table: Table;
-  failedDurableKeyDescription: string | null;
-  entityCount: number;
-  durableKeyName: string;
-}) {
-  const { scdType } = useTableStructures().getTableStructure(table);
-  if (failedDurableKeyDescription) {
-    return (
-      <Text size="sm" c="feedback-negative">
-        {failedDurableKeyDescription}
-      </Text>
-    );
-  }
-  return (
-    <Text size="sm" c="text-secondary">
-      {countsDurableKeys(scdType)
-        ? t`Count becomes count-distinct(${durableKeyName}) = ${entityCount.toLocaleString()}.`
-        : t`This SCD type keeps plain row counts.`}
-    </Text>
   );
 }

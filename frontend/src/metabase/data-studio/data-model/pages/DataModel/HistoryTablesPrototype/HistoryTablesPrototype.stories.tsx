@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
 
 import { mockSettings } from "__support__/settings";
 import { VisualizationWrapper } from "__support__/storybook";
@@ -14,6 +14,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
+import { AgentComparisonPrototype } from "./AgentComparisonPrototype";
 import { PrototypeFrame } from "./PrototypeFrame";
 import { VersionAwareJoin } from "./VersionAwareJoin";
 import {
@@ -42,6 +43,21 @@ const seedStorage =
   (tableStructure: Record<string, unknown> = EMPTY_TABLE_STRUCTURE) =>
   () =>
     seedPrototypeStorage({ tableStructure, historyReview: {} });
+
+function AgentPage({ children }: { children: ReactElement }) {
+  const [{ wrapper: Wrapper }] = useState(() =>
+    getTestStoreAndWrapper({
+      withRouter: false,
+      withKBar: false,
+      withDND: false,
+      initialRoute: "/",
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: true }),
+      },
+    }),
+  );
+  return <Wrapper>{children}</Wrapper>;
+}
 
 function DataStudioPage({ initialRoute }: { initialRoute: string }) {
   const [{ wrapper: Wrapper }] = useState(() => {
@@ -95,11 +111,14 @@ const tableRoute = (
 
 const WORKER_POSITION_HISTORY = {
   id: WORKER_POSITION_HISTORY_ID,
-  schema: "workday_hcm",
+  schema: "analytics",
 };
-const CUSTOMERS_SNAPSHOT = { id: CUSTOMERS_SNAPSHOT_ID, schema: "snapshots" };
-const ACCOUNT_HISTORY = { id: ACCOUNT_HISTORY_ID, schema: "salesforce" };
-const SUBSCRIPTION_HISTORY = { id: SUBSCRIPTION_HISTORY_ID, schema: "app" };
+const CUSTOMERS_SNAPSHOT = { id: CUSTOMERS_SNAPSHOT_ID, schema: "analytics" };
+const ACCOUNT_HISTORY = { id: ACCOUNT_HISTORY_ID, schema: "analytics" };
+const SUBSCRIPTION_HISTORY = {
+  id: SUBSCRIPTION_HISTORY_ID,
+  schema: "analytics",
+};
 const BUSINESS_TITLE_FIELD_ID = 8605;
 const EFFECTIVE_DATE_FIELD_ID = 8610;
 
@@ -107,18 +126,9 @@ export const TableList = {
   beforeEach: seedStorage(),
   render: () => (
     <DataStudioPage
-      initialRoute={Urls.dataStudioData({ databaseId: WAREHOUSE_ID })}
-    />
-  ),
-};
-
-export const WorkerPositionHistoryList = {
-  beforeEach: seedStorage(),
-  render: () => (
-    <DataStudioPage
       initialRoute={Urls.dataStudioData({
         databaseId: WAREHOUSE_ID,
-        schemaName: WORKER_POSITION_HISTORY.schema,
+        schemaName: "analytics",
       })}
     />
   ),
@@ -165,7 +175,7 @@ export const KeyShapeDetails = {
   ),
 };
 
-export const FieldAttributeScdType = {
+export const FieldCorrections = {
   beforeEach: seedStorage(),
   render: () => (
     <DataStudioPage
@@ -191,12 +201,20 @@ export const FieldHistoryRole = {
   ),
 };
 
-export const WhatThisUnlocks = {
+export const AgentComparison = {
+  render: () => (
+    <AgentPage>
+      <AgentComparisonPrototype />
+    </AgentPage>
+  ),
+};
+
+export const LaterVersionAwareJoin = {
   render: () => (
     <VisualizationWrapper>
       <PrototypeFrame
-        step="Unlocks"
-        title="With the binding filled in, a join can pick the right version"
+        step="Later"
+        title="Later, in the query builder: a join that picks the right version"
         description="Fct Orders joined to Dim Customer matches each order to the customer version valid on its order date, using the durable key and the valid from and valid to columns set in Data Studio. Without them, every order matches every version and revenue is counted more than once."
         height={640}
       >

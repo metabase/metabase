@@ -8,33 +8,22 @@ import type { Field, FieldId, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import {
-  type ColumnChangeProfile,
   type HistoryProfileState,
   getFailedChecks,
   useHistoryProfile,
 } from "./history-profile";
-import {
-  type AttributeScdType,
-  type ScdType,
-  isAttributeScdType,
-} from "./history-source";
+import type { ScdType } from "./history-source";
 import type { HistoryBinding } from "./inference";
 import { isRoleA } from "./roles";
 import { type TableStructure, useTableStructures } from "./table-structure";
 
 type TableReview = {
-  attributeScdTypes: Record<string, AttributeScdType>;
+  correctionFieldIds: string[];
   confirmedDefinition?: string;
   confirmedAt?: string;
 };
 
 type HistoryReviewStorage = Record<string, TableReview>;
-
-export type AttributeScdTypeState = {
-  attributeScdType: AttributeScdType;
-  isOverridden: boolean;
-  suggestion: AttributeScdTypeSuggestion;
-};
 
 export type HistoryReviewStatus = {
   needsReview: boolean;
@@ -45,22 +34,17 @@ export type HistoryReviewStatus = {
 };
 
 const STORAGE_KEY = "metabase-prototype-history-review";
-const EMPTY_REVIEW: TableReview = { attributeScdTypes: {} };
+const EMPTY_REVIEW: TableReview = { correctionFieldIds: [] };
 
 function parseTableReview(value: unknown): TableReview {
   if (!isObject(value)) {
     return EMPTY_REVIEW;
   }
-  const attributeScdTypes = isObject(value.attributeScdTypes)
-    ? Object.fromEntries(
-        Object.entries(value.attributeScdTypes).filter(
-          (entry): entry is [string, AttributeScdType] =>
-            isAttributeScdType(entry[1]),
-        ),
-      )
-    : {};
+  const correctionFieldIds = Array.isArray(value.correctionFieldIds)
+    ? value.correctionFieldIds.filter((id) => typeof id === "string")
+    : [];
   return {
-    attributeScdTypes,
+    correctionFieldIds,
     confirmedDefinition:
       typeof value.confirmedDefinition === "string"
         ? value.confirmedDefinition
@@ -80,35 +64,6 @@ const getTableKey = (table: Pick<Table, "db_id" | "id">) =>
 const getDefinitionKey = (binding: HistoryBinding, scdType: ScdType | null) =>
   JSON.stringify({ ..._.omit(binding, "currentRowsOnly"), scdType });
 
-const CORRECTION_SEMANTIC_TYPES = new Set(["type/Name", "type/Email"]);
-const CORRECTION_CHANGE_SHARE = 0.1;
-
-export type AttributeScdTypeSuggestion = {
-  attributeScdType: AttributeScdType;
-  reason: string;
-};
-
-export function suggestAttributeScdType(
-  field: Pick<Field, "semantic_type">,
-  column: Pick<ColumnChangeProfile, "changeCount" | "changedEntityCount">,
-  entityCount: number,
-): AttributeScdTypeSuggestion {
-  if (column.changeCount === 0) {
-    return { attributeScdType: 0, reason: t`never changes` };
-  }
-  const changedShare = column.changedEntityCount / Math.max(1, entityCount);
-  const looksLikeCorrection =
-    field.semantic_type != null &&
-    CORRECTION_SEMANTIC_TYPES.has(field.semantic_type) &&
-    changedShare < CORRECTION_CHANGE_SHARE;
-  return looksLikeCorrection
-    ? {
-        attributeScdType: 1,
-        reason: t`a name that rarely changes, so changes are likely corrections`,
-      }
-    : { attributeScdType: 2, reason: t`changes between versions` };
-}
-
 export function useHistoryReview(table: Pick<Table, "db_id" | "id">) {
   const [storage, updateStorage] = usePrototypeStorage(
     STORAGE_KEY,
@@ -126,37 +81,22 @@ export function useHistoryReview(table: Pick<Table, "db_id" | "id">) {
     [tableKey, updateStorage],
   );
 
-  const getAttributeScdType = (
-    field: Field,
-    column: ColumnChangeProfile | undefined,
-    entityCount: number,
-  ): AttributeScdTypeState => {
-    const override =
-      review.attributeScdTypes[String(getRawTableFieldId(field))];
-    const suggestion = suggestAttributeScdType(
-      field,
-      column ?? { changeCount: 0, changedEntityCount: 0 },
-      entityCount,
-    );
-    return {
-      attributeScdType: override ?? suggestion.attributeScdType,
-      isOverridden: override != null,
-      suggestion,
-    };
-  };
+  const isCorrectionField = (field: Field) =>
+    review.correctionFieldIds.includes(String(getRawTableFieldId(field)));
 
-  const setAttributeScdType = useCallback(
-    (fieldId: FieldId, attributeScdType: AttributeScdType | null) =>
-      updateReview((current) => ({
-        ...current,
-        attributeScdTypes:
-          attributeScdType == null
-            ? _.omit(current.attributeScdTypes, String(fieldId))
-            : {
-                ...current.attributeScdTypes,
-                [String(fieldId)]: attributeScdType,
-              },
-      })),
+  const setCorrectionField = useCallback(
+    (fieldId: FieldId, isCorrection: boolean) =>
+      updateReview((current) => {
+        const others = current.correctionFieldIds.filter(
+          (id) => id !== String(fieldId),
+        );
+        return {
+          ...current,
+          correctionFieldIds: isCorrection
+            ? [...others, String(fieldId)]
+            : others,
+        };
+      }),
     [updateReview],
   );
 
@@ -182,8 +122,8 @@ export function useHistoryReview(table: Pick<Table, "db_id" | "id">) {
   return {
     confirmedAt: review.confirmedAt ?? null,
     isConfirmed,
-    getAttributeScdType,
-    setAttributeScdType,
+    isCorrectionField,
+    setCorrectionField,
     confirm,
   };
 }
@@ -193,10 +133,10 @@ function getIssue(
   profileState: HistoryProfileState,
 ): string | null {
   if (profileState.status === "unbound") {
-    return t`Pick the durable key and valid from columns`;
+    return t`Pick the entity key and valid from columns`;
   }
   if (structure.scdType == null) {
-    return t`Pick an SCD type`;
+    return t`Say how this table keeps history`;
   }
   if (profileState.status !== "loaded") {
     return null;
@@ -212,9 +152,7 @@ function getIssue(
   const isWeakGuess =
     !structure.isScdTypeOverridden &&
     structure.scdTypeInference.confidence === "low";
-  return isWeakGuess
-    ? t`SCD type is a guess: ${structure.scdTypeInference.signal}`
-    : null;
+  return isWeakGuess ? t`Recognized from a weak signal` : null;
 }
 
 export function useHistoryReviewStatus(

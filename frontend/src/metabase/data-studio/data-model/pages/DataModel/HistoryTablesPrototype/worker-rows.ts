@@ -204,5 +204,43 @@ function getSubscriptionHistoryRows(): Row[] {
   });
 }
 
+function withLatestTie(rows: Row[]): Row[] {
+  const tiedId = 7004;
+  const latest = rows.filter((row) => row.id === tiedId).at(-1);
+  return latest
+    ? [
+        ...rows,
+        {
+          ...latest,
+          seats: Number(latest.seats) + 5,
+          mrr: Number(latest.mrr) + 60,
+        },
+      ]
+    : rows;
+}
+
+function getPriceHistoryRows(): Row[] {
+  const random = seededRandom(43);
+  let id = 900;
+  return _.range(24).flatMap((index) => {
+    const changes = pick(random, [1, 2, 3, 4]);
+    let price = 20 + Math.floor(random() * 180);
+    return _.range(changes).map((change) => {
+      id += 1;
+      price = Math.round(price * (1 + (random() - 0.3) * 0.2));
+      return {
+        id,
+        product_id: `SKU-${4100 + index}`,
+        list_price: price,
+        currency: "USD",
+        changed_on: addDays("2025-01-15", change * 90 + index * 3),
+      };
+    });
+  });
+}
+
 export const WORKER_POSITION_ROWS = getWorkerPositionRows();
-export const SUBSCRIPTION_HISTORY_ROWS = getSubscriptionHistoryRows();
+export const SUBSCRIPTION_HISTORY_ROWS = withLatestTie(
+  getSubscriptionHistoryRows(),
+);
+export const PRICE_HISTORY_ROWS = getPriceHistoryRows();
