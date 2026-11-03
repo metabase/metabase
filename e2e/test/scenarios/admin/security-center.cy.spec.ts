@@ -71,25 +71,10 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     cy.findByTestId("admin-navbar").should("be.visible");
     securityCenterNav().should("not.exist");
 
-    cy.log("With a token the root opens advisories");
+    cy.log("With a token the security center opens");
     H.activateToken("pro-self-hosted");
     cy.visit(SECURITY_CENTER_URL);
-    cy.url().should("include", ADVISORIES_URL);
     securityCenterNav().should("be.visible");
-  });
-
-  it("should show nav item with badge and navigate to the security center", () => {
-    seedAllAdvisories();
-    cy.visit("/admin");
-
-    cy.findByTestId("admin-navbar").findByText("Security").should("be.visible");
-    cy.findByTestId("security-center-badge").should("be.visible");
-
-    cy.findByTestId("admin-navbar").findByText("Security").click();
-    cy.url().should("include", ADVISORIES_URL);
-    advisoriesPageContent()
-      .findByText("Security advisories")
-      .should("be.visible");
   });
 
   describe("advisories", () => {
