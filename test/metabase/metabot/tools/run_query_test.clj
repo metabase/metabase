@@ -1099,6 +1099,9 @@
 (deftest run-query-description-test
   (testing "the ordinary tool's description names the notebook builder"
     (is (str/includes? (:description (tools.core/declaration run-query/run-query-tool)) "construct_notebook_query")))
+  (testing "the ordinary tool's description says that only Metabot's SQL questions need SQL execution"
+    (is (str/includes? (:description (tools.core/declaration run-query/run-query-tool))
+                       "their own ID, SQL or not.")))
   (testing "the SQL-only tool's description points at SQL and never at the builder"
     (let [description (:description (tools.core/declaration run-query/run-sql-query-tool))]
       (is (str/includes? description "write SQL that reads it with `create_sql_query`"))
