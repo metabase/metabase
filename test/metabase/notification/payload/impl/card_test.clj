@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.core :as channel]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
@@ -522,6 +524,102 @@
                   email
                   card-name-regex
                   #"This question has gone below its goal of 1\.1\."))))}))))
+
+(defn- send-goal-alert!
+  "Send a `send-condition` alert on a card with `card` attributes, and return the emails it sent."
+  [card send-condition]
+  (let [emails (atom nil)]
+    (notification.tu/with-card-notification
+      [notification {:card              card
+                     :notification-card {:send_condition send-condition}
+                     :handlers          [@notification.tu/default-email-handler]}]
+      (notification.tu/test-send-notification! notification {:channel/email #(reset! emails %)}))
+    @emails))
+
+(defn- goal-message
+  "The first part of `email`'s message, summarized as whether its text matches `goal-regex`."
+  [email goal-regex]
+  (-> (mt/summarize-multipart-single-email email goal-regex) :message first))
+
+(defn- daily-checkins-line
+  "Attributes of a line chart counting checkins per day in spring 2014, whose goal line is `goal`."
+  [goal]
+  {:dataset_query          (mt/mbql-query checkins
+                             {:aggregation [["count"]]
+                              :filter      [:between $date "2014-04-01" "2014-06-01"]
+                              :breakout    [!day.date]})
+   :display                :line
+   :visualization_settings {:graph.show_goal  true
+                            :graph.goal_value goal
+                            :graph.dimensions ["DATE"]
+                            :graph.metrics    ["count"]}})
+
+(defn- target-card
+  "Attributes of a card whose only value is `target`."
+  [target]
+  {:dataset_query (mt/native-query {:query (str "SELECT " target " AS \"target\"")})})
+
+(defn- target-ref [card-id]
+  {:id card-id :type "card" :column "target"})
+
+(deftest send-condition-dynamic-goal-test
+  (testing "a goal alert compares the rows to the value its dynamic goal resolves to"
+    (mt/with-temp [:model/Card {high-id :id}    (target-card 1000)
+                   :model/Card {reached-id :id} (target-card 5.9)
+                   :model/Card {zero-id :id}    (target-card 0)
+                   :model/Card {low-id :id}     (target-card 1.1)]
+      (testing "an above-goal alert skips a goal no day reaches"
+        (is (empty? (send-goal-alert! (daily-checkins-line (target-ref high-id)) :goal_above))))
+      (testing "an above-goal alert sends for a goal some day reaches, naming the resolved goal"
+        (let [[email :as emails] (send-goal-alert! (daily-checkins-line (target-ref reached-id)) :goal_above)]
+          (is (= 1 (count emails)))
+          (is (= "Alert: Card notification test card has reached its goal" (:subject email)))
+          (is (= {"This question has reached its goal of 5\\.9\\." true}
+                 (goal-message email #"This question has reached its goal of 5\.9\.")))))
+      (testing "a below-goal alert skips a goal no day goes below"
+        (is (empty? (send-goal-alert! (daily-checkins-line (target-ref zero-id)) :goal_below))))
+      (testing "a below-goal alert sends for a goal some day goes below, naming the resolved goal"
+        (let [[email :as emails] (send-goal-alert! (daily-checkins-line (target-ref low-id)) :goal_below)]
+          (is (= 1 (count emails)))
+          (is (= "Alert: Card notification test card has gone below its goal" (:subject email)))
+          (is (= {"This question has gone below its goal of 1\\.1\\." true}
+                 (goal-message email #"This question has gone below its goal of 1\.1\."))))))))
+
+(deftest send-condition-dynamic-progress-goal-test
+  (testing "a progress chart's goal alert compares its value to a measure goal"
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (let [mp (mt/metadata-provider)]
+                                                                  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                      (lib/aggregate (lib/count))))}]
+      (let [progress (fn [query]
+                       {:dataset_query          query
+                        :display                :progress
+                        :visualization_settings {:progress.goal {:id measure-id :type "measure" :column "count"}}})
+            checkins (progress (mt/mbql-query checkins {:aggregation [[:count]]}))
+            users    (progress (mt/mbql-query users {:aggregation [[:count]]}))]
+        (testing "1000 checkins reach the goal of 100 venues"
+          (let [[email :as emails] (send-goal-alert! checkins :goal_above)]
+            (is (= 1 (count emails)))
+            (is (= {"This question has reached its goal of 100\\." true}
+                   (goal-message email #"This question has reached its goal of 100\.")))))
+        (testing "15 users don't"
+          (is (empty? (send-goal-alert! users :goal_above))))
+        (testing "15 users go below it"
+          (is (= 1 (count (send-goal-alert! users :goal_below)))))
+        (testing "1000 checkins don't"
+          (is (empty? (send-goal-alert! checkins :goal_below))))))))
+
+(deftest send-condition-dynamic-metric-goal-test
+  (testing "a goal alert compares the rows to a metric's value over everything, not its rows per group"
+    (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
+                                                :dataset_query (mt/mbql-query orders {:aggregation [[:sum $total]]
+                                                                                      :breakout    [!month.created_at]})}]
+      (let [line (daily-checkins-line {:id metric-id :type "card" :column "sum"})]
+        (testing "no day of checkins reaches the total revenue"
+          (is (empty? (send-goal-alert! line :goal_above))))
+        (testing "a day of checkins goes below it"
+          (is (= 1 (count (send-goal-alert! line :goal_below)))))))))
 
 (deftest send-once-archive-on-first-successful-send
   (notification.tu/with-card-notification
