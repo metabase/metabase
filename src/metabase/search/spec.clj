@@ -457,20 +457,17 @@
    :fifo/threshold 1))
 
 (defn model-hooks
-  "Return an inverted map of data dependencies to search models, used for updating them based on underlying models.
-  Cached against the registered spec* methods: defining or redefining a spec yields a new methods map and
-  thus a fresh computation, while steady-state calls hit the cache."
+  "Return an inverted map of data dependencies to search models, used for updating them based on underlying models."
   []
   (model-hooks* (methods spec*)))
 
-(defn- collect-updated-columns [expr]
-  (let [acc (volatile! (transient #{}))]
-    (walk/postwalk (fn [x]
-                     (when (and (keyword? x) (has-table? :updated x))
-                       (vswap! acc conj! (remove-table :updated x)))
-                     x)
-                   expr)
-    (persistent! @acc)))
+(defn- collect-updated-columns
+  "The `:updated`-qualified columns `expr` references, without their table qualifier."
+  [expr]
+  (into #{}
+        (comp (filter #(and (keyword? %) (has-table? :updated %)))
+              (map #(remove-table :updated %)))
+        (tree-seq coll? seq expr)))
 
 (defn hook-where-fields
   "The columns of `model` whose row values parameterize the where-clauses of the search hooks it feeds.
