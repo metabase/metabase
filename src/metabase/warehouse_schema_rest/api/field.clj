@@ -4,7 +4,6 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.data-apps.core :as data-apps]
    [metabase.events.core :as events]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -17,7 +16,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.models.field :as field]
@@ -60,10 +58,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {include-editable-data-model? :include_editable_data_model} :- [:map {:closed true}
-                                                                   [:include_editable_data_model {:default false} ms/BooleanValue]]
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-field id))
+                                                                   [:include_editable_data_model {:default false} ms/BooleanValue]]]
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
 
 (api.macros/defendpoint :post "/table-ids" :- [:map
@@ -91,9 +86,9 @@
   (when target-field-id
     (check-field-in-same-database! source-field-id target-field-id param-name)
     (when (not= target-field-id current-target-field-id)
-      (-> (warehouse-schema.db/field target-field-id)
+      (-> (warehouse-schema-rest.db/field target-field-id)
           :table_id
-          warehouse-schema.db/table
+          warehouse-schema-rest.db/table
           schema.table/check-data-model-perms))))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
@@ -160,18 +155,17 @@
     :as body} :- [:map {:closed true}
                   [:caveats            {:optional true} [:maybe ms/NonBlankString]]
                   [:description        {:optional true} [:maybe ms/NonBlankString]]
-                  [:display_name       {:optional true} [:maybe ms/NonBlankString]]
+                  [:display_name       {:optional true} ms/NonBlankString]
                   [:fk_target_field_id {:optional true} [:maybe ms/PositiveInt]]
                   [:points_of_interest {:optional true} [:maybe ms/NonBlankString]]
                   [:semantic_type      {:optional true} [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]]
                   [:coercion_strategy  {:optional true} [:maybe ms/CoercionStrategyKeywordOrString]]
-                  [:visibility_type    {:optional true} [:maybe FieldVisibilityType]]
+                  [:visibility_type    {:optional true} FieldVisibilityType]
                   [:data_sensitivity   {:optional true} [:maybe FieldDataSensitivity]]
-                  [:has_field_values   {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]
+                  [:has_field_values   {:optional true} ::lib.schema.metadata/column.has-field-values]
                   [:settings           {:optional true} [:maybe ms/VisualizationSettings]]
-                  [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-                  [:json_unfolding     {:optional true} [:maybe :boolean]]]]
-  (let [field             (-> (warehouse-schema.db/field id)
+                  [:json_unfolding     {:optional true} :boolean]]]
+  (let [field             (-> (warehouse-schema-rest.db/field id)
                               api/write-check
                               (t2/hydrate :dimensions))
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
@@ -205,7 +199,7 @@
       (when removed-fk?
         (clear-dimension-on-fk-change! field))
       (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-      (schema.field-user-settings/upsert-user-settings
+      (schema.field-user-settings/upsert-field-user-settings!
        field
        (cond-> body
          (or removed-fk? (contains? body :fk_target_field_id))
@@ -217,7 +211,7 @@
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (let [updated (warehouse-schema.db/field id)]
+    (let [updated (warehouse-schema-rest.db/field id)]
       (u/prog1 (-> updated
                    (t2/hydrate :dimensions :has_field_values)
                    (schema.field/hydrate-target-with-data-model-perms))
@@ -237,11 +231,7 @@
   "Get the count and distinct count of `Field` with ID."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-field id))
+                    [:id ms/PositiveInt]]]
   (let [field (api/read-check :model/Field id)]
     [[:count     (metadata-from-qp/field-count field)]
      [:distincts (metadata-from-qp/field-distinct-count field)]]))
@@ -281,7 +271,7 @@
         :type                    dimension-type
         :name                    dimension-name
         :human_readable_field_id human-readable-field-id})))
-  (events/publish-event! :event/field-update {:object  (warehouse-schema.db/field id)
+  (events/publish-event! :event/field-update {:object  (warehouse-schema-rest.db/field id)
                                               :user-id api/*current-user-id*})
   (warehouse-schema-rest.db/dimension-for-field id))
 
@@ -295,7 +285,7 @@
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
   (warehouse-schema-rest.db/delete-dimensions-for-field! id)
-  (events/publish-event! :event/field-update {:object  (warehouse-schema.db/field id)
+  (events/publish-event! :event/field-update {:object  (warehouse-schema-rest.db/field id)
                                               :user-id api/*current-user-id*})
   api/generic-204-no-content)
 
@@ -309,12 +299,8 @@
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-field id))
-  (let [field (api/query-check (warehouse-schema.db/field id))]
+                    [:id ms/PositiveInt]]]
+  (let [field (api/query-check (warehouse-schema-rest.db/field id))]
     (parameters.field/field->values field)))
 
 (defn- validate-human-readable-pairs
@@ -340,7 +326,7 @@
    _query-params
    {value-pairs :values} :- [:map {:closed true}
                              [:values ms/FieldValuesList]]]
-  (let [field (api/write-check (warehouse-schema.db/field id))]
+  (let [field (api/write-check (warehouse-schema-rest.db/field id))]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                          "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
@@ -366,7 +352,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
-  (let [field  (api/write-check (warehouse-schema.db/field id))
+  (let [field  (api/write-check (warehouse-schema-rest.db/field id))
         ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
         ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
         ;; return any actual field values from this API. (#21764)
@@ -390,7 +376,7 @@
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (field-values/clear-field-values-for-field! (api/write-check (warehouse-schema.db/field id)))
+  (field-values/clear-field-values-for-field! (api/write-check (warehouse-schema-rest.db/field id)))
   {:status :success})
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
@@ -407,16 +393,11 @@
                               [:id        ms/PositiveInt]
                               [:search-id ms/PositiveInt]]
    {:keys [value]} :- [:map {:closed true}
-                       [:value {:optional true} ms/NonBlankString]]
-   _body
-   request]
-  (when-let [data-app (data-apps/request-data-app request)]
-    (data-apps/check-field data-app id)
-    (data-apps/check-field data-app search-id))
+                       [:value {:optional true} ms/NonBlankString]]]
   (when-not value
     (api/check-400 (request/limit) "Limit required if value is omitted"))
-  (let [field        (api/check-404 (warehouse-schema.db/field id))
-        search-field (api/check-404 (warehouse-schema.db/field search-id))]
+  (let [field        (api/check-404 (warehouse-schema-rest.db/field id))
+        search-field (api/check-404 (warehouse-schema-rest.db/field search-id))]
     (api/check-403 (mi/can-read? field))
     (api/check-403 (mi/can-read? search-field))
     (parameters.field/search-values field search-field value (request/limit))))
@@ -432,14 +413,9 @@
                                 [:id          ms/PositiveInt]
                                 [:remapped-id ms/PositiveInt]]
    {:keys [value]} :- [:map {:closed true}
-                       [:value ms/NonBlankString]]
-   _body
-   request]
-  (when-let [data-app (data-apps/request-data-app request)]
-    (data-apps/check-field data-app id)
-    (data-apps/check-field data-app remapped-id))
-  (let [field          (-> (warehouse-schema.db/field id) api/check-404 api/read-check)
-        remapped-field (-> (warehouse-schema.db/field remapped-id) api/check-404 api/read-check)
+                       [:value ms/NonBlankString]]]
+  (let [field          (-> (warehouse-schema-rest.db/field id) api/check-404 api/read-check)
+        remapped-field (-> (warehouse-schema-rest.db/field remapped-id) api/check-404 api/read-check)
         value          (parameters.field/parse-query-param-value-for-field field value)]
     (parameters.field/remapped-value field remapped-field value)))
 
@@ -451,9 +427,5 @@
   "Return related entities."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-field id))
-  (-> (warehouse-schema.db/field id) api/read-check xrays/related))
+                    [:id ms/PositiveInt]]]
+  (-> (warehouse-schema-rest.db/field id) api/read-check xrays/related))

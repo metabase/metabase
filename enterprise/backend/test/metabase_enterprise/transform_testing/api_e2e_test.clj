@@ -97,7 +97,7 @@
                       (is (nil? (:cell-mismatches pass))))))
                 (testing "DELETE removes the test"
                   (mt/user-http-request :crowberto :delete 204 path)
-                  (is (not (t2/exists? :model/TransformTest (:id created))))
+                  (is (not (t2/exists? :model/TransformTest :id (:id created))))
                   (mt/user-http-request :crowberto :get 404 path))
                 (finally
                   (t2/delete! :model/TransformTest :id (:id created)))))))))))
@@ -108,7 +108,7 @@
       (with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
         (testing "422 — the environment prevents a run: not a query transform"
           (mt/with-temp [:model/Transform     {transform-id :id}
-                         {:source {:type "python" :source-database (mt/id) :source-tables [] :body "def transform():\n    pass"}}
+                         {:source {:type "python" :source-database (mt/id)}}
                          :model/TransformTest {test-id :id} {:transform_id transform-id}]
             (let [response (mt/user-http-request :crowberto :post 422
                                                  (format "ee/transform-test/%d/run" test-id))]
@@ -146,4 +146,4 @@
           (is (= "Unauthenticated" (mt/client :post 401 run-path))))
         (testing "a user with no transform access cannot run someone else's test"
           (mt/user-http-request :rasta :post 403 run-path)
-          (is (t2/exists? :model/TransformTest test-id)))))))
+          (is (t2/exists? :model/TransformTest :id test-id)))))))

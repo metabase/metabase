@@ -25,6 +25,7 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.self.schema :as self.schema]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
    [metabase.util.i18n :refer [tru]]
@@ -219,19 +220,41 @@
   [parts]
   (some #(= (:type %) :error) parts))
 
-(defn- terminal-error-message
-  "The user-facing message from a tool failure no retry can fix, or nil if there was none.
+(def ^:private max-undeclared-failures
+  "How many ordinary exceptions that no tool declared a turn survives when its model can answer in text. The next one
+  ends it, which stops a retry loop."
+  1)
 
-  An unrecoverable failure is one only the user can act on — a permission denial, a server fault —
-  so the turn ends. The message is the `:user-message` the tool chose; a tool that set none gets the
-  generic one, because `:output` is written for the model and says only that the call failed."
-  [parts]
-  (some (fn [part]
-          (when (and (= (:type part) :tool-output)
-                     (= :unrecoverable (get-in part [:result :error :class])))
-            (or (not-empty (get-in part [:result :error :user-message]))
-                (tru "Something went wrong."))))
-        parts))
+(defn- undeclared-failure?
+  "Whether `part` is a tool call that failed with an ordinary exception no tool declared. A tool that writes reports
+  one as `:unconfirmed-write` instead, which ends the turn (see `tools.runtime/invoke`)."
+  [part]
+  (and (= (:type part) :tool-output)
+       (tools.runtime/undeclared? (get-in part [:result :error :code]))))
+
+(defn- terminal-error-message
+  "The user-facing message that ends the turn after this iteration's tool calls, or nil if the turn goes on.
+
+  An unrecoverable failure ends the turn: one only the user can act on, such as a permission denial
+  or a failed write that may have been saved, or one the model can't work around, such as a JVM
+  error. The message is the error's `:user-message`; an error without one gets the generic one,
+  because `:output` is written for the model and says only that the call failed.
+
+  An ordinary exception that no tool declared ([[undeclared-failure?]]) ends the turn only when
+  `undeclared-failures`, the turn's count of them with this iteration's included, passes
+  [[max-undeclared-failures]]. In a `profile` that requires a tool call the first one ends it,
+  because that model can't answer in text after it. The message is then the generic one."
+  [profile parts undeclared-failures]
+  (let [terminal (some (fn [part]
+                         (when (and (= (:type part) :tool-output)
+                                    (= :unrecoverable (get-in part [:result :error :class]))
+                                    (not (undeclared-failure? part)))
+                           (get-in part [:result :error])))
+                       parts)
+        allowed  (if (:required-tool-call? profile) 0 max-undeclared-failures)]
+    (when (or terminal (< allowed undeclared-failures))
+      (or (not-empty (:user-message terminal))
+          (tru "Something went wrong.")))))
 
 (defn- should-continue?
   "Determine if agent should continue iterating."
@@ -374,18 +397,30 @@
   (cond-> item
     (not (:id item)) (assoc :id (str (random-uuid)))))
 
+(defn- ensure-question-query-id
+  "Give the query of a saved question an ID of its own, as `:query_id`.
+  The question's `:id` is the card ID, and `run_query` runs the saved version of the card by that ID. The query on
+  screen can be different from the saved version, so the SQL edit tools get it by a different ID."
+  [item]
+  (cond-> item
+    (and (= "question" (normalize-type (:type item))) (map? (:query item)))
+    (assoc :query_id (str (random-uuid)))))
+
 (defn- assign-context-ids
-  "Assign IDs to all viewing context items that lack one.
+  "Assign IDs to all viewing context items that lack one, and to the queries of saved questions.
   Must be called before both seed-state and enrich-context-for-template
   so they share consistent IDs."
   [context]
-  (update context :user_is_viewing #(mapv ensure-context-item-id %)))
+  (update context :user_is_viewing #(mapv (comp ensure-question-query-id ensure-context-item-id) %)))
 
 (defn- extract-query-from-context-item
   "Extract [query-id query] from viewing context item."
-  [{:keys [id type query]}]
-  (when (and (#{"adhoc" "native"} (normalize-type type)) (map? query) id)
-    [(str id) query]))
+  [{:keys [id type query query_id]}]
+  (when (map? query)
+    (case (normalize-type type)
+      ("adhoc" "native") (when id [(str id) query])
+      "question"         (when query_id [query_id query])
+      nil)))
 
 (defn- seed-state
   "Seed state with queries from viewing context."
@@ -427,13 +462,13 @@
           (:user_is_viewing context)))
 
 (defn chart-config->chart
-  "Create chart structure from chart-config"
-  [id {:keys [query timeline_events] :as chart-config}]
-  {:chart_id id
-   ;; `id` is the same viewing-context item id seed-state stores this chart's query
-   ;; under; reusing it as :query_id lets edit_chart carry a query-id through (see
-   ;; extract-charts below) instead of leaving charts seeded this way uncaptured.
-   :query_id id
+  "Create chart structure from chart-config.
+  `query-id` is the ID that seed-state stores the chart's query under, or nil if it stores no query for the chart."
+  [chart-id query-id {:keys [query timeline_events] :as chart-config}]
+  {:chart_id chart-id
+   ;; edit_chart carries :query_id through (see extract-charts). It is never a card ID: run_query runs the saved
+   ;; card by that ID.
+   :query_id query-id
    :queries [query]
    :timeline_events (or timeline_events [])
    ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out
@@ -447,7 +482,7 @@
   (reduce
    ;; This logic is flawed for items with more than 1 chart config. It expects at most 1 chart config per viewing item.
    ;; TODO (lbrdnk 2026-03-24): Figure out what is reasonable solution here. (ie no overwriting single config)
-   (fn [acc {:keys [id chart_configs] :as _item}]
+   (fn [acc {:keys [id chart_configs] :as item}]
      ;; TODO (lbrdnk 2026-03-24): This is developed against adhoc queries. Ensure other cases work too!
      (if-not (seq chart_configs)
        acc
@@ -455,7 +490,10 @@
                (into {}
                      (map (comp
                            (juxt :chart_id identity)
-                           (partial chart-config->chart id)))
+                           ;; The ID of a saved card is an integer, and the chart tools get charts by a string ID.
+                           (partial chart-config->chart
+                                    (str id)
+                                    (first (extract-query-from-context-item item)))))
                      chart_configs))))
    state
    (:user_is_viewing context)))
@@ -468,7 +506,6 @@
   [context]
   (let [seeded (-> {} (seed-state context) (seed-charts context))]
     (into (set (keys (:queries seeded)))
-          (map str)
           (keys (:charts seeded)))))
 
 ;;; Main loop
@@ -561,16 +598,30 @@
                                                      :permission/metabot)}
                            tracking-opts)}))
 
+(defn- stop-recording-rf
+  "Wrap `rf` so that `stopped?` turns true once `rf` returns `reduced`.
+
+  The loop can't learn that its consumer stopped from what an iteration returns: the eductions an iteration reduces
+  unwrap a `reduced` before they return."
+  [rf stopped?]
+  (fn [acc part]
+    (u/prog1 (rf acc part)
+      (when (reduced? <>)
+        (vreset! stopped? true)))))
+
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
   [agent rf init usage-atom]
-  {:agent      agent
-   :rf         rf
-   :result     init
-   :iteration  1
-   :status     :continue
-   :usage-atom usage-atom
-   :sent-parts []})
+  (let [consumer-stopped? (volatile! false)]
+    {:agent               agent
+     :rf                  (stop-recording-rf rf consumer-stopped?)
+     :consumer-stopped?   consumer-stopped?
+     :result              init
+     :iteration           1
+     :status              :continue
+     :usage-atom          usage-atom
+     :sent-parts          []
+     :undeclared-failures 0}))
 
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
@@ -612,7 +663,7 @@
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom sent-parts] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom sent-parts undeclared-failures consumer-stopped?] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
@@ -659,15 +710,16 @@
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
-          ;; Every profile, not just the `:required-tool-call?` ones. An unrecoverable failure is
-          ;; defined as one only the user can act on, so the class is the decision and the profile
-          ;; is not part of it. A tool that wants the agent to carry on past a failure declares it
+          ;; Every profile, not just the `:required-tool-call?` ones. The failure decides, and for an
+          ;; ordinary exception that no tool declared, so do the profile and the turn's count of them.
+          ;; A tool that wants the agent to carry on past a failure every time declares it
           ;; recoverable, which is a choice made at the error, where the reason for it is visible.
-          (let [terminal-error (terminal-error-message parts)]
+          (let [undeclared-failures (+ undeclared-failures (count (filter undeclared-failure? parts)))
+                terminal-error      (terminal-error-message profile parts undeclared-failures)]
             (cond
-              (reduced? result')
+              @consumer-stopped?
               ;; consumer signalled early termination (e.g. client disconnect / cancellation)
-              (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
+              (assoc loop-state :status :reduced :finish-reason :reduced :result (unreduced result'))
 
               terminal-error
               (let [result'' (rf result' (terminal-error-text-part terminal-error))]
@@ -680,7 +732,11 @@
                              :result (rf result'' (final-state-part @memory-atom))))))
 
               (should-continue? iteration max-iter terminal-tools parts)
-              (assoc loop-state :result result' :iteration (inc iteration) :sent-parts input-parts)
+              (assoc loop-state
+                     :result result'
+                     :iteration (inc iteration)
+                     :sent-parts input-parts
+                     :undeclared-failures undeclared-failures)
 
               :else
               (let [reason (finish-reason iteration max-iter terminal-tools parts)]
@@ -804,12 +860,11 @@
                                               :ai/state      (:state opts)}
                           (let [agent      (init-agent opts)
                                 usage-atom (atom {})
-                                {result        :result
-                                 iteration     :iteration
-                                 finish-reason :finish-reason} (->> (initial-loop-state agent rf init usage-atom)
-                                                                    (iterate loop-step)
-                                                                    (drop-while #(= :continue (:status %)))
-                                                                    first)]
+                                {:keys [result iteration finish-reason consumer-stopped?]}
+                                (->> (initial-loop-state agent rf init usage-atom)
+                                     (iterate loop-step)
+                                     (drop-while #(= :continue (:status %)))
+                                     first)]
                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
                             ;; Materialized turn-level outputs for evals: token usage, why the loop
                             ;; stopped, and the final agent state (link registry / generated entities).
@@ -817,8 +872,9 @@
                               (ait/record! {:ai/finish-reason finish-reason
                                             :ai/usage         @usage-atom
                                             :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
-                            ;; A :reduced stop (client disconnect / cancellation) has already terminated
-                            ;; the reducing fn — stepping it again would violate the transducer contract.
+                            ;; A consumer that stopped (client disconnect / cancellation) has terminated the
+                            ;; reducing fn, at whichever write it stopped, and stepping it again would violate
+                            ;; the transducer contract.
                             ;; Append trailing parts only on a normal finish: the debug log, the
                             ;; loop's finish reason, and the eval-session pointer that lets the
                             ;; harness locate the per-session `<session-id>.jsonl` (it reads that
@@ -827,8 +883,8 @@
                             ;; in-process `capture-reducible`/`capturing` path is capture-active but
                             ;; deliberately file-less (session id nil, read `:trace`), so emitting a
                             ;; pointer there would name a `<nil>.jsonl` that never exists.
-                            (if (= :reduced finish-reason)
-                              result
+                            (if @consumer-stopped?
+                              (unreduced result)
                               (-> result
                                   (cond->
                                    (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))

@@ -178,6 +178,11 @@
                  :query {:binding _query-params, :schema [:map {:closed true}]}}
         :body [(test)]})))
 
+(deftest ^:parallel parse-args-misplaced-response-schema-test
+  (testing "a response schema after the params is rejected instead of being dropped into the body"
+    (is (thrown-with-msg? Exception #"response schema must come right after the route"
+                          (#'api.macros/parse-args '(:get "/test" "A test endpoint." [] :- [:vector :string] (test)))))))
+
 (deftest ^:parallel decode-strips-undeclared-keys-test
   (testing "request decoding drops keys the schema does not name, so an open map cannot carry values downstream"
     (are [schema value expected] (= expected

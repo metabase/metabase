@@ -6,7 +6,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema :as measures.schema]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn insert-measure!
@@ -21,10 +20,10 @@
                                  :description description
                                  :definition  definition))
 
-(mu/defn measure :- [:maybe ::measures.schema/measure]
-  "The ::measures.schema/measure with `id`, or nil."
+(mu/defn measure
+  "The Measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]
-  (t2/select-one :model/Measure :id [:auto/param id]))
+  (t2/select-one :model/Measure :id id))
 
 (mu/defn unarchived-measures
   "The unarchived Measures, in case-insensitive name order."
@@ -34,13 +33,23 @@
 (mu/defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
 
 (mu/defn update-measure!
   "Apply `changes` to the Measure with `id`."
   [id      :- ::lib.schema.id/measure
    changes :- (mut/select-keys ::measures.schema/measure.update [:name :description :archived :definition])]
-  (t2/update! :model/Measure id changes))
+  (t2/update! :model/Measure :id id changes))
+
+(mu/defn table
+  "The Table with `table-id`, or nil."
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id table-id))
+
+(mu/defn table-perms-columns
+  "The Database id, schema, and id of the Table with `table-id`, or nil."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one [:model/Table :db_id :schema :id] :id table-id))
 
 (mu/defn collections
   "The Collections with `collection-ids`."
@@ -52,4 +61,4 @@
   [id                 :- ::lib.schema.id/measure
    dimensions         :- [:maybe sequential?]
    dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
-  (t2/update! :model/Measure id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
+  (t2/update! :model/Measure :id id {:dimensions dimensions, :dimension_mappings dimension-mappings}))

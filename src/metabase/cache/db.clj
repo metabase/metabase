@@ -6,6 +6,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.cache.schema :as cache.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -35,8 +36,8 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :collection_id] :id card-id))
 
-(mu/defn cache-config :- [:maybe ::cache.schema/cache-config]
-  "The ::cache.schema/cache-config with `pk`, or nil."
+(mu/defn cache-config
+  "The CacheConfig with primary key `pk`, or nil."
   [pk :- ms/PositiveInt]
   (t2/select-one :model/CacheConfig :id [:auto/param pk]))
 
@@ -98,10 +99,11 @@
    limit          :- [:maybe ms/PositiveInt]
    offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/CacheConfig
-             (cond-> (base-query models collection id)
-               sort-column (assoc :order-by [[(sort-column->order-by sort-column) sort-direction]])
-               limit       (assoc :limit limit)
-               offset      (assoc :offset offset))))
+             (h2x/assert-map-or-nil!
+              (cond-> (base-query models collection id)
+                sort-column (assoc :order-by [[(sort-column->order-by sort-column) sort-direction]])
+                limit       (assoc :limit limit)
+                offset      (assoc :offset offset)))))
 
 (mu/defn cache-config-count-row
   "The `:count` row of the CacheConfigs [[cache-configs-page]] pages through."

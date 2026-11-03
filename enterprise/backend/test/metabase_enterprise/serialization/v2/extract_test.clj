@@ -49,7 +49,7 @@
    Escape warnings are logged before the abort, so callers can still assert on the logged messages."
   [opts]
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"incomplete export"
-                        (into [] (extract/extract opts)))))
+                        (dorun (extract/extract opts)))))
 
 (deftest fundamentals-test
   (mt/with-empty-h2-app-db!
@@ -1282,15 +1282,15 @@
                        :model/FieldUserSettings _ {:field_id f2-id :description "curated"}
                        :model/TableUserSettings _ {:table_id table-id :display_name "Renamed"}]
       (testing "targeting the collection exports the Table and its Fields, each beside its user settings"
-        (let [entities (into [] (extract/extract {:targets       [["Collection" coll-id]]
-                                                  :no-data-model true}))
-              by-model (group-by (comp :model last :serdes/meta) entities)]
-          (is (some #(= "T" (:name %)) (by-model "Table")))
+        (let [entities        (into [] (extract/extract {:targets       [["Collection" coll-id]]
+                                                         :no-data-model true}))
+              model->entities (group-by (comp :model last :serdes/meta) entities)]
+          (is (some #(= "T" (:name %)) (model->entities "Table")))
           (is (= #{"F1" "F2"}
-                 (set (map :name (by-model "Field")))))
-          (is (= 1 (count (by-model "TableUserSettings"))))
+                 (set (map :name (model->entities "Field")))))
+          (is (= 1 (count (model->entities "TableUserSettings"))))
           (is (= #{"F2"}
-                 (set (map #(-> % :serdes/meta (nth 2) :id) (by-model "FieldUserSettings"))))
+                 (set (map #(-> % :serdes/meta (nth 2) :id) (model->entities "FieldUserSettings"))))
               "only the field the user edited has settings to export"))))))
 
 (deftest cards-test
@@ -1717,8 +1717,8 @@
                                                                            {:type "link"
                                                                             :linkType "question"
                                                                             :targetId deleted-card-id}}}}}]
-      (t2/delete! :model/Card deleted-card-id)
-      (t2/delete! :model/Dashboard deleted-dash-id)
+      (t2/delete! :model/Card :id deleted-card-id)
+      (t2/delete! :model/Dashboard :id deleted-dash-id)
       (testing "the references to deleted cards and dashboards are ignored"
         (is (= #{[{:model "Dashboard" :id clickdash-eid :label "dashboard"}]
                  [{:model "Collection" :id coll-eid :label "some_collection"}]
@@ -1939,7 +1939,7 @@
                   {:card-id (:id c)}))]
         (when-not (= (:status res) :completed)
           (throw (ex-info "Query failed" res)))
-        (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card (:id c)))]
+        (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card :id (:id c)))]
           (is (=? {:fk_target_field_id [string? "PUBLIC" "CATEGORIES" "ID"]}
                   (->> (:result_metadata ser)
                        (u/seek #(and (= (:name %) "CATEGORY_ID")
@@ -1959,7 +1959,7 @@
         [:model/Card {card-id :id} {:type            :model
                                     :dataset_query   (mt/query venues)
                                     :result_metadata overridden}]
-        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card card-id))
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
               by-name   (u/index-by :name (:result_metadata extracted))]
           (is (every? #(re-matches #"Custom .*" (:display_name %))
                       (:result_metadata extracted)))
@@ -1987,7 +1987,7 @@
                            :base_type      :type/Text
                            :effective_type :type/Text
                            :semantic_type  :type/Title}]}]
-      (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card card-id))
+      (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
             by-name   (u/index-by :name (:result_metadata extracted))]
         (testing "physical passthrough column keeps its types"
           (is (= :type/Integer (:base_type (get by-name "project_id"))))
@@ -2409,7 +2409,7 @@
                                      :schema "public"
                                      :name "orphan_target"}}]
           ;; Delete the database — ON DELETE SET NULL nulls source_database_id and target_db_id.
-          (t2/delete! :model/Database db-id)
+          (t2/delete! :model/Database :id db-id)
           (let [reloaded (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags :indexes)
                 ser (serdes/extract-one "Transform" {} reloaded)]
             (is (nil? (:source_database_id reloaded))
@@ -2668,7 +2668,7 @@
       ;; Uncomment to regenerate baseline:
       ;; (round-trip-test/add-to-baseline!)
       (testing "custom viz plugin extraction"
-        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one [:model/CustomVizPlugin :*] :id plugin-id))]
+        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
           (is (=? {:serdes/meta [{:model "CustomVizPlugin"
                                   :id    "test-plugin"}]
                    :display_name "Test Plugin"
@@ -2846,7 +2846,7 @@
                          :model/Card {card-id :id} {:name "MBQL Card"
                                                     :dataset_query (mbql5-query db-id table-id)
                                                     :display :table}]
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id))]
           (is (not (contains? ser :table_id))
               "table_id should be omitted — derivable from dataset_query")
           (is (not (contains? ser :query_type))
@@ -2864,7 +2864,7 @@
                                                     :database_id db-id
                                                     :dataset_query {}
                                                     :display :table}]
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id))]
           (is (= "Test DB" (:database_id ser))
               "database_id should be kept when query is empty"))))))
 
@@ -2877,7 +2877,7 @@
                          :model/Card {card-id :id} {:name "MBQL Card"
                                                     :dataset_query (mbql5-query db-id table-id)
                                                     :display :table}]
-        (let [ser  (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))
+        (let [ser  (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id))
               deps (serdes/deserialization-dependencies ser)]
           (is (not-any? #(some (fn [step] (#{"Database" "Table" "Field"} (:model step))) %) deps)
               "Database/Table/Field should not be dependencies"))))))

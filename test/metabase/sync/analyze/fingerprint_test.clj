@@ -18,6 +18,8 @@
    [java.net ConnectException]
    [java.sql SQLException SQLTimeoutException]))
 
+(set! *warn-on-reflection* true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   TESTS FOR WHICH FIELDS NEED FINGERPRINTING                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+

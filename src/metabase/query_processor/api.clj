@@ -27,6 +27,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -43,7 +44,6 @@
    ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [get-in select-keys]]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -74,7 +74,7 @@
     (let [table-id (when (= (lib/normalized-query-type query) :mbql/query)
                      (lib/primary-source-table-id query))]
       (when (int? table-id)
-        (events/publish-event! :event/table-read {:object  (warehouse-schema.db/table table-id)
+        (events/publish-event! :event/table-read {:object  (query-processor.db/table table-id)
                                                   :user-id api/*current-user-id*})))
     ;; add sensible constraints for results limits on our query
     (let [source-card-id (when (= (lib/normalized-query-type query) :mbql/query)
@@ -109,7 +109,7 @@
    _query-params
    query :- ::lib-be.schema/maybe-legacy-or-internal-query
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (run-streaming-query
    (-> query
        (dissoc :cache-strategy)
@@ -164,7 +164,7 @@
        [:pivot_results          {:default false} ms/BooleanValue]
        [:csv_include_bom         {:default false} ms/BooleanValue]]
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
@@ -203,7 +203,7 @@
    _query-params
    query :- ::lib-be.schema/maybe-legacy-query
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (queries/batch-fetch-query-metadata
    [query]
    (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
@@ -222,7 +222,7 @@
                                            [:pretty {:default true} [:maybe :boolean]]
                                            [::mc/default ::lib-be.schema/maybe-legacy-query]]
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-query (dissoc query :pretty)))
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query (dissoc query :pretty)))
   (model-persistence/with-persisted-substituion-disabled
     (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
                     (dissoc :constraints :middleware)
@@ -257,7 +257,7 @@
    _query-params
    {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
@@ -299,15 +299,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
-  {:scope api-scope/data-app}
   [_route-params
    _query-params
    {:keys     [parameter]
     field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field-ids))
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids nil))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -316,16 +313,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
-  {:scope api-scope/data-app}
   [{:keys [query]} :- [:map {:closed true}
                        [:query ms/NonBlankString]]
    _query-params
    {:keys     [parameter]
     field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field-ids))
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids query))
 
 (defn param-remapped-value
@@ -348,13 +342,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/remapping"
   "Return the remapped parameter values for cards or dashboards that are being edited."
-  {:scope api-scope/data-app}
   [_route-params
    _query-params
    {:keys [parameter value field_ids]} :- [:map {:closed true}
                                            [:parameter ::parameters.schema/parameter]
                                            [:value [:ref ::lib.schema.parameter/parameter.value]]
-                                           [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field_ids))
+                                           [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (param-remapped-value field_ids parameter value))

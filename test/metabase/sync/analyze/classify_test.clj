@@ -7,7 +7,6 @@
    [metabase.sync.interface :as i]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -310,16 +309,15 @@
         (is (= :entity/EventTable (t2/select-one-fn :entity_type :model/Table :id (u/the-id table))))
         (is (= expected (detected)))
         (testing "a later classification writes the detected settings whole, including the parts that didn't change"
-          (t2/update! :model/Table (u/the-id table) {:detected_event_settings {"schema"   "posthog"
-                                                                               "settings" {"columns.person" "user_id"}}})
+          (t2/update! :model/Table :id (u/the-id table) {:detected_event_settings {"schema"   "posthog"
+                                                                                   "settings" {"columns.person" "user_id"}}})
           (classify/classify-table! (t2/select-one :model/Table :id (u/the-id table)))
           (is (= expected (detected))))))))
 
 (defn- user-visible-fk
-  "The Field's foreign key as users see it, their own setting over sync's."
+  "The Field's foreign key as users see it."
   [field-id]
-  (select-keys (t2/select-one :model/Field :id field-id
-                              {:from [(warehouse-schema-overlay/field-query {:alias :f})]})
+  (select-keys (t2/select-one [:model/Field :semantic_type :fk_target_field_id] :id field-id)
                [:semantic_type :fk_target_field_id]))
 
 (deftest classify-table-links-users-table-test
@@ -345,8 +343,8 @@
       (is (= {:semantic_type :type/FK, :fk_target_field_id users-key-id}
              (user-visible-fk person-id)))
       (testing "a foreign key an admin removed stays removed when the table is classified again"
-        (field-user-settings/upsert-user-settings (t2/select-one :model/Field :id person-id)
-                                                  {:semantic_type nil, :fk_target_field_id nil})
+        (field-user-settings/upsert-field-user-settings! (t2/select-one :model/Field :id person-id)
+                                                         {:semantic_type nil, :fk_target_field_id nil})
         (classify/classify-table! (t2/select-one :model/Table :id (u/the-id events)))
         (is (= {:semantic_type nil, :fk_target_field_id nil}
                (user-visible-fk person-id))))))

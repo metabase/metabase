@@ -24,10 +24,11 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/Measure [_model] :measure)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :measure] [_original-model _k] :model/Measure)
@@ -63,7 +64,7 @@
 (defmethod mi/can-read? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (warehouse-schema.db/table (:table_id instance)))]
+                   (measures.db/table (:table_id instance)))]
      (mi/can-read? table)))
   ([_model pk]
    (mi/can-read? (measures.db/measure pk))))
@@ -73,7 +74,7 @@
 (defmethod mi/can-write? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (warehouse-schema.db/table (:table_id instance)))]
+                   (measures.db/table (:table_id instance)))]
      (and (or api/*is-superuser?*
               (and (api/entitled-data-analyst?)
                    (perms/user-has-permission-for-table?
@@ -91,7 +92,7 @@
 (defmethod mi/can-create? :model/Measure
   [_model instance]
   (let [table (or (:table instance)
-                  (warehouse-schema.db/table (:table_id instance)))]
+                  (measures.db/table (:table_id instance)))]
     (and (or api/*is-superuser?*
              (and (api/entitled-data-analyst?)
                   (perms/user-has-permission-for-table?
@@ -176,7 +177,7 @@
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]
   (let [table (or (:table measure)
-                  (warehouse-schema.db/table (u/the-id (:table_id measure))))]
+                  (measures.db/table-perms-columns (u/the-id (:table_id measure))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- normalize-definition-from-db
@@ -259,24 +260,17 @@
                   :table_display_name        :table.display_name
                   :table_schema              :table.schema
                   ;; The parent table's collection, for [[collection/table-root-collection-type]].
-                  ;; Publishing is a user setting, so the published state and collection come from the table's
-                  ;; user settings when they are set, as in `metabase.warehouse-schema-overlay.core/table-query`.
                   ;; Listing these terms also reindexes a measure when its table moves into or out of the Library.
-                  :table-collection-id       [:case
-                                              [:not= :settings.is_published nil] :settings.collection_id
-                                              :else :table.collection_id]
-                  :table-is-published        [:coalesce :settings.is_published :table.is_published]
+                  :table-collection-id       :table.collection_id
+                  :table-is-published        :table.is_published
                   :table-collection-location :collection.location
                   :table-collection-type     :collection.type}
    ;; Only published tables count as library content, matching the table spec's own collection join.
    :joins {:table      [:model/Table [:= :table.id :this.table_id]]
-           :settings   [:model/TableUserSettings [:= :settings.table_id :this.table_id]]
            :collection [:model/Collection
                         [:and
-                         [:= [:coalesce :settings.is_published :table.is_published] true]
-                         [:= :collection.id [:case
-                                             [:not= :settings.is_published nil] :settings.collection_id
-                                             :else :table.collection_id]]]]}})
+                         [:= :table.is_published true]
+                         [:= :collection.id :table.collection_id]]]}})
 
 ;;; ------------------------------------------------- Dimension Persistence --------------------------------------------------
 

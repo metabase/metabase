@@ -8,7 +8,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
-   [metabase.documents.db :as documents.db]
    [metabase.events.core :as events]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.core :as explorations]
@@ -20,12 +19,10 @@
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.metrics.core :as metrics]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
-   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -149,6 +146,10 @@
               (attach-thread-read-data thread blocks pages card-name-by-id)))
           threads)))
 
+(defn- strip-lens-stamp
+  [m]
+  (dissoc m :data_access_token :resolved_source_ids))
+
 (defn- gate-threads-derived-data
   "Drop every thread's derived read-data — its queries, the block/page tree built from them, and the
   thread name — when the current user's data-access lens isn't compatible with the creator's lens
@@ -166,9 +167,10 @@
             ;; but it still enumerates which tables the creator is sandboxed on and which databases
             ;; are impersonated or routed — and a response schema validates and encodes without
             ;; stripping (see [[redact-query-error]]), so it has to come off here.
-            (dissoc (or (get enriched (:id thread))
-                        (assoc thread :queries [] :blocks [] :name nil :status "forbidden"))
-                    :data_access_token))
+            (-> (or (get enriched (:id thread))
+                    (assoc thread :queries [] :blocks [] :name nil :status "forbidden"))
+                strip-lens-stamp
+                (u/update-if-exists :queries #(some->> % (mapv strip-lens-stamp)))))
           threads)))
 
 (defn- thread-status
@@ -276,6 +278,17 @@
       (explorations.queues/start-thread! thread-id)
       true)))
 
+(defn- stringify-dim-types
+  "Prepare a block's `:dimensions` for re-insertion. The model's read transform keywordizes
+  `:effective-type`/`:semantic-type` (e.g. `:type/Date`); the JSON write transform would
+  otherwise drop the namespace on a bare keyword, so stringify them first."
+  [dimensions]
+  (mapv (fn [dim]
+          (cond-> dim
+            (keyword? (:effective-type dim)) (update :effective-type u/qualified-name)
+            (keyword? (:semantic-type dim))  (update :semantic-type u/qualified-name)))
+        dimensions))
+
 (defn- format-explore-filter-for-thread-name
   "Format one explore filter for a thread name. `:display_value` is FE-authored and is the
   sole source of truth for the value label."
@@ -348,8 +361,8 @@
   [:map {:closed true :decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
+   [:effective-type {:optional true} [:maybe :string]]
+   [:semantic-type  {:optional true} [:maybe :string]]])
 
 (def ^:private BlockSelection
   "One Research-plan area on the FE — a metric plus its chosen dimensions. Persisted verbatim as
@@ -646,20 +659,24 @@
                            {:object persisted :user-id api/*current-user-id*})
     (hydrate-exploration persisted)))
 
-(defn- drill-thread-token
-  "The lens stamp for the thread `explore-further` creates.
+(defn- drill-thread-stamp
+  "The lens stamp for the thread `explore-further` creates. Its `:resolved_source_ids` is the union of the block's
+  metric cards', so the gate holds a viewer to every table the token was computed over.
 
-  Computed under the *creator's* identity rather than the caller's. The values this thread is named
+  The token is computed under the *creator's* identity rather than the caller's. The values this thread is named
   for were read out of results the creator's lens produced, and its queries will execute under that
   same identity (see [[metabase.explorations.runner]]), which is the lens `finalize-row!` stamps them
   with."
   [exploration cards]
-  (request/with-current-user (:creator_id exploration)
-    (perms/data-access-token
-     {:database-id (:database_id (first cards))
-      :table-ids   (into #{}
-                         (mapcat #(query-perms/query->resolved-source-table-ids (:dataset_query %)))
-                         cards)})))
+  (let [resolved-source-ids (query-perms/merge-resolved-source-ids
+                             (map #(query-perms/query->resolved-source-ids (:dataset_query %)) cards))]
+    {:data_access_token   (request/with-current-user (:creator_id exploration)
+                            (perms/data-access-token
+                             {:database-id (:database_id (first cards))
+                              :table-ids   (:table-ids resolved-source-ids)}))
+     ;; The content gate checks the thread against the first card's query.
+     :resolved_source_ids (query-perms/stamped-resolved-source-ids (:dataset_query (first cards))
+                                                                   resolved-source-ids)}))
 
 (api.macros/defendpoint :post "/:id/explore-further" :- ::HydratedExploration
   "Start a follow-up investigation scoped to a clicked chart segment.
@@ -677,10 +694,10 @@
    {:keys [page_id explore_filters]} :- ExploreFurther]
   (let [exploration (get-exploration-or-404 id)]
     (api/write-check exploration)
-    (let [page          (api/check-404 (explorations.db/exploration-page page_id))
-          block         (api/check-404 (explorations.db/exploration-block (:exploration_block_id page)))
+    (let [page          (api/check-404 (explorations.db/page page_id))
+          block         (api/check-404 (explorations.db/block (:exploration_block_id page)))
           src-thread-id (:exploration_thread_id block)
-          src-thread    (explorations.db/exploration-thread src-thread-id)
+          src-thread    (explorations.db/thread src-thread-id)
           ;; The clicked page must live in *this* exploration — a page keys off a block off a
           ;; thread off an exploration, and "Explore further" only ever drills a chart the caller
           ;; is already viewing here. Reject anything else with a 404: without this check a caller
@@ -694,7 +711,7 @@
           metric-selection  (first metric-selections)
           cards         (mapv (fn [{:keys [card_id]}]
                                 (api/read-check
-                                 (api/check-404 (when card_id (queries.db/card card_id)))))
+                                 (api/check-404 (when card_id (explorations.db/card card_id)))))
                               metric-selections)
           card          (api/check-404 (first cards))
           card-name     (:name card)
@@ -709,19 +726,19 @@
           next-position (inc (or (explorations.db/last-thread-position id) 0))]
       (t2/with-transaction [_]
         (let [thread (explorations.db/insert-thread!
-                      {:exploration_id    id
-                       :name              (explore-further-thread-name card-name
-                                                                       enriched-filters
-                                                                       top-level-follow-up?)
-                       :data_access_token (drill-thread-token exploration cards)
-                       :position          next-position
-                       ;; drill lineage — lets the sidebar nest this thread
-                       ;; under the one owning the drilled page
-                       :source_page_id    page_id})
+                      (merge {:exploration_id id
+                              :name           (explore-further-thread-name card-name
+                                                                           enriched-filters
+                                                                           top-level-follow-up?)
+                              :position       next-position
+                              ;; drill lineage — lets the sidebar nest this thread
+                              ;; under the one owning the drilled page
+                              :source_page_id page_id}
+                             (drill-thread-stamp exploration cards)))
               tid    (:id thread)]
           (explorations.db/insert-blocks! {:exploration_thread_id tid
                                            :metrics               metrics'
-                                           :dimensions            (:dimensions block)
+                                           :dimensions            (stringify-dim-types (:dimensions block))
                                            :position              0})
           (insert-thread-timelines! tid timeline-ids)
           ;; Stamp `started_at` last — it's the signal the planning worker claims on.
@@ -813,12 +830,12 @@
 
 (defn- get-exploration-page-or-404
   [page-id]
-  (api/check-404 (explorations.db/exploration-page page-id)))
+  (api/check-404 (explorations.db/page page-id)))
 
 (defn- get-thread-or-404
   "Fetch the thread, or 404."
   [thread-id]
-  (api/check-404 (explorations.db/exploration-thread thread-id)))
+  (api/check-404 (explorations.db/thread thread-id)))
 
 (defn- write-check-thread [thread-id]
   (let [thread (get-thread-or-404 thread-id)]
@@ -878,13 +895,13 @@
       (let [pending-ids (explorations.db/lock-pending-query-ids-for-thread thread-id)]
         (when (seq pending-ids)
           (explorations.db/cancel-queries! pending-ids)))))
-  (select-keys (explorations.db/exploration-thread thread-id) [:id :canceled_at :completed_at]))
+  (explorations.db/thread-terminal-state thread-id))
 
 (defn- get-exploration-query-or-404
   "Fetch an `ExplorationQuery` by id and read-check it. The model's `can-read?` delegates up
   through `ExplorationThread` to the parent `Exploration`."
   [query-id]
-  (api/read-check (api/check-404 (explorations.db/exploration-query query-id))))
+  (api/read-check (api/check-404 (explorations.db/query query-id))))
 
 (defn- stream-stored-result
   "Replay a worker-serialized QP result (gzipped+nippy bytes from `:model/StoredResult.result_data`)
@@ -919,7 +936,7 @@
         ;; creator included, whose own permissions may have narrowed since the snapshot — against the
         ;; stored data-access token (sandbox/impersonation/routing) + basic data perms.
         (queries/assert-can-view-cached-result! sr)
-        (stream-stored-result format (queries.db/stored-result-data (:id sr))))
+        (stream-stored-result format (:result_data sr)))
 
       ;; Pending / errored: no result blob exists. The status payload (id/status/timestamps) rides
       ;; the exploration's collection perms (already enforced by `get-exploration-query-or-404`'s
@@ -969,16 +986,14 @@
 (defn- document-summary
   "Project a Document onto the `::ExplorationDocument` wire shape."
   [doc-id]
-  (some-> (documents.db/document doc-id)
-          (select-keys [:id :name :exploration_id :creator_id :content_type
-                        :created_at :updated_at :archived :is_placeholder])))
+  (explorations.db/summary-document-columns doc-id))
 
 (defn- page-explore-filters
   "Hydrated explore-further filters on the block that owns `page-id`, or nil
   when the page is unfiltered."
   [page-id]
-  (when-let [block-id (:exploration_block_id (explorations.db/exploration-page page-id))]
-    (-> (:metrics (explorations.db/exploration-block block-id))
+  (when-let [block-id (explorations.db/page-block-id page-id)]
+    (-> (explorations.db/block-metrics block-id)
         first
         :explore_filters
         not-empty)))
@@ -1031,7 +1046,7 @@
                          "child_target_id"  (str page-id)
                          "host_data"        (cond-> {:query_ids exploration_query_ids}
                                               explore-filters (assoc :explore_filters explore-filters))}]
-        (documents/add-card-to-document!
+        (documents/add-card-to-document-row!
          (:id doc) card-id nil
          :extra-attrs extra-attrs)))
     (document-summary (:id doc))))

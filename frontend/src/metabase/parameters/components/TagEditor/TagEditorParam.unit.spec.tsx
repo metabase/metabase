@@ -21,6 +21,8 @@ import type {
   Database,
   Field,
   FieldId,
+  Parameter,
+  ParameterValues,
   TemplateTag,
   TemplateTagType,
 } from "metabase-types/api";
@@ -28,6 +30,7 @@ import {
   createMockCard,
   createMockFieldDimension,
   createMockNativeDatasetQuery,
+  createMockNativeQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
@@ -42,12 +45,16 @@ import { TagEditorParam } from "./TagEditorParam";
 
 interface SetupOpts {
   tag?: TemplateTag;
+  parameter?: Parameter;
+  parameterValues?: ParameterValues;
   originalCard?: Card;
   transformDatabase?: (database: Database) => void;
 }
 
 const setup = ({
   tag = createMockTemplateTag(),
+  parameter = getTemplateTagParameter(tag),
+  parameterValues = { values: [], has_more_values: false },
   originalCard,
   transformDatabase,
 }: SetupOpts = {}) => {
@@ -71,10 +78,7 @@ const setup = ({
 
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
-  setupParameterValuesEndpoints({
-    values: [],
-    has_more_values: false,
-  });
+  setupParameterValuesEndpoints(parameterValues);
 
   const setTemplateTag = jest.fn();
   const setTemplateTagConfig = jest.fn();
@@ -85,7 +89,7 @@ const setup = ({
       tag={tag}
       database={databaseMetadata}
       databases={metadata.databasesList()}
-      parameter={getTemplateTagParameter(tag)}
+      parameter={parameter}
       originalQuestion={
         originalCard ? new Question(originalCard, metadata) : undefined
       }
@@ -213,6 +217,63 @@ describe("TagEditorParam", () => {
         default: undefined,
         dimension: undefined,
         "widget-type": undefined,
+      });
+    });
+
+    describe("values source of the saved question", () => {
+      const savedTag = createMockTemplateTag({ type: "text" });
+      const savedValuesSource: Pick<
+        Parameter,
+        "values_query_type" | "values_source_type" | "values_source_config"
+      > = {
+        values_query_type: "search",
+        values_source_type: "static-list",
+        values_source_config: { values: ["Foo", "Bar"] },
+      };
+      const originalCard = createMockCard({
+        dataset_query: createMockNativeDatasetQuery({
+          native: createMockNativeQuery({
+            query: `SELECT {{${savedTag.name}}}`,
+            "template-tags": { [savedTag.name]: savedTag },
+          }),
+        }),
+        parameters: [
+          { ...getTemplateTagParameter(savedTag), ...savedValuesSource },
+        ],
+      });
+
+      it("should restore it when changing the type back to the saved type", async () => {
+        const tag = { ...savedTag, type: "number" } as const;
+        const { setTemplateTagConfig } = setup({ tag, originalCard });
+
+        await userEvent.click(screen.getByTestId("variable-type-select"));
+        await userEvent.click(screen.getByRole("option", { name: "Text" }));
+
+        expect(setTemplateTagConfig).toHaveBeenCalledTimes(1);
+        expect(setTemplateTagConfig).toHaveBeenCalledWith(
+          tag,
+          expect.objectContaining(savedValuesSource),
+        );
+      });
+
+      it("should clear it when changing to a type other than the saved type", async () => {
+        const { setTemplateTagConfig } = setup({
+          tag: savedTag,
+          originalCard,
+        });
+
+        await userEvent.click(screen.getByTestId("variable-type-select"));
+        await userEvent.click(screen.getByRole("option", { name: "Number" }));
+
+        expect(setTemplateTagConfig).toHaveBeenCalledTimes(1);
+        expect(setTemplateTagConfig).toHaveBeenCalledWith(
+          savedTag,
+          expect.objectContaining({
+            values_query_type: undefined,
+            values_source_type: undefined,
+            values_source_config: undefined,
+          }),
+        );
       });
     });
 
@@ -544,6 +605,73 @@ describe("TagEditorParam", () => {
         required: false,
         default: "abc",
       });
+    });
+  });
+
+  describe("default value", () => {
+    it("should mark a required tag without a default value", () => {
+      setup({ tag: createMockTemplateTag({ required: true }) });
+
+      expect(screen.getByText("Default filter widget value")).toHaveTextContent(
+        "Default filter widget value (required)",
+      );
+    });
+
+    it.each([
+      { required: false, default: undefined },
+      { required: true, default: "a" },
+    ])(
+      "should not mark a tag that is required=$required with default=$default",
+      (opts) => {
+        setup({ tag: createMockTemplateTag(opts) });
+
+        expect(
+          screen.getByText("Default filter widget value"),
+        ).toHaveTextContent(/^Default filter widget value$/);
+      },
+    );
+
+    it.each([false, true])(
+      "should clear the default value with required=%s",
+      async (required) => {
+        const tag = createMockTemplateTag({ required, default: "a" });
+        const { setTemplateTag, setParameterValue } = setup({ tag });
+
+        await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+
+        expect(setTemplateTag).toHaveBeenCalledWith({ ...tag, default: null });
+        expect(setParameterValue).toHaveBeenCalledWith(tag.id, null);
+      },
+    );
+
+    it("should show the labels of a static list when picking the default value", async () => {
+      const values: ParameterValues["values"] = [
+        [10, "Ten"],
+        [20, "Twenty"],
+        [30],
+      ];
+      const tag = createMockTemplateTag({ type: "number" });
+      const { setTemplateTag } = setup({
+        tag,
+        parameter: {
+          ...getTemplateTagParameter(tag),
+          values_query_type: "list",
+          values_source_type: "static-list",
+          values_source_config: { values },
+        },
+        parameterValues: { values, has_more_values: false },
+      });
+
+      await userEvent.click(screen.getByText("Enter a default value…"));
+      expect(await screen.findByText("Ten")).toBeInTheDocument();
+      expect(screen.getByText("Twenty")).toBeInTheDocument();
+      expect(screen.getByText("30")).toBeInTheDocument();
+      expect(screen.queryByText("20")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Twenty"));
+      await userEvent.click(screen.getByRole("button", { name: "Add filter" }));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({ ...tag, default: [20] });
     });
   });
 

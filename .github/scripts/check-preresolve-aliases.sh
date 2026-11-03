@@ -81,11 +81,11 @@ require_scan() { # require_scan <what> <result>
 workflow_checks=$( { scan ee; scan oss; } || true)
 clojure_checks=$(scan_project_tests run-clojure-checks! . || true)
 migration_checks=$(scan_project_tests run-migration-checks! bin/lint-migrations-file || true)
-docs_checks=$(mage_aliases . < mage/src/mage/generate_docs.clj || true)
+docs_checks=$(mage_aliases . < mage/src/mage/docs_generate.clj || true)
 require_scan ".github/" "$workflow_checks"
 require_scan "run-clojure-checks! (mage/src/mage/project_tests.clj)" "$clojure_checks"
 require_scan "run-migration-checks! (mage/src/mage/project_tests.clj)" "$migration_checks"
-require_scan "mage/src/mage/generate_docs.clj" "$docs_checks"
+require_scan "mage/src/mage/docs_generate.clj" "$docs_checks"
 
 scanned="$(printf '%s\n' "$workflow_checks" "$clojure_checks" "$migration_checks" "$docs_checks" | sort -u)"
 

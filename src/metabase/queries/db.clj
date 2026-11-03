@@ -4,7 +4,6 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.collections.core :as collections]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -14,18 +13,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
-
-(mu/defn stored-result :- [:maybe ::queries.schema/stored-result]
-  "The ::queries.schema/stored-result with `stored-result-id`, or nil."
-  [stored-result-id :- ms/PositiveInt]
-  (t2/select-one :model/StoredResult :id [:auto/param stored-result-id]))
-
-(mu/defn stored-result-data
-  "The serialized result bytes of the StoredResult with `stored-result-id`, or nil."
-  [stored-result-id :- ms/PositiveInt]
-  (t2/select-one-fn :result_data [:model/StoredResult :result_data] :id [:auto/param stored-result-id]))
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
 
@@ -64,10 +52,10 @@
                                         not-in-exploration-document]}
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
-(mu/defn card :- [:maybe ::queries.schema/card]
-  "The ::queries.schema/card with `card-id`, or nil."
+(mu/defn card
+  "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id [:auto/param card-id]))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
@@ -94,12 +82,27 @@
   [card-id :- ::lib.schema.id/card]
   (:dataset_query (card-query-info card-id)))
 
+(mu/defn card-document-id
+  "The `:document_id` of the Card with `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :document_id :model/Card :id card-id))
+
+(mu/defn card-parameters
+  "The `:parameters` of the Card with `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :parameters [:model/Card :parameters] :id card-id))
+
 (mu/defn raw-card-dimensions
   "The raw `:dimensions` row of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/query-one {:select [:dimensions]
                  :from   [:report_card]
                  :where  [:= :id card-id]}))
+
+(mu/defn card-database-and-table-ids
+  "The database and primary table IDs of the Card with `card-id`, as `:database-id` and `:table-id`."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id card-id))
 
 (mu/defn cards-queries-info
   "The IDs and query-related fields of the Cards with `card-ids`.
@@ -134,6 +137,11 @@
              :type :metric
              {:order-by [[:name :asc]]}))
 
+(mu/defn document-collection-and-exploration
+  "The Document with `document-id` narrowed to `:id`, `:collection_id` and `:exploration_id`, or nil."
+  [document-id :- ms/PositiveInt]
+  (t2/select-one [:model/Document :id :collection_id :exploration_id] :id document-id))
+
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."
   [document-id :- ms/PositiveInt]
@@ -148,7 +156,7 @@
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
    changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card card-id changes))
+  (t2/update! :model/Card :id card-id changes))
 
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
@@ -237,6 +245,11 @@
   [database-ids :- [:set ::lib.schema.id/database]]
   (t2/select :model/Database :id [:in database-ids]))
 
+(mu/defn database-name
+  "The name of the Database with `database-id`."
+  [database-id :- [:maybe ::lib.schema.id/database]]
+  (t2/select-one-fn :name :model/Database :id database-id))
+
 (mu/defn field-database-info-for-ids
   "The id, name, table name, and Database id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
@@ -245,30 +258,45 @@
                          [:table.name :table-name]
                          [:table.db_id :field-db-id]]
              :from      [[:metabase_field :field]]
-             :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
+             :left-join [[(t2/table-name :model/Table) :table]
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 
 (mu/defn field-table-ids
   "The set of Table IDs of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."
   [snippet-ids :- [:set ::lib.schema.id/native-query-snippet]]
   (t2/select :model/NativeQuerySnippet :id [:in snippet-ids]))
 
+(mu/defn dashboard
+  "The Dashboard with `dashboard-id`, or nil."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one :model/Dashboard :id dashboard-id))
+
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard :id [:in dashboard-ids]))
 
+(mu/defn dashboard-collection-id
+  "The `:collection_id` of the Dashboard with `dashboard-id`."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id dashboard-id))
+
+(mu/defn dashboard-parameters
+  "The `:parameters` of the Dashboard with `dashboard-id`."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one-fn :parameters [:model/Dashboard :parameters] :id dashboard-id))
+
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard dashboard-id changes))
+  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn dashcards-for-card
   "The DashboardCards showing the Card with `card-id`."
@@ -535,34 +563,15 @@
   (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id
                                       :card_id          card-id}))
 
-(mu/defn stored-results-for-card
-  "The StoredResults used by the Card with `card-id`."
+(mu/defn stored-result-gate-inputs-for-card
+  "The StoredResults used by the Card with `card-id`, narrowed to the columns the cached-result gate reads."
   [card-id :- ::lib.schema.id/card]
-  (t2/select :model/StoredResult
+  (t2/select [:model/StoredResult
+              :id
+              :database_id
+              :dataset_query
+              :data_access_token
+              :resolved_source_ids]
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
-
-(mu/defn unpublished-table-names :- [:set :string]
-  "Among the Tables with `table-ids`, the names of those not published to the Library."
-  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
-  (or (t2/select-fn-set :name [:model/Table :name] :id [:in table-ids] :is_published false
-                        {:from [(warehouse-schema-overlay/table-query)]})
-      #{}))
-
-(mu/defn library-metric-ids :- [:set ::lib.schema.id/card]
-  "Among `card-ids`, the IDs of the metrics in the Library's Metrics collection or one of its subcollections."
-  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
-  (or (t2/select-fn-set :id [:model/Card :report_card.id] {:join  [:collection [:= :collection.id :report_card.collection_id]]
-                                                           :where [:and
-                                                                   [:in :report_card.id card-ids]
-                                                                   [:= :report_card.type "metric"]
-                                                                   [:= :collection.type collections/library-metrics-collection-type]]})
-      #{}))
-
-(defn card-ids-outside-collection
-  "Among `card-ids`, the IDs of the cards that are not in the collection with `collection-id`."
-  [card-ids collection-id]
-  (t2/select-pks-set :model/Card {:where [:and
-                                          [:in :id card-ids]
-                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))

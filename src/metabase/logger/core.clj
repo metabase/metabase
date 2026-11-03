@@ -20,7 +20,7 @@
    (org.apache.logging.log4j LogManager Level)
    (org.apache.logging.log4j.core Appender LogEvent Logger LoggerContext)
    (org.apache.logging.log4j.core.appender AbstractAppender FileAppender OutputStreamAppender)
-   (org.apache.logging.log4j.core.config AbstractConfiguration Configuration LoggerConfig)))
+   (org.apache.logging.log4j.core.config AbstractConfiguration AppenderRef Configuration LoggerConfig Property)))
 
 (set! *warn-on-reflection* true)
 
@@ -123,7 +123,7 @@
      (doto (FileAppender/newBuilder)
        (.setName "shared-appender-file")
        (.setLayout layout)
-       (.withFileName (.getPath out)))))
+       (.setFileName (.getPath out)))))
 
   java.io.OutputStream
   (make-appender [^java.io.OutputStream out layout]
@@ -224,17 +224,16 @@
   {:post [(exact-ns-logger a-namespace)]}
   (when-not (exact-ns-logger a-namespace)
     (let [parent-logger (effective-ns-logger a-namespace)
-          new-logger    (LoggerConfig/createLogger
-                         (.isAdditive parent-logger)
-                         (.getLevel parent-logger)
-                         (logger-name a-namespace)
-                         (str (.isIncludeLocation parent-logger))
-                         ^"[Lorg.apache.logging.log4j.core.config.AppenderRef;"
-                         (into-array org.apache.logging.log4j.core.config.AppenderRef (.getAppenderRefs parent-logger))
-                         ^"[Lorg.apache.logging.log4j.core.config.Property;"
-                         (into-array org.apache.logging.log4j.core.config.Property (.getPropertyList parent-logger))
-                         (configuration)
-                         (.getFilter parent-logger))]
+          new-logger    (.build
+                         (doto (LoggerConfig/newBuilder)
+                           (.setAdditivity (.isAdditive parent-logger))
+                           (.setLevel (.getLevel parent-logger))
+                           (.setLoggerName (logger-name a-namespace))
+                           (.setIncludeLocation (str (.isIncludeLocation parent-logger)))
+                           (.setRefs (into-array AppenderRef (.getAppenderRefs parent-logger)))
+                           (.setProperties (into-array Property (.getPropertyList parent-logger)))
+                           (.setConfig (configuration))
+                           (.setFilter (.getFilter parent-logger))))]
       ;; copy the appenders from the parent logger, e.g. the [[metabase.logger/metabase-appender]]
       (doseq [[_name ^Appender appender] (.getAppenders parent-logger)]
         (.addAppender new-logger appender (.getLevel new-logger) (.getFilter new-logger)))

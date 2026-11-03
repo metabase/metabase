@@ -6,7 +6,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private TableSelectors
@@ -38,9 +37,9 @@
    exclude-table-ids  :- [:set ::lib.schema.id/table]]
   (t2/reducible-query {:select [[output-table-id :table_id]]
                        :from   [[(t2/table-name :model/Dimension) :dim]]
-                       :join   [(warehouse-schema-overlay/field-query {:alias :source_field, :user-settings? false})
+                       :join   [[(t2/table-name :model/Field) :source_field]
                                 [:= :dim.field_id :source_field.id]
-                                (warehouse-schema-overlay/field-query {:alias :target_field, :user-settings? false})
+                                [(t2/table-name :model/Field) :target_field]
                                 [:= :dim.human_readable_field_id :target_field.id]]
                        :where  [:and
                                 [:= :dim.type "external"]
@@ -57,18 +56,23 @@
   (let [where (table-selectors-where selectors)]
     (t2/reducible-query {:select [[output-table-id :table_id]]
                          :from   [[(t2/table-name :model/Dimension) :dim]]
-                         :join   [(warehouse-schema-overlay/field-query {:alias :source_field})
+                         :join   [[(t2/table-name :model/Field) :source_field]
                                   [:= :dim.field_id :source_field.id]
-                                  (warehouse-schema-overlay/field-query {:alias :target_field})
+                                  [(t2/table-name :model/Field) :target_field]
                                   [:= :dim.human_readable_field_id :target_field.id]]
                          :where  [:and
                                   [:= :dim.type "external"]
                                   [:in input-table-id ^:allow-subquery
-                                   {:select [:id] :from [(warehouse-schema-overlay/table-query)] :where where}]
+                                   {:select [:id] :from [(t2/table-name :model/Table)] :where where}]
                                   [:not [:exists ^:allow-subquery
                                          {:select [1]
-                                          :from   [(warehouse-schema-overlay/table-query)]
+                                          :from   [(t2/table-name :model/Table)]
                                           :where  [:and where [:= :id output-table-id]]}]]]})))
+
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn databases
   "The Databases with `database-ids`."
@@ -78,32 +82,29 @@
 (mu/defn tables-matching-selectors
   "The Tables picked out by `selectors`, a map of `:database_ids`, `:schema_ids`, and/or `:table_ids`."
   [selectors :- TableSelectors]
-  (t2/select :model/Table {:from [(warehouse-schema-overlay/table-query)]
-                           :where (table-selectors-where selectors)}))
+  (t2/select :model/Table {:where (table-selectors-where selectors)}))
 
 (mu/defn tables-matching-selectors-in-id-order
   "The Tables picked out by `selectors`, in id order."
   [selectors :- TableSelectors]
-  (t2/select :model/Table {:from [(warehouse-schema-overlay/table-query)]
-                           :where (table-selectors-where selectors), :order-by [[:id]]}))
+  (t2/select :model/Table {:where (table-selectors-where selectors), :order-by [[:id]]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn selection-columns-for-selectors
   "Up to `limit` id, database, name, schema, and published flag of the Tables picked out by `selectors`."
   [selectors :- TableSelectors
    limit     :- ms/PositiveInt]
   (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published]
-             {:from [(warehouse-schema-overlay/table-query)]
-              :where (table-selectors-where selectors), :limit limit}))
+             {:where (table-selectors-where selectors), :limit limit}))
 
 (mu/defn selection-columns-for-tables
   "The id, database, name, schema, and published flag of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published] :id [:in table-ids]))
 
 (mu/defn delete-field-values-for-tables!
   "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."

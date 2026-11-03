@@ -41,7 +41,6 @@
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.test :as mt]
@@ -261,7 +260,7 @@
                :source-table ["Sample" "PUBLIC" "ORDERS"]
                :fields       [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}]})
 
-(deftest export-validation-failures-end-metabot-turn-test
+(deftest export-validation-failures-are-internal-errors-test
   (with-mp-and-stubs!
     (fn []
       (let [export-query (mt/original-fn #'repr.resolve/export-query)]
@@ -282,11 +281,7 @@
                                                :title "Order IDs" :description "IDs of orders."})]
             (is (nil? (:error (ex-data caught))))
             (is (= :unrecoverable (:class (tools.error/classify caught))))
-            (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-                    :error {:class :unrecoverable :code :internal}}
-                   outcome))
-            (is (= "Something went wrong."
-                   (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
+            (is (= test-util/internal-failure outcome))))))))
 
 (deftest metadata-lookup-failures-propagate-test
   (with-mp-and-stubs!
@@ -364,9 +359,9 @@
                     :error {:class :recoverable
                             :code :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query}}
                    outcome))
-            (is (nil? (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
+            (is (nil? (#'agent/terminal-error-message {} [{:type :tool-output :result outcome}] 0)))))))))
 
-(deftest metadata-lookup-failures-end-metabot-turn-test
+(deftest metadata-lookup-failures-are-internal-errors-test
   (with-mp-and-stubs!
     (fn []
       (doseq [[label failure] (metadata-lookup-failures)]
@@ -380,11 +375,7 @@
                                                 "construct_notebook_query"
                                                 {:query orders-id-query
                                                  :title "Order IDs" :description "IDs of orders."})]
-              (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-                      :error  {:class :unrecoverable :code :internal}}
-                     outcome))
-              (is (= "Something went wrong."
-                     (#'agent/terminal-error-message [{:type :tool-output :result outcome}]))))))))))
+              (is (= test-util/internal-failure outcome)))))))))
 
 (deftest implicit-join-happy-path-test
   (testing "cross-table breakout gets auto-wired with a :source-field after repair"
@@ -863,6 +854,21 @@
           (is (= :expression-editor-rejection (:error (ex-data e))))
           (is (= :filter (:mode (ex-data e))))
           (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
+
+(deftest aggregation-without-aggregation-function-explained-test
+  (testing "an aggregation with no aggregation function in it is explained, with how to fix it"
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["+" {} 1 2]]}]})]
+          (is (= :query-not-runnable (:error (ex-data e))))
+          (is (str/ends-with? (ex-message e)
+                              (str ": Aggregations should contain at least one aggregation function. Wrap the "
+                                   "calculation in one, such as `sum` or `count`, or move a per-row calculation "
+                                   "to `expressions:`."))))))))
 
 (deftest editor-rejection-between-message-test
   (with-mp-and-stubs!
@@ -1533,12 +1539,12 @@
    "stages"   [{"lib/type" "mbql.stage/mbql" "source-card" card-id}]})
 
 (defn- with-stubbed-card!
-  "Run `f` with `queries.db/card` serving only card 500, and `api/read-check` bound to
+  "Run `f` with `metabot.db/card` serving only card 500, and `api/read-check` bound to
   `read-check`. Stubs the model lookup rather than the content store: the numeric
   `source-card` branch resolves the database id straight off the card row, before any
   metadata provider or resolver exists."
   [read-check f]
-  (mt/with-dynamic-fn-redefs [queries.db/card (fn [id] (when (= id 500) {:id 500 :database_id 1}))
+  (mt/with-dynamic-fn-redefs [metabot.db/card (fn [id] (when (= id 500) {:id 500 :database_id 1}))
                               api/read-check  read-check]
     (f)))
 
@@ -2447,6 +2453,12 @@
                     (ex-data e)))
             (is (str/includes? (ex-message e) question-eid)
                 "the message names the source card to build the stage on")))
+        (testing "sourcing the metric itself is rejected, also when the stage aggregates the metric"
+          (let [e (is (thrown? clojure.lang.ExceptionInfo
+                               (construct/execute-representations-query
+                                (metric-query-data {"source-card" metric-eid} metric-eid))))]
+            (is (=? {:error :incompatible-metric} (ex-data e)))
+            (is (str/includes? (ex-message e) question-eid))))
         (testing "sourcing the card it was defined on is accepted"
           (let [result (construct/execute-representations-query
                         (metric-query-data {"source-card" question-eid} metric-eid))]
@@ -2758,6 +2770,67 @@
                           (get-in [:structured-output :query]))]
             (is (= [[18760]] (mt/rows (qp/process-query query))))))))))
 
+(deftest metric-as-source-card-test
+  (testing "a metric in `source-card:` on a stage that does not aggregate it"
+    (mt/with-temp [:model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name          "Big order count"
+                    :type          :metric
+                    :dataset_query (-> (table-query :orders)
+                                       (lib/filter (lib/> (field-col :orders :total) 100))
+                                       (lib/aggregate (lib/count)))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [on-metric (fn [stage]
+                          (query-data {"lib/type" "mbql/query"
+                                       "stages"   [(merge {"lib/type"    "mbql.stage/mbql"
+                                                           "source-card" metric-eid}
+                                                          stage)]}))
+              rows      (fn [query-data]
+                          (-> (construct/execute-representations-query query-data)
+                              (get-in [:structured-output :query])
+                              qp/process-query
+                              mt/rows))]
+          (testing "reads the metric's result in the query processor, so a count is wrong"
+            ;; Not `card-query`: Lib builds a metric's query on the metric's own source.
+            (is (= [[1]] (mt/rows (qp/process-query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (str "card__" metric-id)
+                                                                :aggregation  [[:count]]}})))))
+          (testing "is refused with an error that names the source to use"
+            (doseq [stage [{"aggregation" [["count" {}]]}
+                           {"aggregation" [["sum" {} ["field" {} "TOTAL"]]]
+                            "breakout"    [["field" {"temporal-unit" "month"} "CREATED_AT"]]}
+                           {"breakout" [["field" {"temporal-unit" "month"} "CREATED_AT"]]}]]
+              (testing (pr-str stage)
+                (is (=? {:class :recoverable
+                         :code  :metabase.metabot.tools.recoverable.pipeline/metric-as-source-card
+                         :text  (str "The metric \"Big order count\" (needs source-table: "
+                                     (json/encode (orders-source-table-fk)) ") is in `source-card:`. A metric is "
+                                     "an aggregation, not a source: a stage on a metric reads its result, not its "
+                                     "rows. Build the stage on the source shown for the metric, and put the metric "
+                                     "in the stage's `aggregation:`.\n"
+                                     "When you build the stage on the metric's source, reference the metric by its "
+                                     "`portable_entity_id`: "
+                                     "`aggregation: [[\"metric\", {}, \"<portable_entity_id>\"]]`.")}
+                        (test-util/tool-failure construct/construct-notebook-query-tool {:query (on-metric stage)}))))))
+          (testing "gives the MCP surface the numeric source"
+            (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                 (construct/execute-representations-query (on-metric {"aggregation" [["count" {}]]}))))]
+              (is (=? {:error          :metric-as-source-card
+                       :metric-ids     [metric-id]
+                       :usable-sources {metric-id {:source-table (mt/id :orders)}}}
+                      (ex-data e)))))
+          (testing "says to drop the metric when it has no usable source"
+            (is (= {:message        (str "The metric \"Big order count\" (has no usable source) is in "
+                                         "`source-card:`. A metric is an aggregation, not a source: a stage on a "
+                                         "metric reads its result, not its rows. Drop the metric, and express its "
+                                         "aggregation directly on a table or model.")
+                    :usable-sources {}}
+                   (#'construct/metric-source-card-explanation (mt/metadata-provider) {metric-id nil}))))
+          (testing "is accepted when the stage aggregates that metric, which the query processor expands"
+            (is (= [[5755]] (rows (on-metric {"aggregation" [["metric" {} metric-eid]]})))))
+          (testing "and the query the error asks for gives the same result"
+            (is (= [[5755]] (rows (metric-query-data {"source-table" (orders-source-table-fk)} metric-eid))))))))))
+
 (deftest metric-source-check-follows-a-source-card-that-changed-table-test
   (testing "After C1 moves from ORDERS to PRODUCTS, the check follows it as the query processor does"
     (mt/with-temp [:model/Card {c1-id :id}
@@ -2773,7 +2846,7 @@
                    :model/Card {two-stage-id :id, two-stage-eid :entity_id}
                    {:name "Two-stage count" :type :metric
                     :dataset_query (-> (card-query c1-id) lib/append-stage (lib/aggregate (lib/count)))}]
-      (t2/update! :model/Card c1-id {:dataset_query (table-query :products)})
+      (t2/update! :model/Card :id c1-id {:dataset_query (table-query :products)})
       (mt/with-current-user (mt/user->id :crowberto)
         (let [mp      (mt/metadata-provider)
               rows    (fn [source metric-eid]
@@ -2812,7 +2885,7 @@
                     :type          :metric
                     :dataset_query (lib/aggregate (table-query :products) (lib/count))}]
       ;; Straight to the table: the model's `:in` transform would not store a blank query.
-      (t2/update! (t2/table-name :model/Card) metric-id {:dataset_query "{}"})
+      (t2/update! (t2/table-name :model/Card) :id metric-id {:dataset_query "{}"})
       (mt/with-current-user (mt/user->id :crowberto)
         (let [mp    (lib-be/application-database-metadata-provider (mt/id))
               query (assoc-in (lib/query mp (lib.metadata/table mp (mt/id :products)))
@@ -3321,6 +3394,23 @@
           (is (=? {:agent-error? true :error :query-not-runnable :status-code 400} (ex-data e)))
           (is (str/includes? (ex-message e) "could not be resolved")))))))
 
+(deftest nested-expression-unresolved-reference-explained-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [q {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "expressions"  {"Broken" ["+" {}
+                                                      ["length" {}
+                                                       ["replace" {}
+                                                        ["substring" {} ["field" {"join-alias" "Nope"} "NAME"] 1 10]
+                                                        "-" ""]]
+                                                      1]}}]}
+            e (editor-rejection q)]
+        (is (=? {:agent-error? true, :error :query-not-runnable} (ex-data e)))
+        (is (re-find #"Failing paths: [^;]+could not be resolved" (ex-message e)))))))
+
 (deftest path-ref-to-dropped-join-column-rejected-before-sql-test
   (testing "a path ref to a column the grouped join drops fails in repair, not in the database"
     (with-mp-and-stubs!
@@ -3348,11 +3438,25 @@
         hint    #"\. This usually means a field reference is missing its type"]
     (testing "identical problems are listed once"
       (is (= "stages[0].alias: missing `alias`" (explain (missing :alias) (missing :alias)))))
-    (testing "at most three problems are listed"
-      (is (= 3 (count (str/split (apply explain (map missing [:a :b :c :d])) #"; ")))))
+    (testing "one problem in several places is listed once, with a count of the others"
+      (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c))
+                            "stages[0].a (and 2 other places): should be an integer.")))
+    (testing "a problem in one other place, and one more problem, are counted in the singular"
+      (is (str/starts-with? (explain (invalid :a) (invalid :b)) "stages[0].a (and 1 other place): "))
+      (is (str/ends-with? (apply explain (map missing [:a :b :c :d])) "; and 1 more problem")))
+    (testing "at most three problems are listed, and the rest are counted"
+      (is (str/ends-with? (apply explain (map missing [:a :b :c :d :e])) "; and 2 more problems")))
     (testing "problems with a known cause are listed before Malli's own messages"
       (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c) (missing :alias))
-                            "stages[0].alias: missing `alias`; stages[0].a: should be an integer")))
+                            "stages[0].alias: missing `alias`; stages[0].a (and 2 other places): should be an integer")))
+    (testing "Malli's own messages are listed before a guessed cause, however often it repeats"
+      (let [untyped (fn [i] {:type :malli.core/missing-key, :in [:stages 0 :filters i 2 1 :base-type]})
+            no-join {:schema (mc/schema [:fn {:error/message "no join named \"first\""} any?])
+                     :value  1
+                     :in     [:stages]}]
+        (is (str/starts-with? (apply explain (conj (mapv untyped (range 4)) no-join))
+                              (str "stages: no join named \"first\"; "
+                                   "stages[0].filters[0][2][1].base-type (and 3 other places): a field reference by name is missing `base-type`")))))
     (testing "the usual causes are added only when no problem has a known cause"
       (is (re-find hint (explain (invalid :a))))
       (is (not (re-find hint (explain (invalid :a) (missing :alias))))))

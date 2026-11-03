@@ -3,10 +3,8 @@
   the dashboard they belong to."
   (:require
    [metabase.channel.email.messages :as messages]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as pulse]
-   [metabase.users.db :as users.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -18,7 +16,7 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
-  (let [creator (select-keys (users.db/user creator_id) [:first_name :last_name :email])
+  (let [creator (pulse.db/user-name-and-email creator_id)
         bad-pulse-channels (pulse.db/pulse-channel-kinds-for-pulse bad-pulse-id)]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
@@ -48,7 +46,7 @@
   [dashboard-id original-dashboard-params]
   (when (seq original-dashboard-params)
     (let [{:keys [resolved-params]} (t2/hydrate
-                                     (dashboards.db/dashboard dashboard-id)
+                                     (pulse.db/dashboard-parameters dashboard-id)
                                      :resolved-params)
           dashboard-params (set (keys resolved-params))]
       ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
@@ -73,7 +71,7 @@
     (let [{dashboard-name        :name
            dashboard-description :description
            dashboard-creator     :creator} (t2/hydrate
-                                            (dashboards.db/dashboard dashboard-id)
+                                            (pulse.db/dashboard-name-description-creator dashboard-id)
                                             :creator)]
       (for [broken-pulse broken-pulses]
         (assoc

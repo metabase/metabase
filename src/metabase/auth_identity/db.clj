@@ -22,16 +22,11 @@
    [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mu/defn auth-identity :- [:maybe ::auth-identity.schema/auth-identity]
-  "The ::auth-identity.schema/auth-identity with `auth-identity-id`, or nil."
-  [auth-identity-id :- ms/PositiveInt]
-  (t2/select-one :model/AuthIdentity :id [:auto/param auth-identity-id]))
-
-(mu/defn auth-identity-for-user-and-provider
+(mu/defn auth-identity
   "The AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-one :model/AuthIdentity :user_id [:auto/param (long user-id)] :provider [:auto/param provider]))
+  (t2/select-one :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn auth-identity-id
   "The id of the AuthIdentity of the User with `user-id` at `provider`, or nil."
@@ -60,13 +55,13 @@
   "Apply `changes` to the AuthIdentity with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- AuthIdentityRow]
-  (t2/update! :model/AuthIdentity id changes))
+  (t2/update! :model/AuthIdentity :id [:auto/param id] changes))
 
 (mu/defn touch-auth-identity!
   "Set `last_used_at` of the AuthIdentity with `id` to now, returning the number updated. `id` may be nil (no
   matching AuthIdentity), which updates nothing."
   [id :- [:maybe ms/PositiveInt]]
-  (t2/update! :model/AuthIdentity id {:last_used_at :%now}))
+  (t2/update! :model/AuthIdentity :id [:auto/param id] {:last_used_at :%now}))
 
 (mu/defn delete-auth-identities!
   "Delete the AuthIdentities of the User with `user-id` at `provider`, returning the number deleted."
@@ -86,6 +81,11 @@
                :end_reason       "password-change"
                :ended_by_user_id ended-by
                :key_hashed       nil}))
+
+(mu/defn user
+  "The User with `user-id`, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one :model/User :id [:auto/param user-id]))
 
 (mu/defn user-by-email
   "The User whose email matches `email` case-insensitively, or nil."
@@ -109,7 +109,7 @@
 (mu/defn user-login-status
   "The id, active flag, and last login of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login] user-id))
+  (t2/select-one [:model/User :id :is_active :last_login] :id [:auto/param user-id]))
 
 (mu/defn user-active?
   "Whether the User with `user-id` is active."
@@ -120,7 +120,7 @@
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id [:auto/param user-id] changes))
 
 (mu/defn insert-user-returning-login-columns!
   "Insert the User `row` and return its id, last login, active flag, and tenant id."

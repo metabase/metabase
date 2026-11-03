@@ -109,11 +109,11 @@
    [:coercion_strategy  {:optional true} [:maybe [:or :keyword :string]]]
    [:caveats            {:optional true} [:maybe :string]]
    [:points_of_interest {:optional true} [:maybe :string]]
-   [:nfc_path           {:optional true} [:maybe [:sequential [:or :string :keyword]]]]
    [:json_unfolding     {:optional true} [:maybe :boolean]]
    [:settings           {:optional true} [:maybe ::field-user-settings.settings]]
    [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]
    [:custom_position    {:optional true} [:maybe :int]]
+   [:nfc_path           {:optional true} [:maybe :string]]
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
    [:fk_target_field_id_set {:optional true} :boolean]])
@@ -171,7 +171,6 @@
    [:data_authority          {:optional true} [:maybe [:or :keyword :string]]]
    [:is_published            {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:event_settings          {:optional true} [:maybe ::event-settings]]
    [:description_set         {:optional true} :boolean]
    [:visibility_type_set     {:optional true} :boolean]
    [:caveats_set             {:optional true} :boolean]
@@ -232,5 +231,4 @@
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:transform_target        {:optional true} [:maybe :boolean]]
    [:detected_event_settings {:optional true} [:maybe ::event-settings]]
-   ;; Stored on `metabase_table_user_settings`; see `metabase.warehouse-schema-overlay.core/user-only-table-columns`
    [:event_settings          {:optional true} [:maybe ::event-settings]]])

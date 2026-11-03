@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.models.model-index :as model-index]
-   [metabase.queries.db :as queries.db]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task.core :as task]
    [metabase.util :as u]
@@ -35,7 +34,7 @@
   [model-index-id]
   (let [model-index (indexed-entities.db/model-index model-index-id)
         model       (when model-index
-                      (queries.db/card (:model_id model-index)))]
+                      (indexed-entities.db/card (:model_id model-index)))]
     (if (should-deindex? model model-index)
       (u/ignore-exceptions
         (let [trigger-key (model-index/trigger-key model-index-id)]

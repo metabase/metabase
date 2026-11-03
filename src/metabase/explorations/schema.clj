@@ -2,10 +2,10 @@
   "Malli schemas for the explorations module."
   (:require
    [metabase.interestingness.chart.types :as chart.types]
-   [metabase.lib-be.schema :as lib-be.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metrics.core :as metrics]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -59,8 +59,8 @@
   [:map {:closed true}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
+   [:effective-type {:optional true} [:maybe :string]]
+   [:semantic-type  {:optional true} [:maybe :string]]])
 
 (mr/def ::exploration-block
   "A ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
@@ -105,8 +105,8 @@
   ms/VisualizationSettings)
 
 (mr/def ::exploration-query.dataset-query
-  "The `:dataset_query` a ExplorationQuery create or update accepts: an MBQL query, possibly legacy, never empty."
-  ::lib-be.schema/maybe-legacy-query)
+  "The `:dataset_query` column of a ExplorationQuery, decoded."
+  ::lib.schema/query)
 
 (mr/def ::exploration-query.params
   "The `:params` column of a ExplorationQuery, decoded."
@@ -119,14 +119,16 @@
   "The `:data_access_token` column of a ExplorationQuery, decoded."
   ::exploration-thread.data-access-token)
 
+(mr/def ::exploration-query.resolved-source-ids
+  "The `:resolved_source_ids` column of an ExplorationQuery, decoded."
+  ::exploration-thread.resolved-source-ids)
+
 (mr/def ::exploration-query
-  "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`, with an unreadable
-  `:dataset_query` read back as an empty query."
+  "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`."
   [:merge
    ::exploration-query.update
    [:map {:closed true}
-    [:id                     ms/PositiveInt]
-    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]]])
+    [:id                     ms/PositiveInt]]])
 
 (mr/def ::exploration-query.update
   "What an update (or insert) of a ExplorationQuery accepts: every column of `:exploration_query` except `id`, all optional."
@@ -151,7 +153,16 @@
    [:entity_id              {:optional true} [:maybe :string]]
    [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
-   [:data_access_token      {:optional true} [:maybe ::exploration-query.data-access-token]]])
+   [:data_access_token      {:optional true} [:maybe ::exploration-query.data-access-token]]
+   [:resolved_source_ids    {:optional true} [:maybe ::exploration-query.resolved-source-ids]]])
+
+(mr/def ::exploration-query.update.stamped-together
+  "An ExplorationQuery update with its `dataset_query`, `data_access_token` and `resolved_source_ids` all or none."
+  [:fn {:error/message "dataset_query, data_access_token and resolved_source_ids go together or not at all"}
+   (fn [changes]
+     (let [ks [:dataset_query :data_access_token :resolved_source_ids]]
+       (or (not-any? #(contains? changes %) ks)
+           (every? #(contains? changes %) ks))))])
 
 (mr/def ::exploration-query-result.chart-stats
   "The `:chart_stats` column of a ExplorationQueryResult, decoded."
@@ -233,6 +244,10 @@
   "The `:data_access_token` column of a ExplorationThread, decoded."
   DataAccessToken)
 
+(mr/def ::exploration-thread.resolved-source-ids
+  "The `:resolved_source_ids` column of a ExplorationThread, decoded."
+  query-perms/ResolvedSourceIds)
+
 (mr/def ::exploration-thread
   "A ExplorationThread as selected from the app DB: every column of `:exploration_thread`."
   [:merge
@@ -257,7 +272,8 @@
    [:query_plan_started_at {:optional true} [:maybe ms/TemporalInstant]]
    [:query_plan_transcript {:optional true} [:maybe ::exploration-thread.query-plan-transcript]]
    [:canceled_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]])
+   [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]
+   [:resolved_source_ids   {:optional true} [:maybe ::exploration-thread.resolved-source-ids]]])
 
 (mr/def ::exploration-thread-timeline
   "A ExplorationThreadTimeline as selected from the app DB: every column of `:exploration_thread_timeline`."

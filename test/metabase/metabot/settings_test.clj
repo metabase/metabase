@@ -120,6 +120,20 @@
     (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
       (is (false? (metabot.settings/metabot-query-execution-enabled?))))))
 
+(deftest metabot-enabled-respects-ai-features-enabled-test
+  (testing "disabling all AI features disables Metabot, even when the Metabot settings themselves are on"
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled?      "false"
+                                           :metabot-enabled?          "true"
+                                           :embedded-metabot-enabled? "true"]
+      (is (false? (metabot.settings/metabot-enabled?)))
+      (is (false? (metabot.settings/embedded-metabot-enabled?)))))
+  (testing "the Metabot settings take effect when AI features are enabled"
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled?      "true"
+                                           :metabot-enabled?          "false"
+                                           :embedded-metabot-enabled? "true"]
+      (is (false? (metabot.settings/metabot-enabled?)))
+      (is (true? (metabot.settings/embedded-metabot-enabled?))))))
+
 (deftest metabot-configured-with-managed-connection-and-proxy-url-test
   (testing "returns true when the managed connection is selected and the LLM proxy is configured"
     (mt/with-premium-features #{:metabase-ai-managed}

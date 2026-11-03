@@ -37,7 +37,7 @@
   (testing "Make sure syncing a table that has a composite pks works"
     (mt/test-driver (mt/normal-drivers-with-feature :describe-fields)
       (mt/dataset dataset-definition-test/composite-pk
-        (let [songs (t2/select-one :model/Table (mt/id :songs))
+        (let [songs (t2/select-one :model/Table :id (mt/id :songs))
               fk-metadata (driver/describe-fields driver/*driver* (lib.metadata/database (mt/metadata-provider))
                                                   :table-names [(:name songs)]
                                                   :schema-names [(:schema songs)])]

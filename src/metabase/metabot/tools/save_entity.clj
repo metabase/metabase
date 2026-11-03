@@ -10,9 +10,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
    [metabase.metabot.agent.links :as links]
@@ -138,7 +136,7 @@
     (catch clojure.lang.ExceptionInfo e
       (let [data (ex-data e)
             status-code (:status-code data)]
-        (if (and (not (contains? data tools.error/error-key))
+        (if (and (not (tools.error/declared? e))
                  (int? status-code) (<= 400 status-code 499))
           (save-rejected! {:message (ex-message e)})
           (throw e))))))
@@ -213,7 +211,7 @@
   [collection-id]
   (if (nil? collection-id)
     (:name (collection/root-collection-with-ui-details nil))
-    (:name (collections.db/collection collection-id))))
+    (metabot.db/collection-name collection-id)))
 
 (tools/defrecoverable destination-archived!
   "The destination is in the trash."
@@ -276,7 +274,7 @@
                 :delay-event)]
       {:card             card
        :destination      {:type "dashboard" :id dashboard-id}
-       :destination-name (:name (dashboards.db/dashboard dashboard-id))
+       :destination-name (metabot.db/dashboard-name dashboard-id)
        :link             (str "metabase://dashboard/" dashboard-id)})))
 
 (defn- save-to-document!
@@ -352,10 +350,11 @@
 (defrecord SaveEntityTool []
   tools/Tool
   (declaration [_]
-    {:name        "save_entity"
-     :description tool-description
-     :scope       scope/agent-question-create
-     :args        save-entity-schema})
+    {:name            "save_entity"
+     :description     tool-description
+     :scope           scope/agent-question-create
+     :args            save-entity-schema
+     :metabot/writes? true})
 
   (handle [_ {:keys [chart_id destination description] question-name :name} _ctx]
     (let [{:keys [dataset_query display]} (resolve-chart chart_id)

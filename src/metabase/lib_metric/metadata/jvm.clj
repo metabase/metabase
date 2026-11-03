@@ -14,8 +14,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
-   [metabase.util.memoize :as memoize]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]))
+   [metabase.util.memoize :as memoize]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,7 +23,7 @@
   []
   (memoize/lru
    (fn [table-id]
-     (:db_id (warehouse-schema.db/table table-id)))
+     (lib-metric.db/table-database-id table-id))
    :lru/threshold 1000))
 
 (defn- fetch-metrics

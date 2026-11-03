@@ -155,7 +155,7 @@
 (mu/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
   [id :- ms/PositiveInt]
-  (-> (dashboards.db/dashboard-card id)
+  (-> (dashboards.db/dashcard id)
       (t2/hydrate :series)))
 
 (defn dashcard->multi-cards

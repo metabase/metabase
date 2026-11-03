@@ -16,9 +16,9 @@
                                     transform-id (assoc :where [:= :transform_id transform-id]))))
 
 (mu/defn transform-test :- [:maybe ::transform-testing.schema/transform-test]
-  "The ::transform-testing.schema/transform-test with `id`, or nil."
+  "The TransformTest with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TransformTest :id [:auto/param id]))
+  (t2/select-one :model/TransformTest :id id))
 
 (mu/defn insert-transform-test! :- ::transform-testing.schema/transform-test
   "Insert the TransformTest `transform-test` and return the inserted instance."
@@ -100,7 +100,7 @@
   "Apply `updates` to the TransformTest with `id`."
   [id :- ms/PositiveInt
    updates :- ::transform-testing.schema/transform-test.update]
-  (t2/update! :model/TransformTest id updates))
+  (t2/update! :model/TransformTest :id id updates))
 
 (mu/defn delete-transform-test!
   "Delete the TransformTest with `id`."
@@ -111,6 +111,11 @@
   "Delete the TransformTests of the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (t2/delete! :model/TransformTest :transform_id transform-id))
+
+(mu/defn transform
+  "The Transform with `transform-id`, or nil."
+  [transform-id :- ::lib.schema.id/transform]
+  (t2/select-one :model/Transform :id transform-id))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."

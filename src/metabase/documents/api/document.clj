@@ -13,7 +13,6 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
-   [metabase.queries.db :as queries.db]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
@@ -39,13 +38,6 @@
                                              :body m.document/CardCreateSchema %)))))}
    [:map-of key-schema m.document/CardCreateSchema]])
 
-(defn- unarchived-document
-  "The Document with `document-id` if it is not archived, or nil."
-  [document-id]
-  (let [document (documents.db/document document-id)]
-    (when-not (:archived document)
-      document)))
-
 (def ^:private DocumentCreateOptions
   [:map {:closed true}
    [:name m.document/DocumentName]
@@ -63,6 +55,19 @@
    [:cards {:optional true} [:maybe (cards-to-create-schema :int)]]
    [:archived {:optional true} [:maybe :boolean]]])
 
+(defn- insert-card-embed!
+  "Persist an embed for `card-id` into document `document-id`, re-reading the document inside the
+  transaction so a concurrent edit cannot be overwritten. Returns the updated row, unchecked."
+  [document-id card-id position extra-attrs]
+  (t2/with-transaction [_conn]
+    (let [document (api/check-404 (documents.db/document document-id))
+          updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
+          updates  (cond-> (select-keys updated [:document])
+                     (:is_placeholder document) (assoc :is_placeholder false))]
+      (documents.db/update-document! document-id updates)
+      (collections/check-for-remote-sync-update document)
+      (merge document updates))))
+
 (defn add-card-to-document!
   "Insert an embed for the already-created card with `card-id` into the prose-mirror ast of the
   document with `document-id` and persist it. `position` is a 0-based index among the document's
@@ -74,16 +79,16 @@
 
   Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
   write-checking the document first. The document is re-read inside the transaction so a
-  concurrent edit cannot be overwritten. Returns the updated document."
+  concurrent edit cannot be overwritten. Returns the updated document, hydrated as by
+  [[m.document/get-document]]; [[add-card-to-document-row!]] skips the hydration."
   [document-id card-id position & {:keys [extra-attrs]}]
-  (t2/with-transaction [_conn]
-    (let [document (api/check-404 (documents.db/document document-id))
-          updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
-          updates  (cond-> (select-keys updated [:document])
-                     (:is_placeholder document) (assoc :is_placeholder false))]
-      (documents.db/update-document! document-id updates)
-      (collections/check-for-remote-sync-update document)))
+  (insert-card-embed! document-id card-id position extra-attrs)
   (m.document/get-document document-id :log-view? false))
+
+(defn add-card-to-document-row!
+  "[[add-card-to-document!]] for callers that don't need the hydrated document result."
+  [document-id card-id position & {:keys [extra-attrs]}]
+  (api/read-check (insert-card-embed! document-id card-id position extra-attrs)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -205,7 +210,7 @@
   (api/create-check :model/Document {:collection_id collection_id})
   (let [existing-document (api/check-404
                            (api/read-check
-                            (unarchived-document from-document-id)))
+                            (documents.db/unarchived-document from-document-id)))
         document-data {:name                (or name (:name existing-document))
                        :document            (:document existing-document)
                        :content_type        (:content_type existing-document)
@@ -264,14 +269,14 @@
   ;; Use a transaction to prevent race conditions when two requests arrive simultaneously.
   ;; Only one request will successfully create the UUID; both will return the same value.
   (t2/with-transaction [_conn]
-    (if-let [existing-uuid (:public_uuid (documents.db/document document-id))]
+    (if-let [existing-uuid (documents.db/document-public-uuid document-id)]
       {:uuid existing-uuid}
       (do
         (documents.db/update-document! document-id
                                        {:public_uuid       (str (random-uuid))
                                         :made_public_by_id api/*current-user-id*})
         ;; Always select after update to ensure we return what's actually stored
-        {:uuid (:public_uuid (documents.db/document document-id))}))))
+        {:uuid (documents.db/document-public-uuid document-id)}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -323,7 +328,7 @@
 
    Throws a 404 exception via `api/check-404` if any validation fails. Returns card-id on success."
   [document-id card-id]
-  (let [document (api/check-404 (unarchived-document document-id))]
+  (let [document (api/check-404 (documents.db/unarchived-document document-id))]
     (api/read-check document)
     (api/check-404 (and (contains? (set (prose-mirror/card-ids document)) card-id)
                         (documents.db/unarchived-card-in-document-exists? card-id document-id)))))
@@ -362,7 +367,7 @@
        [:pivot_results {:default false} ms/BooleanValue]]]
   (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card
-   (api/check-404 (queries.db/card card-id)) export-format
+   (api/check-404 (documents.db/card card-id)) export-format
    :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
@@ -373,6 +378,12 @@
                  :pivot?                 pivot-results?
                  :js-int-to-string?      false}))
 
+(defn- +content-gate-cache
+  [handler]
+  (fn [request respond raise]
+    (m.document/with-content-gate-cache
+      (handler request respond raise))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/document/` routes."
-  (api.macros/ns-handler *ns* +auth))
+  (api.macros/ns-handler *ns* +auth +content-gate-cache))

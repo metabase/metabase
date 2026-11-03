@@ -12,13 +12,12 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn sandbox :- [:maybe ::sandbox.schema/sandbox]
-  "The ::sandbox.schema/sandbox with `sandbox-id`, or nil."
+(mu/defn sandbox
+  "The Sandbox with `sandbox-id`, or nil."
   [sandbox-id :- ::lib.schema.id/sandbox]
-  (t2/select-one :model/Sandbox :id [:auto/param sandbox-id]))
+  (t2/select-one :model/Sandbox :id sandbox-id))
 
 (mu/defn sandboxes
   "Every Sandbox, in ID order."
@@ -63,7 +62,7 @@
   (t2/select :model/Sandbox
              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
               :from   [[:sandboxes :s]]
-              :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
+              :join   [[(t2/table-name :model/Table) :t]
                        [:= :s.table_id :t.id]]
               :where  [:and
                        (when group-id [:= :s.group_id group-id])
@@ -83,7 +82,7 @@
                 [:table.db_id :db_id]
                 [:table.schema :schema]]
     :from      [[:sandboxes]]
-    :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
+    :left-join [[(t2/table-name :model/Table) :table]
                 [:= :sandboxes.table_id :table.id]]
     :where     [:and
                 [:in :sandboxes.group_id group-ids]
@@ -103,7 +102,7 @@
   "Apply `changes` to the Sandbox with `sandbox-id`, returning the number updated."
   [sandbox-id :- ::lib.schema.id/sandbox
    changes    :- (mut/select-keys ::sandbox.schema/sandbox.update [:card_id :attribute_remappings])]
-  (t2/update! :model/Sandbox sandbox-id changes))
+  (t2/update! :model/Sandbox :id sandbox-id changes))
 
 (mu/defn delete-sandbox!
   "Delete the Sandbox with `sandbox-id`, returning the number deleted."
@@ -134,7 +133,7 @@
   "Set the login attributes of the User with `user-id`, returning the number of rows updated."
   [user-id          :- ::lib.schema.id/user
    login-attributes :- [:maybe users.schema/LoginAttributes]]
-  (t2/update! :model/User user-id {:login_attributes login-attributes}))
+  (t2/update! :model/User :id user-id {:login_attributes login-attributes}))
 
 (mu/defn user-attributes-reducible
   "Reducible merged JWT and login attribute maps of the Users that have any."
@@ -150,6 +149,11 @@
                                     [:not= :login_attributes nil]
                                     [:not= :login_attributes "{}"]]]}))
 
+(mu/defn table
+  "The Table with `table-id`, or nil."
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id table-id))
+
 (mu/defn tables-of-database
   "The `:id`, `:db_id`, and `:schema` of the Tables of the Database with `db-id`, restricted to `schema` when
   `schema-only?`."
@@ -157,8 +161,7 @@
    schema-only? :- :boolean
    schema       :- [:maybe :string]]
   (t2/select [:model/Table :id :db_id :schema]
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
-              :where [:and
+             {:where [:and
                       [:= :db_id db-id]
                       (when schema-only?
                         [:= :schema schema])]}))
@@ -168,14 +171,14 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Database
                  :id ^:allow-subquery {:select [:t.db_id]
-                                       :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
+                                       :from      [[(t2/table-name :model/Table) :t]]
                                        :where  [:= :t.id table-id]}))
 
 (mu/defn fields-of-table-named
   "The `:id` and `:name` of the Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:set :string]]
-  (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names]))
 
 (mu/defn cards-by-id
   "A map of Card ID to the query-related columns of the Cards with `card-ids`."
@@ -186,6 +189,11 @@
   "The query-related columns of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (queries/cards-queries-info card-ids))
+
+(mu/defn card-result-metadata
+  "The result metadata of the Card with `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :result_metadata :model/Card :id card-id))
 
 (mu/defn sandboxing-cards
   "The `:id`, `:dataset_query`, and `:database_id` of the Cards Sandboxes are built on."
@@ -203,4 +211,4 @@
   "Set the result metadata of the Card with `card-id`, returning the number updated."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata}))
+  (t2/update! :model/Card :id card-id {:result_metadata result-metadata}))

@@ -146,7 +146,6 @@ export interface UpdateFieldRequest {
   visibility_type?: FieldVisibilityType;
   has_field_values?: FieldValuesType;
   settings?: FieldFormattingSettings;
-  nfc_path?: string[] | null;
   json_unfolding?: boolean | null;
 }
 

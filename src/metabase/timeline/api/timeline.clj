@@ -1,10 +1,8 @@
 (ns metabase.timeline.api.timeline
   "/api/timeline endpoints."
   (:require
-   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
@@ -61,7 +59,6 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
-  {:scope api-scope/data-app}
   [_route-params
    {:keys [include], archived? :archived} :- [:map {:closed true}
                                               [:include  {:optional true} ::include]
@@ -162,6 +159,6 @@
    {:keys [include archived]} :- [:map {:closed true}
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]
-  (api/read-check (collections.db/collection id))
+  (api/read-check (timeline.db/collection id))
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))

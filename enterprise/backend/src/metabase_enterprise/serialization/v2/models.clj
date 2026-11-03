@@ -111,6 +111,7 @@
    "ExplorationThread"
    "ExplorationThreadTimeline"
    "ImplicitAction"
+   "ImpersonationQueryCache"
    "LoginHistory"
    "McpFeedback"
    "McpGroupPermission"

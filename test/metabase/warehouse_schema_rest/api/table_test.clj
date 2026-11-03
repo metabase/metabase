@@ -25,7 +25,6 @@
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema-rest.api.table :as api.table]
    [toucan2.core :as t2])
   (:import
@@ -38,11 +37,9 @@
 ;; authentication test on every single individual endpoint
 
 (defn- user-table-fn
-  "The value of `column` on the Table with `table-id` as users see it: what they set, else what sync wrote. A bare
-  `t2/select :model/Table` shows sync's values only."
+  "The value of `column` on the Table with `table-id`."
   [column table-id]
-  (t2/select-one-fn column :model/Table :id table-id
-                    {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one-fn column :model/Table :id table-id))
 
 (deftest ^:parallel unauthenticated-test
   (is (= (get api.response/response-unauthentic :body)
@@ -576,7 +573,7 @@
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
       (mt/with-temp [:model/Database db    {:details (:details (mt/db))}
-                     :model/Table    table (-> (t2/select-one :model/Table (mt/id :venues))
+                     :model/Table    table (-> (t2/select-one :model/Table :id (mt/id :venues))
                                                (dissoc :id :entity_id)
                                                (assoc :db_id (:id db)))]
         (let [called (atom 0)
@@ -1552,7 +1549,7 @@
         []]]
       (let [db (mt/db)
             db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
-            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
+            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field :id (mt/id :country :continent_id))]
         ;; 1. add FK relationship in the database targeting continent_1
         (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent(id);")
         (sync/sync-database! (:id db) {:scan :schema})

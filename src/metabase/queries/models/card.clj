@@ -4,7 +4,6 @@
   (:require
    [better-cond.core :as b]
    [clojure.set :as set]
-   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
@@ -16,14 +15,12 @@
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -37,6 +34,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.pulse.core :as pulse]
+   [metabase.queries.cached-result :as cached-result]
    [metabase.queries.card-schema :as card-schema]
    [metabase.queries.db :as queries.db]
    [metabase.queries.models.card.metadata :as card.metadata]
@@ -54,7 +52,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
-   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -156,8 +153,16 @@
   [card]
   (cond
     (contains? card :document_id) (:document_id card)
-    (:id card)                    (:document_id (queries.db/card (:id card)))
+    (:id card)                    (queries.db/card-document-id (:id card))
     :else                         ::not-adjudicable))
+
+(defn- summary-card-snapshots
+  "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
+  is not one or has none. Such a card renders only those snapshots — a composite links its own plus one per source —
+  so it is gated on their artifact verdicts rather than on the Summary's content gate over every thread."
+  [card document]
+  (when (and (:exploration_id document) (:id card))
+    (not-empty (queries.db/stored-result-gate-inputs-for-card (:id card)))))
 
 (defn- parent-document-permits?
   "Whether the parent Document of `card`, if it has one, grants `read-or-write` to the current user.
@@ -168,14 +173,23 @@
   values discovered under the *creator's* data-access lens (see
   [[metabase.explorations.derived-perms]]). Collection permissions alone cannot adjudicate that
   material — withholding it is the entire reason the Document's content gate exists — so a Card
-  that carries those values must be gated exactly as the document embedding it is."
+  that carries those values is gated by the document embedding it: on read, by its own snapshots
+  where it has any (see [[summary-card-snapshots]]) plus the Summary's collection-level read. A
+  Summary's cards are never writable, by anyone: each renders a stored snapshot, and editing the
+  card would desynchronise the two. Edits to a Summary chart save as new draft cards through the
+  document instead."
   [card read-or-write]
   (let [document-id (parent-document-id card)]
     (if (or (= ::not-adjudicable document-id) (nil? document-id))
       true
-      (case read-or-write
-        :read  (mi/can-read? :model/Document document-id)
-        :write (mi/can-write? :model/Document document-id)))))
+      (let [document (queries.db/document-collection-and-exploration document-id)]
+        (case read-or-write
+          :read  (if-let [snapshots (summary-card-snapshots card document)]
+                   (and (mi/current-user-has-full-permissions? :read document)
+                        (every? cached-result/viewer-can-view-cached-result? snapshots))
+                   (mi/can-read? document))
+          :write (and (nil? (:exploration_id document))
+                      (mi/can-write? document)))))))
 
 ;; NOTE: deliberately a plain `defmethod` rather than `perms/define-collection-based-visibility!`.
 ;; That macro's contract is "read perms are determined *fully* by `:collection_id`", which stopped
@@ -358,7 +372,7 @@
       (doseq [{:keys [field-id field-name table-name field-db-id]} (queries.db/field-database-info-for-ids (set field-ids))]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
-                                    (format "%d %s" db-id (pr-str (:name (warehouses.db/database db-id)))))]
+                                    (format "%d %s" db-id (pr-str (queries.db/database-name db-id))))]
                             (tru "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
@@ -442,7 +456,7 @@
   changes)
 
 (defn- check-dashboard-internal-card-insert [card]
-  (let [correct-collection-id (:collection_id (dashboards.db/dashboard (:dashboard_id card)))
+  (let [correct-collection-id (queries.db/dashboard-collection-id (:dashboard_id card))
         invalid? (or (and (contains? card :collection_id)
                           (not= correct-collection-id (:collection_id card)))
                      (not (contains? #{:question "question" nil} (:type card)))
@@ -509,8 +523,8 @@
       (doseq [[[po-type po-id] param-cards]
               (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
         (let [parameters             (case po-type
-                                       :card      (:parameters (queries.db/card po-id))
-                                       :dashboard (:parameters (dashboards.db/dashboard po-id)))
+                                       :card      (queries.db/card-parameters po-id)
+                                       :dashboard (queries.db/dashboard-parameters po-id))
               affected-param-ids-set (cond
                                        ;; update all parameters that use this card as source
                                        (:archived changes)
@@ -999,76 +1013,32 @@
   [message]
   (ex-info message {:status-code 400}))
 
-(defn- card-labels
-  "The cards with `card-ids` as they appear in an error, by name and ID."
-  [metadata-providerable card-ids]
-  (str/join ", " (for [{card-name :name, card-id :id} (sort-by :id (lib.metadata/bulk-metadata metadata-providerable :metadata/card card-ids))]
-                   (format "\"%s\" (%d)" card-name card-id))))
-
-(defn- tables-read
-  "The IDs of the tables `query` reads: its source tables, explicit joins included, and the tables it reaches through a
-  foreign key."
-  [query]
-  (set/union (set (lib/all-source-table-ids query))
-             (set (lib/all-implicitly-joined-table-ids query))))
-
-(defn- macro-tables-read
-  "The IDs of the tables that the definitions of the segments and measures `query` uses read."
-  [query]
-  (into #{}
-        (comp (keep :definition)
-              (filter (comp seq :stages))
-              (mapcat #(tables-read (lib/query query %))))
-        (concat (some->> (lib/all-segment-ids query) (lib.metadata/bulk-metadata query :metadata/segment))
-                (some->> (lib/all-measure-ids query) (lib.metadata/bulk-metadata query :metadata/measure)))))
-
-(defn- remapped-tables-read
-  "The IDs of the tables whose columns replace a column `query` returns, through a foreign key remapping."
-  [query]
-  (into #{}
-        (keep :table-id)
-        (some->> (lib/returned-columns query)
-                 (keep (comp :field-id :lib/external-remap))
-                 not-empty
-                 (lib.metadata/bulk-metadata query :metadata/column))))
-
 (defn- check-data-app-card-query
-  "Returns the IDs of the Library metrics `dataset_query` aggregates, and throws unless it is an MBQL query on a
-  database, based on no card, that reads only tables published to the Library, through its segments, measures and
-  remapped columns too; a load skips the published check, since it may load a table's published state later."
+  "Throws unless `dataset_query` is an MBQL query on a database of a single stage that reads a table, with no explicit
+  joins or custom columns; the metrics, segments and measures it names may be any."
   [{:keys [dataset_query]}]
   (when-not (:database dataset_query)
     (throw (data-app-card-error (tru "A card in a data app''s collection must hold a query on a database."))))
-  (let [query      (lib/query (lib-be/application-database-metadata-provider (:database dataset_query)) dataset_query)
-        metric-ids (set (lib/all-metric-ids query))
-        card-ids   (set/difference (set (lib/all-source-card-ids query)) metric-ids)]
+  (let [query (lib-be/normalize-query dataset_query)]
     (when (lib/any-native-stage? query)
       (throw (data-app-card-error (tru "A card in a data app''s collection must be built with the query builder, not SQL."))))
-    (when (seq card-ids)
-      (throw (data-app-card-error (tru "A card in a data app''s collection can read only tables published to the Library, not the card {0}."
-                                       (card-labels query card-ids)))))
-    (when-let [outside (seq (when (seq metric-ids)
-                              (set/difference metric-ids (queries.db/library-metric-ids metric-ids))))]
-      (throw (data-app-card-error (tru "A card in a data app''s collection can use only metrics from the Library, not the metric {0}."
-                                       (card-labels query outside)))))
-    (when-not mi/*deserializing?*
-      (when-let [unpublished (seq (some-> (not-empty (set/union (tables-read query)
-                                                                (macro-tables-read query)
-                                                                (remapped-tables-read query)))
-                                          queries.db/unpublished-table-names))]
-        (throw (data-app-card-error (tru "A card in a data app''s collection can read only tables published to the Library, not {0}. Publish them, or read other tables."
-                                         (str/join ", " (sort unpublished)))))))
-    metric-ids))
+    (when (not= 1 (lib/stage-count query))
+      (throw (data-app-card-error (tru "A card in a data app''s collection must be a query of a single stage."))))
+    (when (or (lib/primary-source-card-id query) (nil? (lib/primary-source-table-id query)))
+      (throw (data-app-card-error (tru "A card in a data app''s collection must read a table, not a card."))))
+    (when (seq (lib/joins query))
+      (throw (data-app-card-error (tru "A card in a data app''s collection can''t join tables explicitly."))))
+    (when (seq (lib/expressions query))
+      (throw (data-app-card-error (tru "A card in a data app''s collection can''t have custom columns."))))))
 
 (defn- check-data-app-card
-  "Throws unless `card`, when it is in a data app's collection, is a question or metric in no dashboard or document, not
-  archived, public or embedded, whose query reads only the Library, and whose other references, such as parameter
-  values, name only cards in the collection."
+  "Throws unless `card`, when it is in a data app's collection, is a question in no dashboard or document, not archived,
+  public or embedded, with no parameters, whose query reads a table in a single stage."
   [{:keys [collection_id] :as card}]
   (when (and (some? collection_id)
              (perms/data-app-collection? collection_id))
     ;; a new card without a type is a question, the column's default
-    (when (or (not (contains? #{:question :metric} (keyword (or (:type card) :question))))
+    (when (or (not= :question (keyword (or (:type card) :question)))
               (:dashboard_id card)
               (:document_id card)
               (:archived card)
@@ -1076,23 +1046,15 @@
               (:enable_embedding card)
               (:embedding_params card)
               (:embedding_type card))
-      (throw (data-app-card-error (tru "A card in a data app''s collection must be a question or metric, in no dashboard or document, that is not archived, public or embedded."))))
-    (let [metric-ids (check-data-app-card-query card)
-          card-ids   (into #{}
-                           (keep (fn [path]
-                                   (let [{:keys [model id]} (last path)]
-                                     (when (and (= "Card" model) (not (metric-ids id))) id))))
-                           (serdes/serialization-dependencies "Card" card))
-          outside    (when (seq card-ids)
-                       (queries.db/card-ids-outside-collection card-ids collection_id))]
-      (when (seq outside)
-        (throw (data-app-card-error (tru "A card in a data app''s collection can reference only the app''s own cards and Library metrics, not card {0}."
-                                         (str/join ", " (sort outside)))))))))
+      (throw (data-app-card-error (tru "A card in a data app''s collection must be a question, in no dashboard or document, that is not archived, public or embedded."))))
+    (when (seq (:parameters card))
+      (throw (data-app-card-error (tru "A card in a data app''s collection can''t have parameters."))))
+    (check-data-app-card-query card)))
 
 (def ^:private data-app-card-columns
   "The columns [[check-data-app-card]] reads; an update that changes none of them leaves a card as it was checked."
   #{:collection_id :dashboard_id :document_id :type :archived :public_uuid :enable_embedding :embedding_params
-    :embedding_type :dataset_query :parameters :parameter_mappings :visualization_settings})
+    :embedding_type :dataset_query :parameters})
 
 (t2/define-before-insert :model/Card
   [card]
@@ -1123,7 +1085,7 @@
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
-    (assoc card :collection_id (:collection_id (dashboards.db/dashboard dashboard-id)))
+    (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
     card))
 
 (defn- check-allowed-content
@@ -1185,7 +1147,6 @@
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
-        ;; after the query's columns are set again: `source_card_id` is one of the references it reads
         (cond-> (some data-app-card-columns (keys changes)) (doto check-data-app-card))
         (clear-metabot-origin changes)
         (pre-update changes)
@@ -1220,7 +1181,7 @@
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
 (defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
-  (let [dashboard (t2/hydrate (dashboards.db/dashboard dashboard-id) :dashcards [:tabs :tab-cards])
+  (let [dashboard (t2/hydrate (queries.db/dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
         tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]
@@ -1249,7 +1210,7 @@
   (queries.db/delete-dashcards-for-card-on-dashboard! card-id dashboard-id)
   (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
     (queries.db/delete-dashcard-series! (set dashcard-ids)))
-  (events/publish-event! :event/dashboard-update {:object (dashboards.db/dashboard dashboard-id)
+  (events/publish-event! :event/dashboard-update {:object (queries.db/dashboard dashboard-id)
                                                   :user-id api/*current-user-id*}))
 
 (defn- autoplace-or-remove-dashcards-for-card!
@@ -1323,7 +1284,7 @@
                             (not (:dashboard_id input-card-data)))))
    ;; Gated here, not in `check-allowed-to-create-card!`: the copy endpoints skip that stack but still autoplace.
    (when-let [dashboard-id (and autoplace-dashboard-questions? (:dashboard_id input-card-data))]
-     (check-shared-dashboard-timeline-permissions! (dashboards.db/dashboard dashboard-id) [input-card-data]))
+     (check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id) [input-card-data]))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
                                              :cache_ttl :type :dashboard_id :document_id]

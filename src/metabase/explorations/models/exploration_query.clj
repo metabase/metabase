@@ -1,9 +1,9 @@
 (ns metabase.explorations.models.exploration-query
   (:require
    [metabase.explorations.db :as explorations.db]
-   [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -17,22 +17,23 @@
 
 (t2/deftransforms :model/ExplorationQuery
   {:visualization_settings mi/transform-json
-   :dataset_query          lib-be/transform-query
+   :dataset_query          mi/transform-json
    :params                 mi/transform-json
-   :data_access_token      perms/data-access-token-transform})
+   :data_access_token      perms/data-access-token-transform
+   :resolved_source_ids    query-perms/resolved-source-ids-transform})
 
 (defmethod mi/can-read? :model/ExplorationQuery
   ([instance]
    (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [q (explorations.db/exploration-query pk)]
+   (when-let [q (explorations.db/query-thread-id-row pk)]
      (mi/can-read? :model/ExplorationThread (:exploration_thread_id q)))))
 
 (defmethod mi/can-write? :model/ExplorationQuery
   ([instance]
    (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [q (explorations.db/exploration-query pk)]
+   (when-let [q (explorations.db/query-thread-id-row pk)]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id q)))))
 
 (defn- hydrate-score-from-result [score-key queries]

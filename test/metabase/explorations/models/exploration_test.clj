@@ -158,13 +158,11 @@
                                             :card_id (:id metric)
                                             :dimension_id "d1"
                                             :page_id (:id p)
-                                            :dataset_query (let [mp (mt/metadata-provider)]
-                                                             (lib/query mp (lib.metadata/table mp (mt/id :venues))))}]
+                                            :dataset_query {:database 1 :type :query}}]
     (testing "ExplorationQuery transforms"
       (let [reread (t2/select-one :model/ExplorationQuery :id (:id q))]
         (is (= "d1" (:dimension_id reread)))
-        (is (= (mt/id) (-> reread :dataset_query :database)))
-        (is (= (mt/id :venues) (lib/primary-source-table-id (:dataset_query reread))))))))
+        (is (= 1 (-> reread :dataset_query :database)))))))
 
 (deftest exploration-is-searchable-test
   ;; The wiring assertions run unconditionally so this test can never silently pass

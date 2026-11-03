@@ -1286,56 +1286,66 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
-      "metabase-enterprise.data-apps.schema.allowed-host" : {
-        "description" : "An origin a data app's sandboxed bundle may fetch: scheme, host with an optional `*.` subdomain wildcard, and an\n   optional port.",
+      "metabase-enterprise.action-v2.execute-form.action-description" : {
+        "type" : "object",
+        "properties" : {
+          "parameters" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.action-v2.execute-form.describe-param"
+            }
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "title", "parameters" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.action-v2.execute-form.describe-param" : {
+        "type" : "object",
+        "properties" : {
+          "readonly" : {
+            "type" : "boolean"
+          },
+          "database_default" : { },
+          "optional" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "value_options" : {
+            "type" : "array",
+            "items" : { }
+          },
+          "input_type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.action-v2.execute-form.input-type"
+          },
+          "value" : { },
+          "semantic_type" : {
+            "type" : "string"
+          },
+          "human_readable_field_id" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "nullable" : {
+            "type" : "boolean"
+          },
+          "field_id" : {
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "id", "display_name", "input_type", "optional", "readonly" ]
+      },
+      "metabase-enterprise.action-v2.execute-form.input-type" : {
         "type" : "string",
-        "pattern" : "\\Ahttps?://(\\*\\.)?[a-z0-9-]+(\\.[a-z0-9-]+)*(:\\d+)?\\z"
-      },
-      "metabase-enterprise.data-apps.schema.allowed-hosts" : {
-        "description" : "The origins a data app's sandboxed bundle may fetch, `[]` when nil.",
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-host"
-        }
-      },
-      "metabase-enterprise.data-apps.schema.bundle-path" : {
-        "description" : "The path of a data app's bundle, relative to the app's directory and inside it.",
-        "type" : "string",
-        "minLength" : 1
-      },
-      "metabase-enterprise.data-apps.schema.bundle-text" : {
-        "description" : "The text of a data app's bundle file.",
-        "type" : "string",
-        "maxLength" : 10485760
-      },
-      "metabase-enterprise.data-apps.schema.description" : {
-        "description" : "A data app's optional one-line summary, nil when blank.",
-        "oneOf" : [ {
-          "type" : "string",
-          "maxLength" : 255
-        }, {
-          "type" : "null"
-        } ]
-      },
-      "metabase-enterprise.data-apps.schema.display-name" : {
-        "description" : "A data app's display name.",
-        "type" : "string",
-        "minLength" : 1
-      },
-      "metabase-enterprise.data-apps.schema.slug" : {
-        "description" : "A data app's slug: lowercase letters and numbers separated by single dashes, at most 100 characters.",
-        "allOf" : [ {
-          "type" : "string",
-          "maxLength" : 100
-        }, {
-          "type" : "string",
-          "pattern" : "\\A[a-z0-9]+(?:-[a-z0-9]+)*\\z"
-        } ]
-      },
-      "metabase-enterprise.data-apps.schema.version" : {
-        "description" : "The data app contract version an app was built for, 1 when it declares none.",
-        "type" : "integer",
-        "minimum" : 1
+        "enum" : [ "boolean", "date", "datetime", "dropdown", "float", "integer", "text", "textarea", "time" ]
       },
       "metabase-enterprise.data-complexity-score.api.node" : {
         "anyOf" : [ {
@@ -4729,6 +4739,10 @@
           }
         }
       },
+      "metabase.actions.schema..action.adhoc" : {
+        "description" : "Schema for an ad-hoc Action, which runs without being saved, as its create request would describe it.",
+        "$ref" : "#/components/schemas/metabase.actions.schema..action.create-request"
+      },
       "metabase.actions.schema..action.create-request" : {
         "description" : "Schema for the REST API body that creates an Action, without the columns the server populates.",
         "oneOf" : [ {
@@ -5388,7 +5402,7 @@
       "metabase.actions.schema..implicit-action.kind" : {
         "description" : "Unsupported implicit action kind",
         "type" : "string",
-        "enum" : [ "row/create", "row/update", "row/delete", "bulk/create", "bulk/update", "bulk/delete" ]
+        "enum" : [ "row/create", "row/update", "row/delete" ]
       },
       "metabase.actions.schema.action" : {
         "description" : "An Action as it should appear when we `SELECT` it from the app DB.",
@@ -8910,6 +8924,113 @@
         "minLength" : 1,
         "maxLength" : 10,
         "type" : "string"
+      },
+      "metabase.data-apps.schema.action-spec" : {
+        "description" : "An action of a data app: an implicit action of `kind` on a table.",
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "$ref" : "#/components/schemas/metabase.actions.schema..implicit-action.kind"
+          },
+          "table" : {
+            "type" : "object",
+            "properties" : {
+              "id" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+              }
+            },
+            "required" : [ "id" ],
+            "additionalProperties" : false
+          }
+        },
+        "required" : [ "kind", "table" ],
+        "additionalProperties" : false
+      },
+      "metabase.data-apps.schema.query-spec" : {
+        "description" : "A Lib test query spec of a data app's question: one stage.",
+        "type" : "object",
+        "properties" : {
+          "stages" : {
+            "type" : "array",
+            "prefixItems" : [ {
+              "$ref" : "#/components/schemas/metabase.data-apps.schema.query-stage-spec"
+            } ]
+          }
+        },
+        "required" : [ "stages" ],
+        "additionalProperties" : false
+      },
+      "metabase.data-apps.schema.query-stage-spec" : {
+        "description" : "A stage of a Lib test query spec with only what a data app's question may hold, as the card hooks check it: a table\n  source, and no joins or custom expressions.",
+        "type" : "object",
+        "properties" : {
+          "aggregations" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-aggregation-spec"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "breakouts" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-breakout-spec"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "fields" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-column-spec"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "filters" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-expression-spec"
+                }, {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-segment-spec"
+                } ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "order-bys" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-order-by-spec"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-table-source-spec"
+          }
+        },
+        "required" : [ "source" ],
+        "additionalProperties" : false
       },
       "metabase.data-studio.api.table.bulk-table-info" : {
         "description" : "Schema for table info in bulk operations. Matches frontend BulkTableInfo type.",
@@ -14886,6 +15007,11 @@
         "type" : "integer",
         "minimum" : 1
       },
+      "metabase.lib.schema.id.metric" : {
+        "description" : "Valid Metric ID (metrics are Cards with type :metric)",
+        "type" : "integer",
+        "minimum" : 1
+      },
       "metabase.lib.schema.id.pulse" : {
         "description" : "Valid Pulse ID",
         "type" : "integer",
@@ -18890,6 +19016,10 @@
         "description" : "A value inside a driver's compiled native query document: a scalar, or a nested document/array of them. Covers\n  every native query shape drivers in this codebase actually produce -- SQL text (a bare `:string`) as well as\n  document-pipeline languages like Mongo's (a `:map-of`/`:sequential` tree).",
         "$ref" : "#/components/schemas/metabase.lib.schema.value"
       },
+      "metabase.lib.schema.order-by.direction" : {
+        "type" : "string",
+        "enum" : [ "asc", "desc" ]
+      },
       "metabase.lib.schema.order-by.order-by" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/mbql.clause.asc"
@@ -20678,6 +20808,429 @@
       "metabase.lib.schema.temporal-bucketing.unit" : {
         "type" : "string",
         "enum" : [ "day", "day-of-month", "day-of-week", "day-of-year", "default", "hour", "hour-of-day", "millisecond", "minute", "minute-of-hour", "month", "month-of-year", "quarter", "quarter-of-year", "second", "second-of-minute", "week", "week-of-year", "year", "year-of-era" ]
+      },
+      "metabase.lib.schema.test-spec.test-aggregation-spec" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-expression-spec"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-named-aggregation-spec"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-measure-spec"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-metric-spec"
+        } ]
+      },
+      "metabase.lib.schema.test-spec.test-binning-bucket-spec" : {
+        "type" : "object",
+        "properties" : {
+          "binning" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-binning-spec"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib.schema.test-spec.test-binning-spec" : {
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "strategy" : {
+              "const" : "default"
+            }
+          },
+          "required" : [ "strategy" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "num-bins" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.binning.num-bins"
+            },
+            "strategy" : {
+              "const" : "num-bins"
+            }
+          },
+          "required" : [ "strategy", "num-bins" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "bin-width" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.binning.bin-width"
+            },
+            "strategy" : {
+              "const" : "bin-width"
+            }
+          },
+          "required" : [ "strategy", "bin-width" ],
+          "additionalProperties" : false
+        } ]
+      },
+      "metabase.lib.schema.test-spec.test-breakout-spec" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-column-with-binning-spec"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-breakout-with-name-spec"
+        } ]
+      },
+      "metabase.lib.schema.test-spec.test-breakout-with-name-spec" : {
+        "type" : "object",
+        "properties" : {
+          "column" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-column-with-binning-spec"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "breakout"
+          }
+        },
+        "required" : [ "type", "name", "column" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-column-spec" : {
+        "description" : "A column of the stage: a field by `:field-id`, or else a column by its `:name`. Every other key is matched exactly:\n  a missing `:join-alias` means the column does not come from a join, a missing `:source-field-id` means it is not\n  implicitly joined.",
+        "type" : "object",
+        "properties" : {
+          "field-id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "join-alias" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "source-field-id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "source-field-join-alias" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "const" : "column"
+          }
+        },
+        "required" : [ "type" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-column-with-binning-spec" : {
+        "description" : "A column of the stage: a field by `:field-id`, or else a column by its `:name`. Every other key is matched exactly:\n  a missing `:join-alias` means the column does not come from a join, a missing `:source-field-id` means it is not\n  implicitly joined.",
+        "type" : "object",
+        "properties" : {
+          "binning" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-binning-spec"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "field-id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "join-alias" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "source-field-id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "source-field-join-alias" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "const" : "column"
+          },
+          "unit" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "type" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-expression-spec" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-column-spec"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-literal-expression-spec"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-operator-expression-spec"
+        } ]
+      },
+      "metabase.lib.schema.test-spec.test-literal-arg-spec" : {
+        "description" : "A literal argument of an operator: a value, or several values that are each an argument, as in `[:= x 4 5]`.",
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "const" : "literal"
+          },
+          "value" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+            }, {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+              },
+              "minItems" : 1
+            } ]
+          }
+        },
+        "required" : [ "type", "value" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-literal-expression-spec" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "const" : "literal"
+          },
+          "value" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+          }
+        },
+        "required" : [ "type", "value" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-measure-spec" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.measure"
+          },
+          "type" : {
+            "const" : "measure"
+          }
+        },
+        "required" : [ "type", "id" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-metric-spec" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.metric"
+          },
+          "type" : {
+            "const" : "metric"
+          }
+        },
+        "required" : [ "type", "id" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-named-aggregation-spec" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "value" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-expression-spec"
+            }, {
+              "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-measure-spec"
+            }, {
+              "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-metric-spec"
+            } ]
+          }
+        },
+        "required" : [ "name", "value" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-operator-arg-spec" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-column-spec"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-literal-arg-spec"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-operator-expression-spec"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-segment-spec"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-measure-spec"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-metric-spec"
+        } ]
+      },
+      "metabase.lib.schema.test-spec.test-operator-expression-spec" : {
+        "type" : "object",
+        "properties" : {
+          "args" : {
+            "default" : [ ],
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-operator-arg-spec"
+            }
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "operator" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-operator-spec"
+          },
+          "type" : {
+            "const" : "operator"
+          }
+        },
+        "required" : [ "type", "operator" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-operator-spec" : {
+        "type" : "string"
+      },
+      "metabase.lib.schema.test-spec.test-order-by-spec" : {
+        "description" : "A column of the stage: a field by `:field-id`, or else a column by its `:name`. Every other key is matched exactly:\n  a missing `:join-alias` means the column does not come from a join, a missing `:source-field-id` means it is not\n  implicitly joined.",
+        "type" : "object",
+        "properties" : {
+          "field-id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "binning" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.test-spec.test-binning-spec"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "direction" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.order-by.direction"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "source-field-id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "const" : "column"
+          },
+          "join-alias" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "unit" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "source-field-join-alias" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "type" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-segment-spec" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.segment"
+          },
+          "type" : {
+            "const" : "segment"
+          }
+        },
+        "required" : [ "type", "id" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-table-source-spec" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          },
+          "type" : {
+            "const" : "table"
+          }
+        },
+        "required" : [ "type", "id" ],
+        "additionalProperties" : false
+      },
+      "metabase.lib.schema.test-spec.test-temporal-bucket-spec" : {
+        "type" : "object",
+        "properties" : {
+          "unit" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
       },
       "metabase.lib.schema.util.distinct-mbql-clauses" : { },
       "metabase.lib.schema.util.unique-uuids" : { },
@@ -23029,7 +23582,7 @@
         "additionalProperties" : false
       },
       "metabase.metabot.schema.query" : {
-        "description" : "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn state.",
+        "description" : "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn\n  state. Normalizing repairs a structured query that lost its `:lib/*` keys, so every tool reads a valid MBQL 5 query;\n  see [[query-repair/repair-stripped-query]].",
         "$ref" : "#/components/schemas/metabase.lib.util.query-like"
       },
       "metabase.metabot.schema.row-value" : {
@@ -23170,7 +23723,7 @@
         "type" : "string"
       },
       "metabase.metabot.schema.todo" : {
-        "description" : "One todo item of persisted turn state; only `:id` is guaranteed, since state can hold a partial item\n  between the turn that creates it and the turn that fills in its details.",
+        "description" : "A todo item in conversation state persisted while Metabot had todo tools. `:todos` stays in [[::state]], a\n  closed map, so those conversations still validate.",
         "type" : "object",
         "properties" : {
           "content" : {
@@ -30757,6 +31310,11 @@
         "required" : [ "schedule_type" ],
         "additionalProperties" : false
       },
+      "metabase.warehouse-schema-rest.api.table.data-authority-read" : {
+        "description" : "Schema for returning a table data authority type.",
+        "type" : "string",
+        "enum" : [ "computed", "unknown", "authoritative", "unconfigured", "ingested" ]
+      },
       "metabase.warehouse-schema-rest.api.table.data-authority-write" : {
         "description" : "Schema for writing a valid table data authority.",
         "type" : "string",
@@ -30898,6 +31456,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/action" ]
       },
       "post" : {
@@ -30928,6 +31497,57 @@
             "application/json" : {
               "schema" : {
                 "$ref" : "#/components/schemas/metabase.actions.schema..action.create-request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/action" ]
+      }
+    },
+    "/api/action/execute" : {
+      "post" : {
+        "operationId" : "post-api-action-execute",
+        "summary" : "POST /api/action/execute",
+        "description" : "Execute the ad-hoc `action`, without saving it. Superusers only.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : { }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "action" : {
+                    "$ref" : "#/components/schemas/metabase.actions.schema..action.adhoc"
+                  },
+                  "parameters" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.actions.schema.execute-parameter-values"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "action" ],
+                "additionalProperties" : false
               }
             }
           }
@@ -30996,6 +31616,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/action" ]
@@ -34011,6 +34642,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/card" ]
       }
     },
@@ -34045,6 +34687,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/card" ]
@@ -34311,6 +34964,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/card" ]
@@ -34649,6 +35313,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/card" ]
       }
     },
@@ -34682,6 +35357,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/card" ]
@@ -35502,6 +36188,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/collection" ]
       },
       "post" : {
@@ -35984,6 +36681,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/collection" ]
       }
     },
@@ -36302,6 +37010,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/collection" ]
       }
     },
@@ -36342,6 +37061,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/collection" ]
@@ -36665,6 +37395,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/collection" ]
@@ -37268,6 +38009,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/dashboard" ]
@@ -38427,6 +39179,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/dashboard" ]
       },
       "delete" : {
@@ -39009,6 +39772,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/dashboard" ]
       }
     },
@@ -39054,6 +39828,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/dashboard" ]
       }
     },
@@ -39089,6 +39874,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/dashboard" ]
@@ -39199,6 +39995,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/dashboard" ]
@@ -42017,7 +42824,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.action-v2.execute-form.action-description"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -43344,11 +44158,13 @@
           }
         },
         "tags" : [ "/api/ee/apps" ]
-      },
+      }
+    },
+    "/api/ee/apps/generate/actions" : {
       "post" : {
-        "operationId" : "post-api-ee-apps",
-        "summary" : "POST /api/ee/apps",
-        "description" : "Create a data app with its resource collection and an empty bundle. It is enabled unless the request says\n  otherwise.",
+        "operationId" : "post-api-ee-apps-generate-actions",
+        "summary" : "POST /api/ee/apps/generate/actions",
+        "description" : "The YAML files of the implicit actions a data app defines, one per `defineAction` export in `actions`, in its\n  collection with the entity ID `collection`. Nothing is saved. Superusers only.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -43356,65 +44172,21 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "enabled" : {
-                      "type" : "boolean"
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : { },
-                    "display_name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "version" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "created_at" : { },
-                    "bundle_hash" : {
-                      "oneOf" : [ {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "contents" : {
                         "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "allowed_hosts" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "string"
+                      },
+                      "path" : {
+                        "type" : "string",
+                        "minLength" : 1
                       }
                     },
-                    "outdated" : {
-                      "type" : "boolean"
-                    },
-                    "resource_collection_id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "description" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "bundle_path" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                    "required" : [ "path", "contents" ],
+                    "additionalProperties" : false
+                  }
                 }
               }
             }
@@ -43432,32 +44204,173 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "allowed_hosts" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-hosts"
+                  "actions" : {
+                    "description" : "Value must be a map.",
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "description" : "An action of a data app: an implicit action of `kind` on a table.",
+                        "type" : "object",
+                        "properties" : {
+                          "entityId" : {
+                            "description" : "String must be a valid 21-character NanoID string.",
+                            "type" : "string",
+                            "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+                          },
+                          "kind" : {
+                            "$ref" : "#/components/schemas/metabase.actions.schema..implicit-action.kind"
+                          },
+                          "table" : {
+                            "type" : "object",
+                            "properties" : {
+                              "id" : {
+                                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+                              }
+                            },
+                            "required" : [ "id" ],
+                            "additionalProperties" : false
+                          }
+                        },
+                        "required" : [ "entityId", "kind", "table" ],
+                        "additionalProperties" : false
+                      }
+                    }, {
+                      "description" : "Value must be a map."
+                    } ]
                   },
-                  "bundle_path" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-path"
-                  },
-                  "description" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
-                  },
-                  "display_name" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
-                  },
-                  "enabled" : {
-                    "type" : "boolean"
-                  },
-                  "name" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.slug"
-                  },
-                  "version" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.version"
+                  "collection" : {
+                    "description" : "String must be a valid 21-character NanoID string.",
+                    "type" : "string",
+                    "pattern" : "^[A-Za-z0-9_\\-]{21}$"
                   }
                 },
-                "required" : [ "name" ],
+                "required" : [ "collection", "actions" ],
                 "additionalProperties" : false
               }
             }
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      }
+    },
+    "/api/ee/apps/generate/queries" : {
+      "post" : {
+        "operationId" : "post-api-ee-apps-generate-queries",
+        "summary" : "POST /api/ee/apps/generate/queries",
+        "description" : "The YAML files of the questions a data app defines, one per `defineQuery` export in `queries`, in its collection with\n  the entity ID `collection`. Nothing is saved. Superusers only.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "contents" : {
+                        "type" : "string"
+                      },
+                      "path" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    },
+                    "required" : [ "path", "contents" ],
+                    "additionalProperties" : false
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "collection" : {
+                    "description" : "String must be a valid 21-character NanoID string.",
+                    "type" : "string",
+                    "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+                  },
+                  "queries" : {
+                    "description" : "Value must be a map.",
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "type" : "object",
+                        "properties" : {
+                          "entityId" : {
+                            "description" : "String must be a valid 21-character NanoID string.",
+                            "type" : "string",
+                            "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+                          },
+                          "query" : {
+                            "$ref" : "#/components/schemas/metabase.data-apps.schema.query-spec"
+                          }
+                        },
+                        "required" : [ "entityId", "query" ],
+                        "additionalProperties" : false
+                      }
+                    }, {
+                      "description" : "Value must be a map."
+                    } ]
+                  }
+                },
+                "required" : [ "collection", "queries" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      }
+    },
+    "/api/ee/apps/generate/schema" : {
+      "get" : {
+        "operationId" : "get-api-ee-apps-generate-schema",
+        "summary" : "GET /api/ee/apps/generate/schema",
+        "description" : "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and\n  measures, and its metrics. Superusers only.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "contents" : {
+                        "type" : "string"
+                      },
+                      "path" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    },
+                    "required" : [ "path", "contents" ],
+                    "additionalProperties" : false
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/ee/apps" ]
@@ -43532,7 +44445,7 @@
       "put" : {
         "operationId" : "put-api-ee-apps-slug",
         "summary" : "PUT /api/ee/apps/{slug}",
-        "description" : "Update a data app's manifest fields, or enable or disable it. A disabled app is served to superusers only.",
+        "description" : "Enable or disable a data app. A disabled app is served to superusers only. Superusers only; anything else about an\n  app changes only through a repository import.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -43624,61 +44537,14 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "allowed_hosts" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-hosts"
-                  },
-                  "bundle_path" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-path"
-                  },
-                  "description" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
-                  },
-                  "display_name" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
-                  },
                   "enabled" : {
                     "type" : "boolean"
-                  },
-                  "version" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.version"
                   }
                 },
+                "required" : [ "enabled" ],
                 "additionalProperties" : false
               }
             }
-          }
-        },
-        "tags" : [ "/api/ee/apps" ]
-      },
-      "delete" : {
-        "operationId" : "delete-api-ee-apps-slug",
-        "summary" : "DELETE /api/ee/apps/{slug}",
-        "description" : "Delete a data app, its bundle, and its collection with the grants on it.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/ee/apps" ]
@@ -43803,113 +44669,6 @@
       }
     },
     "/api/ee/apps/{slug}/bundle" : {
-      "put" : {
-        "operationId" : "put-api-ee-apps-slug-bundle",
-        "summary" : "PUT /api/ee/apps/{slug}/bundle",
-        "description" : "Replace a data app's bundle.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "enabled" : {
-                      "type" : "boolean"
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : { },
-                    "display_name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "version" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "created_at" : { },
-                    "bundle_hash" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "allowed_hosts" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "string"
-                      }
-                    },
-                    "outdated" : {
-                      "type" : "boolean"
-                    },
-                    "resource_collection_id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "description" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "bundle_path" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "bundle" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-text"
-                  }
-                },
-                "required" : [ "bundle" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/apps" ]
-      },
       "get" : {
         "operationId" : "get-api-ee-apps-slug-bundle",
         "summary" : "GET /api/ee/apps/{slug}/bundle",
@@ -44191,39 +44950,6 @@
                 "schema" : {
                   "type" : "null"
                 }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/apps" ]
-      }
-    },
-    "/api/ee/apps/{slug}/typed-schema" : {
-      "get" : {
-        "operationId" : "get-api-ee-apps-slug-typed-schema",
-        "summary" : "GET /api/ee/apps/{slug}/typed-schema",
-        "description" : "Return the TypeScript module of the data app's queries and actions: a `defineQuery` call for each question and metric\n  and a `defineAction` call for each action in the app's collection, addressed by entity ID. Superusers only.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
               }
             }
           },
@@ -47777,7 +48503,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-backfill-status",
         "summary" : "GET /api/ee/dependencies/backfill-status",
-        "description" : "Whether no entity awaits the computation of its dependencies, as `complete`, for superusers.",
+        "description" : "Whether no entity awaits the computation of its dependencies, as `complete`, and the entities whose dependencies\n  the job gave up computing until they change, as `failed`, for superusers. Those don't count as awaiting, so the\n  graph is only whole when `complete` is true and `failed` is empty.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -47789,9 +48515,26 @@
                   "properties" : {
                     "complete" : {
                       "type" : "boolean"
+                    },
+                    "failed" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "type" : {
+                            "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+                          }
+                        },
+                        "required" : [ "type", "id" ]
+                      }
                     }
                   },
-                  "required" : [ "complete" ]
+                  "required" : [ "complete", "failed" ]
                 }
               }
             }
@@ -50068,8 +50811,10 @@
           "name" : "model_id",
           "required" : true,
           "schema" : {
-            "type" : "string"
-          }
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
         }, {
           "in" : "query",
           "name" : "action_type",
@@ -52640,12 +53385,14 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "type" : "string"
+              "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_%][A-Za-z0-9._%-]{0,254}$"
             }, {
               "type" : "null"
             } ]
           },
-          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"
+          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -"
         }, {
           "in" : "query",
           "name" : "collection",
@@ -64755,7 +65502,7 @@
       "post" : {
         "operationId" : "post-api-premium-features-token-refresh",
         "summary" : "POST /api/premium-features/token/refresh",
-        "description" : "Clear all token caches and re-check the premium features token against the MetaStore.\n  Returns the fresh token status. Useful for the frontend after a purchase so that new features\n  are recognized without waiting for the cache TTL.",
+        "description" : "Re-check the premium features token against the MetaStore and return the fresh token status. Useful for the\n  frontend after a purchase so that new features are recognized without waiting for the next scheduled refresh.\n\n  When the check fails, returns an unvalidated status whose `:error-details` says why, so the caller knows the check\n  failed. The status this instance holds is left as it was, so feature checks keep using it.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -69826,7 +70573,7 @@
       "put" : {
         "operationId" : "put-api-table",
         "summary" : "PUT /api/table",
-        "description" : "Update all `Table` in `ids`.\n\n  Deprecated, should use PUT /table/edit from now on.",
+        "description" : "Update all `Table` in `ids`.\n\n  Deprecated: use `POST /api/data-studio/table/edit`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -69911,6 +70658,15 @@
                       "type" : "null"
                     } ]
                   },
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "data_source" : {
                     "oneOf" : [ {
                       "type" : "string"
@@ -69928,6 +70684,14 @@
                   "entity_type" : {
                     "oneOf" : [ {
                       "description" : "value must be a valid entity type (keyword or string)."
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "field_order" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "enum" : [ "alphabetical", "custom", "database", "smart" ]
                     }, {
                       "type" : "null"
                     } ]
@@ -70004,6 +70768,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/table" ]
       }
     },
@@ -70035,7 +70810,20 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data_authority" : {
+                      "$ref" : "#/components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-read"
+                    }
+                  },
+                  "required" : [ "data_authority" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -70841,7 +71629,17 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -71602,7 +72400,7 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : "false",
+            "default" : false,
             "type" : "boolean"
           }
         }, {
@@ -77337,6 +78135,17 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
         "tags" : [ "/api/user-key-value" ]
       },
       "delete" : {
@@ -77369,6 +78178,17 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/user-key-value" ]

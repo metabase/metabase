@@ -6,7 +6,6 @@
    [metabase.interestingness.core :as interestingness]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
-   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.util.i18n :refer [tru]]
@@ -40,7 +39,7 @@
   still pending/errored)."
   [eq-id]
   (when-let [sr-id (explorations.db/query-result-stored-result-id eq-id)]
-    (queries.db/stored-result sr-id)))
+    (explorations.db/stored-result sr-id)))
 
 (defn- deserialize-stored-result
   "Inverse of [[qp/do-with-serialization]] for a stored_result's
@@ -70,10 +69,10 @@
   [eq-ids]
   (mapv
    (fn [eq-id]
-     (let [eq        (api/check-404 (t2/hydrate (explorations.db/exploration-query eq-id) :segment_name))
+     (let [eq        (api/check-404 (t2/hydrate (explorations.db/query eq-id) :segment_name))
            eqr       (api/check-404 (explorations.db/query-result eq-id))
-           sr        (api/check-404 (queries.db/stored-result (:stored_result_id eqr)))
-           qp-result (api/check-404 (deserialize-stored-result (queries.db/stored-result-data (:id sr))))]
+           sr        (api/check-404 (explorations.db/stored-result (:stored_result_id eqr)))
+           qp-result (api/check-404 (deserialize-stored-result (:result_data sr)))]
        {:eq eq :eqr eqr :sr sr :qp-result qp-result}))
    eq-ids))
 
@@ -96,6 +95,17 @@
       (throw (ex-info (tru "Cannot combine these results: they were computed under different data-access contexts.")
                       {:status-code 400})))
     (first tokens)))
+
+(defn- composite-resolved-source-ids
+  "The union of every source's resolved source ids, stamped from `dataset-query`, the query the composite row carries.
+  A source with no verified stamp is resolved live."
+  [dataset-query eq-results]
+  (query-perms/stamped-resolved-source-ids
+   dataset-query
+   (query-perms/merge-resolved-source-ids
+    (map (fn [{:keys [sr]}]
+           (query-perms/query->resolved-source-ids (:dataset_query sr) (:resolved_source_ids sr)))
+         eq-results))))
 
 (defn create-ephemeral-card-for-exploration-queries!
   "Materialize an ephemeral `report_card` that represents a *composite chart* — possibly
@@ -132,7 +142,7 @@
         first-eq      (:eq (first eq-results))
         first-sr      (:sr (first eq-results))
         src-card      (when-let [card-id (:card_id first-eq)]
-                        (queries.db/card card-id))
+                        (explorations.db/card-presentation card-id))
         composite-qp  (composite/combine eq-results (or visualization-settings {}))
         dataset-query (:dataset_query first-eq)
         creator-id    (:id creator)]
@@ -159,7 +169,8 @@
                                    :row_count     (:row_count composite-qp)
                                    ;; Without this the read gate denies the composite to
                                    ;; every non-superuser. See [[composite-data-access-token]].
-                                   :data_access_token (composite-data-access-token eq-results)}))
+                                   :data_access_token (composite-data-access-token eq-results)
+                                   :resolved_source_ids (composite-resolved-source-ids dataset-query eq-results)}))
               card-id          (:id (queries/create-card!
                                      {:name                   (or (not-empty (:name first-eq))
                                                                   (not-empty (:name src-card))

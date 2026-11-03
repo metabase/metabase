@@ -6,7 +6,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.segments.schema :as segments.schema]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn insert-segment!
@@ -23,10 +22,10 @@
                                  :description description
                                  :definition  definition))
 
-(mu/defn segment :- [:maybe ::segments.schema/segment]
-  "The ::segments.schema/segment with `id`, or nil."
+(mu/defn segment
+  "The Segment with `id`, or nil."
   [id :- ::lib.schema.id/segment]
-  (t2/select-one :model/Segment :id [:auto/param id]))
+  (t2/select-one :model/Segment :id id))
 
 (mu/defn unarchived-segments
   "The unarchived Segments, in case-insensitive name order."
@@ -36,13 +35,28 @@
 (mu/defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
 
 (mu/defn update-segment!
   "Apply `changes` to the Segment with `id`."
   [id :- ::lib.schema.id/segment
    changes :- (mut/select-keys ::segments.schema/segment.update [:description :caveats :points_of_interest :archived :definition :name :show_in_getting_started])]
-  (t2/update! :model/Segment id changes))
+  (t2/update! :model/Segment :id id changes))
+
+(mu/defn table
+  "The Table with `table-id`, or nil."
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id table-id))
+
+(mu/defn table-database-id
+  "The Database id of the Table with `table-id`, or nil."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one-fn :db_id :model/Table :id table-id))
+
+(mu/defn table-perms-columns
+  "The Database id, schema, and id of the Table with `table-id`, or nil."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one [:model/Table :db_id :schema :id] :id table-id))
 
 (mu/defn collections
   "The Collections with `collection-ids`."

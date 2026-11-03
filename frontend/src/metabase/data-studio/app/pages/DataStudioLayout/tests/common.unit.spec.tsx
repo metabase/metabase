@@ -151,4 +151,25 @@ describe("DataStudioLayout", () => {
       expect(screen.queryByLabelText("Settings")).not.toBeInTheDocument();
     });
   });
+
+  describe("data apps tab", () => {
+    it("shows Data apps as an upsell for admins", async () => {
+      setup();
+
+      const dataAppsTab = await screen.findByRole("link", {
+        name: "Data apps",
+      });
+      expect(dataAppsTab).toHaveAttribute("href", Urls.dataStudioDataApps());
+      expect(within(dataAppsTab).getByTestId("upsell-gem")).toBeInTheDocument();
+    });
+
+    it("hides Data apps from non-admins", async () => {
+      setup({ isAdmin: false });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Data apps" }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

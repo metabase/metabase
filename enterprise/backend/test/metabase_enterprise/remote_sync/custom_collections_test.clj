@@ -46,14 +46,14 @@
                                                                :is_remote_synced true})))))
       (mt/with-temp [:model/Collection {coll-id :id} {:location "/"}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"syncs only the Library"
-                              (t2/update! :model/Collection coll-id {:type "remote-synced"})))))))
+                              (t2/update! :model/Collection :id coll-id {:type "remote-synced"})))))))
 
 (deftest keeps-synced-collections-editable-test
   (mt/with-temp [:model/Collection {coll-id :id} {:location "/"}]
     (t2/query {:update :collection :set {:is_remote_synced true} :where [:= :id coll-id]})
-    (t2/update! :model/Collection coll-id {:name "Renamed"})
+    (t2/update! :model/Collection :id coll-id {:name "Renamed"})
     (is (= "Renamed" (t2/select-one-fn :name :model/Collection :id coll-id)))
-    (t2/update! :model/Collection coll-id {:is_remote_synced false})
+    (t2/update! :model/Collection :id coll-id {:is_remote_synced false})
     (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id coll-id)))))
 
 (deftest allows-library-and-other-namespaces-test
@@ -63,8 +63,8 @@
    (fn []
      (let [library (collection/create-library-collection!)
            data    (t2/select-one :model/Collection :type collection/library-data-collection-type)]
-       (t2/update! :model/Collection (:id library) {:is_remote_synced true})
-       (t2/update! :model/Collection (:id data) {:is_remote_synced true})
+       (t2/update! :model/Collection :id (:id library) {:is_remote_synced true})
+       (t2/update! :model/Collection :id (:id data) {:is_remote_synced true})
        (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id data))))
        (mt/with-temp [:model/Collection {inner-id :id} {:location (str (:location data) (:id data) "/") :type nil :is_remote_synced true}]
          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id inner-id))))))))
@@ -92,7 +92,7 @@
                             (settings/remote-sync-custom-collections-enabled! "false")))
       (mt/user-http-request :crowberto :put 400 "setting/remote-sync-custom-collections-enabled" {:value false})
       (is (true? (settings/remote-sync-custom-collections-enabled)))
-      (t2/update! :model/Collection coll-id {:is_remote_synced false})
+      (t2/update! :model/Collection :id coll-id {:is_remote_synced false})
       (settings/remote-sync-custom-collections-enabled! false)
       (is (false? (settings/remote-sync-custom-collections-enabled))))))
 

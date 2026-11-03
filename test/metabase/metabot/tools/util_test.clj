@@ -283,9 +283,9 @@
                    :model/Table {active-table-id :id} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
                    :model/Table {inactive-table-id :id} {:db_id db-id, :name "inactive_table", :active false, :visibility_type nil}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (is (= active-table-id (:id (metabot.tools.util/get-table active-table-id))))
+        (is (= active-table-id (:id (metabot.tools.util/get-table active-table-id :db_id))))
         (is (thrown? clojure.lang.ExceptionInfo
-                     (metabot.tools.util/get-table inactive-table-id)))))))
+                     (metabot.tools.util/get-table inactive-table-id :db_id)))))))
 
 (deftest ^:parallel find-column-by-field-id-test
   (let [columns [{:id 301 :name "ID"}
@@ -305,6 +305,26 @@
       "301"        5)
     (are [field-id] (nil? (metabot.tools.util/find-column-by-field-id field-id columns))
       999 nil "missing")))
+
+(deftest ^:parallel column-field-ids-of-one-physical-field-test
+  (testing "Later columns of one physical field get their alias, so each column has its own field ID"
+    (let [columns [{:id 14 :lib/desired-column-alias "CREATED_AT"}
+                   {:id 14 :lib/desired-column-alias "CREATED_AT_2"}
+                   {:id 14 :lib/source-column-alias "CREATED_AT_3"}
+                   {:name "count" :lib/desired-column-alias "count"}
+                   {:id 15}
+                   {:id 15}]]
+      (is (= [14 "CREATED_AT_2" "CREATED_AT_3" "count" 15 15]
+             (metabot.tools.util/column-field-ids columns)))
+      (testing "and the lookup finds each column by its own field ID"
+        (are [field-id col-index] (= (get columns col-index)
+                                     (metabot.tools.util/find-column-by-field-id field-id columns))
+          14             0
+          "14"           0
+          "CREATED_AT_2" 1
+          "CREATED_AT_3" 2
+          "count"        3
+          15             4)))))
 
 ;;; ---------------------------------------- metric sources ----------------------------------------
 
@@ -400,3 +420,10 @@
 
       {:source_unavailable true}
       {:database-name "Sample"})))
+
+(deftest declared-errors-keep-their-recovery-test
+  (let [error (try
+                (metabot.tools.util/wrong-source-type! {:id 1 :expected-type :metric :actual-type :question})
+                (catch clojure.lang.ExceptionInfo e e))]
+    (doseq [handle-error [metabot.tools.util/handle-agent-error metabot.tools.util/handle-agent-or-api-error]]
+      (is (identical? error (is (thrown? clojure.lang.ExceptionInfo (handle-error error))))))))

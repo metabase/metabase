@@ -4,6 +4,7 @@
    [metabase.explorations.schema :as explorations.schema]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.query-permissions.core :as query-perms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -17,20 +18,21 @@
 (t2/deftransforms :model/ExplorationThread
   {:query_plan_transcript (mi/transform-json-with-schema "exploration_thread.query_plan_transcript"
                                                          ::explorations.schema/exploration-thread.query-plan-transcript)
-   :data_access_token     perms/data-access-token-transform})
+   :data_access_token     perms/data-access-token-transform
+   :resolved_source_ids   query-perms/resolved-source-ids-transform})
 
 (defmethod mi/can-read? :model/ExplorationThread
   ([instance]
    (mi/can-read? :model/Exploration (:exploration_id instance)))
   ([_model pk]
-   (when-let [thread (explorations.db/exploration-thread pk)]
+   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
      (mi/can-read? :model/Exploration (:exploration_id thread)))))
 
 (defmethod mi/can-write? :model/ExplorationThread
   ([instance]
    (mi/can-write? :model/Exploration (:exploration_id instance)))
   ([_model pk]
-   (when-let [thread (explorations.db/exploration-thread pk)]
+   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
      (mi/can-write? :model/Exploration (:exploration_id thread)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :timelines]

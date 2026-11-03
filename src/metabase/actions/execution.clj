@@ -18,7 +18,6 @@
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.queries.db :as queries.db]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
@@ -51,7 +50,7 @@
   endpoint of shape `{<parameter-id> <value>}`.
 
   `action` should already be hydrated with its `:card`. `opts` carries the audit attribution from the endpoint."
-  [{query :dataset_query, action-id :id, :as action} :- ::actions.schema/action
+  [{query :dataset_query, action-id :id, :as action} :- ::actions.schema/action.executable
    request-parameters :- RequestParameters
    opts                :- [:maybe ExecuteActionOpts]]
   (log/tracef "Executing action %d" action-id)
@@ -93,9 +92,9 @@
 
 (mu/defn- implicit-action-table
   "The Table, with its Fields, that the implicit `action` writes to: its model's source Table when it has a model."
-  [{model-id :model_id, table-id :table_id} :- ::actions.schema/action]
+  [{model-id :model_id, table-id :table_id} :- ::actions.schema/action.executable]
   (let [table-id (if model-id
-                   (:table-id (query/query->database-and-table-ids (:dataset_query (queries.db/card model-id))))
+                   (:table-id (query/query->database-and-table-ids (actions.db/card-query model-id)))
                    table-id)]
     (first (when table-id (actions.db/tables-with-fields [table-id])))))
 
@@ -140,14 +139,14 @@
    :row/delete :model.row/delete})
 
 (def ^:private ImplicitActionKind
-  [:enum :model.row/create :model.row/update :model.row/delete :bulk/create :bulk/update :bulk/delete])
+  [:enum :model.row/create :model.row/update :model.row/delete])
 
 (mu/defn- build-implicit-query :- [:map
                                    [:query          ::mbql.s/Query]
                                    [:row-parameters ::actions.args/row]
                                    [:pk-column :string]
                                    [:prefetch-parameters {:optional true} [:maybe ::parameters.schema/parameters]]]
-  [{:keys [parameters] :as action} :- ::actions.schema/action
+  [{:keys [parameters] :as action} :- ::actions.schema/action.executable
    implicit-action                           :- ImplicitActionKind
    request-parameters                        :- RequestParameters]
   (let [{database-id :db_id
@@ -237,10 +236,10 @@
 
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
-  ([action              :- ::actions.schema/action
+  ([action              :- ::actions.schema/action.executable
     request-parameters  :- RequestParameters]
    (execute-action! action request-parameters nil))
-  ([action              :- ::actions.schema/action
+  ([action              :- ::actions.schema/action.executable
     request-parameters  :- RequestParameters
     opts                :- [:maybe ExecuteActionOpts]]
    (let [;; if a value is supplied for a hidden parameter, it should raise an error
@@ -302,7 +301,7 @@
                  (qp/process-query
                   (qp/userland-query
                    (if-let [model-id (:model_id action)]
-                     (qp.card/query-for-card (queries.db/card model-id) prefetch-parameters nil nil)
+                     (qp.card/query-for-card (actions.db/card model-id) prefetch-parameters nil nil)
                      query)
                    info)))
         ;; only expose values for fields that are not hidden

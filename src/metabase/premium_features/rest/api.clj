@@ -51,15 +51,20 @@
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/token/refresh"
-  "Clear all token caches and re-check the premium features token against the MetaStore.
-  Returns the fresh token status. Useful for the frontend after a purchase so that new features
-  are recognized without waiting for the cache TTL."
+  "Re-check the premium features token against the MetaStore and return the fresh token status. Useful for the
+  frontend after a purchase so that new features are recognized without waiting for the next scheduled refresh.
+
+  When the check fails, returns an unvalidated status whose `:error-details` says why, so the caller knows the check
+  failed. The status this instance holds is left as it was, so feature checks keep using it."
   []
-  (token-check/clear-cache!)
-  (invalidate-llm-proxy-token-cache!)
-  (-> (api/check-404 (premium-features/token-status))
-      response/response
-      (assoc-in [:mb/cookies :cookie/premium-features-cache-timestamp] true)))
+  (let [status (try
+                 (token-check/refresh-now!)
+                 (catch Throwable e
+                   (token-check/unvalidated-status (ex-message e))))]
+    (invalidate-llm-proxy-token-cache!)
+    (-> (api/check-404 status)
+        response/response
+        (assoc-in [:mb/cookies :cookie/premium-features-cache-timestamp] true))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/premium-features` routes."

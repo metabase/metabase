@@ -15,11 +15,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema]
-   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -133,7 +131,6 @@
 (t2/deftransforms :model/Table
   {:entity_type             mi/transform-keyword
    :detected_event_settings mi/transform-json-no-keywordization
-   ;; From `metabase_table_user_settings`, when read through the overlay's `table-query`
    :event_settings          mi/transform-json-no-keywordization
    :is_published            mi/transform-boolean
    :show_in_getting_started mi/transform-boolean
@@ -152,11 +149,7 @@
 
 (mi/define-batched-hydration-method with-table
   :table
-  "Hydrate the Table of each of `instances` from its `table_id`.
-
-  Batched rather than automagic because automagic hydration selects the model's own row, which shows what sync wrote:
-  `mi/can-read?`/`can-query?` read `is_published` and `collection_id` off the hydrated Table to decide access through
-  a published collection, and those are user values."
+  "Hydrate the Table of each of `instances` from its `table_id`, with one query for all of them."
   [instances]
   (let [table-ids (into #{} (keep :table_id) instances)
         id->table (when (seq table-ids)
@@ -236,7 +229,7 @@
   ;; reasserts matching DB-level defaults for non-model insert paths.
   (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
                   :field_order    (or (:field_order table)
-                                      (driver/default-field-order (:engine (warehouses.db/database (:db_id table)))))
+                                      (driver/default-field-order (warehouse-schema.db/database-engine (:db_id table))))
                   :data_layer     :internal
                   :data_authority :unconfigured}]
     (collection/check-allowed-content :table (:collection_id table))
@@ -571,7 +564,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (warehouses.db/database (:db_id table)))
+  (warehouse-schema.db/database (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/deserialization-dependencies "Table" [{:keys [collection_id transform_id]}]
@@ -595,7 +588,7 @@
     (merge fields settings field-settings dimensions segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (:name (warehouses.db/database (:db_id table)))]
+  (let [db-name (warehouse-schema.db/database-name (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
@@ -621,7 +614,7 @@
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-               :data_source :owner_email :is_published :detected_event_settings]
+               :data_source :owner_email :is_published :detected_event_settings :event_settings]
    :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target]
    :transform {:archived_at    (serdes/date)
                :deactivated_at (serdes/date)
@@ -646,7 +639,6 @@
 
 (search.spec/define-spec "table"
   {:model        :model/Table
-   :source       #(warehouse-schema-overlay/table-query {:alias :this})
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived        false
@@ -656,8 +648,7 @@
                   :database-id     :db_id
                   :view-count      true
                   :created-at      true
-                  :updated-at      [:case [:> :settings.updated_at :this.updated_at] :settings.updated_at
-                                    :else :this.updated_at]
+                  :updated-at      true
                   :is-published        :is_published
                   :collection-type     :collection.type
                   :collection-location :collection.location
@@ -686,5 +677,4 @@
                   [:= :db.router_database_id nil]
                   [:not= :this.db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
-                  :settings   [:model/TableUserSettings [:= :settings.table_id :this.id]]
                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})
