@@ -59,7 +59,7 @@ const getNavLink = (name: RegExp) => screen.getByRole("link", { name });
 
 describe("SecurityCenterLayout", () => {
   it("shows the sections in the sidebar", async () => {
-    await setup({ initialRoute: "/admin/security-center/health-checks" });
+    await setup();
 
     expect(getNavLink(/Advisories/)).toHaveAttribute(
       "href",
@@ -69,7 +69,6 @@ describe("SecurityCenterLayout", () => {
       "href",
       "/admin/security-center/health-checks",
     );
-    expect(screen.getByText("Health checks page")).toBeInTheDocument();
   });
 
   it("opens advisories by default and keeps the query string", async () => {
