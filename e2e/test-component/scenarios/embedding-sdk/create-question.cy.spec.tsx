@@ -18,6 +18,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import { defer } from "metabase/utils/promise";
 
 const { H } = cy;
 
@@ -239,17 +240,15 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
     // send "Our analytics" only after the collections tree has answered
-    let releaseRootCollection = () => {};
-    const collectionsTreeAnswered = new Promise<void>((resolve) => {
-      releaseRootCollection = resolve;
-    });
+    const collectionsTreeAnswered = defer();
     cy.intercept(
       { method: "GET", pathname: "/api/collection/tree" },
-      (request) => request.continue(() => releaseRootCollection()),
+      (request) => request.continue(() => collectionsTreeAnswered.resolve()),
     );
     cy.intercept(
       { method: "GET", pathname: "/api/collection/root" },
-      (request) => collectionsTreeAnswered.then(() => request.continue()),
+      (request) =>
+        collectionsTreeAnswered.promise.then(() => request.continue()),
     );
 
     mountSdkContent(
