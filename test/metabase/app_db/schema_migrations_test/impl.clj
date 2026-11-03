@@ -30,7 +30,7 @@
    [toucan2.core :as t2])
   (:import
    (liquibase LabelExpression)
-   (liquibase.changelog ChangeLogHistoryServiceFactory ChangeSet)
+   (liquibase.changelog ChangeSet)
    (liquibase.changelog.filter ChangeSetFilter ChangeSetFilterResult)))
 
 (set! *warn-on-reflection* true)
@@ -145,14 +145,12 @@
                                                 id start-id end-id
                                                 (if inclusive-end? "(inclusive)" "(exclusive)")
                                                 accept?)
-                                    (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]
-          change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
+                                    (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]]
       (versions/ensure-version-tracking! conn database)
       (liquibase/with-scope-locked liquibase
         ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
         ;; and initializing checksums so that they match the ones generated in production.
         (.listUnrunChangeSets liquibase nil (LabelExpression.))
-        (.generateDeploymentId change-log-service)
         (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters}))
       (mdb.test-util/split-legacy-majors-into-deployments! conn changelog-table))))
 

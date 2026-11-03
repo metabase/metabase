@@ -20,6 +20,8 @@ export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
   source: TableSchema;
   limit?: number;
   enabled?: boolean;
+  /** The entity ID of the question a data app runs in production. */
+  entityId?: string;
 };
 
 /**

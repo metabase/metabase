@@ -1,6 +1,7 @@
 // Register mocks before loading the modules under test.
 // oxfmt-ignore
 import {
+  PUBLISHED_QUESTION_ENTITY_ID,
   createMockStore,
   mockFetchTableMetadataAndForeignKeys,
   mockRunRtkEndpoint,
@@ -11,7 +12,9 @@ import {
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { cardApi } from "metabase/api";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import * as Lib from "metabase-lib";
+import { isObject } from "metabase-types/guards";
 
 import {
   aggregations,
@@ -965,6 +968,61 @@ describe("resolveDatasetQuery named breakouts", () => {
         expect.anything(),
         ["field", expect.anything(), "created_month"],
       ],
+    ]);
+  });
+});
+
+describe("resolveDatasetQuery in a data app", () => {
+  const ordersCountQuery = {
+    entityId: PUBLISHED_QUESTION_ENTITY_ID,
+    source: TEST_SCHEMA.tables.orders,
+    aggregations: [count()],
+  };
+
+  beforeEach(() => {
+    EMBEDDING_SDK_CONFIG.isDataApp = true;
+    mockRunRtkEndpoint.mockImplementation(async (request) => {
+      if (isObject(request) && "card" in request) {
+        return {
+          [PUBLISHED_QUESTION_ENTITY_ID]: {
+            id: 41,
+            type: "card",
+            status: "ok",
+          },
+        };
+      }
+      return isObject(request) && request.id === 41
+        ? TEST_METADATA.questions[41]
+        : undefined;
+    });
+  });
+
+  afterEach(() => {
+    EMBEDDING_SDK_CONFIG.isDataApp = false;
+    EMBEDDING_SDK_CONFIG.isDataAppDev = false;
+  });
+
+  it("runs the question its entity ID names, which holds the query's clauses", async () => {
+    const datasetQuery =
+      await resolveDatasetQueryInBundle(createMockStore())(ordersCountQuery);
+
+    expect(stagesOf(datasetQuery)).toEqual([
+      expect.objectContaining({ "source-card": 41 }),
+    ]);
+    expect(stagesOf(datasetQuery)[0]).not.toHaveProperty("aggregation");
+  });
+
+  it("runs the table query itself in the dev preview", async () => {
+    EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+    const datasetQuery =
+      await resolveDatasetQueryInBundle(createMockStore())(ordersCountQuery);
+
+    expect(stagesOf(datasetQuery)).toEqual([
+      expect.objectContaining({
+        "source-table": 1,
+        aggregation: [expect.anything()],
+      }),
     ]);
   });
 });

@@ -40,9 +40,6 @@ export const NewItemMenuView = ({
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
   );
-  const areAiFeaturesEnabled = useSelector(
-    (state) => getSetting(state, "ai-features-enabled?") !== false,
-  );
 
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
@@ -51,13 +48,9 @@ export const NewItemMenuView = ({
   const menuItems = useMemo(() => {
     const items = [];
 
-    if (hasDataAccess && areAiFeaturesEnabled) {
+    if (hasDataAccess && hasNlqAccess) {
       items.push(
-        <NewMenuItemAIExploration
-          key="nlq"
-          collectionId={collectionId}
-          hasNlqAccess={hasNlqAccess}
-        />,
+        <NewMenuItemAIExploration key="nlq" collectionId={collectionId} />,
       );
     }
 
@@ -130,7 +123,6 @@ export const NewItemMenuView = ({
     return items;
   }, [
     hasDataAccess,
-    areAiFeaturesEnabled,
     hasNativeWrite,
     collectionId,
     lastUsedDatabaseId,

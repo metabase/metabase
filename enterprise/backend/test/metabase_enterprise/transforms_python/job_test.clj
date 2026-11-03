@@ -21,7 +21,7 @@
         (mt/with-premium-features #{:transforms-python :transforms-basic :hosting}
           (mt/dataset transforms-dataset/transforms-test
             (transforms.tu/with-transform-cleanup! [target {:type   "table"
-                                                            :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                                                            :schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
                                                             :name   "target_table"}]
               (mt/with-temp
                 [:model/TransformTag {tag-id :id}       {:name "every second"}

@@ -27,14 +27,13 @@
                          [:%lower.display_name :asc]]}))
 
 (mu/defn active-visible-schemas-for-databases
-  "The distinct Database id and schema of the active, visible Tables of the Databases with `database-ids`."
+  "The Database id, schema and published state of each active, visible Table of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/query {:select-distinct [:db_id :schema]
-             :from      [(warehouse-schema-overlay/table-query)]
-             :where           [:and
-                               [:in :db_id database-ids]
-                               [:= :active true]
-                               [:= :visibility_type nil]]}))
+  (t2/select [:model/Table :db_id :schema :is_published]
+             :db_id           [:in database-ids]
+             :active          true
+             :visibility_type nil
+             {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn database-engines
   "The id and engine of every Database."
@@ -251,7 +250,7 @@
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
+  (t2/update! :model/Database :id database-id changes))
 
 (mu/defn delete-destination-databases!
   "Delete the routing destination Databases of the Database with `router-database-id`, returning the number deleted."

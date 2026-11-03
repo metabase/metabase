@@ -11,8 +11,8 @@ import {
   useMemo,
 } from "react";
 
-import { useIsTransitionOpen } from "./use-is-transition-open";
 import { useTooltipEventIsolation } from "./use-tooltip-event-isolation";
+import { useTooltipVisibility } from "./use-tooltip-visibility";
 
 const TooltipPortalTargetContext = createContext<HTMLElement | null>(null);
 
@@ -44,11 +44,14 @@ const TooltipImpl = forwardRef<HTMLDivElement, TooltipProps>(
       [contextTarget, callerPortalTarget, portalProps],
     );
 
-    const isControlled = rest.opened !== undefined;
-    const { isOpen, transitionProps: resolvedTransitionProps } =
-      useIsTransitionOpen(transitionProps);
-
-    const isHoverable = isOpen && !isControlled;
+    const {
+      isHoverable,
+      isReplaced,
+      isEnteringInstantly,
+      transitionProps: resolvedTransitionProps,
+    } = useTooltipVisibility(transitionProps, {
+      isControlled: rest.opened !== undefined,
+    });
 
     const { tooltipProps, labelProps } = useTooltipEventIsolation(rest);
 
@@ -61,7 +64,14 @@ const TooltipImpl = forwardRef<HTMLDivElement, TooltipProps>(
         // Escape key, so it shouldn't linger.
         closeDelay={rest.disabled ? 0 : rest.closeDelay}
         label={<div {...labelProps}>{label}</div>}
-        mod={[{ hoverable: isHoverable }, mod]}
+        mod={[
+          {
+            hoverable: isHoverable,
+            replaced: isReplaced,
+            "entering-instantly": isEnteringInstantly,
+          },
+          mod,
+        ]}
         portalProps={resolvedPortalProps}
         transitionProps={resolvedTransitionProps}
         ref={ref}

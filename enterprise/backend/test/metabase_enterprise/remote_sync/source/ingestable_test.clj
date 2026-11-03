@@ -10,6 +10,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.users.settings]))
 
+(set! *warn-on-reflection* true)
+
 (comment metabase.audit-app.events.audit-log/keep-me
          metabase.users.settings/keep-me)
 

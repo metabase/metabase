@@ -120,7 +120,7 @@
   (testing "Check that changing the schedule column(s) for a DB properly updates the scheduled tasks"
     (with-scheduler-setup!
       (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
-        (t2/update! :model/Database (u/the-id database)
+        (t2/update! :model/Database :id (u/the-id database)
                     {:metadata_sync_schedule      "0 15 10 ? * MON-FRI"    ; 10:15 AM every weekday
                      :cache_field_values_schedule "0 11 11 11 11 ?"})      ; Every November 11th at 11:11 AM
         (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
@@ -131,7 +131,7 @@
   (testing "Check that changing one schedule doesn't affect the other"
     (with-scheduler-setup!
       (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
-        (t2/update! :model/Database (u/the-id database)
+        (t2/update! :model/Database :id (u/the-id database)
                     {:cache_field_values_schedule "0 15 10 ? * MON-FRI"})
         (is (= [sync-job
                 (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
@@ -140,7 +140,7 @@
 (deftest schedule-changes-only-expected-test-2
   (with-scheduler-setup!
     (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
-      (t2/update! :model/Database (u/the-id database)
+      (t2/update! :model/Database :id (u/the-id database)
                   {:metadata_sync_schedule "0 15 10 ? * MON-FRI"})
       (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
               fv-job]
@@ -379,8 +379,8 @@
     (mt/with-temp [:model/Database db {:metadata_sync_schedule      sync-default
                                        :cache_field_values_schedule fv-default
                                        :details                     {:let-user-control-scheduling true}}]
-      (t2/update! :model/Database (u/the-id db) {:details (assoc (:details db)
-                                                                 :let-user-control-scheduling true)})
+      (t2/update! :model/Database :id (u/the-id db) {:details (assoc (:details db)
+                                                                     :let-user-control-scheduling true)})
       (let [before (t2/select-one :model/Database :id (u/the-id db))]
         (#'task.sync-databases/randomize-db-schedules-if-needed!)
         (let [after (t2/select-one :model/Database :id (u/the-id db))]

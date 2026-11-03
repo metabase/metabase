@@ -395,13 +395,93 @@
                  c {}
                  d {}}]
     (testing "stats list each cycle's sizes, rounded density, and cycle rank"
-      (is (= {:api-any-namespaces  2
-              :module-count        4
-              :scc-module-sizes    [3]
-              :scc-namespace-sizes [4]
-              :scc-densities       [0.67]
-              :scc-cycle-ranks     [2]}
+      (is (= {:api-any-namespaces       2
+              :module-count             4
+              :scc-module-sizes         [3]
+              :scc-namespace-sizes      [4]
+              :scc-densities            [0.67]
+              :scc-cycle-ranks          [2]
+              :upward-requires          0
+              :upward-module-edges      0
+              :upward-internal-requires 0
+              :upward-cycle-requires    0}
              (dev.deps-graph/module-boundary-stats deps config))))))
+
+(deftest ^:parallel upward-references-test
+  (let [deps   '[{:namespace metabase.x.core
+                  :module    x
+                  :deps      [{:namespace metabase.x.y.core, :module x.y}]}
+                 {:namespace metabase.x.y.core
+                  :module    x.y
+                  :deps      [{:namespace metabase.x.core,   :module x}
+                              {:namespace metabase.x.impl,   :module x}
+                              {:namespace metabase.x.y.impl, :module x.y}]}
+                 {:namespace metabase.w.v.core
+                  :module    w.v
+                  :deps      [{:namespace metabase.w.impl, :module w}]}
+                 {:namespace metabase.x.y.z.core
+                  :module    x.y.z
+                  ;; In a cycle with `z`, which `x` is not part of.
+                  :deps      [{:namespace metabase.x.core, :module x}
+                              {:namespace metabase.z.core, :module z}]}
+                 {:namespace metabase-enterprise.x.core
+                  :module    enterprise/x
+                  :deps      [{:namespace metabase.x.impl, :module x}]}
+                 {:namespace metabase-enterprise.x.y.core
+                  :module    enterprise/x.y
+                  ;; Module `x.y` is not an ancestor: the ancestors of `enterprise/x.y` are `enterprise/x` and `x`.
+                  :deps      [{:namespace metabase.x.y.impl, :module x.y}
+                              {:namespace metabase.x.impl,   :module x}]}
+                 {:namespace metabase.z.core
+                  :module    z
+                  :deps      [{:namespace metabase.x.core,     :module x}
+                              {:namespace metabase.x.y.z.core, :module x.y.z}]}]
+        config '{enterprise/x   {}
+                 enterprise/x.y {}
+                 w              {:api :any}
+                 w.v            {}
+                 x              {}
+                 x.y            {}
+                 x.y.z          {}
+                 z              {}}]
+    (testing "a require into any ancestor is listed, except an enterprise companion requiring its own OSS module"
+      (is (= '[{:namespace          metabase.x.y.core
+                :module             x.y
+                :required-namespace metabase.x.core
+                :ancestor           x
+                :api?               true
+                :cycle?             true}
+               {:namespace          metabase.x.y.core
+                :module             x.y
+                :required-namespace metabase.x.impl
+                :ancestor           x
+                :api?               false
+                :cycle?             true}
+               {:namespace          metabase.w.v.core
+                :module             w.v
+                :required-namespace metabase.w.impl
+                :ancestor           w
+                :api?               true
+                :cycle?             false}
+               {:namespace          metabase.x.y.z.core
+                :module             x.y.z
+                :required-namespace metabase.x.core
+                :ancestor           x
+                :api?               true
+                :cycle?             false}
+               {:namespace          metabase-enterprise.x.y.core
+                :module             enterprise/x.y
+                :required-namespace metabase.x.impl
+                :ancestor           x
+                :api?               false
+                :cycle?             false}]
+             (dev.deps-graph/upward-references deps config))))
+    (testing "stats count upward requires, their module pairs, and the internal and cycle-closing subsets"
+      (is (=? {:upward-requires          5
+               :upward-module-edges      4
+               :upward-internal-requires 2
+               :upward-cycle-requires    2}
+              (dev.deps-graph/module-boundary-stats deps config))))))
 
 (deftest ^:parallel module-boundary-config-values-have-valid-types-test
   (testing "Module boundary keys have the shapes the ratchet counts expect"
