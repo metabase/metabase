@@ -1,6 +1,9 @@
 import fetchMock from "fetch-mock";
 
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import {
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -84,16 +87,6 @@ function mockRootCollectionRequest(
   );
 }
 
-function mockPersonalCollectionItemsEndpoint() {
-  fetchMock.get("path:/api/collection/222/items", {
-    total: 1,
-    data: [createMockCollectionItem({ id: 4, name: "personal item" })],
-    models: ["card"],
-    limit: null,
-    offset: null,
-  });
-}
-
 async function setup({ rootCollectionRequest }: SetupOpts = {}) {
   setupCollectionsEndpoints({
     collections: [COLLECTIONS.PERSONAL, COLLECTIONS.REGULAR],
@@ -103,7 +96,12 @@ async function setup({ rootCollectionRequest }: SetupOpts = {}) {
 
   if (rootCollectionRequest) {
     mockRootCollectionRequest(rootCollectionRequest);
-    mockPersonalCollectionItemsEndpoint();
+    setupCollectionItemsEndpoint({
+      collection: COLLECTIONS.PERSONAL,
+      collectionItems: [
+        createMockCollectionItem({ id: 4, name: "personal item" }),
+      ],
+    });
   }
 
   renderWithProviders(
