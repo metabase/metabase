@@ -4,6 +4,8 @@ import { AdminNavLink } from "metabase/nav/components/AdminNavbar/AdminNavLink";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { useSecurityCenterUrl } from "../../hooks/use-security-center-url";
+
 import { SecurityCenterBadge } from "./SecurityCenterBadge";
 
 const PATH = Urls.securityCenter();
@@ -15,9 +17,11 @@ interface SecurityCenterMobileNavItemProps {
 export function SecurityCenterMobileNavItem({
   currentPath,
 }: SecurityCenterMobileNavItemProps) {
+  const url = useSecurityCenterUrl();
+
   return (
     <AdminNavLink
-      to={PATH}
+      to={url}
       isSelected={currentPath.startsWith(PATH)}
       isInMobileNav
     >
