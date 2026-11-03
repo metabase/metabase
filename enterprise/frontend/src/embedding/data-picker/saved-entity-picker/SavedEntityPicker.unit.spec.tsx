@@ -100,10 +100,10 @@ async function setup({ rootCollectionRequest }: SetupOpts = {}) {
   });
 
   mockCollectionItemsEndpoint();
-  mockPersonalCollectionItemsEndpoint();
 
   if (rootCollectionRequest) {
     mockRootCollectionRequest(rootCollectionRequest);
+    mockPersonalCollectionItemsEndpoint();
   }
 
   renderWithProviders(
