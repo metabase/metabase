@@ -16,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:sequential record-score-roundtrips-json-via-raw-jdbc-test
+(deftest ^:synchronized record-score-roundtrips-json-via-raw-jdbc-test
   (testing "record-score! inserts a row whose score_data round-trips back through raw SQL as the expected JSON"
     ;; The raw-JDBC INSERT bypasses Toucan, so the test framework's lazy DB-init (normally
     ;; triggered by the first `t2/*` call) doesn't fire on its own. Force it inline so the
@@ -99,7 +99,7 @@
                  ::probe ::fallback
                  #(throw (sql-error-with-state "42P01")))))))))
 
-(deftest ^:sequential verify-write-target-shape-passes-on-current-schema-test
+(deftest ^:synchronized verify-write-target-shape-passes-on-current-schema-test
   (testing "verify-write-target-shape! is a no-op when the appdb has the columns record-score! writes"
     (mt/initialize-if-needed! :db)
     (is (nil? (appdb-source/verify-write-target-shape!)))))
