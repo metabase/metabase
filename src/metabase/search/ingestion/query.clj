@@ -84,3 +84,9 @@
   (first (search.spec/qualify-columns
           :this
           (attrs->select-items {:id (-> (search.spec/spec search-model) :attrs :id)}))))
+
+(defn doc-id-expression
+  "The `:this`-qualified expression `search-model`'s documents take their id from, without any alias."
+  [search-model]
+  (let [select-item (doc-id-select-item search-model)]
+    (if (vector? select-item) (first select-item) select-item)))
