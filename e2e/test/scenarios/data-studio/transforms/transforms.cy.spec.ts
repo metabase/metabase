@@ -2066,6 +2066,11 @@ LIMIT
       H.undoToast()
         .findByText('"Delete Me" has been deleted')
         .should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_folder_deleted",
+        event_detail: "transforms_only",
+        result: "success",
+      });
 
       cy.log("verify collection and its transform are gone");
       getTransformsList().within(() => {

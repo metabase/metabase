@@ -4,6 +4,7 @@ import { msgid, ngettext, t } from "ttag";
 import { useDeleteTransformsFolderMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import { deleteTransformsFolderAndTrack } from "metabase/transforms/analytics";
 import {
   Button,
   FocusTrap,
@@ -40,10 +41,15 @@ export function DeleteTransformsFolderModal({
 
   const handleSubmit = async () => {
     try {
-      await deleteTransformsFolder({
-        id: collection.id,
-        "delete-tables": shouldDeleteTables || undefined,
-      }).unwrap();
+      await deleteTransformsFolderAndTrack({
+        deleteFolder: () =>
+          deleteTransformsFolder({
+            id: collection.id,
+            "delete-tables": shouldDeleteTables || undefined,
+          }).unwrap(),
+        collectionId: collection.id,
+        deleteTables: shouldDeleteTables,
+      });
       sendSuccessToast(t`"${collection.name}" has been deleted`);
     } catch (error) {
       sendErrorToast(getErrorMessage(collection, error));
