@@ -4,6 +4,9 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
+  type RefObject,
+  type SetStateAction,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -124,6 +127,12 @@ const SLOT_ATTR = "data-caret-slot";
 const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta"]);
 const BAR_ATTR = "data-expression-bar";
 const PILL_ATTR = "data-pill-index";
+/** Prototype: a stable identity per token, so a token that moved can glide there. */
+const TOKEN_KEY_ATTR = "data-token-key";
+/** Prototype: how long a new connector's fade-in runs; its class comes off after. */
+const FRESH_MS = 400;
+/** Prototype: how long a token takes to glide to its new place. */
+const GLIDE_MS = 420;
 const ENTER_AT_START_EVENT = "expression-bar-enter-start";
 const ENTER_AT_END_EVENT = "expression-bar-enter-end";
 const MOVE_CARET_EVENT = "expression-bar-move-caret";
@@ -206,7 +215,7 @@ export function ExpressionBar({
     () => readTokens(query, stageIndex),
     [query, stageIndex],
   );
-  const [tokens, setTokens] = useState(committedTokens);
+  const [tokens, setTokensState] = useState(committedTokens);
   const [caret, setCaret] = useState(committedTokens.length);
   const [text, setText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -232,6 +241,24 @@ export function ExpressionBar({
   const [pillEdit, setPillEdit] = useState<PillEdit>();
   const inputRef = useRef<HTMLInputElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
+  // Prototype: every change of the tokens goes through the glide, so that the
+  // tokens around an added or removed one slide to their new place.
+  const { capture } = useGlide(barRef);
+  const setTokens = useCallback(
+    (next: SetStateAction<Token[]>) => {
+      capture();
+      setTokensState(next);
+    },
+    [capture],
+  );
+  const tokenKeys = useMemo(
+    () =>
+      getTokenKeys(tokens, (clause) =>
+        getFilterLabel(query, stageIndex, clause),
+      ),
+    [tokens, query, stageIndex],
+  );
+  const freshKeys = useFreshConnectorKeys(tokens, tokenKeys);
   const shouldRefocusRef = useRef(false);
   const [hasFocus, setHasFocus] = useState(false);
   const isPointerInBarRef = useRef(false);
@@ -1237,7 +1264,11 @@ export function ExpressionBar({
               />
             ),
             pillEdit?.index === index && token.type === "filter" ? (
-              <span key={`token-${index}`} className={S.filterToken}>
+              <span
+                key={`token-${index}`}
+                className={S.filterToken}
+                {...{ [TOKEN_KEY_ATTR]: tokenKeys[index] }}
+              >
                 <DraftFilterPill
                   key={`edit-${index}`}
                   query={query}
@@ -1274,10 +1305,12 @@ export function ExpressionBar({
               <TokenView
                 key={`token-${index}`}
                 index={index}
+                tokenKey={tokenKeys[index]}
                 query={query}
                 stageIndex={stageIndex}
                 token={token}
                 depth={parenDepths[index]}
+                isFresh={freshKeys.has(tokenKeys[index])}
                 isAndHidden={!areAndsVisible}
                 isSelected={
                   selection != null &&
@@ -1597,6 +1630,160 @@ function getSlotOnAdjacentRow(
 }
 
 /**
+ * Prototype: a key per token that survives the tokens around it changing. A
+ * pill is its label; a parenthesis belongs to the pill it opens before or
+ * closes after; a connector to the pills on both sides of it. Repeats get a
+ * counter, so two "(" before one pill stay two keys.
+ */
+function getTokenKeys(
+  tokens: readonly Token[],
+  labelOf: (clause: Lib.FilterClause) => string,
+): string[] {
+  const counts = new Map<string, number>();
+  const unique = (base: string) => {
+    const count = counts.get(base) ?? 0;
+    counts.set(base, count + 1);
+    return count === 0 ? base : `${base}#${count}`;
+  };
+  const filterKeys = tokens.map((token) =>
+    token.type === "filter" ? unique(`filter:${labelOf(token.clause)}`) : null,
+  );
+  const nextFilterKey = (index: number) =>
+    filterKeys.slice(index + 1).find((key) => key != null) ?? "end";
+  const previousFilterKey = (index: number) =>
+    filterKeys
+      .slice(0, index)
+      .reverse()
+      .find((key) => key != null) ?? "start";
+  return tokens.map((token, index) => {
+    if (token.type === "filter") {
+      return filterKeys[index] ?? "";
+    }
+    if (token.type === "paren") {
+      return unique(
+        token.side === "open"
+          ? `(:${nextFilterKey(index)}`
+          : `):${previousFilterKey(index)}`,
+      );
+    }
+    // AND and OR share a key: toggling one is not a new connector.
+    return unique(`op:${previousFilterKey(index)}|${nextFilterKey(index)}`);
+  });
+}
+
+/**
+ * Prototype: the keys of connectors and parentheses that the last change of
+ * the tokens added, for as long as their fade-in runs. Worked out while
+ * rendering, so the first paint already starts the animation.
+ */
+function useFreshConnectorKeys(
+  tokens: readonly Token[],
+  tokenKeys: readonly string[],
+): ReadonlySet<string> {
+  const [previousKeys, setPreviousKeys] = useState(tokenKeys);
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
+  if (previousKeys !== tokenKeys) {
+    setPreviousKeys(tokenKeys);
+    const previous = new Set(previousKeys);
+    const added = tokenKeys.filter(
+      (key, index) => tokens[index].type !== "filter" && !previous.has(key),
+    );
+    if (added.length > 0) {
+      setFresh(new Set(added));
+    }
+  }
+  useEffect(() => {
+    if (fresh.size === 0) {
+      return;
+    }
+    const timeout = setTimeout(() => setFresh(new Set()), FRESH_MS);
+    return () => clearTimeout(timeout);
+  }, [fresh]);
+  return fresh;
+}
+
+/**
+ * Prototype: FLIP for the tokens. `capture` records where each token is before
+ * the tokens change; after the next render every token that moved is set back
+ * to its old place with a transform, then released to glide to its new one.
+ * Only the bar's own tokens: the nested summary bar glides its own.
+ */
+function useGlide(barRef: RefObject<HTMLElement | null>) {
+  const snapshotRef = useRef<Map<string, DOMRect>>(undefined);
+
+  const capture = useCallback(() => {
+    const bar = barRef.current;
+    if (!bar || snapshotRef.current) {
+      return;
+    }
+    const rects = new Map<string, DOMRect>();
+    bar
+      .querySelectorAll<HTMLElement>(`:scope > [${TOKEN_KEY_ATTR}]`)
+      .forEach((element) => {
+        const key = element.getAttribute(TOKEN_KEY_ATTR);
+        if (key != null) {
+          rects.set(key, element.getBoundingClientRect());
+        }
+      });
+    snapshotRef.current = rects;
+  }, [barRef]);
+
+  useLayoutEffect(() => {
+    const snapshot = snapshotRef.current;
+    const bar = barRef.current;
+    if (!snapshot || !bar) {
+      return;
+    }
+    snapshotRef.current = undefined;
+    const moving: HTMLElement[] = [];
+    bar
+      .querySelectorAll<HTMLElement>(`:scope > [${TOKEN_KEY_ATTR}]`)
+      .forEach((element) => {
+        const key = element.getAttribute(TOKEN_KEY_ATTR);
+        const before = key != null ? snapshot.get(key) : undefined;
+        if (!before) {
+          return;
+        }
+        const after = element.getBoundingClientRect();
+        const dx = before.left - after.left;
+        const dy = before.top - after.top;
+        if (dx !== 0 || dy !== 0) {
+          element.style.transition = "none";
+          element.style.transform = `translate(${dx}px, ${dy}px)`;
+          moving.push(element);
+        }
+      });
+    if (
+      moving.length === 0 ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      moving.forEach((element) => {
+        element.style.transition = "";
+        element.style.transform = "";
+      });
+      return;
+    }
+    // Never cancelled: React may render again before the next frame (a
+    // keystroke flushes effects at once), and a cancelled release would leave
+    // the token stuck at its old place. A token captured again mid-glide is
+    // measured where it is, so the next glide carries on from there.
+    requestAnimationFrame(() => {
+      moving.forEach((element) => {
+        element.style.transition = `transform ${GLIDE_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`;
+        element.style.transform = "";
+      });
+    });
+    setTimeout(() => {
+      moving.forEach((element) => {
+        element.style.transition = "";
+      });
+    }, GLIDE_MS + 80);
+  });
+
+  return { capture };
+}
+
+/**
  * Labels of filters that just appeared from outside the bar (a drill), so
  * they can flash once and show where they landed. The bar's own commits are
  * skipped through `skipRef`.
@@ -1640,6 +1827,7 @@ function useFlashedLabels(
 
 type TokenViewProps = {
   index: number;
+  tokenKey: string;
   query: Lib.Query;
   stageIndex: number;
   token: Token;
@@ -1650,6 +1838,8 @@ type TokenViewProps = {
   isSelected: boolean;
   hasError: boolean;
   isFlashed: boolean;
+  /** Prototype: a connector or parenthesis that just appeared fades in. */
+  isFresh: boolean;
   onReplace: (token: Token) => void;
   onEdit: (part: FilterPillPart) => void;
   onRemove: () => void;
@@ -1661,6 +1851,7 @@ type TokenViewProps = {
 
 function TokenView({
   index,
+  tokenKey,
   query,
   stageIndex,
   token,
@@ -1669,6 +1860,7 @@ function TokenView({
   isSelected,
   hasError,
   isFlashed,
+  isFresh,
   onReplace,
   onEdit,
   onRemove,
@@ -1680,6 +1872,7 @@ function TokenView({
     [S.tokenError]: hasError,
     [S.tokenSelected]: isSelected,
   });
+  const connectorClass = cx(errorClass, { [S.tokenFresh]: isFresh });
 
   if (token.type === "op" && token.op === "and" && isAndHidden) {
     return null;
@@ -1690,8 +1883,9 @@ function TokenView({
     return (
       <Connector
         index={index}
+        tokenKey={tokenKey}
         label={token.op.toUpperCase()}
-        className={errorClass}
+        className={connectorClass}
         // Removing an OR leaves the implicit AND; removing an AND leaves the gap open.
         onRemove={isAnd ? onRemove : () => onReplace(opToken("and"))}
         onToggle={() => onReplace(opToken(isAnd ? "or" : "and"))}
@@ -1704,8 +1898,9 @@ function TokenView({
     return (
       <Connector
         index={index}
+        tokenKey={tokenKey}
         label={token.side === "open" ? "(" : ")"}
-        className={cx(S.connectorParen, errorClass)}
+        className={cx(S.connectorParen, connectorClass)}
         style={{ opacity: Math.max(1 - depth * 0.25, 0.5) }}
         onRemove={onRemove}
         onLeave={onLeave}
@@ -1723,7 +1918,7 @@ function TokenView({
         stageIndex={stageIndex}
         filter={token.clause}
         className={cx(RowS.pill, className)}
-        pillAttributes={{ [PILL_ATTR]: index }}
+        pillAttributes={{ [PILL_ATTR]: index, [TOKEN_KEY_ATTR]: tokenKey }}
         onSelect={(filterable) =>
           onReplace(filterToken(toFilterClause(query, stageIndex, filterable)))
         }
@@ -1764,7 +1959,7 @@ function TokenView({
       tabIndex={-1}
       onClick={() => onEdit("values")}
       onKeyDown={handleKeyDown}
-      {...{ [PILL_ATTR]: index }}
+      {...{ [PILL_ATTR]: index, [TOKEN_KEY_ATTR]: tokenKey }}
     >
       <FilterPillParts
         columnLabel={column.label}
@@ -1789,6 +1984,7 @@ function TokenView({
 
 type ConnectorProps = {
   index: number;
+  tokenKey: string;
   label: string;
   className?: string;
   style?: CSSProperties;
@@ -1806,6 +2002,7 @@ type ConnectorProps = {
  */
 function Connector({
   index,
+  tokenKey,
   label,
   className,
   style,
@@ -1842,7 +2039,7 @@ function Connector({
       tabIndex={-1}
       onClick={onRemove}
       onKeyDown={handleKeyDown}
-      {...{ [PILL_ATTR]: index }}
+      {...{ [PILL_ATTR]: index, [TOKEN_KEY_ATTR]: tokenKey }}
     >
       <span className={S.connectorLabel}>{label}</span>
       {onRemove && (

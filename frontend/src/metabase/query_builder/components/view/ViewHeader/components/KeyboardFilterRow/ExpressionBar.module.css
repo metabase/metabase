@@ -248,6 +248,30 @@
   animation: flash 1.6s ease-out;
 }
 
+/* A connector or parenthesis the last edit added fades in where the pills
+   around it glide apart to make room. */
+.tokenFresh {
+  animation: token-fresh 300ms ease-out both;
+}
+
+@keyframes token-fresh {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tokenFresh {
+    animation: none;
+  }
+}
+
 /* Clicks fall through to the bar, which puts the caret at the end. */
 .placeholder {
   color: var(--mb-color-text-secondary);
