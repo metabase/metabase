@@ -146,6 +146,7 @@ Since the agent uses the CLI to create content directly in Metabase, to undo cha
 
 - [Remote Sync](../data-modeling/semantic-layer/remote-sync.md)
 - [Metabase CLI](../installation-and-operation/metabase-cli.md)
+- [Data apps](../data-apps/start.md): custom apps that your agent builds on your semantic layer, and ships with Remote Sync.
 - [Metabase Representation Format](https://github.com/metabase/representations)
 - [Agent skills](https://github.com/metabase/agent-skills)
 - [MCP server](./mcp.md): for agents that need live metadata lookups outside the agent-driven workflow.
