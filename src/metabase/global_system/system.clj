@@ -91,4 +91,4 @@
 (defn mutable-component-handle
   "Make a handle for the component stored under `k` in the global system."
   [k]
-  (->ComponentHandle k))
+  (ComponentHandle. k))
