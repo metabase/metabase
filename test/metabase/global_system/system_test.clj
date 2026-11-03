@@ -14,9 +14,9 @@
 (def ^:private other-handle (system/mutable-component-handle ::other))
 
 (defn- scheduler
-  "A worker thread that runs thunks handed to it and returns their results. Running on a second thread is
-   the only way to tell a root value from a thread-local one, since a thread-local binding is invisible
-   from anywhere else."
+  "A worker thread that runs thunks handed to it and returns their results.
+   Running on a second thread is the only way to tell a root value from a thread-local one, since a thread-local
+   binding is invisible from anywhere else."
   []
   (let [requests (LinkedBlockingQueue.)
         fut      (future
@@ -62,7 +62,7 @@
      (global-setup!)
      (is (= :ready-global-db @db-handle))
      (is (= :ready-global-db (scheduler-sees)))
-     (testing "Dynamic binding is seen only from dynamic scope"
+     (testing "a dynamic binding is seen only from its dynamic scope"
        (mc/binding db-handle :uninit-dynamic-db
                    (fn dynamic-test-scope []
                      (is (= :uninit-dynamic-db @db-handle))
@@ -70,7 +70,7 @@
                      (mc/reset! db-handle :ready-dynamic-db)
                      (is (= :ready-dynamic-db @db-handle))
                      (is (= :ready-global-db (scheduler-sees))))))
-     (testing "After the binding scope ends, the global value is restored."
+     (testing "after the binding scope ends, the global value is restored"
        (is (= :ready-global-db @db-handle))
        (is (= :ready-global-db (scheduler-sees)))))))
 
@@ -80,11 +80,11 @@
      (global-setup!)
      (is (= :ready-global-db @db-handle))
      (is (= :ready-global-db (scheduler-sees)))
-     (testing "Root binding changes are seen on all threads"
+     (testing "root binding changes are seen on all threads"
        (mc/alter-root db-handle :uninit-global-db)
        (is (= :uninit-global-db @db-handle))
        (is (= :uninit-global-db (scheduler-sees))))
-     (testing "Atom mutations on the root atom are seen on all threads"
+     (testing "atom mutations on the root atom are seen on all threads"
        (mc/reset! db-handle :closed-global-db)
        (is (= :closed-global-db @db-handle))
        (is (= :closed-global-db (scheduler-sees)))))))
@@ -167,7 +167,12 @@
         no-value  #"Component has no value"]
     (testing "reading a component that was never given a value fails loudly rather than returning nil"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo no-value @never-set)))
-    (testing "so do writes, since only alter-root installs a component"
+    (testing "the error names the component and lists the ones that are installed"
+      (mc/alter-root db-handle :root-db)
+      (is (=? {:component  ::never-set
+               :components #(some #{::db} %)}
+              (try @never-set (catch clojure.lang.ExceptionInfo e (ex-data e))))))
+    (testing "writes fail too, since only alter-root installs a component"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo no-value (mc/reset! never-set 1)))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo no-value (mc/swap! never-set (fnil inc 0)))))
     (testing "the failed writes leave the component uninstalled"

@@ -71,8 +71,6 @@
                                             "fixture on this namespace")
                                        {})))
          {app-db# :app-db secret-key# :secret-key} prepared#]
-     (mdb.test-util/do-with-application-db-as-root
-      app-db#
-      (fn []
-        (with-redefs [encryption/default-secret-key secret-key#]
-          ~@body)))))
+     (mdb.test-util/with-application-db-as-root app-db#
+       (with-redefs [encryption/default-secret-key secret-key#]
+         ~@body))))
