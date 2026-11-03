@@ -56,7 +56,7 @@ Your agent writes the questions and actions that the app needs in the app's code
 - Actions are table actions, which insert, update, or delete one row of a table by its primary key. Apps can't use SQL actions or model actions.
 - Items in the collection can't be archived or made public. Questions in the collection can't be embedded.
 
-Your agent follows these rules for you, but the rules limit what you can ask for. Some tips for guiding your agent.
+Your agent follows these rules for you, but the rules limit what you can ask for. Some tips for guiding your agent:
 
 - **Describe the result, not the SQL.** An app can't run SQL. So instead of pasting a query, ask for "revenue by month for each product category."
 - **Name tables, not saved questions.** Instead of "Use our Weekly sales question," ask for "weekly sales from the Orders table." If the table isn't in your semantic layer, the agent stops and tells you what's missing.
@@ -121,7 +121,7 @@ The agent does steps 1 to 3 below for you. You then review the change, merge it,
 
 Metabase doesn't sync an app's group access or its [status](./manage.md#make-an-app-live-or-a-draft) (live or draft), so each Metabase keeps its own. The first pull creates the app on your production Metabase as live, and only admins can open it until you add groups there. Later pulls keep the app's status on production, so you can make the app a draft on production without changing it on development.
 
-Your production Metabase also needs the published tables and metrics that the app reads. They ship with the app only if you [sync your semantic layer](../data-modeling/semantic-layer/library.md#versioning-the-library) with Remote Sync, so sync it too. If your app uses actions, you must [turn on data actions](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database) on the production databases that the app writes to.
+Your production Metabase also needs the tables and metrics that the app reads. They ship with the app only if you [sync your semantic layer](../data-modeling/semantic-layer/library.md#versioning-the-library) with Remote Sync, so sync it too. If your app uses actions, you must [turn on data actions](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database) on the production databases that the app writes to.
 
 ### What syncs with a data app
 

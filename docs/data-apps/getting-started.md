@@ -147,6 +147,8 @@ Open the preview in your browser, and keep the tab open while the agent works: t
 
 The preview gets its data from your Metabase with an admin [API key](../people-and-groups/api-keys.md). So the preview shows what an admin can see, not necessarily what the app's viewers can see. You choose who can open the app in [step 10](#10-add-groups-to-the-app).
 
+The agent asks before it creates the key, and deletes the key when it's done. If your session ends first, [delete the key](../people-and-groups/api-keys.md#deleting-api-keys) yourself. The key's name starts with `data-app`.
+
 Ask your agent for changes until the app looks the way you want.
 
 ### 9. Ship the app
@@ -164,7 +166,7 @@ The agent:
 - Pushes the branch to your repository.
 - Pulls the branch into your production Metabase with the CLI.
 
-If your agent can't commit or push (for example, because you've set your agent's permission settings to block Git commands), run the commands yourself in your local clone. Use your app's slug. The agent adds `.env.local` to your `.gitignore` file to keep the preview's API key out of Git, so commit `.gitignore` too:
+If your agent can't commit or push (for example, because your agent's permission settings block `git commit` or `git push`), run the commands yourself in your local clone. Use your app's slug. The agent adds `.env.local` to your `.gitignore` file to keep the preview's API key out of Git, so commit `.gitignore` too:
 
 ```sh
 git add .gitignore data_apps/<slug> collections/data_apps
