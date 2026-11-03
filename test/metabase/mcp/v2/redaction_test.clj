@@ -288,6 +288,18 @@
       (testing "a bare map in place of a card row is redacted, without asking `mi/can-read?`"
         (let [dc (with-redefs [mi/can-read? (fn [_] (throw (ex-info "can-read? called" {})))]
                    (first (:dashcards (redaction/redact-dashboard
-                                       {:dashcards [(assoc dashcard :card {:id 12})]}))))]
+                                       {:dashcards [(assoc dashcard
+                                                           :card   {:id 12}
+                                                           :series [{:id 99, :name "Hidden"}])]}))))]
           (is (nil? (:card dc)))
-          (is (= [] (:parameter_mappings dc))))))))
+          (is (= [] (:parameter_mappings dc)))
+          (is (= [{:id 99}] (:series dc))))))))
+
+(deftest virtual-dashcard-keeps-its-mappings-test
+  (testing "a text card has no card to hide, so its filter wiring and settings stay"
+    (let [dashcard {:id                     2
+                    :card_id                nil
+                    :card                   nil
+                    :visualization_settings {:text "{{x}}", :click_behavior {:type "link"}}
+                    :parameter_mappings     [{:parameter_id "p", :card_id nil, :target [:text-tag "x"]}]}]
+      (is (= dashcard (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]}))))))))

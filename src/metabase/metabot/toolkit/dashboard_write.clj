@@ -107,10 +107,15 @@
 (defn- dry-run-dashboard
   "The dashboard saving `attrs` and the compiled `payload` to `dash` would produce, shaped like a saved one."
   [dash attrs payload cards]
-  ;; The payload's series carry ids only, so the rows the dashboard was hydrated with stand in for the stored ones.
-  ;; A stored card the user cannot read is never fetched, so unless it is already one of the dashboard's series it
-  ;; stays a bare `{:id}`. MCP's redaction reads that as unreadable.
-  (let [cards (merge (into {} (comp (mapcat :series) (map (juxt :id identity))) (:dashcards dash)) cards)]
+  ;; The payload's series carry ids only, so the card rows the dashboard was hydrated with stand in for the stored
+  ;; ones. A stored card the user cannot read is never fetched, so one the dashboard doesn't show stays a bare
+  ;; `{:id}`, such as a parameter's values source. MCP's redaction reads that as unreadable.
+  (let [stored (into {}
+                     (comp (mapcat #(cons (:card %) (:series %)))
+                           (remove nil?)
+                           (map (juxt :id identity)))
+                     (:dashcards dash))
+        cards  (merge stored cards)]
     (-> (merge dash attrs payload)
         (update :dashcards (partial mapv (partial attach-card-metadata cards))))))
 

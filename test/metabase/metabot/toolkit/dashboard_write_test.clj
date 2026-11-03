@@ -7,6 +7,7 @@
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -236,3 +237,21 @@
                                                            :dashcard_id (:id dc)
                                                            :size        {:size_x 6 :size_y 4}}]
                                          :validate-only? true})))))))
+
+(deftest dry-run-overlays-a-stored-card-as-its-row-test
+  (testing "a dry run overlaying a card the dashboard shows elsewhere returns its row, readable or not"
+    (mt/with-temp [:model/Collection    locked {}
+                   :model/Card          hidden {:name "Hidden", :collection_id (:id locked)}
+                   :model/Card          card   {:name "Orders"}
+                   :model/Dashboard     dash   {:name "Sales"}
+                   :model/DashboardCard _      {:dashboard_id (:id dash), :card_id (:id hidden)}
+                   :model/DashboardCard dc     {:dashboard_id (:id dash), :card_id (:id card), :row 4}]
+      (mt/with-non-admin-groups-no-collection-perms locked
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [result (dashboard-write/write! {:dashboard      (hydrated (:id dash))
+                                                :ops            [{:op          "set_series"
+                                                                  :dashcard_id (:id dc)
+                                                                  :card_ids    [(:id hidden)]}]
+                                                :validate-only? true})]
+            (is (=? [{:id (:id hidden), :name "Hidden"}]
+                    (:series (u/find-first-map (:dashcards result) [:id] (:id dc)))))))))))
