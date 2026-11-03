@@ -158,7 +158,7 @@
 (defn- sql-edit-result
   [operation-result title instruction-fn ctx & {:keys [edit?]}]
   (let [{:keys [query-id query-content] :as action-result} (sql.common/validated-sql-action!
-                                                            operation-result {:edit? (boolean edit?)})
+                                                            operation-result {:edit? edit?})
         structured (assoc action-result :result-type :query)
         buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
         instr (instruction-fn query-id (some? buffer-id))]

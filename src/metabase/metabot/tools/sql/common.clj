@@ -151,15 +151,14 @@
   "Return the action result from an operation result, or raise the recoverable error for SQL that failed validation.
 
   Set `:edit?` when the validated SQL keeps text from before the call, as `edit_sql_query` does."
-  ([operation-result]
-   (validated-sql-action! operation-result {:edit? false}))
-  ([{:keys [validation-result action-result]} {:keys [edit?]}]
-   (let [{:keys [valid? dialect error-message reason]} validation-result]
-     (cond
-       valid?                              action-result
-       (= :multiple-statements reason)     (multiple-sql-statements! {})
-       (= :invalid-template-syntax reason) (invalid-template-syntax! {:error-message error-message :edit? edit?})
-       :else                               (sql-syntax-error! {:dialect dialect :error-message error-message})))))
+  [{:keys [validation-result action-result]} & {:keys [edit?]}]
+  (let [{:keys [valid? dialect error-message reason]} validation-result]
+    (cond
+      valid?                              action-result
+      (= :multiple-statements reason)     (multiple-sql-statements! {})
+      (= :invalid-template-syntax reason) (invalid-template-syntax! {:error-message error-message
+                                                                     :edit?         (boolean edit?)})
+      :else                               (sql-syntax-error! {:dialect dialect :error-message error-message}))))
 
 (defn native-query-access?
   "Whether the current user may write and run native queries against `database-id`.
