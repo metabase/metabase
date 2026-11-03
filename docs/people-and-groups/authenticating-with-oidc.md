@@ -47,20 +47,21 @@ Every field except **Scopes** is required.
 | **Issuer URI**    | Your IdP's issuer URI. Metabase fetches the discovery document from `{issuer-uri}/.well-known/openid-configuration`. This request is made from Metabase's server, not from the browser. In containerized deployments (like Docker), the URI must be reachable from Metabase's container, not just from your browser.                                                                                                                                            |
 | **Client ID**     | The Client ID assigned for Metabase in your OIDC provider.                                                                                                                                                                                                                                                                                                                                                                                                      |
 | **Client secret** | The client secret from your OIDC provider. When editing an existing configuration, leave this blank to keep the current value.                                                                                                                                                                                                                                                                                                                                  |
-| **Scopes**        | The OIDC scopes to request. Enter them as a comma-separated string, for example `openid, email, profile`. Defaults to `openid, email, profile`. Most providers don't require changes here. If you're setting this with the `MB_OIDC_PROVIDERS` environment variable, use an array, for example `["openid", "email", "profile"]`.                                                                                                                                |
+| **Scopes** (optional)       | The OIDC scopes to request. Enter them as a comma-separated string, for example `openid, email, profile`. Defaults to `openid, email, profile`. Most providers don't require changes here. If you're setting this with the `MB_OIDC_PROVIDERS` environment variable, use an array, for example `["openid", "email", "profile"]`.                                                                                                                                |
 
 ### Attributes
 
 Metabase maps OIDC claims to account fields. The defaults work for most providers:
 
-| Metabase field | Default claim |
-| -------------- | ------------- |
-| First name     | `given_name`  |
-| Last name      | `family_name` |
+| Metabase field | Default claim              |
+| -------------- | -------------------------- |
+| Email          | `email` (can't be changed) |
+| First name     | `given_name`               |
+| Last name      | `family_name`              |
 
-If your IdP uses different claim names, update these fields to match. A blank claim name counts as unset, so Metabase falls back to the default.
+If your IdP uses different claim names, update the first and last name fields to match. A blank claim name counts as unset, so Metabase falls back to the default.
 
-Metabase always takes the email address from the standard `email` claim. You can't map email to a different claim, and Metabase ignores an `email` entry in `attribute-map` rather than reporting an error.
+If you configure OIDC with the [`MB_OIDC_PROVIDERS`](#environment-variables) environment variable, Metabase ignores an `email` entry in `attribute-map` rather than reporting an error.
 
 ## Group mapping
 

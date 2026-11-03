@@ -88,6 +88,8 @@ The **Group mapping** section has three options:
 
 When you first set up JWT, Metabase sets the group mapping to **Automatic**.
 
+In **Automatic** mode, Metabase changes group membership only when the JWT includes the group attribute. If the attribute is missing, memberships stay as they are. Metabase never removes the last remaining admin, and never changes All Users membership.
+
 To create manual mappings:
 
 1. Select **Manual**.
@@ -125,7 +127,7 @@ You can use the following environment variables to configure JWT group mappings 
 
 - [`MB_JWT_ATTRIBUTE_GROUPS`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_groups) to specify the key to retrieve the JWT user's groups;
 
-- [`MB_JWT_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_jwt_group_sync) to turn group sync on or off. The setting is off by default, though saving the JWT settings page for the first time turns it on in **Automatic** mode.
+- [`MB_JWT_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_jwt_group_sync) to turn group sync on or off. The setting is off by default. If you don't set this variable, saving the JWT settings page for the first time turns group sync on in **Automatic** mode.
 
   ```
   MB_JWT_GROUP_SYNC=true
