@@ -1,6 +1,6 @@
 # Metabase Developer Assistant Instructions
 
-For detailed coding standards and conventions, see `CLAUDE.md` and the skills in `.claude/skills/`.
+For detailed coding standards and conventions, see `AGENTS.md` and the skills in `.claude/skills/`.
 
 ## Code Review Standards
 

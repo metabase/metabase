@@ -403,4 +403,4 @@
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
     (sync-metadata/sync-db-metadata!
-     (gsheets.db/attached-dwh-database))))
+     (:id (gsheets.db/attached-dwh-database)))))

@@ -1050,26 +1050,6 @@
          (is (remote-sync.task/successful? (push!)))
          (is (nil? (repo-file "collections/main/synced/rename_venue.yaml"))))))))
 
-(deftest push-tracks-moving-an-action-between-models-test
-  (testing "GHY-4722: moving an action to a model outside the synced collections removes its file on the next push, and moving it back writes the file again"
-    (do-with-pushed-model-actions!
-     (fn [{:keys [model push! repo-file]}]
-       (mt/with-temp [:model/Collection {unsynced-id :id} {:name "Unsynced" :location "/"}]
-         (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")
-               other     (mt/user-http-request :crowberto :post 200 "card"
-                                               {:name                   "Other Model"
-                                                :type                   "model"
-                                                :collection_id          unsynced-id
-                                                :display                "table"
-                                                :visualization_settings {}
-                                                :dataset_query          (mt/mbql-query venues)})]
-           (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:model_id (:id other)})
-           (is (remote-sync.task/successful? (push!)))
-           (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
-           (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:model_id (:id model)})
-           (is (remote-sync.task/successful? (push!)))
-           (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))))))))
-
 (deftest turning-sync-on-again-tracks-untracked-actions-test
   (testing "GHY-4722: turning sync on again for a collection tracks an action created while sync was off, and the next push writes it"
     (do-with-pushed-model!

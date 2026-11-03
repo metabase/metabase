@@ -55,7 +55,6 @@
     :model/ContentDiagnosticsFinding
     :model/ContentTranslation
     :model/DashboardBookmark
-    :model/DataAppGroupAssignment
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter

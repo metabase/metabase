@@ -35,7 +35,7 @@
         (is (= #{{:schema "druid", :name "checkins" :description nil, :is_writable nil}
                  {:schema "druid", :name "json" :description nil, :is_writable nil}
                  {:schema "druid", :name "big_json" :description nil, :is_writable nil}}
-               (into #{} (:tables (driver/describe-database :druid-jdbc (mt/db)))))))
+               (into #{} (:tables (driver/describe-database :druid-jdbc (lib.metadata/database (mt/metadata-provider))))))))
       (testing "describe-table"
         (is (=? {:schema "druid"
                  :name   "checkins"
@@ -135,11 +135,11 @@
                            :base-type :type/BigInteger,
                            :database-position 9,
                            :json-unfolding false}]}
-                (-> (driver/describe-table :druid-jdbc (mt/db) {:schema "druid" :name "checkins"})
+                (-> (driver/describe-table :druid-jdbc (lib.metadata/database (mt/metadata-provider)) {:schema "druid" :name "checkins"})
                     (update :fields (partial sort-by :name))))))
       (testing "Full sync does not throw an exception (field values are calculated only for eligible fields)"
         (is (=? [::success some?]
-                (try (let [result (sync/sync-database! (mt/db))]
+                (try (let [result (sync/sync-database! (mt/id))]
                        [::success result])
                      (catch Throwable t
                        [::failure t]))))))))
@@ -151,7 +151,7 @@
       (mt/with-temporary-setting-values [driver.settings/nested-field-columns-value-length-limit 10]
         (testing "nested fields when length limit is exceeded"
           (is (= #{}
-                 (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (mt/db) (t2/select-one :model/Table (mt/id :json)))))))
+                 (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table (mt/id :json)))))))
       (testing "nested fields when length limit is exceeded"
         (is (= #{{:name "json_bit → noop",
                   :database-type "timestamp",
@@ -216,7 +216,7 @@
                   :json-unfolding false,
                   :visibility-type :normal,
                   :nfc-path [:json_bit "title"]}}
-               (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (mt/db) (t2/select-one :model/Table (mt/id :json)))))))))
+               (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table (mt/id :json)))))))))
 
 (defn- db-dbms-version [db-or-id]
   (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))
@@ -236,7 +236,7 @@
               _                    (t2/update! :model/Database (u/the-id db) {:dbms_version nil})
               db                   (t2/select-one :model/Database :id (u/the-id db))
               version-after-update (db-dbms-version db)
-              _                    (sync-dbms-ver/sync-dbms-version! db)]
+              _                    (sync-dbms-ver/sync-dbms-version! (driver.u/lib-database (:id db)))]
           (testing "On startup is the dbms-version specified?"
             (is (nil? (check-dbms-version version-on-load))))
           (testing "Check to make sure the test removed the timezone"

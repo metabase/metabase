@@ -25,9 +25,9 @@ const newActionPage = () =>
   );
 
 const actionQueryPage = () =>
-  import(/* webpackChunkName: "data-actions" */ "./pages/ActionQueryPage").then(
-    ({ ActionQueryPage }) => ({ Component: ActionQueryPage }),
-  );
+  import(
+    /* webpackChunkName: "data-actions" */ "./pages/ActionDefinitionPage"
+  ).then(({ ActionDefinitionPage }) => ({ Component: ActionDefinitionPage }));
 
 const actionFieldsPage = () =>
   import(

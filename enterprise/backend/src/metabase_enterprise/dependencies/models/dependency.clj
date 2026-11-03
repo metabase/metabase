@@ -4,18 +4,8 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
-   [metabase-enterprise.sandbox.schema]
-   [metabase.actions.schema :as actions.schema]
-   [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
-   [metabase.lib.core :as lib]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.measures.schema]
    [metabase.models.interface :as mi]
-   [metabase.native-query-snippets.schema]
-   [metabase.queries.schema :as queries.schema]
-   [metabase.segments.schema]
-   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -242,78 +232,6 @@
          starters (entities->nodes entities-map)]
      (->> (graph/transitive graph starters) ; This returns a flat list.
           group-nodes))))
-
-(mu/defn is-native-entity? :- :boolean
-  "Checks whether an entity involves native sql.  `entity` can either be a toucan object or a metadata object."
-  [entity-type :- ::deps.dependency-types/dependency-types
-   entity      :- [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}
-                   [:lib-metadata [:multi {:dispatch :lib/type}
-                                   [:metadata/card                 ::lib.schema.metadata/card]
-                                   [:metadata/transform            ::lib.schema.metadata/transform]
-                                   [:metadata/native-query-snippet ::lib.schema.metadata/native-query-snippet]
-                                   [:metadata/table                ::lib.schema.metadata/table]]]
-                   [:row [:or
-                          ::queries.schema/card
-                          :metabase.warehouse-schema.schema/table
-                          :metabase.native-query-snippets.schema/native-query-snippet
-                          ::transforms.schema/transform
-                          :metabase.dashboards.schema/dashboard
-                          ::documents.schema/document
-                          :metabase-enterprise.sandbox.schema/sandbox
-                          :metabase.segments.schema/segment
-                          :metabase.measures.schema/measure
-                          ::actions.schema/action
-                          :metabase-enterprise.data-apps.schema/data-app]]]]
-  (boolean
-   (case entity-type
-     :card (some-> entity
-                   ((some-fn :dataset-query :dataset_query))
-                   lib/any-native-stage?)
-     :transform (some-> entity
-                        :source
-                        :query
-                        lib/any-native-stage?)
-     :snippet true
-     :action (= :query (:type entity))
-     false)))
-
-(mu/defn- native-lookup-map :- [:map-of ::dependencies.schema/node :boolean]
-  "Whether each node in `children` is native."
-  [children :- ::dependencies.schema/child-map]
-  (let [grouped (-> (graph/all-map-nodes children)
-                    group-nodes)]
-    (into {}
-          (mapcat (fn [[node-type ids]]
-                    (if (= node-type :card)
-                      (let [native (dependencies.db/native-card-ids ids)]
-                        (map (fn [id] [[:card id] (contains? native id)]) ids))
-                      (mapv (fn [entity]
-                              [[node-type (:id entity)]
-                               (is-native-entity? node-type entity)])
-                            (dependencies.db/entities node-type ids)))))
-          grouped)))
-
-(mu/defn transitive-mbql-dependents :- ::dependencies.schema/type->ids
-  "Equivalent to `transitive-dependents`, except it excludes any native cards/transforms/segments and their children.
-
-  Also, the order is more flexible (though consistent between runs).
-
-  Note that this does not check the passed in entities for native-ness -- the filter is only applied to their
-  transitive children."
-  ([entities-map :- EntitiesMap]
-   (transitive-mbql-dependents nil entities-map))
-  ([graph        :- [:maybe ::graph/graph]
-    entities-map :- EntitiesMap]
-   (let [start-nodes (set (entities->nodes entities-map))
-         children (graph/transitive-children-of (or graph (graph-dependents)) (seq start-nodes))
-         native-lookup (native-lookup-map children)]
-     (group-nodes
-      (graph/keep-children (fn [node]
-                             (cond
-                               (start-nodes node) nil
-                               (native-lookup node) ::graph/stop
-                               :else node))
-                           children)))))
 
 (mu/defn- ensure-entity-id :- ::deps.dependency-types/entity-id
   "`id`, throwing a 400 when it is not a positive integer."

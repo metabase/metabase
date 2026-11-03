@@ -8,6 +8,8 @@
   change can reach fields that already carry a category."
   (:require
    [metabase.analyze.core :as analyze]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
@@ -15,7 +17,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -101,26 +102,43 @@
                    (sync.db/tables-by-schema-and-name-reducible table-ids))))))
 
 (mu/defn reset-data-sensitivity! :- :int
-  "REPL entry point: clear every classifier-written `data_sensitivity` in a Database or a single Table so the next
+  "REPL entry point: clear every classifier-written `data_sensitivity` in the Database with `database-id` so the next
   scan recomputes them, including fields that carry a category and would otherwise never be reselected. Labels with
   a value in the `FieldUserSettings` mirror are human-set and untouched. Returns the number of fields cleared."
-  [database-or-table :- [:or i/DatabaseInstance i/TableInstance]]
-  (let [n (case (t2/model database-or-table)
-            :model/Table    (sync.db/reset-classifier-data-sensitivity-for-table! (u/the-id database-or-table))
-            :model/Database (sync.db/reset-classifier-data-sensitivity-for-database! (u/the-id database-or-table)))]
-    (log/infof "Data sensitivity reset %d classifier-written labels in %s" n (sync-util/name-for-logging database-or-table))
+  [database-id :- ::lib.schema.id/database]
+  (let [n (sync.db/reset-classifier-data-sensitivity-for-database! database-id)]
+    (log/infof "Data sensitivity reset %d classifier-written labels in %s"
+               n (sync-util/name-for-logging (driver.u/lib-database database-id)))
     n))
 
+(mu/defn reset-table-data-sensitivity! :- :int
+  "Like [[reset-data-sensitivity!]], for a single `table`."
+  [table :- i/TableInstance]
+  (let [n (sync.db/reset-classifier-data-sensitivity-for-table! (u/the-id table))]
+    (log/infof "Data sensitivity reset %d classifier-written labels in %s" n (sync-util/name-for-logging table))
+    n))
+
+(def ^:private ScanDataSensitivityOptions
+  [:maybe [:map {:closed true}
+           [:force? {:optional true} [:maybe :boolean]]
+           [:reset? {:optional true} [:maybe :boolean]]]])
+
 (mu/defn scan-data-sensitivity! :- Stats
-  "Scan `database-or-table` for data sensitivity regardless of the setting; `:force?` rescans `:PUBLIC` Fields and
-  `:reset?` clears the classifier's labels first."
-  [database-or-table :- [:or i/DatabaseInstance i/TableInstance]
-   & {:keys [force? reset?]} :- [:maybe [:map {:closed true}
-                                         [:force? {:optional true} [:maybe :boolean]]
-                                         [:reset? {:optional true} [:maybe :boolean]]]]]
-  (let [reset (when reset? (reset-data-sensitivity! database-or-table))
-        stats (case (t2/model database-or-table)
-                :model/Table    (scan-table! database-or-table :force? force? :ignore-setting? true)
-                :model/Database (scan-fields-for-db! database-or-table (constantly nil) :force? force? :ignore-setting? true))]
+  "Scan the Database with `database-id` for data sensitivity regardless of the setting; `:force?` rescans `:PUBLIC`
+  Fields and `:reset?` clears the classifier's labels first."
+  [database-id                 :- ::lib.schema.id/database
+   & {:keys [force? reset?]}   :- ScanDataSensitivityOptions]
+  (let [reset (when reset? (reset-data-sensitivity! database-id))
+        stats (scan-fields-for-db! (driver.u/lib-database database-id) (constantly nil)
+                                   :force? force? :ignore-setting? true)]
+    (cond-> stats
+      reset (assoc :fields-reset reset))))
+
+(mu/defn scan-table-data-sensitivity! :- Stats
+  "Like [[scan-data-sensitivity!]], for a single `table`."
+  [table                     :- i/TableInstance
+   & {:keys [force? reset?]} :- ScanDataSensitivityOptions]
+  (let [reset (when reset? (reset-table-data-sensitivity! table))
+        stats (scan-table! table :force? force? :ignore-setting? true)]
     (cond-> stats
       reset (assoc :fields-reset reset))))

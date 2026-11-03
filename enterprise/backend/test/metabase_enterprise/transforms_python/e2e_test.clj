@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
    [metabase.transforms.test-dataset :as transforms-dataset]
@@ -51,7 +52,7 @@
                                                                transform-payload)]
                   (transforms.tu/test-run transform-id)
                   (transforms.tu/wait-for-table table-name 5000)
-                  (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
+                  (is (true? (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) target)))
                   (let [rows (transforms.tu/table-rows table-name)]
                     (is (= 5 (count rows)))
                     (is (every? #(= (* 2 (first %)) (second %)) rows))
@@ -80,6 +81,6 @@
                                                              original)]
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 5000)
-                (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
+                (is (true? (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) target)))
                 (is (= [["Alice" 25] ["Bob" 30]]
                        (transforms.tu/table-rows table-name)))))))))))

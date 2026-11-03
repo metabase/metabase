@@ -276,7 +276,7 @@
     ;; Only run fingerprinting for :full scan, matching the real sync behavior
     (when (= scan :full)
       (log/info "Running real fingerprinting for :full scan after fake sync")
-      (sync.analyze/analyze-db! db))))
+      (sync.analyze/analyze-db! (:id db)))))
 
 ;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
 
@@ -303,7 +303,7 @@
               ;; Redshift and BigQuery list tables from metadata that lags the tables themselves, so a table dropped by
               ;; a concurrent CI job can still appear in the listing and then 404 when sync reads it.
               (binding [sync-util/*log-exceptions-and-continue?* (contains? #{:redshift :bigquery-cloud-sdk} driver)]
-                (sync/sync-database! db {:scan scan}))
+                (sync/sync-database! (:id db) {:scan scan}))
               ;; add extra metadata for fields
               (try
                 (add-extra-metadata! database-definition db)

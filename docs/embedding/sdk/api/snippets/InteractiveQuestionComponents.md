@@ -17,7 +17,7 @@ BackButton: (props: InteractiveQuestionBackButtonProps) =>
 **`Function`**
 
 A navigation button that returns to the previous view.
-Only visible when rendered within the [InteractiveDashboardProps.renderDrillThroughQuestion](./api/InteractiveDashboardProps.md#renderdrillthroughquestion) prop.
+Only visible when rendered within the [InteractiveDashboardProps.renderDrillThroughQuestion](/docs/latest/embedding/sdk/api/InteractiveDashboardProps.md#renderdrillthroughquestion) prop.
 
 <!-- [<endsnippet ~~backbutton()~~>] -->
 
@@ -25,9 +25,9 @@ Only visible when rendered within the [InteractiveDashboardProps.renderDrillThro
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                | Description |
-| :-------- | :---------------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionBackButtonProps`](./api/InteractiveQuestionBackButtonProps.md) |             |
+| Parameter | Type                                                                                                         | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionBackButtonProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionBackButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -98,9 +98,9 @@ Dropdown button for the Breakout component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                            | Description |
-| :-------- | :---------------------------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionBreakoutDropdownProps`](./api/InteractiveQuestionBreakoutDropdownProps.md) |             |
+| Parameter | Type                                                                                                                     | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionBreakoutDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionBreakoutDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -135,9 +135,9 @@ Automatically updates to show recommended visualization types for the current da
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                              | Description |
-| :-------- | :------------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | [`InteractiveQuestionChartTypeDropdownProps`](./api/InteractiveQuestionChartTypeDropdownProps.md) |             |
+| Parameter | Type                                                                                                                       | Description |
+| :-------- | :------------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionChartTypeDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionChartTypeDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -280,9 +280,9 @@ Includes filtering, aggregation, custom expressions, and joins.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                        | Description |
-| :-------- | :-------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionEditorProps`](./api/InteractiveQuestionEditorProps.md) |             |
+| Parameter | Type                                                                                                 | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionEditorProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -310,7 +310,7 @@ EditorButton: (props: InteractiveQuestionEditorButtonProps) =>
 **`Function`**
 
 Toggle button for showing/hiding the Editor interface.
-In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](./api/InteractiveQuestionEditorButtonProps.md#onclick)` handler or the button won't do anything when clicked.
+In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md#onclick)` handler or the button won't do anything when clicked.
 
 <!-- [<endsnippet editorbutton()>] -->
 
@@ -318,9 +318,9 @@ In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorB
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                    | Description |
-| :-------- | :-------------------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionEditorButtonProps`](./api/InteractiveQuestionEditorButtonProps.md) |             |
+| Parameter | Type                                                                                                             | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionEditorButtonProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -354,9 +354,9 @@ Displays current filters as badges with an "Add another filter" option.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                        | Description |
-| :-------- | :-------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionFilterProps`](./api/InteractiveQuestionFilterProps.md) |             |
+| Parameter | Type                                                                                                 | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionFilterProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionFilterProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -390,9 +390,9 @@ A dropdown button for the Filter component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                        | Description |
-| :-------- | :------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | [`InteractiveQuestionFilterDropdownProps`](./api/InteractiveQuestionFilterDropdownProps.md) |             |
+| Parameter | Type                                                                                                                 | Description |
+| :-------- | :------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionFilterDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionFilterDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -428,9 +428,9 @@ Includes filtering, aggregation, custom expressions, and joins.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                        | Description |
-| :-------- | :-------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionEditorProps`](./api/InteractiveQuestionEditorProps.md) |             |
+| Parameter | Type                                                                                                 | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionEditorProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -466,7 +466,7 @@ NotebookButton: (props: InteractiveQuestionEditorButtonProps) =>
 **`Function`**
 
 Toggle button for showing/hiding the Editor interface.
-In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](./api/InteractiveQuestionEditorButtonProps.md#onclick)` handler or the button won't do anything when clicked.
+In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md#onclick)` handler or the button won't do anything when clicked.
 
 <!-- [<endsnippet ~~notebookbutton()~~>] -->
 
@@ -474,9 +474,9 @@ In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorB
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                    | Description |
-| :-------- | :-------------------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionEditorButtonProps`](./api/InteractiveQuestionEditorButtonProps.md) |             |
+| Parameter | Type                                                                                                             | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionEditorButtonProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -557,9 +557,9 @@ Dropdown button that contains the QuestionSettings component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                                            | Description |
-| :-------- | :-------------------------------------------------------------------------------------------------------------- | :---------- |
-| `props?`  | [`InteractiveQuestionQuestionSettingsDropdownProps`](./api/InteractiveQuestionQuestionSettingsDropdownProps.md) |             |
+| Parameter | Type                                                                                                                                     | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props?`  | [`InteractiveQuestionQuestionSettingsDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionQuestionSettingsDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -635,9 +635,9 @@ Button to run the current query. Only appears when automatic reruns are turned o
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                      | Description |
-| :-------- | :---------------------------------------------------------------------------------------- | :---------- |
-| `props?`  | [`InteractiveQuestionRefreshButtonProps`](./api/InteractiveQuestionRefreshButtonProps.md) |             |
+| Parameter | Type                                                                                                               | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props?`  | [`InteractiveQuestionRefreshButtonProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionRefreshButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -672,9 +672,9 @@ Button to reset question modifications. Only appears when there are unsaved chan
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                  | Description |
-| :-------- | :------------------------------------ | :---------- |
-| `props?`  | [`ButtonProps`](./api/ButtonProps.md) |             |
+| Parameter | Type                                                           | Description |
+| :-------- | :------------------------------------------------------------- | :---------- |
+| `props?`  | [`ButtonProps`](/docs/latest/embedding/sdk/api/ButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -709,9 +709,9 @@ _Note_: Currently, in custom layouts, the `SaveButton` must have an `onClick` ha
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                | Description |
-| :-------- | :---------------------------------------------------------------------------------- | :---------- |
-| `props?`  | [`InteractiveQuestionSaveButtonProps`](./api/InteractiveQuestionSaveButtonProps.md) |             |
+| Parameter | Type                                                                                                         | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------- | :---------- |
+| `props?`  | [`InteractiveQuestionSaveButtonProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionSaveButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -739,9 +739,9 @@ SaveQuestionForm: (props: InteractiveQuestionSaveQuestionFormProps) =>
 
 Form for saving a question, including title and description. When saved:
 
-- For existing questions: Calls [SdkQuestionProps.onSave](./api/SdkQuestionProps.md#onsave)
+- For existing questions: Calls [SdkQuestionProps.onSave](/docs/latest/embedding/sdk/api/SdkQuestionProps.md#onsave)
 - Both callbacks receive the updated question object
-- Form can be cancelled via the [InteractiveQuestionSaveQuestionFormProps.onCancel](./api/InteractiveQuestionSaveQuestionFormProps.md#oncancel)
+- Form can be cancelled via the [InteractiveQuestionSaveQuestionFormProps.onCancel](/docs/latest/embedding/sdk/api/InteractiveQuestionSaveQuestionFormProps.md#oncancel)
 
 <!-- [<endsnippet savequestionform()>] -->
 
@@ -749,9 +749,9 @@ Form for saving a question, including title and description. When saved:
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                            | Description |
-| :-------- | :---------------------------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionSaveQuestionFormProps`](./api/InteractiveQuestionSaveQuestionFormProps.md) |             |
+| Parameter | Type                                                                                                                     | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionSaveQuestionFormProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionSaveQuestionFormProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -838,9 +838,9 @@ Dropdown button for the Summarize component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                              | Description |
-| :-------- | :------------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | [`InteractiveQuestionSummarizeDropdownProps`](./api/InteractiveQuestionSummarizeDropdownProps.md) |             |
+| Parameter | Type                                                                                                                       | Description |
+| :-------- | :------------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionSummarizeDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionSummarizeDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 

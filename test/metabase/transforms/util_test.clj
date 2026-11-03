@@ -13,6 +13,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -66,7 +67,7 @@
               (testing "Can create table with generated temp name"
                 (driver/create-table! driver db-id qualified-table-name column-definitions {})
                 (when-not (= driver :mongo) ;; mongo doesn't actually create tables
-                  (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)}))))
+                  (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:schema schema-name :name (name table-name)}))))
               (finally
                 (try
                   (driver/drop-table! driver db-id qualified-table-name)
@@ -102,11 +103,11 @@
           (try
             (testing "Creating table with ordered columns"
               (transforms-base.u/create-table-from-schema! driver db-id table-schema)
-              (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)})))
+              (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:schema schema-name :name (name table-name)})))
             (when (get-method driver/describe-table driver)
               (testing "Column order matches schema definition order (not alphabetical)"
                 (let [table-metadata {:schema schema-name :name (name table-name)}
-                      described-fields (:fields (driver/describe-table driver (mt/db) table-metadata))
+                      described-fields (:fields (driver/describe-table driver (lib.metadata/database (mt/metadata-provider)) table-metadata))
                       sorted-fields (sort-by :database-position described-fields)
                       column-names (mapv :name sorted-fields)
                       expected-names ["zebra_col" "apple_col" "mango_col"]]
@@ -444,7 +445,7 @@
                                              created))
                       sync/sync-table!     (constantly nil)
                       driver/table-exists? (constantly false)]
-          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (= :computed (:data_authority table)))
@@ -583,7 +584,7 @@
             excluded; we just verify the Statement was created."
     (mt/test-drivers (into #{} (filter #(isa? driver/hierarchy % :sql-jdbc)) (mt/normal-drivers))
       (sql-jdbc.execute/do-with-connection-with-options
-       driver/*driver* (mt/db) {:write? false}
+       driver/*driver* (mt/id) {:write? false}
        (fn [^java.sql.Connection conn]
          (doseq [minutes [3 90]]
            (binding [driver.settings/*query-timeout-ms* (u/minutes->ms minutes)]
@@ -796,7 +797,7 @@
                       ;; Simulate: physical table exists in "PUBLIC" (H2's default schema)
                       driver/table-exists? (fn [_driver _db table]
                                              (= "PUBLIC" (:schema table)))]
-          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (= "PUBLIC" (:schema table))
@@ -820,7 +821,7 @@
                       sync/sync-table!   (constantly nil)
                       ;; Simulate: physical table does NOT exist under default schema
                       driver/table-exists? (constantly false)]
-          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (nil? (:schema table))

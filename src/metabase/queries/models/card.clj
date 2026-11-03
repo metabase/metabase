@@ -1119,13 +1119,6 @@
       (sync.field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
-(defn- move-model-actions
-  "Moves the Actions of `card` into its Collection when the update changes it, returning `card`."
-  [card original]
-  (u/prog1 card
-    (when (not= (:collection_id card) (:collection_id original))
-      (queries.db/move-actions-of-models! #{(:id card)} (:collection_id card)))))
-
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
     (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
@@ -1194,9 +1187,13 @@
         (cond-> (some data-app-card-columns (keys changes)) (doto check-data-app-card))
         (clear-metabot-origin changes)
         (pre-update changes)
-        (move-model-actions original)
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
+
+(t2/define-after-update :model/Card
+  [card]
+  (u/prog1 card
+    (queries.db/move-actions-of-model! (:id card) (:collection_id card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card

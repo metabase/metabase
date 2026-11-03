@@ -87,8 +87,3 @@
   current user, such as an internal or unauthenticated context)."
   [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))

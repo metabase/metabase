@@ -2,8 +2,9 @@ import cx from "classnames";
 
 import { Link } from "metabase/common/components/Link";
 import { Sortable } from "metabase/common/components/Sortable";
-import { Badge, Card, Code, Group, Icon, Stack, Text } from "metabase/ui";
+import { Badge, Card, Group, Icon, Stack, Text } from "metabase/ui";
 
+import { ActionFieldSourceCode } from "../../ActionFieldSourceCode";
 import type { ActionField } from "../../hooks";
 
 import S from "./ActionFieldItem.module.css";
@@ -22,7 +23,7 @@ export function ActionFieldItem({
   isActive,
   isDraggable,
 }: ActionFieldItemProps) {
-  const { parameter, settings, variableName } = field;
+  const { parameter, settings, source } = field;
   const title = settings.title || parameter.name;
 
   return (
@@ -64,7 +65,7 @@ export function ActionFieldItem({
               </Text>
             )}
             <Group gap="sm">
-              <Code>{`{{ ${variableName} }}`}</Code>
+              <ActionFieldSourceCode source={source} />
               <Badge variant="light" color="neutral">
                 {getFieldSummary(settings)}
               </Badge>

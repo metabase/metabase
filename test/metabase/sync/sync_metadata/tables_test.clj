@@ -8,6 +8,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -73,12 +75,12 @@
       (mt/dataset dbdef
         (t2/update! :model/Table (mt/id :user) {:active false})
         ;; table description is changed
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        [(sql.tx/standalone-table-comment-sql
                          (:engine (mt/db))
                          dbdef
                          (tx/map->TableDefinition {:table-name "user" :table-comment "added comment"}))])
-        (sync/sync-database! (mt/db) {:scan :schema})
+        (sync/sync-database! (mt/id) {:scan :schema})
         (is (=? {:active true
                  :description "added comment"}
                 (t2/select-one :model/Table (mt/id :user))))))))
@@ -90,11 +92,11 @@
         ;; row count is estimated so we VACUUM so the statistic table is updated before syncing
         (sql-jdbc.execute/do-with-connection-with-options
          driver/*driver*
-         (mt/db)
+         (lib.metadata/database (mt/metadata-provider))
          nil
          (fn [conn]
            (next.jdbc/execute! conn ["VACUUM;"])))
-        (sync/sync-database! (mt/db) {:scan :schema})
+        (sync/sync-database! (mt/id) {:scan :schema})
         (is (= 100
                (t2/select-one-fn :estimated_row_count :model/Table (mt/id :venues))))))))
 
@@ -109,7 +111,7 @@
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables [".*"]}}]
       (run-twice
-       (sync-metadata/sync-db-metadata! db)
+       (sync-metadata/sync-db-metadata! (:id db))
        (is (= #{:cruft}
               (t2/select-fn-set :visibility_type
                                 :model/Table
@@ -121,14 +123,14 @@
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables [".*"]}}]
       (let [->tables-info #(t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))]
-        (sync-metadata/sync-db-metadata! db)
+        (sync-metadata/sync-db-metadata! (:id db))
         (testing "Observe: the tables are marked as crufty"
           (is (= #{["employees" :cruft] ["transactions" :cruft]} (->tables-info))))
         ;; make employees visible:
         (t2/update! :model/Table :db_id (u/the-id db) :name "employees" {:visibility_type nil})
         (testing "Observe: employees is visible, but transactions is still crufty"
           (is (= #{["employees" nil] ["transactions" :cruft]} (->tables-info))))
-        (sync-metadata/sync-db-metadata! db)
+        (sync-metadata/sync-db-metadata! (:id db))
         (testing "tables are unchanged after sync"
           (is (= #{["employees" nil] ["transactions" :cruft]} (->tables-info))))))))
 
@@ -136,9 +138,9 @@
   (testing (str "Make sure a db's settings.auto-cruft-tables do not unhide " original-vis-type " tables")
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables []}}]
-      (sync-metadata/sync-db-metadata! db)
+      (sync-metadata/sync-db-metadata! (:id db))
       (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type original-vis-type})
-      (sync-metadata/sync-db-metadata! db)
+      (sync-metadata/sync-db-metadata! (:id db))
       (is (= #{["employees" original-vis-type]
                ["transactions" original-vis-type]}
              (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db)))))))
@@ -152,7 +154,7 @@
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables ["employees"]}}]
       (run-twice
-       (sync-metadata/sync-db-metadata! db)
+       (sync-metadata/sync-db-metadata! (:id db))
        (is (= #{["employees" :cruft]
                 ["transactions" nil]}
               (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))))))))
@@ -162,7 +164,7 @@
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables ["l"]}}]
       (run-twice
-       (sync-metadata/sync-db-metadata! db)
+       (sync-metadata/sync-db-metadata! (:id db))
        (is (= #{["employees" :cruft]
                 ["transactions" nil]}
               (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))))))))
@@ -172,7 +174,7 @@
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables ["l" "y"]}}]
       (run-twice
-       (sync-metadata/sync-db-metadata! db)
+       (sync-metadata/sync-db-metadata! (:id db))
        (is (= #{["employees" :cruft]
                 ["transactions" nil]}
               (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))))))))
@@ -191,7 +193,7 @@
                    :model/Table table-3 {:name "active_table"
                                          :db_id (u/the-id db)
                                          :active true}]
-      (#'sync-tables/archive-tables! db)
+      (#'sync-tables/archive-tables! (driver.u/lib-database (:id db)))
       (testing "Old deactivated table is archived with suffix"
         (let [archived-table (t2/select-one :model/Table (:id table-1))]
           (is (some? (:archived_at archived-table)))
@@ -219,7 +221,7 @@
                                             :active           false
                                             :transform_target false
                                             :deactivated_at   (t/minus (t/offset-date-time) (t/days 30))}]
-      (#'sync-tables/archive-tables! db)
+      (#'sync-tables/archive-tables! (driver.u/lib-database (:id db)))
       (testing "Transform target table is not archived or renamed"
         (let [table (t2/select-one :model/Table (:id provisional))]
           (is (nil? (:archived_at table)))
@@ -239,7 +241,7 @@
                                        :archived_at (t/minus (t/offset-date-time) (t/days 5))}]
       (let [original-name (:name table)
             original-archived-at (:archived_at table)]
-        (#'sync-tables/archive-tables! db)
+        (#'sync-tables/archive-tables! (driver.u/lib-database (:id db)))
         (let [updated-table (t2/select-one :model/Table (:id table))]
           (is (= original-name (:name updated-table)))
           (is (= original-archived-at (:archived_at updated-table))))))))
@@ -272,7 +274,7 @@
                                                 :db_id (u/the-id db)
                                                 :active false
                                                 :deactivated_at (t/minus (t/offset-date-time) (t/days 20))}]
-      (#'sync-tables/archive-tables! db)
+      (#'sync-tables/archive-tables! (driver.u/lib-database (:id db)))
       (testing "the original table was archived and renamed"
         (let [archived-table (t2/select-one :model/Table (:id original-table))]
           (is (some? (:archived_at archived-table)))
@@ -301,11 +303,11 @@
         (#'sync-tables/update-table-metadata-if-needed!
          {:name "computed_table" :schema nil :is_writable true}
          (t2/select-one select-cols (:id computed-table))
-         db)
+         (driver.u/lib-database (:id db)))
         (#'sync-tables/update-table-metadata-if-needed!
          {:name "normal_table" :schema nil :is_writable true}
          (t2/select-one select-cols (:id normal-table))
-         db))
+         (driver.u/lib-database (:id db))))
       (testing "computed table should remain non-writable"
         (is (false? (t2/select-one-fn :is_writable :model/Table (:id computed-table)))))
       (testing "normal table should be updated to writable"
@@ -338,14 +340,14 @@
           (#'sync-tables/update-table-metadata-if-needed!
            matching-metadata
            (t2/select-one select-cols (:id tbl))
-           db)
+           (driver.u/lib-database (:id db)))
           (is (= initial-updated-at
                  (t2/select-one-fn :updated_at :model/Table (:id tbl)))))
         (testing "a real change still bumps updated_at"
           (#'sync-tables/update-table-metadata-if-needed!
            (assoc matching-metadata :estimated_row_count 999)
            (t2/select-one select-cols (:id tbl))
-           db)
+           (driver.u/lib-database (:id db)))
           (is (not= initial-updated-at
                     (t2/select-one-fn :updated_at :model/Table (:id tbl))))
           (is (= 999
@@ -358,7 +360,7 @@
                       {:schema "public" :name "apple"}
                       {:schema "public" :name "mango"}}]
       (mt/with-temp [:model/Database db {}]
-        (#'sync-tables/create-tables! db metadatas)
+        (#'sync-tables/create-tables! (driver.u/lib-database (:id db)) metadatas {:sample? false})
         (is (= ["beta" "apple" "mango" "zebra"]
                (map :name (t2/select [:model/Table :name]
                                      :db_id (u/the-id db)
@@ -371,17 +373,17 @@
       (let [sample-table-metadata {:name "sample_table"}
             normal-table-metadata {:name "normal_table"}]
         (testing "creating a table in a sample database"
-          (let [created-table (sync-tables/create-table! sample-db sample-table-metadata)]
+          (let [created-table (sync-tables/create-table! (driver.u/lib-database (:id sample-db)) sample-table-metadata)]
             (is (= :ingested (:data_authority created-table)))))
         (testing "creating a table in a normal database"
-          (let [created-table (sync-tables/create-table! normal-db normal-table-metadata)]
+          (let [created-table (sync-tables/create-table! (driver.u/lib-database (:id normal-db)) normal-table-metadata)]
             (is (= :unconfigured (:data_authority created-table)))))
         (testing "reactivating a table in a sample database"
           (mt/with-temp [:model/Table existing-table {:db_id          (:id sample-db)
                                                       :name           "existing_sample_table"
                                                       :active         false
                                                       :data_authority :computed}]
-            (sync-tables/create-or-reactivate-table! sample-db {:name "existing_sample_table"})
+            (sync-tables/create-or-reactivate-table! (driver.u/lib-database (:id sample-db)) {:name "existing_sample_table"})
             (let [updated-table (t2/select-one :model/Table (:id existing-table))]
               (is (= :ingested (:data_authority updated-table)))
               (is (:active updated-table)))))))))
@@ -389,7 +391,7 @@
 (deftest remove-tables-with-too-long-names-test
   (testing "Tables whose name is too long to store in the app DB are dropped, so they don't abort the creation pass"
     (let [remove-too-long @#'sync-tables/remove-tables-with-too-long-names
-          database        (t2/instance :model/Database {:id 1, :name "db", :engine :h2})
+          database        {:lib/type :metadata/database, :id 1, :name "db", :engine :h2}
           tbl             (fn [nm] {:name nm, :schema "public"})
           ok              (tbl "short_name")
           too-long        (tbl (apply str (repeat 300 "a")))]

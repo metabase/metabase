@@ -129,7 +129,7 @@
    database                     :- i/DatabaseInstance
    sync-stage                   :- [:enum ::reactivate ::create ::update]]
   (let [is-crufty? (if (and (= sync-stage ::update)
-                            (not (:is_attached_dwh database)))
+                            (not (:is-attached-dwh database)))
                      ;; TODO: we should add an updated_by column to metabase_table in
                      ;; [[metabase.warehouse-schema-rest.api.table/update-table!*]] to track occasions where the table
                      ;; was updated by an admin, and respect their choices during an update.
@@ -152,11 +152,11 @@
                             :else                   "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
 
-(mu/defn create-table! :- (ms/InstanceOf :model/Table)
-  "Creates a new table in the database, ready to be synced.
-   Throws an exception if there is already a table with the same name, schema and database ID."
-  [database :- i/DatabaseInstance
-   table    :- TableMetadata]
+(mu/defn- insert-table! :- (ms/InstanceOf :model/Table)
+  "Inserts a new table in `database`, ready to be synced; `:sample?` is whether `database` is the Sample Database."
+  [database          :- i/DatabaseInstance
+   table             :- TableMetadata
+   {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
   (sync.db/insert-table!
    (merge (cruft-dependent-cols table database ::create)
           {:active                  true
@@ -174,21 +174,30 @@
             {:data_source (:data_source table)})
           (when (:data_authority table)
             {:data_authority (:data_authority table)})
-          (when (:is_sample database)
+          (when sample?
             {:data_authority :ingested
              :data_source    :ingested}))))
 
+(mu/defn create-table! :- (ms/InstanceOf :model/Table)
+  "Creates a new table in the database, ready to be synced.
+   Throws an exception if there is already a table with the same name, schema and database ID."
+  [database :- i/DatabaseInstance
+   table    :- TableMetadata]
+  (insert-table! database table {:sample? (sync.db/database-sample? (:id database))}))
+
 (mu/defn- reactivate-table!
   "Mark an existing inactive Table active again, refreshing its cruft-dependent columns. `existing`
-  is the app-DB Table instance we already hold, so we don't re-select it."
-  [database :- i/DatabaseInstance
-   existing :- (ms/InstanceOf :model/Table)]
+  is the app-DB Table instance we already hold, so we don't re-select it; `:sample?` is whether `database` is the Sample
+  Database."
+  [database          :- i/DatabaseInstance
+   existing          :- (ms/InstanceOf :model/Table)
+   {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
   (sync.db/update-table! (:id existing)
                          (cond-> (cruft-dependent-cols existing database ::reactivate)
                            ;; do not unhide tables w/ cruft settings
                            (some? (:visibility_type existing)) (dissoc :visibility_type)
                            true                                (assoc :active true)
-                           (:is_sample database)               (assoc :data_authority :ingested
+                           sample?                             (assoc :data_authority :ingested
                                                                       :data_source    :ingested))))
 
 (mu/defn create-or-reactivate-table!
@@ -196,7 +205,7 @@
   [database :- i/DatabaseInstance
    {schema :schema table-name :name :as table} :- TableMetadata]
   (if-let [existing (sync.db/inactive-table-by-schema-and-name (u/the-id database) schema table-name)]
-    (reactivate-table! database existing)
+    (reactivate-table! database existing {:sample? (sync.db/database-sample? (u/the-id database))})
     (create-table! database table)))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
@@ -242,15 +251,16 @@
 (mu/defn- create-tables! :- [:sequential (ms/InstanceOf :model/Table)]
   "Insert brand-new tables for `database`, returning the created `:model/Table` instances. Sorted by
   `[schema name]` so auto-increment ids are assigned deterministically."
-  [database :- i/DatabaseInstance
-   new-table-metadatas :- [:set i/DatabaseMetadataTable]]
+  [database            :- i/DatabaseInstance
+   new-table-metadatas :- [:set i/DatabaseMetadataTable]
+   options             :- [:map {:closed true} [:sample? :boolean]]]
   (doseq [table-metadata new-table-metadatas]
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
   (let [field-order (some-> (:engine database) driver/default-field-order)]
     (dependencies.hooks/with-batched-marks
       (mapv (fn [table-metadata]
-              (create-table! database (m/assoc-some table-metadata :field_order field-order)))
+              (insert-table! database (m/assoc-some table-metadata :field_order field-order) options))
             (sort-by (juxt :schema :name) new-table-metadatas)))))
 
 (mu/defn- retire-tables!
@@ -267,7 +277,7 @@
   "Update the table metadata if it has changed. Returns true if a row was updated."
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)
-   metabase-database :- (ms/InstanceOf :model/Database)]
+   metabase-database :- i/DatabaseInstance]
   (let [old-table               (select-keys metabase-table keys-to-update)
         new-table               (-> (zipmap keys-to-update (repeat nil))
                                     (merge table-metadata
@@ -308,7 +318,7 @@
   the number of tables actually updated."
   [table-metadatas :- [:set i/DatabaseMetadataTable]
    metabase-tables :- [:set (ms/InstanceOf :model/Table)]
-   metabase-database :- (ms/InstanceOf :model/Database)]
+   metabase-database :- i/DatabaseInstance]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
         name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)]
     (reduce (fn [updated name+schema]
@@ -425,6 +435,7 @@
    [:created           :int]                                  ; running count of created/reactivated tables
    [:updated           :int]                                  ; running count of metadata-updated tables
    [:complete?         :boolean]                              ; false once any batch fails -- then we don't retire
+   [:sample?           :boolean]                              ; whether the database is the Sample Database
    [:seen              (ms/InstanceOfClass ITransientSet)]     ; transient set of reconciled `:model/Table` ids
    [:metabase-metadata [:vector i/DatabaseMetadataTable]]])   ; captured `_metabase_metadata` table
 
@@ -450,9 +461,9 @@
                   to-create      (into #{} (remove existing-row) tables)
                   to-reactivate  (into #{} (filter #(and (existing-row %) (not (:active (existing-row %))))) tables)
                   created        (when (seq to-create)
-                                   (create-tables! database to-create))]
+                                   (create-tables! database to-create (select-keys context [:sample?])))]
               (doseq [table-metadata to-reactivate]
-                (reactivate-table! database (existing-row table-metadata)))
+                (reactivate-table! database (existing-row table-metadata) (select-keys context [:sample?])))
               (when (seq to-reactivate)
                 (let [rows (existing-tables-by-name+schema database to-reactivate)]
                   (update-tables-metadata-if-needed! to-reactivate
@@ -524,6 +535,7 @@
            context  (transduce (partition-all table-sync-batch-size)
                                (completing reconcile-batch)
                                {:created 0, :updated 0, :complete? true
+                                :sample? (sync.db/database-sample? (:id database))
                                 :seen (transient #{}), :metabase-metadata []}
                                (:tables db-metadata))
            {:keys [created updated complete?]} context]

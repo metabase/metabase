@@ -260,7 +260,7 @@
           (is (= {:type/Currency true :type/City true}
                  (into {} (map (juxt first second)) (vals (settings)))))
           (t2/update! :model/Database (:id stub) {:engine :h2 :details (:details (mt/db)) :is_stub false})
-          (sync/sync-db-metadata! (t2/select-one :model/Database :id (:id stub)))
+          (sync/sync-db-metadata! (:id (t2/select-one :model/Database :id (:id stub))))
           (testing "sync reactivates the stub Fields and gives them their real base types"
             (is (=? [{:name "NAME" :active true :base_type :type/Text}
                      {:name "PRICE" :active true :base_type :type/Integer}]

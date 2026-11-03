@@ -534,7 +534,7 @@
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
+  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

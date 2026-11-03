@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.core :as sync]
    [metabase.sync.db :as sync.db]
    [metabase.sync.field-values :as sync.field-values]
@@ -86,7 +87,7 @@
       (letfn [(field-values-after-sync! []
                 (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
                 (t2/update! :model/FieldValues :field_id (mt/id :venues :price) :type :full {:values [10 20 30 40]})
-                (sync/update-field-values! (data/db))
+                (sync/update-field-values! (:id (data/db)))
                 (venues-price-field-values))]
         (is (= [1 2 3 4] (field-values-after-sync!)))
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (mt/id :venues)) {:visibility_type "hidden"})
@@ -318,7 +319,7 @@
         (is (=?
              {:steps [["delete-expired-advanced-field-values" {}]
                       ["update-field-values" {:throwable #(instance? Exception %)}]]}
-             (sync/update-field-values! (data/db))))))))
+             (sync/update-field-values! (:id (data/db)))))))))
 
 ;;; ---------------------------------- table->fields-to-scan ----------------------------------
 
@@ -349,11 +350,11 @@
   (testing "SQL driver with :nested-queries and no required filter → batch path"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
                    :model/Table table {:db_id db-id, :name "t", :database_require_filter false}]
-      (is (true? (#'sync.field-values/can-batch-distinct? table)))))
+      (is (true? (#'sync.field-values/can-batch-distinct? (driver.u/lib-database db-id) table)))))
   (testing "Tables with :database_require_filter true (e.g. partitioned BigQuery) fall back to per-field"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
                    :model/Table table {:db_id db-id, :name "t", :database_require_filter true}]
-      (is (false? (#'sync.field-values/can-batch-distinct? table))
+      (is (false? (#'sync.field-values/can-batch-distinct? (driver.u/lib-database db-id) table))
           "Partitioned tables that require a WHERE on the partition column can't go through the
            native UNION ALL path because it bypasses add-required-filters-if-needed middleware"))))
 
@@ -392,7 +393,7 @@
                                       {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
                                        :queries (count fields)
                                        :failed-fields #{}})]
-          (#'sync.field-values/sync-fields-for-table! table [nested-a nested-b plain-c] {})
+          (#'sync.field-values/sync-fields-for-table! (driver.u/lib-database db-id) table [nested-a nested-b plain-c] {})
           (testing "Plain field goes to batch path"
             (is (= [#{(:id plain-c)}] @calls-to-fetch-distinct-for-table)))
           (testing "Both nested-JSON children with the same name go to per-field, preserving each field's identity"

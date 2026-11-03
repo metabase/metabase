@@ -46,12 +46,6 @@ export const hasWritableConnectionDetails = (
   return database.write_data_details != null;
 };
 
-export const hasAdminConnectionDetails = (
-  database: Pick<Database, "admin_details">,
-) => {
-  return database.admin_details != null;
-};
-
 export const hasDbRoutingEnabled = (
   database: Pick<Database, "router_user_attribute">,
 ) => {

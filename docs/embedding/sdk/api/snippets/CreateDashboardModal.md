@@ -8,9 +8,9 @@ Creates a dashboard
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                              |
-| :-------- | :---------------------------------------------------------------- |
-| `props`   | [`CreateDashboardModalProps`](./api/CreateDashboardModalProps.md) |
+| Parameter | Type                                                                                       |
+| :-------- | :----------------------------------------------------------------------------------------- |
+| `props`   | [`CreateDashboardModalProps`](/docs/latest/embedding/sdk/api/CreateDashboardModalProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 

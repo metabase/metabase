@@ -11,7 +11,8 @@ import * as Lib from "metabase-lib";
 import type {
   ActionFormSettings,
   FieldSettings,
-  UpdateActionRequest,
+  UpdateQueryActionRequest,
+  WritebackImplicitQueryAction,
   WritebackParameter,
   WritebackQueryAction,
 } from "metabase-types/api";
@@ -21,12 +22,16 @@ import {
   getQueryParameters,
   setTemplateTagFieldType,
 } from "../../utils";
-import { useActionQuery } from "../ActionEditor/hooks";
+import { useActionQuery } from "../QueryActionEditor/hooks";
+
+export type ActionFieldSource =
+  | { type: "variable"; name: string }
+  | { type: "column"; name: string };
 
 export type ActionField = {
   parameter: WritebackParameter;
   settings: FieldSettings;
-  variableName: string;
+  source: ActionFieldSource;
 };
 
 type ActionFieldsResult = {
@@ -38,7 +43,7 @@ type ActionFieldsResult = {
   reorderFields: (fieldIds: string[]) => Promise<void>;
 };
 
-export function useActionFields(
+export function useQueryActionFields(
   action: WritebackQueryAction,
 ): ActionFieldsResult {
   const query = useActionQuery(action.dataset_query);
@@ -62,12 +67,18 @@ export function useActionFields(
         const settings = formSettings.fields?.[parameter.id];
         const tag = tags.find((tag) => tag.id === parameter.id);
         return settings && tag
-          ? [{ parameter, settings, variableName: tag.name }]
+          ? [
+              {
+                parameter,
+                settings,
+                source: { type: "variable" as const, name: tag.name },
+              },
+            ]
           : [];
       });
   }, [query, formSettings]);
 
-  const save = async (request: Omit<UpdateActionRequest, "id">) => {
+  const save = async (request: Omit<UpdateQueryActionRequest, "id">) => {
     const { error } = await updateAction({ id: action.id, ...request });
     if (error) {
       sendErrorToast(t`Failed to update action fields`);
@@ -124,6 +135,64 @@ export function useActionFields(
       ),
     });
   };
+
+  return { fields, updateField, reorderFields };
+}
+
+export function useImplicitActionFields(
+  action: WritebackImplicitQueryAction,
+): ActionFieldsResult {
+  const [updateAction] = useUpdateActionMutation();
+  const { sendErrorToast } = useMetadataToasts();
+
+  const formSettings = useMemo(
+    () => getDefaultFormSettings(action.visualization_settings),
+    [action.visualization_settings],
+  );
+
+  const fields = useMemo(
+    () =>
+      [...(action.parameters ?? [])]
+        .sort(sortActionParams(formSettings))
+        .flatMap((parameter) => {
+          const settings = formSettings.fields?.[parameter.id];
+          return settings
+            ? [
+                {
+                  parameter,
+                  settings,
+                  source: { type: "column" as const, name: parameter.id },
+                },
+              ]
+            : [];
+        }),
+    [action.parameters, formSettings],
+  );
+
+  const updateField = async (
+    fieldId: string,
+    patch: Partial<FieldSettings>,
+  ) => {
+    const field = formSettings.fields?.[fieldId];
+    if (field == null || patch.hidden == null) {
+      return;
+    }
+    const { error } = await updateAction({
+      id: action.id,
+      visualization_settings: {
+        ...formSettings,
+        fields: {
+          ...formSettings.fields,
+          [fieldId]: { ...field, hidden: patch.hidden },
+        },
+      },
+    });
+    if (error) {
+      sendErrorToast(t`Failed to update action fields`);
+    }
+  };
+
+  const reorderFields = async () => undefined;
 
   return { fields, updateField, reorderFields };
 }

@@ -117,10 +117,10 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform :id transform-id))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
+(mu/defn database-exists?
+  "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
+  (t2/exists? :model/Database :id database-id))
 
 (mu/defn transform-test-by-entity-id :- [:maybe ::transform-testing.schema/transform-test]
   "The TransformTest with `entity-id`, or nil."

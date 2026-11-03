@@ -93,3 +93,16 @@ test/metabase/search @metabase/metabot-backend
 # frontend/src/metabase/visualizations/custom-visualizations @metabase/gadget
 # frontend/test/__support__/custom-viz-fixtures @metabase/gadget
 # .github/workflows/release-custom-viz.yml @metabase/devex @metabase/gadget
+
+# @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/data_apps @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/dependencies @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/remote_sync @metabase/data-apps
+enterprise/frontend/src/metabase-enterprise/data-apps @metabase/data-apps
+enterprise/frontend/src/metabase-enterprise/dependencies @metabase/data-apps
+enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics @metabase/data-apps
+enterprise/frontend/src/metabase-enterprise/remote_sync @metabase/data-apps
+frontend/src/metabase/monitor/dependency-diagnostics @metabase/data-apps
+src/metabase/data_apps @metabase/data-apps
+src/metabase/dependencies @metabase/data-apps
+src/metabase/remote_sync @metabase/data-apps

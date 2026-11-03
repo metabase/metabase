@@ -19,6 +19,7 @@
    [mage.fix-unused-requires-test]
    [mage.generate-docs-test]
    [mage.kondo-ratchet-test]
+   [mage.kondo-ratchets-history-test]
    [mage.merge-kondo-ratchets-test]
    [mage.merge-yaml-migrations-test]
    [mage.modules-test]

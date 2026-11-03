@@ -29,7 +29,7 @@ export function useBuildActionTree({
     data: actions,
     isLoading: isLoadingActions,
     error: actionsError,
-  } = useListActionsQuery({ type: "query", archived });
+  } = useListActionsQuery({ archived });
   const {
     data: collections,
     isLoading: isLoadingCollections,

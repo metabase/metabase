@@ -247,19 +247,35 @@
   []
   (TrackerConfiguration. "sp" "metabase"))
 
+(def ^:private http-timeout-ms
+  "Connect, socket, and connection-request timeout for the emitter's HTTP client, in milliseconds."
+  5000)
+
+(defn- request-config
+  ^RequestConfig []
+  (-> (RequestConfig/custom)
+      ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
+      ;; header in request response (PR #24579)
+      (.setCookieSpec CookieSpecs/STANDARD)
+      ;; All three default to no timeout, so without these a collector that accepts packets but never
+      ;; responds wedges an emitter thread for the life of the process.
+      (.setConnectTimeout http-timeout-ms)
+      (.setSocketTimeout http-timeout-ms)
+      (.setConnectionRequestTimeout http-timeout-ms)
+      (.build)))
+
+(defn- http-client-adapter
+  "The HTTP transport the Snowplow emitter's threads use, pointed at `url`."
+  ^ApacheHttpClientAdapter [url]
+  (let [client (-> (HttpClients/custom)
+                   (.setConnectionManager (PoolingHttpClientConnectionManager.))
+                   (.setDefaultRequestConfig (request-config))
+                   (.build))]
+    (ApacheHttpClientAdapter. url client)))
+
 (defn- network-config
   []
-  (let [request-config (-> (RequestConfig/custom)
-                           ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
-                           ;; header in request response (PR #24579)
-                           (.setCookieSpec CookieSpecs/STANDARD)
-                           (.build))
-        client (-> (HttpClients/custom)
-                   (.setConnectionManager (PoolingHttpClientConnectionManager.))
-                   (.setDefaultRequestConfig request-config)
-                   (.build))
-        http-client-adapter (ApacheHttpClientAdapter. (analytics.settings/snowplow-url) client)]
-    (NetworkConfiguration. http-client-adapter)))
+  (NetworkConfiguration. (http-client-adapter (analytics.settings/snowplow-url))))
 
 (defn- emitter-config
   []

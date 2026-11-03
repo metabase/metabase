@@ -1014,6 +1014,27 @@
                     (is (= "An error occurred."
                            (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))))
 
+(deftest public-dashboard-action-prefill-ignores-signed-in-user-test
+  (testing "prefill on a public dashboard works for a signed-in user who can't read the action, as for anyone"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-temp [:model/Collection {collection-id :id} {}]
+          (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
+          (let [mp (mt/metadata-provider)]
+            (mt/with-actions [{card-id :id}       {:type          :model
+                                                   :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                                                   :collection_id collection-id}
+                              {:keys [action-id]} {:type :implicit :kind "row/update"}]
+              (let [public-uuid (str (random-uuid))]
+                (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:public_uuid public-uuid}
+                               :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
+                                                                        :action_id    action-id
+                                                                        :card_id      card-id}]
+                  (is (= {:id 1 :name "African"}
+                         (mt/user-http-request :rasta :post 200
+                                               (format "public/dashboard/%s/dashcard/%s/execute/values" public-uuid dashcard-id)
+                                               {:parameters {"id" 1}}))))))))))))
+
 (deftest public-dashboard-action-prefill-validates-dashcard-belongs-to-dashboard-test
   (testing "prefill should validate that the dashcard belongs to the dashboard"
     (mt/with-temporary-setting-values [enable-public-sharing true]

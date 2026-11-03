@@ -3773,6 +3773,50 @@
         (is (= #{kept-button} (t2/select-pks-set :report_dashboardcard :id [:in [kept-button deleted-button]])))
         (is (not (t2/exists? :query_action :action_id question)))))))
 
+(deftest implicit-action-table-id-test
+  (testing "v65.2026-10-23T00:00:00 thru v65.2026-10-23T00:00:03: implicit actions get an empty table_id that goes with its table"
+    (impl/test-migrations ["v65.2026-10-23T00:00:00" "v65.2026-10-23T00:00:03"] [migrate!]
+      (let [user-id   (t2/insert-returning-pk! :core_user {:first_name  "Action"
+                                                           :last_name   "Owner"
+                                                           :email       "implicit-action-table-owner@metabase.com"
+                                                           :password    "superstrong"
+                                                           :entity_id   (u/generate-nano-id)
+                                                           :date_joined :%now})
+            db-id     (t2/insert-returning-pk! :metabase_database {:name       "Actions DB"
+                                                                   :engine     "h2"
+                                                                   :details    "{}"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now})
+            table-id  (t2/insert-returning-pk! :metabase_table {:active     true
+                                                                :db_id      db-id
+                                                                :name       "customers"
+                                                                :created_at :%now
+                                                                :updated_at :%now})
+            model-id  (t2/insert-returning-pk! :report_card {:name                   "Model"
+                                                             :entity_id              (u/generate-nano-id)
+                                                             :type                   "model"
+                                                             :display                "table"
+                                                             :dataset_query          "{}"
+                                                             :visualization_settings "{}"
+                                                             :creator_id             user-id
+                                                             :database_id            db-id
+                                                             :table_id               table-id
+                                                             :created_at             :%now
+                                                             :updated_at             :%now})
+            action-id (t2/insert-returning-pk! :action {:name       "Action"
+                                                        :entity_id  (u/generate-nano-id)
+                                                        :type       "implicit"
+                                                        :model_id   model-id
+                                                        :created_at :%now
+                                                        :updated_at :%now})]
+        (t2/insert! :implicit_action {:action_id action-id :kind "row/create"})
+        (migrate!)
+        (is (nil? (t2/select-one-fn :table_id :implicit_action :action_id action-id)))
+        (testing "deleting the table deletes the implicit actions that write to it"
+          (t2/update! :implicit_action {:action_id action-id} {:table_id table-id})
+          (t2/delete! :metabase_table :id table-id)
+          (is (not (t2/exists? :implicit_action :action_id action-id))))))))
+
 (deftest timeline-event-entity-ids-test
   (testing "v65.h1c4r5 thru v65.lpm4z3: existing timeline events get distinct portable IDs, other data unchanged"
     (impl/test-migrations ["v65.h1c4r5" "v65.lpm4z3"] [migrate!]
@@ -4156,3 +4200,10 @@
         (is (= own (t2/select-one-fn :resource_collection_id :data_app :id other-app)))
         (testing "a second app on a collection is refused"
           (is (thrown? Exception (app! "third" shared))))))))
+
+(deftest drop-data-app-group-assignment-test
+  (testing "pmgj27: the data app group assignments are dropped, since the app's collection grants record its access"
+    (impl/test-migrations ["pmgj27"] [migrate!]
+      (is (= [] (t2/select :data_app_group_assignment)))
+      (migrate!)
+      (is (thrown? Exception (t2/select :data_app_group_assignment))))))

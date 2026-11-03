@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -78,7 +79,7 @@
       ;; and re-create a modified version. As such, let the SQL JDBC driver know the DB is being "modified" so it can
       ;; destroy its current connection pool
       (mt/dataset comment-after-sync
-        (driver/notify-database-updated driver/*driver* (mt/db))
+        (driver/notify-database-updated driver/*driver* (lib.metadata/database (mt/metadata-provider)))
         (let [modified-dbdef (update
                               comment-after-sync
                               :table-definitions
@@ -136,7 +137,7 @@
           ;; change the description in metabase while the source table comment remains the same
           (t2/update! :model/Table {:id (mt/id "table_with_updated_desc")} {:description "updated table description"})
           ;; now sync the DB again, this should NOT overwrite the manually updated description
-          (sync-tables/sync-tables-and-database! (mt/db))
+          (sync-tables/sync-tables-and-database! (lib.metadata/database (mt/metadata-provider)))
           (is (= #{{:name (get-table-name driver/*driver* "table_with_updated_desc")
                     :description "updated table description"}}
                  (db->tables (mt/db)))))))))
@@ -149,12 +150,12 @@
             dbdef (basic-table table-name nil)]
         (mt/dataset dbdef
           ;; create the comment
-          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                          [(sql.tx/standalone-table-comment-sql
                            driver/*driver*
                            dbdef
                            (tx/map->TableDefinition {:table-name table-name
                                                      :table-comment added-comment}))]
                          {:transaction? false}) ;; trino needs transactions off
-          (sync-tables/sync-tables-and-database! (mt/db))
+          (sync-tables/sync-tables-and-database! (lib.metadata/database (mt/metadata-provider)))
           (is (true? (t2/exists? :model/Table :db_id (mt/id) :description added-comment))))))))

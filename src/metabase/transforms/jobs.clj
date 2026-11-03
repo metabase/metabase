@@ -181,7 +181,8 @@
         (run-transform! ctx started-run-id transform)
         {::status :succeeded ::transform transform}
         (catch Throwable t
-          (log/errorf "Transform %s in run %s failed: %s" (pr-str (:id transform)) (pr-str run-id) (ex-message t))
+          ;; WARN: a failure while executing was already logged at ERROR by the transform's executor
+          (log/warnf "Transform %s in run %s failed: %s" (pr-str (:id transform)) (pr-str run-id) (ex-message t))
           {::status    :failed
            ::transform transform
            ::message   (or (ex-message t) (str t))
@@ -476,6 +477,8 @@
                        (log/errorf "Error when failing %s %s: %s" label (pr-str run-id) (ex-message e)))))
       result)
     (catch Throwable t
+      ;; a transform's own failure is returned in `result`, not thrown, so this is the coordinator failing
+      (log/errorf "%s %s failed: %s" label (pr-str run-id) (ex-message t))
       (try
         (coordinated-run/fail-started-run! model run-id {:message (ex-message t)})
         (catch Exception e
