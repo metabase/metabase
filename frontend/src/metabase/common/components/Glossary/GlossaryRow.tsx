@@ -101,7 +101,7 @@ export function GlossaryRow({
             <ActionIcon
               aria-label={t`Delete`}
               variant="subtle"
-              c="text-disabled"
+              c="text-secondary"
               className={S.action}
               onClick={() => onDeleteClick(item)}
             >
