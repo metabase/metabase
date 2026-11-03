@@ -144,6 +144,8 @@
      formatter
      funnysql
      geojson
+     ;; Holds the app-DB handle and nothing driver-specific. If it breaks, every backend test fails on the
+     ;; app DB, so a driver run would catch nothing more.
      global-system
      indexed-entities
      interestingness
