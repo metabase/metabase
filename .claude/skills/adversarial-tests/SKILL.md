@@ -21,6 +21,14 @@ These hold for the whole run, including any agent or `claude -p` process the run
 - Nothing generated lands in your checkout. Tests are written into temporary worktrees, and copies are kept in the run directory as `.txt` files.
 - No generator changes an assertion or an expected value because the code disagreed with it. That would turn the test into a description of whatever the code does. Step 8 says what may be repaired.
 
+## Before you run
+
+You need `gh` logged in, `bb`, `jq` and `bun`, which the repo's own tooling already needs, and a `claude` CLI that accepts `--restricted` and `--strict-mcp-config`. The blind generator runs as a separate `claude -p` call on Opus, so a run spends tokens beyond this session. Run `claude --help | grep -c restricted` to check the CLI; if it prints 0, step 5 describes the fallback.
+
+A run takes somewhere between 30 and 90 minutes of wall clock. The three runs so far took 40 to 70 minutes each: a few minutes to set up two worktrees, most of the time writing tests, then two to four test runs on each worktree. Backend runs are the slow part, about 70 seconds each for a JVM start plus the tests. The machine is busy with one test process for most of that, so do not start another Jest or test-agent run alongside it.
+
+The skill has run on three PRs so far: a frontend PR by number, a backend PR by number, and an enterprise backend PR as the current branch. A frontend PR as the current branch has not been run yet, so if that is your first run, expect to hit something small.
+
 ## Where things go
 
 The run uses three locations:
