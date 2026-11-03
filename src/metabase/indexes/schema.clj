@@ -86,6 +86,11 @@
     (:columns structured) (update :columns (fn [cols]
                                              (mapv #(cond-> % (:direction %) (update :direction keyword)) cols)))))
 
+(def index-kinds
+  "Every `:kind` an [[::index-structured]] can have."
+  [:btree :hash :gin :gist :brin :spgist :fulltext :spatial :clustered :nonclustered :columnstore
+   :sortkey :distkey :clustering :order-by :skip-index])
+
 (mr/def ::index-structured
   "A single structured index definition, dispatched on `:kind`. The shape stored in
   `metabase_table_indexes.structured` and handed to the driver index multimethods."

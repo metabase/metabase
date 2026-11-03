@@ -10,15 +10,31 @@
    [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private ui-display-types [:cron/raw :cron/builder])
+
+(mr/def ::hydrated-job
+  [:merge
+   ::transforms.schema/transform-job
+   [:map {:closed true}
+    [:tag_ids  {:optional true} [:sequential ms/PositiveInt]]
+    [:last_run {:optional true} [:maybe ::transforms.schema/transform-job-run]]]])
+
+(mr/def ::job-with-next-run
+  [:merge
+   ::hydrated-job
+   [:map {:closed true}
+    [:next_run {:optional true} [:map {:closed true} [:start_time :string]]]]])
 
 (def ^:private LastRunResponse
   "Schema for a job's last run information."
@@ -250,8 +266,8 @@
       (t2/hydrate :tag_ids :last_run)
       (update :last_run transforms-base.u/present-run)))
 
-(defn- add-next-run
-  [{id :id :as job}]
+(mu/defn- add-next-run :- ::job-with-next-run
+  [{id :id :as job} :- ::hydrated-job]
   (if-let [start-time (-> id transforms.core/existing-trigger :next-fire-time)]
     (assoc job :next_run {:start_time (str (transforms-base.u/->instant start-time))})
     job))

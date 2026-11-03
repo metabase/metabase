@@ -1,35 +1,39 @@
 (ns metabase.transforms.execute
   (:require
    [metabase.indexes.models.table-index :as table-index]
+   [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.interface :as transforms.i]
    ;; load the `transforms.i/execute!` `:query` method
    [metabase.transforms.query-impl]
-   [metabase.util.log :as log]))
+   [metabase.transforms.schema :as transforms.schema]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn- resolve-target
+(mu/defn- resolve-target :- ::transforms-base.schema/transform
   "Hydrates the declared indexes and their request ids onto the target so the base reads them off
   `(:indexes target)` and `(:index-request-ids target)` at every table-creation seam, and stashes
   `:full-incremental-run?` so that (DB-backed) decision is made once and stays stable for the whole run."
-  [transform]
+  [transform :- ::transforms.schema/transform]
   (let [requests (table-index/select-applicable-for-transform (:id transform))]
     (-> transform
         (assoc-in [:target :indexes] (mapv :structured requests))
         (assoc-in [:target :index-request-ids] (into [] (keep :id) requests))
         (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))
 
-(defn execute!
+(mu/defn execute! :- :nil
   "Run `transform` and sync its target table.
 
   Executes synchronously, but the start is observable: once the run row is booked in the database,
   `:on-start` is called with the transform run id and `:start-promise` (if any) is delivered
   `[:started run-id]`. A throw before that point delivers the throwable to the promise instead, so
   callers awaiting the start never hang."
-  ([transform]
+  ([transform :- ::transforms.schema/transform]
    (execute! transform nil))
-  ([transform {:keys [start-promise on-start] :as opts}]
+  ([transform :- ::transforms.schema/transform
+    {:keys [start-promise on-start] :as opts} :- [:maybe ::transforms.schema/execute-options]]
    (let [opts (merge opts
                      {:on-start (fn [run-id]
                                   (when start-promise
@@ -48,4 +52,5 @@
          ;; so a caller awaiting the start isn't left hanging on a pre-start failure;
          ;; a no-op when the run had already started and the promise was delivered
          (when start-promise (deliver start-promise t))
-         (throw t))))))
+         (throw t)))
+     nil)))

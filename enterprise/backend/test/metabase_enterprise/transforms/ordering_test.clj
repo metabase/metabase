@@ -12,7 +12,7 @@
   [source-tables target-name & [target-schema]]
   (let [default-schema "public"
         schema (or target-schema default-schema)]
-    {:source {:type "python"
+    {:source {:type :python
               :source-database (mt/id)
               :source-tables source-tables
               :body "df.write_output()"}
