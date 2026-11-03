@@ -804,8 +804,8 @@
             (is (= "completed" (:status (goal [{:max_rows 1} {:max_rows 2}]))))
             (is (= "failed" (:status (goal [{:max_rows 1} {:max_rows 1}]))))))))))
 
-(deftest card-endpoint-referenced-card-runs-as-saved-question-test
-  (testing "a viewer who can run saved questions, but not build queries, still gets a source card's value"
+(deftest card-endpoint-referenced-entities-need-query-permissions-test
+  (testing "a viewer who can run saved questions, but not build queries, gets no goal values"
     (mt/with-temp [:model/Card    {goal-id :id}    {:dataset_query (count-query :checkins)}
                    :model/Measure {measure-id :id} {:name       "Venue count"
                                                     :table_id   (mt/id :venues)
@@ -820,7 +820,11 @@
           (let [response (mt/user-http-request :rasta :post 202 (format "card/%d/query" chart-id))]
             (testing "the main card runs"
               (is (= "completed" (:status response))))
-            (testing "the source card runs as a saved question"
-              (is (= [[1000]] (get-in (ref-entity response :card goal-id) [:data :rows]))))
-            (testing "a measure has no saved question to run as, so it needs query permissions on its table"
-              (is (= "failed" (:status (ref-entity response :measure measure-id)))))))))))
+            (testing "the source card fails with a permission error"
+              (is (= {:status "failed"
+                      :error  "You do not have permissions to run this query."}
+                     (ref-entity response :card goal-id))))
+            (testing "the source measure fails with a permission error"
+              (is (= {:status "failed"
+                      :error  "You don't have permissions to do that."}
+                     (ref-entity response :measure measure-id))))))))))
