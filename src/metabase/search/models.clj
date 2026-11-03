@@ -24,12 +24,13 @@
   nil)
 
 ;; Deletes have no affordable row-level hook: a before-delete realizes every matching row as a full instance,
-;; which was rejected as too much of a performance risk. The capture seam instead snapshots only the columns
-;; the hooks' where-clauses read, once per delete statement.
+;; which was rejected as too much of a performance risk.
+;; The capture seam instead snapshots only the columns the hooks' where-clauses read, once per delete statement.
 ;;
-;; Enqueued messages are re-derivations, never facts. Delivery is registered after commit, so a rollback
-;; discards it and a worker never races uncommitted state. Ingestion re-reads the affected rows, and its
-;; asked-for-but-not-indexed diff purges entries whose backing row is gone.
+;; Enqueued messages are re-derivations, never facts.
+;; Delivery is registered after commit, so a rollback discards it and a worker never races uncommitted state.
+;; Ingestion re-reads the affected rows, and its asked-for-but-not-indexed diff purges entries whose backing row
+;; is gone.
 (derive :hook/search-index dml-capture/hook)
 
 (defmethod dml-capture/capture-fields :hook/search-index
@@ -37,6 +38,12 @@
   (when (and (= op :delete)
              (search/supports-index?))
     (search.spec/hook-where-fields model)))
+
+;; Capture rows are plain raw-value maps; [[search.spec/search-models-to-update]] needs the model attached.
+(defn- rows->instances
+  "The capture `rows` as `model` instances."
+  [model rows]
+  (mapv #(t2/instance model %) rows))
 
 (defn- submit-handoff!
   [model op thunk]
@@ -51,8 +58,8 @@
 (defmethod dml-capture/captured! :hook/search-index
   [model {:keys [op rows]}]
   (when (= op :delete)
-    ;; Capture rows are plain raw-value maps; search-models-to-update needs the model attached. Do not hand the
-    ;; re-derivation off until the outer transaction commits; Metabase discards the callback on rollback.
-    (let [instances (mapv #(t2/instance model %) rows)]
+    ;; Do not hand the re-derivation off until the outer transaction commits; Metabase discards the callback on
+    ;; rollback.
+    (let [instances (rows->instances model rows)]
       (mdb/do-after-commit
        #(submit-handoff! model op (fn [] (search/bulk-update! instances)))))))

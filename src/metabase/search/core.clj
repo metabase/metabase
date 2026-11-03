@@ -246,16 +246,21 @@
                             seq)]
       (search.ingestion/ingest-maybe-async! updates))))
 
+(defn- hook-selectors
+  "The `[search-model where-clause]` pairs that `instances` feed, without conditions that can never match."
+  [instances]
+  (into #{}
+        (comp (mapcat #(search.spec/search-models-to-update % true))
+              (remove (comp search.util/impossible-condition? second)))
+        instances))
+
 (defn bulk-update!
   "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows.
   Enqueued messages only ask ingestion to re-derive the affected search entries: rows that no longer
   satisfy their spec's query are purged by ingestion's asked-for-but-not-indexed diff."
   [instances]
   (when (supports-index?)
-    (when-let [updates (->> instances
-                            (into #{} (mapcat #(search.spec/search-models-to-update % true)))
-                            (remove (comp search.util/impossible-condition? second))
-                            seq)]
+    (when-let [updates (seq (hook-selectors instances))]
       (search.ingestion/ingest-maybe-async! updates))))
 
 (defn delete!
