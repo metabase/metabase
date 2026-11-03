@@ -17,10 +17,14 @@
     ;;
     ;; The host and port are the ones the server listens on inside its container, not the ones this JVM reaches it
     ;; by, because `exec!` runs there.
-    (dump-util/lines->statements
-     (str/split-lines
-      (exec! "pg_dump" "--no-owner" "--no-privileges" "--inserts"
-             "--host" "127.0.0.1" "--port" "5432" "--username" (str user) (str db))))))
+    ;;
+    ;; Extension comments are dump metadata rather than app schema, and only the extension's owner may set one, so a
+    ;; snapshot carrying them fails to load wherever another role owns `citext`.
+    (remove #(re-find #"(?i)^COMMENT ON EXTENSION " %)
+            (dump-util/lines->statements
+             (str/split-lines
+              (exec! "pg_dump" "--no-owner" "--no-privileges" "--inserts"
+                     "--host" "127.0.0.1" "--port" "5432" "--username" (str user) (str db)))))))
 
 (def dumper
   "Dumps a Postgres app DB."
