@@ -1,0 +1,82 @@
+# Running and triaging
+
+This step runs every generated test on the PR head, then on the parent commit where needed, and gives each test exactly one verdict. The commands are in step 8 of `SKILL.md`. Keep to one test process at a time throughout.
+
+## 1. First run on the head
+
+Run all generated frontend specs in one Jest invocation (label `head-1`), then all backend scratch namespaces in one `./bin/test-agent` invocation. Summarise the Jest results with `jest-summary.mjs`.
+
+Sort every failure into one of two kinds:
+
+- A harness error means the test never reached its assertion for reasons unrelated to the behaviour under test. Typical causes are a `SUITE_ERROR` line (syntax error, bad import, a module that does not exist at that path), an unmocked endpoint (`No fallback response defined for GET /api/...`), a missing provider or store slice, or a fixture that fails schema validation.
+- An assertion failure means the test ran its actions and an `expect` or `is` disagreed. A thrown error from the code under test also counts here, because a crash on a valid input is a result.
+
+## 2. Repair harness errors, within fixed rules
+
+You may change only these parts of a test:
+
+- import paths and imported names,
+- mock endpoints and their responses, when the response is a well-formed default (an empty list, a mock entity),
+- provider, store and router setup,
+- fixture construction, to make a fixture valid,
+- timer setup.
+
+You must not change these parts:
+
+- assertions or expected values,
+- the user actions or calls the test makes,
+- the scenario or the risk it tests,
+- the test's name.
+
+This applies to blind tests too. You have seen the diff, so a repair to a blind test must be mechanical: if fixing it needs knowledge of how the code works, drop the test as unrunnable instead. Write every repair to `repairs.md` as one line: the file, the test, what was wrong and what you changed.
+
+Repair at most twice per file, rerunning after each round. A test still failing with a harness error after that is unrunnable. Delete it from the head worktree, and record it in `triage.tsv` with the verdict `unrunnable`.
+
+## 3. Rerun every failure once
+
+Rerun every spec that has an assertion failure (label `head-2`), filtered with `-t` to the failing tests. End each id in the pattern with the character that follows it in the title, such as `"S3 |R2:"`, because `S1` also matches `S13`. Tests that `-t` filters out show as `PENDING` in the summary, so ignore those lines. A test that passes on the rerun is a flake. Record it as `flake` and stop there. A test that fails both times goes on to the parent run.
+
+## 4. Run on the parent commit
+
+Copy every remaining generated file into the parent worktree at the same relative path, and run them all there (label `parent-1`). Rerun the parent failures once (label `parent-2`), and count a test as failing on the parent only if it fails both times.
+
+If the code under test does not exist on the parent (a new file, a new export, a new endpoint), the test fails there by construction. Record the failure kind, because the report quotes it.
+
+## 5. Give each test one verdict
+
+Give each test the first verdict in this table that applies:
+
+| Head | Parent | Verdict | What it means |
+| --- | --- | --- | --- |
+| harness error after repairs | | `unrunnable` | Dropped |
+| failed, then passed | | `flake` | Dropped |
+| failed twice | failed twice | `pre-existing` | Fails without this PR too, so it is reported separately |
+| failed twice | passed | `finding`, after the check below | The PR broke the oracle |
+| passed | failed twice | `candidate`, after the check below | The test pins the PR's behaviour |
+| passed | passed | `discarded` | It cannot tell the PR from its parent |
+
+Tests whose oracle is the parent's behaviour were calibrated on the parent in the generator step, so they pass there by construction. For them, a head failure is a finding and a pass is a discard.
+
+A `pre-existing` test whose oracle is a sentence in this PR's description needs one more look. It means the PR claims a behaviour that neither the head nor the parent has. Keep the verdict, and mark the note "the PR's claim does not hold" so the report lists it first among the pre-existing failures.
+
+## 6. Check every finding and candidate before it counts
+
+Most adversarial failures are test mistakes. Before a test counts as a finding, read the failing assertion and the code it exercises, and answer three questions:
+
+1. Does the expected value follow from the oracle? For a stated-intent oracle, does the quoted sentence really say this? For common sense, would a user really expect it?
+2. Did the test do what a user or caller can do? A sequence that no real caller produces, such as calling a handler with arguments the component never passes, does not count.
+3. Is the failure about the behaviour, rather than about the test's own setup? An element that is never found because the test queried the wrong label is a harness error that slipped through.
+
+If any answer is no, record the test as `invalid` with one sentence saying why. Only tests that pass all three are findings.
+
+For a candidate, check that the PR's own tests do not already assert the same thing. If they do, record it as `discarded` with the note "already covered by <spec and test name>".
+
+## 7. Write triage.tsv
+
+Write one line per generated test, with tab-separated columns:
+
+```
+generator  file  test name  risk or scenario  oracle  head-1  head-2  parent-1  parent-2  verdict  note
+```
+
+Use `-` for runs that did not happen. The note holds the failure line for findings and pre-existing failures, the parent failure kind for candidates, and the reason for invalid tests.
