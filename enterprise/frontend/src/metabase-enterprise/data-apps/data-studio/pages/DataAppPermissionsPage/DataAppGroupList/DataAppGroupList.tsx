@@ -4,12 +4,12 @@ import { t } from "ttag";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
+import { useSetting } from "metabase/settings";
 import {
-  Badge,
   Card,
   Ellipsified,
   Flex,
-  Group,
+  Icon,
   TreeTable,
   type TreeTableColumnDef,
   TreeTableSkeleton,
@@ -32,6 +32,7 @@ export function DataAppGroupList({
   selectedGroupId,
   onSelectGroup,
 }: DataAppGroupListProps) {
+  const isTenantsEnabled = useSetting("use-tenants");
   const {
     data: groups = [],
     isLoading,
@@ -46,12 +47,7 @@ export function DataAppGroupList({
         header: t`Group name`,
         minWidth: 200,
         cell: ({ row }) => (
-          <Group gap="sm" wrap="nowrap">
-            <Ellipsified>{getGroupNameLocalized(row.original)}</Ellipsified>
-            {row.original.is_tenant_group && (
-              <Badge variant="outline">{t`Tenant group`}</Badge>
-            )}
-          </Group>
+          <Ellipsified>{getGroupNameLocalized(row.original)}</Ellipsified>
         ),
       },
       {
@@ -68,6 +64,29 @@ export function DataAppGroupList({
           <DataAppGroupDataAccess app={app} group={row.original} />
         ),
       },
+      ...(isTenantsEnabled
+        ? [
+            {
+              id: "type",
+              header: t`Type`,
+              width: 80,
+              cell: ({ row }) => {
+                const label = row.original.is_tenant_group
+                  ? t`Tenant group`
+                  : t`Internal group`;
+
+                return (
+                  <Icon
+                    name={row.original.is_tenant_group ? "globe" : "group"}
+                    aria-label={label}
+                    tooltip={label}
+                    c="text-secondary"
+                  />
+                );
+              },
+            } satisfies TreeTableColumnDef<DataAppGroup>,
+          ]
+        : []),
       {
         id: "actions",
         header: "",
@@ -75,7 +94,7 @@ export function DataAppGroupList({
         cell: ({ row }) => <DataAppGroupMenu app={app} group={row.original} />,
       },
     ],
-    [app],
+    [app, isTenantsEnabled],
   );
 
   const treeTableInstance = useTreeTableInstance({
@@ -94,7 +113,13 @@ export function DataAppGroupList({
     <Flex direction="column" flex={1} mih={0}>
       <Card withBorder p={0}>
         {isLoading ? (
-          <TreeTableSkeleton columnWidths={[0.4, 0.2, 0.35, 0.05]} />
+          <TreeTableSkeleton
+            columnWidths={
+              isTenantsEnabled
+                ? [0.35, 0.2, 0.3, 0.1, 0.05]
+                : [0.4, 0.2, 0.35, 0.05]
+            }
+          />
         ) : (
           <TreeTable
             instance={treeTableInstance}

@@ -168,7 +168,7 @@ describe("scenarios > data apps > data studio permissions", () => {
       H.modal().findByRole("button", { name: "Add" }).click();
       H.main()
         .findByRole("row", { name: /All tenant users/ })
-        .findByText("Tenant group")
+        .findByRole("img", { name: "Tenant group" })
         .should("be.visible");
 
       cy.log("the assigned tenant user can render the real app");

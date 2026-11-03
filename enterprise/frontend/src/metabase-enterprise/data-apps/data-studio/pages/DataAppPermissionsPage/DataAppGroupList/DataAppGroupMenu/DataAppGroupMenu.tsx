@@ -20,6 +20,7 @@ export function DataAppGroupMenu({ app, group }: DataAppGroupMenuProps) {
   const { sendErrorToast } = useMetadataToasts();
   const { show: showConfirmation, modalContent } = useConfirmation();
   const groupName = getGroupNameLocalized(group);
+
   const groupUrl = group.is_tenant_group
     ? Urls.adminTenantGroup(group.id)
     : Urls.adminGroup(group.id);

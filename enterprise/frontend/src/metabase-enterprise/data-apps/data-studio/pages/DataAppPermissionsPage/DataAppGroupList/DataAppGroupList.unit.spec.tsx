@@ -6,6 +6,8 @@ import {
   setupDataAppGroupsEndpoint,
   setupRemoveDataAppGroupEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -21,6 +23,7 @@ import {
   createMockDataApp,
   createMockDataAppGroup,
   createMockDataAppGroupPermissionWarning,
+  createMockSettings,
 } from "metabase-types/api/mocks";
 
 import { DataAppGroupList } from "./DataAppGroupList";
@@ -28,9 +31,10 @@ import { DataAppGroupList } from "./DataAppGroupList";
 type SetupOpts = {
   groups: DataAppGroup[];
   warnings?: DataAppGroupPermissionWarning[];
+  useTenants?: boolean;
 };
 
-function setup({ groups, warnings = [] }: SetupOpts) {
+function setup({ groups, warnings = [], useTenants = false }: SetupOpts) {
   const onSelectGroup = jest.fn<void, [GroupId]>();
   setupDataAppGroupsEndpoint("sales", groups);
   setupDataAppGroupPermissionWarningsEndpoint("sales", warnings);
@@ -41,6 +45,13 @@ function setup({ groups, warnings = [] }: SetupOpts) {
       selectedGroupId={undefined}
       onSelectGroup={onSelectGroup}
     />,
+    {
+      storeInitialState: createMockState({
+        settings: mockSettings(
+          createMockSettings({ "use-tenants": useTenants }),
+        ),
+      }),
+    },
   );
   return { onSelectGroup };
 }
@@ -67,10 +78,39 @@ describe("DataAppGroupList", () => {
     expect(await screen.findByText("Support")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("Finance")).toBeInTheDocument();
-    expect(screen.getByText("Tenant group")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "Type" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("img", { name: /Internal group|Tenant group/ }),
+    ).not.toBeInTheDocument();
     expect(await screen.findByText("Missing 1 table")).toBeInTheDocument();
     expect(screen.getByText("All tables")).toBeInTheDocument();
   });
+
+  it.each([
+    { label: "Internal group", isTenantGroup: false, icon: "group" },
+    { label: "Tenant group", isTenantGroup: true, icon: "globe" },
+  ])(
+    "shows the $label icon and hover hint when tenants are enabled",
+    async ({ label, isTenantGroup, icon }) => {
+      setup({
+        useTenants: true,
+        groups: [createMockDataAppGroup({ is_tenant_group: isTenantGroup })],
+      });
+
+      const typeIcon = await screen.findByRole("img", { name: label });
+
+      expect(
+        screen.getByRole("columnheader", { name: "Type" }),
+      ).toBeInTheDocument();
+      expect(typeIcon).toHaveClass(`Icon-${icon}`);
+
+      await userEvent.hover(typeIcon);
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(label);
+    },
+  );
 
   it("links tenant groups to their management page", async () => {
     setup({
