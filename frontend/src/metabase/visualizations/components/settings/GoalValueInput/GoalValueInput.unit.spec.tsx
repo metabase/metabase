@@ -1571,6 +1571,31 @@ describe("GoalValueInput", () => {
     ).toBeInTheDocument();
   });
 
+  it("says so when the picked source has only non-numeric columns", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "No numbers" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 15,
+        name: "No numbers",
+        result_metadata: [
+          createMockField({ name: "name", base_type: "type/Text" }),
+          createMockField({ name: "created_at", base_type: "type/DateTime" }),
+        ],
+      }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("No numbers");
+
+    expect(
+      await screen.findByRole("menuitem", { name: "No numeric columns" }),
+    ).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   describe("opening the source in a new tab", () => {
     const NEW_TAB_HINT = `${METAKEY}+click to open in new tab`;
 
