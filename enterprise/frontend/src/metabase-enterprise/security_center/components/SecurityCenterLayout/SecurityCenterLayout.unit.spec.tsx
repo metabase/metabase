@@ -1,14 +1,32 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupHealthChecksEndpoint,
+  setupSecurityAdvisoriesEndpoint,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route, redirect } from "metabase/router";
+import type { Advisory, HealthCheck } from "metabase-types/api";
+import {
+  createAdvisory,
+  createMockHealthCheck,
+} from "metabase-types/api/mocks/security-center";
 
 import { SecurityCenterLayout } from "./SecurityCenterLayout";
 
 interface SetupOpts {
-  initialRoute: string;
+  initialRoute?: string;
+  advisories?: Advisory[];
+  checks?: HealthCheck[];
 }
 
-const setup = ({ initialRoute }: SetupOpts) =>
-  renderWithProviders(
+const setup = ({
+  initialRoute = "/admin/security-center/advisories",
+  advisories = [],
+  checks = [],
+}: SetupOpts = {}) => {
+  setupSecurityAdvisoriesEndpoint(advisories);
+  setupHealthChecksEndpoint(checks);
+
+  return renderWithProviders(
     <Route path="/admin/security-center" element={<SecurityCenterLayout />}>
       <Route index element={redirect("advisories")} />
       <Route path="advisories" element={<div>Advisories page</div>} />
@@ -16,6 +34,9 @@ const setup = ({ initialRoute }: SetupOpts) =>
     </Route>,
     { withRouter: true, initialRoute },
   );
+};
+
+const getNavLink = (name: RegExp) => screen.getByRole("link", { name });
 
 describe("SecurityCenterLayout", () => {
   it("shows the sections in the sidebar", () => {
@@ -39,5 +60,37 @@ describe("SecurityCenterLayout", () => {
 
     expect(screen.getByText("Advisories page")).toBeInTheDocument();
     expect(router?.location.search).toBe("?open=notifications");
+  });
+
+  it("marks the sections that have issues", async () => {
+    setup({
+      advisories: [createAdvisory({ match_status: "active" })],
+      checks: [createMockHealthCheck({ status: "fail" })],
+    });
+
+    await waitFor(() => {
+      expect(
+        within(getNavLink(/Advisories/)).getByTestId("issue-dot"),
+      ).toBeInTheDocument();
+    });
+    expect(
+      within(getNavLink(/Health checks/)).getByTestId("issue-dot"),
+    ).toBeInTheDocument();
+  });
+
+  it("marks only the section that has issues", async () => {
+    setup({
+      advisories: [createAdvisory({ match_status: "not_affected" })],
+      checks: [createMockHealthCheck({ status: "fail" })],
+    });
+
+    await waitFor(() => {
+      expect(
+        within(getNavLink(/Health checks/)).getByTestId("issue-dot"),
+      ).toBeInTheDocument();
+    });
+    expect(
+      within(getNavLink(/Advisories/)).queryByTestId("issue-dot"),
+    ).not.toBeInTheDocument();
   });
 });

@@ -1,22 +1,12 @@
-import { Box } from "metabase/ui";
-
-import { useHasSecurityIssues } from "../../hooks/use-has-security-issues";
+import { useSecurityIssues } from "../../hooks/use-security-issues";
+import { IssueDot } from "../IssueDot/IssueDot";
 
 export const SecurityCenterBadge = () => {
-  const hasSecurityIssues = useHasSecurityIssues();
+  const { hasAffectingAdvisory, hasFailingCheck } = useSecurityIssues();
 
-  if (!hasSecurityIssues) {
+  if (!hasAffectingAdvisory && !hasFailingCheck) {
     return null;
   }
 
-  return (
-    <Box
-      w={8}
-      h={8}
-      miw={8}
-      bg="feedback-negative"
-      style={{ borderRadius: "50%", flexShrink: 0 }}
-      data-testid="security-center-badge"
-    />
-  );
+  return <IssueDot data-testid="security-center-badge" />;
 };

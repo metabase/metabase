@@ -4,7 +4,7 @@ import {
 } from "../api";
 import { isAffected } from "../utils";
 
-export const useHasSecurityIssues = () => {
+export const useSecurityIssues = () => {
   const { data: advisoriesResponse } = useListSecurityAdvisoriesQuery();
   const { data: healthChecksResponse } = useListHealthChecksQuery();
   const hasAffectingAdvisory =
@@ -13,5 +13,5 @@ export const useHasSecurityIssues = () => {
     healthChecksResponse?.checks.some((check) => check.status === "fail") ??
     false;
 
-  return hasAffectingAdvisory || hasFailingCheck;
+  return { hasAffectingAdvisory, hasFailingCheck };
 };

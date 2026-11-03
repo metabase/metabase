@@ -8,20 +8,29 @@ import {
 import { Outlet } from "metabase/router";
 import * as Urls from "metabase/urls";
 
-const SecurityCenterNav = () => (
-  <AdminNavWrapper>
-    <AdminNavItem
-      label={t`Advisories`}
-      path={Urls.securityCenterAdvisories()}
-      icon="shield_outline"
-    />
-    <AdminNavItem
-      label={t`Health checks`}
-      path={Urls.securityCenterHealthChecks()}
-      icon="pulse"
-    />
-  </AdminNavWrapper>
-);
+import { useSecurityIssues } from "../../hooks/use-security-issues";
+import { IssueDot } from "../IssueDot/IssueDot";
+
+const SecurityCenterNav = () => {
+  const { hasAffectingAdvisory, hasFailingCheck } = useSecurityIssues();
+
+  return (
+    <AdminNavWrapper>
+      <AdminNavItem
+        label={t`Advisories`}
+        path={Urls.securityCenterAdvisories()}
+        icon="shield_outline"
+        rightSection={hasAffectingAdvisory && <IssueDot />}
+      />
+      <AdminNavItem
+        label={t`Health checks`}
+        path={Urls.securityCenterHealthChecks()}
+        icon="pulse"
+        rightSection={hasFailingCheck && <IssueDot />}
+      />
+    </AdminNavWrapper>
+  );
+};
 
 export const SecurityCenterLayout = () => (
   <AdminSettingsLayout sidebar={<SecurityCenterNav />}>
