@@ -9,31 +9,35 @@
 
     {:op :delete, :model model, :rows [pre-image, ...]}
 
-  `:rows` are narrow pre-image snapshots: plain maps of raw column values, only the columns named by
+  Each row is a narrow pre-image snapshot: a plain map of raw column values, holding only the columns named by
   [[capture-fields]], selected with the statement's own conditions immediately before it executes.
   No instance decoration runs on them — no `after-select` methods, no type transforms.
 
   Deletes are captured because they have no affordable row-level hook: toucan2's `before-delete` realizes a
-  full instance per matching row. Inserts and updates are deliberately out of scope here; they keep their
-  row-level hooks until a capture path for them is designed on its own terms.
+  full instance per matching row.
+  Inserts and updates are deliberately out of scope here.
+  They keep their row-level hooks until a capture path for them is designed on its own terms.
 
   Delivery guarantees, and non-guarantees:
 
   - One event per statement, delivered on the calling thread after the statement executes but before any
-    enclosing transaction commits. If the transaction rolls back, the event has already fired: consumers must
-    treat events as \"look at these rows again\", never as facts about committed state.
+    enclosing transaction commits.
+    If the transaction rolls back, the event has already fired: consumers must treat events as \"look at these
+    rows again\", never as facts about committed state.
   - An empty pre-image snapshot delivers no event.
   - A statement matching more rows than [[max-pre-image-rows]] delivers no event, so that a wide delete cannot
-    materialize an unbounded result set on the caller's thread. This is a capture hole, and a loud one: the
-    consumer's convergence backstop is what covers it.
+    materialize an unbounded result set on the caller's thread.
+    This is a capture hole, and a loud one: the consumer's convergence backstop is what covers it.
   - DML that bypasses the model — `(t2/delete! (t2/table-name model) ...)`, raw `t2/query` — delivers no
     event, exactly as it bypasses every other Toucan 2 tool.
   - A model mixing capture with `before-delete` selects the matching rows twice: once for the row-level hook,
-    once for the narrow snapshot. Capture is deliberately the inner of the two.
+    once for the narrow snapshot.
+    Capture is deliberately the inner of the two.
   - The pre-image select and the statement are separate, unlocked reads: a concurrent writer can make a
-    snapshot over- or under-approximate the rows the statement actually affects. toucan2's own
-    `before-delete` has the same window. Consumers already must treat events as re-examination hints, so
-    over-approximation is harmless and under-approximation is bounded by their convergence backstop."
+    snapshot over- or under-approximate the rows the statement actually affects.
+    Toucan's own `before-delete` has the same window.
+    Consumers already must treat events as re-examination hints, so over-approximation is harmless and
+    under-approximation is bounded by their convergence backstop."
   (:require
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -46,10 +50,12 @@
   "Models deriving from this keyword get statement-level DML capture."
   ::captured)
 
+;; A missed event degrades to a stale consumer until its convergence backstop runs; an OutOfMemoryError degrades
+;; the whole instance.
 (def ^:private max-pre-image-rows
-  "Row ceiling for a pre-image snapshot. A statement matching more rows than this skips capture rather than
-  materializing an unbounded result set on the caller's thread: a missed event degrades to a stale consumer
-  until its convergence backstop runs, an OutOfMemoryError degrades the whole instance."
+  "Row ceiling for a pre-image snapshot.
+  A statement matching more rows than this skips capture rather than materializing an unbounded result set on the
+  caller's thread."
   10000)
 
 (defmulti capture-fields
@@ -67,9 +73,9 @@
   "Deliver a capture event for a DML statement against `model`; see the namespace docstring for the shape.
   Implementations run on the DML's calling thread, inside any enclosing transaction: keep them cheap.
   They must not execute SQL on that transaction's connection: although delivery catches and logs exceptions,
-  catching a database error cannot restore a PostgreSQL transaction that the error has already aborted. Prefer
-  registering a post-commit handoff; ordinary consumer failures then degrade to a missed event covered by the
-  consumer's convergence backstop."
+  catching a database error cannot restore a PostgreSQL transaction that the error has already aborted.
+  Prefer registering a post-commit handoff; ordinary consumer failures then degrade to a missed event covered by
+  the consumer's convergence backstop."
   {:arglists '([model event])}
   (fn [model _event] (keyword model)))
 
@@ -80,44 +86,45 @@
     (catch Throwable e
       (log/errorf e "Error delivering DML capture event for %s %s" model (:op event)))))
 
+(defn- restatable-as-select?
+  "Whether a DELETE's resolved query can be rebuilt as the SELECT a pre-image snapshot needs."
+  [query]
+  (not (or
+        ;; A SQL-args vector can be a perfectly valid DELETE input, but it cannot safely be repurposed as a
+        ;; modelless SELECT.
+        ;; In particular, executing it here would run the DELETE before the actual statement.
+        (sequential? query)
+        ;; PostgreSQL's DELETE ... USING has no portable SELECT restatement in the model pipeline (and may
+        ;; duplicate target rows).
+        ;; Capture is deliberately best-effort, so leave those statements uncaptured.
+        (and (map? query) (contains? query :using)))))
+
+;; Toucan's `before-delete` gets this same workaround from [[metabase.app-db.setup]], but only under its own
+;; dispatch value, so capture has to do it for itself (https://github.com/camsaul/toucan2/issues/203).
 (defn- delete-query->select-query
   "Restate an explicit HoneySQL DELETE map as something a SELECT can be built from.
-  Toucan 2 lets a caller pass one to `delete!`, and building a SELECT from it would keep the `:delete` and
-  `:delete-from` keys and compile to nonsense. `before-delete` gets this same workaround from
-  [[metabase.app-db.setup]], but only under its own dispatch value, so capture has to do it for itself
-  (https://github.com/camsaul/toucan2/issues/203)."
+  Toucan 2 lets a caller pass one to `delete!`, and a SELECT built from it would keep the `:delete` and
+  `:delete-from` keys and compile to nonsense."
   [query]
-  (cond
-    ;; A SQL-args vector can be a perfectly valid DELETE input, but it cannot safely be repurposed as a
-    ;; modelless SELECT. In particular, executing it here would run the DELETE before the actual statement.
-    (sequential? query)
-    nil
-
-    ;; PostgreSQL's DELETE ... USING has no portable SELECT restatement in the model pipeline (and may
-    ;; duplicate target rows). Capture is deliberately best-effort, so leave those statements uncaptured.
-    (and (map? query) (contains? query :using))
-    nil
-
-    (map? query)
+  (if (map? query)
     (cond-> (dissoc query :delete)
       (contains? query :delete-from) (-> (dissoc :delete-from)
-                                         (assoc :from [(:delete-from query)])));
-
-    :else
+                                         (assoc :from [(:delete-from query)])))
     query))
 
+;; Executed modelless because `after-select` methods and type transforms often dereference columns a narrow
+;; snapshot doesn't fetch.
+;; SQL execution failures propagate, since suppressing one cannot restore a PostgreSQL transaction it already
+;; aborted.
 (defn- pre-image-rows
   "Select the rows a delete statement is about to affect, narrowed to `fields`, as plain raw-value maps.
-  The select is built and compiled through the model's pipeline so conditions keep the statement's exact
-  semantics, but executed modelless: `after-select` methods and type transforms often dereference columns a
-  narrow snapshot doesn't fetch, so no instance decoration may run here.
-  Runs on the current connection, so inside any transaction the statement itself runs in.
-  Returns nil, and skips capture, for a query shape we cannot build or compile as a select (e.g. raw sql-args
-  with kv-args) and for a statement matching more than [[max-pre-image-rows]] rows.
-  SQL execution failures propagate: suppressing one cannot restore a PostgreSQL transaction it already aborted."
+  The select is built and compiled through the model's pipeline, so its conditions keep the statement's exact
+  semantics, and runs on the current connection, inside any transaction the statement itself runs in.
+  Returns nil, skipping capture, for a query [[restatable-as-select?]] rejects, for one that fails to build or
+  compile as a select, and for a statement matching more than [[max-pre-image-rows]] rows.
+  Throws when the select itself fails to execute."
   [query-type model fields parsed-args resolved-query]
-  (when-not (or (sequential? resolved-query)
-                (and (map? resolved-query) (contains? resolved-query :using)))
+  (when (restatable-as-select? resolved-query)
     (when-let [sql-args (try
                           (let [built (t2.pipeline/build query-type model
                                                          (assoc parsed-args :columns (vec fields))
@@ -132,16 +139,18 @@
                        (t2.execute/reducible-query sql-args))]
         (cond
           ;; Query-inspection tooling (`toucan2.tools.compile/compile`) rebinds execution to hand back the
-          ;; compiled query instead of running it. Only rows are rows: anything else means no statement ran, so
-          ;; there is nothing to capture.
+          ;; compiled query instead of running it.
+          ;; Only rows are rows: anything else means no statement ran, so there is nothing to capture.
           (not (every? map? rows))
           nil
 
           (< max-pre-image-rows (count rows))
-          (log/errorf "Skipping DML capture for %s: statement matches more than %d rows"
-                      model max-pre-image-rows)
+          (do (log/errorf "Skipping DML capture for %s: statement matches more than %d rows"
+                          model max-pre-image-rows)
+              nil)
 
-          :else rows)))))
+          :else
+          rows)))))
 
 (methodical/defmethod t2.pipeline/transduce-query
   [#_query-type :toucan.query-type/delete.* #_model ::captured #_resolved-query :default]
