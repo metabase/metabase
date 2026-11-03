@@ -19,6 +19,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.snake-hating-map :as snake-hating-map])
   (:import
    (javax.net.ssl SSLSocketFactory)))
@@ -1058,3 +1059,31 @@
   (is (nil? (validation-error :h2 {:db "file:/tmp/x;USER=GUEST;PASSWORD=guest"})))
   (is (not-any? #{:db} (driver/url-building-detail-keys :sqlite)))
   (is (nil? (validation-error :sqlite {:db "/tmp/my data#1.db"}))))
+
+(defn- fake-jwt
+  "A parseable (not verifiable) JWT with `claims` as the payload."
+  [claims]
+  (let [encoder (java.util.Base64/getUrlEncoder)
+        encode  (fn [m] (.encodeToString encoder (.getBytes ^String (json/encode m) "UTF-8")))]
+    (str (encode {:alg "none"}) "." (encode claims) ".sig")))
+
+(deftest ^:parallel jwt-claims-test
+  (testing "decodes the payload as a Clojure map with keyword keys"
+    (is (= {:exp 1700000000 :sub "s"}
+           (driver.u/jwt-claims (fake-jwt {:exp 1700000000 :sub "s"})))))
+  (testing "throws on malformed input"
+    (are [input] (thrown? Exception (driver.u/jwt-claims input))
+      "not-a-jwt"
+      "onlyone.segment"
+      "a.b.c"
+      (str "hdr." (.encodeToString (java.util.Base64/getUrlEncoder) (.getBytes "{not-json" "UTF-8")) ".sig"))))
+
+(deftest ^:parallel jwt-expiry-ms-test
+  (testing "converts `exp` to integer milliseconds; RFC 7519 NumericDate allows non-integer exp"
+    (let [actual (driver.u/jwt-expiry-ms (fake-jwt {:exp 1700000000.5 :sub "s"}))]
+      (is (= 1700000000500 actual))
+      (is (int? actual))))
+  (testing "returns nil when `exp` is missing or non-numeric"
+    (are [claims] (nil? (driver.u/jwt-expiry-ms (fake-jwt claims)))
+      {:sub "s"}
+      {:exp "nope"})))
