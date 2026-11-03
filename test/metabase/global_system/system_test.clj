@@ -3,7 +3,8 @@
    [clojure.pprint :as pprint]
    [clojure.test :refer :all]
    [metabase.global-system.mutable-component :as mc]
-   [metabase.global-system.system :as system])
+   [metabase.global-system.system :as system]
+   [metabase.global-system.test-util :as global-system.tu])
   (:import
    (java.util.concurrent LinkedBlockingQueue)))
 
@@ -296,3 +297,91 @@
            (let [handle (system/mutable-component-handle ::never-installed)]
              {:pr     (pr-str handle)
               :pprint (pprint/write handle :stream nil)})))))
+
+(deftest ^:synchronized swap-vals-test
+  (mc/alter-root other-handle 1)
+  (testing "swap-vals! and reset-vals! return the value before and after, at the root"
+    (is (= [1 2] (mc/swap-vals! other-handle inc)))
+    (is (= [2 5] (mc/reset-vals! other-handle 5))))
+  (testing "and in a binding, leaving the root alone"
+    (mc/binding other-handle 10
+                (fn []
+                  (is (= [10 11] (mc/swap-vals! other-handle inc)))
+                  (is (= [11 0] (mc/reset-vals! other-handle 0))))))
+  (is (= 5 @other-handle)))
+
+(deftest ^:synchronized compare-and-set-test
+  (testing "compare-and-set! writes only when the current value is identical to the expected one"
+    (mc/alter-root other-handle :a)
+    (is (false? (mc/compare-and-set! other-handle :b :c)))
+    (is (= :a @other-handle))
+    (is (true? (mc/compare-and-set! other-handle :a :c)))
+    (is (= :c @other-handle)))
+  (testing "in a binding it compares and writes the bound value"
+    (mc/binding other-handle nil
+                (fn []
+                  (is (true? (mc/compare-and-set! other-handle nil :bound)))
+                  (is (= :bound @other-handle))))
+    (is (= :c @other-handle)))
+  (testing "of many threads racing to install a value, exactly one wins"
+    (mc/alter-root other-handle nil)
+    (let [start   (promise)
+          racers  (mapv (fn [i] (future @start (mc/compare-and-set! other-handle nil i))) (range 16))
+          _       (deliver start true)
+          winners (keep-indexed (fn [i racer] (when @racer i)) racers)]
+      (is (= [@other-handle] winners)))))
+
+(deftest ^:synchronized root-entry-test
+  (let [handle (system/mutable-component-handle ::root-entry)]
+    (testing "a component with no root has no root entry"
+      (is (nil? (mc/root-entry handle))))
+    (testing "a nil root is still a root"
+      (mc/alter-root handle nil)
+      (is (= [::root-entry nil] (mc/root-entry handle))))
+    (testing "the root entry ignores a binding"
+      (mc/binding handle :bound
+                  (fn []
+                    (is (= [::root-entry nil] (mc/root-entry handle))))))
+    (testing "remove-root uninstalls the component, so reads and writes throw again"
+      (mc/remove-root handle)
+      (is (nil? (mc/root-entry handle)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Component has no value" @handle))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Component has no value" (mc/reset! handle 1))))))
+
+(deftest ^:synchronized slot-lock-test
+  (mc/alter-root db-handle :root-db)
+  (let [root-lock (mc/slot-lock db-handle)]
+    (testing "the root has one lock per component"
+      (is (identical? root-lock (mc/slot-lock db-handle)))
+      (is (not (identical? root-lock (mc/slot-lock other-handle)))))
+    (testing "each binding has its own lock, shared with threads that inherit it"
+      (mc/binding db-handle :bound-db
+                  (fn []
+                    (let [bound-lock (mc/slot-lock db-handle)]
+                      (is (not (identical? root-lock bound-lock)))
+                      (is (identical? bound-lock @(future (mc/slot-lock db-handle))))
+                      (testing "and a nested binding has another"
+                        (mc/binding db-handle :inner-db
+                                    (fn []
+                                      (is (not (identical? bound-lock (mc/slot-lock db-handle)))))))
+                      (testing "without-binding gives the root's lock back"
+                        (mc/without-binding db-handle
+                                            (fn []
+                                              (is (identical? root-lock (mc/slot-lock db-handle))))))))))
+    (testing "with-slot-lock holds that lock for its body"
+      (is (true? (mc/with-slot-lock db-handle
+                   (Thread/holdsLock root-lock)))))))
+
+(deftest ^:synchronized with-root-test
+  (do-with-scheduler
+   (fn []
+     (testing "with-root installs a root that threads outside any binding see, then restores the one it replaced"
+       (mc/alter-root db-handle :root-db)
+       (global-system.tu/with-root db-handle :temp-root-db
+         (is (= :temp-root-db (scheduler-sees))))
+       (is (= :root-db @db-handle)))
+     (testing "a component that had no root has none again afterwards"
+       (let [handle (system/mutable-component-handle ::with-root-absent)]
+         (global-system.tu/with-root handle :temp
+           (is (= :temp (scheduler-runs (fn [] @handle)))))
+         (is (nil? (mc/root-entry handle))))))))
