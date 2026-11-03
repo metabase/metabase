@@ -16,7 +16,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.dashboards.schema]
    [metabase.formatter.core :as formatter]
-   [metabase.geojson.api :as geojson.api]
+   [metabase.geojson.core :as geojson.core]
    [metabase.geojson.settings :as geojson.settings]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -836,7 +836,7 @@
   ;; Resolve the display type the same way detection does, so a visualizer dashcard's display wins.
   (let [display-type (or (render.util/visualizer-display-type dashcard) (:display card))
         region-key   (region-map-region-key display-type card dashcard data)
-        geojson      (some-> region-key geojson.api/region-geojson)]
+        geojson      (some-> region-key geojson.core/region-geojson)]
     (if-not geojson
       ;; The region's GeoJSON couldn't be resolved (e.g. a custom map whose fetch failed); degrade to a
       ;; table of the data rather than emit an empty map.

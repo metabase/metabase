@@ -550,11 +550,15 @@
         (mt/with-temp [:model/Card {model-card :id} {:dataset_query (venues-count), :type :model}]
           (doseq [[item-type card-id] {"question" notebook-card, "model" model-card}]
             (testing item-type
-              (is (str/includes?
-                   (:output (run-viewing! [{:type item-type, :id card-id}] (str card-id)))
-                   (format (str "This ran the saved version of %s %d: edits and filter values on the user's screen "
-                                "are not applied. Link to it as `metabase://%s/%d`, not as a query.")
-                           item-type card-id item-type card-id)))))))
+              (let [output (:output (run-viewing! [{:type item-type, :id card-id}] (str card-id)))]
+                (is (str/includes?
+                     output
+                     (format (str "This ran the saved version of %s %d: edits and filter values on the user's screen "
+                                  "are not applied. Link to it as `metabase://%s/%d`, not as a query.")
+                             item-type card-id item-type card-id)))
+                (testing "only a question has a query ID for the query on screen"
+                  (is (= (= "question" item-type)
+                         (str/includes? output "run its query ID to read the query on the user's screen")))))))))
       (testing "a query the conversation holds says nothing about a saved version"
         (is (not (str/includes? (:output (run-tool! {"q1" (venues-count)} {:query_id "q1"})) "saved version"))))
       (testing "a saved question the user is not viewing runs by its id too"
@@ -1015,8 +1019,8 @@
   (testing "the SQL-only tool's refusals point at SQL or at telling the user, never at the notebook builder"
     (testing "an unknown id"
       (is (= (refusal ::recoverable.common/unknown-query-id
-                      (str "Query \"nope\" was not found. Available query IDs: \"q1\". A saved question or model has "
-                           "no query ID.")
+                      (str "Query \"nope\" was not found. Available query IDs: \"q1\". The ID of a saved question or "
+                           "model is not a query ID.")
                       (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
                            "`run_query`."))
              (run-sql-only-tool! {"q1" (venues-by-id)} {:query_id "nope"}))))
@@ -1046,8 +1050,8 @@
              (run-sql-only-tool! false {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"}))))
     (testing "an unknown id"
       (is (= (refusal ::recoverable.common/unknown-query-id
-                      (str "Query \"nope\" was not found. Available query IDs: \"q1\". A saved question or model has "
-                           "no query ID, and no SQL can run here.")
+                      (str "Query \"nope\" was not found. Available query IDs: \"q1\". The ID of a saved question or "
+                           "model is not a query ID, and no SQL can run here.")
                       no-values-step)
              (run-sql-only-tool! false {"q1" (venues-by-id)} {:query_id "nope"}))))
     (testing "a query that is not SQL"
@@ -1086,8 +1090,8 @@
   (testing "an invented ID is cut to leave room for the recovery step"
     (let [query-id (apply str (repeat 5000 "x"))]
       (is (= (refusal ::recoverable.common/unknown-query-id
-                      (str "Query \"" (subs query-id 0 100) "\" was not found. Available query IDs: \"q1\". A saved "
-                           "question or model has no query ID.")
+                      (str "Query \"" (subs query-id 0 100) "\" was not found. Available query IDs: \"q1\". The ID of "
+                           "a saved question or model is not a query ID.")
                       (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
                            "`run_query`."))
              (run-sql-only-tool! {"q1" (venues-by-id)} {:query_id query-id}))))))
@@ -1095,6 +1099,9 @@
 (deftest run-query-description-test
   (testing "the ordinary tool's description names the notebook builder"
     (is (str/includes? (:description (tools.core/declaration run-query/run-query-tool)) "construct_notebook_query")))
+  (testing "the ordinary tool's description says that only Metabot's SQL questions need SQL execution"
+    (is (str/includes? (:description (tools.core/declaration run-query/run-query-tool))
+                       "their own ID, SQL or not.")))
   (testing "the SQL-only tool's description points at SQL and never at the builder"
     (let [description (:description (tools.core/declaration run-query/run-sql-query-tool))]
       (is (str/includes? description "write SQL that reads it with `create_sql_query`"))
@@ -1215,12 +1222,12 @@
         rejected-sql (mt/native-query {:query "SELECT * FROM NO_SUCH_TABLE"})]
     (doseq [profile run-query-profiles]
       (testing profile
-        (testing "a run that fails inside Metabase ends the turn, and the user gets the generic error"
+        (testing "a run that fails inside Metabase tells the model only that it failed, and the model answers"
           (binding [qp.pipeline/*execute* mut/reject-app-db-lookup]
-            (is (= {:llm-calls 1
+            (is (= {:llm-calls 2
                     :result    mut/internal-failure
-                    :text      "Something went wrong."
-                    :finish    :terminal-error}
+                    :text      "Done."
+                    :finish    :stop}
                    (run-turn! profile sql)))))
         (testing "a query the database rejects reaches the model quoted, and the model answers"
           (is (=? {:llm-calls 2

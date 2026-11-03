@@ -1,17 +1,17 @@
 ```ts
 type ActionResultForDelete = {
-  rows-deleted: readonly RowValue[];
+  rows-deleted: number;
 };
 ```
 
-Response from a single-row delete — the affected primary keys.
+Response from a single-row delete — the number of rows deleted.
 
 ## Properties
 
 <!-- [<snippet properties>] -->
 
-| Property                                 | Type                                                                |
-| :--------------------------------------- | :------------------------------------------------------------------ |
-| <a id="rows-deleted"></a> `rows-deleted` | readonly [`RowValue`](/docs/latest/embedding/sdk/api/RowValue.md)[] |
+| Property                                 | Type     |
+| :--------------------------------------- | :------- |
+| <a id="rows-deleted"></a> `rows-deleted` | `number` |
 
 <!-- [<endsnippet properties>] -->

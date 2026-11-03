@@ -135,10 +135,7 @@
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model]}
    :- [:map {:closed true}
-       [:include_editable_data_model {:optional true} [:maybe :boolean]]]
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
+       [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
   (let [api-perm-check-fn (if include_editable_data_model
                             schema.table/check-data-model-perms
                             api/read-check)]
@@ -189,7 +186,7 @@
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:field_order             {:optional true} [:maybe FieldOrder]]
-   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+   [:data_authority          {:optional true} ::data-authority-write]
    [:data_source             {:optional true} [:maybe :string]]
    [:data_layer              {:optional true} [:maybe :string]]
    [:owner_email             {:optional true} [:maybe :string]]
@@ -219,7 +216,7 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (schema.table-user-settings/upsert-user-settings existing-table changes))
+    (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
   (let [updated-table        (warehouse-schema-rest.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
@@ -328,10 +325,7 @@
    :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
   (schema.table/fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                                :include-hidden-fields?       include_hidden_fields
                                                :include-editable-data-model? include_editable_data_model}))
@@ -376,11 +370,7 @@
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
+                    [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
     (for [origin-field (warehouse-schema-rest.db/active-fields-targeting field-ids)
