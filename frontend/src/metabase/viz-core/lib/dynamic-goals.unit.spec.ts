@@ -1,6 +1,10 @@
 import { DYNAMIC_GOAL_DISPLAYS } from "__support__/dynamic-goals";
 import { color } from "metabase/ui/colors";
-import type { GoalValue, VisualizationSettings } from "metabase-types/api";
+import type {
+  GoalValue,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -10,7 +14,7 @@ import {
   createMockReferencedEntityResult,
 } from "metabase-types/api/mocks";
 
-import type { GoalCard, GoalRefError } from "../types";
+import type { GoalCard, GoalData, GoalRefError } from "../types";
 
 import {
   getGoalErrorMessage,
@@ -279,6 +283,49 @@ describe("resolveGoalValue", () => {
         message: "Column value is not a number",
       },
     });
+  });
+});
+
+describe("resolveGoalValue with a multi-column source", () => {
+  const HIGH_REF = { type: "card", id: 9, column: "HIGH" } as const;
+
+  it("resolves the referenced column rather than the first one", () => {
+    const data = createMultiColumnSourceData([[300, 600]]);
+
+    expect(resolveGoalValue(data, HIGH_REF)).toEqual({ value: 600 });
+  });
+
+  it("errors for a column the source no longer has, even though its other columns resolve", () => {
+    const data = createMultiColumnSourceData([[300, 600]]);
+
+    expect(
+      resolveGoalValue(data, { ...HIGH_REF, column: "MISSING" }).error?.reason,
+    ).toBe("column-not-found");
+  });
+
+  it("errors when the referenced column is null, even though its other columns are numbers", () => {
+    const data = createMultiColumnSourceData([[300, null]]);
+
+    expect(resolveGoalValue(data, HIGH_REF)).toEqual({
+      value: null,
+      error: {
+        ...HIGH_REF,
+        reason: "not-a-number",
+        message: "Column value is not a number",
+      },
+    });
+  });
+
+  it("errors when the referenced column is text, even though its other columns are numbers", () => {
+    const data = createMultiColumnSourceData([[300, "text"]]);
+
+    expect(resolveGoalValue(data, HIGH_REF).error?.reason).toBe("not-a-number");
+  });
+
+  it("errors when the source returned no rows", () => {
+    const data = createMultiColumnSourceData([]);
+
+    expect(resolveGoalValue(data, HIGH_REF).error?.reason).toBe("not-a-number");
   });
 });
 
@@ -1194,3 +1241,24 @@ describe("getNumericGoalValue", () => {
     ).toBeNull();
   });
 });
+
+function createMultiColumnSourceData(rows: RowValue[][]): GoalData {
+  return {
+    cols: [],
+    rows: [],
+    referenced_entities: {
+      card: {
+        9: {
+          status: "completed",
+          data: {
+            cols: [
+              createMockColumn({ name: "LOW" }),
+              createMockColumn({ name: "HIGH" }),
+            ],
+            rows,
+          },
+        },
+      },
+    },
+  };
+}
