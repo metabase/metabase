@@ -15,7 +15,7 @@ import type {
 
 const { H } = cy;
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const SINGLE_COLUMN_SOURCE = {
   name: "Goal source - single column",
@@ -80,6 +80,16 @@ type AnsweredReference = {
   id: CardId | MeasureId;
   column: string;
   value: RowValue;
+};
+
+const PRODUCTS_COUNT_BY_MONTH = {
+  name: "Products count by month",
+  display: "line" as const,
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }]],
+  },
 };
 
 const ORDERS_COUNT_QUERY = {
@@ -298,6 +308,8 @@ describe("scenarios > visualizations > dynamic goals", () => {
   });
 
   it("should resolve the goals of a dashcard, its unsaved settings and a visualizer dashcard", () => {
+    H.createQuestion(PRODUCTS_COUNT_BY_MONTH);
+
     cy.get<CardId>("@singleColumnSourceId").then((sourceId) => {
       H.createDashboardWithQuestions({
         dashboardName: "Dashboard with dynamic goals",
@@ -386,6 +398,26 @@ describe("scenarios > visualizations > dynamic goals", () => {
     cy.get<CardId>("@multiColumnSourceId").then((id) => {
       assertAnswered("@dashcardQuery", { id, column: "LOW", value: 300 });
     });
+
+    cy.log(
+      "A visualizer card with several data sources still resolves its goal",
+    );
+    H.editDashboard();
+    H.showDashcardVisualizerModal(0);
+    H.modal().within(() => {
+      cy.button("Add more data").click();
+      H.selectDataset(PRODUCTS_COUNT_BY_MONTH.name);
+      H.chartLegend().should("contain.text", PRODUCTS_COUNT_BY_MONTH.name);
+      H.goalLine().should("exist");
+    });
+    H.saveDashcardVisualizerModal();
+    H.saveDashboard();
+    cy.reload();
+    H.getDashboardCard(0).within(() => {
+      H.chartLegend().should("contain.text", PRODUCTS_COUNT_BY_MONTH.name);
+      H.goalLineMarker().trigger("mousemove");
+    });
+    H.tooltip().should("contain.text", "300");
   });
 
   it("should resolve goals in public and static embeds and documents", () => {
