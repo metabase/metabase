@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
@@ -144,6 +145,39 @@
                                        (tru "Redirect to HTTPS is on")
                                        (tru "Redirect to HTTPS is off"))])})
 
+(def ^:private sso-login
+  {:id                :sso-login
+   :severity          :medium
+   :title             (deferred-tru "SSO login")
+   :description       (deferred-tru "With SSO, the identity provider controls who signs in.")
+   :remediation       (deferred-tru "Turn on SAML, OIDC or JWT.")
+   :docs-page         "people-and-groups/start"
+   :requires-restart? false
+   :applicable?       (constantly true)
+   :run               (fn []
+                        ;; Each of these settings has a `:feature`, so it reads as off on a token without it.
+                        (let [on (cond-> []
+                                   (setting/get :saml-enabled) (conj (item :pass (tru "SAML is on")))
+                                   (setting/get :oidc-enabled) (conj (item :pass (tru "OIDC is on")))
+                                   (setting/get :jwt-enabled)  (conj (item :pass (tru "JWT is on"))))]
+                          (if (seq on)
+                            on
+                            [(item :fail (tru "None of SAML, OIDC or JWT is on"))])))})
+
+(def ^:private scim-provisioning
+  {:id                :scim-provisioning
+   :severity          :low
+   :title             (deferred-tru "SCIM provisioning")
+   :description       (deferred-tru "With SCIM, people who leave the identity provider lose their Metabase account.")
+   :remediation       (deferred-tru "Turn on SCIM user provisioning in Admin settings.")
+   :docs-page         "people-and-groups/user-provisioning"
+   :requires-restart? false
+   :applicable?       premium-features/enable-scim?
+   :run               (fn []
+                        [(pass-or-fail (setting/get :scim-enabled)
+                                       (tru "SCIM is on")
+                                       (tru "SCIM is off"))])})
+
 ;;; The registry
 
 (def ^:private checks
@@ -154,7 +188,9 @@
     :session-secret-key        session-secret-key
     :legacy-startup-encryption legacy-startup-encryption
     :https-site-url            https-site-url
-    :https-redirect            https-redirect}))
+    :https-redirect            https-redirect
+    :sso-login                 sso-login
+    :scim-provisioning         scim-provisioning}))
 
 (defn all-checks
   "Every registered check, in id order."

@@ -190,3 +190,39 @@
     (mt/with-temporary-setting-values [redirect-all-requests-to-https false]
       (is (=? {:status :fail, :items [{:status :fail, :message "Redirect to HTTPS is off"}]}
               (run-check-by-id :https-redirect))))))
+
+;;; The SSO and SCIM checks
+
+(deftest sso-login-test
+  (is (true? (health-checks/applicable? (health-checks/check-by-id :sso-login))))
+  (testing "passes with one item per provider that is on"
+    (mt/with-premium-features #{:sso-jwt}
+      (mt/with-temporary-setting-values [jwt-enabled true]
+        (is (=? {:status :pass, :items [{:status :pass, :message "JWT is on"}]}
+                (run-check-by-id :sso-login))))))
+  (testing "fails when none of SAML, OIDC and JWT is on"
+    (mt/with-premium-features #{:sso-jwt}
+      (mt/with-temporary-setting-values [jwt-enabled false]
+        (is (=? {:status :fail, :items [{:status :fail, :message "None of SAML, OIDC or JWT is on"}]}
+                (run-check-by-id :sso-login))))))
+  (testing "a provider whose feature is not in the token reads as off"
+    (mt/with-premium-features #{:sso-jwt}
+      (mt/with-temporary-setting-values [jwt-enabled true]
+        (mt/with-premium-features #{}
+          (is (= :fail (:status (run-check-by-id :sso-login)))))))))
+
+(deftest scim-provisioning-test
+  (testing "applies only with the :scim feature"
+    (mt/with-premium-features #{:scim}
+      (is (true? (health-checks/applicable? (health-checks/check-by-id :scim-provisioning)))))
+    (mt/with-premium-features #{}
+      (is (false? (health-checks/applicable? (health-checks/check-by-id :scim-provisioning))))))
+  (mt/with-premium-features #{:scim}
+    (testing "passes when SCIM is on"
+      (mt/with-temporary-setting-values [scim-enabled true]
+        (is (=? {:status :pass, :items [{:status :pass, :message "SCIM is on"}]}
+                (run-check-by-id :scim-provisioning)))))
+    (testing "fails when SCIM is off"
+      (mt/with-temporary-setting-values [scim-enabled false]
+        (is (=? {:status :fail, :items [{:status :fail, :message "SCIM is off"}]}
+                (run-check-by-id :scim-provisioning)))))))
