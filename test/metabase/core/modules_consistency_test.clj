@@ -161,6 +161,19 @@
                    prefix->mod
                    ["src/metabase/lib/schema/util/core.cljc"])))))))
 
+(deftest ^:parallel affected-tests-with-review-team-test
+  (doseq [setting [true "Data Apps"]]
+    (let [config {'lib.schema {:team "Querying Platform", :codeowners setting}}
+          deps   [{:module   'lib.schema
+                   :deps     []
+                   :filename "src/metabase/lib/schema.cljc"}]]
+      (is (contains? (dev.deps-graph/source-filenames->relevant-test-filenames
+                      deps
+                      config
+                      {"metabase.lib.schema" 'lib.schema}
+                      ["src/metabase/lib/schema.cljc"])
+                     "test/metabase/lib/schema_test.cljc")))))
+
 (deftest ^:parallel exact-dotted-module-test-files-round-trip-test
   (testing "a dotted module's top-level test file resolves back to that module"
     (let [deps [{:module   'lib.schema
