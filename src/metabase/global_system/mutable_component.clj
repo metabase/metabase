@@ -1,5 +1,5 @@
 (ns metabase.global-system.mutable-component
-  "Protocol for interacting with a mutable component's storage through a uniform interface."
+  "The protocol for reading, binding and writing one component of the global system."
   (:refer-clojure :exclude [binding reset! swap!]))
 
 (defprotocol MutableComponentHandle
@@ -15,8 +15,7 @@
      Inside a [[binding]] that is the bound value; otherwise it is the root, which every thread outside a
      [[binding]] sees.
      Outside a [[binding]], throws if the component has no root; use [[alter-root]] to install one.")
-  (swap!*
-    [handle f args]
+  (swap!* [handle f args]
     "Same as [[swap!]] but takes `args` as an explicit collection.
      Prefer [[swap!]] in most cases.")
   (alter-root [handle new-value]
