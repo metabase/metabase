@@ -8,6 +8,7 @@ import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useNavigate } from "metabase/router";
+import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
@@ -86,17 +87,26 @@ function ActionCreatorModalLoader({ params, onClose }: ModalComponentProps) {
   } = useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
   const model = useQuestionFromCard(card);
 
-  if (isLoading || error != null || !model) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <ActionCreatorModal
-      params={params}
+    <Modal
+      {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
+      opened
       onClose={onClose}
-      model={model}
-      loading={isLoading}
-    />
+      size="95%"
+      withCloseButton={false}
+      padding={0}
+    >
+      {isLoading || error != null || !model ? (
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      ) : (
+        <ActionCreatorModal
+          params={params}
+          onClose={onClose}
+          model={model}
+          loading={isLoading}
+        />
+      )}
+    </Modal>
   );
 }
 

@@ -43,7 +43,7 @@
     "enterprise/frontend/src/embedding-sdk-package/data-app-dev/dev-plugin/virtual-modules.ts": "self",
     "enterprise/frontend/src/embedding-sdk-package/data-app.ts": "entry",
     "enterprise/frontend/src/embedding-sdk-package/index.ts": "entry",
-    "enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx": "self",
+    "enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal.tsx": "self",
     "enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditTableVisualization/AuditTableVisualization.tsx": "global",
     "enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx": "self",
     "enterprise/frontend/src/metabase-enterprise/auth/constants.ts": "self",
