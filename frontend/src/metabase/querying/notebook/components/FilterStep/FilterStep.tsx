@@ -38,7 +38,6 @@ export function FilterStep(props: NotebookStepProps) {
           // One stage per step: the chooser has the stage's columns only.
           hasSummaries={false}
           variant="notebook"
-          placeholder={getAddFilterText()}
           openKey={isLastOpened ? 0 : null}
         />
       </NotebookCell>

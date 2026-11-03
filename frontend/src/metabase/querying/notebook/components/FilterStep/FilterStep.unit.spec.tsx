@@ -11,7 +11,7 @@ import type { NotebookStep } from "../../types";
 
 import { FilterStep } from "./FilterStep";
 
-const ADD_FILTER_TEXT = "Add filters to narrow your answer";
+const ADD_FILTER_TEXT = "Type to filter...";
 
 function createQueryWithFilter() {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, {

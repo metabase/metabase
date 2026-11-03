@@ -60,6 +60,7 @@ import {
   removeRange,
   removeTokenAt,
   replaceTokenAt,
+  settleConnectors,
   startsOperand,
   toFilterClause,
   writeTokens,
@@ -134,6 +135,47 @@ type PillEdit = {
   initialState: DraftState;
   part: FilterPillPart;
 };
+
+/**
+ * While the bar is in use, connectors change only when the user changes them: a
+ * removed one leaves a gap, and ANDs show next to an OR or a typed AND. Leaving
+ * the bar settles them, so that all of them show if there is an OR, and none
+ * otherwise, which is also how the query reads back after a reload.
+ */
+function useConnectors({
+  tokens,
+  isExpanded,
+  setTokens,
+  setCaret,
+}: {
+  tokens: Token[];
+  isExpanded: boolean;
+  setTokens: (tokens: Token[]) => void;
+  setCaret: (caret: number) => void;
+}) {
+  const [hasTypedAnd, setHasTypedAnd] = useState(false);
+  const hasAnd = tokens.some((token) => isOpToken(token, "and"));
+  if (hasTypedAnd && !hasAnd) {
+    setHasTypedAnd(false);
+  }
+  const [wasExpanded, setWasExpanded] = useState(isExpanded);
+  if (wasExpanded !== isExpanded) {
+    setWasExpanded(isExpanded);
+    if (!isExpanded) {
+      setHasTypedAnd(false);
+      const settled = settleConnectors(tokens);
+      if (settled !== tokens) {
+        setTokens(settled);
+        setCaret(settled.length);
+      }
+    }
+  }
+  const hasOr = tokens.some((token) => isOpToken(token, "or"));
+  return {
+    areAndsVisible: hasOr || hasTypedAnd,
+    onTypeAnd: () => setHasTypedAnd(true),
+  };
+}
 
 /**
  * Prototype: the stage's filters as one expression. You type in the bar
@@ -272,11 +314,14 @@ export function ExpressionBar({
     ),
   );
   const hasGroups = nesting >= ROWS_FROM_NESTING;
-  // ANDs stay implicit while they are the only connector. Next to an OR they
-  // show, so the reader sees which connector joins which pills.
-  const hasOr = tokens.some((token) => isOpToken(token, "or"));
+  const { areAndsVisible, onTypeAnd } = useConnectors({
+    tokens,
+    isExpanded,
+    setTokens,
+    setCaret,
+  });
   const isHiddenAnd = (token: Token | undefined) =>
-    !hasOr && isOpToken(token, "and");
+    !areAndsVisible && isOpToken(token, "and");
   const rowStart = (index: number) => {
     if (!isExpanded || !hasGroups) {
       return [];
@@ -331,15 +376,11 @@ export function ExpressionBar({
     return tokens[at] != null && !isHiddenAnd(tokens[at]) ? at : undefined;
   };
 
-  // An AND is implicit while it is the only connector, so it can't be typed
-  // then. Next to one connector a typed one takes its place; between two
-  // there is no room for another.
+  // Next to one connector a typed one takes its place; between two there is
+  // no room for another.
   const isTokenAllowed = (token: Token) => {
     if (!isOpToken(token)) {
       return true;
-    }
-    if (isOpToken(token, "and") && !hasOr) {
-      return false;
     }
     return !(
       isOpToken(tokens[caretIndex - 1]) && isOpToken(tokens[caretIndex])
@@ -547,6 +588,9 @@ export function ExpressionBar({
     const next = insertToken(without, at, token);
     setTokens(next.tokens);
     setCaret(next.caret);
+    if (isOpToken(token, "and")) {
+      onTypeAnd();
+    }
     resetDraft();
     focusInput();
   };
@@ -1234,7 +1278,7 @@ export function ExpressionBar({
                 stageIndex={stageIndex}
                 token={token}
                 depth={parenDepths[index]}
-                isAndHidden={!hasOr}
+                isAndHidden={!areAndsVisible}
                 isSelected={
                   selection != null &&
                   index >= selection.start &&

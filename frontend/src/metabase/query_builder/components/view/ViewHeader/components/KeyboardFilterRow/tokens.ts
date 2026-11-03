@@ -335,6 +335,24 @@ export function removeTokenAt(
   return tokens.filter((_, i) => i !== index);
 }
 
+/**
+ * The connectors once the user is done editing: an AND wherever operands touch,
+ * and no AND / OR or empty parentheses that dangle. Returns the same `tokens`
+ * when there is nothing to change.
+ */
+export function settleConnectors(tokens: Token[]): Token[] {
+  const kept = removeDanglingTokens(tokens);
+  const settled = kept.flatMap((token, index) =>
+    endsOperand(kept[index - 1]) && startsOperand(token)
+      ? [opToken("and"), token]
+      : [token],
+  );
+  const isUnchanged =
+    settled.length === tokens.length &&
+    settled.every((token, index) => token === tokens[index]);
+  return isUnchanged ? tokens : settled;
+}
+
 /** Removes a pill and the AND / OR it would leave dangling, so the rest stays valid. */
 export function removePillAt(tokens: readonly Token[], index: number): Token[] {
   return removePill(tokens, index).tokens;
@@ -598,7 +616,6 @@ export type LogicKeyword = {
   spellings: string[];
 };
 
-/** The bar offers AND only while ANDs are visible, beside an OR. */
 export const LOGIC_KEYWORDS: LogicKeyword[] = [
   { label: "AND", token: opToken("and"), spellings: ["and", "&&"] },
   { label: "OR", token: opToken("or"), spellings: ["or", "||"] },
