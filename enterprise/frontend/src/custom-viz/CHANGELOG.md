@@ -2,7 +2,7 @@
 
 This changelog covers the `@metabase/custom-viz` npm package — the API and CLI for building custom visualizations for Metabase. Changes to how Metabase itself hosts custom visualization plugins are covered by the [Metabase changelog](https://www.metabase.com/changelog).
 
-## Unreleased
+## 2.0.1
 
 ### Bug Fixes
 
