@@ -45,6 +45,7 @@
    [clojure.string :as str]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.snapshot-test-util.dump-util :as dump-util]
+   [metabase.util.encryption :as encryption]
    [metabase.util.log :as log])
   (:import
    (liquibase.changelog ChangeSet)))
@@ -261,11 +262,19 @@
     (mapv (fn [^ChangeSet cs] [(.getId cs) (.getAuthor cs) (.getFilePath cs)])
           (.getChangeSets (.getDatabaseChangeLog lb)))))
 
+(defn matches-environment?
+  "Whether this JVM sets up an app DB the way the snapshot was generated, which is without an encryption key."
+  []
+  ;; with a key, custom migrations up to the boundary would have encrypted values the snapshot holds in plain text
+  (not (encryption/default-encryption-enabled?)))
+
 (defn usable-for-start?
   "Whether the snapshot can stand in for replaying changesets up to (but not including) `start-id`.
-  It cannot when `start-id` is at or before the snapshot boundary, since those changesets still need to run."
+  It cannot when `start-id` is at or before the snapshot boundary, since those changesets still need to run, or when
+  [[matches-environment?]] does not hold."
   [^java.sql.Connection conn db-type start-id]
-  (and (loadable? conn db-type)
+  (and (matches-environment?)
+       (loadable? conn db-type)
        (let [idx (zipmap (map first (changesets conn)) (range))]
          (when-let [through (idx (through-changeset-id))]
            (boolean (some-> (idx start-id) (> through)))))))

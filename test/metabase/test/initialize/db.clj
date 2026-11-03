@@ -13,12 +13,14 @@
 (defn- load-snapshot-if-empty!
   "Seed a not-yet-migrated test app DB from the checked-in snapshot, so the Liquibase run that follows only applies
   what the snapshot does not record.
-  It does nothing when the DB already has tables (a reused app DB) or when no snapshot is checked in for this server's
-  dialect."
+  It does nothing when the DB already has tables (a reused app DB), when no snapshot is checked in for this server's
+  dialect, or when this JVM does not set up an app DB the way the snapshot was made (see
+  [[snapshot/matches-environment?]])."
   []
   (let [db-type (mdb/db-type)]
     (with-open [conn (.getConnection (mdb/data-source))]
-      (when (and (snapshot/loadable? conn db-type)
+      (when (and (snapshot/matches-environment?)
+                 (snapshot/loadable? conn db-type)
                  (empty? (snapshot/user-tables conn db-type)))
         (log/info (u/format-color 'blue "Loading %s app DB snapshot %s (migrated through %s)..."
                                   (snapshot/flavor conn db-type) snapshot/snapshot-version

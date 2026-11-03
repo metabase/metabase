@@ -6,7 +6,8 @@
    [metabase.app-db.snapshot-test-util :as snapshot]
    [metabase.app-db.snapshot-test-util.generate :as generate]
    [metabase.app-db.snapshot-test-util.server :as server]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.encryption-test :as encryption-test]))
 
 (deftest flavors-agree-test
   (testing "every flavor has a dumper, and every flavor but H2 a pinned server to dump it from"
@@ -47,3 +48,14 @@
         (is (thrown? Exception (snapshot/load-snapshot! conn :h2))))
       (is (= [{:restored 1}]
              (jdbc/query {:connection conn} ["SELECT @MB_RESTORED AS restored"]))))))
+
+(deftest usable-for-start?-test
+  (impl/with-temp-empty-app-db [conn :h2]
+    (let [[before-boundary] (first (snapshot/changesets conn))
+          [after-boundary]  (last (snapshot/changesets conn))]
+      (testing "the snapshot can stand in for a start after its boundary, and not for one before it"
+        (is (true? (snapshot/usable-for-start? conn :h2 after-boundary)))
+        (is (not (snapshot/usable-for-start? conn :h2 before-boundary))))
+      (testing "it is never used with an encryption key, since it was generated without one"
+        (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+          (is (not (snapshot/usable-for-start? conn :h2 after-boundary))))))))
