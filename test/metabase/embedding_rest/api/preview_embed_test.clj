@@ -262,6 +262,30 @@
        "/dashcard/" (u/the-id dashcard)
        "/card/" (:card_id dashcard)))
 
+(defn- goal-segments
+  "Scalar viz settings whose range starts at the count of the card `goal-id`."
+  [goal-id]
+  {:scalar.segments [{:min {:id goal-id :type "card" :column "count"} :max nil :color "red"}]})
+
+(deftest query-referenced-entities-test
+  (testing "GET /api/preview_embed/card/:token/query resolves the dynamic goal in the card's viz settings"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
+        (embed-test/with-temp-card [card {:display :scalar :visualization_settings (goal-segments goal-id)}]
+          (is (= [[1000]]
+                 (-> (mt/user-http-request :crowberto :get 202 (card-query-url card))
+                     (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
+
+(deftest dashcard-referenced-entities-test
+  (testing "GET /api/preview_embed/dashboard/:token/dashcard/:id/card/:id resolves the dynamic goal in the card's viz settings"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
+        (embed-test/with-temp-dashcard [dashcard {:card {:display                :scalar
+                                                         :visualization_settings (goal-segments goal-id)}}]
+          (is (= [[1000]]
+                 (-> (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard))
+                     (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
+
 (deftest dashcard-test
   (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
     (embed-test/with-embedding-enabled-and-new-secret-key!
