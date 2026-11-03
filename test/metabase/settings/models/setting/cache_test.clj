@@ -58,7 +58,7 @@
 (defn reset-last-update-check!
   "Reset the value of `last-update-check` so the next cache access will check for updates."
   []
-  (.set ^java.util.concurrent.atomic.AtomicLong (var-get #'setting.cache/last-update-check) 0))
+  (.set ^java.util.concurrent.atomic.AtomicLong (:last-update-check @@#'setting.cache/per-app-db) 0))
 
 (deftest update-settings-last-updated-test
   (testing "When I update a Setting, does it set/update `settings-last-updated`?"
@@ -141,7 +141,7 @@
     (reset-last-update-check!)
     (setting-test/test-setting-1! "Starfish")
     ;; 1. User writes
-    (with-redefs [setting.cache/cache* external-cache]
+    (mt/with-dynamic-fn-redefs [setting.cache/cache* external-cache]
       (setting-test/toucan-name! "Batman Toucan"))
     (setting-test/test-setting-1! "Batman")
     (is (= "Batman Toucan"
@@ -155,3 +155,12 @@
     (reset-last-update-check!)
     (is (= "fr"
            (system/site-locale)))))
+
+(deftest per-app-db-cache-test
+  (testing "a bound app DB value gets its own settings cache, and the root's is still there after"
+    (let [root-cache (#'setting.cache/cache*)]
+      (is (= {:bound-has-own-cache? true
+              :root-cache-kept?     true}
+             {:bound-has-own-cache? (mdb/with-application-db (assoc (mdb/app-db) :id Integer/MAX_VALUE)
+                                      (not (identical? root-cache (#'setting.cache/cache*))))
+              :root-cache-kept?     (identical? root-cache (#'setting.cache/cache*))})))))

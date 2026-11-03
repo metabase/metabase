@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.global-system.system :as system]
    [metabase.settings.db :as settings.db]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -26,14 +27,24 @@
   {:arglists '([old new])}
   (constantly :default))
 
-;; Setting cache is unique to the application DB; if it's swapped out for tests or mocking or whatever then use a new
-;; cache.
-(def ^:private ^{:arglists '([])} cache*
-  (mdb/memoize-for-application-db
-   (fn []
-     (doto (atom nil)
-       (add-watch :call-on-change (fn [_key _ref old new]
-                                    (call-on-change old new)))))))
+;; Each application DB value has its own cache, with its own update-check clock and restore lock, so a test that
+;; binds another app DB gets fresh state, and so does a new app-DB value from
+;; [[mdb/increment-app-db-unique-indentifier!]].
+(def ^:private per-app-db
+  (system/derived-component-handle
+   ::per-app-db
+   [(mdb/application-db-handle)]
+   (fn [_app-db]
+     {:cache             (doto (atom nil)
+                           (add-watch :call-on-change (fn [_key _ref old new]
+                                                        (call-on-change old new))))
+      :last-update-check (AtomicLong. 0)
+      :restore-lock      (ReentrantLock.)})))
+
+(defn- cache*
+  "The settings cache atom for the application DB this thread sees."
+  []
+  (:cache @per-app-db))
 
 (defn cache
   "Fetch the current contents of the Settings cache, a map of key (string) -> value (string)."
@@ -132,11 +143,9 @@
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
   (u/minutes->ms 1))
 
-(defonce ^:private ^AtomicLong last-update-check (AtomicLong. 0))
-
 (defn- time-for-another-update-check?
-  "Has it has been more than a minute since the last time we checked for updates?"
-  []
+  "Has it been more than a minute since `last-update-check` was last set?"
+  [^AtomicLong last-update-check]
   (> (quot (- (System/nanoTime) (.get last-update-check)) 1000000)
      cache-update-check-interval-ms))
 
@@ -146,25 +155,24 @@
   (log/debug "Refreshing Settings cache...")
   (reset! (cache*) (settings.db/setting-values-by-key)))
 
-(defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
-
 (defn restore-cache-if-needed!
   "Check whether the settings cache is out of date by reading the DB value of `settings-last-updated`, and reload the
   cache if so. Called on every Setting read, so the check is throttled to run at most once per
   `cache-update-check-interval-ms`; pass `:force-check? true` to skip that throttle and check now. Returns truthy when
   a reload happened."
   [& {:keys [force-check?]}]
-  (when (or force-check? (time-for-another-update-check?))
-    ;; There's a potential race condition here where two threads both call this at the exact same moment, and both get
-    ;; `true` from `cache-out-of-date?`, and then both simultaneously try to update the cache. Better to just add a
-    ;; quick lock here so only one of them does it, since waiting for the other thread to finish the task in progress
-    ;; is certainly quicker than starting the task ourselves from scratch.
-    (when-not (.isLocked restore-cache-lock)
-      (when (.tryLock restore-cache-lock)
-        (try
-          (.set last-update-check (System/nanoTime))
-          (when (cache-out-of-date?)
-            (restore-cache!)
-            true)
-          (finally
-            (.unlock restore-cache-lock)))))))
+  (let [{:keys [^AtomicLong last-update-check ^ReentrantLock restore-lock]} @per-app-db]
+    (when (or force-check? (time-for-another-update-check? last-update-check))
+      ;; There's a potential race condition here where two threads both call this at the exact same moment, and both
+      ;; get `true` from `cache-out-of-date?`, and then both simultaneously try to update the cache. Better to just add
+      ;; a quick lock here so only one of them does it, since waiting for the other thread to finish the task in
+      ;; progress is certainly quicker than starting the task ourselves from scratch.
+      (when-not (.isLocked restore-lock)
+        (when (.tryLock restore-lock)
+          (try
+            (.set last-update-check (System/nanoTime))
+            (when (cache-out-of-date?)
+              (restore-cache!)
+              true)
+            (finally
+              (.unlock restore-lock))))))))
