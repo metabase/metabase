@@ -10,6 +10,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -21,8 +22,10 @@ import type * as Analytics from "metabase/analytics";
 import { api, shouldShowNotAuthorizedPage } from "metabase/api/client";
 import { isEmbedding } from "metabase/embedding/config";
 import { METAKEY } from "metabase/utils/browser";
+import { type Deferred, defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import type {
+  Card,
   CardType,
   ColumnSettings,
   DatasetData,
@@ -1123,6 +1126,77 @@ describe("GoalValueInput", () => {
     );
   });
 
+  it("ignores a slow pick once a later pick was committed", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "Slow question" }),
+      createMockSearchResult({ id: 16, model: "card", name: "Fast question" }),
+    ]);
+    const slowResponse = setupSlowCardEndpoint(
+      createMockCard({
+        id: 15,
+        name: "Slow question",
+        result_metadata: [
+          createMockField({ name: "revenue", base_type: "type/Integer" }),
+        ],
+      }),
+    );
+    setupCardEndpoints(
+      createMockCard({
+        id: 16,
+        name: "Fast question",
+        result_metadata: [
+          createMockField({ name: "total", base_type: "type/Integer" }),
+        ],
+      }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Slow question");
+    await openMenu();
+    await pickEntity("Fast question");
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 16,
+        column: "total",
+      }),
+    );
+
+    await resolveAndSettle(slowResponse);
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a slow pick abandoned by closing the menu", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "Slow question" }),
+    ]);
+    const slowResponse = setupSlowCardEndpoint(
+      createMockCard({
+        id: 15,
+        name: "Slow question",
+        result_metadata: [
+          createMockField({ name: "revenue", base_type: "type/Integer" }),
+        ],
+      }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Slow question");
+    await openMenu();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument(),
+    );
+
+    await resolveAndSettle(slowResponse);
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
   it("shows values for all of the entity's columns", async () => {
     const card = createMockCard({
       id: 9,
@@ -2080,6 +2154,25 @@ function createMultiColumnSourceResults(
       },
     },
   };
+}
+
+function setupSlowCardEndpoint(card: Card) {
+  const response = defer<void>();
+
+  fetchMock.get(`path:/api/card/${card.id}`, async () => {
+    await response.promise;
+    return card;
+  });
+
+  return response;
+}
+
+async function resolveAndSettle(response: Deferred<void>) {
+  await act(async () => {
+    response.resolve();
+    await response.promise;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }
 
 function setupDeletedCard() {
