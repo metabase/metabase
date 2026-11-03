@@ -322,7 +322,6 @@
               :message (format "Application database query calls like `%s` must live in metabase[-enterprise].<module>.db (or metabase.driver.<driver>.db) namespaces"
                                (hooks/sexpr fn-node))
               :type :metabase/t2-query-namespace))))
-  ((requiring-resolve 'hooks.metabase.warehouse-schema-overlay.table-or-field-query/lint-read) input)
   (when (and ns
              (db-namespace? (modules/config input) ns)
              (not (test-file? filename))

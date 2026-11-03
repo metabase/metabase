@@ -25,6 +25,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.memory :as u.mem]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
    [metabase.warehouses.models.database :as database]
    [toucan2.realize :as t2.realize])
   (:import
@@ -776,3 +778,23 @@
   (and (or (isa? base-type :type/Text)
            (isa? base-type :type/TextLike))
        (can-be-list? base-type semantic-type)))
+
+(mu/defn update-field-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
+  "Apply to the Field with `field-id` the `changes` to columns no user set, returning the number updated."
+  [field-id :- ::lib.schema.id/field
+   changes  :- ::warehouse-schema.schema/field.update]
+  (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-field-columns
+                                       (sync.db/field-user-settings field-id)))]
+    (if (seq changes)
+      (sync.db/update-field! field-id changes)
+      0)))
+
+(mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
+  "Apply to the Table with `table-id` the `changes` to columns no user set, returning the number updated."
+  [table-id :- ::lib.schema.id/table
+   changes  :- ::warehouse-schema.schema/table.update]
+  (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-table-columns
+                                       (sync.db/table-user-settings table-id)))]
+    (if (seq changes)
+      (sync.db/update-table! table-id changes)
+      0)))

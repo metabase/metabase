@@ -31,6 +31,17 @@
           metadata-in-application-db)
          @update-operations)))))
 
+(defn- perform-updates!
+  "Run sync's metadata update for one Field against the app DB, without stubbing its writes."
+  [new-metadata-from-sync metadata-in-application-db]
+  (mt/with-temp [:model/Database db    {}
+                 :model/Table    table {:db_id (u/the-id db) :field_order :alphabetical}]
+    (#'sync-metadata/update-field-metadata-if-needed!
+     db
+     table
+     new-metadata-from-sync
+     metadata-in-application-db)))
+
 (deftest database-type-changed-test
   (testing "test that if database-type changes we will update it in the DB"
     (is (= [["Field" 1 {:database_type "Integer"}]]
@@ -301,30 +312,24 @@
 (deftest base-type-change-will-trigger-fingerprint-and-analyze-test
   (testing "A base type of a field changes only when the field is dropped then a new field with the name is created (#37047).
            In this case, we should make sure effective type is set to base type"
-    (mt/with-temp [:model/Field {field-id :id} {}]
-      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
-      (is (= [["FieldUserSettings"
-               field-id
-               {:effective_type    nil
-                :coercion_strategy nil
-                :semantic_type     nil
-                :semantic_type_set false}]
-              ["Field"
-               field-id
-               {:base_type           :type/Text
-                :effective_type      :type/Text
-                :coercion_strategy   nil
-                :fingerprint_version 0
-                :fingerprint         nil
-                :semantic_type       nil}]]
-             (updates-that-will-be-performed!
-              (merge default-metadata
-                     {:base-type      :type/Text
-                      :effective-type :type/Text})
-              (merge default-metadata
-                     {:id             field-id
-                      :base-type      :type/Integer
-                      :effective-type :type/Integer})))))
+    (mt/with-temp [:model/Field {field-id :id} {:base_type :type/Integer :effective_type :type/Integer}]
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Category})
+      (perform-updates!
+       (merge default-metadata
+              {:base-type      :type/Text
+               :effective-type :type/Text})
+       (merge default-metadata
+              {:id             field-id
+               :base-type      :type/Integer
+               :effective-type :type/Integer}))
+      (is (=? {:base_type           :type/Text
+               :effective_type      :type/Text
+               :coercion_strategy   nil
+               :fingerprint_version 0
+               :fingerprint         nil
+               :semantic_type       nil}
+              (t2/select-one :model/Field :id field-id)))
+      (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id))))
     (testing "and sync will re-fingerprint and analyze this field"
       (mt/with-temp-test-data [["table"
                                 [{:field-name "field"
@@ -446,18 +451,20 @@
            heal effective_type to match base_type. This catches drifted state from older
            Metabase versions that the customer's instance carries forward."
     (testing "broken row gets healed even when base_type does not change"
-      (mt/with-temp [:model/Field {field-id :id} {}]
-        (field-user-settings/upsert-user-settings {:id field-id} {:effective_type :type/Text})
-        (is (= [["FieldUserSettings" field-id {:effective_type nil :coercion_strategy nil}]
-                ["Field" field-id {:effective_type :type/Number}]]
-               (updates-that-will-be-performed!
-                (merge default-metadata
-                       {:base-type :type/Number})
-                (merge default-metadata
-                       {:id                field-id
-                        :base-type         :type/Number
-                        :effective-type    :type/Text
-                        :coercion-strategy nil}))))))
+      (mt/with-temp [:model/Field             {field-id :id} {:base_type :type/Number :effective_type :type/Number}
+                     :model/FieldUserSettings _              {:field_id field-id :effective_type :type/Text}]
+        (t2/update! (t2/table-name :model/Field) :id field-id {:effective_type "type/Text"})
+        (perform-updates!
+         (merge default-metadata
+                {:base-type :type/Number})
+         (merge default-metadata
+                {:id                field-id
+                 :base-type         :type/Number
+                 :effective-type    :type/Text
+                 :coercion-strategy nil}))
+        (is (=? {:base_type :type/Number :effective_type :type/Number :coercion_strategy nil}
+                (t2/select-one :model/Field :id field-id)))
+        (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id)))))
     (testing "row with a real coercion_strategy is left alone — effective_type ≠ base_type is legitimate"
       (is (= []
              (updates-that-will-be-performed!
@@ -495,7 +502,7 @@
 (deftest base-type-change-leaves-data-sensitivity-test
   (testing "the override write on a base type change does not include data_sensitivity"
     (mt/with-temp [:model/Field {field-id :id} {:data_sensitivity :PII}]
-      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Category})
       (let [updates (updates-that-will-be-performed!
                      (merge default-metadata
                             {:base-type      :type/Text
@@ -527,7 +534,7 @@
           (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
           (is (=? {:base_type        :type/Integer
                    :effective_type   :type/Integer
-                   :data_sensitivity nil}
+                   :data_sensitivity :PII}
                   (t2/select-one :model/Field :id field-id)))
           (is (=? {:effective_type   nil
                    :data_sensitivity :PII}

@@ -3,9 +3,9 @@
   [[metabase.analyze.core/infer-data-sensitivity]], writing `:PUBLIC` when no rule matches so each field is scanned
   once. Selects fields whose `data_sensitivity` is `NULL` (or `PUBLIC` too under `force?`) across every active table
   in the database, hidden and cruft tables included. Inert unless [[metabase.sync.settings/data-sensitivity-scan-enabled]]
-  is true, except through [[scan-data-sensitivity!]]. User-set labels live in `FieldUserSettings`, which readers apply
-  over the classifier's label, so the classifier never overwrites them. [[reset-data-sensitivity!]] clears the classifier's own labels so a rule
-  change can reach fields that already carry a category."
+  is true, except through [[scan-data-sensitivity!]]. Fields with a label a user set in `FieldUserSettings` are never
+  scanned. [[reset-data-sensitivity!]] clears the classifier's own labels so a rule change can reach fields that
+  already carry a category."
   (:require
    [metabase.analyze.core :as analyze]
    [metabase.sync.db :as sync.db]
@@ -50,7 +50,7 @@
    table :- i/TableInstance]
   (sync-util/with-error-handling (format "Error classifying data sensitivity for %s" (sync-util/name-for-logging field))
     (let [category (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})]
-      (sync.db/update-field-data-sensitivity! (u/the-id field) (or category :PUBLIC))
+      (sync.db/update-field! (u/the-id field) {:data_sensitivity (or category :PUBLIC)})
       category)))
 
 (mu/defn scan-table! :- Stats

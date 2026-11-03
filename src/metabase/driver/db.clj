@@ -4,7 +4,6 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -16,7 +15,7 @@
 (mu/defn table-field-names
   "The names of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-vec :name [:model/Field :name] :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn-vec :name [:model/Field :name] :table_id table-id))
 
 (mu/defn database-connection-details
   "The engine and connection details of the Database with `database-id`, or nil."
@@ -29,5 +28,4 @@
   (t2/select-fn-set :name [:model/Field :name]
                     :table_id table-id
                     :base_type :type/JSON
-                    :json_unfolding false
-                    {:from [(warehouse-schema-overlay/field-query)]}))
+                    :json_unfolding false))

@@ -15,6 +15,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -572,13 +573,14 @@
     (mt/with-temp-vals-in-db :model/Field (mt/id :orders :user_id) {:semantic_type nil, :fk_target_field_id nil}
       (testing "sanity check: with the sync FK cleared, there's no remapping"
         (is (nil? (#'chain-filter/remapped-field-id (mt/id :orders :user_id)))))
-      (mt/with-temp [:model/FieldUserSettings _ {:field_id               (mt/id :orders :user_id)
-                                                 :semantic_type          :type/FK
-                                                 :semantic_type_set      true
-                                                 :fk_target_field_id     (mt/id :people :id)
-                                                 :fk_target_field_id_set true}]
+      (try
+        (field-user-settings/upsert-field-user-settings! {:id (mt/id :orders :user_id)}
+                                                         {:semantic_type      :type/FK
+                                                          :fk_target_field_id (mt/id :people :id)})
         (is (= (mt/id :people :name)
-               (#'chain-filter/remapped-field-id (mt/id :orders :user_id))))))))
+               (#'chain-filter/remapped-field-id (mt/id :orders :user_id))))
+        (finally
+          (field-user-settings/delete-field-user-settings! [(mt/id :orders :user_id)]))))))
 
 (deftest ^:parallel field-to-field-remapped-chain-filter-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
