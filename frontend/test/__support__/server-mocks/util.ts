@@ -36,3 +36,20 @@ export async function findRequests(
     }),
   );
 }
+
+/**
+ * Returns the bodies of the `method` requests whose URL ends with
+ * `urlSuffix`, in the order they were sent.
+ */
+export async function findRequestBodies({
+  method,
+  urlSuffix,
+}: {
+  method: Parameters<typeof findRequests>[0];
+  urlSuffix: string;
+}): Promise<unknown[]> {
+  const requests = await findRequests(method);
+  return requests
+    .filter(({ url }) => url.endsWith(urlSuffix))
+    .map(({ body }): unknown => body);
+}

@@ -12,6 +12,24 @@
 ;; The team that owns this module. This has to match one of the team names in `.github/team.json` EXACTLY. You can
 ;; run [[metabase.core.modules-test/all-modules-have-teams-test]] to make sure you did this correctly.
 ;;
+;; ## `codeowners`:
+;;
+;; Set it to `true` to make the module's team a required reviewer for the module's src and test code in
+;; `.github/CODEOWNERS`. Ownership goes to the team's `codeowner` handle in `.github/team.json`, which the team must
+;; have. Run `./bin/mage update-codeowners` after changing it. Leave it out for modules whose team has not agreed to
+;; review them.
+;;
+;; It is not inherited, but it covers the module's directories. A nested module inside them that does not set it keeps
+;; its own team if an opted-in module around it has that team, and is left unowned otherwise. A nested module with an
+;; `:ns-prefix` outside its parent's directories needs its own, and so does an `enterprise/X` module: it is `X`'s child
+;; but lives under `enterprise/backend`, as `enterprise/search` does beside `search`. Plugin code under
+;; `modules/<plugin>/src` is not supported: give it an owner by hand.
+;;
+;;    search
+;;    {:team       "Metabot"
+;;     :codeowners true
+;;     ...}
+;;
 ;; ## `api`:
 ;;
 ;; Map of module name => the "core" external public-facing API namespace(s). You have three options here:
@@ -333,6 +351,7 @@
    :ns-prefix "metabase.eid-translation"
    :api #{metabase.eid-translation.api metabase.eid-translation.core metabase.eid-translation.init}
    :uses #{api
+           api-scope
            batch-processing
            settings
            util}
@@ -826,13 +845,11 @@
    :uses #{actions
            analytics
            api
-           api-scope
            api.eid-translation
            app-db
            channel
            collections
            dashboards
-           data-apps
            embedding
            events
            lib
@@ -867,15 +884,15 @@
                     :model/User}}
 
   data-apps
-  {:team "Embedding"
-   :api #{metabase.data-apps.core}
+  {:team       "Data Apps"
+   :codeowners true
+   :api #{metabase.data-apps.core metabase.data-apps.schema}
    :uses #{actions
            analytics
            api
            api-scope
            lib.be
            lib.schema
-           parameters.schema
            premium-features
            util}}
 
@@ -904,7 +921,8 @@
    :uses #{lib.schema premium-features}}
 
   dependencies
-  {:team "Graphy"
+  {:team       "Data Apps"
+   :codeowners true
    :api  #{metabase.dependencies.hooks}
    :uses #{premium-features}}
 
@@ -1423,6 +1441,7 @@
            metabot
            metabot.agent-api
            metabot.llm
+           metabot.toolkit
            metrics
            models
            notification
@@ -1531,7 +1550,8 @@
               metabase.metabot.usage-controls}
    :module-exports #{metabot.agent-api
                      metabot.llm
-                     metabot.slackbot}
+                     metabot.slackbot
+                     metabot.toolkit}
    :uses    #{activity-feed
               ai-tracing
               analytics
@@ -1710,6 +1730,18 @@
               util}
    :model-imports #{:model/AuthIdentity :model/Card :model/MetabotMessage}}
 
+  metabot.toolkit
+  {:team "Metabot"
+   :api  #{metabase.metabot.toolkit.dashboard-op-schema metabase.metabot.toolkit.dashboard-ops metabase.metabot.toolkit.dashboard-write}
+   :uses #{api
+           dashboards
+           lib
+           models
+           parameters
+           parameters.schema
+           util}
+   :model-imports #{:model/Card :model/Dashboard}}
+
   metrics
   {:team "UX West"
    :api  #{metabase.metrics.api
@@ -1848,7 +1880,6 @@
   {:team "Graphy"
    :api  #{metabase.native-query-snippets.api metabase.native-query-snippets.core metabase.native-query-snippets.schema}
    :uses #{api
-           api-scope
            collections
            events
            lib
@@ -2232,7 +2263,6 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
-                    :model/Table
                     :model/Timeline
                     :model/User}}
 
@@ -2274,7 +2304,7 @@
 
   query-permissions
   {:team "Security Engineering"
-   :api  #{metabase.query-permissions.core}
+   :api  #{metabase.query-permissions.core metabase.query-permissions.schema}
    :uses #{api
            lib
            lib.be
@@ -2420,7 +2450,8 @@
    :uses #{models util}}
 
   remote-sync
-  {:team "UX West"
+  {:team       "Data Apps"
+   :codeowners true
    :api  #{metabase.remote-sync.core
            metabase.remote-sync.init}
    :uses #{api
@@ -2525,6 +2556,7 @@
 
   search
   {:team "Metabot"
+   :codeowners true
    :module-exports #{search.embeddings
                      search.entity-retrieval}
    :api  #{metabase.search.api
@@ -2634,7 +2666,6 @@
    :api  #{metabase.server.core
            metabase.server.init
            metabase.server.middleware.security
-           metabase.server.middleware.session
            metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
@@ -2779,8 +2810,8 @@
   sql-tools.parsing
   {:team "DevEx"
    :ns-prefix "metabase.sql-parsing"
-   :api #{metabase.sql-parsing.core}
-   :uses #{analytics.interface util}}
+   :api #{metabase.sql-parsing.core metabase.sql-parsing.init}
+   :uses #{analytics.interface settings util}}
 
   sso
   {:team "Security Engineering"
@@ -3000,7 +3031,6 @@
    :api  #{metabase.timeline.api metabase.timeline.core metabase.timeline.schema}
    :uses #{analytics
            api
-           api-scope
            collections
            events
            lib.schema
@@ -3369,7 +3399,6 @@
            api-scope
            app-db
            collections
-           data-apps
            database-routing
            driver
            events
@@ -3848,11 +3877,13 @@
    :model-exports #{:model/CustomVizPlugin}}
 
   enterprise/data-apps
-  {:team "Embedding"
+  {:team       "Data Apps"
+   :codeowners true
    :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{actions
            api
            api-scope
+           audit-app
            collections
            data-apps
            events
@@ -3860,27 +3891,27 @@
            lib.be
            lib.schema
            lib.types
+           metabot
+           metrics
            models
-           parameters
-           parameters.schema
            permissions
            premium-features
-           remote-sync
+           queries
            search
            settings
+           system
            util
            util.graph
            warehouse-schema-overlay
-           enterprise/dependencies}
+           enterprise/dependencies
+           enterprise/serialization}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
-                    :model/Dashboard
                     :model/DataPermissions
                     :model/Database
                     :model/Field
                     :model/Measure
-                    :model/Segment
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
@@ -3923,7 +3954,8 @@
    :model-imports #{:model/Database :model/Transform}}
 
   enterprise/dependencies
-  {:team "Graphy"
+  {:team       "Data Apps"
+   :codeowners true
    :module-exports #{enterprise/dependencies.replacement}
    :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
    :uses #{actions
@@ -4271,7 +4303,6 @@
            api-scope
            app-db
            audit-app
-           data-apps
            driver
            lib
            lib.be
@@ -4312,7 +4343,8 @@
    :uses #{premium-features}}
 
   enterprise/remote-sync
-  {:team "UX West"
+  {:team       "Data Apps"
+   :codeowners true
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
            metabase-enterprise.remote-sync.init}
@@ -4358,6 +4390,7 @@
 
   enterprise/search
   {:team "Metabot"
+   :codeowners true
    :module-exports #{enterprise/search.embeddings
                      enterprise/search.entity-retrieval
                      enterprise/search.semantic}
@@ -4533,7 +4566,6 @@
            lib.schema
            models
            permissions
-           server
            settings
            system
            users

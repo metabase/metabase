@@ -105,7 +105,10 @@
                     :code         ::tools.create-alert/no-alert-permission
                     :user-message "You don't have permission to create alerts."}
                    (:error (create-alert (daily-alert card-id)))))))
-        (testing "any other failure stays an internal error"
+        (testing "any other failure may have come after the alert was saved, so the user is told to check"
           (mt/with-dynamic-fn-redefs [notification.api/create-notification! (fn [_] (throw (ex-info "boom" {})))]
-            (is (= {:class :unrecoverable :code :internal}
+            (is (= {:class        :unrecoverable
+                    :code         :unconfirmed-write
+                    :user-message (str "Something went wrong. The change may have been saved, "
+                                       "so check before you try again.")}
                    (:error (create-alert (daily-alert card-id)))))))))))

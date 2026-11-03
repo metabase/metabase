@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
-   [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.lib.core :as lib]
@@ -233,8 +233,7 @@
 (deftest query-action-without-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (testing "a query action can be inserted and updated without a model, and keeps its own collection"
-      (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}
-                     :model/Collection {app-id :id}  {:namespace "data-apps"}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
         (mt/with-model-cleanup [:model/Action]
           (let [insert!   (fn [collection-id]
                             (action/insert! (lib/normalize ::actions.schema/action.for-insert
@@ -248,10 +247,7 @@
                     (action/select-action :id action-id)))
             (action/update! {:id action-id :name "Renamed"} (action/select-action :id action-id))
             (is (=? {:name "Renamed" :model_id nil :collection_id coll-id}
-                    (action/select-action :id action-id)))
-            (testing "a data app collection takes one too"
-              (is (=? {:model_id nil :collection_id app-id}
-                      (action/select-action :id (insert! app-id)))))))))))
+                    (action/select-action :id action-id)))))))))
 
 (deftest action-in-a-data-apps-collection-is-admin-only-test
   (testing "Only administrators write an action in a collection of the data apps namespace"
@@ -260,23 +256,78 @@
       (mt/with-model-cleanup [:model/Action]
         (let [action-in (fn [collection-id]
                           (lib/normalize ::actions.schema/action.for-insert
-                                         {:type          :query
+                                         {:type          :implicit
+                                          :kind          :row/create
                                           :name          "No model"
                                           :collection_id collection-id
-                                          :database_id   (mt/id)
-                                          :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
-              action    (action/select-action :id (action/insert! (action-in app-id)))
+                                          :table_id      (mt/id :categories)}))
               elsewhere (action/select-action :id (action/insert! (action-in coll-id)))]
           (mt/with-test-user :crowberto
-            (is (true? (mi/can-write? action)))
-            (is (true? (:can_write (t2/hydrate action :can_write))))
+            (is (true? (mi/can-write? elsewhere)))
             (is (true? (mi/can-create? :model/Action (action-in app-id))))
             (is (true? (mi/can-update? elsewhere {:collection_id app-id}))))
           (mt/with-test-user :rasta
-            (is (false? (mi/can-write? action)))
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                  (api/write-check :model/Action (:id action))))
-            (is (false? (mi/can-create? :model/Action (action-in app-id))))))))))
+            (is (false? (mi/can-write? elsewhere)))
+            (is (false? (mi/can-create? :model/Action (action-in app-id))))
+            (is (false? (mi/can-update? elsewhere {:collection_id app-id})))))))))
+
+(defn- insert-data-app-action!
+  "Insert an action named `action-name` of `action-type` in the collection with `collection-id`, as a load does, with
+  `action-columns` merged into its Action row: an implicit one of no model inserting into the venues table, or a query
+  one running SQL."
+  [collection-id action-type action-name & [action-columns]]
+  (let [action-id (t2/insert-returning-pk! :model/Action (merge {:name          action-name
+                                                                 :type          action-type
+                                                                 :collection_id collection-id
+                                                                 :creator_id    (mt/user->id :crowberto)}
+                                                                action-columns))]
+    (if (= :implicit action-type)
+      (t2/insert! :model/ImplicitAction {:action_id action-id :kind "row/create" :table_id (mt/id :venues)})
+      (t2/insert! :model/QueryAction {:action_id     action-id
+                                      :database_id   (mt/id)
+                                      :dataset_query (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = 'x'")}))
+    action-id))
+
+(def ^:private card-values-parameters
+  "Action parameters, one taking its values from a card that doesn't exist."
+  [{:id "name" :slug "name" :type :string/= :values_source_type "card" :values_source_config {:card_id Integer/MAX_VALUE}}])
+
+(deftest action-in-a-data-apps-collection-is-plain-implicit-action-test
+  (testing "an action in a collection of the data apps namespace is an implicit action of no model, neither archived nor
+            public, whose parameters take no values from a card, however it gets there"
+    (when config/ee-available?
+      (mt/with-temp [:model/Collection {app-id :id}   {:namespace "data-apps"}
+                     :model/Collection {other-id :id} {:namespace "data-actions"}]
+        (mt/with-model-cleanup [:model/Action]
+          (doseq [[label action-type columns message]
+                  [["a query action" :query nil #"must be an implicit action on a table"]
+                   ["archived" :implicit {:archived true} #"can't be archived"]
+                   ["public" :implicit {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :crowberto)}
+                    #"can't be made public"]
+                   ["taking parameter values from a card" :implicit {:parameters card-values-parameters}
+                    #"can't take a parameter's values from a card"]]]
+            (testing label
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                    (insert-data-app-action! app-id action-type label columns)))
+              (testing "moved in from elsewhere, where it is fine"
+                (let [action-id (insert-data-app-action! other-id action-type (str label " elsewhere") columns)]
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                        (t2/update! :model/Action :id action-id {:collection_id app-id})))
+                  (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))))
+
+(deftest action-in-a-data-apps-collection-writes-to-any-table-test
+  (testing "the hook reads only the action's rows, so an implicit action of no model there writes to any table"
+    (when config/ee-available?
+      (mt/with-temp [:model/Collection {app-id :id}   {:namespace "data-apps"}
+                     :model/Collection {other-id :id} {:namespace "data-actions"}]
+        (mt/with-model-cleanup [:model/Action]
+          (let [action-id (insert-data-app-action! app-id :implicit "Add venue")]
+            (t2/update! :model/ImplicitAction {:action_id action-id} {:table_id (mt/id :categories)})
+            (is (= (mt/id :categories) (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id))))
+          (testing "and one moves in"
+            (let [action-id (insert-data-app-action! other-id :implicit "Moved in")]
+              (t2/update! :model/Action :id action-id {:collection_id app-id})
+              (is (= app-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))
 
 (deftest implicit-action-requires-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
