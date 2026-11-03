@@ -396,6 +396,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     cy.intercept("GET", "/api/public/document/*/card/*").as(
       "publicDocumentCardQuery",
     );
+    cy.intercept("PUT", "/api/document/*").as("updateDocument");
     cy.intercept("GET", "/api/embed/card/*/query*").as("embedCardQuery");
     cy.intercept("GET", "/api/embed/dashboard/*/dashcard/*/card/*").as(
       "embedDashcardQuery",
@@ -445,13 +446,39 @@ describe("scenarios > visualizations > dynamic goals", () => {
             value: 400,
           });
 
+          cy.log("A goal picked in a document resolves before it is saved");
+          H.openDocumentCardMenu(EMBEDDABLE_CHART_NAME);
+          H.popover().findByText("Edit Visualization").click();
+          H.getDocumentSidebar().within(() => {
+            cy.findByRole("tab", { name: "Display" }).click();
+            cy.findByRole("button", { name: "Change value source" }).click();
+          });
+          pickGoalSource(MULTI_COLUMN_SOURCE.name);
+          H.popover().findByRole("menuitem", { name: /HIGH/ }).click();
+          H.getDocumentSidebar()
+            .findByRole("button", { name: "Change value source" })
+            .should("contain.text", "600");
+          H.documentContent().within(() => {
+            H.goalLineMarker().trigger("mousemove");
+          });
+          H.tooltip().should("contain.text", "600");
+          cy.get<CardId>("@multiColumnSourceId").then((id) => {
+            assertAnswered("@dataset", { id, column: "HIGH", value: 600 });
+          });
+          H.documentSaveButton().click();
+          cy.wait("@updateDocument")
+            .its("response.statusCode")
+            .should("eq", 200);
+
           cy.log("Public document");
           H.visitPublicDocument("@documentId");
           H.goalLine().should("exist");
-          assertAnswered("@publicDocumentCardQuery", {
-            id: sourceId,
-            column: "TARGET",
-            value: 400,
+          cy.get<CardId>("@multiColumnSourceId").then((id) => {
+            assertAnswered("@publicDocumentCardQuery", {
+              id,
+              column: "HIGH",
+              value: 600,
+            });
           });
 
           cy.log("Public question");
