@@ -9,7 +9,7 @@ export function DataAppListEmptyState() {
     <FeatureEmptyState
       title={t`Apps built on your semantic layer`}
       // eslint-disable-next-line metabase/no-literal-metabase-strings -- Data Studio is only for admins.
-      description={t`Have your AI agent build a data app with the Metabase CLI. The app lives in your Remote Sync repository, and reaches each Metabase that syncs with it when you pull the changes.`}
+      description={t`Have your AI agent build a data app with the Metabase CLI. The app lives in your Git repository, and reaches each Metabase that syncs with it when you pull the changes.`}
       actions={<DataAppBuildSteps />}
       features={[
         {

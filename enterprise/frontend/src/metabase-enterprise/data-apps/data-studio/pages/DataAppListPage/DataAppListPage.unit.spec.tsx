@@ -68,7 +68,7 @@ describe("DataAppListPage", () => {
 
     expect(
       await screen.findByText(
-        "Have your AI agent build a data app with the Metabase CLI. The app lives in your Remote Sync repository, and reaches each Metabase that syncs with it when you pull the changes.",
+        "Have your AI agent build a data app with the Metabase CLI. The app lives in your Git repository, and reaches each Metabase that syncs with it when you pull the changes.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText(/Install the Metabase CLI/)).toBeInTheDocument();

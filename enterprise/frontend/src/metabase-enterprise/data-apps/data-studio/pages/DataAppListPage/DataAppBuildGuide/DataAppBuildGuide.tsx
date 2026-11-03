@@ -26,7 +26,7 @@ export function DataAppBuildSteps() {
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Data Studio is only for admins. */}
         <List.Item>{t`Install the Metabase CLI, and log it in to your Metabase as an admin.`}</List.Item>
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Data Studio is only for admins. */}
-        <List.Item>{t`Start your AI coding agent in a local clone of your Remote Sync repository, on the branch your Metabase syncs with.`}</List.Item>
+        <List.Item>{t`Start your AI coding agent in a local clone of your Git repository, on the branch your Metabase syncs with.`}</List.Item>
         <List.Item>{t`Ask your agent to create a data app. It writes the app's code, questions, and actions in the repository, builds the app, and pushes it.`}</List.Item>
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Data Studio is only for admins. */}
         <List.Item>{t`Pull the changes into Metabase. Your agent can do this for you.`}</List.Item>
