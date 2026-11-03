@@ -4,6 +4,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
    [metabase.test :as mt]
@@ -189,10 +190,13 @@
                                                             :expectations expectations}]
       (let [path  (str "ee/transform-test/" test-id)
             body  {:transform_id transform-id :name "nope" :inputs inputs :expectations expectations}
+            adhoc {:transform (assoc (people-id-transform) :name "adhoc")
+                   :test      {:name "adhoc" :inputs inputs :expectations expectations}}
             refused-writes (fn [user]
                              (mt/user-http-request user :post 403 "ee/transform-test" body)
                              (mt/user-http-request user :put 403 path {:name "nope"})
-                             (mt/user-http-request user :delete 403 path))]
+                             (mt/user-http-request user :delete 403 path)
+                             (mt/user-http-request user :post 403 "ee/transform-test/run" adhoc))]
         (try
           (testing "users without transform access can't read, change, or run transform tests"
             (mt/user-http-request :rasta :get 403 "ee/transform-test")
@@ -206,21 +210,45 @@
                 (is (some #{test-id} (map :id (mt/user-http-request :lucky :get 200 "ee/transform-test"))))
                 (mt/user-http-request :lucky :get 200 path)
                 (is (= "passed" (:status (mt/user-http-request :lucky :post 200 (str path "/run")))))))
-            (testing "saving or deleting tests needs transforms permission on source database"
+            (testing "saving, deleting, or running unsaved tests needs transforms permission on source database"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
                                                                             :perms/create-queries :query-builder-and-native}
                 (refused-writes :lucky)))
-            (testing "saving or deleting tests needs native access to source database"
+            (testing "saving, deleting, or running unsaved tests needs native access to source database"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
                                                                             :perms/create-queries :query-builder}
                 (refused-writes :lucky)))
-            (testing "with both, data analysts can change tests"
+            (testing "with both, data analysts can change tests and run unsaved ones"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
                                                                             :perms/create-queries :query-builder-and-native}
-                (is (=? {:name "renamed"} (mt/user-http-request :lucky :put 200 path {:name "renamed"}))))))
+                (is (=? {:name "renamed"} (mt/user-http-request :lucky :put 200 path {:name "renamed"})))
+                (is (= "passed" (:status (mt/user-http-request :lucky :post 200 "ee/transform-test/run" adhoc)))))))
           (is (t2/exists? :model/TransformTest :id test-id))
           (finally
             (t2/delete! :model/TransformTestRun :initiated_by (mt/user->id :lucky))))))))
+
+(def ^:private orders-input
+  [{:table  {:schema "PUBLIC" :name "PEOPLE"}
+    :format "sql"
+    :sql    "SELECT ID FROM PUBLIC.ORDERS WHERE ID <= 3"}])
+
+(deftest adhoc-run-respects-tables-blocked-by-other-group-test
+  (testing "unsaved tests cannot read tables another group of caller blocks"
+    (with-transforms-enabled
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (perms.tu/with-no-data-perms-for-all-users!
+          (perms.tu/with-restored-data-perms-for-group! (:id (perms-group/all-users))
+            (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                           :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :lucky)}]
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/transforms :yes)
+              (data-perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :legacy-no-self-service)
+              (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+              (data-perms/set-table-permission! group-id (mt/id :orders) :perms/view-data :blocked)
+              (mt/user-http-request :lucky :post 403 "ee/transform-test/run"
+                                    {:transform (assoc (people-id-transform) :name "adhoc")
+                                     :test      {:name "adhoc" :inputs orders-input :expectations expectations}}))))))))
 
 (deftest update-transform-id-needs-access-to-both-transforms-test
   (testing "moving test to another transform needs permission to save tests of both transforms"
