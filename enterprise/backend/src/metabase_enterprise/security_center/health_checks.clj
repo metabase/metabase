@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.security-center.schema :as security-center.schema]
+   [metabase.session.core :as session]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.util.encryption :as encryption]
@@ -178,6 +179,24 @@
                                        (tru "SCIM is on")
                                        (tru "SCIM is off"))])})
 
+(def ^:private mfa-required
+  {:id                :mfa-required
+   :severity          :medium
+   :title             (deferred-tru "Two-factor authentication")
+   :description       (deferred-tru "Without 2FA, a stolen password alone is enough to sign in.")
+   :remediation       (deferred-tru "Require 2FA for password and LDAP login.")
+   :docs-page         "people-and-groups/start"
+   :requires-restart? false
+   ;; Metabase 2FA covers password and LDAP login only, so the check is hidden when both are off.
+   :applicable?       (fn []
+                        (and (premium-features/enable-multi-factor-auth?)
+                             (boolean (or (setting/get :enable-password-login)
+                                          (setting/get :ldap-enabled)))))
+   :run               (fn []
+                        [(pass-or-fail (session/mfa-required?)
+                                       (tru "2FA is required")
+                                       (tru "2FA is not required"))])})
+
 ;;; The registry
 
 (def ^:private checks
@@ -190,7 +209,8 @@
     :https-site-url            https-site-url
     :https-redirect            https-redirect
     :sso-login                 sso-login
-    :scim-provisioning         scim-provisioning}))
+    :scim-provisioning         scim-provisioning
+    :mfa-required              mfa-required}))
 
 (defn all-checks
   "Every registered check, in id order."

@@ -226,3 +226,30 @@
       (mt/with-temporary-setting-values [scim-enabled false]
         (is (=? {:status :fail, :items [{:status :fail, :message "SCIM is off"}]}
                 (run-check-by-id :scim-provisioning)))))))
+
+;;; The mfa-required check
+
+(deftest mfa-required-test
+  (testing "applies with the :multi-factor-auth feature when password or LDAP login is on"
+    (mt/with-premium-features #{:multi-factor-auth}
+      (is (true? (health-checks/applicable? (health-checks/check-by-id :mfa-required)))))
+    (mt/with-premium-features #{}
+      (is (false? (health-checks/applicable? (health-checks/check-by-id :mfa-required)))))
+    (testing "and is hidden when password and LDAP login are both off"
+      (mt/with-premium-features #{:multi-factor-auth :sso-jwt :disable-password-login}
+        ;; password login reads as off only when an SSO provider is configured and on
+        (mt/with-temporary-setting-values [jwt-enabled               true
+                                           jwt-shared-secret         (apply str (repeat 64 "a"))
+                                           jwt-identity-provider-uri "https://idp.example.com"
+                                           enable-password-login     false
+                                           ldap-enabled              false]
+          (is (false? (health-checks/applicable? (health-checks/check-by-id :mfa-required))))))))
+  (mt/with-premium-features #{:multi-factor-auth}
+    (testing "passes when 2FA is required"
+      (mt/with-temporary-setting-values [mfa-enforcement :required, mfa-requirement-deadline nil]
+        (is (=? {:status :pass, :items [{:status :pass, :message "2FA is required"}]}
+                (run-check-by-id :mfa-required)))))
+    (testing "fails when 2FA is optional"
+      (mt/with-temporary-setting-values [mfa-enforcement :optional]
+        (is (=? {:status :fail, :items [{:status :fail, :message "2FA is not required"}]}
+                (run-check-by-id :mfa-required)))))))
