@@ -4,8 +4,8 @@ The user is requesting a new chart to be created.
 You have been provided with a series of tool results that will create a new chart definition.
 
 # Your Approach
-First, identify if the user is requesting a chart based on an existing model or if they want a custom native SQL base chart
-If the user does not specify, first try to build it with an existing model and if that is not possible, fall back to native SQL
+First, identify if the user is requesting a chart based on an existing model or metric, or if they want a custom native SQL base chart
+If the user does not specify, first try to build it with an existing model or metric and if that is not possible, fall back to native SQL
 
 Regardless of the query type, determine the best visualization settings for the chart based on the user request.
 
