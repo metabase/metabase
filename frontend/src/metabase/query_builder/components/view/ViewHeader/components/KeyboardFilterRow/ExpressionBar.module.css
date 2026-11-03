@@ -344,14 +344,30 @@
       0 0 0 2px var(--mb-color-feedback-negative);
   }
 
-  & .connector {
-    padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  /* Figma "Connector" Notebook: the step colour as a light button, as tall as
+     a pill, 10px at the sides, 6px corners, 14px monospace in the strong step
+     colour. The same mixes as the button-light-filter tokens, on the cell's colour. */
+  & .connector,
+  & .connectorParen {
+    min-height: var(--expression-pill-height);
+    padding: 0 10px;
     border-radius: 6px;
+    background-color: color-mix(
+      in srgb,
+      var(--expression-pill-color) 15%,
+      transparent
+    );
+    color: color-mix(in srgb, var(--expression-pill-color), black 12%);
     font-size: var(--mantine-font-size-md);
+    line-height: 1.22;
   }
 
-  & .connectorParen {
-    padding: var(--mantine-spacing-xs);
+  & .connectorRemovable:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--expression-pill-color) 30%,
+      transparent
+    );
   }
 
   & .caretSlot:has(> :not(.typingIdle)),
