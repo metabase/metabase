@@ -240,9 +240,11 @@
               {:custom_position (into [:case] (mapcat (fn [[id position]] [[:= :field_id id] position])) field-id->position)}))
 
 (mu/defn delete-field-user-settings!
-  "Delete the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."
-  [field-id :- ::lib.schema.id/field]
-  (t2/delete! :model/FieldUserSettings :field_id field-id))
+  "Delete the FieldUserSettings of the Fields with `field-ids`, returning the number deleted."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (if (seq field-ids)
+    (t2/delete! :model/FieldUserSettings :field_id [:in field-ids])
+    0))
 
 (mu/defn clear-user-settings-fk-targets-to-field!
   "Unset the user-set FK semantic type and target of every ::warehouse-schema.schema/field targeting the
@@ -301,9 +303,11 @@
   (t2/update! :model/TableUserSettings :table_id table-id changes))
 
 (mu/defn delete-table-user-settings!
-  "Delete the TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, returning the number deleted."
-  [table-id :- ::lib.schema.id/table]
-  (t2/delete! :model/TableUserSettings :table_id table-id))
+  "Delete the TableUserSettings of the Tables with `table-ids`, returning the number deleted."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/delete! :model/TableUserSettings :table_id [:in table-ids])
+    0))
 
 (mu/defn table-user-settings-for-tables
   "The TableUserSettings of the Tables with `table-ids`, or every TableUserSettings when nil."

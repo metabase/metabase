@@ -47,7 +47,7 @@
   [settings]
   (when (and (every? #(nil? (get settings %)) user-settings/user-settable-field-columns)
              (not-any? #(get settings %) (vals user-settings/field-set-flags)))
-    (warehouse-schema.db/delete-field-user-settings! (:field_id settings)))
+    (warehouse-schema.db/delete-field-user-settings! [(:field_id settings)]))
   settings)
 
 (t2/define-before-insert :model/FieldUserSettings
@@ -115,8 +115,8 @@
 (mu/defn delete-field-user-settings!
   "Delete the settings of the Fields with `field-ids`, leaving their rows as they are for sync to take over."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (doseq [field-id field-ids]
-    (warehouse-schema.db/delete-field-user-settings! field-id)))
+  (doseq [batch (partition-all 1000 field-ids)]
+    (warehouse-schema.db/delete-field-user-settings! batch)))
 
 (mu/defn delete-field-user-settings-for-table!
   "[[delete-field-user-settings!]] for every Field of the Table with `table-id`."

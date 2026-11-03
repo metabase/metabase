@@ -82,7 +82,7 @@
   [settings]
   (when (and (every? #(nil? (get settings %)) user-settings/user-settable-table-columns)
              (not-any? #(get settings %) (vals user-settings/table-set-flags)))
-    (warehouse-schema.db/delete-table-user-settings! (:table_id settings)))
+    (warehouse-schema.db/delete-table-user-settings! [(:table_id settings)]))
   settings)
 
 (t2/define-before-insert :model/TableUserSettings
@@ -177,8 +177,8 @@
 (mu/defn delete-table-user-settings!
   "Delete the settings of the Tables with `table-ids`, leaving their rows as they are for sync to take over."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (doseq [table-id table-ids]
-    (warehouse-schema.db/delete-table-user-settings! table-id)))
+  (doseq [batch (partition-all 1000 table-ids)]
+    (warehouse-schema.db/delete-table-user-settings! batch)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
