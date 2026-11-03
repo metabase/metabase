@@ -1,6 +1,7 @@
 (ns metabase.agent-lib.representations.repair-test
   "Tests for the LLM-input repair pass."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
@@ -1341,7 +1342,7 @@
                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
                               "joins"        [join]}]}
           output (repair/repair trivial-mp input)]
-      (is (= [field] (get-in output ["stages" 0 "joins" 0 "fields"])))))
+      (is (= [(assoc-in field [1 "join-alias"] "P")] (get-in output ["stages" 0 "joins" 0 "fields"])))))
   (testing "join `fields:` enum value (\"all\" / \"none\") is left alone"
     (doseq [enum-value ["all" "none"]]
       (let [stage {"lib/type"     "mbql.stage/mbql"
@@ -3660,7 +3661,7 @@
   (orders-stage {"aggregation" [["min" {} (orders-col "TOTAL")]]
                  "breakout"    [(orders-col "USER_ID")]}))
 
-(def ^:private user-id-by-name (typed ["field" {} "USER_ID"] "type/Integer"))
+(def ^:private user-id-by-name ["field" {} "USER_ID"])
 
 (deftest ^:parallel join-alias-field-type-scoped-to-the-stage-with-the-join-test
   (let [joined-here (query min-total-by-user-stage
@@ -3684,6 +3685,184 @@
                                "filters" [["not-null" {} min-ref]]}))]
     (testing "the ref isn't typed from the previous stage's same-named column, and nothing is raised"
       (is (= min-ref (get-in (repair* q) ["stages" 1 "filters" 0 2]))))))
+
+(deftest ^:parallel join-stages-field-types-test
+  (let [two-stage (fn [column] [first-orders-stage (stage {"filters" [["not-null" {} ["field" {} column]]]})])
+        joined    (fn [join-stages field-ref] (query (orders-stage {"joins"   [(join "Two" join-stages)]
+                                                                    "filters" [["not-null" {} field-ref]]})))]
+    (testing "a by-name ref in a join's second stage is typed, so a ref to the join's column is too"
+      (let [out (repair* (joined (two-stage "min") (join-ref "Two" "min")))]
+        (is (= "type/Date" (base-type (get-in out ["stages" 0 "joins" 0 "stages" 1 "filters" 0 2]))))
+        (is (= "type/Date" (base-type (get-in out ["stages" 0 "filters" 0 2]))))
+        (is (= out (repair* out)))))
+    (testing "a by-name ref to a nested join's column is typed, and so is the ref to the outer join"
+      (let [inner (orders-stage {"joins"   [(join "First" [first-orders-stage])]
+                                 "filters" [["not-null" {} (join-ref "First" "min")]]})
+            out   (repair* (query (orders-stage {"joins"   [(join "Outer" [inner])]
+                                                 "filters" [["not-null" {} (join-ref "Outer" "TOTAL")]]})))]
+        (is (= "type/Date" (base-type (get-in out ["stages" 0 "joins" 0 "stages" 0 "filters" 0 2]))))
+        (is (= "type/Float" (base-type (get-in out ["stages" 0 "filters" 0 2]))))))
+    (testing "a bad name inside a join is reported with the join it is in"
+      (let [e (repair-error (joined (two-stage "nope") (join-ref "Two" "min")))]
+        (is (=? {:error      :unresolved-cross-stage-field
+                 :join-alias "Two"
+                 :join-stage 0
+                 :stage      1}
+                e))
+        (is (str/starts-with? (:message e) "In join \"Two\" of stage 0: No column named \"nope\""))))
+    (testing "a bad name inside a join with no alias is reported as being in such a join"
+      (let [no-alias (-> (join "Two" (two-stage "nope")) (dissoc "alias") (assoc "conditions" []))]
+        (is (str/starts-with? (:message (repair-error (query (orders-stage {"joins" [no-alias]}))))
+                              "In a join with no alias in stage 0: No column named \"nope\""))))))
+
+(deftest ^:parallel join-fields-ref-without-alias-test
+  (let [fields-query (fn [previous-stage fields]
+                       (query previous-stage
+                              (stage {"joins" [(assoc (join "First" [first-orders-stage] :lhs user-id-by-name)
+                                                      "fields" fields)]})))
+        join-fields  (fn [previous-stage fields]
+                       (get-in (repair* (fields-query previous-stage fields)) ["stages" 1 "joins" 0 "fields"]))]
+    (testing "a by-name ref in a join's fields gets the join's alias and is typed from the join"
+      (is (= [["field" {"join-alias" "First", "base-type" "type/Date", "effective-type" "type/Date"} "min"]]
+             (join-fields min-total-by-user-stage [["field" {} "min"]]))))
+    (testing "the previous stage not having the column doesn't matter"
+      (is (= "type/Date"
+             (base-type (first (join-fields (orders-stage {"aggregation" [["count" {}]]
+                                                           "breakout"    [(orders-col "USER_ID")]})
+                                            [["field" {} "min"]]))))))
+    (testing "a path ref in a join's fields gets the join's alias too"
+      (is (= [(assoc-in (orders-col "USER_ID") [1 "join-alias"] "First")]
+             (join-fields min-total-by-user-stage [(orders-col "USER_ID")]))))
+    (testing "a path ref there to a column the grouped join doesn't return is reported"
+      (is (= [[1 "First" ["ORDERS.TOTAL"]]]
+             (join-problems (fields-query min-total-by-user-stage [(orders-col "TOTAL")])))))))
+
+(deftest ^:parallel alias-less-join-fields-left-for-validation-test
+  (let [fields-of (fn [column]
+                    (let [no-alias {"strategy"   "left-join"
+                                    "stages"     [first-orders-stage]
+                                    "conditions" [["=" {} user-id-by-name (orders-col "USER_ID")]]
+                                    "fields"     [["field" {} column]]}]
+                      (get-in (repair* (query (orders-stage {"aggregation" [["count" {}]]
+                                                             "breakout"    [(orders-col "USER_ID")]})
+                                              (stage {"joins" [no-alias]})))
+                              ["stages" 1 "joins" 0 "fields"])))]
+    (testing "a by-name ref in an alias-less join's fields stays untyped, whether or not the previous stage has it"
+      (doseq [column ["count" "min"]]
+        (is (= [["field" {} column]] (fields-of column)))))))
+
+(def ^:private prev-joined-stage
+  "Orders with a `Prev` join of each user's first order, returning all its columns."
+  (orders-stage {"joins" [(assoc (join "Prev" [first-orders-stage]) "fields" "all")]}))
+
+(deftest ^:parallel previous-stage-ref-in-join-condition-test
+  (let [joined-on (fn [lhs] (query first-orders-stage (stage {"joins" [(join "First" [first-orders-stage] :lhs lhs)]})))]
+    (testing "a by-name ref to the previous stage in a join's conditions is typed from that stage"
+      (is (= "type/Integer"
+             (base-type (get-in (repair* (joined-on ["field" {} "USER_ID"])) ["stages" 1 "joins" 0 "conditions" 0 2])))))
+    (testing "a bad name there raises the cross-stage error"
+      (is (=? {:error :unresolved-cross-stage-field, :clause ["field" {} "nope"]}
+              (repair-error (joined-on ["field" {} "nope"])))))
+    (testing "a ref there through a join alias the previous stage doesn't have is left for validation"
+      (doseq [column ["USER_ID" "nope"]
+              :let   [field-ref ["field" {"join-alias" "first"} column]]]
+        (is (= field-ref (get-in (repair* (joined-on field-ref)) ["stages" 1 "joins" 0 "conditions" 0 2])))))
+    (let [prev-joined-on (fn [lhs]
+                           (query prev-joined-stage (stage {"joins" [(join "First" [first-orders-stage] :lhs lhs)]})))]
+      (testing "a ref there through a join of the previous stage is typed from that stage"
+        (is (= "type/Date"
+               (base-type (get-in (repair* (prev-joined-on ["field" {"join-alias" "Prev"} "min"]))
+                                  ["stages" 1 "joins" 0 "conditions" 0 2])))))
+      (testing "a ref there through that join to a column the previous stage deduplicates is typed from the join"
+        (is (= "type/Integer"
+               (base-type (get-in (repair* (prev-joined-on ["field" {"join-alias" "Prev"} "USER_ID"]))
+                                  ["stages" 1 "joins" 0 "conditions" 0 2])))))
+      (testing "a ref there through that join to a column only outside it raises the cross-stage error"
+        (let [e (repair-error (prev-joined-on ["field" {"join-alias" "Prev"} "TOTAL"]))]
+          (is (=? {:error     :unresolved-cross-stage-field
+                   :clause    ["field" {"join-alias" "Prev"} "TOTAL"]
+                   :available ["USER_ID_2" "min"]}
+                  e))
+          (is (str/starts-with? (:message e) "No column named \"TOTAL\" from join \"Prev\" is available")))))))
+
+(deftest ^:parallel previous-stage-join-alias-ref-test
+  (let [filtered-on (fn [field-ref] (query prev-joined-stage (stage {"filters" [["not-null" {} field-ref]]})))]
+    (testing "a ref through a join of the previous stage is typed from that join's columns"
+      (is (= "type/Date"
+             (base-type (get-in (repair* (filtered-on ["field" {"join-alias" "Prev"} "min"]))
+                                ["stages" 1 "filters" 0 2])))))
+    (testing "a ref through that join to a column only outside it raises the cross-stage error"
+      (is (=? {:error :unresolved-cross-stage-field, :clause ["field" {"join-alias" "Prev"} "TOTAL"]}
+              (repair-error (filtered-on ["field" {"join-alias" "Prev"} "TOTAL"])))))))
+
+(deftest ^:parallel previous-stage-join-alias-deduplicated-aggregation-test
+  (let [min-ref (join-ref "Prev" "min")
+        q       (query min-total-by-user-stage
+                       (stage {"joins" [(assoc (join "Prev" [first-orders-stage] :lhs user-id-by-name)
+                                               "fields" "all")]})
+                       (stage {"filters" [["not-null" {} min-ref]]
+                               "joins"   [(assoc-in (join "Next" [first-orders-stage] :lhs min-ref)
+                                                    ["conditions" 0 3] (join-ref "Next" "min"))]}))
+        out     (repair* q)]
+    (testing "a deduplicated join column is typed through its alias in filters and join conditions"
+      (doseq [path [["filters" 0 2] ["joins" 0 "conditions" 0 2]]]
+        (is (=? (typed min-ref "type/Date")
+                (get-in out (into ["stages" 2] path))))))
+    (testing "a quoted name is unquoted without adding the join prefix to the ref"
+      (is (= out (repair* (assoc-in q ["stages" 2 "filters" 0 2 2] "\"min\"")))))
+    (is (= out (repair* out)))))
+
+(deftest ^:parallel previous-stage-join-alias-deduplicated-loose-name-test
+  (let [q   (query min-total-by-user-stage
+                   (stage {"joins" [(assoc (join "Prev" [first-orders-stage] :lhs user-id-by-name) "fields" "all")]})
+                   (stage {"filters" [["not-null" {} (join-ref "Prev" "Min")]]}))
+        out (repair* q)]
+    (testing "a loosely spelled ref to a deduplicated join column matches the name after the join prefix"
+      (is (=? (typed (join-ref "Prev" "min") "type/Date") (get-in out ["stages" 2 "filters" 0 2]))))
+    (is (= out (repair* out)))))
+
+(deftest ^:parallel previous-stage-join-alias-prefixed-name-precedence-test
+  (let [joined (update first-orders-stage "aggregation" conj ["max" {"name" "min_2"} (orders-col "TOTAL")])
+        q      (query min-total-by-user-stage
+                      (stage {"joins" [(assoc (join "Prev" [joined] :lhs user-id-by-name) "fields" "all")]})
+                      (stage {"filters" [["not-null" {} (join-ref "Prev" "min_2")]]}))]
+    (testing "the joined min_2 is a Float, even though the joined Date min is deduplicated to min_2"
+      (is (= "type/Float" (base-type (get-in (repair* q) ["stages" 2 "filters" 0 2])))))
+    (testing "a loose spelling of min_2 also finds the Float"
+      (doseq [column-name ["Min_2" "MIN-2"]
+              :let        [loose (assoc-in q ["stages" 2 "filters" 0 2 2] column-name)]]
+        (is (=? (typed (join-ref "Prev" "min_2") "type/Float")
+                (get-in (repair* loose) ["stages" 2 "filters" 0 2])))))))
+
+(deftest ^:parallel previous-stage-join-alias-display-name-collision-test
+  (let [joined (update first-orders-stage "aggregation" conj ["max" {"name" "min_2"} (orders-col "TOTAL")])]
+    (doseq [column-name ["Min of Created At" "min-of-created-at"]]
+      (let [q   (query min-total-by-user-stage
+                       (stage {"joins" [(assoc (join "Prev" [joined] :lhs user-id-by-name) "fields" "all")]})
+                       (stage {"filters" [["not-null" {} (join-ref "Prev" column-name)]]}))
+            out (repair* q)]
+        (is (=? (typed (join-ref "Prev" "min") "type/Date") (get-in out ["stages" 2 "filters" 0 2])))
+        (is (= out (repair* out)))))))
+
+(deftest ^:parallel previous-stage-join-alias-custom-display-name-test
+  (let [joined (assoc-in prev-joined-stage ["joins" 0 "stages" 0 "breakout" 0 1 "display-name"] "Account key")
+        q      (query joined (stage {"filters" [["not-null" {} (join-ref "Prev" "USER_ID")]]}))]
+    (is (= "type/Integer" (base-type (get-in (repair* q) ["stages" 1 "filters" 0 2]))))))
+
+(deftest ^:parallel previous-stage-join-alias-nested-column-test
+  (let [self-joined [(orders-stage {"joins" [(assoc (join "Self" [(orders-stage {})]) "fields" "all")]})]
+        field-ref   (join-ref "Outer" "Self__TOTAL")
+        q           (query (orders-stage {"joins" [(assoc (join "Outer" self-joined) "fields" "all")]})
+                           (stage {"filters" [["not-null" {} field-ref]]}))
+        out         (repair* q)]
+    (is (=? (typed field-ref "type/Float")
+            (get-in out ["stages" 1 "filters" 0 2])))
+    (is (= out (repair* out)))))
+
+(deftest ^:parallel unresolved-cross-stage-ref-with-no-columns-test
+  (testing "a ref without a join alias is reported when the previous stage returns no columns"
+    (is (= ["field" {} "nope"]
+           (#'repair/first-unresolved-cross-stage-ref {"filters" [["not-null" {} ["field" {} "nope"]]]} [])))))
 
 (deftest ^:parallel join-alias-field-type-runs-before-cross-stage-inference-test
   (testing "a stage carrying a join-alias ref still resolves as the next stage's prefix"
@@ -3716,6 +3895,67 @@
                               (query (orders-stage {"joins"   [(join "Plain" [(orders-stage {})])]
                                                     "filters" [["not-null" {} (join-ref "Plain" (conj orders "TOTAL"))]]}))))))))
 
+(def ^:private people ["Sample" "PUBLIC" "PEOPLE"])
+
+(def ^:private people-id (conj people "ID"))
+
+(def ^:private plain-join (join "Plain" [(orders-stage {})]))
+
+(defn- plain-filtering [target]
+  (query (orders-stage {"joins"   [plain-join]
+                        "filters" [["not-null" {} (join-ref "Plain" target)]]})))
+
+(defn- advice-flags
+  "The flags set on each problem in the join-alias error `q`'s repair raises, which pick the advice in its message."
+  [q]
+  (mapv #(set (filter % [:named? :plain? :other-table? :other-table-in-fields?])) (:problems (repair-error q))))
+
+(defn- plain-join-fields [target]
+  (query (orders-stage {"joins" [(assoc plain-join "fields" [["field" {} target]])]})))
+
+(deftest ^:parallel plain-table-join-other-table-path-ref-test
+  (testing "a path ref through a plain table join to another table's column of the same name raises"
+    (is (= [[0 "Plain" ["PEOPLE.ID"]]] (join-problems (plain-filtering people-id)))))
+  (testing "a path ref there in the join's own fields raises too"
+    (is (= [[0 "Plain" ["PEOPLE.ID"]]] (join-problems (plain-join-fields people-id)))))
+  (testing "a path ref to the joined table's own column is accepted"
+    (is (nil? (repair-error (plain-filtering (conj orders "ID"))))))
+  (testing "a path ref to a column of a join nested in the joined stage is accepted"
+    (let [inner (assoc (join "People" [(stage {"source-table" people})])
+                       "conditions" [["=" {} (orders-col "USER_ID") (join-ref "People" people-id)]]
+                       "fields"     "all")
+          outer (join "Outer" [(orders-stage {"joins" [inner]})])]
+      (is (nil? (repair-error (query (orders-stage {"joins"   [outer]
+                                                    "filters" [["not-null" {} (join-ref "Outer" people-id)]]}))))))))
+
+(deftest ^:parallel join-alias-field-advice-test
+  (let [message (comp :message repair-error)]
+    (testing "a ref to another table through a plain table join is told how to reach that table, and nothing else"
+      (let [q (plain-filtering people-id)
+            m (message q)]
+        (is (= [#{:plain? :other-table?}] (advice-flags q)))
+        (is (str/includes? m "drop `join-alias`"))
+        (is (str/includes? m "set both `source-field`"))
+        (is (not-any? #(str/includes? m %) ["display label" "grouped join" "add a join"]))))
+    (testing "a ref to another table in a plain table join's own fields is told to join that table"
+      (let [q (plain-join-fields people-id)
+            m (message q)]
+        (is (= [#{:plain? :other-table-in-fields?}] (advice-flags q)))
+        (is (str/includes? m "add a join on that table"))
+        (is (not-any? #(str/includes? m %) ["drop `join-alias`" "display label" "grouped join"]))))
+    (testing "a bad name through a plain table join gets only the advice about names"
+      (let [q (plain-filtering "nope")
+            m (message q)]
+        (is (= [#{:named? :plain?}] (advice-flags q)))
+        (is (str/includes? m "display label"))
+        (is (not-any? #(str/includes? m %) ["grouped join" "source-field"]))))
+    (testing "problems in a grouped and a plain table join get the advice for each"
+      (let [q (query (orders-stage {"joins"   [(join "First" [first-orders-stage]) plain-join]
+                                    "filters" [["not-null" {} (join-ref "First" "nope")]
+                                               ["not-null" {} (join-ref "Plain" people-id)]]}))]
+        (is (= [#{:named?} #{:plain? :other-table?}] (advice-flags q)))
+        (is (every? #(str/includes? (message q) %) ["display label" "grouped join" "set both `source-field`"]))))))
+
 (deftest ^:parallel join-alias-field-type-idempotent-test
   (let [once (repair* first-order-query)]
     (is (= once (repair* once)))))
@@ -3732,7 +3972,9 @@
                :error        :unresolved-join-alias-field
                :problems     [{:stage 0 :join-alias "First" :clauses [total-ref] :columns ["TOTAL"] :available ["USER_ID" "min"]}]}
               e))
-      (is (re-find #"join \"First\" doesn't return \"TOTAL\" \(available: USER_ID, min\)" (:message e)))))
+      (is (re-find #"join \"First\" doesn't return \"TOTAL\" \(available: USER_ID, min\)" (:message e)))
+      (is (str/includes? (:message e) "a grouped join returns just its breakouts and aggregations"))
+      (is (not (str/includes? (:message e) "source-field-join-alias")))))
   (testing "every bad ref is reported in one error, across refs, joins, and stages"
     (is (= [[0 "First" ["nope" "ORDERS.TOTAL"]] [0 "Second" ["nada"]] [1 "First" ["zilch"]]]
            (join-problems
@@ -3752,6 +3994,23 @@
     (is (= "type/Text"
            (base-type (get-in (repair* (first-orders-filtering (typed (join-ref "First" "min") "type/Text")))
                               ["stages" 0 "filters" 0 2]))))))
+
+(deftest ^:parallel join-alias-field-type-nested-join-column-names-test
+  (let [self-joined [(orders-stage {"joins" [(assoc (join "Self" [(orders-stage {})]) "fields" "all")]})]
+        filtering   (fn [field-ref] (query (orders-stage {"joins"   [(join "Outer" self-joined)]
+                                                          "filters" [["not-null" {} field-ref]]})))
+        filtered    (fn [field-ref] (get-in (repair* (filtering field-ref)) ["stages" 0 "filters" 0 2]))]
+    (testing "a nested join's column is typed by each name lib resolves, and kept as written"
+      (doseq [column-name ["Self__TOTAL" "TOTAL_2"]]
+        (is (= (typed (join-ref "Outer" column-name) "type/Float")
+               (filtered (join-ref "Outer" column-name))))))
+    (testing "a quoted desired alias is unquoted and typed"
+      (is (= (typed (join-ref "Outer" "Self__TOTAL") "type/Float")
+             (filtered (join-ref "Outer" "\"Self__TOTAL\"")))))
+    (testing "a ref the LLM typed itself by the desired alias is accepted"
+      (is (= "type/Number" (base-type (filtered (typed (join-ref "Outer" "Self__TOTAL") "type/Number"))))))
+    (testing "a name the join doesn't return is still reported"
+      (is (= [[0 "Outer" ["Self__NOPE"]]] (join-problems (filtering (join-ref "Outer" "Self__NOPE"))))))))
 
 (defn- filtering-through [alias stages column]
   (query (orders-stage {"joins"   [(join alias stages)]
