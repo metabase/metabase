@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import type { ReactNode } from "react";
 
 import {
@@ -7,7 +8,7 @@ import {
   setupSecurityAdvisoriesErrorEndpoint,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { act, renderWithProviders, screen, within } from "__support__/ui";
 import { Route, redirect } from "metabase/router";
 import type { Advisory, HealthCheck } from "metabase-types/api";
 import {
@@ -27,7 +28,7 @@ interface SetupOpts {
   hasAdvisoriesError?: boolean;
 }
 
-const setup = ({
+const setup = async ({
   initialRoute = "/admin/security-center/advisories",
   advisories = [],
   checks = [],
@@ -41,7 +42,7 @@ const setup = ({
   }
   setupHealthChecksEndpoint(checks);
 
-  return renderWithProviders(
+  const view = renderWithProviders(
     <Route path="/admin/security-center" element={<SecurityCenterLayout />}>
       <Route index element={redirect("advisories")} />
       <Route path="advisories" element={advisoriesPage} />
@@ -49,27 +50,30 @@ const setup = ({
     </Route>,
     { withRouter: true, initialRoute },
   );
+  await act(() => fetchMock.callHistory.flush(true));
+
+  return view;
 };
 
 const getNavLink = (name: RegExp) => screen.getByRole("link", { name });
 
 describe("SecurityCenterLayout", () => {
-  it("shows the sections in the sidebar", () => {
-    setup({ initialRoute: "/admin/security-center/health-checks" });
+  it("shows the sections in the sidebar", async () => {
+    await setup({ initialRoute: "/admin/security-center/health-checks" });
 
-    expect(screen.getByRole("link", { name: /Advisories/ })).toHaveAttribute(
+    expect(getNavLink(/Advisories/)).toHaveAttribute(
       "href",
       "/admin/security-center/advisories",
     );
-    expect(screen.getByRole("link", { name: /Health checks/ })).toHaveAttribute(
+    expect(getNavLink(/Health checks/)).toHaveAttribute(
       "href",
       "/admin/security-center/health-checks",
     );
     expect(screen.getByText("Health checks page")).toBeInTheDocument();
   });
 
-  it("opens advisories by default and keeps the query string", () => {
-    const { router } = setup({
+  it("opens advisories by default and keeps the query string", async () => {
+    const { router } = await setup({
       initialRoute: "/admin/security-center?open=notifications",
     });
 
@@ -78,32 +82,28 @@ describe("SecurityCenterLayout", () => {
   });
 
   it("marks the sections that have issues", async () => {
-    setup({
+    await setup({
       advisories: [createAdvisory({ match_status: "active" })],
       checks: [createMockHealthCheck({ status: "fail" })],
     });
 
-    await waitFor(() => {
-      expect(
-        within(getNavLink(/Advisories/)).getByTestId("issue-dot"),
-      ).toBeInTheDocument();
-    });
+    expect(
+      within(getNavLink(/Advisories/)).getByTestId("issue-dot"),
+    ).toBeInTheDocument();
     expect(
       within(getNavLink(/Health checks/)).getByTestId("issue-dot"),
     ).toBeInTheDocument();
   });
 
   it("marks only the section that has issues", async () => {
-    setup({
+    await setup({
       advisories: [createAdvisory({ match_status: "not_affected" })],
       checks: [createMockHealthCheck({ status: "fail" })],
     });
 
-    await waitFor(() => {
-      expect(
-        within(getNavLink(/Health checks/)).getByTestId("issue-dot"),
-      ).toBeInTheDocument();
-    });
+    expect(
+      within(getNavLink(/Health checks/)).getByTestId("issue-dot"),
+    ).toBeInTheDocument();
     expect(
       within(getNavLink(/Advisories/)).queryByTestId("issue-dot"),
     ).not.toBeInTheDocument();
@@ -112,15 +112,16 @@ describe("SecurityCenterLayout", () => {
   it("renders a page error inside the layout (GDGT-2748)", async () => {
     setupUserRecipientsEndpoint({ users: [] });
     setupNotificationChannelsEndpoints({});
-    setup({ advisoriesPage: <AdvisoriesPage />, hasAdvisoriesError: true });
-
-    await waitFor(() => {
-      expect(
-        within(screen.getByTestId("admin-layout-content")).getByText(
-          "Something went wrong loading security advisories.",
-        ),
-      ).toBeInTheDocument();
+    await setup({
+      advisoriesPage: <AdvisoriesPage />,
+      hasAdvisoriesError: true,
     });
+
+    expect(
+      within(screen.getByTestId("admin-layout-content")).getByText(
+        "Something went wrong loading security advisories.",
+      ),
+    ).toBeInTheDocument();
     expect(getNavLink(/Advisories/)).toBeInTheDocument();
   });
 });
