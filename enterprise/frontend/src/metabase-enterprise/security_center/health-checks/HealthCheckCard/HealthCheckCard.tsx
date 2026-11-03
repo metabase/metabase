@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -43,6 +44,7 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(check.docs.page, {
     anchor: check.docs.anchor,
   });
+  const titleId = useId();
   const isFailing = check.status === "fail";
   const settingsUrl = isFailing ? getHealthCheckSettingsUrl(check.id) : null;
 
@@ -56,10 +58,11 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
 
   return (
     <Card
+      component="section"
+      aria-labelledby={titleId}
       p="xxl"
       withBorder
       data-testid="health-check-card"
-      data-check-id={check.id}
     >
       <Stack gap="lg">
         <Group gap="sm" justify="space-between" align="flex-start">
@@ -75,7 +78,9 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
         </Group>
 
         <Stack gap="sm">
-          <Title order={4}>{check.title}</Title>
+          <Title order={4} id={titleId}>
+            {check.title}
+          </Title>
           <Text c="text-secondary">{check.description}</Text>
         </Stack>
 
