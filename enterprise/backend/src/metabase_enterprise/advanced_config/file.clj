@@ -292,8 +292,8 @@
    :ok))
 
 (defenterprise boot-initialize!
-  "Boot-time entry point: read the config file from disk and run [[initialize!]]
-   with `{{env VAR}}` template expansion enabled. No-op when no file is present."
+  "Read the config file from disk and run [[initialize!]] on it with `{{env VAR}}` templates expanded.
+  Does nothing when there is no config file."
   :feature :none
   []
   (initialize! (config-from-disk) {:expand-templates? true}))

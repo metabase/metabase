@@ -221,7 +221,6 @@
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
-    ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
     (config-from-file/boot-initialize!)
     (init-status/set-progress! 0.6)
     (if new-install?
