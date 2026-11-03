@@ -45,8 +45,8 @@ A data app runs with the permissions of the person who opens it. Their [data per
 An app can read:
 
 - Tables, with their [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md).
-- The metrics in your [Library](../data-modeling/semantic-layer/library.md), but no other metrics.
-- The questions in its own collection, but no other questions.
+- The metrics in your [semantic layer](../data-modeling/semantic-layer/library.md), but no other metrics.
+- The questions in the app's own collection, but no other questions.
 
 An app can write data only through the actions in its own collection.
 
