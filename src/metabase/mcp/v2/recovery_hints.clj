@@ -59,10 +59,15 @@
 
 (defn recovery-hint
   "The v2 recovery message for an agent error's `ex-data`, or nil when it has none."
-  [{:keys [error entity-type entity-id usable-sources source-card source-card-type]}]
+  [{:keys [error entity-type entity-id metric-ids usable-sources source-card source-card-type]}]
   (case error
-    (:incompatible-metric :metric-as-source-card)
+    :incompatible-metric
     (usable-sources-hint usable-sources)
+
+    :metric-as-source-card
+    (when-let [sources-hint (usable-sources-hint usable-sources)]
+      (message/msg ["%s Then reference the metric by its numeric ID: `aggregation: [[\"metric\", {}, %s]]`."]
+                   sources-hint (first metric-ids)))
 
     :uri-in-source-table
     (uri-hint entity-type entity-id)

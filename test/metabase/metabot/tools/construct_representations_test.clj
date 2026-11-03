@@ -2793,8 +2793,10 @@
                          :text  (str "The metric \"Big order count\" (needs source-table: "
                                      (json/encode (orders-source-table-fk)) ") is in `source-card:`. A metric is "
                                      "an aggregation, not a source: a stage on a metric reads its result, not its "
-                                     "rows. Build the stage on the source shown for the metric, and reference the "
-                                     "metric as `aggregation: [[\"metric\", {}, \"<portable_entity_id>\"]]`.")}
+                                     "rows. Build the stage on the source shown for the metric, and put the metric "
+                                     "in the stage's `aggregation:`.\n"
+                                     "Reference the metric by its `portable_entity_id`: "
+                                     "`aggregation: [[\"metric\", {}, \"<portable_entity_id>\"]]`.")}
                         (test-util/tool-failure construct/construct-notebook-query-tool {:query (on-metric stage)}))))))
           (testing "gives the MCP surface the numeric source"
             (let [e (is (thrown? clojure.lang.ExceptionInfo

@@ -1104,8 +1104,7 @@
   (let [{:keys [descriptions usable-sources]} (metric-source-descriptions mp required-by-metric-id)]
     {:message        (str "The metric " (first descriptions) " is in `source-card:`. A metric is an aggregation, "
                           "not a source: a stage on a metric reads its result, not its rows. Build the stage on "
-                          "the source shown for the metric, and reference the metric as "
-                          "`aggregation: [[\"metric\", {}, \"<portable_entity_id>\"]]`.")
+                          "the source shown for the metric, and put the metric in the stage's `aggregation:`.")
      :usable-sources usable-sources}))
 
 (defn- metric-source-error
