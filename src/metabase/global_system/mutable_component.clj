@@ -20,7 +20,8 @@
      Prefer [[swap!]] in most cases.")
   (alter-root [handle new-value]
     "Installs `new-value` as the root value and returns the value it replaced.
-     Every thread sees it, this one included, except where an active [[binding]] of this component shadows it.")
+     Every thread sees it, this one included, except where an active [[binding]] of this component shadows it.
+     Returns nil both when the old root was nil and when there was none, so it cannot restore an absent root.")
   (without-binding [handle thunk]
     "Calls `thunk` with this thread's [[binding]] of the component removed, so `thunk` reads and writes the root.
      Bindings of other components are kept."))
