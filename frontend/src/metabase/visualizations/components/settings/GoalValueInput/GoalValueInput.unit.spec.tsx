@@ -1060,6 +1060,34 @@ describe("GoalValueInput", () => {
     expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
   });
 
+  it("commits the sole column of a metric picked from search as a card reference", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 9, model: "metric", name: "Revenue" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Revenue",
+        type: "metric",
+        result_metadata: [
+          createMockField({ name: "sum", base_type: "type/Integer" }),
+        ],
+      }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Revenue");
+
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 9,
+        column: "sum",
+      }),
+    );
+  });
+
   it("shows values for all of the entity's columns", async () => {
     const card = createMockCard({
       id: 9,
