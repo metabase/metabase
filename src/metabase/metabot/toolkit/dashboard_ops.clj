@@ -18,11 +18,15 @@
    The data also holds the values that explain the error, and the failing op's `:op-index` and `:op-name`.
    This namespace words no errors: each tool turns that data into text for its own model."
   (:require
+   [malli.error :as me]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.lib.core :as lib]
+   [metabase.metabot.toolkit.dashboard-op-schema :as dashboard-op-schema]
    [metabase.parameters.mapping-targets :as mapping-targets]
-   [metabase.util :as u]))
+   [metabase.parameters.schema :as parameters.schema]
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,47 +34,52 @@
 
 (def errors
   "Every error code [[compile-ops]] throws, mapped to the schema of the values that explain it.
-   Values the caller sent are `:any`, since a caller without MCP's argument schema can send anything.
+   Values from an op have the types [[dashboard-op-schema/op-schema]] gives them, or `:any` where it leaves them open.
    Values read from the dashboard have their types.
-   Errors thrown while applying an op also carry `:op-index` (0-based) and `:op-name` (as sent, or nil).
+   Errors thrown while checking or applying an op also carry `:op-index` (0-based) and `:op-name` (as sent, or nil).
    The `:cards-without-tab` check runs after the last op, so that error carries neither."
-  {:missing-op                         [:map {:closed true}]
-   :unknown-op                         [:map {:closed true}]
-   :invalid-new-id                     [:map {:closed true} [:id :any]]
+  {:invalid-op                         [:map {:closed true} [:explanation :any]]
    :duplicate-new-id                   [:map {:closed true} [:id :int]]
-   :missing-dashcard-id                [:map {:closed true}]
-   :unknown-dashcard                   [:map {:closed true} [:dashcard-id :any]]
+   :unknown-dashcard                   [:map {:closed true} [:dashcard-id :int]]
    :unknown-card                       [:map {:closed true} [:card-id :any]]
-   :missing-tab-id                     [:map {:closed true}]
-   :unknown-tab                        [:map {:closed true} [:tab-id :any]]
+   :unknown-tab                        [:map {:closed true} [:tab-id :int]]
    :no-free-space                      [:map {:closed true} [:tab-id [:maybe :int]]]
    :link-needs-url-or-entity           [:map {:closed true}]
    :unpatchable-key                    [:map {:closed true} [:key :string] [:use-op :string]]
    :unknown-patch-key                  [:map {:closed true} [:key :string]]
-   :tab-index-out-of-range             [:map {:closed true} [:index :any] [:tab-count :int]]
+   :tab-index-out-of-range             [:map {:closed true} [:index :int] [:tab-count :int]]
    :cards-without-tab                  [:map {:closed true} [:dashcard-ids [:sequential :int]]]
-   :missing-parameter-id               [:map {:closed true}]
-   :unknown-parameter                  [:map {:closed true} [:parameter-id :any]]
-   :parameter-exists                   [:map {:closed true} [:parameter-id :any]]
+   :unknown-parameter                  [:map {:closed true} [:parameter-id :string]]
+   :parameter-exists                   [:map {:closed true} [:parameter-id :string]]
    :set-and-cleared                    [:map {:closed true} [:field :string]]
    :conflicting-parameter-destinations [:map {:closed true}]
    :missing-parameter-destination      [:map {:closed true}]
-   :parameter-index-out-of-range       [:map {:closed true} [:index :any] [:parameter-count :int]]
-   :field-not-exposed                  [:map {:closed true} [:dashcard-id :int] [:field-id :any] [:parameter-id :any]]
+   :parameter-index-out-of-range       [:map {:closed true} [:index :int] [:parameter-count :int]]
+   :field-not-exposed                  [:map {:closed true}
+                                        [:dashcard-id :int] [:field-id :int] [:parameter-id :string]]
    :no-card-behind-dashcard            [:map {:closed true} [:dashcard-id :int]]
-   :unknown-template-tag               [:map {:closed true} [:card-id :int] [:tag :any] [:tags [:sequential :string]]]
+   :mapping-card-not-on-dashcard       [:map {:closed true} [:dashcard-id :int] [:card-id :int]]
+   :unknown-template-tag               [:map {:closed true}
+                                        [:card-id :int] [:tag :string] [:tags [:sequential :string]]]
    :unwireable-tag                     [:map {:closed true}
                                         [:tag :string] [:tag-type :string] [:wireable-tags [:sequential :string]]]
    :unknown-text-tag                   [:map {:closed true}
                                         [:target :any] [:dashcard-id :int] [:placeholders [:sequential :string]]]
-   :unresolved-target                  [:map {:closed true} [:target :any] [:card-id :int] [:parameter-id :any]]
+   :unresolved-target                  [:map {:closed true} [:target :any] [:card-id :int] [:parameter-id :string]]
    :missing-wire-target                [:map {:closed true}]})
 
 (defn- fail!
-  "Throw the error `code` from [[errors]], with `data` holding the values that explain it."
-  ([code] (fail! code nil))
+  "Throw the error `code` from [[errors]], with `data` holding the values that explain it.
+   An unknown code, or data that breaks the code's schema, throws a plain `ex-info` instead.
+   That is a bug in the caller, and no tool words it as a teaching error."
+  ([code] (fail! code {}))
   ([code data]
-   (assert (contains? errors code) (str "Unknown dashboard op error code " code))
+   ;; Not `assert`: an AssertionError is not an Exception, so MCP's registry would not sanitize it.
+   (when-not (contains? errors code)
+     (throw (ex-info (str "Unknown dashboard op error code " code) {:code code})))
+   (when-not (mr/validate (get errors code) data)
+     (throw (ex-info (str "Data for dashboard op error " code " does not match its schema")
+                     {:code code, :data data})))
    (throw (ex-info (str "Invalid dashboard op: " (name code))
                    (assoc data ::error code)))))
 
@@ -147,20 +156,17 @@
   (update state coll (partial mapv f)))
 
 (defn- check-new-id!
-  "A new dashcard or tab id must be negative and unused in this batch."
+  "A new dashcard or tab id must be unused in this batch.
+   The op schema already makes it a negative integer."
   [state id]
-  (when-not (and (integer? id) (neg? id))
-    (fail! :invalid-new-id {:id id}))
   (when (some #(= id (:id %)) (concat (:dashcards state) (:tabs state)))
     (fail! :duplicate-new-id {:id id})))
 
 (defn- resolve-dashcard!
   "The existing dashcard `id` names, or an error."
   [state id]
-  (if (nil? id)
-    (fail! :missing-dashcard-id)
-    (or (find-row state :dashcards id)
-        (fail! :unknown-dashcard {:dashcard-id id}))))
+  (or (find-row state :dashcards id)
+      (fail! :unknown-dashcard {:dashcard-id id})))
 
 (defn- check-tab-id!
   "A dashcard's target tab must be one of this dashboard's tabs — including a tab added earlier in
@@ -255,12 +261,6 @@
   "Apply one op to the working state. Dispatches on the op's `:op` string."
   {:arglists '([state op])}
   (fn [_state op] (:op op)))
-
-(defmethod apply-op :default
-  [_state op]
-  (if (nil? (:op op))
-    (fail! :missing-op)
-    (fail! :unknown-op)))
 
 (defmethod apply-op "add_card"
   [state {:keys [id card_id tab series inline_parameters] :as op}]
@@ -413,8 +413,13 @@
 
 (defmethod apply-op "set_series"
   [state {:keys [dashcard_id card_ids]}]
-  (resolve-dashcard! state dashcard_id)
-  (update-row state :dashcards dashcard_id #(assoc % :series (mapv (fn [cid] {:id cid}) card_ids))))
+  (let [dc      (resolve-dashcard! state dashcard_id)
+        removed (into #{} (comp (keep :id) (remove (set card_ids))) (:series dc))]
+    ;; A mapping left on a removed series card would filter a card the dashcard no longer shows, as replace_card avoids.
+    (update-row state :dashcards dashcard_id
+                #(cond-> (assoc % :series (mapv (fn [cid] {:id cid}) card_ids))
+                   (and (seq removed) (seq (:parameter_mappings %)))
+                   (update :parameter_mappings (partial filterv (fn [m] (not (contains? removed (:card_id m))))))))))
 
 (defn- coerce-target
   "Keywordize the clause heads of a raw JSON `target` — `[\"dimension\", [\"template-tag\", \"x\"]]`
@@ -426,38 +431,68 @@
     (into [(keyword (first x))] (map coerce-target) (rest x))
     x))
 
+(defn- resolve-parameter!
+  [state id]
+  (or (find-row state :parameters id)
+      (fail! :unknown-parameter {:parameter-id id})))
+
+(defn- patched-mapping
+  "`mapping` as `dc` would store it: the three keys a mapping has, its target's clause heads keywordized, and its
+   card filled in from the dashcard when it names none."
+  [dc mapping]
+  ;; A patched mapping arrives as raw JSON, so its target's clause heads are strings ("dimension", "field") where the
+  ;; mapping schema wants keywords, the same coercion `wire_parameter` does. The query processor applies a mapping
+  ;; only when its card_id is the card being run, and nothing fills one in later, so a mapping without one would
+  ;; never filter anything.
+  (cond-> (-> (select-keys mapping [:parameter_id :card_id :target])
+              (update :target (comp coerce-target vec)))
+    (nil? (:card_id mapping)) (assoc :card_id (:card_id dc))))
+
+(defn- check-patched-mapping!
+  "Throws unless `mapping`, from [[patched-mapping]], is a mapping the save accepts, for a parameter on the dashboard
+   and a card `dc` shows."
+  [state dc mapping]
+  (when-let [explanation (mr/explain ::parameters.schema/parameter-mapping mapping)]
+    (fail! :invalid-op {:explanation (me/humanize explanation)}))
+  (resolve-parameter! state (:parameter_id mapping))
+  ;; The save would otherwise filter the primary card for a mapping that names a card the dashcard doesn't show.
+  (when (and (:card_id mapping)
+             (not (contains? (into #{(:card_id dc)} (keep :id) (:series dc)) (:card_id mapping))))
+    (fail! :mapping-card-not-on-dashcard {:dashcard-id (:id dc), :card-id (:card_id mapping)})))
+
 (defmethod apply-op "patch_dashcard"
   [state {:keys [dashcard_id patch]}]
-  (resolve-dashcard! state dashcard_id)
-  (doseq [k (keys patch)]
-    (cond
-      (contains? patch-rejected-keys k)
-      (fail! :unpatchable-key {:key (name k), :use-op (get patch-rejected-keys k)})
+  (let [dc (resolve-dashcard! state dashcard_id)]
+    (doseq [k (keys patch)]
+      (cond
+        (contains? patch-rejected-keys k)
+        (fail! :unpatchable-key {:key (name k), :use-op (get patch-rejected-keys k)})
 
-      (not (contains? patchable-keys k))
-      (fail! :unknown-patch-key {:key (name k)})))
-  (update-row state :dashcards dashcard_id
-              (fn [dc]
-                (cond-> (merge dc (dissoc patch :visualization_settings))
-                  (contains? patch :visualization_settings)
-                  (update :visualization_settings merge (:visualization_settings patch))
+        (not (contains? patchable-keys k))
+        (fail! :unknown-patch-key {:key (if (or (keyword? k) (string? k)) (name k) (pr-str k))})))
+    (let [mappings (when (contains? patch :parameter_mappings)
+                     (mapv (partial patched-mapping dc) (:parameter_mappings patch)))
+          stored   (into #{} (map (partial patched-mapping dc)) (:parameter_mappings dc))]
+      ;; Only new or changed mappings are checked. The patch replaces the whole list, so a stale stored mapping sent
+      ;; back unchanged would otherwise block an unrelated edit.
+      (doseq [m     mappings
+              :when (not (contains? stored m))]
+        (check-patched-mapping! state dc m))
+      (update-row state :dashcards dashcard_id
+                  (fn [dc]
+                    (cond-> (merge dc (dissoc patch :visualization_settings :parameter_mappings))
+                      (contains? patch :visualization_settings)
+                      (update :visualization_settings merge (:visualization_settings patch))
 
-                  ;; A patched mapping arrives as raw JSON, so its target's clause heads are strings
-                  ;; ("dimension", "field") where the mapping schema wants keywords — the same coercion
-                  ;; `wire_parameter` does. Without it every parameter_mappings patch, a key this op
-                  ;; advertises as patchable, fails validation with "should be :dimension".
-                  (contains? patch :parameter_mappings)
-                  (update :parameter_mappings
-                          (partial mapv #(cond-> % (:target %) (update :target (comp coerce-target vec)))))))))
+                      mappings
+                      (assoc :parameter_mappings mappings)))))))
 
 ;;; -------------------------------------------------- Tab ops ------------------------------------------------------
 
 (defn- resolve-tab!
   [state id]
-  (if (nil? id)
-    (fail! :missing-tab-id)
-    (or (find-row state :tabs id)
-        (fail! :unknown-tab {:tab-id id}))))
+  (or (find-row state :tabs id)
+      (fail! :unknown-tab {:tab-id id})))
 
 (defn- next-temp-id
   "A negative id not yet used by any dashcard or tab in the working state. Ops that clone a whole
@@ -517,16 +552,17 @@
 
 ;;; --------------------------------------------- Parameter ops -----------------------------------------------------
 
-(defn- resolve-parameter!
-  [state id]
-  (if (nil? id)
-    (fail! :missing-parameter-id)
-    (or (find-row state :parameters id)
-        (fail! :unknown-parameter {:parameter-id id}))))
-
 (defn- card-for-dashcard
   [state dashcard]
   (get (::cards state) (:card_id dashcard)))
+
+(defn- check-card-resolved!
+  "Throws `:unknown-card` when `dashcard` has a card that is not in the caller's `cards` map.
+   That card is missing or unreadable, so an op that needs its metadata cannot run."
+  [state dashcard]
+  ;; Without this, a wire op would report a text-card or missing-column error for a card it simply cannot see.
+  (when (and (:card_id dashcard) (nil? (card-for-dashcard state dashcard)))
+    (fail! :unknown-card {:card-id (:card_id dashcard)})))
 
 (defn- assoc-slug
   "Derive `:slug` from a parameter's name, as the editor's `setParameterName` does. Without it a
@@ -538,8 +574,6 @@
 
 (defmethod apply-op "add_parameter"
   [state {:keys [parameter_id] :as op}]
-  (when (nil? parameter_id)
-    (fail! :missing-parameter-id))
   (when (find-row state :parameters parameter_id)
     (fail! :parameter-exists {:parameter-id parameter_id}))
   (insert-row state :parameters
@@ -603,11 +637,19 @@
     :else
     (fail! :missing-parameter-destination)))
 
+(defn- wire-card!
+  "The card behind the dashcard a wire op targets, or an error — a virtual dashcard (text, heading,
+   link, iframe) has no query, so only a `[:text-tag …]` target (handled before this) can wire it."
+  [state dashcard]
+  (check-card-resolved! state dashcard)
+  (or (card-for-dashcard state dashcard)
+      (fail! :no-card-behind-dashcard {:dashcard-id (:id dashcard)})))
+
 (defn- wire-one
   "Add or replace `parameter`'s mapping on `dashcard`. Returns the dashcard unchanged when its card
    exposes no target for `field-id`, unless `explicit?`, when that is an error."
   [state parameter dashcard field-id explicit?]
-  (let [card   (card-for-dashcard state dashcard)
+  (let [card   (if explicit? (wire-card! state dashcard) (card-for-dashcard state dashcard))
         target (when card (mapping-targets/target-for-field card parameter field-id))]
     (cond
       target
@@ -619,13 +661,6 @@
                                  :parameter-id (:id parameter)})
 
       :else dashcard)))
-
-(defn- wire-card!
-  "The card behind the dashcard a wire op targets, or an error — a virtual dashcard (text, heading,
-   link, iframe) has no query, so only a `[:text-tag …]` target (handled before this) can wire it."
-  [state dashcard]
-  (or (card-for-dashcard state dashcard)
-      (fail! :no-card-behind-dashcard {:dashcard-id (:id dashcard)})))
 
 (defn- tag-target!
   "The mapping target for `target_tag` on `dashcard`'s card — `[:dimension [:template-tag …]]` for a
@@ -737,52 +772,141 @@
 
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 
-(defn card-refs
-  "The ids of the cards `op` references.
-   Those are the cards it puts on the dashboard, and the card a parameter it adds or updates draws its values from.
-   The caller resolves these into the `cards` map for [[compile-ops]], which rejects any it left out."
+(def ^:private parameter-ops
+  "The ops that leave a parameter with the properties they send."
+  #{"add_parameter" "update_parameter"})
+
+(defn- placed-card-ids
+  "The ids of the cards `op` puts on the dashboard."
   [op]
   (remove nil?
           (case (:op op)
-            "add_card"                           (cons (:card_id op) (:series op))
-            "replace_card"                       [(:card_id op)]
-            "set_series"                         (:card_ids op)
-            ("add_parameter" "update_parameter") [(get-in op [:values_source_config :card_id])]
+            "add_card"     (cons (:card_id op) (:series op))
+            "replace_card" [(:card_id op)]
+            "set_series"   (:card_ids op)
             nil)))
 
+(defn- source-card-id
+  "The card `parameter` takes its values from, or nil when its values come from somewhere else."
+  [parameter]
+  ;; Matches what the save read-checks: a source card counts only while the source type is card.
+  (when (= :card (some-> (:values_source_type parameter) keyword))
+    (get-in parameter [:values_source_config :card_id])))
+
+(defn referenced-card-ids
+  "The ids of the cards [[compile-ops]] may need a row for when applying `ops`, ops from [[prepare-ops]], to `dash`.
+   Those are the cards on its dashcards and the cards the ops put on it.
+   They also include the card in each config a parameter op sends or touches, since the op may make it the source.
+   The caller resolves these into the `cards` map, leaving out the ones its user cannot read."
+  [dash ops]
+  (let [id->parameter (into {} (map (juxt :id identity)) (:parameters dash))
+        op-card-ids   (fn [op]
+                        (concat (placed-card-ids op)
+                                (when (contains? parameter-ops (:op op))
+                                  (for [p     [op (id->parameter (:parameter_id op))]
+                                        :let  [card-id (get-in p [:values_source_config :card_id])]
+                                        :when card-id]
+                                    card-id))))]
+    (-> (set (keep :card_id (:dashcards dash)))
+        (into (mapcat op-card-ids) ops)
+        (disj nil))))
+
+(defn- dashboard-card-ids
+  "The ids of every card `dash` references: on its dashcards, in their series, and as a parameter's card source.
+   These are the references the save treats as already stored, and leaves alone."
+  [dash]
+  (-> #{}
+      (into (mapcat (fn [dc] (cons (:card_id dc) (keep :id (:series dc))))) (:dashcards dash))
+      (into (keep source-card-id) (:parameters dash))
+      (disj nil)))
+
 (defn- check-cards-resolved!
-  "Every card `op` references must be in the caller's `cards` map.
-   The caller leaves out the cards its user cannot read, so this is where an op naming one fails."
+  "Every card `op` puts on the dashboard must be in the caller's `cards` map.
+   So must the source card of a parameter it leaves with a card source, which may come from the config it already had.
+   A card the dashboard already referenced before the ops is exempt, as the save leaves stored references alone.
+   The caller leaves out the cards its user cannot read, so this is where an op naming one fails.
+   `state` is the state after the op."
   [state op]
-  (doseq [card-id (card-refs op)
+  (doseq [card-id (concat (placed-card-ids op)
+                          (when (contains? parameter-ops (:op op))
+                            (some-> (find-row state :parameters (:parameter_id op)) source-card-id vector)))
+          :when   (not (contains? (::stored-card-ids state) card-id))
           :when   (not (contains? (::cards state) card-id))]
     (fail! :unknown-card {:card-id card-id})))
 
-(defn- apply-op-at
-  "Runs [[apply-op]] on `op`, the op at `idx`, then checks that the cards it references are resolved.
-   Adds `:op-index` and `:op-name` to any error it throws."
-  [state idx op]
+(defn- at-op
+  "Calls `f`, adding `:op-index` and `:op-name` to any error from [[errors]] it throws about `op`, the op at `idx`."
+  [idx op f]
   (try
-    ;; The card check runs second, so an op that is malformed in some other way reports that instead.
-    (doto (apply-op state op)
-      (check-cards-resolved! op))
+    (f)
     (catch clojure.lang.ExceptionInfo e
       (throw (if-let [data (error-data e)]
                (ex-info (ex-message e) (assoc data :op-index idx :op-name (:op op)) e)
                e)))))
 
+;; Strict tool-calling clients send every declared property, and fill the ones they do not set with null. The ops
+;; that tell absent from null (`move` and `duplicate_card` on `tab`, `move_parameter` on `index` and `dashcard_id`,
+;; `unwire_parameter` on `dashcard_id`) would otherwise read a filled-in null as a deliberate value.
+(defn- compact-op
+  "The op without its null-valued keys."
+  [op]
+  (into {} (remove (comp nil? val)) op))
+
+(defn- prepared-op
+  "The op at `idx`, checked against [[dashboard-op-schema/op-schema]] and then stripped of null values."
+  [idx op]
+  (at-op idx op #(if-let [explanation (mr/explain dashboard-op-schema/op-schema op)]
+                   (fail! :invalid-op {:explanation (me/humanize explanation)})
+                   ;; A patch's declared properties are nullable too, so a strict client fills them with null as well.
+                   (cond-> (compact-op op)
+                     (map? (:patch op)) (update :patch compact-op)))))
+
+(defn prepare-ops
+  "The ops, each checked against [[dashboard-op-schema/op-schema]] and then stripped of null values.
+   A nil `ops` means none, and prepares to an empty vector.
+   Throws `:invalid-op` when `ops` is not a sequence, or for the first op that breaks the schema.
+   Run it before anything reads the ops, such as [[referenced-card-ids]].
+   Ops it has already prepared come back as they are, so calling it again costs nothing."
+  [ops]
+  (cond
+    (::prepared (meta ops))
+    ops
+
+    (or (nil? ops) (sequential? ops))
+    (with-meta (into [] (map-indexed prepared-op) ops) {::prepared true})
+
+    :else
+    (fail! :invalid-op {:explanation ["ops must be a list"]})))
+
+(defn- apply-op-at
+  "Runs [[apply-op]] on `op`, the op at `idx`, then checks that the cards it references are resolved."
+  [state idx op]
+  ;; The card check runs second, so an op that is malformed in some other way reports that instead.
+  (at-op idx op #(doto (apply-op state op)
+                   (check-cards-resolved! op))))
+
+(defn- series-ids
+  "`dc` with its `:series` reduced to `{:id}` maps."
+  [dc]
+  ;; A hydrated dashcard carries full card rows in `:series`, and the save's dashcard schema allows only their ids.
+  (cond-> dc
+    (seq (:series dc)) (update :series (partial mapv #(select-keys % [:id])))))
+
 (defn compile-ops
   "Fold `ops` over `current`, a dashboard hydrated with `[:dashcards :series :card] :tabs`.
    Returns `{:dashcards :tabs :parameters}`, the full-replacement payload `update-dashboard!` saves.
+   Each dashcard's `:series` holds only card ids.
    New rows carry the caller's negative ids.
+   It runs the ops through [[prepare-ops]] before applying any, so it also takes ops that have not been through it.
    The `cards` map holds the row of each card the ops may touch, keyed by id.
-   It covers the cards [[card-refs]] finds in `ops` and the cards already on the dashboard.
-   It leaves out cards the user cannot read.
+   It covers the cards [[referenced-card-ids]] finds, leaving out the ones the user cannot read.
+   A card the dashboard already references needs no row, as the save leaves stored references alone.
    This namespace does no I/O, so the caller resolves them.
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."
   [current ops cards]
   (-> (reduce-kv apply-op-at
-                 (init-state current cards)
-                 (vec ops))
+                 (assoc (init-state current cards) ::stored-card-ids (dashboard-card-ids current))
+                 (prepare-ops ops))
       check-tab-coverage!
-      (select-keys [:dashcards :tabs :parameters])))
+      (select-keys [:dashcards :tabs :parameters])
+      (update :dashcards (partial mapv series-ids))))

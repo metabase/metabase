@@ -14,30 +14,22 @@
 (def ^:private details
   "For each error code in [[dashboard-ops/errors]], a function from the error data to the message explaining it.
    The message has no op prefix."
-  {:missing-op
-   (fn [_] (message/raw "missing `op` — see the tool description for the supported list."))
-
-   :unknown-op
-   (fn [_] (message/raw "unknown op — see the tool description for the supported list."))
-
-   :invalid-new-id
-   (fn [_] (message/raw "`id` must be a negative integer — negative ids mark rows to create."))
+  {;; MCP's registry checks the same op schema first, so MCP's own calls never reach this. It is worded for any
+   ;; caller of the toolkit that skips that check, and because every code needs a wording.
+   :invalid-op
+   (fn [{:keys [explanation]}]
+     (message/msg ["invalid op: %s — see the tool description for each op's arguments."]
+                  (common/humanize-detail explanation)))
 
    :duplicate-new-id
    (fn [{:keys [id]}]
      (message/msg ["id %s is already used in this batch — give each new row its own negative id."] id))
-
-   :missing-dashcard-id
-   (fn [_] (message/raw "missing `dashcard_id`."))
 
    :unknown-dashcard
    (fn [{:keys [dashcard-id]}] (message/msg ["no dashcard with id %s on this dashboard."] dashcard-id))
 
    :unknown-card
    (fn [{:keys [card-id]}] (message/msg ["no card with id %s that you can read."] card-id))
-
-   :missing-tab-id
-   (fn [_] (message/raw "missing `tab_id`."))
 
    :unknown-tab
    (fn [{:keys [tab-id]}] (message/msg ["no tab with id %s on this dashboard."] tab-id))
@@ -63,9 +55,6 @@
      (message/msg [(str "This dashboard has tabs, so every card must belong to a tab: %s have none. "
                         "Pass \"tab\" on the add op, or use \"move\" with \"tab\" for cards already placed.")]
                   (common/list-message dashcard-ids)))
-
-   :missing-parameter-id
-   (fn [_] (message/raw "missing `parameter_id`."))
 
    :unknown-parameter
    (fn [{:keys [parameter-id]}] (message/msg ["no parameter with id %s on this dashboard."] parameter-id))
@@ -99,6 +88,12 @@
                         "\"target\" of [\"text-tag\", \"<name>\"] can wire a "
                         "text, heading, or iframe card's own {{placeholder}}.")]
                   dashcard-id))
+
+   :mapping-card-not-on-dashcard
+   (fn [{:keys [dashcard-id card-id]}]
+     (message/msg [(str "card %s is not on dashcard %s — a mapping's card_id must be the dashcard's "
+                        "card or one of its series. Omit it to filter the dashcard's card.")]
+                  card-id dashcard-id))
 
    :unknown-template-tag
    (fn [{:keys [card-id tag tags]}]
@@ -162,13 +157,13 @@
       ;; A bare raw message renders quoted, so wrap it to keep it as text.
       (message/msg ["%s"] detail))))
 
-(defn compile-ops
-  "Runs [[dashboard-ops/compile-ops]] and rethrows its errors as MCP teaching errors.
-   Each teaching error keeps the compiler's error as its cause.
+(defn do-with-teaching-errors
+  "Calls `thunk`, and rethrows any error from [[dashboard-ops/errors]] it throws as an MCP teaching error.
+   Each teaching error keeps the original error as its cause.
    Other exceptions pass through unchanged."
-  [current ops cards]
+  [thunk]
   (try
-    (dashboard-ops/compile-ops current ops cards)
+    (thunk)
     (catch clojure.lang.ExceptionInfo e
       (throw (if-let [data (dashboard-ops/error-data e)]
                (common/message-ex-info (error-message data) {:status-code 400} e)
