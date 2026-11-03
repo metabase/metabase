@@ -8,9 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private db-handle (system/mutable-component-handle :db))
-(def ^:private scheduler-handle (system/mutable-component-handle :scheduler))
-(def ^:private other-handle (system/mutable-component-handle :other))
+(def ^:private db-handle (system/mutable-component-handle ::db))
+(def ^:private scheduler-handle (system/mutable-component-handle ::scheduler))
+(def ^:private other-handle (system/mutable-component-handle ::other))
 
 (defn- scheduler
   "A worker thread that runs thunks handed to it and returns their results. Running on a second thread is
@@ -43,7 +43,7 @@
   (scheduler-runs (fn [] @db-handle)))
 
 (defn- do-with-scheduler
-  "Install a running scheduler as the `:scheduler` component for the duration of `thunk`, stopping it after."
+  "Install a running scheduler as the `::scheduler` component for the duration of `thunk`, stopping it after."
   [thunk]
   (let [sched (scheduler)]
     (mc/alter-root scheduler-handle sched)
@@ -122,18 +122,18 @@
   (mc/alter-root other-handle :root-other)
   (testing "a snapshot carries every component's root value"
     (let [snap (system/snapshot)]
-      (is (= :root-db (:db snap)))
-      (is (= :root-other (:other snap)))))
+      (is (= :root-db (::db snap)))
+      (is (= :root-other (::other snap)))))
   (testing "a snapshot is a value, so later mutations cannot appear in one already taken"
     (let [snap (system/snapshot)]
       (mc/reset! other-handle :mutated-other)
-      (is (= :root-other (:other snap)))
-      (is (= :mutated-other (:other (system/snapshot))))))
+      (is (= :root-other (::other snap)))
+      (is (= :mutated-other (::other (system/snapshot))))))
   (testing "a snapshot agrees with dereferencing each handle, bound components included"
     (mc/binding db-handle :bound-db
                 (fn []
                   (is (= :bound-db @db-handle))
-                  (is (= :bound-db (:db (system/snapshot))))))))
+                  (is (= :bound-db (::db (system/snapshot))))))))
 
 (deftest ^:synchronized multi-component-write-test
   (do-with-scheduler
@@ -150,13 +150,13 @@
                                    (is (= :written-db @db-handle))
                                    (is (= 1 @other-handle)))
                                  (testing "and the whole system still reads consistently, with all the writes in it"
-                                   (is (= {:db    :written-db
-                                           :other 1}
-                                          (select-keys (system/snapshot) [:db :other]))))
+                                   (is (= {::db    :written-db
+                                           ::other 1}
+                                          (select-keys (system/snapshot) [::db ::other]))))
                                  (testing "while another thread sees none of the writes"
-                                   (is (= {:db    :root-db
-                                           :other :root-other}
-                                          (scheduler-runs (fn [] (select-keys (system/snapshot) [:db :other]))))))))))
+                                   (is (= {::db    :root-db
+                                           ::other :root-other}
+                                          (scheduler-runs (fn [] (select-keys (system/snapshot) [::db ::other]))))))))))
      (testing "and the roots are untouched once the scope ends"
        (is (= :root-db @db-handle))
        (is (= :root-other @other-handle))))))
