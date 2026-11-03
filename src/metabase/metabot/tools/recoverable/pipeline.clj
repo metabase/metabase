@@ -366,9 +366,10 @@
 
 (defpipeline-error metric-as-source-card!
   "A metric was the stage's `source-card:`, and the stage did not aggregate it."
-  ;; The message names the source the metric needs, or says it has none. The step gives the reference form.
+  ;; The message names the source the metric needs, or says to drop the metric when it has none. The step gives
+  ;; the reference form for the first case.
   [{:uses #{}
-    :text (str "Reference the metric by its `portable_entity_id`: "
+    :text (str "When you build the stage on the metric's source, reference the metric by its `portable_entity_id`: "
                "`aggregation: [[\"metric\", {}, \"<portable_entity_id>\"]]`.")}])
 
 ;;; Query shape

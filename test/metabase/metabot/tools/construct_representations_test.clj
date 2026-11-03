@@ -2795,7 +2795,8 @@
                                      "an aggregation, not a source: a stage on a metric reads its result, not its "
                                      "rows. Build the stage on the source shown for the metric, and put the metric "
                                      "in the stage's `aggregation:`.\n"
-                                     "Reference the metric by its `portable_entity_id`: "
+                                     "When you build the stage on the metric's source, reference the metric by its "
+                                     "`portable_entity_id`: "
                                      "`aggregation: [[\"metric\", {}, \"<portable_entity_id>\"]]`.")}
                         (test-util/tool-failure construct/construct-notebook-query-tool {:query (on-metric stage)}))))))
           (testing "gives the MCP surface the numeric source"
@@ -2805,6 +2806,13 @@
                        :metric-ids     [metric-id]
                        :usable-sources {metric-id {:source-table (mt/id :orders)}}}
                       (ex-data e)))))
+          (testing "says to drop the metric when it has no usable source"
+            (is (= {:message        (str "The metric \"Big order count\" (has no usable source) is in "
+                                         "`source-card:`. A metric is an aggregation, not a source: a stage on a "
+                                         "metric reads its result, not its rows. Drop the metric, and express its "
+                                         "aggregation directly on a table or model.")
+                    :usable-sources {}}
+                   (#'construct/metric-source-card-explanation (mt/metadata-provider) {metric-id nil}))))
           (testing "is accepted when the stage aggregates that metric, which the query processor expands"
             (is (= [[5755]] (rows (on-metric {"aggregation" [["metric" {} metric-eid]]})))))
           (testing "and the query the error asks for gives the same result"
