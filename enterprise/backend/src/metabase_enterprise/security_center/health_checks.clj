@@ -7,8 +7,10 @@
   and [[check-ids]] only, so the way it is stored can change without touching its callers."
   (:require
    [java-time.api :as t]
+   [metabase.config.core :as config]
    [metabase.security-center.schema :as security-center.schema]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -50,15 +52,79 @@
                     {:key id, :id (:id entry)})))
   registry)
 
+;;; Items
+
+(defn- item
+  [status message]
+  {:status status, :message (str message)})
+
+(defn- pass-or-fail
+  [ok? pass-message fail-message]
+  (if ok?
+    (item :pass pass-message)
+    (item :fail fail-message)))
+
+;;; The checks
+
+(def ^:private encryption-secret-key
+  {:id                :encryption-secret-key
+   :severity          :high
+   :title             (deferred-tru "Encryption secret key")
+   :description       (deferred-tru "MB_ENCRYPTION_SECRET_KEY encrypts the database connection details in the app DB.")
+   :remediation       (deferred-tru "Set MB_ENCRYPTION_SECRET_KEY and restart Metabase.")
+   :docs-page         "databases/encrypting-details-at-rest"
+   :requires-restart? true
+   :applicable?       (constantly true)
+   :run               (fn []
+                        [(pass-or-fail (encryption/default-encryption-enabled?)
+                                       (tru "MB_ENCRYPTION_SECRET_KEY is set")
+                                       (tru "MB_ENCRYPTION_SECRET_KEY is not set"))])})
+
+(def ^:private session-secret-key
+  {:id                :session-secret-key
+   :severity          :high
+   :title             (deferred-tru "Session secret key")
+   :description       (deferred-tru "MB_SESSION_SECRET_KEY signs the session cookies.")
+   :remediation       (deferred-tru "Set MB_SESSION_SECRET_KEY and restart Metabase.")
+   :docs-page         "configuring-metabase/environment-variables"
+   :docs-anchor       "mb_session_secret_key"
+   :requires-restart? true
+   :applicable?       (constantly true)
+   :run               (fn []
+                        ;; [[config/config-str]] returns nil for a blank value. The value itself never reaches an item.
+                        [(pass-or-fail (some? (config/config-str :mb-session-secret-key))
+                                       (tru "MB_SESSION_SECRET_KEY is set")
+                                       (tru "MB_SESSION_SECRET_KEY is not set"))])})
+
+(def ^:private legacy-startup-encryption
+  {:id                :legacy-startup-encryption
+   :severity          :medium
+   :title             (deferred-tru "Legacy startup encryption")
+   :description       (deferred-tru "MB_DISABLE_LEGACY_STARTUP_ENCRYPTION turns off the older way to decrypt settings at startup.")
+   :remediation       (deferred-tru "Set MB_DISABLE_LEGACY_STARTUP_ENCRYPTION to true and restart Metabase.")
+   :docs-page         "configuring-metabase/environment-variables"
+   :docs-anchor       "mb_disable_legacy_startup_encryption"
+   :requires-restart? true
+   :applicable?       (constantly true)
+   :run               (fn []
+                        [(pass-or-fail (true? (config/config-bool :mb-disable-legacy-startup-encryption))
+                                       (tru "MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is true")
+                                       (tru "MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is not true"))])})
+
+;;; The registry
+
 (def ^:private checks
   "The registry: one entry per check, keyed by its id. Read it through [[all-checks]], [[check-by-id]] and
   [[check-ids]]."
-  (validated-registry {}))
+  (validated-registry
+   {:encryption-secret-key     encryption-secret-key
+    :session-secret-key        session-secret-key
+    :legacy-startup-encryption legacy-startup-encryption}))
 
 (defn all-checks
-  "Every registered check."
+  "Every registered check, in id order."
   []
-  (vals checks))
+  (sort-by :id (vals checks)))
 
 (defn check-by-id
   "The registered check with `id`, or nil."
@@ -66,9 +132,9 @@
   (get checks id))
 
 (defn check-ids
-  "The id of every registered check."
+  "The id of every registered check, in id order."
   []
-  (keys checks))
+  (sort (keys checks)))
 
 (mu/defn status-of :- ::security-center.schema/health-check-status
   "The status of a check from its items: any item fails → fail; else any item unknown → unknown; else pass."
@@ -122,7 +188,7 @@
      :items            items}))
 
 (mu/defn run-checks :- [:sequential ::security-center.schema/health-check]
-  "Runs every registered check that applies, in registry order."
+  "Runs every registered check that applies, in id order."
   []
   (into []
         (comp (filter applicable?)

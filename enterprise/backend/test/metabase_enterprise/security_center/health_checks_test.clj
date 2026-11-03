@@ -1,9 +1,11 @@
 (ns metabase-enterprise.security-center.health-checks-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.test :as mt]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]))
 
@@ -106,3 +108,56 @@
     (let [response (health-checks/run-check (fake-check :run (constantly [{:status :error}])))]
       (is (= :unknown (:status response)))
       (is (mr/validate ::security-center.schema/health-check response)))))
+
+;;; The registered checks
+
+(defn- run-check-by-id
+  [id]
+  (health-checks/run-check (health-checks/check-by-id id)))
+
+(deftest registered-checks-test
+  (testing "every registered check applies or not, and answers within the schema"
+    (doseq [check (health-checks/all-checks)]
+      (testing (:id check)
+        (is (boolean? (health-checks/applicable? check)))
+        (is (mr/validate ::security-center.schema/health-check (health-checks/run-check check)))))))
+
+;;; The env var checks
+
+(deftest encryption-secret-key-test
+  (is (true? (health-checks/applicable? (health-checks/check-by-id :encryption-secret-key))))
+  (testing "passes when MB_ENCRYPTION_SECRET_KEY is set"
+    (mt/with-dynamic-fn-redefs [encryption/default-encryption-enabled? (constantly true)]
+      (is (=? {:status :pass, :items [{:status :pass, :message "MB_ENCRYPTION_SECRET_KEY is set"}]}
+              (run-check-by-id :encryption-secret-key)))))
+  (testing "fails when it is not set"
+    (mt/with-dynamic-fn-redefs [encryption/default-encryption-enabled? (constantly false)]
+      (is (=? {:status :fail, :items [{:status :fail, :message "MB_ENCRYPTION_SECRET_KEY is not set"}]}
+              (run-check-by-id :encryption-secret-key))))))
+
+(deftest session-secret-key-test
+  (is (true? (health-checks/applicable? (health-checks/check-by-id :session-secret-key))))
+  (testing "passes when MB_SESSION_SECRET_KEY is set, and the response does not contain the value"
+    (mt/with-temp-env-var-value! [mb-session-secret-key "s3cret-session-key"]
+      (let [response (run-check-by-id :session-secret-key)]
+        (is (=? {:status :pass, :items [{:status :pass, :message "MB_SESSION_SECRET_KEY is set"}]}
+                response))
+        (is (not (str/includes? (pr-str response) "s3cret-session-key"))))))
+  (testing "fails when it is not set"
+    (mt/with-temp-env-var-value! [mb-session-secret-key nil]
+      (is (=? {:status :fail, :items [{:status :fail, :message "MB_SESSION_SECRET_KEY is not set"}]}
+              (run-check-by-id :session-secret-key))))))
+
+(deftest legacy-startup-encryption-test
+  (is (true? (health-checks/applicable? (health-checks/check-by-id :legacy-startup-encryption))))
+  (testing "passes when MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is true"
+    (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
+      (is (=? {:status :pass, :items [{:status :pass, :message "MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is true"}]}
+              (run-check-by-id :legacy-startup-encryption)))))
+  (testing "fails when it is false"
+    (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "false"]
+      (is (=? {:status :fail, :items [{:status :fail, :message "MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is not true"}]}
+              (run-check-by-id :legacy-startup-encryption)))))
+  (testing "fails when it is not set"
+    (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption nil]
+      (is (= :fail (:status (run-check-by-id :legacy-startup-encryption)))))))
