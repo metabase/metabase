@@ -183,9 +183,10 @@
     assoc ::memoize/args-fn (fn [args] (cons (unique-identifier) args)))))
 
 (defn increment-app-db-unique-indentifier!
-  "Increment the [[unique-identifier]] for the Metabase application DB. This effectively flushes all caches using it as
-  a key (including things using [[mdb/memoize-for-application-db]]) such as the Settings cache. Should only be used
-  for testing. Not general purpose."
+  "Increment the [[unique-identifier]] of the application DB this thread sees: the bound one inside
+  [[with-application-db]], otherwise the root.
+  This flushes every cache keyed on it, including [[memoize-for-application-db]] caches such as the Settings cache.
+  For testing only."
   []
   (assert (or (not config/is-prod?)
               (config/config-bool :mb-enable-test-endpoints)))
