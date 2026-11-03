@@ -51,6 +51,7 @@ import {
   parseTokens,
   readTokens,
   removeParenPair,
+  removePill,
   removePillAt,
   removeTokenAt,
   replaceTokenAt,
@@ -564,9 +565,19 @@ export function ExpressionBar({
 
   const removeTokenBeforeCaret = () => {
     if (caretIndex > 0) {
-      const next = removeTokenAt(tokens, caretIndex - 1);
+      // Prototype: a hidden AND is not visible, so Backspace skips it and
+      // removes the pill before it. A pill goes with the AND or OR that would
+      // dangle, so the next Backspace removes the next pill.
+      const index =
+        isHiddenAnd(tokens[caretIndex - 1]) && caretIndex > 1
+          ? caretIndex - 2
+          : caretIndex - 1;
+      const { tokens: next, caret } =
+        tokens[index].type === "filter"
+          ? removePill(tokens, index)
+          : { tokens: removeTokenAt(tokens, index), caret: index };
       setTokens(next);
-      setCaret(caretIndex - 1);
+      setCaret(caret);
       resetDraft();
       // With its last pill gone, the summary's bar goes away: keep deleting in the rows bar.
       if (isNested && next.length === 0) {

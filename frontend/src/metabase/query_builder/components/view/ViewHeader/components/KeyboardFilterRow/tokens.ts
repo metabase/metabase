@@ -337,6 +337,17 @@ export function removeTokenAt(
 
 /** Removes a pill and the AND / OR it would leave dangling, so the rest stays valid. */
 export function removePillAt(tokens: readonly Token[], index: number): Token[] {
+  return removePill(tokens, index).tokens;
+}
+
+/**
+ * Prototype: `removePillAt`, with the caret where the pill was: before the
+ * AND / OR after it, or after the token before it.
+ */
+export function removePill(
+  tokens: readonly Token[],
+  index: number,
+): { tokens: Token[]; caret: number } {
   const before = tokens[index - 1];
   const after = tokens[index + 1];
   const next = removeTokenAt(tokens, index);
@@ -344,12 +355,12 @@ export function removePillAt(tokens: readonly Token[], index: number): Token[] {
     isOpToken(before) &&
     (after == null || isOpToken(after) || isParenToken(after, "close"))
   ) {
-    return removeTokenAt(next, index - 1);
+    return { tokens: removeTokenAt(next, index - 1), caret: index - 1 };
   }
   if (isOpToken(after) && (before == null || isParenToken(before, "open"))) {
-    return removeTokenAt(next, index);
+    return { tokens: removeTokenAt(next, index), caret: index };
   }
-  return next;
+  return { tokens: next, caret: index };
 }
 
 /** The index of the parenthesis that closes or opens the one at `index`, if any. */
