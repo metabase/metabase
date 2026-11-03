@@ -200,10 +200,11 @@
 
 (deftest ^:parallel direct-hook-where-fields-test
   (testing "single-key :id joins collapse to #{:id}"
-    (is (= #{:id} (search.spec/hook-where-fields :model/Collection)))
-    (is (= #{:id} (search.spec/hook-where-fields :model/Card)))
-    (is (= #{:id} (search.spec/hook-where-fields :model/Table)))
-    (is (= #{:id} (search.spec/hook-where-fields :model/Database)))))
+    (are [model] (= #{:id} (search.spec/hook-where-fields model))
+      :model/Card
+      :model/Collection
+      :model/Database
+      :model/Table)))
 
 (deftest ^:parallel joined-hook-where-fields-test
   (testing "multi-clause joins collect every :updated-qualified column referenced in the where"
