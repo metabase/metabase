@@ -488,6 +488,10 @@
     (is (= {:graph.goal_value 100 :progress.goal "self-col"}
            (export-goals {:graph.goal_value 100 :progress.goal "self-col"})))))
 
+(deftest ^:parallel export-viz-dynamic-goals-twice-test
+  (testing "exporting goals that already hold entity ids leaves them as they are, so a second export pass works"
+    (is (= exported-goal-viz-settings (export-goals exported-goal-viz-settings)))))
+
 (deftest ^:parallel import-viz-dynamic-goals-test
   (testing "entity ids resolve back to numeric ids"
     (binding [serdes/*import-fk* (fn [eid _model] (condp = eid card-eid 1, measure-eid 7))]
