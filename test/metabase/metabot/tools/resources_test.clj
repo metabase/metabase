@@ -505,6 +505,46 @@
     (is (nil? (#'read-resource/check-numeric-id-segment!
                "metabase://table/3/fields/c75/17" ["table" "3" "fields" "c75" "17"])))))
 
+(deftest non-numeric-database-id-points-at-databases-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[uri listing-uri] [["metabase://database/redshift"                      "metabase://databases"]
+                               ["metabase://database/redshift/tables"               "metabase://databases"]
+                               ["metabase://database/redshift/schemas/core/tables"  "metabase://databases"]
+                               ["metabase://database/99999999999999999999"          "metabase://databases"]
+                               ["metabase://collection/our-analytics/items"         "metabase://collections?tree=true"]]]
+      (testing uri
+        (let [{[{:keys [error content]}] :resources} (read-uris {:uris [uri]})]
+          (is (nil? content))
+          (is (str/includes? error listing-uri))
+          (is (not (str/includes? error "Call `search`"))))))
+    (testing "the collection step names the URI of the root collection"
+      (let [{[{:keys [error]}] :resources} (read-uris {:uris ["metabase://collection/our-analytics/items"]})]
+        (is (str/includes? error "has no numeric id: use `metabase://collection/root`"))))))
+
+(deftest non-numeric-id-lookup-step-without-search-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[uri listing-uri] [["metabase://database/redshift/schemas/core/tables" "metabase://databases"]
+                               ["metabase://collection/our-analytics/items"        "metabase://collections?tree=true"]]]
+      (testing (str "a tool set without `search` (nlq) still gets a way to find the id: " uri)
+        (let [{:keys [output]} (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                                               {:profile-id :nlq :metabot nil :user-scope api-scope/unrestricted
+                                                :tool-names #{"read_resource"}}
+                                               "read_resource"
+                                               {:uris [uri]})]
+          (is (str/includes? output listing-uri)))))))
+
+(deftest non-numeric-id-other-kinds-keep-search-step-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [uri ["metabase://table/orders" "metabase://model/VZbHZIeqQ2HhZv5r0pO6a"]]
+      (testing uri
+        (let [{[{:keys [error]}] :resources} (read-uris {:uris [uri]})]
+          (is (str/includes? error "Call `search` and build the URI"))
+          (is (not (str/includes? error "metabase://databases"))))))
+    (testing "a numeric database id that does not exist is still a plain not-found"
+      (let [{[{:keys [error]}] :resources} (read-uris {:uris ["metabase://database/99999999"]})]
+        (is (str/includes? error "was not found"))
+        (is (not (str/includes? error "Invalid id")))))))
+
 (comment
   (mt/with-current-user (mt/user->id :crowberto)
     (read-uris

@@ -3,7 +3,7 @@
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
-checkout="${1:?Usage: publish-translations <checkout>}"
+checkout=$(cd "${1:?Usage: publish-translations <checkout>}" && pwd)
 base=$(cat "$checkout/base")
 if [ "$(i18n_pin)" != "$base" ]; then
   echo "The translation pin changed while this update was being prepared. Start a new update." >&2
