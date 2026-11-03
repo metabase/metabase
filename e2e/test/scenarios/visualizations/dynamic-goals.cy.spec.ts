@@ -1,3 +1,4 @@
+import Color from "color";
 import type { Interception } from "cypress/types/net-stubbing";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -260,11 +261,30 @@ describe("scenarios > visualizations > dynamic goals", () => {
     H.vizSettingsSidebar().within(() => {
       cy.findByRole("tab", { name: "Conditional colors" }).click();
       cy.findByRole("button", { name: /Add a range/ }).click();
+      cy.findByLabelText("Range 1 maximum").clear().blur();
+      cy.findAllByTestId("color-selector-button").first().click();
     });
+    H.popover()
+      .findAllByRole("button")
+      .eq(4)
+      .then(($button) => {
+        cy.wrap($button.attr("aria-label")).as("rangeColor");
+        cy.wrap($button).click();
+      });
     openGoalMenu("Range 1 minimum");
     pickGoalSource(METRIC_SOURCE.name);
     cy.findByTestId("scalar-value").realHover();
-    H.tooltip().should("contain.text", "18,760 - 1");
+    H.tooltip().should("contain.text", "≥ 18,760");
+    // the hover color would hide the range color
+    H.queryBuilderHeader().realHover();
+    // an unresolved minimum would leave the open-ended range without bounds
+    cy.get<string>("@rangeColor").then((rangeColor) => {
+      cy.findByTestId("scalar-value").should(
+        "have.css",
+        "color",
+        Color(rangeColor).rgb().string(),
+      );
+    });
     cy.get<CardId>("@metricSourceId").then((id) => {
       assertAnswered("@dataset", { id, column: "count", value: 18760 });
     });
