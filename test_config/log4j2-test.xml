@@ -34,8 +34,8 @@
 
     <!-- The app DB snapshot tests log what the snapshot saves and which changesets it predates, rather than asserting
          on either, so they need a console the FATAL threshold does not swallow. The drift comparison runs on H2 in
-         every backend job, so those lines appear there too. Named for the namespace in
-         test/metabase/app_db/snapshot_test.clj: rename that namespace and this goes quiet. -->
+         every backend test run, so those lines also appear in the job that runs that namespace. Named for the
+         namespace in test/metabase/app_db/snapshot_test.clj: rename that namespace and this goes quiet. -->
     <Logger name="metabase.app-db.snapshot-test" level="INFO" additivity="false">
       <AppenderRef ref="ConsoleRaw"/>
       <AppenderRef ref="File"/>
