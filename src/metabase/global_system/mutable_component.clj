@@ -6,11 +6,13 @@
   "Handle for reading and mutating a single component's stored value. Deref the handle to read the value
    currently visible to this thread."
   (binding [handle new-value thunk]
-    "Calls `thunk` with the value rebound to `new-value` for the dynamic extent of the call.
-     Visible only to `thunk` and code it (transitively, on the same thread) calls.")
+    "Calls `thunk` with the value rebound to `new-value` for the dynamic extent of the call. Visible to `thunk`,
+     the code it calls, and threads that inherit its bindings, such as a `future` started inside it. Those
+     threads share the binding: a [[reset!]] or [[swap!]] from any of them is seen by all.")
   (reset! [handle new-value]
     "Sets the value in whichever slot this thread currently reads: the thread-local one when a [[binding]]
-     is active, otherwise the root, in which case every thread outside a [[binding]] sees it too.")
+     is active, otherwise the root, in which case every thread outside a [[binding]] sees it too. Outside a
+     [[binding]], throws if the component has no root value; use [[alter-root]] to install one.")
   (swap!*
     [handle f args]
     "Same as [[swap!]] but accepts [[args]] as an explicit collection. Prefer [[swap!]] in most cases.")
@@ -22,8 +24,8 @@
      the root. Bindings of other components are kept."))
 
 (defn swap!
-  "Updates the value by applying `f` to the current value and any extra `args`. Visibility same
-   as [[reset!]].
+  "Updates the value by applying `f` to the current value and any extra `args`. Visibility and the
+   missing-component error are the same as for [[reset!]].
 
    This varargs shim exists just because protocol methods can't take varargs."
   [handle f & args]

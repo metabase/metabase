@@ -162,11 +162,103 @@
        (is (= :root-other @other-handle))))))
 
 (deftest ^:synchronized unknown-component-test
-  (testing "reading a component that was never given a value fails loudly rather than returning nil"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Component has no value"
-         @(system/mutable-component-handle ::never-set)))))
+  (let [never-set (system/mutable-component-handle ::never-set)]
+    (testing "reading a component that was never given a value fails loudly rather than returning nil"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Component has no value"
+           @never-set)))
+    (testing "so do writes, since only alter-root installs a component"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Component has no value" (mc/reset! never-set 1)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Component has no value" (mc/swap! never-set (fnil inc 0))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Component has no value" @never-set)))))
+
+(deftest ^:synchronized nil-binding-test
+  (testing "binding a component to nil hides a non-nil root"
+    (do-with-scheduler
+     (fn []
+       (mc/alter-root db-handle :root-db)
+       (mc/binding db-handle nil
+                   (fn []
+                     (is (nil? @db-handle))
+                     (is (= :root-db (scheduler-sees)))))
+       (is (= :root-db @db-handle))))))
+
+(deftest ^:synchronized alter-root-inside-binding-test
+  (do-with-scheduler
+   (fn []
+     (mc/alter-root db-handle :root-db)
+     (mc/binding db-handle :bound-db
+                 (fn []
+                   (testing "alter-root returns the root it replaced, not the bound value"
+                     (is (= :root-db (mc/alter-root db-handle :new-root-db))))
+                   (testing "the binding still hides the new root on this thread"
+                     (is (= :bound-db @db-handle)))
+                   (testing "other threads see the new root at once"
+                     (is (= :new-root-db (scheduler-sees))))))
+     (testing "once the binding ends, this thread sees the new root too"
+       (is (= :new-root-db @db-handle))))))
+
+(deftest ^:synchronized nested-binding-test
+  (mc/alter-root db-handle :root-db)
+  (mc/binding db-handle :outer-db
+              (fn []
+                (mc/binding db-handle :inner-db
+                            (fn []
+                              (mc/reset! db-handle :inner-written-db)
+                              (is (= :inner-written-db @db-handle))))
+                (testing "the outer binding comes back, untouched by the inner write"
+                  (is (= :outer-db @db-handle)))
+                (testing "and comes back when the inner thunk throws"
+                  (is (thrown? clojure.lang.ExceptionInfo
+                               (mc/binding db-handle :inner-db
+                                           (fn [] (throw (ex-info "boom" {}))))))
+                  (is (= :outer-db @db-handle)))))
+  (is (= :root-db @db-handle)))
+
+(deftest ^:synchronized writes-to-another-component-test
+  (testing "inside a binding of one component, writes to another go where that component lives"
+    (do-with-scheduler
+     (fn []
+       (mc/alter-root db-handle :root-db)
+       (mc/alter-root other-handle 41)
+       (testing "an unbound component is written at its root, so the write outlives the binding"
+         (mc/binding db-handle :bound-db
+                     (fn []
+                       (is (= 42 (mc/swap! other-handle inc)))
+                       (is (= 42 (scheduler-runs (fn [] @other-handle))))))
+         (is (= 42 @other-handle)))
+       (testing "a component bound further out is written in its own binding, so the write outlives an
+                 inner binding of something else"
+         (mc/binding other-handle 0
+                     (fn []
+                       (mc/binding db-handle :bound-db
+                                   (fn [] (mc/reset! other-handle 7)))
+                       (is (= 7 @other-handle))
+                       (is (= 42 (scheduler-runs (fn [] @other-handle)))))))
+       (is (= 42 @other-handle))))))
+
+(deftest ^:synchronized swap-returns-new-value-test
+  (mc/alter-root other-handle {:n 1})
+  (testing "at the root"
+    (is (= {:n 2} (mc/swap! other-handle update :n inc)))
+    (is (= {:n 2} @other-handle)))
+  (testing "in a binding"
+    (mc/binding other-handle {:n 10}
+                (fn []
+                  (is (= {:n 15} (mc/swap! other-handle update :n + 5)))
+                  (is (= {:n 15} @other-handle)))))
+  (is (= {:n 2} @other-handle)))
+
+(deftest ^:synchronized binding-is-shared-with-conveyed-threads-test
+  (testing "a future started inside a binding sees it, and its writes land in that binding"
+    (mc/alter-root db-handle :root-db)
+    (mc/binding db-handle :bound-db
+                (fn []
+                  (is (= :bound-db @(future @db-handle)))
+                  @(future (mc/reset! db-handle :written-by-future))
+                  (is (= :written-by-future @db-handle))))
+    (is (= :root-db @db-handle))))
 
 (deftest ^:synchronized without-binding-test
   (mc/alter-root db-handle :root-db)
