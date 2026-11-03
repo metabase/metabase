@@ -102,9 +102,14 @@
     :id          (swap! application-db-counter inc)
     :lock        (ReentrantReadWriteLock.)}))
 
-(defonce ^:private application-db-component
-  (doto (system/mutable-component-handle ::application-db)
-    (mc/alter-root (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))))
+;; A plain def, not a defonce, so reloading the protocol or the handle type leaves a handle that still works.
+(def ^:private application-db-component
+  (system/mutable-component-handle ::application-db))
+
+;; Reloading this namespace re-runs this form, and the root, which owns the connection pool, is installed only the
+;; first time.
+(when-not (contains? (system/snapshot) ::application-db)
+  (mc/alter-root application-db-component (application-db mdb.env/db-type mdb.env/data-source :create-pool? true)))
 
 (defn application-db-handle
   "The [[metabase.global-system.mutable-component/MutableComponentHandle]] for the application DB.
