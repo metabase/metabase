@@ -429,11 +429,12 @@
                                 (.validate lb)
                                 :valid))
                     "Liquibase should accept the checksums the snapshot records")
-                ;; not a failure: these run after the snapshot loads, so tests stay correct. Each is time the snapshot
-                ;; no longer saves, and regenerating gets it back.
+                ;; not a failure: these run after the snapshot loads, so tests stay correct, and they cost the same with
+                ;; or without it. Regenerating would load them too.
                 (when-let [missing (when boundary
                                      (seq (remove recorded (take (inc boundary) changesets))))]
-                  (log/infof "app DB snapshot %s [%s] predates %d changesets before its boundary; regenerate it: %s"
+                  (log/infof (str "app DB snapshot %s [%s] predates %d changesets before its boundary, "
+                                  "which run after it loads: %s")
                              snapshot/snapshot-version flavor (count missing)
                              (str/join ", " (map first missing))))))))))))
 

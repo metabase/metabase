@@ -34,7 +34,7 @@
   dated before it, and ids that move.
   A loaded snapshot does not record them, so Liquibase runs them after the snapshot's own, as it would on an install
   upgrading to a patch release.
-  Tests stay correct, but each one is time the snapshot no longer saves until it is regenerated.
+  Tests stay correct, and the snapshot saves as much as before, since those changesets cost the same either way.
   Editing a changeset the snapshot records changes its checksum, and Liquibase then rejects the loaded snapshot.
   Editing a custom migration's code does not, and the drift test in [[metabase.app-db.snapshot-test]] is what notices
   that."
