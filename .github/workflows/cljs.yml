@@ -25,6 +25,7 @@ jobs:
         id: changes
         with:
           token: ${{ github.token }}
+          base: ${{ github.ref }}
           filters: .github/file-paths.yaml
 
   shared-tests-cljs:
