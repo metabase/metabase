@@ -278,8 +278,8 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       return checkGroup(name);
     };
 
-    const siteUrlCheck = () =>
-      cy.findByTestId("health-check-card-https-site-url");
+    const healthCheckCard = (checkId: string) =>
+      cy.findByTestId(`health-check-card-${checkId}`);
 
     it("should show a failing check and move it to Passed after it is fixed and re-checked", () => {
       H.updateSetting("site-url", "http://localhost:4000");
@@ -287,18 +287,18 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
 
       cy.log("Insecure site URL fails the check");
       checkGroup(/Failing/).within(() => {
-        siteUrlCheck().should("be.visible");
+        healthCheckCard("https-site-url").should("be.visible");
       });
 
       cy.log("Fix the setting and re-check");
       H.updateSetting("site-url", "https://metabase.example.com");
-      siteUrlCheck()
+      healthCheckCard("https-site-url")
         .findByRole("button", { name: /Re-check/ })
         .click();
 
       cy.log("The check moves to Passed");
       openCheckGroup(/Passed/).within(() => {
-        siteUrlCheck().should("be.visible");
+        healthCheckCard("https-site-url").should("be.visible");
       });
     });
   });
