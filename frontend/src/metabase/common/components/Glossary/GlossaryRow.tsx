@@ -48,7 +48,13 @@ export function GlossaryRow({
       value !== item[field] &&
       !(field === "term" && isTermTaken(value));
     if (isSavable) {
-      onEdit({ ...item, [field]: value });
+      // Rows carry server-only fields that do not belong in the update body
+      onEdit({
+        id: item.id,
+        term: item.term,
+        definition: item.definition,
+        [field]: value,
+      });
     }
   };
 

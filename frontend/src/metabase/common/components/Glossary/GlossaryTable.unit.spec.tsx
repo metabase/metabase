@@ -10,11 +10,18 @@ import { defer } from "metabase/utils/promise";
 
 import { GlossaryTable } from "./GlossaryTable";
 
+// The API returns more than the editable fields, and none of the extras belong in a request body
+const SERVER_FIELDS = {
+  created_at: "2026-11-03T12:00:00Z",
+  creator_id: 1,
+};
+
 function makeItem(overrides: Partial<GlossaryItem> = {}): GlossaryItem {
   return {
     id: overrides.id ?? 1,
     term: overrides.term ?? "Alpha",
     definition: overrides.definition ?? "First",
+    ...SERVER_FIELDS,
   };
 }
 

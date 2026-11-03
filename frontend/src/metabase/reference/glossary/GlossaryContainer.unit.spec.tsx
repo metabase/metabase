@@ -18,8 +18,19 @@ import { createMockUser } from "metabase-types/api/mocks";
 
 import { GlossaryContainer } from "./GlossaryContainer";
 
+// The API returns more than the editable fields, and none of the extras belong in a request body
+const SERVER_FIELDS = {
+  created_at: "2026-11-03T12:00:00Z",
+  creator_id: 1,
+};
+
 const GLOSSARY: GlossaryItem[] = [
-  { id: 1, term: "ARR", definition: "Annual recurring revenue" },
+  {
+    id: 1,
+    term: "ARR",
+    definition: "Annual recurring revenue",
+    ...SERVER_FIELDS,
+  },
 ];
 
 type SetupOpts = {
@@ -64,12 +75,14 @@ const BOAT: GlossaryItem = {
   id: 7,
   term: "Boat",
   definition: "A small vessel for traveling on water.",
+  ...SERVER_FIELDS,
 };
 
 const KITTEN: GlossaryItem = {
   id: 7,
   term: "Kitten",
   definition: "Young cat",
+  ...SERVER_FIELDS,
 };
 
 async function assertCreateGlossaryTermFlow(server: GlossaryServer) {
