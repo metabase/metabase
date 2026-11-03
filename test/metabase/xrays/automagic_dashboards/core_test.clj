@@ -23,6 +23,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
@@ -1140,12 +1141,10 @@
             (is (partial= {:list-like? false, :num-fields 2}
                           (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
                               first))))
-          (mt/with-temp [:model/FieldUserSettings _ {:field_id          pk-id
-                                                     :semantic_type     :type/PK
-                                                     :semantic_type_set true}]
-            (is (partial= {:list-like? true, :num-fields 2}
-                          (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
-                              first)))))))))
+          (field-user-settings/upsert-field-user-settings! {:id pk-id} {:semantic_type :type/PK})
+          (is (partial= {:list-like? true, :num-fields 2}
+                        (-> (#'magic/load-tables-with-enhanced-table-stats db-id nil)
+                            first))))))))
 
 (deftest enhance-table-stats-fk-test
   (mt/with-temp [:model/Database {db-id :id}    {}

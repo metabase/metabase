@@ -133,7 +133,7 @@
    :model/ImplicitAction      #{:table_id}
    :model/Field               field-columns
    :model/TableUserSettings   #{:display_name :visibility_type :data_layer :field_order}
-   :model/FieldUserSettings   (conj field-columns :custom_position :nfc_path :json_unfolding)})
+   :model/FieldUserSettings   (conj field-columns :custom_position :json_unfolding)})
 
 (mu/defn- mark-dependents!
   "Mark the result metadata and analysis statuses of the entities directly depending on the entity `entity-type`
