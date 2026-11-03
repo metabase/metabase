@@ -239,6 +239,25 @@
              (t2/delete! :model/DashboardCard :dashboard_id dash-id)
              (is (= 403 (revert-status serialized))))))))))
 
+(deftest reverted-card-goal-reference-test
+  (do-with-unreadable-card!
+   (fn [goal-id]
+     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (count-query)}]
+       (let [snapshot      #(revisions/serialize-instance :model/Card card-id
+                                                          (t2/select-one :model/Card :id card-id))
+             revert-status (fn [serialized]
+                             (mt/with-test-user :rasta
+                               (status-of #(revisions/revert-to-revision! :model/Card card-id
+                                                                          (mt/user->id :rasta) serialized))))]
+         ;; writes with no user bound aren't checked, so these set up revisions the user couldn't save
+         (t2/update! :model/Card :id card-id {:visualization_settings (gauge-viz (card-goal goal-id))})
+         (let [serialized (snapshot)]
+           (testing "restoring a goal the card still carries succeeds, since it isn't new"
+             (is (= :no-error (revert-status serialized))))
+           (testing "restoring a goal the user can't read, which the card no longer carries, is refused"
+             (t2/update! :model/Card :id card-id {:visualization_settings {}})
+             (is (= 403 (revert-status serialized))))))))))
+
 (deftest document-card-goal-reference-permissions-test
   (do-with-unreadable-card!
    (fn [goal-id]
