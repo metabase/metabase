@@ -179,6 +179,26 @@ the dayjs locale table and the translation locale.
 | A package keeps an object from the jsdom window that was current when it loaded. The symptom is an empty `<body>` or events that do nothing. | Add the package to `WINDOW_BOUND_PACKAGES` in `worker/package-loading.ts`. The runner then loads it again for each spec file. |
 | Every spec fails with `Cannot find module 'cljs/...'`.                                                                                       | The cljs build is missing. Run `bun run build-pure:cljs`.                                                                     |
 
+## Test the runner
+
+`frontend/test/harness-compat/harness-compat.unit.spec.ts` runs the specs in
+`frontend/test/harness-compat/fixtures/` under jest's own runner and under
+this runner, and checks that both give the same results. Each fixture is a
+case where the two runners once differed, and most of them fail on purpose.
+
+The fixtures belong to the `harness-compat` jest project, which exists only
+when `HARNESS_COMPAT` is set, so a normal run does not see them. To run them
+under one runner:
+
+```sh
+HARNESS_COMPAT=1 node_modules/.bin/jest --selectProjects harness-compat \
+  --runner ./frontend/test/harness/jest-runner.ts
+```
+
+For a difference that you fix in the runner, add a fixture that shows it. The
+fixtures stay outside `frontend/test/harness/`, because the runner treats the
+files in its own directory as its own code and does not transform them.
+
 ## Settings in the environment
 
 jest's options cover normal use. These variables are for a CI job or for work
