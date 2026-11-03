@@ -101,8 +101,9 @@
   (let [prefix (str "The SQL query has invalid Metabase `{{...}}` or `[[...]]` syntax. "
                     (when edit? "The problem can be in SQL that this edit did not change. ")
                     "No changes were saved. Parser details: ")
-        recovery [{:uses #{} :text (str "Close each `{{` with `}}` and each `[[` with `]]`, put a variable such as "
-                                        "`{{name}}` in each `{{...}}` and each `[[...]]`, or remove the clause, then retry.")}]
+        recovery [{:uses #{} :text (str "Close each `{{` with `}}` and each `[[` with `]]`. Give each `{{...}}` a name, "
+                                        "such as `{{category}}`. Put at least one `{{...}}` variable in each `[[...]]`, "
+                                        "or remove the `[[...]]` clause. Then retry.")}]
         budget (tools.runtime/output-budget prefix recovery)]
     {:message (str prefix (bounded-quote error-message budget))
      :recovery recovery}))
