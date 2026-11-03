@@ -300,7 +300,7 @@
     io.zonky.test.postgres/embedded-postgres-binaries-windows-amd64  {:mvn/version "18.3.0"} ; Windows x86_64
     ;; Clojure 1.12 method values and parameter tags require the fork.
     jonase/eastwood              {:git/url "https://github.com/crisptrutski/eastwood.git"
-                                  :git/sha "5fc22e6c25093231b8a02c0a936a51fcab1b1248"}
+                                  :git/sha "7b2d94e47a3149e28927db197b9c113c81ed6084"}
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
     net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
     nrepl/nrepl                  {:mvn/version "1.5.1"}                     ; nREPL server
