@@ -227,6 +227,14 @@
    changes  :- (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]
   (t2/update! :model/FieldUserSettings :field_id field-id changes))
 
+(mu/defn update-or-insert-field-user-settings!
+  "Update the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id` with what `update-fn` returns
+  for it, or insert what `update-fn` returns for nil when it has none."
+  [field-id  :- ::lib.schema.id/field
+   update-fn :- [:=> [:cat [:maybe ::warehouse-schema.schema/field-user-settings]]
+                 (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]]
+  (app-db/update-or-insert! :model/FieldUserSettings {:field_id field-id} update-fn))
+
 (mu/defn field-ids-with-user-settings :- [:set ::lib.schema.id/field]
   "The ids, among `field-ids`, of the Fields that have a FieldUserSettings row."
   [field-ids :- [:sequential ::lib.schema.id/field]]
@@ -294,6 +302,14 @@
   "Insert one TableUserSettings map or a sequence of them, returning the number inserted."
   [rows :- [:or (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys) [:sequential (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]]]
   (t2/insert! :model/TableUserSettings rows))
+
+(mu/defn update-or-insert-table-user-settings!
+  "Update the TableUserSettings of the ::warehouse-schema.schema/table with `table-id` with what `update-fn` returns
+  for it, or insert what `update-fn` returns for nil when it has none."
+  [table-id  :- ::lib.schema.id/table
+   update-fn :- [:=> [:cat [:maybe ::warehouse-schema.schema/table-user-settings]]
+                 (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]]
+  (app-db/update-or-insert! :model/TableUserSettings {:table_id table-id} update-fn))
 
 (mu/defn update-table-user-settings!
   "Apply `changes` to the TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, returning the

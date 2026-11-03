@@ -118,11 +118,9 @@
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
     (when (seq settings)
       (t2/with-transaction [_]
-        (let [existing (warehouse-schema.db/table-user-settings id)]
-          (if existing
-            (warehouse-schema.db/update-table-user-settings! id (with-set-flags settings settings settings))
-            (warehouse-schema.db/insert-table-user-settings! (assoc settings :table_id id)))
-          (warehouse-schema.db/update-table! id settings))))))
+        (warehouse-schema.db/update-or-insert-table-user-settings!
+         id (fn [existing] (cond-> settings existing (with-set-flags settings settings))))
+        (warehouse-schema.db/update-table! id settings)))))
 
 (mu/defn upsert-table-user-settings-for-tables!
   "[[upsert-table-user-settings!]] for every Table in `table-ids`, with one statement per kind for the settings and one for

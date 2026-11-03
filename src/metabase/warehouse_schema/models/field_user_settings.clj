@@ -74,11 +74,9 @@
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-field-columns)]
     (when (seq settings)
       (t2/with-transaction [_]
-        (let [existing (warehouse-schema.db/field-user-settings id)]
-          (if existing
-            (warehouse-schema.db/update-field-user-settings! id (with-set-flags settings settings))
-            (warehouse-schema.db/insert-field-user-settings! (assoc settings :field_id id)))
-          (warehouse-schema.db/update-field! id settings))))))
+        (warehouse-schema.db/update-or-insert-field-user-settings!
+         id (fn [existing] (cond->> settings existing (with-set-flags settings))))
+        (warehouse-schema.db/update-field! id settings)))))
 
 (mu/defn set-custom-positions!
   "Record `field-id->position` as the Fields' user `custom_position`s, in their settings and their rows."
