@@ -551,8 +551,7 @@
 ;;; =============================================================================
 
 (def ^:private test-team->codeowner
-  {"Data Apps"         "@metabase/data-apps"
-   "Querying Platform" "@metabase/querying-platform"
+  {"Querying Platform" "@metabase/querying-platform"
    "UX West"           "@metabase/ux-west"})
 
 (defn- entries
@@ -566,7 +565,7 @@
   (mapv (juxt :module :handle) (entries modules-config)))
 
 (deftest codeowners-entries-test
-  (testing "opted-in modules get entries covering their directories and root files"
+  (testing "only modules that set :codeowners true get entries, covering their directories and root files"
     (is (= [{:module    'lib
              :src-dir   "src/metabase/lib"
              :team      "Querying Platform"
@@ -581,39 +580,13 @@
             "enterprise/backend/test/metabase_enterprise/sso"
             "enterprise/backend/test/metabase_enterprise/sso_test.*"]
            (mapcat :patterns (entries '{enterprise/sso {:team "Querying Platform", :codeowners true}})))))
-  (testing "a keyword does not opt in"
+  (testing "any value other than true does not opt in"
     (is (= []
            (owners '{lib {:team "Querying Platform", :codeowners :test}}))))
   (testing "a nested module without its own :team takes its ancestor's"
     (is (= [['lib.schema "@metabase/querying-platform"]]
            (owners '{lib        {:team "Querying Platform"}
                      lib.schema {:codeowners true}})))))
-
-(deftest ^:parallel codeowners-review-team-test
-  (testing "a team name selects reviewers without changing module ownership"
-    (let [config '{lib {:team "Querying Platform", :codeowners "Data Apps"}}]
-      (is (= [['lib "@metabase/data-apps"]] (owners config)))
-      (is (= "Querying Platform" (modules/module-team config 'lib)))))
-  (testing "an enterprise module inherits its module team, but explicitly chooses its reviewers"
-    (let [config '{lib            {:team "Querying Platform", :codeowners "Data Apps"}
-                   enterprise/lib {:codeowners true}}]
-      (is (= [['enterprise/lib "@metabase/querying-platform"]
-              ['lib "@metabase/data-apps"]]
-             (owners config)))
-      (is (= [['enterprise/lib "@metabase/data-apps"]
-              ['lib "@metabase/data-apps"]]
-             (owners (assoc-in config ['enterprise/lib :codeowners] "Data Apps"))))))
-  (testing "a review override does not assign another module to a team that never opted in"
-    (is (= [['lib "@metabase/data-apps"]
-            ['lib.schema nil]]
-           (owners '{lib        {:team "Querying Platform", :codeowners "Data Apps"}
-                     lib.schema {:team "Querying Platform"}}))))
-  (testing "a nested module can opt in to its own team or the explicit review team"
-    (doseq [[setting handle] [[true "@metabase/querying-platform"]
-                              ["Data Apps" "@metabase/data-apps"]]]
-      (is (= [['lib "@metabase/data-apps"] ['lib.schema handle]]
-             (owners {'lib        {:team "Querying Platform", :codeowners "Data Apps"}
-                      'lib.schema {:team "Querying Platform", :codeowners setting}}))))))
 
 (deftest codeowners-entries-nested-test
   ;; CODEOWNERS applies the last matching pattern, so an entry inside another module's directory must follow it.
@@ -709,23 +682,6 @@
     (testing "modules that do not set :codeowners are not checked"
       (is (= []
              (problems '{lib {:team "Gadget"}} (constantly false)))))))
-
-(deftest ^:parallel codeowners-review-team-problems-test
-  (let [problems (fn [config handles]
-                   (vec (#'mage.modules/codeowners-config-problems config handles (constantly true))))]
-    (testing "only the selected review team needs a codeowner handle"
-      (is (= []
-             (problems '{lib {:team "Graphy", :codeowners "Data Apps"}}
-                       {"Data Apps" "@metabase/data-apps"}))))
-    (testing "an unknown review team or one without a handle is rejected"
-      (doseq [review-team ["" "Missing Team" "Graphy"]]
-        (is (= [{:type :no-codeowner, :module 'lib, :team review-team}]
-               (problems {'lib {:team "Querying Platform", :codeowners review-team}}
-                         test-team->codeowner)))))
-    (testing "an invalid handle is checked on the review team, not the module team"
-      (is (= [{:type :bad-codeowner, :team "Data Apps", :value "bad handle", :modules ['lib]}]
-             (problems '{lib {:team "Graphy", :codeowners "Data Apps"}}
-                       {"Data Apps" "bad handle"}))))))
 
 (deftest codeowners-has-source-test
   (let [has-source? #'mage.modules/has-source?
@@ -839,7 +795,7 @@
   (testing "each problem names what is wrong and what to do"
     (are [problem expected] (str/includes? (#'mage.modules/codeowners-problem-message problem) expected)
       {:type :unknown-value, :module 'lib, :value :test}                 "lib sets :codeowners to :test. Use true"
-      {:type :no-codeowner, :module 'lib, :team "Gadget"}                "its review team \"Gadget\" has no \"codeowner\""
+      {:type :no-codeowner, :module 'lib, :team "Gadget"}                "its team \"Gadget\" has no \"codeowner\""
       {:type :bad-codeowner, :team "Gadget", :value "", :modules ['lib]} "so that lib can opt in"
       {:type :no-source, :module 'lib, :src-dir "src/metabase/lib"}      "has no code at src/metabase/lib."
       {:type :shadowed-lines, :lines ["a/b.clj @x"]}                     "Move them below the END marker:\n  a/b.clj @x"

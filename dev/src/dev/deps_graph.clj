@@ -177,7 +177,7 @@
    [:model-exports  {:optional true} [:or [:= :any] [:set :keyword]]]
    [:model-imports  {:optional true} [:or [:= :bypass] [:set :keyword]]]
    [:module-exports {:optional true} [:set :symbol]]
-   [:codeowners     {:optional true} [:or [:= true] :string]]])
+   [:codeowners     {:optional true} [:= true]]])
 
 (def ^:private ModulesConfig
   [:map-of :symbol ModuleConfig])

@@ -316,33 +316,24 @@
   (or (= dir path)
       (str/starts-with? path (str dir "/"))))
 
-(defn- codeowners-team
-  "Review team named by `:codeowners`, or the module's owning team."
-  [modules-config module]
-  (let [setting (get-in modules-config [module :codeowners])]
-    (if (string? setting)
-      setting
-      (modules/module-team modules-config module))))
-
 (defn- opts-in?
-  "Whether `module` sets `:codeowners` to `true` or a team name."
+  "Whether `module` sets `:codeowners true`."
   [modules-config module]
-  (let [setting (get-in modules-config [module :codeowners])]
-    (or (true? setting) (string? setting))))
+  (true? (get-in modules-config [module :codeowners])))
 
 (defn- codeowners-entries
   "One entry per module the block must name, in block order.
-  Each is `{:module, :src-dir, :team, :handle, :opted-in?, :patterns}`, where `:team` names the review team.
-  A module's src and test code go to its review team when it or a surrounding module opts in to that team.
-  A nested module with another review team is otherwise unowned, with a `nil` handle.
+  Each is `{:module, :src-dir, :team, :handle, :opted-in?, :patterns}`.
+  A module's src and test code go to its team's handle when it, or an opted-in module around it, belongs to that team.
+  Inside an opted-in module's directory, a nested module of another team is otherwise unowned, with a `nil` handle.
   An opted-in module always gets an entry.
   Another module gets one only where the nearest entry around it would give its code a different owner.
-  The setting must be `true` or a team name; [[codeowners-config-problems]] reports other values."
+  Only `:codeowners true` opts in; [[codeowners-config-problems]] reports any other value."
   [modules-config team->codeowner]
   ;; config.edn's `codeowners` section states this rule for module authors; change the two together.
   (reduce
    (fn [entries module]
-     (let [team      (codeowners-team modules-config module)
+     (let [team      (modules/module-team modules-config module)
            src-dir   (modules/module-dir modules-config module "src")
            ;; Entries come parent first, so the last one around `src-dir` is the nearest.
            around    (filter #(path-within? (:src-dir %) src-dir) entries)
@@ -379,7 +370,7 @@
                   module)]
     (concat
      (for [module  modules
-           :let    [team    (codeowners-team modules-config module)
+           :let    [team    (modules/module-team modules-config module)
                     src-dir (modules/module-dir modules-config module "src")]
            problem (cond-> []
                      (not (opts-in? modules-config module))
@@ -391,7 +382,7 @@
                      (not (source? src-dir))
                      (conj {:type :no-source, :module module, :src-dir src-dir}))]
        problem)
-     (for [[team team-modules] (sort-by key (group-by #(codeowners-team modules-config %) modules))
+     (for [[team team-modules] (sort-by key (group-by #(modules/module-team modules-config %) modules))
            :let                [handle (get team->codeowner team)]
            :when               (and (contains? team->codeowner team) (not (valid-codeowner? handle)))]
        {:type :bad-codeowner, :team team, :value handle, :modules (vec team-modules)}))))
@@ -446,9 +437,9 @@
   "One problem from [[codeowners-config-problems]] or [[codeowners-file-problems]] as a sentence saying what to fix."
   [{:keys [module] :as problem}]
   (case (:type problem)
-    :unknown-value  (format "Module %s sets :codeowners to %s. Use true, a team name string, or leave it out."
+    :unknown-value  (format "Module %s sets :codeowners to %s. Use true, or leave it out."
                             module (pr-str (:value problem)))
-    :no-codeowner   (format "Module %s sets :codeowners, but its review team %s has no \"codeowner\" in %s."
+    :no-codeowner   (format "Module %s sets :codeowners, but its team %s has no \"codeowner\" in %s."
                             module (pr-str (:team problem)) team-config-path)
     :bad-codeowner  (format (str "Team %s has \"codeowner\" %s in %s. Use one GitHub handle, such as"
                                  " \"@metabase/metabot\", so that %s can opt in.")
