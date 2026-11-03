@@ -44,17 +44,22 @@
   []
   (merge @roots (update-vals *bound-boxes* deref)))
 
+(defn- root-value
+  "The root value of `k` in the roots map `rs`. Throws if `k` was never given one, since only [[mc/alter-root]]
+   installs a component."
+  [rs k]
+  (if-let [entry (find rs k)]
+    (val entry)
+    (throw (ex-info (str "Component has no value: " k)
+                    {:component  k
+                     :components (sort (keys rs))}))))
+
 (defn- current-value
   "The value of `k` visible to this thread: the thread-local one if `k` is bound here, otherwise the root."
   [k]
   (if-let [box (get *bound-boxes* k)]
     @box
-    (let [rs @roots]
-      (if-let [entry (find rs k)]
-        (val entry)
-        (throw (ex-info (str "Component has no value: " k)
-                        {:component  k
-                         :components (sort (keys rs))}))))))
+    (root-value @roots k)))
 
 (defrecord ComponentHandle [k]
   IDeref
@@ -67,12 +72,14 @@
   (reset! [_ new-value]
     (if-let [box (get *bound-boxes* k)]
       (clojure.core/reset! box new-value)
-      (do (clojure.core/swap! roots assoc k new-value)
+      (do (clojure.core/swap! roots (fn [rs]
+                                      (root-value rs k)
+                                      (assoc rs k new-value)))
           new-value)))
   (swap!* [_ f args]
     (if-let [box (get *bound-boxes* k)]
       (apply clojure.core/swap! box f args)
-      (get (clojure.core/swap! roots (fn [rs] (apply update rs k f args))) k)))
+      (get (clojure.core/swap! roots (fn [rs] (assoc rs k (apply f (root-value rs k) args)))) k)))
   (alter-root [_ new-value]
     (let [[before _] (clojure.core/swap-vals! roots assoc k new-value)]
       (get before k)))

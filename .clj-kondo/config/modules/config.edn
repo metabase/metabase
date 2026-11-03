@@ -761,7 +761,6 @@
    :uses #{api
            api-routes
            app-db
-           global-system
            mcp
            metabot
            metabot.llm

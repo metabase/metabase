@@ -23,7 +23,6 @@
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.funnysql.core :as funnysql]
-   [metabase.global-system.mutable-component :as mc]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2]
@@ -326,18 +325,17 @@
      (u/with-us-locale
        (binding [config/*disable-setting-cache* true
                  custom-migrations/*create-sample-content* create-sample-content?]
-         (mc/binding (mdb.connection/application-db-handle)
-           (mdb.connection/application-db db-type data-source :create-pool? false)
-           (fn []
-             (verify-db-connection db-type data-source)
-             (error-if-downgrade-required! data-source)
-             (let [db-state (mdb.encryption/encryption-state)]
-               (when manage-encryption-state?
-                 (mdb.encryption/check-encryption db-state))
-               (run-schema-migrations! data-source auto-migrate?)
-               (migrate-settings! db-state)
-               (when manage-encryption-state?
-                 (mdb.encryption/record-encryption-state! db-state))))))))
+         (mdb.connection/with-application-db
+           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+           (verify-db-connection db-type data-source)
+           (error-if-downgrade-required! data-source)
+           (let [db-state (mdb.encryption/encryption-state)]
+             (when manage-encryption-state?
+               (mdb.encryption/check-encryption db-state))
+             (run-schema-migrations! data-source auto-migrate?)
+             (migrate-settings! db-state)
+             (when manage-encryption-state?
+               (mdb.encryption/record-encryption-state! db-state)))))))
    :done))
 
 (defn release-migration-locks!

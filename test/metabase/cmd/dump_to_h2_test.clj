@@ -15,7 +15,6 @@
    [metabase.cmd.test-util :as cmd.test-util]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.global-system.mutable-component :as mc]
    [metabase.settings.core :refer [defsetting]]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -74,48 +73,46 @@
         (mt/test-drivers #{:h2 :postgres :mysql}
           (mt/with-dynamic-fn-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
             (binding [config/*disable-setting-cache* true]
-              (mc/binding (mdb.connection/application-db-handle)
-                (mdb.connection/application-db
-                 driver/*driver*
-                 (persistent-data-source driver/*driver* db-name))
-                (fn []
-                  (when-not (= driver/*driver* :h2)
-                    (tx/create-db! driver/*driver* {:database-name db-name}))
-                  (binding [copy/*copy-h2-database-details* true]
-                    (load-from-h2/load-from-h2! h2-fixture-db-file)
-                    (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
-                      ;; the fixture was loaded unencrypted; encrypt it under the key first (as `enable-encryption`
-                      ;; does) so no encrypted column is left plaintext for the strict model reads
-                      ;; the update and dump below trigger
-                      (mdb.encryption/encrypt-db driver/*driver* (:data-source (mdb.connection/current-application-db)) nil)
-                      (t2/insert! :model/Setting {:key "dump-to-h2-test-setting", :value "baz"})
-                      (t2/update! :model/Database :id 1 {:details {:db "/tmp/test.db"}})
-                      (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
-                      (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
-                      (dump-to-h2/dump-to-h2! h2-file-default-enc)))
-                  (testing "decodes settings and dashboard.details"
-                    (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]
-                      (is (= "baz" (:value (first (jdbc/query {:connection target-conn}
-                                                              "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';")))))
-                      (is (= "{\"db\":\"/tmp/test.db\"}"
-                             (:details (first (jdbc/query {:connection target-conn}
-                                                          "select details from metabase_database where id=1;")))))))
-                  (testing "when flag is set to false, encrypted settings and dashboard.details are still encrypted"
-                    (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-enc))]
-                      (is (not (= "baz"
-                                  (:value (first (jdbc/query {:connection target-conn}
-                                                             "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';"))))))
-                      (is (not (= "{\"db\":\"/tmp/test.db\"}"
-                                  (:details (first (jdbc/query {:connection target-conn}
-                                                               "select details from metabase_database where id=1;"))))))))
-                  (testing "defaults to not decrypting"
-                    (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-default-enc))]
-                      (is (not (= "baz"
-                                  (:value (first (jdbc/query {:connection target-conn}
-                                                             "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';"))))))
-                      (is (not (= "{\"db\":\"/tmp/test.db\"}"
-                                  (:details (first (jdbc/query {:connection target-conn}
-                                                               "select details from metabase_database where id=1;")))))))))))))))))
+              (mdb/with-application-db (mdb.connection/application-db
+                                        driver/*driver*
+                                        (persistent-data-source driver/*driver* db-name))
+                (when-not (= driver/*driver* :h2)
+                  (tx/create-db! driver/*driver* {:database-name db-name}))
+                (binding [copy/*copy-h2-database-details* true]
+                  (load-from-h2/load-from-h2! h2-fixture-db-file)
+                  (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+                    ;; the fixture was loaded unencrypted; encrypt it under the key first (as `enable-encryption`
+                    ;; does) so no encrypted column is left plaintext for the strict model reads
+                    ;; the update and dump below trigger
+                    (mdb.encryption/encrypt-db driver/*driver* (:data-source (mdb.connection/current-application-db)) nil)
+                    (t2/insert! :model/Setting {:key "dump-to-h2-test-setting", :value "baz"})
+                    (t2/update! :model/Database :id 1 {:details {:db "/tmp/test.db"}})
+                    (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
+                    (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
+                    (dump-to-h2/dump-to-h2! h2-file-default-enc)))
+                (testing "decodes settings and dashboard.details"
+                  (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]
+                    (is (= "baz" (:value (first (jdbc/query {:connection target-conn}
+                                                            "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';")))))
+                    (is (= "{\"db\":\"/tmp/test.db\"}"
+                           (:details (first (jdbc/query {:connection target-conn}
+                                                        "select details from metabase_database where id=1;")))))))
+                (testing "when flag is set to false, encrypted settings and dashboard.details are still encrypted"
+                  (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-enc))]
+                    (is (not (= "baz"
+                                (:value (first (jdbc/query {:connection target-conn}
+                                                           "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';"))))))
+                    (is (not (= "{\"db\":\"/tmp/test.db\"}"
+                                (:details (first (jdbc/query {:connection target-conn}
+                                                             "select details from metabase_database where id=1;"))))))))
+                (testing "defaults to not decrypting"
+                  (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-default-enc))]
+                    (is (not (= "baz"
+                                (:value (first (jdbc/query {:connection target-conn}
+                                                           "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';"))))))
+                    (is (not (= "{\"db\":\"/tmp/test.db\"}"
+                                (:details (first (jdbc/query {:connection target-conn}
+                                                             "select details from metabase_database where id=1;"))))))))))))))))
 
 (deftest dump-to-h2-dump-is-attached-dwh-test
   (testing "dump-to-h2 --dump-plaintext with is_attached_dwh"
@@ -125,34 +122,32 @@
         (mt/test-drivers #{:h2 :postgres :mysql}
           (mt/with-dynamic-fn-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
             (binding [config/*disable-setting-cache* true]
-              (mc/binding (mdb.connection/application-db-handle)
-                (mdb.connection/application-db
-                 driver/*driver*
-                 (persistent-data-source driver/*driver* db-name))
-                (fn []
-                  (when-not (= driver/*driver* :h2)
-                    (tx/create-db! driver/*driver* {:database-name db-name}))
-                  (binding [copy/*copy-h2-database-details* true]
-                    (load-from-h2/load-from-h2! h2-fixture-db-file)
-                    (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
-                      ;; the fixture was loaded unencrypted; encrypt it under the key first (as `enable-encryption`
-                      ;; does), otherwise the dump would hold data under an absent sentinel and its setup would refuse
-                      (mdb.encryption/encrypt-db driver/*driver* (:data-source (mdb.connection/current-application-db)) nil)
-                      (t2/insert! :model/Database {:engine          "h2"
-                                                   :name            "normal-db"
-                                                   :details         {:db "/tmp/test.db"}
-                                                   :is_attached_dwh false})
-                      (t2/insert! :model/Database {:engine          "h2"
-                                                   :name            "attached-dwh"
-                                                   :details         {:db "/tmp/test.db"}
-                                                   :is_attached_dwh true})
-                      (dump-to-h2/dump-to-h2! h2-file {:dump-plaintext? true})))
-                  (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file))]
-                    (testing "preserves details when is_attached_dwh is not set"
-                      (is (= "{\"db\":\"/tmp/test.db\"}"
-                             (:details (first (jdbc/query {:connection target-conn}
-                                                          "select details from metabase_database where name='normal-db';"))))))
-                    (testing "preserves details when is_attached_dwh is not set"
-                      (is (= "{}"
-                             (:details (first (jdbc/query {:connection target-conn}
-                                                          "select details from metabase_database where name='attached-dwh';"))))))))))))))))
+              (mdb/with-application-db (mdb.connection/application-db
+                                        driver/*driver*
+                                        (persistent-data-source driver/*driver* db-name))
+                (when-not (= driver/*driver* :h2)
+                  (tx/create-db! driver/*driver* {:database-name db-name}))
+                (binding [copy/*copy-h2-database-details* true]
+                  (load-from-h2/load-from-h2! h2-fixture-db-file)
+                  (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+                    ;; the fixture was loaded unencrypted; encrypt it under the key first (as `enable-encryption`
+                    ;; does), otherwise the dump would hold data under an absent sentinel and its setup would refuse
+                    (mdb.encryption/encrypt-db driver/*driver* (:data-source (mdb.connection/current-application-db)) nil)
+                    (t2/insert! :model/Database {:engine          "h2"
+                                                 :name            "normal-db"
+                                                 :details         {:db "/tmp/test.db"}
+                                                 :is_attached_dwh false})
+                    (t2/insert! :model/Database {:engine          "h2"
+                                                 :name            "attached-dwh"
+                                                 :details         {:db "/tmp/test.db"}
+                                                 :is_attached_dwh true})
+                    (dump-to-h2/dump-to-h2! h2-file {:dump-plaintext? true})))
+                (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file))]
+                  (testing "preserves details when is_attached_dwh is not set"
+                    (is (= "{\"db\":\"/tmp/test.db\"}"
+                           (:details (first (jdbc/query {:connection target-conn}
+                                                        "select details from metabase_database where name='normal-db';"))))))
+                  (testing "preserves details when is_attached_dwh is not set"
+                    (is (= "{}"
+                           (:details (first (jdbc/query {:connection target-conn}
+                                                        "select details from metabase_database where name='attached-dwh';")))))))))))))))

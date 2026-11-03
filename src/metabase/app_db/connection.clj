@@ -73,11 +73,10 @@
 
 (defn application-db
   "Create a new Metabase application database (type and [[javax.sql.DataSource]]). For use in combination
-  with [[application-db-handle]]:
+  with [[with-application-db]]:
 
-    (mc/binding (mdb.connection/application-db-handle)
-      (mdb.connection/application-db :h2 my-data-source)
-      (fn [] ...))
+    (mdb.connection/with-application-db (mdb.connection/application-db :h2 my-data-source)
+      ...)
 
   Options:
 
@@ -116,6 +115,18 @@
   "The application DB currently visible to this thread."
   ^ApplicationDB []
   @(application-db-handle))
+
+(defn do-with-application-db
+  "Impl for [[with-application-db]]."
+  [application-db thunk]
+  (mc/binding (application-db-handle) application-db thunk))
+
+(defmacro with-application-db
+  "Run `body` with `application-db` as the application DB this thread sees. Threads that inherit this thread's
+  bindings, such as a `future` started in `body`, see it too."
+  {:style/indent [:defn]}
+  [application-db & body]
+  `(do-with-application-db ~application-db (^:once fn* [] ~@body)))
 
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."

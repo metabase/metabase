@@ -10,7 +10,6 @@
    [metabase.app-db.quartz :as mdb.quartz]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
-   [metabase.global-system.mutable-component :as mc]
    [rewrite-clj.zip :as z]
    [toucan2.connection :as t2.conn])
   (:import
@@ -27,22 +26,20 @@
   (testing "the provider fetches a fresh connection even when toucan2's *current-connectable* is bound to a Connection"
     (let [data-source (h2-data-source "quartz-provider-test")
           app-db      (mdb.connection/application-db :h2 data-source)]
-      (mc/binding (mdb.connection/application-db-handle)
-        app-db
-        (fn []
-          (with-open [^Connection outer (.getConnection data-source)]
-            (binding [t2.conn/*current-connectable* outer]
-              (let [^ConnectionProvider provider (mdb.quartz/->ConnectionProvider)]
-                (with-open [^Connection conn (.getConnection provider)]
-                  (is (instance? Connection conn))
-                  (is (not (identical? outer conn))
-                      "Quartz must never reuse the Connection bound to the calling thread")
-                  ;; also guard against a *wrapper* around the bound connection (as the old non-closeable-proxy
-                  ;; approach used): unwrapping must not lead back to the bound connection
-                  (is (not (identical? outer (.unwrap conn Connection)))
-                      "the Quartz connection must be a different physical connection, not a wrapper around the bound one"))
-                (testing "closing the Quartz connection must not close the bound connection"
-                  (is (not (.isClosed outer))))))))))))
+      (mdb.connection/with-application-db app-db
+        (with-open [^Connection outer (.getConnection data-source)]
+          (binding [t2.conn/*current-connectable* outer]
+            (let [^ConnectionProvider provider (mdb.quartz/->ConnectionProvider)]
+              (with-open [^Connection conn (.getConnection provider)]
+                (is (instance? Connection conn))
+                (is (not (identical? outer conn))
+                    "Quartz must never reuse the Connection bound to the calling thread")
+                ;; also guard against a *wrapper* around the bound connection (as the old non-closeable-proxy
+                ;; approach used): unwrapping must not lead back to the bound connection
+                (is (not (identical? outer (.unwrap conn Connection)))
+                    "the Quartz connection must be a different physical connection, not a wrapper around the bound one"))
+              (testing "closing the Quartz connection must not close the bound connection"
+                (is (not (.isClosed outer)))))))))))
 
 (deftest no-deadlock-when-main-pool-saturated-test
   (testing "a Quartz operation from a thread holding the main pool's last connection completes (UXW-307)"
@@ -60,21 +57,20 @@
           (let [data-source (h2-data-source "quartz-deadlock-test")
                 app-db      (mdb.connection/application-db :h2 data-source :create-pool? true)]
             (try
-              (mc/binding (mdb.connection/application-db-handle)
-                app-db
-                (fn []
-                  (with-open [^Connection main-conn (.getConnection ^javax.sql.DataSource app-db)]
-                    ;; ...and simulate being inside a `with-transaction` block on it
-                    (binding [t2.conn/*current-connectable* main-conn]
-                      (let [^ConnectionProvider provider (mdb.quartz/->ConnectionProvider)
-                            result                       (future
-                                                           (with-open [^Connection conn (.getConnection provider)]
-                                                             (with-open [stmt (.createStatement conn)]
-                                                               (with-open [rs (.executeQuery stmt "SELECT 1")]
-                                                                 (.next rs)
-                                                                 (.getInt rs 1)))))]
-                        (is (= 1 (deref result 10000 ::deadlocked))
-                            "the Quartz connection must come from the dedicated pool, not the saturated main pool"))))))
+              (mdb.connection/with-application-db app-db
+                ;; saturate the main pool by checking out its only connection...
+                (with-open [^Connection main-conn (.getConnection ^javax.sql.DataSource app-db)]
+                  ;; ...and simulate being inside a `with-transaction` block on it
+                  (binding [t2.conn/*current-connectable* main-conn]
+                    (let [^ConnectionProvider provider (mdb.quartz/->ConnectionProvider)
+                          result                       (future
+                                                         (with-open [^Connection conn (.getConnection provider)]
+                                                           (with-open [stmt (.createStatement conn)]
+                                                             (with-open [rs (.executeQuery stmt "SELECT 1")]
+                                                               (.next rs)
+                                                               (.getInt rs 1)))))]
+                      (is (= 1 (deref result 10000 ::deadlocked))
+                          "the Quartz connection must come from the dedicated pool, not the saturated main pool")))))
               (finally
                 (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
                 (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))))))))))
