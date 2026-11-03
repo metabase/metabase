@@ -397,18 +397,30 @@
   (cond-> item
     (not (:id item)) (assoc :id (str (random-uuid)))))
 
+(defn- ensure-question-query-id
+  "Give the query of a saved question an ID of its own, as `:query_id`.
+  The question's `:id` is the card ID, and `run_query` runs the saved version of the card by that ID. The query on
+  screen can be different from the saved version, so the SQL edit tools get it by a different ID."
+  [item]
+  (cond-> item
+    (and (= "question" (normalize-type (:type item))) (map? (:query item)))
+    (assoc :query_id (str (random-uuid)))))
+
 (defn- assign-context-ids
-  "Assign IDs to all viewing context items that lack one.
+  "Assign IDs to all viewing context items that lack one, and to the queries of saved questions.
   Must be called before both seed-state and enrich-context-for-template
   so they share consistent IDs."
   [context]
-  (update context :user_is_viewing #(mapv ensure-context-item-id %)))
+  (update context :user_is_viewing #(mapv (comp ensure-question-query-id ensure-context-item-id) %)))
 
 (defn- extract-query-from-context-item
   "Extract [query-id query] from viewing context item."
-  [{:keys [id type query]}]
-  (when (and (#{"adhoc" "native"} (normalize-type type)) (map? query) id)
-    [(str id) query]))
+  [{:keys [id type query query_id]}]
+  (when (map? query)
+    (case (normalize-type type)
+      ("adhoc" "native") (when id [(str id) query])
+      "question"         (when query_id [query_id query])
+      nil)))
 
 (defn- seed-state
   "Seed state with queries from viewing context."
@@ -450,13 +462,13 @@
           (:user_is_viewing context)))
 
 (defn chart-config->chart
-  "Create chart structure from chart-config"
-  [id {:keys [query timeline_events] :as chart-config}]
-  {:chart_id id
-   ;; `id` is the same viewing-context item id seed-state stores this chart's query
-   ;; under; reusing it as :query_id lets edit_chart carry a query-id through (see
-   ;; extract-charts below) instead of leaving charts seeded this way uncaptured.
-   :query_id id
+  "Create chart structure from chart-config.
+  `query-id` is the ID that seed-state stores the chart's query under, or nil if it stores no query for the chart."
+  [chart-id query-id {:keys [query timeline_events] :as chart-config}]
+  {:chart_id chart-id
+   ;; edit_chart carries :query_id through (see extract-charts). It is never a card ID: run_query runs the saved
+   ;; card by that ID.
+   :query_id query-id
    :queries [query]
    :timeline_events (or timeline_events [])
    ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out
@@ -470,7 +482,7 @@
   (reduce
    ;; This logic is flawed for items with more than 1 chart config. It expects at most 1 chart config per viewing item.
    ;; TODO (lbrdnk 2026-03-24): Figure out what is reasonable solution here. (ie no overwriting single config)
-   (fn [acc {:keys [id chart_configs] :as _item}]
+   (fn [acc {:keys [id chart_configs] :as item}]
      ;; TODO (lbrdnk 2026-03-24): This is developed against adhoc queries. Ensure other cases work too!
      (if-not (seq chart_configs)
        acc
@@ -478,7 +490,10 @@
                (into {}
                      (map (comp
                            (juxt :chart_id identity)
-                           (partial chart-config->chart id)))
+                           ;; The ID of a saved card is an integer, and the chart tools get charts by a string ID.
+                           (partial chart-config->chart
+                                    (str id)
+                                    (first (extract-query-from-context-item item)))))
                      chart_configs))))
    state
    (:user_is_viewing context)))
@@ -491,7 +506,6 @@
   [context]
   (let [seeded (-> {} (seed-state context) (seed-charts context))]
     (into (set (keys (:queries seeded)))
-          (map str)
           (keys (:charts seeded)))))
 
 ;;; Main loop

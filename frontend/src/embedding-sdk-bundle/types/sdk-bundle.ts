@@ -1,4 +1,4 @@
-import type { JSXElementConstructor } from "react";
+import type { ComponentProps, JSXElementConstructor } from "react";
 
 import type { MetabotSubscriber } from "embedding-sdk-bundle/components/private/MetabotSubscriber/MetabotSubscriber";
 import type { SdkThemeProviderWithStore } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
@@ -37,12 +37,17 @@ import type {
   CreateDashboardValues,
   MetabaseDashboard,
 } from "embedding-sdk-bundle/types";
-import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
+import type {
+  LoginStatus,
+  MetabaseUser,
+} from "embedding-sdk-bundle/types/user";
 import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/validation";
-import type { User } from "metabase-types/api";
+import type { PartialBy } from "metabase/common/types";
 
 export type InternalComponent<TComponent extends JSXElementConstructor<any>> =
-  TComponent & { schema?: any };
+  JSXElementConstructor<ComponentProps<TComponent>> &
+    PartialBy<TComponent & { schema?: FunctionSchema }, "schema">;
 type InternalHook = () => void;
 type ReduxStoreFactory = () => SdkStore;
 type ReduxStoreSelector<T> = (state: SdkStoreState) => T;
@@ -106,7 +111,7 @@ type ReduxStoreSelectorsExports = {
   getApplicationName: ReduxStoreSelector<string>;
   getAvailableFonts: ReduxStoreSelector<string[]>;
   getLoginStatus: ReduxStoreSelector<LoginStatus>;
-  getUser: ReduxStoreSelector<User | null>;
+  getUser: ReduxStoreSelector<MetabaseUser | null>;
 };
 
 type InternalHooksExports = {
