@@ -69,7 +69,8 @@ export function PopoverFilterPill({
     if (event.target !== event.currentTarget) {
       return;
     }
-    if (event.key === "Enter") {
+    // Prototype: ArrowDown opens the pill like Enter, as it opens a dropdown.
+    if (event.key === "Enter" || event.key === "ArrowDown") {
       event.preventDefault();
       isOpenedFromKeyRef.current = true;
       setIsOpened(true);

@@ -190,7 +190,9 @@ export function DraftFilterPill({
       ? "column"
       : column.operators == null
         ? "fallback"
-        : operator == null
+        : // An operator with no values, like "is empty", is the whole filter,
+          // so the pill edits the operator.
+          operator == null || operator.valueKind === "none"
           ? "operator"
           : "value");
 

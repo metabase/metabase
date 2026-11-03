@@ -1,6 +1,13 @@
 import cx from "classnames";
 import type { KeyboardEvent, ReactNode, Ref } from "react";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { Checkbox, Combobox, Flex, Icon, useCombobox } from "metabase/ui";
@@ -11,6 +18,44 @@ import { UNSCORED, getOptionScores } from "./fuzzy-search";
 import type { SuggestionGroup, SuggestionOption } from "./types";
 
 const DEFAULT_DROPDOWN_WIDTH = 280;
+
+/** The space between a dropdown and the right edge of the window. */
+const VIEWPORT_MARGIN = 16;
+
+/**
+ * Prototype: the dropdown starts at the left edge of the pill. Near the right
+ * edge of the window, it moves left so that it stays in the window, and the
+ * page does not scroll sideways.
+ */
+function useDropdownShift(isOpened: boolean) {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const shiftRef = useRef(0);
+  const [shift, setShift] = useState(0);
+  useLayoutEffect(() => {
+    const dropdown = dropdownRef.current;
+    if (!isOpened || dropdown == null) {
+      return;
+    }
+    const update = () => {
+      const rect = dropdown.getBoundingClientRect();
+      const left = rect.left - shiftRef.current;
+      const overflow =
+        left + rect.width - (window.innerWidth - VIEWPORT_MARGIN);
+      shiftRef.current = overflow > 0 ? -Math.min(overflow, left) : 0;
+      setShift(shiftRef.current);
+    };
+    // The size of the dropdown changes with its options.
+    const observer = new ResizeObserver(update);
+    observer.observe(dropdown);
+    window.addEventListener("resize", update);
+    update();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [isOpened]);
+  return { dropdownRef, dropdownShift: shift };
+}
 
 interface SuggestionInputProps {
   inputRef?: Ref<HTMLInputElement>;
@@ -79,6 +124,9 @@ export function SuggestionInput({
   onKeyDown,
 }: SuggestionInputProps) {
   const combobox = useCombobox({ defaultOpened: true });
+  const { dropdownRef, dropdownShift } = useDropdownShift(
+    combobox.dropdownOpened,
+  );
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     () => new Set(),
   );
@@ -273,7 +321,11 @@ export function SuggestionInput({
         />
       </Combobox.Target>
       {hasSuggestions && (
-        <Combobox.Dropdown className={cx({ [S.dropdownWithAside]: aside })}>
+        <Combobox.Dropdown
+          ref={dropdownRef}
+          className={cx({ [S.dropdownWithAside]: aside })}
+          style={{ marginLeft: dropdownShift }}
+        >
           <div
             className={S.dropdownMain}
             style={aside != null ? { height: dropdownHeight } : undefined}

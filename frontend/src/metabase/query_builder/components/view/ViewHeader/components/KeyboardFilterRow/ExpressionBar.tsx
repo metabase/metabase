@@ -1443,7 +1443,8 @@ function TokenView({
     if (event.target !== event.currentTarget) {
       return;
     }
-    if (event.key === "Enter") {
+    // Prototype: ArrowDown opens the pill like Enter, as it opens a dropdown.
+    if (event.key === "Enter" || event.key === "ArrowDown") {
       event.preventDefault();
       onEdit("values");
     } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
