@@ -267,8 +267,8 @@
    `:curated-only?` mirrors Metabot search's `use_verified_content` filter (see [[curation/curated?]]).
    The caller owns the scope decision (Metabot row lookup); this namespace does not read settings,
    premium-feature gates, or Metabot rows directly.
-   `degraded-signals` is passed to [[appdb-source/with-missing-relation-fallback]] for every read; nil makes a
-   missing table or column throw."
+   The `degraded-signals` atom, or nil, is passed to [[appdb-source/with-missing-relation-fallback]] for every read.
+   With nil, a missing table or column throws."
   [{:keys [curated-only? collection-id]} degraded-signals]
   ;; An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3× per
   ;; scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]], each a

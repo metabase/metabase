@@ -12,12 +12,11 @@
 
 ;;; ----------------------------------- read tolerance --------------------------------------
 
-;; SQLState codes that mean "the table or column you referenced isn't there" across the appdb
-;; backends Metabase supports. Listed explicitly rather than prefix-matched on `42S` so we don't
-;; accidentally trip on other `42Sxx` codes a driver might introduce. Postgres uses `42P01`
-;; (undefined_table) and `42703` (undefined_column); MySQL uses `42S02` / `42S22`; H2 uses
-;; `42S02` / `42S22` on the modern JDBC surface and `42102` / `42122` on the legacy one, and also reports a missing
-;; table as `42S03` (with name suggestions) or `42S04` (empty database). The table states match
+;; SQLState codes that mean "the table or column you referenced isn't there" across the appdb backends Metabase
+;; supports. Listed explicitly rather than prefix-matched on `42S` so we don't trip on other `42Sxx` codes a driver
+;; might introduce. Postgres uses `42P01` (undefined_table) and `42703` (undefined_column); MySQL uses `42S02` and
+;; `42S22`; H2 uses `42S02` and `42S22` on the modern JDBC surface and `42102` and `42122` on the legacy one, and also
+;; reports a missing table as `42S03` (with name suggestions) or `42S04` (empty database). The table states match
 ;; `metabase.app-db.sql-errors`, which has no missing-column class to reuse.
 (def ^:private missing-relation-sql-states
   #{"42102" "42122" "42703" "42P01" "42S02" "42S03" "42S04" "42S22"})
@@ -57,9 +56,9 @@
     (try
       (f)
       (catch Throwable t
-        (if (missing-relation-exception t)
+        (if-let [e (missing-relation-exception t)]
           (do (log/warnf "Data Complexity: %s unavailable on this appdb (%s). Falling back to %s."
-                         signal (.getMessage t) (pr-str fallback))
+                         signal (.getMessage e) (pr-str fallback))
               (swap! degraded-signals conj signal)
               fallback)
           (throw t))))))

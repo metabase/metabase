@@ -51,8 +51,7 @@
   (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
 
 (mu/defn universe-cards
-  "The ID, name, type, and Collection of the unarchived metric and model Cards outside the Database with
-  `audit-database-id`.
+  "The ID, name, type and Collection of unarchived metric and model Cards outside the Database with `audit-database-id`.
   A raw query, so no `:model/Card` hooks run, only these columns need to exist, and `:type` comes back as a string."
   [audit-database-id :- ::lib.schema.id/database]
   (t2/query {:select [:id :name :type :collection_id]
@@ -78,8 +77,7 @@
   (t2/query (universe-tables-query (t2/table-name :model/Table) audit-database-id)))
 
 (mu/defn universe-tables-without-user-settings
-  "The scoring columns of the active Tables outside the Database with `audit-database-id`, read from `metabase_table`
-  alone.
+  "The scoring columns of the active Tables outside the Database with `audit-database-id`, from `metabase_table` alone.
   For an appdb whose schema the user-settings overlay cannot read."
   [audit-database-id :- ::lib.schema.id/database]
   (t2/query (universe-tables-query (t2/table-name :model/Table) audit-database-id)))

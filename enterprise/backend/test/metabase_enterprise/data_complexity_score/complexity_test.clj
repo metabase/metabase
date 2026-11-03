@@ -421,8 +421,11 @@
 (defn- throw-missing-table [& _]
   (throw (java.sql.SQLException. "relation does not exist" "42P01")))
 
+(defn- find-table [entities table-id]
+  (some #(when (= [:table table-id] ((juxt :kind :id) %)) %) entities))
+
 (defn- has-table? [entities table-id]
-  (boolean (some #(= [:table table-id] ((juxt :kind :id) %)) entities)))
+  (some? (find-table entities table-id)))
 
 (deftest ^:synchronized enumerate-catalogs-missing-measure-table-test
   (mt/with-temp [:model/Database {db-id :id}    {:name "Degraded Measures DB"}
@@ -432,7 +435,7 @@
         (let [degraded (atom #{})
               universe (:universe (#'complexity/enumerate-catalogs nil degraded))]
           (is (=? {:kind :table, :measure-names []}
-                  (some #(when (= [:table table-id] ((juxt :kind :id) %)) %) universe)))
+                  (find-table universe table-id)))
           (is (= #{::complexity/measure-names} @degraded))))
       (testing "without one, the error propagates"
         (is (thrown? java.sql.SQLException (#'complexity/enumerate-catalogs nil nil)))))))
