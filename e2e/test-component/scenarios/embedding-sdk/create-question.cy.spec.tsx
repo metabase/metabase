@@ -238,9 +238,18 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
   it("should open the staged picker's Models list on Our analytics when the root collection loads late", () => {
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
+    // send "Our analytics" only after the collections tree has answered
+    let releaseRootCollection = () => {};
+    const collectionsTreeAnswered = new Promise<void>((resolve) => {
+      releaseRootCollection = resolve;
+    });
+    cy.intercept(
+      { method: "GET", pathname: "/api/collection/tree" },
+      (request) => request.continue(() => releaseRootCollection()),
+    );
     cy.intercept(
       { method: "GET", pathname: "/api/collection/root" },
-      (request) => request.continue((response) => response.setDelay(1000)),
+      (request) => collectionsTreeAnswered.then(() => request.continue()),
     );
 
     mountSdkContent(
