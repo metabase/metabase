@@ -153,6 +153,18 @@
                       "Rewrite the SQL as one statement, then retry.")
                  (:output result))))))))
 
+(deftest document-construct-sql-chart-invalid-template-syntax-test
+  (testing "SQL with an unclosed `[[` gets the SQL tools' template syntax recovery, without the edit-only sentence"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
+        (let [result (invoke-document-tool "document_construct_sql_chart"
+                                           (assoc sql-chart-args :database_id db-id :sql "SELECT * FROM t [[WHERE x = {{x}}"))
+              output (:output result)]
+          (is (= {:class :recoverable :code ::sql.common/invalid-template-syntax} (:error result)))
+          (is (str/includes? output "invalid Metabase `{{...}}` or `[[...]]` syntax"))
+          (is (str/includes? output "Parser details: \"Invalid query: found '[[' or '{{' with no matching"))
+          (is (not (str/includes? output "this edit did not change"))))))))
+
 (deftest document-construct-sql-chart-blank-sql-test
   (testing "blank SQL gets the SQL tools' recovery step instead of a draft"
     (mt/with-current-user (mt/user->id :crowberto)

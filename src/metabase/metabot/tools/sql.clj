@@ -156,8 +156,9 @@
    [:title :string]])
 
 (defn- sql-edit-result
-  [operation-result title instruction-fn ctx]
-  (let [{:keys [query-id query-content] :as action-result} (sql.common/validated-sql-action! operation-result)
+  [operation-result title instruction-fn ctx & {:keys [edit?]}]
+  (let [{:keys [query-id query-content] :as action-result} (sql.common/validated-sql-action!
+                                                            operation-result {:edit? edit?})
         structured (assoc action-result :result-type :query)
         buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
         instr (instruction-fn query-id (some? buffer-id))]
@@ -183,7 +184,7 @@
                              :edits edits
                              :checklist checklist
                              :queries-state (shared/current-queries-state (:memory-atom ctx))}))
-                     title instructions/edit-sql-query-instructions-for ctx)))
+                     title instructions/edit-sql-query-instructions-for ctx {:edit? true})))
 
 (def edit-sql-query-tool
   "The tool that applies structured edits to a stored SQL query."
