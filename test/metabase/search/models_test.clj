@@ -1,6 +1,6 @@
 (ns ^:synchronized metabase.search.models-test
-  "Pins the delete-capture wiring in [[metabase.search.models]]: deletes now enqueue re-derivation
-  messages via the [[metabase.app-db.dml-capture]] seam instead of firing no hooks at all."
+  "Pins the delete-capture wiring in [[metabase.search.models]]: a delete enqueues re-derivation messages through
+  the [[metabase.app-db.dml-capture]] seam."
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.dml-capture :as dml-capture]
@@ -28,7 +28,7 @@
           ;; the temp card's own creation enqueues an unrelated message via the after-insert hook; only the
           ;; delete's message is under test.
           (reset! calls [])
-          (t2/delete! :model/Card id)
+          (t2/delete! :model/Card :id id)
           (is (=? [#{["card" [:= id :this.id]]
                      ["dataset" [:= id :this.id]]
                      ["metric" [:= id :this.id]]
@@ -47,31 +47,30 @@
     (is (nil? (dml-capture/capture-fields :model/Card :insert)))
     (is (nil? (dml-capture/capture-fields :model/Card :update)))))
 
-(deftest ^:synchronized purge-one-on-delete-test
+(deftest purge-one-on-delete-test
   (testing "deleting an indexed card purges its index row (appdb engine)"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {id :id} {:name "Temp Purge Card"}]
         (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str id))))
-        (t2/delete! :model/Card id)
+        (t2/delete! :model/Card :id id)
         (is (= 0 (t2/count (search.index/active-table) :model "card" :model_id (str id))))))))
 
-(deftest ^:synchronized purge-bulk-on-delete-test
+(deftest purge-bulk-on-delete-test
   (testing "bulk deletion purges every affected row (cards first, then their now-empty collection)"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Temp Bulk Collection"}
-                     :model/Card       {c1 :id}      {:name "Bulk Card 1" :collection_id coll-id}
-                     :model/Card       {c2 :id}      {:name "Bulk Card 2" :collection_id coll-id}]
+                     :model/Card       {c1 :id}      {:name "Bulk Card 1", :collection_id coll-id}
+                     :model/Card       {c2 :id}      {:name "Bulk Card 2", :collection_id coll-id}]
         (is (= 2 (t2/count (search.index/active-table) :model "card" :model_id [:in [(str c1) (str c2)]])))
         (is (= 1 (t2/count (search.index/active-table) :model "collection" :model_id (str coll-id))))
         ;; cards must go first: a collection with contents refuses deletion.
         (t2/delete! :model/Card :collection_id coll-id)
-        (t2/delete! :model/Collection coll-id)
+        (t2/delete! :model/Collection :id coll-id)
         (is (= 0 (t2/count (search.index/active-table) :model "card" :model_id [:in [(str c1) (str c2)]])))
         (is (= 0 (t2/count (search.index/active-table) :model "collection" :model_id (str coll-id))))))))
 
 (deftest delete-of-a-joined-model-enqueues-the-fed-models-test
-  (testing "deleting a row that only feeds other models' docs (not itself searchable) enqueues re-derivation
-            for every search-model it feeds, keyed off the review's own captured columns"
+  (testing "deleting a row that only feeds other models' documents enqueues re-derivation for each of them"
     (let [calls (atom [])]
       (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async!
                                   (fn [updates] (swap! calls conj updates))]
@@ -82,7 +81,7 @@
                                                               :status              "verified"
                                                               :most_recent         true}]
           (reset! calls [])
-          (t2/delete! :model/ModerationReview mr-id)
+          (t2/delete! :model/ModerationReview :id mr-id)
           (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
             (is (=? [#{["card" where] ["dataset" where] ["metric" where]}]
                     (mapv set @calls)))))))))
@@ -96,7 +95,7 @@
           (reset! calls [])
           (is (thrown? clojure.lang.ExceptionInfo
                        (t2/with-transaction [_conn]
-                         (t2/delete! :model/Card id)
+                         (t2/delete! :model/Card :id id)
                          (throw (ex-info "boom" {})))))
           (is (empty? @calls))
-          (is (t2/exists? :model/Card id)))))))
+          (is (t2/exists? :model/Card :id id)))))))
