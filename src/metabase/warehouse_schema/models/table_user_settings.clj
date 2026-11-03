@@ -110,12 +110,6 @@
       (dissoc changes :visibility_type))
     changes))
 
-(defn- write-user-values!
-  "Write `values` into the Table with `table-id` with a new `updated_at`, so that sync skips an update it read the row
-  for before this edit."
-  [table-id values]
-  (warehouse-schema.db/update-table! table-id (assoc values :updated_at (mi/current-timestamp))))
-
 (mu/defn upsert-table-user-settings!
   "Record the user-settable Table columns present in `settings` as the user values of `table`, in its settings and its
   row; a nil for a column without a set flag unsets it."
@@ -128,7 +122,7 @@
           (if existing
             (warehouse-schema.db/update-table-user-settings! id (with-set-flags settings settings settings))
             (warehouse-schema.db/insert-table-user-settings! (assoc settings :table_id id)))
-          (write-user-values! id settings))))))
+          (warehouse-schema.db/update-table! id settings))))))
 
 (mu/defn upsert-table-user-settings-for-tables!
   "[[upsert-table-user-settings!]] for every Table in `table-ids`, with one statement per kind for the settings and one for
@@ -144,7 +138,7 @@
           (when (seq existing)
             (warehouse-schema.db/update-table-user-settings-for-tables!
              existing (with-set-flags settings settings settings))))
-        (warehouse-schema.db/update-tables! table-ids (assoc settings :updated_at (mi/current-timestamp)))))))
+        (warehouse-schema.db/update-tables! table-ids settings)))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
@@ -209,8 +203,8 @@
     (let [settings (serdes/default-load-one! ingested maybe-local)
           table-id (serdes/*import-table-fk* (serdes/table-path->table-ref (pop (serdes/path ingested))))]
       (let [settings (warehouse-schema.db/table-user-settings table-id)]
-        (write-user-values! table-id (without-derived-half
-                                      (select-keys settings (user-settings/user-set-table-columns settings)))))
+        (warehouse-schema.db/update-table! table-id (without-derived-half
+                                                     (select-keys settings (user-settings/user-set-table-columns settings)))))
       (when (contains? ingested :fields)
         ((:import-with-context legacy-fields)
          (t2/instance :model/TableUserSettings {:table_id table-id}) :fields (:fields ingested)))

@@ -808,38 +808,22 @@
            (isa? base-type :type/TextLike))
        (can-be-list? base-type semantic-type)))
 
-(def ^:private user-set-update-attempts
-  "How many times sync tries its update of a Field or Table when user edits keep landing meanwhile."
-  3)
-
 (mu/defn update-field-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
-  "Apply to the Field with `field-id` the `changes` to columns no user set, reading again what a user set when an edit
-  lands meanwhile, returning the number updated."
+  "Apply to the Field with `field-id` the `changes` to columns no user set, returning the number updated."
   [field-id :- ::lib.schema.id/field
    changes  :- ::warehouse-schema.schema/field.update]
-  (loop [attempts user-set-update-attempts]
-    (let [updated-at (sync.db/field-updated-at field-id)
-          changes    (apply dissoc changes (warehouse-schema.user-settings/user-set-field-columns
-                                            (sync.db/field-user-settings field-id)))
-          updated    (if (and updated-at (seq changes))
-                       (sync.db/update-field-unless-updated-since! field-id updated-at changes)
-                       0)]
-      (if (and (zero? updated) updated-at (seq changes) (> attempts 1))
-        (recur (dec attempts))
-        updated))))
+  (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-field-columns
+                                       (sync.db/field-user-settings field-id)))]
+    (if (seq changes)
+      (sync.db/update-field! field-id changes)
+      0)))
 
 (mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
-  "Apply to the Table with `table-id` the `changes` to columns no user set, reading again what a user set when an edit
-  lands meanwhile, returning the number updated."
+  "Apply to the Table with `table-id` the `changes` to columns no user set, returning the number updated."
   [table-id :- ::lib.schema.id/table
    changes  :- ::warehouse-schema.schema/table.update]
-  (loop [attempts user-set-update-attempts]
-    (let [updated-at (sync.db/table-updated-at table-id)
-          changes    (apply dissoc changes (warehouse-schema.user-settings/user-set-table-columns
-                                            (sync.db/table-user-settings table-id)))
-          updated    (if (and updated-at (seq changes))
-                       (sync.db/update-table-unless-updated-since! table-id updated-at changes)
-                       0)]
-      (if (and (zero? updated) updated-at (seq changes) (> attempts 1))
-        (recur (dec attempts))
-        updated))))
+  (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-table-columns
+                                       (sync.db/table-user-settings table-id)))]
+    (if (seq changes)
+      (sync.db/update-table! table-id changes)
+      0)))

@@ -602,31 +602,6 @@
       (is (=? {:fk_target_field_id pk-id :semantic_type :type/FK :has_field_values :auto-list}
               (t2/select-one :model/Field :id fk-id))))))
 
-(deftest sync-update-skips-field-edited-since-test
-  (testing "sync's update of a Field applies only while the Field's updated_at is still the one sync read"
-    (mt/with-temp [:model/Field {field-id :id} {:description "old"}]
-      (let [updated-at (sync.db/field-updated-at field-id)]
-        (testing "an edit since sync read it"
-          (is (= 0 (sync.db/update-field-unless-updated-since! field-id #t "2020-01-01T00:00:00Z" {:description "sync"})))
-          (is (= "old" (t2/select-one-fn :description :model/Field :id field-id))))
-        (testing "no edit since sync read it"
-          (is (= 1 (sync.db/update-field-unless-updated-since! field-id updated-at {:description "sync"})))
-          (is (= "sync" (t2/select-one-fn :description :model/Field :id field-id))))))))
-
-(deftest sync-update-skips-table-edited-since-test
-  (testing "sync's update of a Table counts no row, rather than failing, when the Table changed since sync read it"
-    (mt/with-temp [:model/Table {table-id :id} {:description "old"}]
-      (is (= 0 (sync.db/update-table-unless-updated-since! table-id #t "2020-01-01T00:00:00Z" {:description "sync"})))
-      (is (= 1 (sync.db/update-table-unless-updated-since!
-                table-id (sync.db/table-updated-at table-id) {:description "sync"}))))))
-
-(deftest user-edit-changes-updated-at-test
-  (testing "a user edit changes the row's updated_at even when its value is already there"
-    (mt/with-temp [:model/Field {field-id :id :as field} {:description "same"}]
-      (t2/update! :model/Field :id field-id {:updated_at #t "2020-01-01T00:00:00Z"})
-      (field-user-settings/upsert-field-user-settings! field {:description "same"})
-      (is (not= #t "2020-01-01T00:00:00Z" (sync.db/field-updated-at field-id))))))
-
 (deftest database-default-test
   (with-test-db
     (let [ddl "CREATE TABLE t (a INTEGER DEFAULT 42, b INTEGER NULL)"]

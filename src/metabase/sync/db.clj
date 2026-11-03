@@ -230,19 +230,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/TableUserSettings :table_id table-id))
 
-(mu/defn table-updated-at :- [:maybe ms/TemporalInstant]
-  "The `updated_at` of the Table with `table-id`, which every user edit of it changes."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :updated_at :model/Table :id table-id))
-
-(mu/defn update-table-unless-updated-since! :- ms/IntGreaterThanOrEqualToZero
-  "Apply `changes` to the Table with `table-id` unless its `updated_at` is no longer `updated-at`, returning the number
-  updated."
-  [table-id   :- ::lib.schema.id/table
-   updated-at :- ms/TemporalInstant
-   changes    :- ::warehouse-schema.schema/table.update]
-  (count (t2/update-returning-pks! :model/Table :id table-id :updated_at updated-at changes)))
-
 (mu/defn update-table!
   "Apply `changes` to the Table with `table-id`, returning the number updated."
   [table-id :- ::lib.schema.id/table
@@ -495,19 +482,6 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/FieldUserSettings :field_id field-id))
 
-(mu/defn field-updated-at :- [:maybe ms/TemporalInstant]
-  "The `updated_at` of the Field with `field-id`, which every user edit of it changes."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :updated_at :model/Field :id field-id))
-
-(mu/defn update-field-unless-updated-since! :- ms/IntGreaterThanOrEqualToZero
-  "Apply `changes` to the Field with `field-id` unless its `updated_at` is no longer `updated-at`, returning the number
-  updated."
-  [field-id   :- ::lib.schema.id/field
-   updated-at :- ms/TemporalInstant
-   changes    :- ::warehouse-schema.schema/field.update]
-  (count (t2/update-returning-pks! :model/Field :id field-id :updated_at updated-at changes)))
-
 (mu/defn update-field!
   "Apply `changes` to the Field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
@@ -609,14 +583,14 @@
   (let [fk-id (:id (t2/query-one (fk-field-id-subquery db-id fk-table-schema fk-table-name fk-column-name true)))
         pk-id (:id (t2/query-one (fk-field-id-subquery db-id pk-table-schema pk-table-name pk-column-name false)))]
     (if (and fk-id pk-id)
-      (let [field    (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values :updated_at] :id fk-id)
+      (let [field    (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values] :id fk-id)
             user-set (warehouse-schema.user-settings/user-set-field-columns (field-user-settings fk-id))]
         (if (and (not (user-set :fk_target_field_id)) (not= pk-id (:fk_target_field_id field)))
-          (update-field-unless-updated-since!
-           fk-id (:updated_at field) (apply dissoc
-                                            (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
-                                              (= :auto-list (:has_field_values field)) (assoc :has_field_values nil))
-                                            user-set))
+          (update-field!
+           fk-id (apply dissoc
+                        (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
+                          (= :auto-list (:has_field_values field)) (assoc :has_field_values nil))
+                        user-set))
           0))
       0)))
 

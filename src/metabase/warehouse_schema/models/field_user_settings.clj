@@ -66,12 +66,6 @@
   [settings]
   (delete-when-empty! settings))
 
-(defn- write-user-values!
-  "Write `values` into the Field with `field-id` with a new `updated_at`, so that sync skips an update it read the row
-  for before this edit."
-  [field-id values]
-  (warehouse-schema.db/update-field! field-id (assoc values :updated_at (mi/current-timestamp))))
-
 (mu/defn upsert-field-user-settings!
   "Record the user-settable Field columns present in `settings` as the user values of `field`, in its settings and its
   row; a nil for a column without a set flag unsets it."
@@ -84,7 +78,7 @@
           (if existing
             (warehouse-schema.db/update-field-user-settings! id (with-set-flags settings settings))
             (warehouse-schema.db/insert-field-user-settings! (assoc settings :field_id id)))
-          (write-user-values! id settings))))))
+          (warehouse-schema.db/update-field! id settings))))))
 
 (mu/defn set-custom-positions!
   "Record `field-id->position` as the Fields' user `custom_position`s, in their settings and their rows."
@@ -149,7 +143,7 @@
     (u/prog1 (serdes/default-load-one! ingested maybe-local)
       (when-let [field-id (or (:field_id maybe-local) (:field_id <>))]
         (let [settings (warehouse-schema.db/field-user-settings field-id)]
-          (write-user-values! field-id (select-keys settings (user-settings/user-set-field-columns settings))))))))
+          (warehouse-schema.db/update-field! field-id (select-keys settings (user-settings/user-set-field-columns settings))))))))
 
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
   {:copy      [:semantic_type :description :display_name :visibility_type
