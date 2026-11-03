@@ -19,6 +19,8 @@ import { TYPING_PAUSE_MS } from "metabase/querying/filters/components/FilterPick
 import { Box, Button, Group, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { areQueriesEqual } from "../../../FilterAutoApply/utils";
+
 import {
   type CancelReason,
   type ColumnKeyState,
@@ -88,7 +90,15 @@ export type ExpressionBarProps = {
   trailingError?: string;
   /** A nested bar reports its parse error to the bar around it instead of showing it. */
   onErrorChange?: (error: string | undefined) => void;
+  /** The chooser offers the summary's columns too, after a "then". Off where one stage has its own bar. */
+  hasSummaries?: boolean;
+  /** Pills styled like the notebook's cells: the step colour, square corners, larger. */
+  variant?: ExpressionBarVariant;
+  /** The text of the empty bar and of the idle caret at its end. */
+  placeholder?: string;
 };
+
+export type ExpressionBarVariant = "header" | "notebook";
 
 /** How deep the parentheses must nest before editing lays them out as rows. */
 const ROWS_FROM_NESTING = 2;
@@ -129,7 +139,7 @@ type PillEdit = {
  * into one line on blur.
  */
 export function ExpressionBar({
-  query,
+  query: queryProp,
   stageIndex,
   onChange,
   isAutoApply,
@@ -141,7 +151,11 @@ export function ExpressionBar({
   onDraftChange,
   trailingError,
   onErrorChange,
+  hasSummaries = true,
+  variant = "header",
+  placeholder = getFilterPlaceholder(),
 }: ExpressionBarProps) {
+  const query = useStableQuery(queryProp);
   const committedTokens = useMemo(
     () => readTokens(query, stageIndex),
     [query, stageIndex],
@@ -336,8 +350,8 @@ export function ExpressionBar({
       ]
     : [];
   const seriesColumns = useMemo(
-    () => (isNested ? [] : getSeriesColumns(baseQuery)),
-    [baseQuery, isNested],
+    () => (isNested || !hasSummaries ? [] : getSeriesColumns(baseQuery)),
+    [baseQuery, isNested, hasSummaries],
   );
   // A summary filter always lands after the "then", AND-ed on to every row
   // filter. Picked at the end, an "or" before it gets its parentheses for
@@ -843,8 +857,6 @@ export function ExpressionBar({
   // logic tokens on top, then the operator and the values, all inline. Closed,
   // it's a plain text caret that reopens the pill on any key.
   const series = pickedSeries != null ? seriesColumns[pickedSeries] : undefined;
-  // At the end, the idle caret says what can be typed, like the empty bar does.
-  const idlePlaceholder = getFilterPlaceholder();
   const isPlaceholderShown =
     !isNested && !canExitRight && text === "" && caretIndex === tokens.length;
   const caretView = series ? (
@@ -871,6 +883,7 @@ export function ExpressionBar({
       key={`${caretIndex}:${pillKey}`}
       query={query}
       hasPlaceholder={caretIndex === tokens.length && !canExitRight}
+      placeholder={placeholder}
       stageIndex={stageIndex}
       initialText={text}
       leadingGroups={logicGroups}
@@ -896,10 +909,10 @@ export function ExpressionBar({
         className={S.input}
         style={{
           width: isPlaceholderShown
-            ? `${idlePlaceholder.length}ch`
+            ? `${placeholder.length}ch`
             : `calc(${text.length}ch + 2px)`,
         }}
-        placeholder={isPlaceholderShown ? idlePlaceholder : undefined}
+        placeholder={isPlaceholderShown ? placeholder : undefined}
         value={text}
         aria-label={t`Filter expression`}
         onChange={(event) => {
@@ -954,6 +967,7 @@ export function ExpressionBar({
           }
         }}
         data-testid="filter-expression-bar"
+        data-variant={variant}
         {...{ [BAR_ATTR]: true }}
       >
         {/* One keyed array holds the caret so React moves it instead of remounting it. */}
@@ -1084,9 +1098,7 @@ export function ExpressionBar({
           !trailing &&
           text === "" &&
           !isOpen &&
-          !hasFocus && (
-            <span className={S.placeholder}>{getFilterPlaceholder()}</span>
-          )}
+          !hasFocus && <span className={S.placeholder}>{placeholder}</span>}
         {!isNested && (
           <Group gap="sm" ml="auto" pl="md" wrap="nowrap">
             {shownError != null && (
@@ -1566,4 +1578,18 @@ function StageSeparatorMark() {
       {t`then`}
     </span>
   );
+}
+
+/**
+ * The same query object for as long as the query itself stays the same: the
+ * notebook hands out a new object on every render, which would reset the
+ * draft each time anything else on the page changes.
+ */
+function useStableQuery(query: Lib.Query) {
+  const [stableQuery, setStableQuery] = useState(query);
+  if (stableQuery !== query && !areQueriesEqual(stableQuery, query)) {
+    setStableQuery(query);
+    return query;
+  }
+  return stableQuery;
 }

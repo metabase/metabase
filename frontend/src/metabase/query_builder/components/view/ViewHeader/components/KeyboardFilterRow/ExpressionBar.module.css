@@ -290,3 +290,67 @@
   padding: 0;
   border: none;
 }
+
+/* Prototype: the notebook variant, inside the step's cell. Everything scales to
+   the cell items: 6px corners, larger connectors, the rings on the cell's
+   background and the placeholder in the step colour. */
+[data-variant="notebook"] {
+  &.bar {
+    row-gap: 0.5rem;
+    min-height: var(--expression-pill-height);
+  }
+
+  & .filterToken {
+    border-radius: 6px;
+  }
+
+  & .filterToken:focus,
+  & .connector:focus-visible,
+  & .connector[role="button"]:focus-visible {
+    box-shadow:
+      0 0 0 1px var(--mb-color-background_page-primary),
+      0 0 0 2px var(--expression-pill-color);
+  }
+
+  & .filterToken.tokenError,
+  & .filterToken.tokenError > [data-testid="draft-filter-pill"],
+  & .connector.tokenError {
+    box-shadow:
+      0 0 0 1px var(--mb-color-background_page-primary),
+      0 0 0 2px var(--mb-color-feedback-negative);
+  }
+
+  & .connector {
+    padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+    border-radius: 6px;
+    font-size: var(--mantine-font-size-md);
+  }
+
+  & .connectorParen {
+    padding: var(--mantine-spacing-xs);
+  }
+
+  & .caretSlot:has(> :not(.typingIdle)),
+  & .caretSlot:has(> .typingIdle:focus-within) {
+    padding: 0 0.5rem;
+  }
+
+  & .input {
+    height: var(--expression-pill-height);
+    color: var(--expression-pill-color);
+    caret-color: var(--expression-pill-color);
+    font-size: inherit;
+  }
+
+  & .input::placeholder,
+  & .placeholder {
+    color: var(--expression-pill-color);
+    font-weight: bold;
+    font-size: inherit;
+    line-height: var(--expression-pill-height);
+  }
+
+  & .placeholder {
+    opacity: 0.8;
+  }
+}
