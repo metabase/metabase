@@ -133,7 +133,7 @@
            remote-sync
            search
            settings
-           users
+           users.schema
            util
            warehouses}
    :model-exports #{:model/Action :model/ImplicitAction :model/QueryAction}
@@ -327,6 +327,7 @@
            permissions
            premium-features
            users
+           users.schema
            util}
    :model-exports #{:model/ApiKey :model/ApiKeyUsageLog}
    :model-imports #{:model/User}}
@@ -731,7 +732,7 @@
    :uses #{app-db
            lib.schema
            models
-           users
+           users.schema
            util}
    :model-exports #{:model/ModerationReview}
    :model-imports #{:model/Card :model/Dashboard :model/User}}
@@ -1169,14 +1170,16 @@
 
   geojson
   {:team "UX West"
-   :api  #{metabase.geojson.api
-           metabase.geojson.init
-           metabase.geojson.settings}
+   :api  #{metabase.geojson.core metabase.geojson.init metabase.geojson.settings}
+   :uses #{settings util util.config}}
+
+  geojson.rest
+  {:team "UX West"
+   :api  #{metabase.geojson.rest.api}
    :uses #{api
+           geojson
            permissions
-           settings
-           util
-           util.config}}
+           util}}
 
   glossary
   {:team "Gadget"
@@ -1388,15 +1391,17 @@
 
   logger
   {:team "DevEx"
-   :api  #{metabase.logger.api
-           metabase.logger.core
-           metabase.logger.init}
+   :api  #{metabase.logger.core metabase.logger.init}
+   :uses #{util.classloader util.config}}
+
+  logger.rest
+  {:team "DevEx"
+   :api  #{metabase.logger.rest.api}
    :uses #{analytics
            api
+           logger
            permissions
-           util
-           util.classloader
-           util.config}}
+           util}}
 
   mcp
   {:team "Metabot"
@@ -1508,7 +1513,7 @@
            premium-features
            remote-sync
            search
-           users
+           users.schema
            util
            warehouses.schema}
    :model-exports #{:model/Measure}
@@ -1868,7 +1873,7 @@
            permissions
            premium-features
            remote-sync
-           users
+           users.schema
            util}
    :model-exports #{:model/NativeQuerySnippet}
    :model-imports #{:model/Collection :model/User}}
@@ -1909,6 +1914,7 @@
            task.history
            tracing
            users
+           users.schema
            util
            util.config}
    :model-exports #{:model/Notification
@@ -2000,12 +2006,11 @@
            remote-sync
            settings
            tracing
-           users
+           users.schema
            util
            util.config
            warehouses
-           warehouses.schema
-           enterprise/permissions}
+           warehouses.schema}
    :model-exports #{:model/ApplicationPermissionsRevision
                     :model/CollectionPermissionGraphRevision
                     :model/DataPermissions
@@ -2157,10 +2162,7 @@
            task.history
            tracing
            util
-           util.classloader
-           util.config
-           enterprise/permissions
-           enterprise/permissions.sandbox}
+           util.config}
    :model-exports #{:model/Pulse
                     :model/PulseCard
                     :model/PulseChannel
@@ -2376,7 +2378,6 @@
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
-                    :model/QueryCache
                     :model/QueryExecution
                     :model/Table}}
 
@@ -2385,7 +2386,8 @@
    :ns-prefix "metabase.query-processor.middleware.cache-backend"
    :api       #{metabase.query-processor.middleware.cache-backend.db
                 metabase.query-processor.middleware.cache-backend.interface}
-   :uses      #{premium-features query-processor util}}
+   :uses      #{app-db premium-features util}
+   :model-imports #{:model/QueryCache}}
 
   query-processor.driver-api
   {:team "Querying Platform"
@@ -2610,7 +2612,7 @@
            premium-features
            remote-sync
            search
-           users
+           users.schema
            util
            warehouses.schema}
    :model-exports #{:model/Segment}
@@ -2661,8 +2663,7 @@
            tracing
            users
            util
-           util.config
-           enterprise/custom-viz-plugin}
+           util.config}
    :model-imports #{:model/Session}}
 
   session
@@ -2820,7 +2821,7 @@
            request.schema
            session.login-history
            settings
-           users
+           users.schema
            util}
    :model-exports #{:model/AuthIdentity}
    :model-imports #{:model/Session :model/User}}
@@ -3221,12 +3222,12 @@
 
   users
   {:team "UX West"
-   :module-exports #{users.tenants}
+   :module-exports #{users.schema
+                     users.tenants}
    :api  #{metabase.users.core
            metabase.users.init
            metabase.users.models.user
            metabase.users.models.user-parameter-value
-           metabase.users.schema
            metabase.users.settings}
    :uses #{analytics
            api
@@ -3241,10 +3242,10 @@
            setup
            sso.auth-identity
            system
+           users.schema
            users.tenants
            util
-           util.config
-           enterprise/permissions}
+           util.config}
    :model-exports #{:model/User :model/UserParameterValue}
    :model-imports #{:model/Dashboard
                     :model/Database
@@ -3271,16 +3272,21 @@
            sso.auth-identity
            system
            users
+           users.schema
            users.tenants
            util
-           util.config
-           enterprise/permissions}
+           util.config}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/LoginHistory
                     :model/Session
                     :model/User}}
+
+  users.schema
+  {:team "UX West"
+   :api  #{metabase.users.schema}
+   :uses #{lib.schema util}}
 
   users.tenants
   {:team "Admin Webapp"
@@ -3564,6 +3570,7 @@
            sso.auth-identity
            sync
            users
+           users.schema
            util
            warehouses}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
@@ -3811,10 +3818,7 @@
 
   enterprise/custom-viz-plugin
   {:team "Gadget"
-   :api  #{metabase-enterprise.custom-viz-plugin.api
-           metabase-enterprise.custom-viz-plugin.api.sandbox-host
-           metabase-enterprise.custom-viz-plugin.init
-           metabase-enterprise.custom-viz-plugin.settings}
+   :api  #{metabase-enterprise.custom-viz-plugin.api metabase-enterprise.custom-viz-plugin.api.sandbox-host metabase-enterprise.custom-viz-plugin.init}
    :uses #{api
            api-scope
            events
@@ -4180,7 +4184,7 @@
    :module-exports #{enterprise/permissions.debug
                      enterprise/permissions.impersonation
                      enterprise/permissions.sandbox}
-   :api #{metabase-enterprise.advanced-permissions.api.routes metabase-enterprise.advanced-permissions.common metabase-enterprise.advanced-permissions.models.permissions.group-manager}
+   :api #{metabase-enterprise.advanced-permissions.api.routes}
    :uses #{api
            audit-app
            lib
@@ -4259,6 +4263,7 @@
            query-processor
            request
            users
+           users.schema
            users.tenants
            util
            warehouses
@@ -4508,7 +4513,7 @@
            permissions
            settings
            system
-           users
+           users.schema
            util}
    :model-imports #{:model/ApiKey
                     :model/PermissionsGroup
@@ -4546,7 +4551,7 @@
            sso.auth-identity
            system
            task
-           users
+           users.schema
            util}
    :model-imports #{:model/AuthIdentity :model/Session :model/User}}
 
