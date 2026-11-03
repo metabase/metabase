@@ -45,10 +45,9 @@
 
   Rendering rules: arrays whose items are all literals print on one line;
   `:call` arguments always print inline; object keys print bare when they are
-  valid JavaScript identifiers and quoted otherwise. A metadata block whose
-  values are all scalars prints on one line, so a field costs a reader one line
-  of the file; one with a nested array or object prints as
-  `JSON.stringify(x, null, 2)` would, one array item per line. [[render-js]]
+  valid JavaScript identifiers and quoted otherwise. A metadata block prints on
+  one line, nested arrays and objects included, so an entry's metadata is the
+  line before its properties and a reader can find it with `grep`. [[render-js]]
   prints a `:module`; [[Module]] is the Malli schema for the whole grammar.
 
   The printer is deliberately option-free and policy-free: decisions about
@@ -149,23 +148,22 @@
     [nil item]))
 
 (defn- metadata-json
-  "Renders `metadata` as JSON: on one line when every value is a scalar, otherwise as `JSON.stringify(x, null, 2)`
-  would, with each line after the first indented by `indent`."
-  [metadata indent]
-  (if (not-any? coll? (vals metadata))
-    (str "{ "
-         (str/join ", " (for [[k v] metadata]
-                          (str (json/encode (u/qualified-name k)) ": " (json/encode v))))
-         " }")
-    (str/replace (json/encode metadata {:pretty {:indent-arrays? true :object-field-value-separator ": "}})
-                 "\n" (str "\n" (spaces indent)))))
+  "Renders `value` as JSON on one line, nested arrays and objects included."
+  [value]
+  (cond
+    (map? value)        (str "{ "
+                             (str/join ", " (for [[k v] value]
+                                              (str (json/encode (u/qualified-name k)) ": " (metadata-json v))))
+                             " }")
+    (sequential? value) (str "[ " (str/join ", " (map metadata-json value)) " ]")
+    :else               (json/encode value)))
 
 (defn- metadata-block
   "Returns a `/* metadata: {...} */` block. A `*/` can only occur inside a JSON string, where it is written as the
   equivalent `*\\/`, so the block always ends where it should."
   [indent metadata]
   (str (spaces indent) "/* metadata: "
-       (str/replace (metadata-json metadata indent) "*/" "*\\/")
+       (str/replace (metadata-json metadata) "*/" "*\\/")
        " */"))
 
 (declare render-expression)
