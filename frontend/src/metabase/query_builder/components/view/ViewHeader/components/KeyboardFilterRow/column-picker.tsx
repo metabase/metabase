@@ -50,7 +50,7 @@ export function useColumnSuggestions(
       (group, groupIndex): SuggestionGroup[] => {
         const segmentGroup: SuggestionGroup = {
           section: group.label,
-          sectionIcon: "table" as const,
+          sectionIcon: group.icon,
           options: group.segments.map((segment, segmentIndex) => {
             const key = `segment:${groupIndex}:${segmentIndex}`;
             items.set(key, { type: "segment", segment });
@@ -75,7 +75,7 @@ export function useColumnSuggestions(
             segmentGroup,
             {
               section: group.label,
-              sectionIcon: "table" as const,
+              sectionIcon: group.icon,
               options: keyedColumns.map(({ key, column }) =>
                 columnOption(key, column),
               ),
@@ -86,7 +86,7 @@ export function useColumnSuggestions(
           segmentGroup,
           ...categories.map((category) => ({
             section: group.label,
-            sectionIcon: "table" as const,
+            sectionIcon: group.icon,
             label: category.name,
             options: keyedColumns
               .filter(({ column }) => {

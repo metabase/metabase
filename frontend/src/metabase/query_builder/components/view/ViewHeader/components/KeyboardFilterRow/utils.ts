@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { dayjs } from "metabase/dayjs";
 import {
   SHORTCUT_OPTION_GROUPS,
@@ -35,6 +36,7 @@ import {
 import { formatNumber } from "metabase/utils/formatting";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 
 import type {
   ColumnKind,
@@ -48,6 +50,7 @@ export const STAGE_INDEX = -1;
 
 export type ColumnGroup = {
   label: string;
+  icon: IconName;
   columns: DraftColumn[];
   segments: Lib.SegmentMetadata[];
 };
@@ -61,6 +64,7 @@ export function getColumnGroups(
     const groupInfo = Lib.displayInfo(query, stageIndex, group);
     return {
       label: groupInfo.displayName,
+      icon: getColumnGroupIcon(groupInfo),
       columns: Lib.getColumnsFromColumnGroup(group).map((column) =>
         getDraftColumn(query, stageIndex, column),
       ),
