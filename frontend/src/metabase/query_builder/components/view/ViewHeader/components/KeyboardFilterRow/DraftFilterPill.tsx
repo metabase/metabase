@@ -383,9 +383,27 @@ export function DraftFilterPill({
         return false;
       }
     }
+    const input = event.currentTarget;
+    if (
+      event.key === "ArrowLeft" &&
+      input.selectionStart === 0 &&
+      input.selectionEnd === 0 &&
+      moveToPart("previous")
+    ) {
+      return true;
+    }
+    if (
+      event.key === "ArrowRight" &&
+      input.selectionStart === input.value.length &&
+      moveToPart("next")
+    ) {
+      return true;
+    }
     switch (event.key) {
       case "Escape":
-        if (editedPart != null) {
+        // Prototype: Escape leaves an existing filter, whatever part the
+        // user edits. A new filter goes back from an edited part first.
+        if (editedPart != null && filter == null) {
           editPart(undefined);
         } else {
           onCancel("escape");
@@ -459,12 +477,65 @@ export function DraftFilterPill({
     ) {
       event.preventDefault();
       editPart("operator");
+    } else if (
+      event.key === "ArrowLeft" &&
+      event.currentTarget.selectionStart === 0 &&
+      event.currentTarget.selectionEnd === 0
+    ) {
+      // The first input goes to the operator, the next ones to the input
+      // before them.
+      event.preventDefault();
+      if (index === 0) {
+        editPart("operator");
+      } else {
+        focusFixedValueInput(event.currentTarget, index - 1);
+      }
+    } else if (
+      event.key === "ArrowRight" &&
+      event.currentTarget.selectionStart === event.currentTarget.value.length
+    ) {
+      // The last input has nothing after it, so the key does nothing then.
+      if (focusFixedValueInput(event.currentTarget, index + 1)) {
+        event.preventDefault();
+      }
     }
   };
 
   const editPart = (part: "column" | "operator" | undefined) => {
     setEditedPart(part);
     setText("");
+  };
+
+  /**
+   * Prototype: the arrow keys at the start or the end of an input edit the
+   * part before or after it: the column, the operator or the values. False
+   * when there is no such part, so the key does what it does by default.
+   */
+  const moveToPart = (direction: "previous" | "next") => {
+    if (direction === "previous") {
+      if (step === "operator" && column != null) {
+        editPart("column");
+        return true;
+      }
+      if (step === "value" && operator != null) {
+        editPart("operator");
+        return true;
+      }
+      return false;
+    }
+    if (step === "column" && operator != null) {
+      editPart("operator");
+      return true;
+    }
+    if (
+      step === "operator" &&
+      operator != null &&
+      operator.valueKind !== "none"
+    ) {
+      editPart(undefined);
+      return true;
+    }
+    return false;
   };
 
   const columnSegment = column != null && (
@@ -1099,6 +1170,24 @@ function ValueTokens({
       </span>
     </Fragment>
   ));
+}
+
+/**
+ * Prototype: focuses the value input at `index` of the pill, like the "and"
+ * end of a "between" filter, with the caret at the end. False when there is
+ * no such input.
+ */
+function focusFixedValueInput(currentInput: HTMLInputElement, index: number) {
+  const inputs = currentInput
+    .closest("[data-testid='draft-filter-pill']")
+    ?.querySelectorAll<HTMLInputElement>("input");
+  const input = inputs?.[index];
+  if (input == null) {
+    return false;
+  }
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  return true;
 }
 
 function isFixedValueCount(operator: DraftOperator) {

@@ -989,7 +989,13 @@ export function ExpressionBar({
                   }}
                   onSubmitFilters={handlePickFilters}
                   onDone={endPillEdit}
-                  onCancel={cancelPillEdit}
+                  onCancel={(reason) => {
+                    cancelPillEdit();
+                    // Escape goes back to the pill, selected, as before Enter.
+                    if (reason === "escape") {
+                      selectPill(index);
+                    }
+                  }}
                   onRemove={() => {
                     endPillEdit();
                     const next = removePillAt(tokens, index);
