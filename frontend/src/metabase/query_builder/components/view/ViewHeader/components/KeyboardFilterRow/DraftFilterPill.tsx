@@ -602,14 +602,23 @@ export function DraftFilterPill({
         ref={pillRef}
         className={cx(S.draftPill, {
           // Only a new filter is plain text at the caret. A pill whose column
-          // the user changes stays a pill.
-          [S.draftPillBare]: step === "column" && editedPart == null,
+          // the user changes stays a pill. Prototype: a request to the AI is
+          // a pill too, as in the Figma "AI Pill".
+          [S.draftPillBare]:
+            step === "column" &&
+            editedPart == null &&
+            !isAiFiltersMode &&
+            aiFilters.state.status !== "loading" &&
+            aiFilters.state.status !== "error",
+          [S.draftPillLoading]: aiFilters.state.status === "loading",
+          [S.draftPillError]: aiFilters.state.status === "error",
         })}
         data-testid="draft-filter-pill"
       >
-        {isAiFiltersMode && (
-          <Icon className={S.aiModeIcon} name="ai" size={14} />
-        )}
+        <AiFiltersIcon
+          status={aiFilters.state.status}
+          isAiMode={isAiFiltersMode}
+        />
         {step === "column" ? (
           <ColumnInput
             query={query}
@@ -757,8 +766,7 @@ export function DraftFilterPill({
             onRemoveValue={removeValue}
           />
         )}
-        {(aiValues.state.status === "loading" ||
-          aiFilters.state.status === "loading") && <Loader size="xs" />}
+        {aiValues.state.status === "loading" && <Loader size="xs" />}
         <RemoveIcon onClick={onRemove} />
       </div>
     </Tooltip>
@@ -793,6 +801,27 @@ function getAiFiltersTooltip(state: AiFiltersState, isAiMode: boolean) {
     );
   }
   return isAiMode ? t`Describe the filters, then press Enter` : null;
+}
+
+/** Prototype: the icon before a request to the AI, as in the Figma "AI Pill". */
+function AiFiltersIcon({
+  status,
+  isAiMode,
+}: {
+  status: AiFiltersState["status"];
+  isAiMode: boolean;
+}) {
+  if (status === "loading") {
+    return <Loader className={S.aiStatusIcon} size={12} />;
+  }
+  if (status === "error") {
+    return (
+      <Icon className={S.aiErrorIcon} name="warning_round_filled" size={12} />
+    );
+  }
+  return isAiMode ? (
+    <Icon className={S.aiModeIcon} name="ai" size={14} />
+  ) : null;
 }
 
 function RemoveIcon({ onClick }: { onClick: () => void }) {

@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
@@ -41,6 +42,10 @@ export function PopoverFilterPill({
 }: PopoverFilterPillProps) {
   const [isOpened, setIsOpenedState] = useState(false);
   const { columnName, rest } = getNameParts(query, stageIndex, filter);
+  // Prototype: the Figma "Opaque" and "Custom expression" pills.
+  const isSegment = Lib.isSegmentFilter(query, stageIndex, filter);
+  const isCustomExpression =
+    !isSegment && !Lib.isStandardFilter(query, stageIndex, filter);
 
   const setIsOpened = (value: boolean) => {
     if (value !== isOpened) {
@@ -95,17 +100,28 @@ export function PopoverFilterPill({
       <Popover.Target>
         <div
           ref={pillRef}
-          className={className ?? S.pill}
+          className={cx(className ?? S.pill, { [S.opaquePill]: isSegment })}
           data-testid="filter-pill"
           tabIndex={-1}
           onClick={() => setIsOpened(!isOpened)}
           onKeyDown={handleKeyDown}
           {...pillAttributes}
         >
-          {columnName != null && (
-            <span className={S.columnSegment}>{columnName}</span>
+          {isSegment ? (
+            <>
+              <Icon className={S.opaqueIcon} name="segment" size={10} />
+              <span className={S.opaqueLabel}>{rest}</span>
+            </>
+          ) : isCustomExpression ? (
+            <span className={S.customExpression}>{rest}</span>
+          ) : (
+            <>
+              {columnName != null && (
+                <span className={S.columnSegment}>{columnName}</span>
+              )}
+              <span>{rest}</span>
+            </>
           )}
-          <span>{rest}</span>
           <Icon
             className={S.removeIcon}
             name="close"
