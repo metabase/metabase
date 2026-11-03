@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
 import type {
   DatabaseId,
   IconName,
@@ -9,7 +10,7 @@ import type {
   SchemaName,
   TableId,
 } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
+import { isObject, isStringRecord } from "metabase-types/guards";
 
 export type DataLayerVisibility = "everyone" | "admins" | "hidden";
 
@@ -134,55 +135,29 @@ export type ResolvedTableDataLayer = {
 // settings that point at them live in localStorage, so Data Studio edits
 // reach /browse and survive reloads.
 const STORAGE_KEY = "metabase-prototype-data-layers";
-const CHANGE_EVENT = "metabase-prototype-data-layers-change";
 
-function subscribe(onChange: () => void) {
-  window.addEventListener(CHANGE_EVENT, onChange);
-  window.addEventListener("storage", onChange);
-  return () => {
-    window.removeEventListener(CHANGE_EVENT, onChange);
-    window.removeEventListener("storage", onChange);
-  };
-}
-
-// The raw string is the snapshot: it's stable between changes, unlike a parse
-function getStoredState(): string {
-  return window.localStorage.getItem(STORAGE_KEY) ?? "";
-}
-
-function writeState(state: DataLayersState) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  window.dispatchEvent(new Event(CHANGE_EVENT));
-}
-
-function parseState(raw: string): DataLayersState {
-  const empty: DataLayersState = {
-    layersByDatabase: {},
-    layerIdBySchema: {},
-    layerIdByTable: {},
-    displayNameBySchema: {},
-  };
-  if (raw === "") {
-    return empty;
-  }
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!isDataLayersState(parsed)) {
-      return empty;
-    }
-    // State saved by earlier versions lacks the newer records
+function parseState(value: unknown): DataLayersState {
+  if (!isObject(value) || !isLayersByDatabase(value.layersByDatabase)) {
     return {
-      ...parsed,
-      layerIdByTable: isStringRecord(parsed.layerIdByTable)
-        ? parsed.layerIdByTable
-        : {},
-      displayNameBySchema: isStringRecord(parsed.displayNameBySchema)
-        ? parsed.displayNameBySchema
-        : {},
+      layersByDatabase: {},
+      layerIdBySchema: {},
+      layerIdByTable: {},
+      displayNameBySchema: {},
     };
-  } catch {
-    return empty;
   }
+  // State saved by earlier versions lacks the newer records
+  return {
+    layersByDatabase: value.layersByDatabase,
+    layerIdBySchema: isStringRecord(value.layerIdBySchema)
+      ? value.layerIdBySchema
+      : {},
+    layerIdByTable: isStringRecord(value.layerIdByTable)
+      ? value.layerIdByTable
+      : {},
+    displayNameBySchema: isStringRecord(value.displayNameBySchema)
+      ? value.displayNameBySchema
+      : {},
+  };
 }
 
 function isDataLayer(value: unknown): value is DataLayer {
@@ -196,26 +171,14 @@ function isDataLayer(value: unknown): value is DataLayer {
   );
 }
 
-function isStringRecord(value: unknown): value is Record<string, string> {
+function isLayersByDatabase(
+  value: unknown,
+): value is Record<string, DataLayer[]> {
   return (
     isObject(value) &&
-    Object.values(value).every((entry) => typeof entry === "string")
-  );
-}
-
-function isDataLayersState(value: unknown): value is Omit<
-  DataLayersState,
-  "displayNameBySchema"
-> & {
-  displayNameBySchema?: unknown;
-} {
-  return (
-    isObject(value) &&
-    isObject(value.layersByDatabase) &&
-    Object.values(value.layersByDatabase).every(
+    Object.values(value).every(
       (layers) => Array.isArray(layers) && layers.every(isDataLayer),
-    ) &&
-    isStringRecord(value.layerIdBySchema)
+    )
   );
 }
 
@@ -228,8 +191,7 @@ function getLayers(state: DataLayersState, databaseId: DatabaseId) {
  * start with the seed layers, and schemas with the Final layer.
  */
 export function useDataLayers() {
-  const raw = useSyncExternalStore(subscribe, getStoredState);
-  const state = useMemo(() => parseState(raw), [raw]);
+  const [state, updateState] = usePrototypeStorage(STORAGE_KEY, parseState);
 
   const getDataLayers = useCallback(
     (databaseId: DatabaseId) => getLayers(state, databaseId),
@@ -272,86 +234,93 @@ export function useDataLayers() {
 
   const setDataLayers = useCallback(
     (databaseId: DatabaseId, layers: DataLayer[]) => {
-      const current = parseState(getStoredState());
-      const previousLayers = getLayers(current, databaseId);
-      const remainingIds = new Set(layers.map((layer) => layer.id));
-      const isRemaining = (layer: DataLayer) => remainingIds.has(layer.id);
-      const layerIdBySchema = { ...current.layerIdBySchema };
-      // Tables set to a deleted layer go back to their schema's layer
-      const layerIdByTable = Object.fromEntries(
-        Object.entries(current.layerIdByTable).filter(
-          ([tableKey, layerId]) =>
-            !tableKey.startsWith(`${databaseId}:`) || remainingIds.has(layerId),
-        ),
-      );
+      updateState((current) => {
+        const previousLayers = getLayers(current, databaseId);
+        const remainingIds = new Set(layers.map((layer) => layer.id));
+        const isRemaining = (layer: DataLayer) => remainingIds.has(layer.id);
+        const layerIdBySchema = { ...current.layerIdBySchema };
+        // Tables set to a deleted layer go back to their schema's layer
+        const layerIdByTable = Object.fromEntries(
+          Object.entries(current.layerIdByTable).filter(
+            ([tableKey, layerId]) =>
+              !tableKey.startsWith(`${databaseId}:`) ||
+              remainingIds.has(layerId),
+          ),
+        );
 
-      // Move schemas out of deleted layers, as the delete confirmation says
-      previousLayers.forEach((layer, index) => {
-        const fallback = isRemaining(layer)
-          ? undefined
-          : getFallbackDataLayer(previousLayers, index, isRemaining);
-        if (fallback == null) {
-          return;
-        }
-        Object.entries(layerIdBySchema).forEach(([schemaKey, layerId]) => {
-          if (layerId === layer.id && schemaKey.startsWith(`${databaseId}:`)) {
-            layerIdBySchema[schemaKey] = fallback.id;
+        // Move schemas out of deleted layers, as the delete confirmation says
+        previousLayers.forEach((layer, index) => {
+          const fallback = isRemaining(layer)
+            ? undefined
+            : getFallbackDataLayer(previousLayers, index, isRemaining);
+          if (fallback == null) {
+            return;
           }
+          Object.entries(layerIdBySchema).forEach(([schemaKey, layerId]) => {
+            if (
+              layerId === layer.id &&
+              schemaKey.startsWith(`${databaseId}:`)
+            ) {
+              layerIdBySchema[schemaKey] = fallback.id;
+            }
+          });
         });
-      });
 
-      writeState({
-        ...current,
-        layersByDatabase: { ...current.layersByDatabase, [databaseId]: layers },
-        layerIdBySchema,
-        layerIdByTable,
+        return {
+          ...current,
+          layersByDatabase: {
+            ...current.layersByDatabase,
+            [databaseId]: layers,
+          },
+          layerIdBySchema,
+          layerIdByTable,
+        };
       });
     },
-    [],
+    [updateState],
   );
 
   const setSchemaDataLayerId = useCallback(
     (databaseId: DatabaseId, schemaName: SchemaName, layerId: string) => {
-      const current = parseState(getStoredState());
-      writeState({
+      updateState((current) => ({
         ...current,
         layerIdBySchema: {
           ...current.layerIdBySchema,
           [getSchemaKey(databaseId, schemaName)]: layerId,
         },
-      });
+      }));
     },
-    [],
+    [updateState],
   );
 
   /** `null` drops the override, so the table uses its schema's layer again */
   const setTableDataLayerId = useCallback(
     (databaseId: DatabaseId, tableId: TableId, layerId: string | null) => {
-      const current = parseState(getStoredState());
       const tableKey = getTableKey(databaseId, tableId);
-      const layerIdByTable =
-        layerId == null
-          ? _.omit(current.layerIdByTable, tableKey)
-          : { ...current.layerIdByTable, [tableKey]: layerId };
-      writeState({ ...current, layerIdByTable });
+      updateState((current) => ({
+        ...current,
+        layerIdByTable:
+          layerId == null
+            ? _.omit(current.layerIdByTable, tableKey)
+            : { ...current.layerIdByTable, [tableKey]: layerId },
+      }));
     },
-    [],
+    [updateState],
   );
 
   /** Clearing the display name, or setting it to the raw name, drops the override */
   const setSchemaDisplayName = useCallback(
     (databaseId: DatabaseId, schemaName: SchemaName, displayName: string) => {
-      const current = parseState(getStoredState());
       const schemaKey = getSchemaKey(databaseId, schemaName);
-      const displayNameBySchema = { ...current.displayNameBySchema };
-      if (displayName === "" || displayName === schemaName) {
-        delete displayNameBySchema[schemaKey];
-      } else {
-        displayNameBySchema[schemaKey] = displayName;
-      }
-      writeState({ ...current, displayNameBySchema });
+      updateState((current) => ({
+        ...current,
+        displayNameBySchema:
+          displayName === "" || displayName === schemaName
+            ? _.omit(current.displayNameBySchema, schemaKey)
+            : { ...current.displayNameBySchema, [schemaKey]: displayName },
+      }));
     },
-    [],
+    [updateState],
   );
 
   return {

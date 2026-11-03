@@ -12,7 +12,9 @@ export function TableDetailsSkeleton() {
         </Repeat>
       </Group>
       <Stack gap="xxl">
-        <SectionSkeleton rows={8} />
+        <SectionSkeleton rows={4} />
+        <SectionSkeleton rows={5} />
+        <SectionSkeleton rows={4} />
         <SectionSkeleton rows={4} />
       </Stack>
     </Stack>
@@ -53,9 +55,10 @@ export function DatabaseDetailsSkeleton() {
 export function SchemaDetailsSkeleton() {
   return (
     <Stack gap="xxl" data-testid="schema-details-skeleton">
-      <SectionSkeleton rows={6} />
+      <SectionSkeleton rows={3} />
       <SectionSkeleton rows={2} />
       <SectionSkeleton rows={2} />
+      <SectionSkeleton rows={3} />
     </Stack>
   );
 }

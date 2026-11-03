@@ -17,28 +17,20 @@ import type { Table } from "metabase-types/api";
 
 import { DetailsEditableText } from "../../DetailPanel";
 
-interface Props {
+interface TableMetadataProps {
   table: Table;
   readOnly: boolean;
   onNameChange: (name: string) => void;
   onDescriptionChange: (description: string) => void;
 }
 
+/** The table's names, description, and last update */
 export function TableMetadata({
   table,
   readOnly,
   onNameChange,
   onDescriptionChange,
-}: Props) {
-  const formatNumber = useNumberFormatter();
-  const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;
-
-  const { dependenciesCount, dependentsCount } =
-    PLUGIN_DEPENDENCIES.useGetDependenciesCount({
-      id: Number(table.id),
-      type: "table",
-    });
-
+}: TableMetadataProps) {
   const handleNameChange = (value: string) => {
     const name = value.trim();
     if (name.length > 0 && name !== table.display_name) {
@@ -89,6 +81,25 @@ export function TableMetadata({
           label={t`Last updated at`}
           value={<DateTime value={table.updated_at} />}
         />
+      </DetailsTable>
+    </SidebarSection>
+  );
+}
+
+/** Counts about the table: views, rows, and what it depends on or feeds */
+export function TableStats({ table }: { table: Table }) {
+  const formatNumber = useNumberFormatter();
+  const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;
+
+  const { dependenciesCount, dependentsCount } =
+    PLUGIN_DEPENDENCIES.useGetDependenciesCount({
+      id: Number(table.id),
+      type: "table",
+    });
+
+  return (
+    <SidebarSection title={t`Stats`}>
+      <DetailsTable>
         <DetailsRow
           label={t`View count`}
           value={formatNumber(table.view_count)}

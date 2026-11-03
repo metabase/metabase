@@ -89,6 +89,11 @@ export interface FilterState {
   ownerUserId: UserId | "unknown" | null;
   unusedOnly: boolean | null;
   publishedOnly: boolean | null;
+  // PROTOTYPE: mocked table structure, applied in the browser
+  needsReviewOnly: boolean | null;
+  hiddenOnly: boolean | null;
+  noMainDateOnly: boolean | null;
+  noRoleOnly: boolean | null;
 }
 
 export function isDatabaseNode(node: TreeNode): node is DatabaseNode {

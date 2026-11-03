@@ -1,0 +1,14 @@
+.grainLink {
+  display: inline-flex;
+  border-radius: var(--mantine-radius-xs);
+}
+
+.grainChip {
+  cursor: pointer;
+  transition: color 0.15s ease;
+
+  .grainLink:hover &,
+  .grainLink:focus-visible & {
+    color: var(--mb-color-core-brand);
+  }
+}

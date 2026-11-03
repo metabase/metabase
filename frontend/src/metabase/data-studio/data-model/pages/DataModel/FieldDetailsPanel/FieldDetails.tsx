@@ -15,11 +15,13 @@ import {
   useFieldCasting,
   useFieldUpdateHandlers,
 } from "metabase/metadata/hooks";
+import { useTableStructures } from "metabase/metadata/table-structure";
 import {
   canCoerceFieldType,
   getFieldRawName,
 } from "metabase/metadata/utils/field";
-import { Code, Stack, Switch } from "metabase/ui";
+import { Code, Stack, Switch, Text } from "metabase/ui";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../../analytics";
@@ -105,6 +107,10 @@ export function FieldDetails({
               value={<FieldCastingInput field={field} disabled={readOnly} />}
             />
           )}
+          <DetailsRow
+            label={t`Grain`}
+            value={<FieldGrainInput field={field} disabled={readOnly} />}
+          />
         </DetailsTable>
       </SidebarSection>
       <SidebarSection title={t`Metadata`}>
@@ -131,6 +137,39 @@ export function FieldDetails({
           onTrackMetadataChange={trackMetadataChange}
         />
       </SidebarSection>
+    </Stack>
+  );
+}
+
+/** PROTOTYPE: mocked. Whether the field is one of the columns that make a row unique. */
+function FieldGrainInput({
+  field,
+  disabled,
+}: {
+  field: Field;
+  disabled: boolean;
+}) {
+  const { isGrainField, setFieldGrain } = useTableStructures();
+  const isPrimaryKey = isPK(field);
+
+  return (
+    <Stack gap="xs" py="xs">
+      <Switch
+        label={t`This field is part of what makes a row unique`}
+        checked={isGrainField(field)}
+        disabled={disabled}
+        onChange={(event) => {
+          const isGrain = event.target.checked;
+          // Matching the default (primary keys are the grain) clears the override
+          setFieldGrain(field, isGrain === isPrimaryKey ? null : isGrain);
+        }}
+        data-testid="field-grain-switch"
+      />
+      <Text size="sm" c="text-secondary">
+        {isPrimaryKey
+          ? t`On by default: this is a primary key column.`
+          : t`Off by default: only primary key columns start as grain.`}
+      </Text>
     </Stack>
   );
 }

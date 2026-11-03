@@ -17,8 +17,9 @@ import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
-import { TableMetadata } from "./TableMetadata";
+import { TableMetadata, TableStats } from "./TableMetadata";
 import S from "./TableSection.module.css";
+import { TableStructure } from "./TableStructure";
 
 interface Props {
   table: Table;
@@ -93,9 +94,13 @@ const TableSectionBase = ({
                 onDescriptionChange={handleDescriptionChange}
               />
 
+              <TableStructure table={table} readOnly={readOnly} />
+
               <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
 
               {table.is_published && <TableCollection table={table} />}
+
+              <TableStats table={table} />
             </Stack>
           </Tabs.Panel>
 

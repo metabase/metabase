@@ -250,16 +250,6 @@ function SchemaDetails({
           />
           <DetailsRow label={t`Raw name`} value={<Code>{schemaName}</Code>} />
           <DetailsRow label={t`Database`} value={database.name} />
-          <DetailsRow label={t`Tables`} value={formatNumber(stats.tables)} />
-          <DetailsRow label={t`Fields`} value={formatNumber(stats.fields)} />
-          <DetailsRow
-            label={t`Rows`}
-            value={
-              stats.rows != null
-                ? formatNumber(stats.rows, { compact: true })
-                : t`Unknown`
-            }
-          />
         </DetailsTable>
       </SidebarSection>
 
@@ -324,6 +314,21 @@ function SchemaDetails({
           <DetailsRow
             label={t`Schedule`}
             value={getScheduleLabel(database.schedules?.metadata_sync)}
+          />
+        </DetailsTable>
+      </SidebarSection>
+
+      <SidebarSection title={t`Stats`}>
+        <DetailsTable>
+          <DetailsRow label={t`Tables`} value={formatNumber(stats.tables)} />
+          <DetailsRow label={t`Fields`} value={formatNumber(stats.fields)} />
+          <DetailsRow
+            label={t`Rows`}
+            value={
+              stats.rows != null
+                ? formatNumber(stats.rows, { compact: true })
+                : t`Unknown`
+            }
           />
         </DetailsTable>
       </SidebarSection>

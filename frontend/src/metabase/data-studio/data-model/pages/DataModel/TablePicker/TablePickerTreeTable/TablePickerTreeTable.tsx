@@ -12,6 +12,11 @@ import { t } from "ttag";
 import { useListUsersQuery } from "metabase/api";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import {
+  getTableRoleLabel,
+  useTableFields,
+  useTableStructures,
+} from "metabase/metadata/table-structure";
+import {
   DATA_LAYER_ICONS,
   getDataLayerLabel,
 } from "metabase/metadata/utils/data-layer";
@@ -22,10 +27,12 @@ import {
   EntityNameCell,
   Group,
   Icon,
+  Text,
+  Tooltip,
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { UserId } from "metabase-types/api";
+import type { Table, UserId } from "metabase-types/api";
 
 import { useSelection } from "../../contexts/SelectionContext";
 import {
@@ -224,6 +231,15 @@ export function TablePickerTreeTable({
             name={row.original.name}
           />
         ),
+      },
+      {
+        id: "role",
+        header: t`Role`,
+        width: 170,
+        cell: ({ row }) =>
+          row.original.type === "table" && row.original.table ? (
+            <TableRoleCell table={row.original.table} />
+          ) : null,
       },
       {
         id: "owner",
@@ -453,6 +469,42 @@ export function TablePickerTreeTable({
       getRowProps={getRowProps}
       ariaLabel={t`Tables`}
     />
+  );
+}
+
+/** PROTOTYPE: mocked. The table's role, flagged when it needs an admin's review. */
+function TableRoleCell({ table }: { table: Table }) {
+  const fields = useTableFields(table);
+  const { getTableStructure } = useTableStructures();
+
+  if (fields == null) {
+    return null;
+  }
+
+  const { role, needsReview, inference } = getTableStructure({
+    ...table,
+    fields,
+  });
+
+  return (
+    <Group gap="xs" wrap="nowrap" data-testid="table-role">
+      {role ? (
+        <Text truncate>{getTableRoleLabel(role)}</Text>
+      ) : (
+        <Text c="text-secondary">{t`No role`}</Text>
+      )}
+      {needsReview && (
+        <Tooltip label={t`Needs review. ${inference.signal}`}>
+          <Icon
+            name="warning"
+            size={12}
+            c="feedback-warning"
+            aria-label={t`Needs review`}
+            flex="0 0 auto"
+          />
+        </Tooltip>
+      )}
+    </Group>
   );
 }
 
