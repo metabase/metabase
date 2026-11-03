@@ -15,7 +15,10 @@ import type {
   ValuesQueryType,
 } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
-import { createProductsRatingField } from "metabase-types/api/mocks/presets";
+import {
+  createProductsCategoryField,
+  createProductsRatingField,
+} from "metabase-types/api/mocks/presets";
 
 import { ParameterValueWidget } from "./ParameterValueWidget";
 
@@ -57,6 +60,7 @@ const FILTER_NAME = "Filter";
 const PARAMETER_ID = "param";
 
 function setupStateful({ parameter, value = null, cardId }: StatefulSetupOpts) {
+  const onValueChange = jest.fn<void, [WidgetValue]>();
   const uiParameter: UiParameter = {
     ...createMockParameter({
       id: PARAMETER_ID,
@@ -74,7 +78,10 @@ function setupStateful({ parameter, value = null, cardId }: StatefulSetupOpts) {
       <ParameterValueWidget
         parameter={uiParameter}
         value={currentValue}
-        setValue={setCurrentValue}
+        setValue={(newValue) => {
+          onValueChange(newValue);
+          setCurrentValue(newValue);
+        }}
         setParameterValueToDefault={() =>
           setCurrentValue(uiParameter.default ?? null)
         }
@@ -86,6 +93,8 @@ function setupStateful({ parameter, value = null, cardId }: StatefulSetupOpts) {
   };
 
   renderWithProviders(<StatefulWidget />);
+
+  return { onValueChange };
 }
 
 type WidgetStatus = "clear" | "reset" | "chevron" | "none";
@@ -104,6 +113,12 @@ function getWidgetStatus(): WidgetStatus | undefined {
 
 const TEXT_PARAMETER: Partial<UiParameter> = { type: "category" };
 const DATE_PARAMETER: Partial<UiParameter> = { type: "date/single" };
+const NUMBER_PARAMETER: Partial<UiParameter> = { type: "number/=" };
+const FIELD_FILTER_PARAMETER: Partial<UiParameter> = {
+  type: "string/=",
+  hasVariableTemplateTagTarget: false,
+  fields: [createProductsCategoryField()],
+};
 
 describe("ParameterValueWidget", () => {
   it("should let a number filter be typed into when its field has no values to list", async () => {
@@ -125,6 +140,22 @@ describe("ParameterValueWidget", () => {
     expect(
       await screen.findByPlaceholderText("Enter a number"),
     ).toBeInTheDocument();
+  });
+
+  it("should accept multiple values for a multi-select number variable", async () => {
+    const { onValueChange } = setupStateful({
+      parameter: { type: "number/=", isMultiSelect: true },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: FILTER_NAME }));
+    const dropdown = await screen.findByTestId("parameter-value-dropdown");
+    await userEvent.type(within(dropdown).getByRole("combobox"), "10,20,");
+    await userEvent.click(
+      within(dropdown).getByRole("button", { name: "Add filter" }),
+    );
+
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange).toHaveBeenCalledWith([10, 20]);
   });
 
   it("should apply aria-expanded=true on the trigger button element (#70543)", async () => {
@@ -166,7 +197,7 @@ describe("ParameterValueWidget", () => {
         parameterId: PARAMETER_ID,
         remappings: VALUES,
       });
-      setupStateful({
+      return setupStateful({
         cardId: CARD_ID,
         parameter: {
           type: "string/=",
@@ -178,8 +209,8 @@ describe("ParameterValueWidget", () => {
       });
     }
 
-    it("should show labels instead of values in the dropdown list", async () => {
-      setupStaticList({ queryType: "list" });
+    it("should show labels instead of values in the dropdown list and store the value", async () => {
+      const { onValueChange } = setupStaticList({ queryType: "list" });
 
       await userEvent.click(screen.getByRole("button", { name: FILTER_NAME }));
       const dropdown = await screen.findByTestId("parameter-value-dropdown");
@@ -197,10 +228,11 @@ describe("ParameterValueWidget", () => {
       expect(
         screen.getByRole("button", { name: FILTER_NAME }),
       ).toHaveTextContent(LABEL);
+      expect(onValueChange).toHaveBeenLastCalledWith([LABELED_VALUE]);
     });
 
-    it("should show labels for search results in the search box", async () => {
-      setupStaticList({ queryType: "search" });
+    it("should show labels for search results in the search box and store the value", async () => {
+      const { onValueChange } = setupStaticList({ queryType: "search" });
       setupCardParameterSearchEndpoint({
         cardId: CARD_ID,
         parameterId: PARAMETER_ID,
@@ -228,11 +260,18 @@ describe("ParameterValueWidget", () => {
       expect(
         screen.getByRole("button", { name: FILTER_NAME }),
       ).toHaveTextContent(LABEL);
+      expect(onValueChange).toHaveBeenLastCalledWith([LABELED_VALUE]);
     });
   });
 
   describe("clear and reset status", () => {
-    describe.each([
+    describe.each<{
+      widget: string;
+      parameter: Partial<UiParameter>;
+      defaultValue: ParameterValueOrArray;
+      otherValue: ParameterValueOrArray;
+      emptyStatus: WidgetStatus;
+    }>([
       {
         widget: "input",
         parameter: TEXT_PARAMETER,
@@ -247,7 +286,21 @@ describe("ParameterValueWidget", () => {
         otherValue: "2020-01-01",
         emptyStatus: "chevron",
       },
-    ] as const)(
+      {
+        widget: "number input",
+        parameter: NUMBER_PARAMETER,
+        defaultValue: "1",
+        otherValue: "2",
+        emptyStatus: "none",
+      },
+      {
+        widget: "field filter",
+        parameter: FIELD_FILTER_PARAMETER,
+        defaultValue: ["Gizmo"],
+        otherValue: ["Widget"],
+        emptyStatus: "chevron",
+      },
+    ])(
       "$widget widget",
       ({ parameter, defaultValue, otherValue, emptyStatus }) => {
         it.each([
@@ -331,6 +384,15 @@ describe("ParameterValueWidget", () => {
         );
       },
     );
+
+    it("should treat a single value equal to a one-item array default as the default", () => {
+      setupStateful({
+        parameter: { ...FIELD_FILTER_PARAMETER, default: ["Gizmo"] },
+        value: "Gizmo",
+      });
+
+      expect(getWidgetStatus()).toBe("clear");
+    });
 
     it("should clear the value of a filter without a default value", async () => {
       setupStateful({ parameter: TEXT_PARAMETER, value: "b" });
