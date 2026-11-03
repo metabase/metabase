@@ -70,6 +70,8 @@ export function SavedEntityPicker(props: SavedEntityPickerProps) {
     useGetCollectionQuery({ id: "root" });
   const currentUser = useSelector(getUser);
 
+  // The starting collection is picked once, so wait for "Our analytics" to load
+  // or fail: users without access to it still get the picker.
   if (!collections || isRootCollectionLoading || !currentUser) {
     return null;
   }
