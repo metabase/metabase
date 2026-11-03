@@ -1,0 +1,13 @@
+version: "2"
+plugins:
+  - name: jsonplug
+    wasm:
+      url: file:///tmp/sgj.wasm
+      sha256: d35f71b18c2db3bb13356340c9b0454af2a4a7fec230f4903b3b39665bf8895a
+sql:
+  - engine: postgresql
+    schema: schema
+    queries: queries
+    codegen:
+      - plugin: jsonplug
+        out: out
