@@ -3,6 +3,7 @@
 import { createRequire } from "node:module";
 import path from "node:path";
 import type { TestContext } from "node:test";
+import { setImmediate as realSetImmediate } from "node:timers";
 
 import { root, testTimeoutMs } from "../jest-config.ts";
 
@@ -23,6 +24,7 @@ import {
   forgetPackageHooks,
   fullName,
   hookTimeoutOf,
+  invokeTestFunction,
   packageHooks,
   rootSuite,
   selectTests,
@@ -38,11 +40,13 @@ import {
 import { logFile } from "./file-log.ts";
 import {
   finishSnapshots,
+  forgetTestTimeoutOfFile,
   moduleMocker,
   resetAssertions,
   setCurrentTestName,
   startSnapshots,
   takeAssertionErrors,
+  testTimeoutOfFile,
 } from "./jest-object.ts";
 import { recordSetupMocks, resetMocksForNextFile } from "./mocks.ts";
 import { evictModules, evictProjectModules } from "./module-cache.ts";
@@ -59,6 +63,7 @@ import {
 } from "./realm.ts";
 import {
   describeError,
+  namesOfTestsWithoutPass,
   recordFailure,
   recordLateFailure,
   recordPassed,
@@ -88,10 +93,15 @@ import {
 type HookChain = Pick<Hooks, "beforeEach" | "afterEach">;
 type Failure = { error: unknown };
 
-// jest gives each hook and each test body its own deadline, testTimeout
-// unless the hook or the test sets one.
+// jest gives each hook and each test body its own deadline: the one that the
+// hook or the test sets, or else the file's jest.setTimeout, or else
+// testTimeout.
 const TEST_TIMEOUT_MS = Number(process.env.NT_TIMEOUT ?? testTimeoutMs ?? 5000);
-const HOOK_TIMEOUT_MS = Number(process.env.NT_HOOK_TIMEOUT ?? TEST_TIMEOUT_MS);
+const HOOK_TIMEOUT_MS = process.env.NT_HOOK_TIMEOUT
+  ? Number(process.env.NT_HOOK_TIMEOUT)
+  : undefined;
+
+const defaultTestTimeoutMs = () => testTimeoutOfFile() ?? TEST_TIMEOUT_MS;
 
 // fetch-mock cancels an aborted request's body from an AbortSignal handler,
 // and undici has already locked that stream, so the error arrives
@@ -144,6 +154,15 @@ function captureError(error: unknown): void {
   pendingUncaught ??= { error };
 }
 
+// Node reports a rejection that nothing handles only once the current
+// macrotask ends. A test that rejects a promise and then waits gets its
+// failure during the wait. One that does not wait gets it at the end of its
+// file, after the reset has cleared the file's timers, so that nothing of the
+// file runs during this turn of the event loop.
+function waitForUnhandledRejections(): Promise<void> {
+  return new Promise((resolve) => realSetImmediate(resolve));
+}
+
 // An error that no test was running for fails the file, as in jest.
 function recordPendingErrorOnFile(): void {
   if (pendingUncaught) {
@@ -159,6 +178,7 @@ export function runFile(t: TestContext, file: string): Promise<void> {
 async function runFileInScope(t: TestContext, file: string): Promise<void> {
   const startedAt = Date.now();
   captureUnhandledRejections();
+  forgetTestTimeoutOfFile();
   recordSetupMocks();
   startSnapshots(file);
   evictProjectModules();
@@ -174,6 +194,7 @@ async function runFileInScope(t: TestContext, file: string): Promise<void> {
     logFile(path.relative(root, file), startedAt);
     await resetForNextFile();
     recordLateLeaks();
+    await waitForUnhandledRejections();
     recordPendingErrorOnFile();
   }
 }
@@ -230,7 +251,9 @@ async function runAfterAll(hooks: TestFunction[]): Promise<void> {
 }
 
 function runHook(fn: TestFunction): Promise<unknown> {
-  return withDeadline(fn, hookTimeoutOf(fn) ?? HOOK_TIMEOUT_MS, "hook");
+  const timeoutMs =
+    hookTimeoutOf(fn) ?? HOOK_TIMEOUT_MS ?? defaultTestTimeoutMs();
+  return withDeadline(() => invokeTestFunction(fn), timeoutMs, "hook");
 }
 
 // The tests of a block that has none to run. A todo test stays a todo.
@@ -419,7 +442,11 @@ async function runBeforeEachAndBody(
     tryTo(dropUnmatchedCalls);
     setTestPhase("body");
     const body = test.fn ?? (() => {});
-    await withDeadline(body, test.timeoutMs ?? TEST_TIMEOUT_MS, "test");
+    await withDeadline(
+      () => invokeTestFunction(body),
+      test.timeoutMs ?? defaultTestTimeoutMs(),
+      "test",
+    );
     setTestPhase("afterBody");
     return null;
   } catch (error) {
@@ -460,7 +487,7 @@ function releaseSuite(suite: Suite, hooks: HookChain): void {
 }
 
 async function resetForNextFile(): Promise<void> {
-  finishSnapshots();
+  finishSnapshots(namesOfTestsWithoutPass());
   // A spy that a file never restored would be undone by the next file's own
   // restoreAllMocks, on top of globals that have been reset since. Spies go
   // first, so that a fake clock a spy wrapped is back in place to be removed.

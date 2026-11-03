@@ -2,10 +2,13 @@
 // it runs a test, while jest loads and runs one file at a time, and module
 // mocks depend on that. So these only collect a tree of the file's tests, and
 // run-file.ts runs the tree as node:test subtests before the next file loads.
+import { format } from "node:util";
+
 import { bind as bindEach } from "jest-each";
 
 export type Mode = "run" | "skip" | "only" | "todo";
-export type TestFunction = () => unknown;
+export type DoneCallback = (reason?: unknown) => void;
+export type TestFunction = (done: DoneCallback) => unknown;
 export type HookKind = "beforeAll" | "afterAll" | "beforeEach" | "afterEach";
 export type Hooks = Record<HookKind, TestFunction[]>;
 
@@ -222,10 +225,44 @@ function createTestFunction(mode: Mode) {
   });
 }
 
+/**
+ * Calls a test or hook as jest does. One that declares a parameter gets a
+ * done callback, and ends when it calls it. It must not also return a value.
+ */
+export function invokeTestFunction(fn: TestFunction): unknown {
+  if (fn.length === 0) {
+    return fn(() => {});
+  }
+  return new Promise<void>((resolve, reject) => {
+    // jest checks the returned value one microtask after done, so that a
+    // done called during the function itself also sees it.
+    const done: DoneCallback = (reason) => {
+      void Promise.resolve().then(() => {
+        if (returned !== undefined) {
+          reject(
+            new Error(
+              "Test functions cannot both take a 'done' callback and return something. Either use a 'done' callback, or return a promise.",
+            ),
+          );
+        } else if (reason) {
+          reject(
+            reason instanceof Error
+              ? reason
+              : new Error(`Failed: ${format(reason)}`),
+          );
+        } else {
+          resolve();
+        }
+      });
+    };
+    const returned = fn(done);
+  });
+}
+
 // jest runs a failing test and passes it only when its body throws.
 async function expectFailure(fn: TestFunction): Promise<void> {
   try {
-    await fn();
+    await invokeTestFunction(fn);
   } catch {
     return;
   }

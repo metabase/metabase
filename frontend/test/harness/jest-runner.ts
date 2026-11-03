@@ -23,6 +23,7 @@ type GlobalConfig = {
   updateSnapshot: "all" | "new" | "none";
   collectCoverage: boolean;
   noStackTrace: boolean;
+  testTimeout: number;
 };
 
 type ProjectConfig = {
@@ -203,9 +204,14 @@ export default class HarnessRunner {
   }
 
   #workerEnvironment(): NodeJS.ProcessEnv {
-    const { testNamePattern, updateSnapshot } = this.#globalConfig;
+    const { testNamePattern, testTimeout, updateSnapshot } = this.#globalConfig;
     return {
       NT_UPDATE_SNAPSHOTS: updateSnapshot,
+      // jest's own value, which --testTimeout changes. A debug run that sets
+      // NT_TIMEOUT keeps it.
+      ...(process.env.NT_TIMEOUT === undefined && {
+        NT_TIMEOUT: String(testTimeout),
+      }),
       ...(testNamePattern && { NT_TEST_NAME_PATTERN: testNamePattern }),
       ...(process.stdout.isTTY && { FORCE_COLOR: "1" }),
     };

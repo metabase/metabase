@@ -89,9 +89,22 @@ export function startSnapshots(specFile: string): void {
   );
 }
 
-export function finishSnapshots(): void {
+/**
+ * Saves the file's snapshots as jest-circus does. The snapshots of a test that
+ * was skipped or failed are not obsolete. The obsolete ones go from the file
+ * when snapshots are updated.
+ */
+export function finishSnapshots(testsWithoutPass: string[]): void {
   if (!snapshotState) {
     return;
+  }
+  for (const name of testsWithoutPass) {
+    snapshotState.markSnapshotsAsCheckedForTest(name);
+  }
+  const unchecked = snapshotState.getUncheckedCount();
+  const uncheckedKeys = snapshotState.getUncheckedKeys();
+  if (unchecked > 0) {
+    snapshotState.removeUncheckedKeys();
   }
   const { deleted } = snapshotState.save();
   recordSnapshots({
@@ -99,11 +112,25 @@ export function finishSnapshots(): void {
     matched: snapshotState.matched,
     unmatched: snapshotState.unmatched,
     updated: snapshotState.updated,
-    unchecked: snapshotState.getUncheckedCount(),
-    uncheckedKeys: snapshotState.getUncheckedKeys(),
+    unchecked: deleted ? 0 : unchecked,
+    uncheckedKeys,
     fileDeleted: deleted,
   });
   snapshotState = null;
+}
+
+let testTimeoutOfFileMs: number | undefined;
+
+/**
+ * The timeout that jest.setTimeout gave the running file. It applies to the
+ * tests and hooks that run after the call.
+ */
+export function testTimeoutOfFile(): number | undefined {
+  return testTimeoutOfFileMs;
+}
+
+export function forgetTestTimeoutOfFile(): void {
+  testTimeoutOfFileMs = undefined;
 }
 
 /**
@@ -243,7 +270,10 @@ function createJestObject() {
     getRealSystemTime: () => fakeClock().getRealSystemTime(),
     now: () => fakeClock().now(),
     retryTimes: () => jest,
-    setTimeout: () => jest,
+    setTimeout: (timeoutMs: number) => {
+      testTimeoutOfFileMs = timeoutMs;
+      return jest;
+    },
   };
   return jest;
 }
@@ -298,7 +328,7 @@ function callerFile(): string {
     const match = frame.match(/\(?(?:file:\/\/)?(\/[^:)]+):\d+:\d+\)?$/);
     if (
       match &&
-      !match[1].startsWith(runnerDirectory) &&
+      !match[1].startsWith(runnerDirectory + path.sep) &&
       fs.existsSync(match[1])
     ) {
       return match[1];

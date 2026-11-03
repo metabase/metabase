@@ -56,6 +56,22 @@ export function recordPassed(identity: TestIdentity): void {
   fileResult.passedTests.push(identity);
 }
 
+/**
+ * The full names, as jest's snapshot keys use them, of the file's tests that
+ * were skipped or failed.
+ */
+export function namesOfTestsWithoutPass(): string[] {
+  const identities = [
+    ...fileResult.skippedTests,
+    ...fileResult.failures.flatMap(({ identity }) =>
+      identity ? [identity] : [],
+    ),
+  ];
+  return identities.map(({ ancestors, title }) =>
+    [...ancestors, title].join(" "),
+  );
+}
+
 export function recordSnapshots(snapshot: SnapshotSummary): void {
   fileResult.snapshot = snapshot;
 }
