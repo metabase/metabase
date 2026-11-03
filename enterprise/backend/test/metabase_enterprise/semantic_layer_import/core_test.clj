@@ -32,10 +32,13 @@
    :columns     (into {} [(column "id" "integer")
                           (column "customer_id" "integer")
                           (column "total" "numeric")
+                          (column "discount" "numeric")
                           (column "status" "text")
                           (column "created_at" "timestamp")])
    :dimensions  [(dimension "status" :categorical)
                  (dimension "created_at" :time :grain "day")]
+   ;; a named expression a metric's SQL refers to, which is inlined where it does
+   :expressions [{:name "net_total", :expr "total - coalesce(discount, 0)", :label nil, :description nil}]
    :keys        [{:name "order", :expr "id"}
                  {:name "customer", :expr "customer_id"}]
    :joins       [{:name "customer", :table "customers", :source-column "customer_id"}]
@@ -49,6 +52,7 @@
    :columns     (into {} [(column "id" "integer")
                           (column "segment" "text")])
    :dimensions  [(dimension "segment" :categorical)]
+   :expressions []
    :keys        [{:name "customer", :expr "id"}]
    :joins       []
    :aliases     #{"customers"}})
@@ -97,7 +101,33 @@
                  (metric "median_total"
                          :table          "orders"
                          :aggregation    {:operator :median, :expr "total"}
-                         :time-dimension "created_at")]
+                         :time-dimension "created_at")
+                 ;; an aggregation written as a whole SQL expression, as an Ossie metric is, over a named expression
+                 ;; of the table and a dimension of a joined one, each a placeholder
+                 (metric "vip_net_revenue_per_order"
+                         :table          "orders"
+                         :aggregation    {:text       "SUM(orders.net_total) FILTER (WHERE customers.segment = 'vip') / COUNT(DISTINCT orders.id)"
+                                          :sql        "SUM(ref_0) FILTER (WHERE ref_1 = 'vip') / COUNT(DISTINCT id)"
+                                          :references {"ref_0" {:kind :expression, :path [], :name "net_total"}
+                                                       "ref_1" {:kind :dimension, :path ["customer"], :name "segment"
+                                                                :bucket nil}}}
+                         :time-dimension "created_at")
+                 ;; the running form of a SQL aggregation has no Metabase equivalent
+                 (metric "running_net_revenue"
+                         :type           :cumulative
+                         :table          "orders"
+                         :aggregation    {:text       "SUM(orders.net_total)"
+                                          :sql        "SUM(ref_0)"
+                                          :references {"ref_0" {:kind :expression, :path [], :name "net_total"}}}
+                         :time-dimension "created_at")
+                 ;; a filter on a reference to a SQL-aggregated metric cannot be inlined
+                 (metric "vip_share"
+                         :type        :ratio
+                         :numerator   {:metric "vip_net_revenue_per_order", :alias nil
+                                       :filters [{:text "{orders.status} = 'paid'", :sql "ref_0 = 'paid'"
+                                                  :references {"ref_0" {:kind :dimension, :path [], :name "status"
+                                                                        :bucket nil}}}]}
+                         :denominator {:metric "order_count", :alias nil, :filters []})]
    :unsupported [{:kind :metric, :name "funnel", :unique-id "acme.metric.funnel", :reason "funnels are acme's own"}]})
 
 ;; acme writes its semantic layer in the IR already, so its raw is the IR
@@ -131,9 +161,20 @@
       (is (mr/validate ::semantic-layer-import/report report))
       (testing "every metric converts, and what the source reported is carried over"
         (is (= [[:metric "revenue"] [:metric "vip_orders"] [:metric "order_count"] [:metric "median_total"]
-                [:metric "average_order_value"]]
+                [:metric "vip_net_revenue_per_order"] [:metric "average_order_value"]]
                (map (juxt :kind :name) (:converted report))))
-        (is (= [{:kind :metric, :name "funnel", :reason "funnels are acme's own"}] (:unsupported report)))
+        (is (= [{:kind :metric, :name "funnel", :reason "funnels are acme's own"}
+                {:kind   :metric
+                 :name   "running_net_revenue"
+                 :reason (str "a running total over the SQL aggregation \"SUM(orders.net_total)\" has no Metabase"
+                              " equivalent: only a running sum or row count does")}
+                {:kind   :metric
+                 :name   "vip_share"
+                 :reason (str "ratio: metric \"vip_net_revenue_per_order\" is aggregated as the SQL"
+                              " \"SUM(orders.net_total) FILTER (WHERE customers.segment = 'vip')"
+                              " / COUNT(DISTINCT orders.id)\"; only an aggregation with an operator can take a filter"
+                              " where it is referred to")}]
+               (:unsupported report)))
         (is (= [] (:errors report))))
       (testing "the collection is named after the tool, and every id is the tool's"
         (is (= {:name "acme metrics", :description "Metrics imported from acme."}
@@ -149,6 +190,14 @@
         (is (=? {:aggregation [["count" {}]]
                  :filters     [["=" {} (fld "customers" "segment" "customer_id") "vip"]]}
                 (stage "vip_orders"))))
+      (testing (str "a SQL aggregation converts whole, a named expression inlined where it is referred to and a"
+                    " joined dimension reached through the join")
+        (is (=? {:aggregation [["/" {}
+                                ["sum-where" {}
+                                 ["-" {} (fld "orders" "total") ["coalesce" {} (fld "orders" "discount") 0]]
+                                 ["=" {} (fld "customers" "segment" "customer_id") "vip"]]
+                                ["distinct" {} (fld "orders" "id")]]]}
+                (stage "vip_net_revenue_per_order"))))
       (testing "a ratio divides references to its inputs' cards"
         (is (= [["/" {}
                  ["metric" {} (:entity_id (card "revenue"))]

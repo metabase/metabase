@@ -1,0 +1,81 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# M2 ladder rung: the core aggregate set as metrics. Variant: BARE reference
+# form (column name only), kept as a sibling variant pending #343.
+version: "0.2.0.dev0"
+name: m2_sales
+description: "M2: core aggregate set, bare reference form."
+datasets:
+  - name: sales
+    source: samples.sales.orders
+    fields:
+      - name: amount
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: amount
+        datatype: Decimal
+      - name: order_id
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: order_id
+        datatype: Integer
+      - name: customer_id
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: customer_id
+        datatype: Integer
+metrics:
+  - name: sum_amount
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: SUM(amount)
+    datatype: Decimal
+  - name: count_orders
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: COUNT(order_id)
+    datatype: Integer
+  - name: distinct_customers
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: COUNT(DISTINCT customer_id)
+    datatype: Integer
+  - name: avg_amount
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: AVG(amount)
+    datatype: Decimal
+  - name: min_amount
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: MIN(amount)
+    datatype: Decimal
+  - name: max_amount
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: MAX(amount)
+    datatype: Decimal

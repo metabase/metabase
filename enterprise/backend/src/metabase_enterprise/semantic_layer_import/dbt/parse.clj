@@ -284,6 +284,8 @@
                                   :relation    (parse-relation node-relation)
                                   :columns     (parse-columns (source-node nodes semantic-model))
                                   :dimensions  (mapv parse-dimension dimensions)
+                                  ;; measures are folded into the metrics that use them, see [[ir-aggregation]]
+                                  :expressions []
                                   :keys        (mapv #(select-keys % [:name :expr]) entities)
                                   :joins       []
                                   :aliases     (cond-> #{} primary-entity (conj primary-entity))}

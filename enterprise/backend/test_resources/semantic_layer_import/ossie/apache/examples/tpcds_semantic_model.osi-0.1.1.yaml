@@ -1,0 +1,578 @@
+# yaml-language-server: $schema=../core-spec/osi-schema.json
+
+# TPC-DS Semantic Model Example
+# This example demonstrates the OSI Core Metadata Spec using the TPC-DS benchmark schema
+# TPC-DS is a decision support benchmark with a realistic retail business model
+
+version: "0.1.1"
+
+semantic_model:
+  - name: tpcds_retail_model
+    description: TPC-DS retail semantic model for sales and customer analytics
+    ai_context:
+      instructions: "Use this semantic model for retail analytics. It provides comprehensive sales, customer, product, and store data from the TPC-DS benchmark. The model supports time-based analysis, customer segmentation, product performance, and store operations metrics."
+
+    datasets:
+      # Fact table: Store sales transactions
+      - name: store_sales
+        source: tpcds.public.store_sales
+        primary_key: [ss_item_sk, ss_ticket_number]  # Composite primary key
+        unique_keys:
+          - [ss_item_sk, ss_ticket_number]  # Composite key: item + ticket number uniquely identifies a line item
+        description: Fact table containing all store sales transactions
+        ai_context:
+          synonyms:
+            - "sales transactions"
+            - "store purchases"
+            - "retail sales"
+            - "POS data"
+
+        fields:
+          - name: ss_sold_date_sk
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: ss_sold_date_sk
+            description: Foreign key to date dimension
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "sale date"
+                - "transaction date"
+
+          - name: ss_item_sk
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: ss_item_sk
+            description: Foreign key to item dimension
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "product"
+                - "item"
+
+          - name: ss_customer_sk
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: ss_customer_sk
+            description: Foreign key to customer dimension
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "customer"
+                - "buyer"
+
+          - name: ss_store_sk
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: ss_store_sk
+            description: Foreign key to store dimension
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "store"
+                - "location"
+
+          - name: ss_quantity
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: ss_quantity
+            description: Quantity of items sold
+            ai_context:
+              synonyms:
+                - "units sold"
+                - "quantity"
+
+          - name: ss_sales_price
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: ss_sales_price
+            description: Sales price per unit
+            ai_context:
+              synonyms:
+                - "unit price"
+                - "price"
+
+          - name: ss_ext_sales_price
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: ss_ext_sales_price
+            description: Extended sales price (quantity * price)
+            ai_context:
+              synonyms:
+                - "total price"
+                - "line total"
+
+          - name: ss_net_profit
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: ss_net_profit
+            description: Net profit from the sale
+            ai_context:
+              synonyms:
+                - "profit"
+                - "margin"
+
+      # Dimension table: Date
+      - name: date_dim
+        source: tpcds.public.date_dim
+        primary_key: [d_date_sk]  # Simple primary key
+        unique_keys:
+          - [d_date_sk]  # Simple key: single column
+        description: Date dimension with calendar attributes
+        ai_context:
+          synonyms:
+            - "calendar"
+            - "dates"
+            - "time periods"
+
+        fields:
+          - name: d_date_sk
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: d_date_sk
+            description: Surrogate key for date
+            dimension:
+              is_time: false
+
+          - name: d_date
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: d_date
+            description: Actual date value
+            dimension:
+              is_time: true
+            ai_context:
+              synonyms:
+                - "date"
+                - "calendar date"
+
+          - name: d_year
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: d_year
+            description: Year
+            dimension:
+              is_time: true
+            ai_context:
+              synonyms:
+                - "year"
+
+          - name: d_quarter_name
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: d_quarter_name
+            description: Quarter name (e.g., 2024Q1)
+            dimension:
+              is_time: true
+            ai_context:
+              synonyms:
+                - "quarter"
+                - "fiscal quarter"
+
+          - name: d_month_name
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: d_month_name
+            description: Month name
+            dimension:
+              is_time: true
+            ai_context:
+              synonyms:
+                - "month"
+
+      # Dimension table: Customer
+      - name: customer
+        source: tpcds.public.customer
+        primary_key: [c_customer_sk]  # Simple primary key
+        unique_keys:
+          - [c_customer_sk]  # Simple key: single column
+        description: Customer dimension with demographic information
+        ai_context:
+          synonyms:
+            - "customers"
+            - "shoppers"
+            - "buyers"
+
+        fields:
+          - name: c_customer_sk
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: c_customer_sk
+            description: Surrogate key for customer
+            dimension:
+              is_time: false
+
+          - name: c_customer_id
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: c_customer_id
+            description: Business key for customer
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "customer ID"
+                - "customer number"
+
+          - name: c_first_name
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: c_first_name
+            description: Customer first name
+            dimension:
+              is_time: false
+
+          - name: c_last_name
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: c_last_name
+            description: Customer last name
+            dimension:
+              is_time: false
+
+          - name: customer_full_name
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: c_first_name || ' ' || c_last_name
+            description: Customer full name (computed field)
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "full name"
+                - "customer name"
+
+          - name: c_email_address
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: c_email_address
+            description: Customer email address
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "email"
+                - "contact"
+
+      # Dimension table: Item (Product)
+      - name: item
+        source: tpcds.public.item
+        primary_key: [i_item_sk]  # Simple primary key
+        unique_keys:
+          - [i_item_sk]  # Simple key: single column
+        description: Item/Product dimension with product attributes
+        ai_context:
+          synonyms:
+            - "products"
+            - "items"
+            - "merchandise"
+
+        fields:
+          - name: i_item_sk
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: i_item_sk
+            description: Surrogate key for item
+            dimension:
+              is_time: false
+
+          - name: i_item_id
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: i_item_id
+            description: Business key for item
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "item ID"
+                - "product ID"
+                - "SKU"
+
+          - name: i_item_desc
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: i_item_desc
+            description: Item description
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "product description"
+                - "item name"
+
+          - name: i_brand
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: i_brand
+            description: Brand name
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "brand"
+                - "manufacturer"
+
+          - name: i_category
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: i_category
+            description: Item category
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "product category"
+                - "department"
+
+          - name: i_current_price
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: i_current_price
+            description: Current price of the item
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "price"
+                - "list price"
+
+      # Dimension table: Store
+      - name: store
+        source: tpcds.public.store
+        primary_key: [s_store_sk]  # Simple primary key
+        unique_keys:
+          - [s_store_id]  # Simple key: single column
+        description: Store dimension with location and store attributes
+        ai_context:
+          synonyms:
+            - "stores"
+            - "retail locations"
+            - "branches"
+
+        fields:
+          - name: s_store_sk
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: s_store_sk
+            description: Surrogate key for store
+            dimension:
+              is_time: false
+
+          - name: s_store_id
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: s_store_id
+            description: Business key for store
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "store ID"
+                - "store number"
+
+          - name: s_store_name
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: s_store_name
+            description: Store name
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "store name"
+                - "location name"
+
+          - name: s_city
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: s_city
+            description: City where store is located
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "city"
+                - "location"
+
+          - name: s_state
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: s_state
+            description: State where store is located
+            dimension:
+              is_time: false
+            ai_context:
+              synonyms:
+                - "state"
+                - "region"
+
+          - name: s_number_employees
+            expression:
+              dialects:
+                - dialect: ANSI_SQL
+                  expression: s_number_employees
+            description: Number of employees at the store
+            ai_context:
+              synonyms:
+                - "employee count"
+                - "staff size"
+
+    # Relationships between datasets
+    relationships:
+      - name: store_sales_to_date
+        from: store_sales
+        to: date_dim
+        from_columns: [ss_sold_date_sk]
+        to_columns: [d_date_sk]
+        ai_context:
+          synonyms:
+            - "sales date relationship"
+            - "when sale occurred"
+
+      - name: store_sales_to_customer
+        from: store_sales
+        to: customer
+        from_columns: [ss_customer_sk]
+        to_columns: [c_customer_sk]
+        ai_context:
+          synonyms:
+            - "customer purchase relationship"
+            - "who bought"
+
+      - name: store_sales_to_item
+        from: store_sales
+        to: item
+        from_columns: [ss_item_sk]
+        to_columns: [i_item_sk]
+        ai_context:
+          synonyms:
+            - "product sold relationship"
+            - "what was sold"
+
+      - name: store_sales_to_store
+        from: store_sales
+        to: store
+        from_columns: [ss_store_sk]
+        to_columns: [s_store_sk]
+        ai_context:
+          synonyms:
+            - "store location relationship"
+            - "where sale occurred"
+
+    # Semantic model-level metrics spanning multiple datasets
+    metrics:
+      - name: total_sales
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: SUM(store_sales.ss_ext_sales_price)
+        description: Total sales revenue across all transactions
+        ai_context:
+          synonyms:
+            - "total revenue"
+            - "gross sales"
+            - "sales amount"
+
+      - name: total_profit
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: SUM(store_sales.ss_net_profit)
+        description: Total net profit from store sales
+        ai_context:
+          synonyms:
+            - "net profit"
+            - "total earnings"
+            - "profit"
+
+      - name: customer_lifetime_value
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: SUM(store_sales.ss_ext_sales_price) / COUNT(DISTINCT customer.c_customer_sk)
+        description: Average lifetime sales value per customer
+        ai_context:
+          synonyms:
+            - "CLV"
+            - "LTV"
+            - "customer value"
+            - "lifetime revenue"
+
+      - name: sales_by_brand
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: SUM(store_sales.ss_ext_sales_price)
+        description: Total sales by brand (requires grouping by item.i_brand)
+        ai_context:
+          synonyms:
+            - "brand sales"
+            - "brand performance"
+            - "brand revenue"
+
+      - name: store_productivity
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: SUM(store_sales.ss_ext_sales_price) / NULLIF(SUM(store.s_number_employees), 0)
+        description: Sales per employee across stores
+        ai_context:
+          synonyms:
+            - "sales per employee"
+            - "employee productivity"
+            - "revenue per employee"
+
+    custom_extensions:
+      - vendor_name: SALESFORCE
+        data: |
+          {
+            "tableau_workbook_id": "tpcds_retail_dashboard",
+            "einstein_enabled": true,
+            "crm_sync": {
+              "enabled": true,
+              "sync_frequency": "daily",
+              "customer_mapping": "customer.c_customer_id -> Account.AccountNumber"
+            },
+            "tableau_semantics": {
+              "published": true,
+              "version": "0.1.1"
+            }
+          }
+
+      - vendor_name: DBT
+        data: '{"project_name": "tpcds_analytics", "models_path": "models/semantic"}'

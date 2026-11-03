@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0.dev0",
+  "name": "ossie_sql_2026",
+  "description": "Every OSSIE_SQL_2026 function that DuckDB spells differently or lacks, over rows chosen for the edge cases",
+  "datasets": [
+    {
+      "name": "o", "source": "memory.main.orders", "primary_key": ["id"],
+      "fields": [
+        {"name": "id", "datatype": "Integer", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "id"}]}},
+        {"name": "region", "datatype": "String", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "region"}]}},
+        {"name": "code", "datatype": "String", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "code"}]}},
+        {"name": "region_or_unknown", "datatype": "String", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "NVL(region, 'unknown')"}]}},
+        {"name": "has_discount", "datatype": "String", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "IFF(discount IS NULL, 'no', 'yes')"}]}},
+        {"name": "discount_state", "datatype": "String", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "NVL2(discount, 'some', 'none')"}]}},
+        {"name": "discount_or_zero", "datatype": "Decimal", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "ZEROIFNULL(discount)"}]}},
+        {"name": "amount_or_null", "datatype": "Decimal", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "NULLIFZERO(amount)"}]}},
+        {"name": "dash_position", "datatype": "Integer", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "CHARINDEX('-', code)"}]}},
+        {"name": "starts_with_a", "datatype": "Boolean", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "STARTSWITH(code, 'A')"}]}},
+        {"name": "ends_with_z", "datatype": "Boolean", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "ENDSWITH(code, 'Z')"}]}},
+        {"name": "created_month", "datatype": "Date", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "DATE_TRUNC(month, created)"}]}},
+        {"name": "due", "datatype": "Date", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "DATEADD(day, 30, created)"}]}},
+        {"name": "month_later", "datatype": "Date", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "DATEADD(month, 1, created)"}]}},
+        {"name": "days_to_ship", "datatype": "Integer", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "DATEDIFF(day, created, shipped)"}]}},
+        {"name": "label", "datatype": "String", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "CONCAT(region, '-', code)"}]}},
+        {"name": "larger", "datatype": "Decimal", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "GREATEST(amount, discount)"}]}},
+        {"name": "smaller", "datatype": "Decimal", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "LEAST(amount, discount)"}]}},
+        {"name": "launch", "datatype": "Date", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "TO_DATE('2024-01-15')"}]}},
+        {"name": "launch_ts", "datatype": "Timestamp", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "CAST('2024-01-15 10:30:00' AS TIMESTAMP_NTZ)"}]}},
+        {"name": "preferred", "datatype": "String", "expression": {"dialects": [{"dialect": "ANSI_SQL", "expression": "'ansi'"}, {"dialect": "OSSIE_SQL_2026", "expression": "'ossie_sql_2026'"}]}}
+      ]
+    }
+  ],
+  "metrics": [
+    {"name": "order_count", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "COUNT(o.id)"}]}},
+    {"name": "discount_total_ossie", "expression": {"dialects": [{"dialect": "OSSIE_SQL_2026", "expression": "SUM(ZEROIFNULL(o.discount))"}]}},
+    {"name": "discount_total_ansi", "expression": {"dialects": [{"dialect": "ANSI_SQL", "expression": "SUM(COALESCE(o.discount, 0))"}]}}
+  ]
+}

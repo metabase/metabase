@@ -1,0 +1,47 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# yaml-language-server: $schema=../../../../core-spec/ossie-schema.json
+#
+# M0 ladder rung -- one dataset, one field, one SUM metric.
+# Variant: BARE reference form -- SUM(amount), a bare column name rather than
+# dataset.field. ANSI_SQL tag. This is the "SUM(amount)" variant from the runs.
+# Kept as a sibling variant to the qualified primary, not baked into the rung,
+# because #343 (bare name means a source column inside a dataset-scoped metric)
+# and #486 (qualified dataset.field only) are still settling which form is the
+# model-level reference. sigma drops this as a cross-dataset metric on a
+# one-dataset model.
+version: "0.2.0.dev0"
+name: m0_sales
+description: M0 baseline -- single dataset, single field, single SUM metric.
+datasets:
+  - name: sales
+    source: samples.sales.orders
+    fields:
+      - name: amount
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: amount
+        datatype: Decimal
+metrics:
+  - name: total_amount
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: SUM(amount)
+    datatype: Decimal

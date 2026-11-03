@@ -1,0 +1,140 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# yaml-language-server: $schema=../../../core-spec/ossie-schema.json
+#
+# Ossie semantic model over the SCOTT schema (scott.sql), for the query
+# compliance cases in ../cases/.
+#
+# The metrics are dataset-scoped (datasets[].metrics). Each dataset is exposed
+# as a relation with the same name, and each metric is a measure column of that
+# relation (relational_semantics.md, Section 3.4). All relations of the model
+# are in one schema with the name of the model (Section 11.2). The cases refer
+# to these relations by two-part name: scott_model.emp, scott_model.dept, and
+# scott_model.salgrade.
+#
+# The primary_key of each dataset is the row identity of its measures
+# (Section 3.2).
+#
+# The model has no AVG metric yet. For AVG over an exact numeric, the SQL
+# standard leaves the scale of the result implementation-defined, so a case
+# that needs AVG adds a metric over an approximate argument, for example
+# AVG(CAST(sal AS DOUBLE PRECISION)) (../README.md, "Result semantics").
+#
+# The emp-to-salgrade join (e.sal BETWEEN s.losal AND s.hisal) is a range join.
+# An Ossie relationship cannot express it, so a case that uses it writes the
+# join in the query (Section 11.3).
+
+version: 0.2.0.dev0
+name: scott_model
+description: The SCOTT schema with dataset-scoped metrics
+datasets:
+  - name: emp
+    source: scott.emp
+    primary_key: [empno]
+    fields:
+      - name: empno
+        datatype: Integer
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: empno}]}
+      - name: ename
+        datatype: String
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: ename}]}
+      - name: job
+        datatype: String
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: job}]}
+      - name: mgr
+        datatype: Integer
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: mgr}]}
+      - name: hiredate
+        datatype: Date
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: hiredate}]}
+      - name: sal
+        datatype: Decimal
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: sal}]}
+      - name: comm
+        datatype: Decimal
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: comm}]}
+      - name: deptno
+        datatype: Integer
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: deptno}]}
+    metrics:
+      - name: sum_sal
+        description: Total salary
+        datatype: Decimal
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: SUM(sal)}]}
+      - name: emp_count
+        description: Number of employees
+        datatype: Integer
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: COUNT(*)}]}
+      - name: comm_count
+        description: Number of employees that have a commission
+        datatype: Integer
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: COUNT(comm)}]}
+      - name: sum_comm
+        description: Total commission
+        datatype: Decimal
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: SUM(comm)}]}
+
+  - name: dept
+    source: scott.dept
+    primary_key: [deptno]
+    fields:
+      - name: deptno
+        datatype: Integer
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: deptno}]}
+      - name: dname
+        datatype: String
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: dname}]}
+      - name: loc
+        datatype: String
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: loc}]}
+    metrics:
+      - name: dept_count
+        description: Number of departments
+        datatype: Integer
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: COUNT(*)}]}
+
+  - name: salgrade
+    source: scott.salgrade
+    primary_key: [grade]
+    fields:
+      - name: grade
+        datatype: Integer
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: grade}]}
+      - name: losal
+        datatype: Integer
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: losal}]}
+      - name: hisal
+        datatype: Integer
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: hisal}]}
+    metrics:
+      - name: grade_count
+        description: Number of salary grades
+        datatype: Integer
+        expression: {dialects: [{dialect: OSSIE_SQL_2026, expression: COUNT(*)}]}
+
+relationships:
+  - name: emp_to_dept
+    from: emp
+    to: dept
+    from_columns: [deptno]
+    to_columns: [deptno]
+  - name: emp_to_manager
+    from: emp
+    to: emp
+    from_columns: [mgr]
+    to_columns: [empno]

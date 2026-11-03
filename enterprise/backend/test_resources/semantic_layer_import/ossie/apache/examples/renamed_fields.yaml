@@ -1,0 +1,120 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# A small model whose field names deliberately differ from the columns of
+# their source tables. Keys, relationship columns and metric expressions
+# all name the fields, never the source columns, as described in
+# core-spec/spec.md "Name Resolution". Converters that compile to SQL
+# against the source tables have to substitute each field's expression.
+version: "0.2.0.dev0"
+name: renamed_fields
+description: Orders and customers whose field names differ from their source columns
+
+datasets:
+  - name: orders
+    source: sales.public.orders   # columns: o_orderkey, o_custkey, o_orderdate, o_totalprice, total_cents
+    primary_key: [order_id]
+    description: One row per order
+    fields:
+      - name: order_id
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: o_orderkey
+        datatype: Integer
+      - name: customer_id
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: o_custkey
+        datatype: Integer
+      - name: order_date
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: o_orderdate
+        datatype: Date
+        dimension:
+          is_time: true
+      - name: total_amount
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: o_totalprice
+        datatype: Decimal
+      - name: total_usd
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: total_cents / 100.0
+        datatype: Decimal
+
+  - name: customers
+    source: sales.public.customers   # columns: c_custkey, c_name, c_mktsegment
+    primary_key: [id]
+    description: One row per customer
+    fields:
+      - name: id
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: c_custkey
+        datatype: Integer
+      - name: name
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: c_name
+        datatype: String
+      - name: segment
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: c_mktsegment
+        datatype: String
+
+relationships:
+  - name: orders_to_customers
+    from: orders
+    to: customers
+    from_columns: [customer_id]   # field of orders, not o_custkey
+    to_columns: [id]              # field of customers, not c_custkey
+
+metrics:
+  - name: total_revenue
+    description: Sum of order totals in dollars
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: SUM(orders.total_usd)
+  - name: order_count
+    description: Number of orders
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: COUNT(DISTINCT orders.order_id)
+  - name: customer_count
+    description: Number of customers with at least one order
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: COUNT(DISTINCT orders.customer_id)
+  - name: gross_revenue
+    description: Sum of order totals as the source records them, through the renamed field
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: SUM(orders.total_amount)

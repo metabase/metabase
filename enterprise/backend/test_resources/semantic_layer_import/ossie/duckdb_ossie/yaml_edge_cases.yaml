@@ -1,0 +1,91 @@
+# Hostile-but-legal YAML. Every value here must survive the YAML -> JSON -> parser path exactly,
+# and test/sql/ossie_yaml.test asserts it reads identically to yaml_edge_cases.json.
+version: "0.2.0.dev0"
+name: yaml_edge_cases
+description: &shared "shared via a YAML anchor"
+ai_context:
+  synonyms: [flow, style, "quoted, comma"]        # flow style, and a comma inside a quoted scalar
+datasets:
+  - name: t
+    source: tpcds.public.t
+    description: *shared                          # alias must resolve to the anchor
+    primary_key: [k]
+    ai_context:
+      synonyms:
+        - "tab\there"                             # escapes only expand in double quotes
+        - "newline\nhere"
+        - "  padded  "                            # quoting must preserve the padding
+        - "1.5"                                   # quoted, so it stays a string
+        - "true"
+        - "null"
+    fields:
+      - name: k
+        expression: {dialects: [{dialect: ANSI_SQL, expression: k}]}
+
+      - name: concat
+        description: pipes and single quotes
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "a || ' ' || b"
+
+      - name: hash_lit
+        description: "a # inside quotes must not become a comment"
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "CASE WHEN a = '#1' THEN 1 ELSE 0 END"
+
+      - name: hash_unquoted
+        description: truncated here # <- UNQUOTED: YAML ends the scalar at this comment marker,
+                                    #    so the stored description is "truncated here". This is
+                                    #    correct YAML and a real trap for model authors, so it is
+                                    #    asserted rather than avoided. Quote the value to keep it.
+        expression: {dialects: [{dialect: ANSI_SQL, expression: k}]}
+
+      - name: colons
+        description: "key: value"
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "CAST(a AS VARCHAR) || ': ' || b"
+
+      - name: blocky
+        description: literal block scalar keeps newlines
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: |-
+                CASE WHEN k > 1
+                     THEN 'big'
+                     ELSE 'small' END
+
+      - name: folded
+        description: folded block scalar becomes one line
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: >-
+                k
+                + 1
+
+      - name: unicode
+        description: "héllo → wörld"
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "'héllo → wörld'"
+
+      - name: numeric_desc
+        description: 1.5                          # UNQUOTED: YAML types this as a float.
+        expression: {dialects: [{dialect: ANSI_SQL, expression: k}]}
+
+      - name: empty_syn
+        ai_context:
+          synonyms: []
+        expression: {dialects: [{dialect: ANSI_SQL, expression: k}]}
+relationships: []
+metrics:
+  - name: m
+    description: counts rows
+    expression: {dialects: [{dialect: ANSI_SQL, expression: COUNT(t.k)}]}

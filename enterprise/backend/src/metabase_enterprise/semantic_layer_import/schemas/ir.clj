@@ -5,13 +5,16 @@
   The IR is in the import's own terms, not any one tool's:
 
   * a *table* is a physical relation and what the semantic layer declares on it: its documented columns, the
-    dimensions it can be broken out and filtered by, its named keys, and its joins to other tables. A dbt semantic
-    model, a Cube cube and an OSI dataset are each one;
+    dimensions it can be broken out and filtered by, its named expressions (row-level SQL a metric can refer to by
+    name), its named keys, and its joins to other tables. A dbt semantic model, a Cube cube and an Ossie dataset are
+    each one;
   * a *metric* is one aggregation over one table (`:simple`), the running total of one (`:cumulative`), or arithmetic
-    over other metrics (`:ratio`, `:derived`);
+    over other metrics (`:ratio`, `:derived`). A simple metric's aggregation is an operator over an expression
+    (`::aggregation`) or, for a source that writes a metric as a whole SQL aggregate expression, that SQL with
+    placeholders for its references (`::aggregation.sql`);
   * a *filter* is a SQL condition in the warehouse's dialect in which every reference to the semantic layer's own
-    objects (a dimension, perhaps through a join and bucketed by a time grain; a key; the metric's time dimension)
-    stands as a placeholder identifier (see `::filter`).
+    objects (a dimension, perhaps through a join and bucketed by a time grain; a named expression; a key; the metric's
+    time dimension) stands as a placeholder identifier (see `::filter`).
 
   Whatever is the warehouse's stays as the source wrote it: column names, warehouse type strings, SQL. Mapping those
   to Metabase base types, field refs and MBQL is the resolve stage's job. Everything else that is the source's is the
@@ -21,6 +24,7 @@
   The IR holds metrics. Another kind of content (a transform, say) would be a key of its own next to `:metrics`, with
   its schema here, a resolver and an emitter (see [[metabase-enterprise.semantic-layer-import.core]])."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::relation-part
@@ -32,20 +36,24 @@
   project wrote in quotes when it built the table, so the warehouse kept their spelling; the others it wrote bare, and
   a warehouse that folds the case of a bare identifier stores them folded (see
   [[metabase-enterprise.semantic-layer-import.metadata]]). Empty when the project does not say, which is read as
-  nothing quoted."
+  nothing quoted. `schema` is nil when the project names the table without one (an Ossie `source` of one part), which
+  is read as the table being in no schema, as a warehouse without schemas syncs it."
   [:map {:closed true}
    [:database [:maybe :string]]
-   [:schema   :string]
+   [:schema   [:maybe :string]]
    [:table    :string]
    [:quoted   [:set ::relation-part]]])
 
 (mr/def ::column
   "A column of the relation, as the source project documents it. `data-type` is the warehouse type string and may be
-  missing when the project does not declare it. `quoted?` is whether the project writes the column's name in quotes,
-  so the warehouse kept its spelling, as `quoted` on `::relation`."
+  missing when the project does not declare it; a source that knows the column's type in Metabase's terms rather than
+  the warehouse's (Ossie's logical `datatype`, say) sets `base-type` instead, which the resolve stage takes over
+  `data-type`. `quoted?` is whether the project writes the column's name in quotes, so the warehouse kept its spelling,
+  as `quoted` on `::relation`."
   [:map {:closed true}
    [:name        :string]
    [:data-type   [:maybe :string]]
+   [:base-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:description [:maybe :string]]
    [:quoted?     :boolean]])
 
@@ -66,6 +74,16 @@
    [:expr        :string]
    [:grain       [:maybe ::grain]]
    [:validity    [:maybe [:set [:enum :start :end]]]]
+   [:label       [:maybe :string]]
+   [:description [:maybe :string]]])
+
+(mr/def ::expression
+  "A named row-level expression of a table, which a metric's SQL or a filter can refer to by name (see `::reference`)
+  and which is inlined where it is referred to: an Ossie field with no `dimension`, a Cube measure's `sql`. `expr` is a
+  bare column name or SQL, as a dimension's is. Not something a metric can be broken out by: that is a `::dimension`."
+  [:map {:closed true}
+   [:name        :string]
+   [:expr        :string]
    [:label       [:maybe :string]]
    [:description [:maybe :string]]])
 
@@ -102,7 +120,8 @@
 (mr/def ::table
   "One physical relation and everything the semantic layer declares on it. `name` is the source's name for it, by
   which metrics and joins refer to it. `columns` is keyed by name. `aliases` are the names by which a reference
-  path can name the table itself, as SQL can name a table by an alias of its own (dbt's primary entity)."
+  path can name the table itself, as SQL can name a table by an alias of its own (dbt's primary entity, an Ossie
+  dataset's own name)."
   [:map {:closed true}
    [:name        :string]
    [:label       [:maybe :string]]
@@ -110,6 +129,7 @@
    [:relation    ::relation]
    [:columns     [:map-of :string ::column]]
    [:dimensions  [:sequential ::dimension]]
+   [:expressions [:sequential ::expression]]
    [:keys        [:sequential ::key]]
    [:joins       [:sequential ::join]]
    [:aliases     [:set :string]]])
@@ -135,6 +155,14 @@
    [:kind   [:= :time-dimension]]
    [:bucket ::bucket]])
 
+(mr/def ::reference.expression
+  "A named expression (see `::expression`) of the table at the end of `path`, as `::reference.dimension` reaches a
+  dimension; inlined where it is referred to."
+  [:map {:closed true}
+   [:kind [:= :expression]]
+   [:path [:sequential :string]]
+   [:name :string]])
+
 (mr/def ::reference.key
   "A key of the metric's table, by name."
   [:map {:closed true}
@@ -142,10 +170,11 @@
    [:name :string]])
 
 (mr/def ::reference
-  "What a placeholder in a filter's SQL stands for."
+  "What a placeholder in a filter's or a SQL aggregation's SQL stands for."
   [:multi {:dispatch :kind}
    [:dimension      ::reference.dimension]
    [:time-dimension ::reference.time-dimension]
+   [:expression     ::reference.expression]
    [:key            ::reference.key]])
 
 (mr/def ::filter
@@ -166,6 +195,19 @@
    [:operator   [:enum :sum :avg :min :max :median :percentile :count :count-distinct :count-where]]
    [:expr       :string]
    [:percentile {:optional true} [:and number? [:>= 0] [:<= 1]]]])
+
+(mr/def ::aggregation.sql
+  "An aggregation written as a whole SQL aggregate expression, the shape a semantic layer's metric takes when the
+  format has no aggregation operators of its own (Ossie's `SUM(lineitem.net_amount) / COUNT(DISTINCT orders.id)`):
+  `sql` in the warehouse's dialect, with every column inside an aggregate function, converted as one by
+  [[metabase-enterprise.semantic-layer-import.sql/aggregation->mbql]]. As in a `::filter`, each key of `references`
+  is an identifier standing for what it maps to, which is inlined, and any other identifier is a column of the
+  metric's table; `text` is the expression as the source wrote it, which a report quotes. Only a `:simple` metric
+  takes one: the running form of arbitrary SQL has no Metabase equivalent."
+  [:map {:closed true}
+   [:text       :string]
+   [:sql        :string]
+   [:references [:map-of :string ::reference]]])
 
 (mr/def ::metric-input
   "A reference from a ratio or derived metric to another metric: by name, with the alias a derived `expr` uses for it
@@ -193,15 +235,16 @@
    [:meta            [:maybe [:map {::mr/deliberately-open true, :description "free-form metadata"}]]]])
 
 (mr/def ::metric.simple
-  "One aggregation over the table named `table`. A cumulative metric is the same with its aggregation running over
-  everything up to each row. `time-dimension` names the dimension of the table the metric is measured along over
-  time: its default dimension, and what a `:time-dimension` reference refers to."
+  "One aggregation over the table named `table`: an operator over an expression (`::aggregation`), or a whole SQL
+  aggregate expression (`::aggregation.sql`). A cumulative metric is the same with its aggregation running over
+  everything up to each row, which only an `::aggregation` can. `time-dimension` names the dimension of the table the
+  metric is measured along over time: its default dimension, and what a `:time-dimension` reference refers to."
   [:merge
    ::metric.common
    [:map {:closed true}
     [:type           [:enum :simple :cumulative]]
     [:table          :string]
-    [:aggregation    ::aggregation]
+    [:aggregation    [:or ::aggregation ::aggregation.sql]]
     [:time-dimension [:maybe :string]]]])
 
 (mr/def ::metric.ratio
@@ -248,9 +291,9 @@
    [:error?    {:optional true} :boolean]])
 
 (mr/def ::source
-  "Where a semantic layer came from: the `tool` that defines it (`\"dbt\"`), its version and the project's name, as
-  the tool records them; nil where it does not. The tool's name prefixes every id the import derives (see
-  [[metabase-enterprise.semantic-layer-import.ids]]) and names the collection by default."
+  "Where a semantic layer came from: the `tool` that defines it (`\"dbt\"`, `\"ossie\"`), its version and the
+  project's name, as the tool records them; nil where it does not. The tool's name prefixes every id the import derives
+  (see [[metabase-enterprise.semantic-layer-import.ids]]) and names the collection by default."
   [:map {:closed true}
    [:tool    :string]
    [:version [:maybe :string]]
@@ -258,8 +301,9 @@
 
 (mr/def ::warehouse
   "What the source says about the warehouse the project was written for: the source's own name for it (dbt's
-  `adapter_type`, `postgres`), and the Metabase driver that connects to it, when the source knows one. The config's
-  `:driver` is checked against it (see [[metabase-enterprise.semantic-layer-import.core/check-driver]])."
+  `adapter_type`, `postgres`; the Ossie dialect the SQL is read in, `SNOWFLAKE`), and the Metabase driver that connects
+  to it, when the source knows one. The config's `:driver` is checked against it (see
+  [[metabase-enterprise.semantic-layer-import.core/check-driver]])."
   [:map {:closed true}
    [:type   [:maybe :string]]
    [:driver [:maybe :keyword]]])
