@@ -7,6 +7,7 @@
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -100,7 +101,27 @@
                               {:dashboard (hydrated (:id dash))
                                :attrs     {}
                                :ops       [{:op "add_parameter" :parameter_id "p" :name "P" :type "not-a-type"}]}))))
-        (is (empty? (:parameters (hydrated (:id dash)))))))))
+        (is (empty? (:parameters (hydrated (:id dash))))))))
+  (testing "a create's compiled payload is checked as an update's is, on a dry run as on a save"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [validate-only? [true false]]
+        (testing (if validate-only? "dry run" "save")
+          (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:parameters some?}}
+                  (error-data #(dashboard-write/write!
+                                {:attrs          {:name "Invalid parameters"}
+                                 :ops            [{:op "add_parameter" :parameter_id "p" :name "P" :type "not-a-type"}]
+                                 :validate-only? validate-only?}))))))
+      (is (not (t2/exists? :model/Dashboard :name "Invalid parameters"))))))
+
+(deftest missing-attrs-test
+  (testing "attrs left out are none, so an update with only ops saves them and a create reports its missing name"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+        (is (=? {:name "Sales", :dashcards [{:visualization_settings {:text "Hello"}}]}
+                (dashboard-write/write! {:dashboard (hydrated (:id dash))
+                                         :ops       [{:op "add_text" :id -1 :markdown "Hello"}]}))))
+      (is (=? {::dashboard-ops/error :invalid-payload, :explanation {:name some?}}
+              (error-data #(dashboard-write/write! {:ops [{:op "add_text" :id -1 :markdown "Hello"}]})))))))
 
 (deftest unreadable-card-test
   (testing "a card the user cannot read is refused as unknown, before any write"
@@ -216,3 +237,21 @@
                                                            :dashcard_id (:id dc)
                                                            :size        {:size_x 6 :size_y 4}}]
                                          :validate-only? true})))))))
+
+(deftest dry-run-overlays-a-stored-card-as-its-row-test
+  (testing "a dry run overlaying a card the dashboard shows elsewhere returns its row, readable or not"
+    (mt/with-temp [:model/Collection    locked {}
+                   :model/Card          hidden {:name "Hidden", :collection_id (:id locked)}
+                   :model/Card          card   {:name "Orders"}
+                   :model/Dashboard     dash   {:name "Sales"}
+                   :model/DashboardCard _      {:dashboard_id (:id dash), :card_id (:id hidden)}
+                   :model/DashboardCard dc     {:dashboard_id (:id dash), :card_id (:id card), :row 4}]
+      (mt/with-non-admin-groups-no-collection-perms locked
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [result (dashboard-write/write! {:dashboard      (hydrated (:id dash))
+                                                :ops            [{:op          "set_series"
+                                                                  :dashcard_id (:id dc)
+                                                                  :card_ids    [(:id hidden)]}]
+                                                :validate-only? true})]
+            (is (=? [{:id (:id hidden), :name "Hidden"}]
+                    (:series (u/find-first-map (:dashcards result) [:id] (:id dc)))))))))))

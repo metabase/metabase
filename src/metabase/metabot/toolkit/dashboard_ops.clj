@@ -452,11 +452,14 @@
     (nil? (:card_id mapping)) (assoc :card_id (:card_id dc))))
 
 (defn- check-patched-mapping!
-  "Throws unless `mapping`, from [[patched-mapping]], is a mapping the save accepts, for a parameter on the dashboard
-   and a card `dc` shows."
-  [state dc mapping]
+  "Throws unless `mapping`, the patch's mapping at `idx` as [[patched-mapping]] shapes it, is one the save accepts,
+   for a parameter on the dashboard and a card `dc` shows."
+  [state dc idx mapping]
   (when-let [explanation (mr/explain ::parameters.schema/parameter-mapping mapping)]
-    (fail! :invalid-op {:explanation (me/humanize explanation)}))
+    ;; Placed at the mapping's path in the op, as the op schema's own errors are, so a patch with several mappings
+    ;; says which one failed.
+    (fail! :invalid-op {:explanation {:patch {:parameter_mappings (assoc (vec (repeat idx nil))
+                                                                         idx (me/humanize explanation))}}}))
   (resolve-parameter! state (:parameter_id mapping))
   ;; The save would otherwise filter the primary card for a mapping that names a card the dashcard doesn't show.
   (when (and (:card_id mapping)
@@ -478,9 +481,9 @@
           stored   (into #{} (map (partial patched-mapping dc)) (:parameter_mappings dc))]
       ;; Only new or changed mappings are checked. The patch replaces the whole list, so a stale stored mapping sent
       ;; back unchanged would otherwise block an unrelated edit.
-      (doseq [m     mappings
-              :when (not (contains? stored m))]
-        (check-patched-mapping! state dc m))
+      (doseq [[idx m] (map-indexed vector mappings)
+              :when   (not (contains? stored m))]
+        (check-patched-mapping! state dc idx m))
       (update-row state :dashcards dashcard_id
                   (fn [dc]
                     (cond-> (merge dc (dissoc patch :visualization_settings :parameter_mappings))

@@ -518,10 +518,13 @@
     (is (=? {::dashboard-ops/error :unknown-parameter, :parameter-id "nope", :op-index 0}
             (op-error (p1-dash a-dashcard)
                       [(patch-mappings [{:parameter_id "nope" :target ["dimension" ["field" 1 nil]]}])]))))
-  (testing "a new mapping the save would refuse fails in the op, with its index"
-    (is (=? {::dashboard-ops/error :invalid-op, :op-index 0, :explanation {:target some?}}
+  (testing "a new mapping the save would refuse fails in the op, explained at the mapping's index in the patch"
+    (is (=? {::dashboard-ops/error :invalid-op
+             :op-index             0
+             :explanation          {:patch {:parameter_mappings [nil {:target some?}]}}}
             (op-error (p1-dash a-dashcard)
-                      [(patch-mappings [{:parameter_id "p1" :target ["nonsense"]}])]))))
+                      [(patch-mappings [{:parameter_id "p1" :target ["dimension" ["field" 1 nil]]}
+                                        {:parameter_id "p1" :target ["nonsense"]}])]))))
   (testing "a mapping takes only its three keys"
     (is (=? {::dashboard-ops/error :invalid-op, :op-index 0}
             (op-error (p1-dash a-dashcard)
