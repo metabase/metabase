@@ -29,6 +29,7 @@ import type {
   GoalValue,
   ReferencedEntitiesResults,
   ReferencedEntity,
+  RowValues,
   SearchResult,
 } from "metabase-types/api";
 import {
@@ -446,6 +447,92 @@ describe("GoalValueInput", () => {
 
     const pill = screen.getByRole("button", { name: "Change value source" });
     expect(within(pill).getByText("250")).toBeInTheDocument();
+  });
+
+  describe("multi-column source", () => {
+    const HIGH_REF = { type: "card", id: 9, column: "HIGH" } as const;
+
+    it("renders the value of the referenced column rather than the first one", () => {
+      setupMultiColumnSourceCard();
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMultiColumnSourceResults([[300, 600]]),
+        }),
+        value: HIGH_REF,
+      });
+
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      expect(within(pill).getByText("600")).toBeInTheDocument();
+    });
+
+    it("shows an empty pill and an error when the referenced column is null, even though the other column is a number", async () => {
+      setupMultiColumnSourceCard();
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMultiColumnSourceResults([[300, null]]),
+        }),
+        value: HIGH_REF,
+      });
+
+      expect(
+        await screen.findByText("This value isn't a number"),
+      ).toBeInTheDocument();
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      expect(within(pill).getByText("—")).toBeInTheDocument();
+    });
+
+    it("shows an error when the referenced column is text, even though the other column is a number", async () => {
+      setupMultiColumnSourceCard();
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMultiColumnSourceResults([[300, "text"]]),
+        }),
+        value: HIGH_REF,
+      });
+
+      expect(
+        await screen.findByText("This value isn't a number"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows an error when the source returned no rows", async () => {
+      setupMultiColumnSourceCard();
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMultiColumnSourceResults([]),
+        }),
+        value: HIGH_REF,
+      });
+
+      expect(
+        await screen.findByText("This value isn't a number"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows an error for a column the source no longer has, even though its other columns resolve", async () => {
+      setupMultiColumnSourceCard();
+      setupCardDatasetWithReferencedEntities(
+        createMultiColumnSourceResults([[300, 600]]),
+      );
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMultiColumnSourceResults([[300, 600]]),
+        }),
+        referencedEntities: [{ type: "card", id: 9 }],
+        value: { ...HIGH_REF, column: "MISSING" },
+      });
+
+      expect(
+        await screen.findByText("This column no longer exists"),
+      ).toBeInTheDocument();
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      expect(within(pill).getByText("—")).toBeInTheDocument();
+    });
   });
 
   it("resolves a reference the dataset can't answer by re-running the query with it attached", async () => {
@@ -1779,6 +1866,38 @@ function setupCardDatasetWithReferencedEntities(
       data: createMockDatasetData({ referenced_entities: referencedEntities }),
     },
   });
+}
+
+function setupMultiColumnSourceCard() {
+  setupCardEndpoints(
+    createMockCard({
+      id: 9,
+      name: "Low and high",
+      result_metadata: [
+        createMockField({ name: "LOW", base_type: "type/Integer" }),
+        createMockField({ name: "HIGH", base_type: "type/Integer" }),
+      ],
+    }),
+  );
+}
+
+function createMultiColumnSourceResults(
+  rows: RowValues[],
+): ReferencedEntitiesResults {
+  return {
+    card: {
+      9: {
+        status: "completed",
+        data: {
+          cols: [
+            createMockColumn({ name: "LOW" }),
+            createMockColumn({ name: "HIGH" }),
+          ],
+          rows,
+        },
+      },
+    },
+  };
 }
 
 function setupDeletedCard() {
