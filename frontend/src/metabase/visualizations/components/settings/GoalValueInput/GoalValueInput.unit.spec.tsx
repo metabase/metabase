@@ -1612,6 +1612,24 @@ describe("GoalValueInput", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("treats a picked question without result metadata as having no numeric columns", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "Not run yet" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({ id: 15, name: "Not run yet", result_metadata: null }),
+    );
+    const { onChange } = setup();
+
+    await openMenu();
+    await pickEntity("Not run yet");
+
+    expect(
+      await screen.findByRole("menuitem", { name: "No numeric columns" }),
+    ).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   describe("opening the source in a new tab", () => {
     const NEW_TAB_HINT = `${METAKEY}+click to open in new tab`;
 
