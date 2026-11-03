@@ -690,3 +690,27 @@
           (is (string? (:error goal))))
         (testing "the source exists, so this isn't reported as a missing source"
           (is (nil? (:error_type goal))))))))
+
+(deftest referenced-entities-are-one-level-deep-test
+  (testing "a source's own dynamic goals don't run"
+    (let [ran (atom [])]
+      (mt/with-temp [:model/Card {deep-id :id}   {:dataset_query (count-query :checkins)}
+                     :model/Card {source-id :id} (chart-card :scalar {:scalar.segments [{:min   (goal-ref deep-id)
+                                                                                         :max   nil
+                                                                                         :color "red"}]})
+                     :model/Card {chart-id :id}  (chart-card :scalar {:scalar.segments [{:min   (goal-ref source-id)
+                                                                                         :max   nil
+                                                                                         :color "red"}]})]
+        (mt/with-dynamic-fn-redefs [referenced-entities/run-referenced-entity
+                                    (let [run-referenced-entity (mt/original-fn #'referenced-entities/run-referenced-entity)]
+                                      (fn [spec max-rows]
+                                        (swap! ran conj (:id spec))
+                                        (run-referenced-entity spec max-rows)))]
+          (is (= "completed" (get-in (card-query-referenced-entities chart-id) [:card source-id :status])))
+          (is (= [source-id] @ran))))))
+  (testing "a card whose goal is its own value runs its query once more, without looping"
+    (mt/with-temp [:model/Card {chart-id :id} (chart-card :scalar {})]
+      (t2/update! :model/Card :id chart-id {:visualization_settings {:scalar.segments [{:min   (goal-ref chart-id)
+                                                                                        :max   nil
+                                                                                        :color "red"}]}})
+      (is (= [[100]] (get-in (card-query-referenced-entities chart-id) [:card chart-id :data :rows]))))))
