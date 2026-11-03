@@ -304,7 +304,7 @@ function toTestResult(
       setupAfterEnvEnd: start,
     },
     snapshot: result.snapshot ?? NO_SNAPSHOTS,
-    skipped: result.passed + result.failed === 0,
+    skipped: result.passed + result.failed + result.todo === 0,
     leaks: false,
     openHandles: [],
   };

@@ -26,7 +26,6 @@ import {
   packageHooks,
   rootSuite,
   selectTests,
-  testsIn,
 } from "./collect.ts";
 import { currentWindow, replaceWindow } from "./dom.ts";
 import {
@@ -40,8 +39,10 @@ import { logFile } from "./file-log.ts";
 import {
   finishSnapshots,
   moduleMocker,
+  resetAssertions,
   setCurrentTestName,
   startSnapshots,
+  takeAssertionErrors,
 } from "./jest-object.ts";
 import { recordSetupMocks, resetMocksForNextFile } from "./mocks.ts";
 import { evictModules, evictProjectModules } from "./module-cache.ts";
@@ -57,6 +58,7 @@ import {
   restoreRealm,
 } from "./realm.ts";
 import {
+  describeError,
   recordFailure,
   recordLateFailure,
   recordPassed,
@@ -115,16 +117,39 @@ export function setRepositoryReset(reset: () => void): void {
 /**
  * node:test fails the running test on an uncaught exception and moves on
  * while the runner is still cleaning it up, so the cleanup would land inside
- * later tests. The error is kept instead, and reported as the failure of the
- * test that is running.
+ * later tests. The error is kept instead. As in jest, it fails the test that
+ * is running, or else the file.
  */
 export function captureUncaughtExceptions(): void {
-  process.setUncaughtExceptionCaptureCallback((error) => {
-    if (FETCH_MOCK_ABORT_RACE.test(String(error?.message ?? error))) {
-      return;
+  process.setUncaughtExceptionCaptureCallback(captureError);
+}
+
+// node:test adds its own listener for unhandled rejections when its first
+// test starts, and that listener aborts the running test in the same way.
+function captureUnhandledRejections(): void {
+  for (const listener of process.listeners("unhandledRejection")) {
+    if (listener !== captureError) {
+      process.off("unhandledRejection", listener);
     }
-    pendingUncaught ??= { error };
-  });
+  }
+  if (!process.listeners("unhandledRejection").includes(captureError)) {
+    process.on("unhandledRejection", captureError);
+  }
+}
+
+function captureError(error: unknown): void {
+  if (FETCH_MOCK_ABORT_RACE.test(describeError(error).message)) {
+    return;
+  }
+  pendingUncaught ??= { error };
+}
+
+// An error that no test was running for fails the file, as in jest.
+function recordPendingErrorOnFile(): void {
+  if (pendingUncaught) {
+    recordSuiteError("an uncaught error", pendingUncaught.error);
+    pendingUncaught = null;
+  }
 }
 
 export function runFile(t: TestContext, file: string): Promise<void> {
@@ -133,6 +158,7 @@ export function runFile(t: TestContext, file: string): Promise<void> {
 
 async function runFileInScope(t: TestContext, file: string): Promise<void> {
   const startedAt = Date.now();
+  captureUnhandledRejections();
   recordSetupMocks();
   startSnapshots(file);
   evictProjectModules();
@@ -148,6 +174,7 @@ async function runFileInScope(t: TestContext, file: string): Promise<void> {
     logFile(path.relative(root, file), startedAt);
     await resetForNextFile();
     recordLateLeaks();
+    recordPendingErrorOnFile();
   }
 }
 
@@ -161,7 +188,7 @@ async function runFileSuite(t: TestContext, fileSuite: Suite): Promise<void> {
     if (setupError) {
       failTestsIn(fileSuite, setupError);
     } else if (fileSuite.mode === "skip") {
-      recordSkipped(testsIn(fileSuite));
+      recordNotRun(fileSuite);
     } else {
       await runSuite(t, fileSuite, {
         isFileLevel: true,
@@ -185,6 +212,7 @@ async function runBeforeAll(hooks: TestFunction[]): Promise<Failure | null> {
       failure ??= { error };
     }
   }
+  recordPendingErrorOnFile();
   return failure;
 }
 
@@ -198,10 +226,27 @@ async function runAfterAll(hooks: TestFunction[]): Promise<void> {
       recordSuiteError("afterAll", error);
     }
   }
+  recordPendingErrorOnFile();
 }
 
 function runHook(fn: TestFunction): Promise<unknown> {
   return withDeadline(fn, hookTimeoutOf(fn) ?? HOOK_TIMEOUT_MS, "hook");
+}
+
+// The tests of a block that has none to run. A todo test stays a todo.
+function recordNotRun(suite: Suite): void {
+  for (const child of suite.children) {
+    if (child.type === "suite") {
+      recordNotRun(child.suite);
+      continue;
+    }
+    const identity = { ancestors: child.path, title: child.name };
+    if (child.mode === "todo") {
+      recordTodo([identity]);
+    } else {
+      recordSkipped([identity]);
+    }
+  }
 }
 
 // The tests of a block whose beforeAll failed. They fail with its error and do
@@ -256,7 +301,7 @@ async function runChildren(
     if (child.type === "suite") {
       const skip = child.suite.mode === "skip";
       if (skip) {
-        recordSkipped(testsIn(child.suite));
+        recordNotRun(child.suite);
       }
       await t.test(child.suite.name, { skip }, (nested) =>
         runSuite(nested, child.suite, { ...hooks, isFileLevel: false }),
@@ -279,12 +324,20 @@ async function runChildren(
     }
     // No node:test timeout: the hooks and the body each have their own
     // deadline, and node:test would start the next test while this one still
-    // runs its afterEach hooks.
-    await t.test(child.name, () => runTest(child, hooks));
+    // runs its afterEach hooks. node:test can also end a test early, so the
+    // runner waits for its own run of it as well.
+    let running: Promise<void> = Promise.resolve();
+    await t.test(child.name, () => {
+      running = runTest(child, hooks);
+      return running;
+    });
+    await running.catch(() => {});
   }
 }
 
 async function runTest(test: TestNode, hooks: HookChain): Promise<void> {
+  recordPendingErrorOnFile();
+  resetAssertions();
   startTestOutput();
   if (actEnvironmentForFile !== undefined) {
     globals.IS_REACT_ACT_ENVIRONMENT = actEnvironmentForFile;
@@ -300,6 +353,10 @@ async function runTest(test: TestNode, hooks: HookChain): Promise<void> {
   let failure = await runInTestScope(testScope, () =>
     runHooksAndBody(test, hooks),
   );
+  const [assertionError] = takeAssertionErrors();
+  if (assertionError) {
+    failure ??= { error: assertionError };
+  }
   const leak = takeRunningWorkOf(testScope);
   if (leak) {
     failure ??= { error: leak };
