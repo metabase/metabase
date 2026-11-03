@@ -205,7 +205,7 @@ export default class HarnessRunner {
   #workerEnvironment(): NodeJS.ProcessEnv {
     const { testNamePattern, updateSnapshot } = this.#globalConfig;
     return {
-      ...(updateSnapshot === "all" && { NT_UPDATE_SNAPSHOTS: "1" }),
+      NT_UPDATE_SNAPSHOTS: updateSnapshot,
       ...(testNamePattern && { NT_TEST_NAME_PATTERN: testNamePattern }),
       ...(process.stdout.isTTY && { FORCE_COLOR: "1" }),
     };

@@ -66,6 +66,14 @@ export function installJestObject(): void {
   Object.assign(globalThis, { expect, jest: createJestObject() });
 }
 
+// jest's --ci gives "none", which fails a test whose snapshot is missing.
+const SNAPSHOT_UPDATE_MODES = ["all", "new", "none"] as const;
+
+function snapshotUpdateMode(): (typeof SNAPSHOT_UPDATE_MODES)[number] {
+  const mode = process.env.NT_UPDATE_SNAPSHOTS;
+  return SNAPSHOT_UPDATE_MODES.find((known) => known === mode) ?? "new";
+}
+
 export function startSnapshots(specFile: string): void {
   snapshotState = new SnapshotState(
     path.join(
@@ -74,7 +82,7 @@ export function startSnapshots(specFile: string): void {
       `${path.basename(specFile)}.snap`,
     ),
     {
-      updateSnapshot: process.env.NT_UPDATE_SNAPSHOTS ? "all" : "new",
+      updateSnapshot: snapshotUpdateMode(),
       snapshotFormat: { escapeString: false, printBasicPrototype: false },
       rootDir: root,
     },
