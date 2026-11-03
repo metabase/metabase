@@ -1,5 +1,5 @@
 (ns metabase.mcp.permissions-test
-  "Per-group MCP tool access as the resolver, the v2 registry and the transport's `initialize` enforce it. The
+  "Per-group MCP tool access as the resolver, the v2 registry and the v2 surface enforce it. The
   policy is stubbed here; how it is collected from group rows is `metabase-enterprise.mcp.permissions-test`."
   (:require
    [clojure.set :as set]
@@ -128,25 +128,47 @@
       (is (= common/error-code-invalid-request
              (get-in (registry/call-tool v2.tu/all-scopes nil "test_echo" {}) [:error :code]))))))
 
-(deftest initialize-is-refused-when-mcp-is-disabled-test
-  (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly no-access-policy)]
-    (let [initialize (fn [user expected-status]
-                       (v2.tu/do-with-bearer-token!
-                        user v2.tu/all-scopes
-                        (fn [headers]
-                          (:body (client/client-full-response :post expected-status "metabase-mcp"
-                                                              {:request-options {:headers headers}}
-                                                              {:jsonrpc "2.0" :method "initialize" :params {} :id 1})))))]
-      (testing "the handshake names the fix instead of handing out an empty tool list"
-        (is (= {:jsonrpc "2.0"
-                :id      1
-                :error   {:code    common/error-code-invalid-request
-                          :message (str "MCP access is not enabled for your account. "
-                                        "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")}}
-               (initialize :rasta 403))))
-      (testing "a superuser still connects"
-        (is (=? {:result {:protocolVersion string?}}
-                (initialize :crowberto 200)))))))
+(def ^:private access-disabled-text
+  (str "MCP access is not enabled for your account. "
+       "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access."))
+
+(deftest user-without-mcp-access-connects-and-is-told-why-test
+  (testing "a user whose groups grant no MCP access still connects, so the reason reaches them in channels clients pass
+            to the model unchanged, rather than an HTTP refusal whose reason clients replace with generic text"
+    (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly no-access-policy)]
+      (let [session (fn [user f]
+                      (v2.tu/do-with-bearer-token!
+                       user v2.tu/all-scopes
+                       (fn [headers]
+                         (let [post!      (fn [headers message]
+                                            (client/client-full-response :post 200 "metabase-mcp"
+                                                                         {:request-options {:headers headers}}
+                                                                         message))
+                               initialize (post! headers {:jsonrpc "2.0" :method "initialize" :params {} :id 1})
+                               headers    (assoc headers "mcp-session-id"
+                                                 (get-in initialize [:headers "Mcp-Session-Id"]))]
+                           (f (:body initialize)
+                              #(:body (post! headers (merge {:jsonrpc "2.0" :id 2} %))))))))
+            tool-names (fn [request!]
+                         (map :name (get-in (request! {:method "tools/list"}) [:result :tools])))]
+        (session :rasta
+                 (fn [initialize request!]
+                   (testing "`initialize` succeeds, and its instructions are the reason"
+                     (is (=? {:result {:protocolVersion string?
+                                       :instructions    access-disabled-text}}
+                             initialize)))
+                   (testing "`tools/list` offers only the tool that explains it"
+                     (is (= ["mcp_access_status"] (tool-names request!))))
+                   (testing "every tool call, listed or not, is a tool error carrying the reason"
+                     (doseq [tool-name ["mcp_access_status" "search"]]
+                       (is (= {:content [{:type "text" :text access-disabled-text}]
+                               :isError true}
+                              (:result (request! {:method "tools/call" :params {:name tool-name :arguments {}}}))))))))
+        (testing "a superuser is never narrowed"
+          (session :crowberto
+                   (fn [initialize request!]
+                     (is (not= access-disabled-text (get-in initialize [:result :instructions])))
+                     (is (some #{"search"} (tool-names request!))))))))))
 
 (deftest ^:parallel app-only-tool-follows-the-ui-tools-test
   (mt/with-current-user (mt/user->id :rasta)

@@ -43,9 +43,27 @@
 
 ;;; ------------------------------------------------ Method dispatch -----------------------------------------------
 
+(defn- mcp-access-enabled?
+  "Whether the current user's groups grant any MCP access. A user they grant none still connects, and is answered with
+  [[transport/mcp-access-disabled-message]] instead of tools."
+  []
+  (mcp.perms/enabled? (mcp.perms/policy-for-current-user)))
+
+(def ^:private access-status-tool
+  "The one tool listed to a user whose groups grant no MCP access. An empty list would give the model no reason to
+  mention Metabase, so this one is there to be called, and its result explains why nothing else is."
+  {:name        "mcp_access_status"
+   :title       "MCP access status"
+   :description (str "MCP access is not enabled for your Metabase account, so this connection has no other tools. "
+                     "Call this to learn why and how to get access, and tell the user.")
+   :inputSchema {:type "object" :properties {}}
+   :annotations {:readOnlyHint true}})
+
 (defn- handle-tools-list [id _params session-id]
-  (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
-    (transport/jsonrpc-response id {:tools (registry/list-tools {:supports-mcp-ui? supports-mcp-ui?})})))
+  (if-not (mcp-access-enabled?)
+    (transport/jsonrpc-response id {:tools [access-status-tool]})
+    (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
+      (transport/jsonrpc-response id {:tools (registry/list-tools {:supports-mcp-ui? supports-mcp-ui?})}))))
 
 (defn- step-up-scopes
   "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that are `required` or that
@@ -70,7 +88,16 @@
                                 (step-up-scopes mcp.scope/v2-surface-scopes token-scopes required-scope)
                                 (step-up-description description)))
 
-(defn- handle-tools-call [id params session-id token-scopes request-context]
+(defn- access-disabled-tools-call
+  "The `tools/call` response for request `id` from a user whose groups grant no MCP access, whatever the tool: a tool
+  error carrying [[transport/mcp-access-disabled-message]], which clients pass to the model, unlike a JSON-RPC error,
+  whose message some replace."
+  [id]
+  (transport/jsonrpc-response id {:content [{:type "text"
+                                             :text (message/render transport/mcp-access-disabled-message)}]
+                                  :isError true}))
+
+(defn- tools-call [id params session-id token-scopes request-context]
   (let [tool-name        (:name params)
         arguments        (or (:arguments params) {})
         ;; RC clients carry their identity per-call in `_meta`; the usage recorder falls back to
@@ -90,6 +117,11 @@
         insufficient-scope (with-step-up-challenge token-scopes insufficient-scope))
       (transport/jsonrpc-response id result))))
 
+(defn- handle-tools-call [id params session-id token-scopes request-context]
+  (if-not (mcp-access-enabled?)
+    (access-disabled-tools-call id)
+    (tools-call id params session-id token-scopes request-context)))
+
 (defn- handle-resources-list [id _params]
   (transport/jsonrpc-response id (v2.resources/list-resources)))
 
@@ -108,9 +140,7 @@
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
     (cond
-      ;; `initialize` checks this too, but a session opened before an admin turned MCP off for the user's groups
-      ;; would otherwise keep reading.
-      (not (mcp.perms/enabled? (mcp.perms/policy-for-current-user)))
+      (not (mcp-access-enabled?))
       (transport/jsonrpc-error id common/error-code-invalid-request transport/mcp-access-disabled-message)
 
       (or (not (string? uri)) (str/blank? uri))
