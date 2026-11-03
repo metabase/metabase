@@ -538,6 +538,16 @@
                     :model/DashboardCard
                     :model/Database}}
 
+  change-log
+  {:team "Cloud"
+   :api  #{metabase.change-log.core
+           metabase.change-log.init}
+   :uses #{app-db
+           premium-features
+           settings
+           task
+           util}}
+
   ;; TODO -- way too many API namespaces.
   channel
   {:team "Gadget"
@@ -1562,6 +1572,7 @@
               api-scope
               app-db
               audit-app
+              change-log
               channel
               collections
               data-apps
@@ -2014,6 +2025,7 @@
    :uses #{api
            app-db
            audit-app
+           change-log
            collections
            events
            lib.metadata
@@ -2164,6 +2176,7 @@
            metabase.pulse.init}
    :uses #{api
            app-db
+           change-log
            channel
            collections
            driver
@@ -2898,6 +2911,7 @@
            api
            app-db
            audit-app
+           change-log
            database-routing
            dependencies
            driver
@@ -4221,6 +4235,19 @@
            util
            util.config}
    :model-imports #{:model/AuthIdentity :model/User}}
+
+  enterprise/monitor-relay
+  {:team "Cloud"
+   :api  #{metabase-enterprise.monitor-relay.api metabase-enterprise.monitor-relay.init}
+   :uses #{api
+           app-db
+           change-log
+           premium-features
+           settings
+           task
+           util
+           util.config
+           warehouse-schema-overlay}}
 
   enterprise/native-query-snippets
   {:team "Graphy"

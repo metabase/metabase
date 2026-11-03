@@ -26,6 +26,7 @@ export * from "./metric";
 export * from "./metabot";
 export * from "./modelIndexes";
 export * from "./models";
+export * from "./monitor-relay";
 export * from "./multi-factor-auth";
 export * from "./notification";
 export * from "./oauth";

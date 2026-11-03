@@ -8,6 +8,7 @@
   (:require
    [clojure.set :as set]
    [metabase.app-db.core :as app-db]
+   [metabase.change-log.core :as change-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -659,25 +660,29 @@
                                              [:= :s.field_id :metabase_field.id]
                                              [:not= :s.data_sensitivity nil]]}]]])
 
+(defn- reset-data-sensitivity!
+  "Clear `data_sensitivity` of the Fields that `where` selects, in one UPDATE, which bypasses the Field model, so the
+  change log is written here. Returns the number of Fields cleared."
+  [where]
+  (t2/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (change-log/log-rows! :metabase_field "update" #(t2/select-fn-vec :id :metabase_field {:where where}))
+    (t2/query-one {:update :metabase_field, :set {:data_sensitivity nil}, :where where})))
+
 (mu/defn reset-classifier-data-sensitivity-for-table!
   "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of the
   Table with `table-id`. Returns the number of Fields cleared."
   [table-id :- ::lib.schema.id/table]
-  (t2/query-one {:update :metabase_field
-                 :set    {:data_sensitivity nil}
-                 :where  [:and [:= :table_id table-id] classifier-data-sensitivity-clause]}))
+  (reset-data-sensitivity! [:and [:= :table_id table-id] classifier-data-sensitivity-clause]))
 
 (mu/defn reset-classifier-data-sensitivity-for-database!
   "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of every
   Table of the Database with `database-id`. Returns the number of Fields cleared."
   [database-id :- ::lib.schema.id/database]
-  (t2/query-one {:update :metabase_field
-                 :set    {:data_sensitivity nil}
-                 :where  [:and
-                          [:in :table_id ^:allow-subquery {:select [:id]
-                                                           :from   [:metabase_table]
-                                                           :where  [:= :db_id database-id]}]
-                          classifier-data-sensitivity-clause]}))
+  (reset-data-sensitivity! [:and
+                            [:in :table_id ^:allow-subquery {:select [:id]
+                                                             :from   [:metabase_table]
+                                                             :where  [:= :db_id database-id]}]
+                            classifier-data-sensitivity-clause]))
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
