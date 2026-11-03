@@ -20,6 +20,9 @@
 ;; With a language other than simple, appdb also indexes an unstemmed copy of the text and the semantic index
 ;; does not, so a half-typed word such as "shippi" finds "Shipping costs" on appdb but not in the keyword arm.
 ;; Both arms are recorded, but comparisons and statistics count only the vector arm.
+;; In-place hits are what in-place returns on a PostgreSQL app DB.
+;; Where another app DB returns something else, that app DB falls short, and metabase.search.query-semantics-test
+;; records the difference.
 [{:id     "multiword-defaults"
   :focus  "default multiword Boolean and cross-field matches"
   :config "simple"
@@ -442,10 +445,11 @@
            :appdb-postgres [:A :D]
            :semantic       {:keyword [:A :D], :vector [:A :B :C]}}
   :comparisons
+  ;; Only the final word is prefix-completed, so putting "fy2024" last keeps the ticket number out.
   [{:focus   "cards about 2024"
     :correct [:A :B :C]
     :alternatives
-    {:appdb-postgres {:query "fy2024 or 2024", :hits [:A :B :D]}}}]}
+    {:appdb-postgres {:query "2024 or fy2024", :hits [:A :B]}}}]}
  {:id     "accent-literal"
   :focus  "only the vector arm matches across an accent"
   :config "simple"
@@ -455,6 +459,7 @@
            :C {:name "Cafeteria costs"}
            :D {:name "Coffee orders"}}
   ;; Lexical engines treat "é" as a different letter, so "cafe" misses "Café sales" but matches "Cafeteria".
+  ;; On a MySQL or MariaDB app DB, in-place ignores accents and also finds "Café sales", which the test records.
   ;; The vector arm matches across the accent, and "Coffee orders" by meaning.
   :expect {:in-place       [:B :C]
            :appdb-h2       [:B :C]
@@ -902,19 +907,19 @@
  {:id     "vector-multilingual"
   :focus  "the vector arm matches a query in another language"
   :config "simple"
-  :query  "ventas por región"
+  :query  "ventas mensuales"
   :docs   {:A {:name "Sales by region"}
            :B {:name "Revenue by region"}
            :C {:name "Customers by region"}
            :D {:name "Monthly sales"}
            :E {:name "Support tickets"}
            :F {:name "Product inventory"}}
-  ;; In-place matches "por" inside "Support".
-  ;; The vector arm returns every regional card, nearest "Sales by region".
-  :expect {:in-place       [:E]
+  ;; The query shares no word or stem with any card, so lexical engines find nothing.
+  ;; The vector arm returns "Monthly sales" at about 0.46, and "Sales by region" at 0.68, inside the cutoff.
+  :expect {:in-place       []
            :appdb-h2       []
            :appdb-postgres []
-           :semantic       {:keyword [], :vector [:A :B :C]}}}
+           :semantic       {:keyword [], :vector [:A :D]}}}
  {:id     "vector-typo"
   :focus  "the vector arm tolerates a misspelling among correct words"
   :config "simple"
