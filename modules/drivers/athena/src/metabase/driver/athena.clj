@@ -629,7 +629,7 @@
                                      (if (reduced? sync-state-acc) (reduced sync-state-acc) sync-state-acc)))
                                  sync-state-acc
                                  (try
-                                   (get-fields)
+                                   (sort-by :database-position (get-fields))
                                    (catch Exception e
                                      (log/warnf e "Cannot get fields for table %s.%s, skipping field sync for it"
                                                 glue-schema table-name)
