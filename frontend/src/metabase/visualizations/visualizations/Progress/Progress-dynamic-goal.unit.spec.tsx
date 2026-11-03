@@ -154,6 +154,18 @@ describe("progress chart dynamic goal", () => {
     expect(screen.getByText("Goal exceeded")).toBeInTheDocument();
   });
 
+  // a failed goal also reads 0, so this tells the two apart
+  it("measures against an answered goal of 0 without a warning in the query builder", async () => {
+    setup({
+      isQueryBuilder: true,
+      referencedEntities: createMockReferencedEntitiesResults({ value: 0 }),
+    });
+
+    expect(await screen.findByText("Goal 0")).toBeInTheDocument();
+    expect(screen.getByText("Goal exceeded")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Goal warning")).not.toBeInTheDocument();
+  });
+
   it("opens the goal settings from the warning", async () => {
     const { onOpenChartSettings } = setup({
       referencedEntities: createMockFailedReferencedEntitiesResults({
