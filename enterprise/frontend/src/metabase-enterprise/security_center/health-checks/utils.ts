@@ -15,13 +15,7 @@ import type {
 
 import { compareBySeverity } from "../utils";
 
-export const HEALTH_CHECK_STATUSES = [
-  "fail",
-  "unknown",
-  "pass",
-] as const satisfies HealthCheckStatus[];
-
-export const RECHECK_ALL_CACHE_KEY = "security-center-recheck-all";
+import { HEALTH_CHECK_STATUSES } from "./constants";
 
 type StatusStyle = {
   icon: IconName;

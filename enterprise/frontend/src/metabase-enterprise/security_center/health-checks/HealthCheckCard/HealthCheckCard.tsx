@@ -25,8 +25,9 @@ import {
 } from "../../api";
 import { SeverityBadge } from "../../components/SeverityBadge/SeverityBadge";
 import { HealthCheckItems } from "../HealthCheckItems/HealthCheckItems";
+import { RECHECK_ALL_CACHE_KEY } from "../constants";
 import { useRecheckErrorToast } from "../hooks/use-recheck-error-toast";
-import { RECHECK_ALL_CACHE_KEY, getHealthCheckSettingsUrl } from "../utils";
+import { getHealthCheckSettingsUrl } from "../utils";
 
 type HealthCheckCardProps = {
   check: HealthCheck;

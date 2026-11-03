@@ -1,0 +1,9 @@
+import type { HealthCheckStatus } from "metabase-types/api";
+
+export const HEALTH_CHECK_STATUSES = [
+  "fail",
+  "unknown",
+  "pass",
+] as const satisfies HealthCheckStatus[];
+
+export const RECHECK_ALL_CACHE_KEY = "security-center-recheck-all";

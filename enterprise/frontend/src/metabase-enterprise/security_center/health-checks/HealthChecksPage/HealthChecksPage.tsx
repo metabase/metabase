@@ -16,12 +16,9 @@ import {
 } from "../../api";
 import { HealthCheckGroup } from "../HealthCheckGroup/HealthCheckGroup";
 import { HealthChecksSummary } from "../HealthChecksSummary/HealthChecksSummary";
+import { HEALTH_CHECK_STATUSES, RECHECK_ALL_CACHE_KEY } from "../constants";
 import { useRecheckErrorToast } from "../hooks/use-recheck-error-toast";
-import {
-  HEALTH_CHECK_STATUSES,
-  RECHECK_ALL_CACHE_KEY,
-  getChecksByStatus,
-} from "../utils";
+import { getChecksByStatus } from "../utils";
 
 type HealthChecksContentProps = {
   checks: HealthCheck[];
