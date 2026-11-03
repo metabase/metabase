@@ -89,7 +89,7 @@
                                 (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type card-type :collection_id (:id allow-dashboards)}))))))
       (testing "Cannot turn a dashboard question into a standalone question"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add dashboards to the 'Dashboards' collection"
-                              (t2/update! :model/Card (:id dashboard-card) {:dashboard_id nil}))))
+                              (t2/update! :model/Card :id (:id dashboard-card) {:dashboard_id nil}))))
       (testing "Can add collections iff they have the same :type"
         (let [new-coll (merge (mt/with-temp-defaults :model/Collection)
                               {:location (str "/" (:id allow-dashboards) "/")})]
@@ -118,7 +118,7 @@
                    :model/Card       metric           {:collection_id (:id allow-metrics) :type :metric}]
       (testing "A metric can't be moved into the Dashboards collection by giving it a dashboard"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add dashboards to the 'Dashboards' collection"
-                              (t2/update! :model/Card (:id metric) {:dashboard_id (:id dashboard)}))))
+                              (t2/update! :model/Card :id (:id metric) {:dashboard_id (:id dashboard)}))))
       (testing "Serdes loads dashboard questions before their dashboard"
         (binding [mi/*deserializing?* true]
           (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card)
@@ -176,9 +176,9 @@
                                                                :is_published  true})))))
       (testing "Cannot move a published table to a regular collection"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
-                              (t2/update! :model/Table (:id table) {:collection_id (:id regular)}))))
+                              (t2/update! :model/Table :id (:id table) {:collection_id (:id regular)}))))
       (testing "Can move a table out to no collection"
-        (is (some? (t2/update! :model/Table (:id table) {:collection_id nil})))))))
+        (is (some? (t2/update! :model/Table :id (:id table) {:collection_id nil})))))))
 
 (deftest cannot-update-library-collections
   (mt/with-premium-features #{:library}
@@ -191,7 +191,7 @@
           (testing (str "Checking type " (:type col))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Cannot update properties on a semantic layer collection"
-                                  (t2/update! :model/Collection (:id col) {:name "New Name"})))))))))
+                                  (t2/update! :model/Collection :id (:id col) {:name "New Name"})))))))))
 
 (deftest unpublish-tables-in-archived-collection-test
   (mt/with-premium-features #{:library}
@@ -263,11 +263,11 @@
                                                      :location (str "/" (:id metrics-parent) "/")}]
       (testing "Cannot move a library-data collection into a library-metrics parent"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics"
-                              (t2/update! :model/Collection (:id data-child)
+                              (t2/update! :model/Collection :id (:id data-child)
                                           {:location (str "/" (:id metrics-parent) "/")}))))
       (testing "Cannot move a library-metrics collection into a library-data parent"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables"
-                              (t2/update! :model/Collection (:id metrics-child)
+                              (t2/update! :model/Collection :id (:id metrics-child)
                                           {:location (str "/" (:id data-parent) "/")}))))
       (testing "Cannot move a library-data collection via API to a library-metrics parent"
         (is (= "Can only add metrics to the 'Metrics' collection"
@@ -296,16 +296,16 @@
                                                                                      (:id coll)))]
           (testing "Cannot move the Library collection itself into a vanilla collection"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
-                                  (t2/update! :model/Collection (:id library-root) {:location vanilla-location}))))
+                                  (t2/update! :model/Collection :id (:id library-root) {:location vanilla-location}))))
           (testing "Cannot move a top-level Data collection into a vanilla collection"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
-                                  (t2/update! :model/Collection (:id data-root) {:location vanilla-location}))))
+                                  (t2/update! :model/Collection :id (:id data-root) {:location vanilla-location}))))
           (testing "Cannot move a top-level Metrics collection into a vanilla collection"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
-                                  (t2/update! :model/Collection (:id metrics-root) {:location vanilla-location})))))
+                                  (t2/update! :model/Collection :id (:id metrics-root) {:location vanilla-location})))))
         (testing "Cannot move a Data subcollection into a vanilla collection"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a semantic layer collection outside the semantic layer"
-                                (t2/update! :model/Collection (:id data-sub) {:location vanilla-location}))))
+                                (t2/update! :model/Collection :id (:id data-sub) {:location vanilla-location}))))
         (testing "Cannot move a Metrics subcollection into a vanilla collection"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a semantic layer collection outside the semantic layer"
-                                (t2/update! :model/Collection (:id metrics-sub) {:location vanilla-location}))))))))
+                                (t2/update! :model/Collection :id (:id metrics-sub) {:location vanilla-location}))))))))

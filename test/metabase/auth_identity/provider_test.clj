@@ -59,16 +59,27 @@
                  provider/provider-string->keyword
                  provider/provider-keyword->string))))))
 
+;; A test provider that returns redirect
+(auth-identity/derive! :provider/test-redirect ::provider/provider)
+
+(methodical/defmethod provider/authenticate :provider/test-redirect
+  [_provider _request]
+  {:success? :redirect
+   :redirect-url "https://example.com/oauth"
+   :message "Redirecting to provider"})
+
+;; A test provider that returns error
+(auth-identity/derive! :provider/test-error ::provider/provider)
+
+(methodical/defmethod provider/authenticate :provider/test-error
+  [_provider _request]
+  {:success? false
+   :error :invalid-credentials
+   :message "Invalid credentials"})
+
 (deftest login!-default-implementation-test
   (testing "login! default implementation handles redirect responses"
     (testing "Returns redirect response unchanged when authenticate returns :redirect"
-      ;; Create a test provider that returns redirect
-      (auth-identity/derive! :provider/test-redirect ::provider/provider)
-      (methodical/defmethod provider/authenticate :provider/test-redirect
-        [_provider _request]
-        {:success? :redirect
-         :redirect-url "https://example.com/oauth"
-         :message "Redirecting to provider"})
       (let [result (provider/login! :provider/test-redirect
                                     {:device-info {:device_id "test" :ip_address "127.0.0.1"}})]
         (is (= :redirect (:success? result)))
@@ -78,13 +89,6 @@
         (is (nil? (:user result))))))
   (testing "login! default implementation handles failure responses"
     (testing "Returns error response unchanged when authenticate fails"
-      ;; Create a test provider that returns error
-      (auth-identity/derive! :provider/test-error ::provider/provider)
-      (methodical/defmethod provider/authenticate :provider/test-error
-        [_provider _request]
-        {:success? false
-         :error :invalid-credentials
-         :message "Invalid credentials"})
       (let [result (provider/login! :provider/test-error
                                     {:email "test@example.com"
                                      :password "wrong"

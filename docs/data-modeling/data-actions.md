@@ -18,7 +18,7 @@ You can run data actions in two ways:
 
 Unlike [model actions](./models/actions/introduction.md), data actions don't belong to a [model](./models/models.md). You don't need to create a model first, and data actions stay put when someone moves a model to the trash. But you can't add data actions to [dashboard buttons](../dashboards/actions.md). For a dashboard button, use a model action.
 
-If you [sync the Library](./semantic-layer/library.md#versioning-the-library) with [Remote Sync](../installation-and-operation/remote-sync.md), your data actions sync with it.
+If you [sync the Library](./semantic-layer/library.md#versioning-the-library) with [Remote Sync](semantic-layer/remote-sync.md), your data actions sync with it.
 
 ## Create a data action
 

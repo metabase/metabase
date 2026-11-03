@@ -264,7 +264,9 @@
   Comments and a trailing semicolon are allowed.
   SQL that does not parse in `driver`'s dialect is not read-only, and neither is SQL too long to check or holding a
   literal list too large to parse whole.
-  A function this does not name, a user-defined one included, passes: only the database's own permissions stop it."
+  A function this does not name, a user-defined one included, passes when called by its name.
+  Only the database's own permissions stop it.
+  A call through Snowflake's `IDENTIFIER(...)` is refused whatever it names."
   [driver :- :keyword
    sql    :- :string]
   (= :allowed (:verdict (classify-stmt driver sql "read-only"))))
@@ -272,8 +274,9 @@
 (mu/defn read-only-select-problem :- [:maybe [:map [:reason :keyword] [:detail [:maybe :string]]]]
   "Why `sql` is not a read-only select ([[read-only-select?]]), or nil when it is one.
   The `:reason` is one of `:multiple-statements`, `:not-a-select`, `:writes-or-locks`, `:statement-word`,
-  `:session-function`, `:sql-executing-function`, `:executable-comment`, `:bare-dash-comment`, `:backslash-quote`,
-  `:unicode-identifier`, `:large-literal-list`, `:too-long` and `:unparseable`.
+  `:session-function`, `:sql-executing-function`, `:dynamic-function-call`, `:executable-comment`,
+  `:bare-dash-comment`, `:backslash-quote`, `:unicode-identifier`, `:large-literal-list`, `:too-long` and
+  `:unparseable`.
   For `:statement-word`, `:detail` is the word, and for `:session-function` and `:sql-executing-function` it is the
   function's name."
   [driver :- :keyword

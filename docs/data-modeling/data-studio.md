@@ -42,7 +42,7 @@ The first time you open Data Studio, you'll land on the **Guide**: a quick tour 
 
 ### Remote sync and settings
 
-- **[Remote sync](../installation-and-operation/remote-sync.md)**\*: Click **Set up remote sync** to connect a Git repository and sync your Library and transforms.
+- **[Remote sync](./semantic-layer/remote-sync.md)**\*: Click **Set up remote sync** to connect a Git repository and sync your Library and transforms.
 - **Settings**: Turn [transforms](./transforms/transforms-overview.md) on or off for your Metabase. Settings only appear once you've [enabled transforms](./transforms/transforms-overview.md#enable-transforms).
 
 \* Available on [Pro and Enterprise plans](https://www.metabase.com/pricing).

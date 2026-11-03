@@ -12,7 +12,8 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log.capture :as log.capture]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
@@ -244,18 +245,18 @@
                  (qp.preprocess/preprocess
                   query)))))))))
 
-(deftest ^:parallel query->resolved-source-table-ids-test
+(deftest ^:parallel query->resolved-source-ids-test
   (testing "table-sourced queries behave like query->source-table-ids"
     (is (= #{(mt/id :venues)}
-           (query-perms/query->resolved-source-table-ids (mt/mbql-query venues)))))
+           (:table-ids (query-perms/query->resolved-source-ids (mt/mbql-query venues))))))
   (testing "card-sourced queries resolve to the card's underlying source table"
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                      :type     :query
                                                      :query    {:source-table (mt/id :venues)}}}]
       (is (= #{(mt/id :venues)}
-             (query-perms/query->resolved-source-table-ids (query-with-source-card card)))))))
+             (:table-ids (query-perms/query->resolved-source-ids (query-with-source-card card))))))))
 
-(deftest ^:parallel query->resolved-source-table-ids-nested-cards-test
+(deftest ^:parallel query->resolved-source-ids-nested-cards-test
   (testing "card-on-card chains resolve recursively down to the physical table"
     (mt/with-temp [:model/Card {card-a-id :id} {:dataset_query {:database (mt/id)
                                                                 :type     :query
@@ -264,29 +265,40 @@
                                                        :type     :query
                                                        :query    {:source-table (str "card__" card-a-id)}}}]
       (is (= #{(mt/id :venues)}
-             (query-perms/query->resolved-source-table-ids (query-with-source-card card-b)))))))
+             (:table-ids (query-perms/query->resolved-source-ids (query-with-source-card card-b))))))))
 
-(deftest ^:parallel query->resolved-source-table-ids-join-test
+(deftest ^:parallel query->resolved-source-ids-join-test
   (testing "a card-sourced JOIN contributes the card's underlying table too"
     (mt/with-temp [:model/Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                               (mt/mbql-query venues
                                                 {:aggregation [[:count]]
                                                  :breakout    [$id]}))]
-      (is (= #{(mt/id :checkins) (mt/id :venues)}
-             (query-perms/query->resolved-source-table-ids
-              (mt/mbql-query checkins
-                {:joins [{:fields       :all
-                          :alias        "v"
-                          :source-table (str "card__" card-id)
-                          :condition    [:= $venue_id [:field "ID" {:base-type :type/Integer, :join-alias "v"}]]}]})))))))
+      (let [query (mt/mbql-query checkins
+                    {:joins [{:fields       :all
+                              :alias        "v"
+                              :source-table (str "card__" card-id)
+                              :condition    [:= $venue_id [:field "ID" {:base-type :type/Integer, :join-alias "v"}]]}]})]
+        (is (= #{(mt/id :checkins) (mt/id :venues)}
+               (:table-ids (query-perms/query->resolved-source-ids query))))))))
 
-(deftest ^:parallel query->resolved-source-table-ids-missing-card-test
+(deftest ^:parallel query->resolved-source-ids-missing-card-test
   (testing "an unresolvable source-card chain THROWS (fail closed) rather than yielding no tables"
     (is (thrown? Exception
-                 (query-perms/query->resolved-source-table-ids
+                 (query-perms/query->resolved-source-ids
                   {:database (mt/id)
                    :type     :query
                    :query    {:source-table (str "card__" Integer/MAX_VALUE)}})))))
+
+(deftest empty-resolved-source-ids-deny-test
+  (testing "empty resolved source ids deny before the data-perms check"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [query (mt/mbql-query venues)]
+        (is (true? (query-perms/can-run-query-with-resolved-source-ids?
+                    query (query-perms/query->resolved-source-ids query))))
+        (log.capture/with-log-messages-for-level [messages [metabase.query-permissions.impl :debug]]
+          (is (false? (query-perms/can-run-query-with-resolved-source-ids? query {})))
+          (is (some #(= "Empty resolved source ids; denying" (:message %)) (messages))
+              "denied as empty, not by a later check tripping over the absent ids"))))))
 
 (deftest ^:parallel mbql5-query-test
   (testing "Should be able to calculate permissions for a MBQL 5 query (#39024)"
@@ -397,3 +409,17 @@
              clojure.lang.ExceptionInfo
              #"You do not have permission to view data of table 1595 in result_metadata\."
              (query-perms/check-result-metadata-data-perms (mt/id) [{:name "NAME", :table_id 1595}])))))))
+
+(deftest ^:parallel merge-resolved-source-ids-test
+  (is (nil? (query-perms/merge-resolved-source-ids [])))
+  (is (nil? (query-perms/merge-resolved-source-ids [nil])))
+  (is (= {} (query-perms/merge-resolved-source-ids [{} nil])))
+  (is (= {:table-ids           #{1 2 3}
+          :table-query-ids     #{1 3}
+          :card-ids            #{10}
+          :native?             true
+          :referenced-card-ids #{20 21}}
+         (query-perms/merge-resolved-source-ids
+          [{:table-ids #{1 2} :table-query-ids #{1} :native? false :referenced-card-ids #{20}}
+           nil
+           {:table-ids #{3} :table-query-ids #{3} :card-ids #{10} :native? true :referenced-card-ids #{21}}]))))

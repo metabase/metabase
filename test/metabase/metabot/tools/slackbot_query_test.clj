@@ -25,6 +25,8 @@
    [metabase.test.data.users :as test.users]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ---------------------------------------- prompt content tests ---------------------------------------------------
 
 (deftest slackbot-prompt-display-guidance-test

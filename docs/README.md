@@ -50,7 +50,7 @@ Metabase's reference documentation.
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
 - [Development instances](./installation-and-operation/development-instance.md)
 - [Serialization](./installation-and-operation/serialization.md)
-- [Remote sync](./installation-and-operation/remote-sync.md)
+- [Remote sync](./data-modeling/semantic-layer/remote-sync.md)
 - [Metabase CLI](./installation-and-operation/metabase-cli.md)
 - [Metabase JAR commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
@@ -258,6 +258,7 @@ Metabase's reference documentation.
 
 - [Monitor overview](./monitor/start.md)
 - [Dependency diagnostics](./monitor/dependency-diagnostics.md)
+- [Content diagnostics](./monitor/content-diagnostics.md)
 - [Erroring questions](./monitor/erroring-questions.md)
 - [Alerts management](./monitor/alerts-management.md)
 - [Background tasks](./monitor/background-tasks.md)

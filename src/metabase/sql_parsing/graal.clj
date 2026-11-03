@@ -15,6 +15,7 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.sql-parsing.common :as common]
+   [metabase.sql-parsing.settings :as sql-parsing.settings]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
    [metabase.util.pool :as u.pool])
@@ -195,10 +196,6 @@
 
 ;;; ---------------------------------------------- timeout handling ---------------------------------------
 
-(def ^:private ^:const call-timeout-ms
-  "Timeout for Python calls: GraalPy can occasionally hang (DEV-1393)."
-  30000)
-
 (defn- with-timeout*
   "Execute f in a future; return its result, or `::timeout` after `timeout-ms`."
   [timeout-ms f]
@@ -229,7 +226,8 @@
   interrupted and disposed from the pool (the next call generates a fresh one) instead of released."
   [f]
   (let [^Context context (.acquire python-context-pool pool-key)
-        poisoned?        (volatile! false)]
+        poisoned?        (volatile! false)
+        call-timeout-ms  (sql-parsing.settings/sql-parsing-timeout-ms)]
     (analytics/inc! :metabase-sql-parsing/context-acquisitions)
     (try
       (let [result (with-timeout* call-timeout-ms #(f context))]

@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { Form, FormErrorMessage, FormSubmitButton } from "metabase/forms";
-import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Icon, Modal, Text, Tooltip } from "metabase/ui";
 import type { LoggerPreset } from "metabase-types/api";
 
 import { DurationInput } from "./DurationInput";
@@ -33,7 +33,7 @@ export const LogLevelsForm = ({ presets }: Props) => {
 
   return (
     <Form>
-      <Flex align="flex-end" gap="lg" justify="space-between" mb="lg">
+      <Flex align="flex-end" gap="lg" justify="space-between" mb="xl">
         <DurationInput />
 
         {presets.length > 0 && (
@@ -76,22 +76,20 @@ export const LogLevelsForm = ({ presets }: Props) => {
         <FormErrorMessage />
       </Box>
 
-      <Flex align="center" gap="lg" justify="space-between" mt="xxl">
-        <Tooltip
-          label={t`Available log levels: ${["off", "fatal", "error", "warn", "info", "debug", "trace"].join(", ")}`}
-        >
-          <Icon name="info" />
-        </Tooltip>
-
-        <Flex gap="lg" justify="flex-end">
-          <Button
-            leftSection={<Icon name="revert" />}
-            type="reset"
-          >{t`Reset to defaults`}</Button>
-
-          <FormSubmitButton label={t`Save`} variant="filled" />
-        </Flex>
-      </Flex>
+      <Modal.Footer>
+        <Box flex={1}>
+          <Tooltip
+            label={t`Available log levels: ${["off", "fatal", "error", "warn", "info", "debug", "trace"].join(", ")}`}
+          >
+            <Icon name="info" />
+          </Tooltip>
+        </Box>
+        <Button
+          leftSection={<Icon name="revert" />}
+          type="reset"
+        >{t`Reset to defaults`}</Button>
+        <FormSubmitButton label={t`Save`} variant="filled" />
+      </Modal.Footer>
     </Form>
   );
 };

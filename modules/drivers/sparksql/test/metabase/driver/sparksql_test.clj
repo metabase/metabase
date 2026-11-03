@@ -7,6 +7,7 @@
    [metabase.driver.sparksql :as sparksql]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
@@ -179,3 +180,13 @@
         (testing "The query should run successfully"
           (is (= [[1 4] [2 11] [3 11]]
                  (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 10000 :dbname "a;b"}
+                   {:host "localhost" :port 10000 :dbname "a%3Bb"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :sparksql details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

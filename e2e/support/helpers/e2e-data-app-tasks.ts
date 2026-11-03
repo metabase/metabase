@@ -39,28 +39,45 @@ function run(script: string, args: string[], env: NodeJS.ProcessEnv = {}) {
   });
 }
 
-export async function buildDataApp({
-  appName,
+const REPOSITORY_DIRS = ["collections", "databases", "data_apps"];
+
+let buildingApps: Promise<void> | undefined;
+
+/** Builds every fixture app once per Cypress process, into its own `dist/`. */
+function buildDataApps() {
+  buildingApps ??= (async () => {
+    const appsDir = path.join(DATA_APP_FIXTURES_DIR, "data_apps");
+
+    for (const slug of fs.readdirSync(appsDir)) {
+      await run(DATA_APP_BUILD_SCRIPT, [slug]);
+    }
+  })();
+
+  return buildingApps;
+}
+
+/**
+ * Builds the fixture apps and copies the fixture repository, with the built
+ * bundles, into `destination`, as an author's repository holds them.
+ */
+export async function copyDataAppsFixture({
+  destination,
 }: {
-  appName: string;
-}): Promise<string> {
-  const appDir = path.join(DATA_APP_FIXTURES_DIR, appName);
+  destination: string;
+}): Promise<null> {
+  await buildDataApps();
 
-  if (!fs.existsSync(path.join(appDir, "src"))) {
-    throw new Error(`data-app fixture "${appName}" has no src/ at ${appDir}`);
-  }
-
-  await run(DATA_APP_BUILD_SCRIPT, [appName]);
-
-  const bundlePath = path.join(DATA_APP_FIXTURES_DIR, appName, "dist/index.js");
-
-  if (!fs.existsSync(bundlePath)) {
-    throw new Error(
-      `data-app build for "${appName}" produced no bundle at ${bundlePath}`,
+  for (const dir of REPOSITORY_DIRS) {
+    fs.cpSync(
+      path.join(DATA_APP_FIXTURES_DIR, dir),
+      path.join(destination, dir),
+      {
+        recursive: true,
+      },
     );
   }
 
-  return fs.readFileSync(bundlePath, "utf8");
+  return null;
 }
 
 /** Cypress resolves a relative path against the project root; match that. */

@@ -14,7 +14,7 @@
 }
 
 .empty {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
   font-size: 0.875rem;
   padding: 1.5rem 0.5rem;
 }

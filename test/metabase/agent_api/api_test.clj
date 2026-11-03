@@ -253,7 +253,7 @@
   "Canonical name of the application database \u2014 the literal string the LLM is expected
   to put as the first element of every portable FK in a representations query."
   []
-  (t2/select-one-fn :name :model/Database (mt/id)))
+  (t2/select-one-fn :name :model/Database :id (mt/id)))
 
 (defn- orders-query
   "Build a portable MBQL 5 representations external-query map against the `ORDERS` table in
@@ -2155,6 +2155,19 @@
       (is (= uri (:uri resource)))
       (is (<= (count attribute) 200))
       (is (str/ends-with? attribute "...[truncated]")))))
+
+(deftest read-resource-non-numeric-database-id-test
+  (testing "a database or collection name points at its listing URI, not at `search`"
+    (let [{[database-item collection-item] :resources}
+          (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                {:uris ["metabase://database/redshift/schemas/core/tables"
+                                        "metabase://collection/our-analytics/items"]})]
+      (doseq [[item listing-uri] [[database-item   "metabase://databases"]
+                                  [collection-item "metabase://collections?tree=true"]]]
+        (testing (:uri item)
+          (is (not (contains? item :content)))
+          (is (str/includes? (:error item) listing-uri))
+          (is (not (str/includes? (:error item) "Call `search`"))))))))
 
 (deftest ^:parallel read-resource-tool-description-test
   (let [endpoint    (some (fn [[_ endpoint]]

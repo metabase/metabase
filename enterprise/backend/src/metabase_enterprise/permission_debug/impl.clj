@@ -82,7 +82,6 @@
 
 (mu/defmethod debug-permissions ::is-superuser :- DebuggerSchema
   [{:keys [action-type model-id]} :- DebuggerArguments]
-  ()
   {:decision    "allow"
    :model-type  (case (namespace action-type)
                   "card" "card")

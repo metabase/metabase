@@ -12,7 +12,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -52,20 +51,19 @@
     [["foo"]]]])
 
 (deftest comment-should-not-overwrite-custom-description-test
-  (testing "a user-set description lives in FieldUserSettings and is never overwritten by resyncing, while the raw
-            Field still picks up the comment from the source db"
+  (testing "user-set description is never overwritten by resyncing comment from source db"
     (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
       (mt/dataset update-desc
         (mt/with-temp-copy-of-db
           (let [field-id (mt/id "update_desc" "updated_desc")]
-            (t2/update! :model/Field field-id {:description nil})
-            (field-user-settings/upsert-user-settings {:id field-id} {:description "updated description"})
+            (t2/update! :model/Field :id field-id {:description nil})
+            (field-user-settings/upsert-field-user-settings! {:id field-id} {:description "updated description"})
             (sync/sync-table! (t2/select-one :model/Table :id (mt/id "update_desc")))
             (is (= #{{:name (mt/format-name "id"), :description nil}
-                     {:name (mt/format-name "updated_desc"), :description "original comment"}}
+                     {:name (mt/format-name "updated_desc"), :description "updated description"}}
                    (db->fields (mt/db))))
-            (is (= "updated description"
-                   (:description (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))))))))))
+            (is (=? {:description "updated description" :description_set true}
+                    (t2/select-one :model/FieldUserSettings :field_id field-id)))))))))
 
 (tx/defdataset ^:private comment-after-sync
   [["comment_after_sync"

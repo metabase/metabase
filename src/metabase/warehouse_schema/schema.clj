@@ -109,11 +109,11 @@
    [:coercion_strategy  {:optional true} [:maybe [:or :keyword :string]]]
    [:caveats            {:optional true} [:maybe :string]]
    [:points_of_interest {:optional true} [:maybe :string]]
-   [:nfc_path           {:optional true} [:maybe [:sequential [:or :string :keyword]]]]
    [:json_unfolding     {:optional true} [:maybe :boolean]]
    [:settings           {:optional true} [:maybe ::field-user-settings.settings]]
    [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]
    [:custom_position    {:optional true} [:maybe :int]]
+   [:nfc_path           {:optional true} [:maybe :string]]
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
    [:fk_target_field_id_set {:optional true} :boolean]])
