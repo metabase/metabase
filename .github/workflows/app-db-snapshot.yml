@@ -3,8 +3,8 @@ name: App DB snapshot tests
 # The test suite boots its application DB from the checked-in snapshot in
 # `test_resources/app_db_snapshots/` instead of replaying the whole changelog. That is only sound while loading the
 # snapshot and migrating the rest lands on the same DB as migrating everything from scratch, so this workflow runs
-# both paths and diffs the result. It is separate from the normal backend jobs because the from-scratch replay is
-# expensive and only needs to happen when the migrations or the snapshot change.
+# both paths and diffs the result. The normal backend jobs already do that on H2, where a full replay is cheap; the
+# other dialects are slower, so they run here, and only when something that decides the migrated DB changes.
 
 on:
   pull_request:

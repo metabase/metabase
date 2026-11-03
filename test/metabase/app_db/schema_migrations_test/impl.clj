@@ -119,17 +119,19 @@
 
   Options, besides the two range bounds:
 
-  - `:skip-ran?` (default false): also leave out changesets DATABASECHANGELOG already records, the way a plain
-    Liquibase update does. Without it every changeset in the range runs again, so this is for a DB that already holds
-    some of the range -- one a snapshot was loaded into.
-  - `:track-versions?` (default true): `false` skips the version bookkeeping on both sides of the update, which leaves
-    the DB looking like an install from before `databasechangelog_version` existed."
+  - `:skip-ran?` (default false) also leaves out changesets DATABASECHANGELOG already records, the way a plain
+    Liquibase update does.
+    Without it every changeset in the range runs, so set it for a DB that already holds some of the range, such as one
+    a snapshot was loaded into.
+  - `:track-versions?` (default true) set to false skips the version bookkeeping on both sides of the update.
+    That leaves the DB looking like an install from before `databasechangelog_version` existed."
   {:added "0.41.0", :arglists '([conn [start-id end-id]]
-                                [conn [start-id end-id] {:keys [inclusive-start? inclusive-end? skip-ran? track-versions?]
-                                                         :or {inclusive-start? true
-                                                              inclusive-end?   true
-                                                              skip-ran?        false
-                                                              track-versions?  true}}])}
+                                [conn [start-id end-id] {:keys [inclusive-start? inclusive-end?
+                                                                skip-ran? track-versions?]
+                                                         :or   {inclusive-start? true
+                                                                inclusive-end?   true
+                                                                skip-ran?        false
+                                                                track-versions?  true}}])}
   [^java.sql.Connection conn [start-id end-id] & [range-options]]
   (log/debugf "Finding and running migrations %s" (range-description start-id end-id range-options))
 
@@ -173,16 +175,14 @@
         (mdb.test-util/split-legacy-majors-into-deployments! conn changelog-table)))))
 
 (defn- migrate-to-start!
-  "Bring an empty app DB up to, but not including, `start-id`.
-
-  When `start-id` falls after the checked-in snapshot's boundary changeset, load the snapshot first. Either way the
-  whole range before `start-id` is then run with `:skip-ran?`, so a changeset that sits before the boundary but is
-  missing from the snapshot -- a backport merged after the snapshot was cut -- still runs, after the snapshot's own.
-  That is the order an install upgrading to a patch release runs a backport in.
-
-  Sample content is off on both paths: the snapshot is dumped without it, so a test must not get it or not depending
-  on where its `start-id` falls."
+  "Bring an empty app DB up to, but not including, `start-id`, without sample content.
+  It loads the checked-in snapshot first when `start-id` falls after the snapshot's boundary changeset."
   [^java.sql.Connection conn driver start-id]
+  ;; Either way the whole range before `start-id` then runs with `:skip-ran?`, so a changeset that sits before the
+  ;; boundary but is missing from the snapshot, such as a backport merged after the snapshot was cut, still runs after
+  ;; the snapshot's own. That is the order an install upgrading to a patch release runs a backport in. Sample content
+  ;; is off on both paths because the snapshot is dumped without it, so whether a test gets it cannot depend on where
+  ;; its start falls.
   (binding [custom-migrations/*create-sample-content* false]
     (when (snapshot/usable-for-start? conn driver start-id)
       (log/debugf "Loading app db snapshot %s before running migrations up to %s..." snapshot/snapshot-version start-id)

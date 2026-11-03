@@ -10,9 +10,10 @@
 (defrecord PostgresDumper []
   dump/Dumper
   (dump-statements [_dumper {:keys [exec!] {:keys [db user]} :details} _conn]
-    ;; `--inserts` so the data comes back as ordinary statements rather than a COPY stream, which the loader would
-    ;; have to speak a second format to replay. Comments are kept: migrations set them on tables and columns, so
-    ;; `--no-comments` would leave a loaded snapshot short the ones every changeset up to the boundary added.
+    ;; Dumped with `--inserts` so the data comes back as ordinary statements rather than a COPY stream, which the
+    ;; loader would have to speak a second format to replay. Comments are kept: migrations set them on tables and
+    ;; columns, so `--no-comments` would leave a loaded snapshot short the ones every changeset up to the boundary
+    ;; added.
     ;;
     ;; The host and port are the ones the server listens on inside its container, not the ones this JVM reaches it
     ;; by, because `exec!` runs there.

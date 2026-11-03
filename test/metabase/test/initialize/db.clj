@@ -11,9 +11,10 @@
 (set! *warn-on-reflection* true)
 
 (defn- load-snapshot-if-empty!
-  "Seed a not-yet-migrated test app DB from the checked-in snapshot, so the Liquibase run that follows only has to
-  apply the changesets after the snapshot boundary. No-op when the DB already has tables (a reused app DB) or when no
-  snapshot is checked in for this server's dialect."
+  "Seed a not-yet-migrated test app DB from the checked-in snapshot, so the Liquibase run that follows only applies
+  what the snapshot does not record.
+  It does nothing when the DB already has tables (a reused app DB) or when no snapshot is checked in for this server's
+  dialect."
   []
   (let [db-type (mdb/db-type)]
     (with-open [conn (.getConnection (mdb/data-source))]

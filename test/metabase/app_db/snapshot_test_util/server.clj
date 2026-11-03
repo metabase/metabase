@@ -1,11 +1,11 @@
 (ns metabase.app-db.snapshot-test-util.server
   "Starts the server a snapshot is generated from, in a container of a pinned image.
 
-  A dump describes the same schema differently depending on the server that produced it -- Postgres 17 started giving
-  NOT NULL constraints names of their own, one MariaDB release writes a bit column as `0x00` where another writes
-  `'\\0'` -- so which server a snapshot comes from is part of what the file records. Owning that server here is what
-  makes a regeneration on a developer's machine produce the file CI regenerates, rather than a file that depends on
-  whichever server `MB_<DB>_TEST_*` happened to point at."
+  A dump describes the same schema differently depending on the server that produced it.
+  Postgres 17 started giving NOT NULL constraints names of their own, and one MariaDB release writes a bit column as
+  `0x00` where another writes `'\\0'`.
+  Owning that server here is what makes a regeneration on a developer's machine produce the file CI regenerates,
+  rather than a file that depends on whichever server `MB_<DB>_TEST_*` happened to point at."
   (:require
    [metabase.util.log :as log])
   (:import
@@ -14,15 +14,16 @@
 
 (set! *warn-on-reflection* true)
 
+;; Images are pinned to an exact tag, rather than tracking the `latest` the `app-db-snapshot` workflow also tests
+;; against, so that regenerating a year from now writes the same file it writes today. That workflow's drift jobs are
+;; what cover loading a snapshot into servers newer than the one it came from. The environment matches what the
+;; workflow starts its own servers with. Readiness is checked over TCP because the temporary server the MySQL and
+;; Postgres images run during initialization listens on a unix socket only, and polling that would report ready while
+;; the real server is still coming up.
 (def ^:private flavor->server
-  "The server each snapshot file is dumped from, one per file.
-
-  Images are pinned to an exact tag rather than tracking the `latest` the `app-db-snapshot` workflow also tests
-  against, so that regenerating a year from now writes the same file it writes today; that workflow's other two tests
-  are what cover loading a snapshot into servers newer than the one it came from. The environment matches what that
-  workflow starts its own servers with, and `ready` is run over TCP because the temporary server both the MySQL and
-  Postgres images run during initialization listens on a unix socket only -- polling that would return ready while
-  the real server is still coming up."
+  "The server each snapshot file is dumped from, by flavor: the image, the port it listens on inside the container,
+  the driver to migrate it as, its environment, the user and database to dump, and the command that succeeds once it
+  is ready."
   {:postgres                 {:image   "postgres:14-alpine"
                               :port    5432
                               :db-type :postgres
@@ -64,7 +65,8 @@
   (.execInContainer c ^"[Ljava.lang.String;" (into-array String args)))
 
 (defn- exec!
-  "Run `args` inside `c`, returning its stdout. Throws with the command and stderr if it exits non-zero."
+  "Run `args` inside `c`, returning its stdout.
+  Throws with the command and stderr if it exits non-zero."
   [^GenericContainer c args]
   (let [r (exec c args)]
     (when-not (zero? (.getExitCode r))
@@ -73,9 +75,9 @@
     (.getStdout r)))
 
 (defn- wait-until-ready!
-  "Block until `ready` succeeds inside `c`. A listening port is not enough: both images accept connections while they
-  are still initializing."
+  "Block until the `ready` command succeeds inside `c`, or throw after [[ready-timeout-ms]]."
   [^GenericContainer c ready]
+  ;; a listening port is not enough: both images accept connections while they are still initializing
   (let [deadline (+ (System/currentTimeMillis) ready-timeout-ms)]
     (loop []
       (let [r (exec c ready)]
@@ -86,13 +88,13 @@
           :else                                      (do (Thread/sleep 500) (recur)))))))
 
 (defn do-with-server!
-  "Start the pinned server for `flavor`, call `(f server)`, and stop it again.
+  "Start the pinned server for `flavor`, call `(f server)`, and stop it again. Returns what `f` returns.
 
-  `server` is `{:db-type ..., :details ..., :exec! ...}`: the driver to migrate it as, the connection details to
-  reach it from this JVM, and a function running a command inside the container, returning its stdout and throwing
-  on a non-zero exit. The dump client is run through `exec!` rather than from PATH so that it is always the one
-  shipped alongside the server it is reading."
+  The server map is `{:db-type ..., :details ..., :exec! ...}`.
+  It holds the driver to migrate the server as, the connection details to reach it from this JVM, and a function that
+  runs a command inside the container, returning its stdout and throwing on a non-zero exit."
   [flavor f]
+  ;; dump clients run through `exec!` rather than from PATH, so each is the one shipped alongside the server it reads
   (let [{:keys [image port db-type env user db ready]}
         (or (flavor->server flavor)
             (throw (ex-info "No pinned server for this flavor" {:flavor flavor, :known (keys flavor->server)})))

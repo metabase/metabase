@@ -1,6 +1,6 @@
 (ns metabase.app-db.snapshot-test-util.mysql
-  "Dumps a MySQL-family app DB with the dump client shipped in the server's own container. Covers MariaDB too: the
-  dump is taken the same way, only the client and a couple of flags differ."
+  "Dumps a MySQL-family app DB with the dump client shipped in the server's own container.
+  It covers MariaDB too: the dump is taken the same way, and only the client and a couple of flags differ."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -10,10 +10,11 @@
 (set! *warn-on-reflection* true)
 
 (defn- drop-version-gated-blocks
-  "Remove mysqldump's `/*!NNNNN ... */;` blocks. They carry session character-set juggling, a placeholder
-  `CREATE TABLE` standing in for each view, and the real view DDL -- the last split across three blocks and stamped
-  with a `DEFINER` naming the account that produced the dump. [[view-statements]] rebuilds the views instead."
+  "Remove mysqldump's `/*!NNNNN ... */;` blocks from `lines`."
   [lines]
+  ;; They carry session character-set juggling, a placeholder CREATE TABLE standing in for each view, and the real view
+  ;; DDL, split across three blocks and stamped with a DEFINER naming the account that produced the dump.
+  ;; [[view-statements]] rebuilds the views instead.
   (loop [[line & more] lines, in-block? false, acc []]
     (cond
       (nil? line)              acc
@@ -23,21 +24,20 @@
       :else                    (recur more false (conj acc line)))))
 
 (defn- drop-sandbox-directive
-  "Remove the `/*M!999999\\- enable the sandbox mode */` line mariadb-dump opens with. It is a client directive rather
-  than schema, and only recent clients write it -- left in, the snapshot would record which client dumped it."
+  "Remove the `/*M!999999\\- enable the sandbox mode */` line mariadb-dump opens with."
   [lines]
+  ;; a client directive rather than schema, and only recent clients write it: left in, the snapshot would record which
+  ;; client dumped it
   (remove #(str/starts-with? (str/triml %) "/*M!999999\\-") lines))
 
 (defn- view-statements
-  "`CREATE OR REPLACE VIEW` for every view in `db`, read back from `information_schema`.
-
-  MySQL stores view definitions with every table qualified by the schema they were created in, so the name of the
-  throwaway DB used for generation is stripped out -- otherwise the snapshot would only load into a DB of that name.
-
-  `view_definition` is only the body, so `SQL SECURITY` is carried over separately. Migrations create the instance
-  analytics views as `INVOKER`, and left out, every view would come back as MySQL's default `DEFINER`. The definer
-  account itself is not carried over: it names whoever generated the snapshot."
+  "A `CREATE OR REPLACE SQL SECURITY ... VIEW` for every view in `db`, read back from `information_schema`.
+  Table names are left unqualified, so the statements load into a DB of any name."
   [^java.sql.Connection conn db]
+  ;; MySQL stores each definition with every table qualified by the schema it was created in, which here is the
+  ;; throwaway generation DB. The definition is only the body, so SQL SECURITY is carried over separately: migrations
+  ;; create the instance analytics views as INVOKER, and MySQL's default is DEFINER. The definer account is left out,
+  ;; since it names whoever generated the snapshot.
   (let [qualifier (str "`" db "`.")]
     (for [{:keys [table_name view_definition security_type]}
           (jdbc/query {:connection conn}
@@ -49,15 +49,13 @@
               (str/replace view_definition qualifier "")))))
 
 (defn- database-charset-statement
-  "`ALTER DATABASE` carrying the schema's own default character set and collation.
-
-  A migration sets these, and nothing in a table's DDL records them: mysqldump only emits database-level DDL under
-  `--databases`, which would also stamp the dump with a `CREATE DATABASE`/`USE` naming the throwaway DB it came from.
-  The database name is left off here, which makes the statement apply to whichever DB the snapshot is loaded into.
-
-  Without this, a loaded snapshot keeps the server's default collation, and every column a later changeset adds
-  without naming one inherits that instead of what a full migration run would have given it."
+  "An `ALTER DATABASE` setting the default character set and collation of `db` on whichever DB the snapshot is loaded
+  into."
   [^java.sql.Connection conn db]
+  ;; A migration sets these, and no table's DDL records them. mysqldump only emits database-level DDL under
+  ;; `--databases`, which would also stamp the dump with a CREATE DATABASE and USE naming the throwaway DB it came
+  ;; from. Without this statement a loaded snapshot keeps the server's default collation, and every column a later
+  ;; changeset adds without naming one inherits that instead of what a full migration run would have given it.
   (let [{:keys [default_character_set_name default_collation_name]}
         (first (jdbc/query {:connection conn}
                            ["SELECT default_character_set_name, default_collation_name
@@ -65,10 +63,10 @@
     (format "ALTER DATABASE CHARACTER SET %s COLLATE %s"
             default_character_set_name default_collation_name)))
 
+;; MySQL and MariaDB do not share a client: MySQL's asks any server reporting 8.0 or newer for
+;; `information_schema.COLUMN_STATISTICS`, a table only MySQL has, and so fails outright against MariaDB 11 and up.
 (def ^:private flavor->client
-  "The dump client each flavor's server ships. MySQL and MariaDB do not share one: MySQL's asks any server reporting
-  8.0 or newer for `information_schema.COLUMN_STATISTICS`, a table only MySQL has, and so fails outright against
-  MariaDB 11 and up."
+  "The dump client each flavor's server ships."
   {:mysql                    "mysqldump"
    :mariadb                  "mariadb-dump"
    :mariadb-legacy-timestamp "mariadb-dump"})
@@ -76,11 +74,11 @@
 (defrecord MysqlDumper [flavor]
   dump/Dumper
   (dump-statements [_dumper {:keys [exec!] {:keys [db user]} :details} conn]
-    ;; `--protocol=TCP` because the MySQL client silently ignores `--port` and uses a unix socket when the host is
-    ;; `localhost`. `--skip-no-autocommit` because mariadb-dump otherwise wraps the inserts in an autocommit toggle,
-    ;; and the `SET`s around it are dropped as noise while the `COMMIT` between them is not. `--set-gtid-purged` is
-    ;; MySQL-only, so it is passed only for MySQL. The host and port are the ones the server listens on inside its
-    ;; container, not the ones this JVM reaches it by, because `exec!` runs there.
+    ;; TCP is forced because the MySQL client silently ignores `--port` and uses a unix socket when the host is
+    ;; `localhost`. Autocommit toggling is skipped because mariadb-dump otherwise wraps the inserts in it, and the SETs
+    ;; around them are dropped as noise while the COMMIT between them is not. Only MySQL knows `--set-gtid-purged`, so
+    ;; it is passed only for MySQL. The host and port are the ones the server listens on inside its container, not the
+    ;; ones this JVM reaches it by, because `exec!` runs there.
     (let [dumped (dump-util/lines->statements
                   (drop-version-gated-blocks
                    (drop-sandbox-directive
