@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   skipToken,
@@ -6,6 +6,11 @@ import {
   useListDatabaseSchemaTablesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUserIsAdmin } from "metabase/current-user";
+import {
+  isDataLayerVisible,
+  useDataLayers,
+} from "metabase/metadata/data-layers";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
@@ -91,6 +96,23 @@ export const TableBrowser = (props: TableBrowserContainerProps) => {
     setReloadInterval(tables.some(isSyncInProgress) ? RELOAD_INTERVAL : 0);
   }, [tables]);
 
+  // PROTOTYPE: mocked data layers. A table uses its own layer if it overrides
+  // its schema's, otherwise its schema's.
+  const isAdmin = useSelector(getUserIsAdmin);
+  const { getTableDataLayer } = useDataLayers();
+  const visibleTables = useMemo(
+    () =>
+      dbId == null
+        ? tables
+        : tables.filter((table) =>
+            isDataLayerVisible(
+              getTableDataLayer(dbId, table.schema, table.id).layer,
+              { isAdmin },
+            ),
+          ),
+    [dbId, tables, getTableDataLayer, isAdmin],
+  );
+
   if (dbId == null) {
     return null;
   }
@@ -98,7 +120,7 @@ export const TableBrowser = (props: TableBrowserContainerProps) => {
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
       <TableBrowserInner
-        tables={tables}
+        tables={visibleTables}
         dbId={dbId}
         schemaName={schemaName}
         xraysEnabled={xraysEnabled}

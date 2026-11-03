@@ -132,7 +132,7 @@ export function TableActionsMenu({
     <>
       <Menu position="bottom-end">
         <Menu.Target>
-          <ActionIcon size="lg" aria-label={t`More actions`}>
+          <ActionIcon aria-label={t`More actions`}>
             <Icon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>

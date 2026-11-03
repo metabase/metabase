@@ -13,6 +13,12 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { findDatabaseByName } from "metabase/common/utils/database";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
+import {
+  isDataLayerVisible,
+  useDataLayers,
+} from "metabase/metadata/data-layers";
+import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -142,12 +148,19 @@ const BrowseSchemasForDatabase = ({
   params: { slug: string };
 }) => {
   const { data, isLoading, error } = useListDatabaseSchemasQuery({ id: dbId });
+  const isAdmin = useSelector(getUserIsAdmin);
+  const { getSchemaDataLayer } = useDataLayers();
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const schemas: Schema[] = (data ?? []).map((name) => ({ id: name, name }));
+  // PROTOTYPE: mocked data layers decide which schemas people can browse
+  const schemas: Schema[] = (data ?? [])
+    .filter((name) =>
+      isDataLayerVisible(getSchemaDataLayer(dbId, name), { isAdmin }),
+    )
+    .map((name) => ({ id: name, name }));
 
   return (
     <BrowseSchemasContainer schemas={schemas} dbId={dbId} params={params} />

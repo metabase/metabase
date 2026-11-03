@@ -3,22 +3,22 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { FieldSection } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import * as Lib from "metabase-lib";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
-import { trackMetadataChange } from "../../../analytics";
 import {
   DetailPanel,
   DetailPanelHeader,
   FieldDetailsSkeleton,
 } from "../DetailPanel";
 
+import { FieldActionsMenu } from "./FieldActionsMenu";
+import { FieldDetails } from "./FieldDetails";
+
 interface FieldDetailsPanelProps {
   ref?: Ref<HTMLDivElement>;
   field: Field | undefined;
-  parentField: Field | undefined;
   table: Table | undefined;
   error: unknown;
   isLoading: boolean;
@@ -26,7 +26,6 @@ interface FieldDetailsPanelProps {
   onWidthChange: (width: number) => void;
   getFieldHref: (fieldId: FieldId) => string;
   onClose: () => void;
-  onFieldValuesClick: () => void;
   onPreviewClick: () => void;
 }
 
@@ -34,7 +33,6 @@ interface FieldDetailsPanelProps {
 export function FieldDetailsPanel({
   ref,
   field,
-  parentField,
   table,
   error,
   isLoading,
@@ -42,7 +40,6 @@ export function FieldDetailsPanel({
   onWidthChange,
   getFieldHref,
   onClose,
-  onFieldValuesClick,
   onPreviewClick,
 }: FieldDetailsPanelProps) {
   return (
@@ -56,6 +53,14 @@ export function FieldDetailsPanel({
         label={t`Field`}
         title={field?.display_name}
         isLoading={isLoading}
+        actions={
+          field && (
+            <FieldActionsMenu
+              fieldId={getRawTableFieldId(field)}
+              onPreviewClick={onPreviewClick}
+            />
+          )
+        }
         onClose={onClose}
         data-testid="field-section-header"
       />
@@ -64,19 +69,15 @@ export function FieldDetailsPanel({
       ) : isLoading ? (
         <FieldDetailsSkeleton />
       ) : field && table ? (
-        <FieldSection
+        <FieldDetails
           /**
            * Make sure internal component state is reset when changing fields.
            * This is to avoid state mix-up with optimistic updates.
            */
           key={getRawTableFieldId(field)}
           field={field}
-          parent={parentField}
           table={table}
           getFieldHref={getFieldHref}
-          onTrackMetadataChange={trackMetadataChange}
-          onFieldValuesClick={onFieldValuesClick}
-          onPreviewClick={onPreviewClick}
         />
       ) : (
         <LoadingAndErrorWrapper error={t`Not found.`} />

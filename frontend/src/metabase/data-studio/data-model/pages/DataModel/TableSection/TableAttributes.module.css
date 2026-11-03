@@ -30,3 +30,8 @@
   grid-column: 2 / 3;
   margin-top: -8px;
 }
+
+.hint {
+  grid-column: 2 / 3;
+  margin-top: -8px;
+}

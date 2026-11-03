@@ -1,7 +1,6 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useGetTableQueryMetadataQuery,
@@ -15,11 +14,12 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
 import {
-  FieldValuesModal,
+  MetadataCardVariantProvider,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
 } from "metabase/metadata/components";
+import { useDataLayers } from "metabase/metadata/data-layers";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -28,16 +28,24 @@ import {
 import { useNavigate, useParams } from "metabase/router";
 import { Box, Drawer, Flex, Stack, Transition, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import type {
+  DatabaseId,
+  FieldId,
+  SchemaName,
+  TableId,
+} from "metabase-types/api";
 
 import S from "./DataModel.module.css";
+import { DatabaseDetailsPanel } from "./DatabaseDetailsPanel";
 import {
   DetailPanel,
   DetailPanelHeader,
   TableDetailsSkeleton,
 } from "./DetailPanel";
 import { FieldDetailsPanel } from "./FieldDetailsPanel";
+import { SchemaDetailsPanel } from "./SchemaDetailsPanel";
 import { RouterTablePicker } from "./TablePicker";
-import type { TreePath } from "./TablePicker/types";
+import type { ChangeOptions, TreePath } from "./TablePicker/types";
 import { TableSection } from "./TableSection";
 import { TableActionsMenu } from "./TableSection/TableActionsMenu";
 import { TableAttributesEditBulk } from "./TableSection/TableAttributesEditBulk";
@@ -89,10 +97,6 @@ function DataModelContent() {
   );
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
-  const [
-    isFieldValuesModalOpen,
-    { close: closeFieldValuesModal, open: openFieldValuesModal },
-  ] = useDisclosure();
   // Use the first selected table for fetching metadata when exactly one is selected
   const metadataTableId = Array.from(selectedTables)[0] ?? queryTableId;
   // But keep the URL tableId for navigation/path to avoid auto-expansion when selecting/deselecting
@@ -105,12 +109,7 @@ function DataModelContent() {
     isFetching: isFetchingTable,
   } = useGetTableQueryMetadataQuery(getTableMetadataQuery(metadataTableId));
   const isLoadingTable = isFetchingTable && table == null;
-  const fieldsByName = useMemo(() => {
-    return _.indexBy(table?.fields ?? [], (field) => field.name);
-  }, [table]);
   const field = table?.fields?.find((field) => field.id === fieldId);
-  const parentName = field?.nfc_path?.[0] ?? "";
-  const parentField = fieldsByName[parentName];
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const { data: libraryCollection, isLoading: isLoadingLibrary } =
@@ -129,27 +128,40 @@ function DataModelContent() {
   const [onUpdateCallback, setOnUpdateCallback] = useState<
     ((path?: TreePath) => void) | null
   >(null);
+  // The tree path the person last clicked. The tree also selects a lone
+  // database or schema on its own, and that must not open a drawer.
+  const [pickedPath, setPickedPath] = useState<TreePath | null>(null);
+  const {
+    getDataLayers,
+    setDataLayers,
+    getSchemaDataLayer,
+    setSchemaDataLayerId,
+    getSchemaDisplayName,
+    setSchemaDisplayName,
+  } = useDataLayers();
 
-  useWindowEvent(
-    "keydown",
-    (event) => {
-      const activeElement = document.activeElement;
-      const isInputFocused =
-        activeElement instanceof HTMLElement &&
-        (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
-          activeElement.isContentEditable);
-      const isModalOpen = isFieldValuesModalOpen;
-
-      if (event.key === "Escape" && !isInputFocused && !isModalOpen) {
-        event.stopPropagation();
-        closePreview();
+  const handlePathChange = useCallback(
+    (path: TreePath, options?: ChangeOptions) => {
+      if (!options?.isAutomatic) {
+        setPickedPath(path);
       }
     },
-    {
-      // otherwise modals get closed earlier and isModalOpen evaluates to false in the handler
-      capture: true,
-    },
+    [],
   );
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Assigned each render below, once the open panels are known; they're
+  // computed after the early return, which hooks can't follow
+  const closeActivePanelRef = useRef<() => void>(() => undefined);
+
+  useWindowEvent("keydown", (event) => {
+    if (
+      event.key === "Escape" &&
+      isPageEscape(event.target, containerRef.current)
+    ) {
+      closeActivePanelRef.current();
+    }
+  });
 
   // Scroll only the drawer's panel row; `scrollIntoView` would also scroll the
   // page behind the drawer while it slides in.
@@ -186,8 +198,21 @@ function DataModelContent() {
     !hasSelectedMoreThanOneTable &&
     !showBulkTableEdit;
 
+  const openContainer = getOpenContainer({
+    pickedPath,
+    databaseId,
+    schemaName,
+    databaseExists,
+    fieldId,
+    hasSelectedItems,
+    tableId: metadataTableId,
+  });
+
   const isDrawerOpen =
-    showBulkTableEdit || showTableDetailsSection || showFieldDetails;
+    openContainer != null ||
+    showBulkTableEdit ||
+    showTableDetailsSection ||
+    showFieldDetails;
 
   const closeDrawer = () => {
     closePreview();
@@ -216,11 +241,68 @@ function DataModelContent() {
     );
   };
 
+  const closeContainerDetails = () => setPickedPath(null);
+
+  // Esc closes the innermost open panel: preview, then field, then the drawer
+  closeActivePanelRef.current = () => {
+    if (showFieldPreview) {
+      closePreview();
+    } else if (showFieldDetails) {
+      closeFieldDetails();
+    } else if (openContainer != null) {
+      closeContainerDetails();
+    } else if (isDrawerOpen) {
+      closeDrawer();
+    }
+  };
+
+  const renderContainerPanel = (container: OpenContainer) => {
+    if (container.type === "database") {
+      return (
+        <DatabaseDetailsPanel
+          ref={scrollToPanel}
+          databaseId={container.databaseId}
+          defaultWidth={panelWidths.database}
+          onWidthChange={handlePanelWidthChange("database")}
+          dataLayers={getDataLayers(container.databaseId)}
+          onDataLayersChange={(layers) =>
+            setDataLayers(container.databaseId, layers)
+          }
+          onClose={closeContainerDetails}
+        />
+      );
+    }
+
+    const { databaseId, schemaName } = container;
+    return (
+      <SchemaDetailsPanel
+        ref={scrollToPanel}
+        databaseId={databaseId}
+        schemaName={schemaName}
+        displayName={getSchemaDisplayName(databaseId, schemaName)}
+        onDisplayNameChange={(displayName) =>
+          setSchemaDisplayName(databaseId, schemaName, displayName)
+        }
+        defaultWidth={panelWidths.schema}
+        onWidthChange={handlePanelWidthChange("schema")}
+        dataLayers={getDataLayers(databaseId)}
+        dataLayer={getSchemaDataLayer(databaseId, schemaName)}
+        onDataLayerChange={(layerId) =>
+          setSchemaDataLayerId(databaseId, schemaName, layerId)
+        }
+        onManageDataLayers={() => {
+          setPickedPath({ databaseId });
+          navigate(Urls.dataStudioData({ databaseId }));
+        }}
+        onClose={closeContainerDetails}
+      />
+    );
+  };
+
   const fieldPanel = showFieldDetails ? (
     <FieldDetailsPanel
       ref={scrollToPanel}
       field={field}
-      parentField={parentField}
       table={table}
       error={error}
       isLoading={isLoading}
@@ -230,7 +312,6 @@ function DataModelContent() {
         Urls.dataStudioData({ ...parsedParams, fieldId })
       }
       onClose={closeFieldDetails}
-      onFieldValuesClick={openFieldValuesModal}
       onPreviewClick={togglePreview}
     />
   ) : null;
@@ -247,6 +328,8 @@ function DataModelContent() {
       h="100%"
       data-drawer-panels
     >
+      {openContainer && renderContainerPanel(openContainer)}
+
       {showBulkTableEdit && (
         <DetailPanel
           defaultWidth={panelWidths.table}
@@ -349,7 +432,12 @@ function DataModelContent() {
   }
 
   return (
-    <Box className={S.container} data-testid="data-model" h="100%">
+    <Box
+      ref={containerRef}
+      className={S.container}
+      data-testid="data-model"
+      h="100%"
+    >
       <Flex
         bg="background_page-secondary"
         h="100%"
@@ -373,6 +461,7 @@ function DataModelContent() {
             tableId={navigationTableId}
             params={params}
             setOnUpdateCallback={setOnUpdateCallback}
+            onPathChange={handlePathChange}
           />
         </PageContainer>
 
@@ -409,16 +498,80 @@ function DataModelContent() {
         shadow="lg_outline"
         classNames={{ body: S.drawerBody }}
       >
-        {drawerPanels ?? lastDrawerPanelsRef.current}
+        {/* Flat, bordered metadata cards to match the drawer's sections */}
+        <MetadataCardVariantProvider value="outlined">
+          {drawerPanels ?? lastDrawerPanelsRef.current}
+        </MetadataCardVariantProvider>
       </Drawer>
-
-      {fieldId && (
-        <FieldValuesModal
-          fieldId={fieldId}
-          isOpen={isFieldValuesModalOpen}
-          onClose={closeFieldValuesModal}
-        />
-      )}
     </Box>
   );
+}
+
+/**
+ * Whether an Esc keypress is meant for this page's panels. Modals, menus and
+ * popovers render outside the page and handle their own Esc, and inputs use
+ * it to cancel an edit.
+ */
+function isPageEscape(
+  target: EventTarget | null,
+  container: HTMLElement | null,
+): boolean {
+  if (!(target instanceof HTMLElement) || container == null) {
+    return false;
+  }
+  if (target !== document.body && !container.contains(target)) {
+    return false;
+  }
+  return !(
+    ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
+    target.isContentEditable
+  );
+}
+
+type OpenContainer =
+  | { type: "database"; databaseId: DatabaseId }
+  | { type: "schema"; databaseId: DatabaseId; schemaName: SchemaName };
+
+/**
+ * The database or schema whose drawer is open: the one the person clicked in
+ * the tree, while the URL is still on it and nothing deeper is selected.
+ */
+function getOpenContainer({
+  pickedPath,
+  databaseId,
+  schemaName,
+  databaseExists,
+  fieldId,
+  hasSelectedItems,
+  tableId,
+}: {
+  pickedPath: TreePath | null;
+  databaseId: DatabaseId | undefined;
+  schemaName: SchemaName | undefined;
+  databaseExists: boolean | undefined;
+  fieldId: FieldId | undefined;
+  hasSelectedItems: boolean;
+  tableId: TableId | undefined;
+}): OpenContainer | null {
+  const isContainerOnly =
+    databaseExists === true &&
+    tableId == null &&
+    fieldId == null &&
+    !hasSelectedItems;
+  if (
+    !isContainerOnly ||
+    pickedPath == null ||
+    databaseId == null ||
+    pickedPath.databaseId !== databaseId ||
+    pickedPath.tableId != null
+  ) {
+    return null;
+  }
+  // A picked database stays open when the tree then selects its lone schema
+  if (pickedPath.schemaName == null) {
+    return { type: "database", databaseId };
+  }
+  return pickedPath.schemaName === schemaName
+    ? { type: "schema", databaseId, schemaName: pickedPath.schemaName }
+    : null;
 }

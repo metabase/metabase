@@ -23,7 +23,7 @@ export type ParsedRouteParams = {
   fieldId?: FieldId;
 };
 
-export type DrawerPanel = "table" | "field" | "preview";
+export type DrawerPanel = "database" | "schema" | "table" | "field" | "preview";
 
 export interface ColumnSizeConfig {
   flex: number | string;

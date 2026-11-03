@@ -22,30 +22,42 @@ export function TableDetailsSkeleton() {
 /** Loading placeholder shaped like the field panel's settings. */
 export function FieldDetailsSkeleton() {
   return (
-    <Stack gap="lg" data-testid="field-details-skeleton">
-      <NameDescriptionSkeleton />
-      <Group justify="space-between" wrap="nowrap">
-        <Skeleton h={16} w={96} />
-        <Group gap="lg" wrap="nowrap">
-          <Skeleton h={32} w={88} />
-          <Skeleton h={32} w={112} />
-        </Group>
-      </Group>
-      <Stack gap="xxl">
-        <Repeat times={3}>
-          <Stack gap="lg" p="xl" bd={SECTION_BORDER} bdrs="md">
+    <Stack gap="xxl" data-testid="field-details-skeleton">
+      <SectionSkeleton rows={4} />
+      <Repeat times={3}>
+        <Stack gap="lg">
+          <Skeleton h={16} w={96} />
+          <Stack gap="lg" p="lg" bd={SECTION_BORDER} bdrs="lg">
             <Skeleton h={14} w={120} />
             <Skeleton h={40} />
-            <Skeleton h={40} />
           </Stack>
-        </Repeat>
-      </Stack>
+        </Stack>
+      </Repeat>
     </Stack>
   );
 }
 
-function NameDescriptionSkeleton() {
-  return <Skeleton h={98} radius="sm" />;
+/** Loading placeholder shaped like the database panel's sections. */
+export function DatabaseDetailsSkeleton() {
+  return (
+    <Stack gap="xxl" data-testid="database-details-skeleton">
+      <SectionSkeleton rows={2} />
+      <SectionSkeleton rows={3} />
+      <SectionSkeleton rows={2} />
+      <SectionSkeleton rows={4} />
+    </Stack>
+  );
+}
+
+/** Loading placeholder shaped like the schema panel's sections. */
+export function SchemaDetailsSkeleton() {
+  return (
+    <Stack gap="xxl" data-testid="schema-details-skeleton">
+      <SectionSkeleton rows={6} />
+      <SectionSkeleton rows={2} />
+      <SectionSkeleton rows={2} />
+    </Stack>
+  );
 }
 
 function SectionSkeleton({ rows }: { rows: number }) {

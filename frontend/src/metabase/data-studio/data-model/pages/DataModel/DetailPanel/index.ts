@@ -1,2 +1,8 @@
-export * from "./DetailPanel";
-export * from "./DetailPanelSkeleton";
+export { DetailPanel, DetailPanelHeader } from "./DetailPanel";
+export {
+  DatabaseDetailsSkeleton,
+  FieldDetailsSkeleton,
+  SchemaDetailsSkeleton,
+  TableDetailsSkeleton,
+} from "./DetailPanelSkeleton";
+export { DetailsEditableText } from "./DetailsEditableText";

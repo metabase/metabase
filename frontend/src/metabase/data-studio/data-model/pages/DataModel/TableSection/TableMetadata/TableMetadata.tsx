@@ -7,7 +7,6 @@ import {
   DetailsTable,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
-import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
@@ -16,16 +15,14 @@ import { dependencyGraph } from "metabase/urls/dependencies";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { Table } from "metabase-types/api";
 
+import { DetailsEditableText } from "../../DetailPanel";
+
 interface Props {
   table: Table;
   readOnly: boolean;
   onNameChange: (name: string) => void;
   onDescriptionChange: (description: string) => void;
 }
-
-// Pulls EditableText's own padding and border into the row's padding so its
-// text lines up with the plain values in the other rows
-const EDITABLE_TEXT_OFFSET = "-0.3125rem";
 
 export function TableMetadata({
   table,
@@ -62,13 +59,12 @@ export function TableMetadata({
         <DetailsRow
           label={t`Display name`}
           value={
-            <EditableText
+            <DetailsEditableText
               initialValue={table.display_name}
               placeholder={t`Give this table a name`}
               maxLength={254}
               isDisabled={readOnly}
               fw="bold"
-              m={EDITABLE_TEXT_OFFSET}
               onChange={handleNameChange}
               data-testid="table-display-name-input"
             />
@@ -78,13 +74,12 @@ export function TableMetadata({
         <DetailsRow
           label={t`Description`}
           value={
-            <EditableText
+            <DetailsEditableText
               initialValue={table.description}
               placeholder={t`No description`}
               isMultiline
               isOptional
               isDisabled={readOnly}
-              m={EDITABLE_TEXT_OFFSET}
               onChange={handleDescriptionChange}
               data-testid="table-description-input"
             />

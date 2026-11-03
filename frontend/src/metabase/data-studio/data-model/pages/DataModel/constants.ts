@@ -9,6 +9,8 @@ export const NAV_COLUMN_CONFIG: ColumnSizeConfig = {
 };
 
 export const DRAWER_PANEL_WIDTH: Record<DrawerPanel, number> = {
+  database: 560,
+  schema: 560,
   table: 560,
   field: 480,
   preview: 480,

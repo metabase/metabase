@@ -7,17 +7,15 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import {
   DataSourceInput,
   EntityTypeInput,
-  LayerInput,
   UserInput,
 } from "metabase/metadata/components";
-import { Box, Icon, Text } from "metabase/ui";
+import {
+  DATA_LAYER_VISIBILITY_ICONS,
+  useDataLayers,
+} from "metabase/metadata/data-layers";
+import { Box, Icon, Select, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  Table,
-  TableDataLayer,
-  TableDataSource,
-  UserId,
-} from "metabase-types/api";
+import type { Table, TableDataSource, UserId } from "metabase-types/api";
 
 import S from "../TableAttributes.module.css";
 import { TableSectionGroup } from "../TableSectionGroup";
@@ -76,33 +74,6 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
           id: table.id,
           owner_email: table.owner_email,
           owner_user_id: table.owner_user_id,
-        });
-        if (!error) {
-          onUpdate();
-        }
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleLayerChange = async (dataLayer: TableDataLayer | null) => {
-    if (dataLayer == null) {
-      return; // should never happen as the input is not clearable here
-    }
-
-    const { error } = await updateTable({
-      id: table.id,
-      data_layer: dataLayer,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update table visibility layer`);
-    } else {
-      onUpdate();
-      sendSuccessToast(t`Table visibility layer updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          data_layer: table.data_layer,
         });
         if (!error) {
           onUpdate();
@@ -177,13 +148,7 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
           }}
         />
 
-        <LayerInput
-          value={table.data_layer ?? "hidden"}
-          disabled={readOnly}
-          onChange={handleLayerChange}
-          classNames={{ input: S.input, label: S.label }}
-          className={S.gridLabelInput}
-        />
+        <TableDataLayerInput table={table} disabled={readOnly} />
 
         <EntityTypeInput
           value={table.entity_type ?? "entity/GenericTable"}
@@ -208,6 +173,81 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
     </TableSectionGroup>
   );
 }
+
+// Select value for "no override": the table uses its schema's layer
+const SCHEMA_LAYER_VALUE = "schema-layer";
+
+/**
+ * PROTOTYPE: mocked. A table uses its schema's data layer unless it overrides
+ * it. The real `data_layer` column defaults to "internal", so it can't mean
+ * "inherit"; the override lives in the mocked layer store instead.
+ */
+function TableDataLayerInput({
+  table,
+  disabled,
+}: {
+  table: Table;
+  disabled: boolean;
+}) {
+  const {
+    getDataLayers,
+    getSchemaDataLayer,
+    getTableDataLayer,
+    setTableDataLayerId,
+  } = useDataLayers();
+  const schemaLayer = getSchemaDataLayer(table.db_id, table.schema);
+  const { layer, isInherited } = getTableDataLayer(
+    table.db_id,
+    table.schema,
+    table.id,
+  );
+
+  const options = [
+    {
+      value: SCHEMA_LAYER_VALUE,
+      label: schemaLayer
+        ? t`Schema's layer (${schemaLayer.name})`
+        : t`Schema's layer`,
+    },
+    ...getDataLayers(table.db_id).map(({ id, name }) => ({
+      value: id,
+      label: name,
+    })),
+  ];
+
+  const handleChange = (value: string | null) => {
+    if (value === SCHEMA_LAYER_VALUE) {
+      setTableDataLayerId(table.db_id, table.id, null);
+    } else if (value != null) {
+      setTableDataLayerId(table.db_id, table.id, value);
+    }
+  };
+
+  return (
+    <>
+      <Select
+        label={t`Data layer`}
+        data={options}
+        value={isInherited ? SCHEMA_LAYER_VALUE : (layer?.id ?? null)}
+        allowDeselect={false}
+        leftSection={
+          layer && <Icon name={DATA_LAYER_VISIBILITY_ICONS[layer.visibility]} />
+        }
+        disabled={disabled}
+        classNames={{ input: S.input, label: S.label }}
+        className={S.gridLabelInput}
+        onChange={handleChange}
+        data-testid="table-data-layer-input"
+      />
+      {!isInherited && (
+        <Text className={S.hint} size="sm" c="text-secondary">
+          {t`Overrides the ${table.schema} schema's layer`}
+        </Text>
+      )}
+    </>
+  );
+}
+
 function TransformLink({ table }: { table: Table }) {
   const { transform } = table;
 

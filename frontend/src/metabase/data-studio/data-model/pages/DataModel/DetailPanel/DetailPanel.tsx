@@ -177,7 +177,7 @@ export function DetailPanelHeader({
       </Flex>
       <Group gap="sm" wrap="nowrap">
         {actions}
-        <ActionIcon aria-label={t`Close`} size="lg" onClick={onClose}>
+        <ActionIcon aria-label={t`Close`} onClick={onClose}>
           <Icon name="close" />
         </ActionIcon>
       </Group>

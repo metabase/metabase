@@ -10,6 +10,8 @@ import { Box, Card, Ellipsified, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
+import { useMetadataCardVariant } from "../../MetadataCardVariant";
+
 import S from "./FieldItem.module.css";
 
 type FieldItemProps = {
@@ -36,6 +38,7 @@ const FieldItemBase = ({
   const icon = useMemo(() => {
     return getColumnIcon(Lib.legacyColumnTypeInfo(field));
   }, [field]);
+  const isOutlined = useMetadataCardVariant() === "outlined";
 
   const handleNameChange = async (newValue: string) => {
     const newName = newValue.trim();
@@ -85,6 +88,7 @@ const FieldItemBase = ({
       c="text-secondary"
       className={cx(S.card, {
         [S.active]: active,
+        [S.outlined]: isOutlined,
       })}
       role="listitem"
       p={0}
