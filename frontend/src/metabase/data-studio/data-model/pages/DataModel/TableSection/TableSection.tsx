@@ -7,6 +7,7 @@ import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton"
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useTableUpdateHandlers } from "metabase/metadata/hooks";
+import { isRoleA, useTableStructures } from "metabase/metadata/table-structure";
 import { useNavigate } from "metabase/router";
 import { Box, Group, Loader, Stack, Tabs } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -18,6 +19,7 @@ import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
 import { TableMetadata, TableStats } from "./TableMetadata";
+import { TablePropertyList } from "./TablePropertyList";
 import S from "./TableSection.module.css";
 import { TableStructure } from "./TableStructure";
 
@@ -44,6 +46,9 @@ const TableSectionBase = ({
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const readOnly = !table.can_write;
+  const { role } = useTableStructures().getTableStructure(table);
+  const isCustomPropertyTable =
+    role != null && isRoleA(role, "role/CustomPropertyTable");
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -81,6 +86,9 @@ const TableSectionBase = ({
           <Tabs.List mb="xl">
             <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
+            {isCustomPropertyTable && (
+              <Tabs.Tab value="properties">{t`Properties`}</Tabs.Tab>
+            )}
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
           </Tabs.List>
@@ -172,6 +180,12 @@ const TableSectionBase = ({
               )}
             </Stack>
           </Tabs.Panel>
+
+          {isCustomPropertyTable && (
+            <Tabs.Panel value="properties">
+              <TablePropertyList table={table} />
+            </Tabs.Panel>
+          )}
 
           <Tabs.Panel value="segments">
             <SegmentList table={table} />

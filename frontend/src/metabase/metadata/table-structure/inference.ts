@@ -55,6 +55,7 @@ export type EavBinding = {
   entityKeyFieldId: FieldId | null;
   propertyFieldId: FieldId | null;
   valueFieldId: FieldId | null;
+  changedAtFieldId: FieldId | null;
   pivotToColumns: boolean;
 };
 
@@ -360,6 +361,11 @@ export function inferEavBinding(fields: Field[]): EavBinding {
       ),
     ),
     valueFieldId: idOf(fields.find((field) => matches(field, VALUE_RE))),
+    changedAtFieldId: idOf(
+      fields.find(
+        (field) => matches(field, UPDATED_RE) || matches(field, CREATED_RE),
+      ),
+    ),
     pivotToColumns: false,
   };
 }

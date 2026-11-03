@@ -43,6 +43,7 @@ import {
   TableDetailsSkeleton,
 } from "./DetailPanel";
 import { FieldDetailsPanel } from "./FieldDetailsPanel";
+import { PropertyDetailsPanel } from "./PropertyDetailsPanel";
 import { SchemaDetailsPanel } from "./SchemaDetailsPanel";
 import { RouterTablePicker } from "./TablePicker";
 import type { ChangeOptions, TreePath } from "./TablePicker/types";
@@ -55,6 +56,10 @@ import {
   REVEAL_WIDTH_DURATION_MS,
   REVEAL_WIDTH_TRANSITION,
 } from "./constants";
+import {
+  PropertySelectionProvider,
+  usePropertySelection,
+} from "./contexts/PropertySelectionContext";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { DrawerPanel, RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
@@ -62,7 +67,9 @@ import { parseRouteParams } from "./utils";
 export const DataModel = () => {
   return (
     <SelectionProvider>
-      <DataModelContent />
+      <PropertySelectionProvider>
+        <DataModelContent />
+      </PropertySelectionProvider>
     </SelectionProvider>
   );
 };
@@ -77,6 +84,8 @@ function DataModelContent() {
     hasSelectedMoreThanOneTable,
     resetSelection,
   } = useSelection();
+  const { selectedPropertyName, setSelectedPropertyName } =
+    usePropertySelection();
   const parsedParams = parseRouteParams(params);
   const {
     databaseId,
@@ -208,6 +217,12 @@ function DataModelContent() {
     tableId: metadataTableId,
   });
 
+  const showPropertyDetails =
+    showTableDetailsSection &&
+    activeTab === "properties" &&
+    table != null &&
+    selectedPropertyName != null;
+
   const isDrawerOpen =
     openContainer != null ||
     showBulkTableEdit ||
@@ -245,7 +260,9 @@ function DataModelContent() {
 
   // Esc closes the innermost open panel: preview, then field, then the drawer
   closeActivePanelRef.current = () => {
-    if (showFieldPreview) {
+    if (showPropertyDetails) {
+      setSelectedPropertyName(null);
+    } else if (showFieldPreview) {
       closePreview();
     } else if (showFieldDetails) {
       closeFieldDetails();
@@ -388,6 +405,18 @@ function DataModelContent() {
             )
           )}
         </DetailPanel>
+      )}
+
+      {showPropertyDetails && (
+        <PropertyDetailsPanel
+          key={`${table.id}:${selectedPropertyName}`}
+          ref={scrollToPanel}
+          table={table}
+          propertyName={selectedPropertyName}
+          defaultWidth={panelWidths.field}
+          onWidthChange={handlePanelWidthChange("field")}
+          onClose={() => setSelectedPropertyName(null)}
+        />
       )}
 
       <Transition

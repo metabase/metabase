@@ -90,6 +90,7 @@ function parseEavBinding(value: unknown): Partial<EavBinding> {
     entityKeyFieldId: parseFieldId(value.entityKeyFieldId),
     propertyFieldId: parseFieldId(value.propertyFieldId),
     valueFieldId: parseFieldId(value.valueFieldId),
+    changedAtFieldId: parseFieldId(value.changedAtFieldId),
     pivotToColumns: parseBoolean(value.pivotToColumns),
   };
 }

@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   DetailsRow,
@@ -19,6 +19,7 @@ import {
   getTableRoleRowDescription,
   isRoleA,
   isTableRole,
+  usePropertyRegistry,
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -27,6 +28,7 @@ import {
   Button,
   Code,
   Group,
+  Loader,
   Select,
   Stack,
   Switch,
@@ -166,6 +168,7 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
 
       {role && isRoleA(role, "role/CustomPropertyTable") && (
         <EavBindingSection
+          table={table}
           fields={fields}
           binding={structure.eav}
           disabled={readOnly}
@@ -460,11 +463,13 @@ function HistoryBindingSection({
 }
 
 function EavBindingSection({
+  table,
   fields,
   binding,
   disabled,
   onChange,
 }: {
+  table: Table;
   fields: Field[];
   binding: EavBinding;
   disabled: boolean;
@@ -513,6 +518,24 @@ function EavBindingSection({
           }
         />
         <DetailsRow
+          label={t`Changed at`}
+          value={
+            <FieldSelect
+              label={t`Changed at`}
+              fields={fields.filter((field) => isDate(field))}
+              value={binding.changedAtFieldId}
+              placeholder={t`No change date`}
+              clearable
+              disabled={disabled}
+              onChange={(changedAtFieldId) => onChange({ changedAtFieldId })}
+            />
+          }
+        />
+        <DetailsRow
+          label={t`Properties`}
+          value={<PropertyRegistrySummary table={table} binding={binding} />}
+        />
+        <DetailsRow
           label={t`Columns`}
           value={
             <Switch
@@ -528,5 +551,67 @@ function EavBindingSection({
         />
       </DetailsTable>
     </SidebarSection>
+  );
+}
+
+function PropertyRegistrySummary({
+  table,
+  binding,
+}: {
+  table: Table;
+  binding: EavBinding;
+}) {
+  const state = usePropertyRegistry(table, binding);
+  const propertiesUrl = Urls.dataStudioData({
+    databaseId: table.db_id,
+    schemaName: table.schema,
+    tableId: table.id,
+    tab: "properties",
+  });
+
+  if (state.status === "unbound") {
+    return (
+      <Text c="text-secondary">{t`Pick the property and value columns`}</Text>
+    );
+  }
+  if (state.status !== "loaded") {
+    return <Loader size="xs" />;
+  }
+
+  const { properties } = state.registry;
+  const attentionCount = properties.filter(
+    (property) => !property.isHidden && property.signals.length > 0,
+  ).length;
+
+  return (
+    <Stack gap="xs" py="xs">
+      <Group gap="sm">
+        <Text c="text-primary" fw="bold">
+          {ngettext(
+            msgid`${properties.length} property`,
+            `${properties.length} properties`,
+            properties.length,
+          )}
+        </Text>
+        {attentionCount > 0 && (
+          <Badge color="warning" variant="light">
+            {t`${attentionCount} need attention`}
+          </Badge>
+        )}
+      </Group>
+      <Text size="sm" c="text-secondary">
+        {t`Profiled from ${state.registry.rowCount.toLocaleString()} rows about ${state.registry.entityCount.toLocaleString()} entities`}
+      </Text>
+      <Button
+        component={Link}
+        to={propertiesUrl}
+        size="compact-sm"
+        variant="subtle"
+        w="fit-content"
+        px={0}
+      >
+        {t`Review properties`}
+      </Button>
+    </Stack>
   );
 }
