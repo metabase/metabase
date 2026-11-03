@@ -1144,7 +1144,7 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
         (with-temp-public-dashboard-and-card [dash card dashcard]
-          (t2/update! :model/Card (u/the-id card)
+          (t2/update! :model/Card :id (u/the-id card)
                       {:display                :scalar
                        :visualization_settings {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
                                                                    :max   nil
