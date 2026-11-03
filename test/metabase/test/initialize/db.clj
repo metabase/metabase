@@ -10,18 +10,19 @@
 
 (set! *warn-on-reflection* true)
 
+;; The initialized marker is global, so setting up a temporarily bound DB (e.g. inside `with-temp-empty-app-db`) would
+;; leave the shared one empty for every later test.
 (defn init!
-  "Set up the shared test app DB. Always the root app DB, whatever is bound when this is triggered: the initialized
-  marker is global, so setting up a temporarily bound DB (e.g. inside `with-temp-empty-app-db`) would leave the shared
-  one empty for every later test."
+  "Set up the shared test app DB, which is always the root app DB, whatever this thread has bound."
   []
-  (mc/without-binding (mdb.connection/application-db-handle)
-                      (fn []
-                        (log/info (u/format-color 'blue "Setting up %s test DB and running migrations..." (mdb/db-type)))
-                        (app-db.quartz/set-jdbc-backend-properties! (mdb/db-type))
-                        (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
-                        (log/info (t2/with-connection [^java.sql.Connection conn]
-                                    (let [metadata (.getMetaData conn)]
-                                      (u/format-color 'blue "Application DB is %s %s"
-                                                      (.getDatabaseProductName metadata)
-                                                      (.getDatabaseProductVersion metadata))))))))
+  (mc/without-binding
+   (mdb.connection/application-db-handle)
+   (fn []
+     (log/info (u/format-color 'blue "Setting up %s test DB and running migrations..." (mdb/db-type)))
+     (app-db.quartz/set-jdbc-backend-properties! (mdb/db-type))
+     (mdb/setup-db! :create-sample-content? false) ; skip sample content for speed. this doesn't reflect production
+     (log/info (t2/with-connection [^java.sql.Connection conn]
+                 (let [metadata (.getMetaData conn)]
+                   (u/format-color 'blue "Application DB is %s %s"
+                                   (.getDatabaseProductName metadata)
+                                   (.getDatabaseProductVersion metadata))))))))

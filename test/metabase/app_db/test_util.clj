@@ -19,14 +19,13 @@
 
 (defonce ^:private app-db-root-lock (Object.))
 
+;; Calls are serialized because two overlapping save/restore pairs would leave the second caller's DB installed as the
+;; "original" root once both finish.
 (defn do-with-application-db-as-root
-  "Install `app-db` as the root application DB for the extent of `thunk`, then restore the root it replaced. Unlike a
-  binding, the root is seen by threads that do not inherit this thread's bindings, such as Quartz workers and the
-  threads serving `mt/client`, so tests that call this must be `^:synchronized`.
-
-  Calls are serialized, because two overlapping save/restore pairs would leave the second caller's DB installed as the
-  \"original\" root once both finish. Only callers of this function take the lock: other code that reads or writes the
-  root does not."
+  "Install `app-db` as the root application DB for the extent of `thunk`, then restore the root it replaced.
+  Unlike a binding, the root is seen by threads that do not inherit this thread's bindings, such as Quartz workers
+  and the threads serving `mt/client`, so tests that call this must be `^:synchronized`.
+  Calls are serialized, but only against each other: other code that reads or writes the root takes no lock."
   [app-db thunk]
   (locking app-db-root-lock
     (let [handle (mdb/application-db-handle)
