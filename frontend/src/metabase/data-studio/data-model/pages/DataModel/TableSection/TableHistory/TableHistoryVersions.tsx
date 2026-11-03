@@ -8,6 +8,7 @@ import {
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
+  type CurrentRule,
   type HistoryCheck,
   type HistoryProfile,
   getFailedChecks,
@@ -33,8 +34,8 @@ import { useHistoryEntitySelection } from "../../contexts/HistoryEntitySelection
 
 import {
   HistoryColumnsSection,
-  HistoryMetabotSection,
   HistoryPreviewSection,
+  HistoryRepresentationSection,
 } from "./HistoryColumnsSection";
 import {
   CHECK_STATUS_ICON,
@@ -55,7 +56,6 @@ export function TableHistoryVersions({
   readOnly: boolean;
 }) {
   const status = useHistoryReviewStatus(table);
-  const noun = getEntityNoun(table);
 
   if (status == null) {
     return null;
@@ -79,6 +79,7 @@ export function TableHistoryVersions({
   }
 
   const { profile } = profileState;
+  const noun = getEntityNoun(table, profile.durableKeyField.name);
 
   return (
     <Stack gap="xxl" data-testid="table-history-versions">
@@ -97,7 +98,11 @@ export function TableHistoryVersions({
         noun={noun}
         readOnly={readOnly}
       />
-      <HistoryMetabotSection table={table} profile={profile} noun={noun} />
+      <HistoryRepresentationSection
+        table={table}
+        profile={profile}
+        noun={noun}
+      />
       <ConfirmSection
         table={table}
         profile={profile}
@@ -107,6 +112,15 @@ export function TableHistoryVersions({
       />
     </Stack>
   );
+}
+
+function getCurrentRuleDescription(rule: CurrentRule) {
+  const descriptions: Record<CurrentRule, string> = {
+    "current-flag": t`Where the current flag is true`,
+    "valid-to-is-null": t`Where valid to is empty`,
+    "latest-per-key": t`The latest version per durable key. As a segment this needs a window function.`,
+  };
+  return descriptions[rule];
 }
 
 function CoverageSection({
@@ -145,7 +159,14 @@ function CoverageSection({
         />
         <DetailsRow
           label={t`Current versions`}
-          value={profile.currentRowCount.toLocaleString()}
+          value={
+            <Stack gap={0} py="xs">
+              <Text fw="bold">{profile.currentRowCount.toLocaleString()}</Text>
+              <Text size="sm" c="text-secondary">
+                {getCurrentRuleDescription(profile.currentRule)}
+              </Text>
+            </Stack>
+          }
         />
         <DetailsRow
           label={t`Valid from`}
@@ -320,7 +341,7 @@ function ConfirmSection({
 }) {
   const { getTableStructure } = useTableStructures();
   const { confirm } = useHistoryReview(table);
-  const binding = getTableStructure(table).history;
+  const structure = getTableStructure(table);
   const failedCount = getFailedChecks(profile).length;
 
   if (isConfirmed) {
@@ -352,7 +373,7 @@ function ConfirmSection({
           variant="filled"
           disabled={readOnly}
           flex="0 0 auto"
-          onClick={() => confirm(binding)}
+          onClick={() => confirm(structure)}
           data-testid="confirm-history-button"
         >
           {t`Confirm history setup`}

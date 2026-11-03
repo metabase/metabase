@@ -4,12 +4,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isDate, isFK, isInteger, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId } from "metabase-types/api";
 
-import {
-  type CurrentRowRule,
-  inferCurrentRowRule,
-  inferDurableKeyFallbackFieldId,
-  inferVersionKeyFieldId,
-} from "./history-source";
+import { inferDurableKeyFieldId, inferVersionFieldId } from "./history-source";
 import { type TableRole, getTableRoleLabel } from "./roles";
 
 export type RowIdentity =
@@ -49,11 +44,10 @@ export type RoleInference = {
 /** How to read a history table: which rows are versions of the same thing */
 export type HistoryBinding = {
   durableKeyFieldId: FieldId | null;
-  versionKeyFieldId: FieldId | null;
   validFromFieldId: FieldId | null;
   validToFieldId: FieldId | null;
   currentFlagFieldId: FieldId | null;
-  currentRowRule: CurrentRowRule;
+  versionFieldId: FieldId | null;
   /** Filter to the current version of each row by default */
   currentRowsOnly: boolean;
 };
@@ -72,11 +66,11 @@ type TableShape = { name: string; fields: Field[] };
 const INDEX_RE = /(^|_)(index|idx|position|pos|seq|sequence|ordinal)$/;
 const VERSION_RE = /(^|_)version$/;
 const VALID_FROM_RE =
-  /(^|_)(valid_from|effective_from|dbt_valid_from)$|^_fivetran_start$/;
+  /(^|_)(valid_from|effective_from|effective_date|dbt_valid_from)$|^_fivetran_start$/;
 const VALID_TO_RE =
-  /(^|_)(valid_to|effective_to|dbt_valid_to)$|^_fivetran_end$/;
+  /(^|_)(valid_to|effective_to|end_date|dbt_valid_to)$|^_fivetran_end$/;
 const CURRENT_FLAG_RE =
-  /^(is_current|current_flag|is_latest)$|^_fivetran_active$/;
+  /^(is_current|current_flag|is_latest|active|is_active)$|^_fivetran_active$/;
 const STATUS_RE = /(^|_)(status|state|stage)$/;
 const CREATED_RE = /^(created_at|created|created_on|inserted_at)$/;
 const UPDATED_RE =
@@ -340,23 +334,29 @@ const idOf = (field: Field | undefined) =>
 
 export function inferHistoryBinding(fields: Field[]): HistoryBinding {
   const pks = fields.filter(isPK);
-  const durableKey =
-    pks.find((field) => !isDate(field) && !matches(field, VERSION_RE)) ??
-    fields.find(isFK) ??
-    pks[0];
+  const compositeKeyMember =
+    pks.length > 1
+      ? pks.find((field) => !isDate(field) && !matches(field, VERSION_RE))
+      : undefined;
   const durableKeyFieldId =
-    idOf(durableKey) ?? inferDurableKeyFallbackFieldId(fields);
+    idOf(compositeKeyMember) ?? inferDurableKeyFieldId(fields);
+  const validFrom = fields.find((field) => matches(field, VALID_FROM_RE));
+  const validTo = fields.find((field) => matches(field, VALID_TO_RE));
+  const keyShapeVersion =
+    pks.length > 1
+      ? pks.find((field) => isDate(field) || matches(field, VERSION_RE))
+      : undefined;
   return {
     durableKeyFieldId,
-    versionKeyFieldId: inferVersionKeyFieldId(fields, durableKeyFieldId),
     validFromFieldId: idOf(
-      fields.find((field) => matches(field, VALID_FROM_RE)),
+      validFrom ?? (validTo ? undefined : keyShapeVersion),
     ),
-    validToFieldId: idOf(fields.find((field) => matches(field, VALID_TO_RE))),
+    validToFieldId: idOf(validTo),
     currentFlagFieldId: idOf(
       fields.find((field) => matches(field, CURRENT_FLAG_RE)),
     ),
-    currentRowRule: inferCurrentRowRule(fields),
+    versionFieldId:
+      inferVersionFieldId(fields) ?? (validFrom ? null : idOf(keyShapeVersion)),
     currentRowsOnly: true,
   };
 }

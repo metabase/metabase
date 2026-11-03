@@ -19,11 +19,11 @@ import { VersionAwareJoin } from "./VersionAwareJoin";
 import {
   ACCOUNT_HISTORY_ID,
   CUSTOMERS_SNAPSHOT_ID,
-  DIM_CUSTOMER_ID,
-  DIM_CUSTOMER_ID_FIELD_ID,
   EMPTY_TABLE_STRUCTURE,
+  SUBSCRIPTION_HISTORY_ID,
   WAREHOUSE_FIELD_VALUES,
   WAREHOUSE_ID,
+  WORKER_POSITION_HISTORY_ID,
   createWarehouse,
   getHistoryDataset,
 } from "./fixtures";
@@ -36,19 +36,6 @@ import {
 export default {
   title: "Prototypes/History tables",
   parameters: { layout: "fullscreen", loki: { skip: true } },
-};
-
-const SCHEMA_NAME = "analytics";
-
-const DIM_CUSTOMER_FIXED_STRUCTURE = {
-  tables: {
-    [`${WAREHOUSE_ID}:${DIM_CUSTOMER_ID}`]: {
-      history: {
-        durableKeyFieldId: DIM_CUSTOMER_ID_FIELD_ID,
-      },
-    },
-  },
-  grainByField: {},
 };
 
 const seedStorage =
@@ -94,64 +81,113 @@ function DataStudioPage({ initialRoute }: { initialRoute: string }) {
 }
 
 const tableRoute = (
-  tableId: number,
+  table: { id: number; schema: string },
   tab: DataStudioTableMetadataTab,
   fieldId?: number,
 ) =>
   Urls.dataStudioData({
     databaseId: WAREHOUSE_ID,
-    schemaName: SCHEMA_NAME,
-    tableId,
+    schemaName: table.schema,
+    tableId: table.id,
     tab,
     fieldId,
   });
+
+const WORKER_POSITION_HISTORY = {
+  id: WORKER_POSITION_HISTORY_ID,
+  schema: "workday_hcm",
+};
+const CUSTOMERS_SNAPSHOT = { id: CUSTOMERS_SNAPSHOT_ID, schema: "snapshots" };
+const ACCOUNT_HISTORY = { id: ACCOUNT_HISTORY_ID, schema: "salesforce" };
+const SUBSCRIPTION_HISTORY = { id: SUBSCRIPTION_HISTORY_ID, schema: "app" };
+const BUSINESS_TITLE_FIELD_ID = 8605;
+const EFFECTIVE_DATE_FIELD_ID = 8610;
 
 export const TableList = {
   beforeEach: seedStorage(),
   render: () => (
     <DataStudioPage
+      initialRoute={Urls.dataStudioData({ databaseId: WAREHOUSE_ID })}
+    />
+  ),
+};
+
+export const WorkerPositionHistoryList = {
+  beforeEach: seedStorage(),
+  render: () => (
+    <DataStudioPage
       initialRoute={Urls.dataStudioData({
         databaseId: WAREHOUSE_ID,
-        schemaName: SCHEMA_NAME,
+        schemaName: WORKER_POSITION_HISTORY.schema,
       })}
     />
   ),
 };
 
-export const DimCustomerAsInferred = {
+export const WorkerPositionHistoryDetails = {
   beforeEach: seedStorage(),
   render: () => (
-    <DataStudioPage initialRoute={tableRoute(DIM_CUSTOMER_ID, "details")} />
+    <DataStudioPage
+      initialRoute={tableRoute(WORKER_POSITION_HISTORY, "details")}
+    />
   ),
 };
 
-export const DimCustomerVersions = {
-  beforeEach: seedStorage(DIM_CUSTOMER_FIXED_STRUCTURE),
+export const WorkerPositionHistoryVersions = {
+  beforeEach: seedStorage(),
   render: () => (
-    <DataStudioPage initialRoute={tableRoute(DIM_CUSTOMER_ID, "versions")} />
+    <DataStudioPage
+      initialRoute={tableRoute(WORKER_POSITION_HISTORY, "versions")}
+    />
   ),
 };
 
 export const DbtSnapshotVersions = {
   beforeEach: seedStorage(),
   render: () => (
+    <DataStudioPage initialRoute={tableRoute(CUSTOMERS_SNAPSHOT, "versions")} />
+  ),
+};
+
+export const FivetranHistoryModeDetails = {
+  beforeEach: seedStorage(),
+  render: () => (
+    <DataStudioPage initialRoute={tableRoute(ACCOUNT_HISTORY, "details")} />
+  ),
+};
+
+export const KeyShapeDetails = {
+  beforeEach: seedStorage(),
+  render: () => (
     <DataStudioPage
-      initialRoute={tableRoute(CUSTOMERS_SNAPSHOT_ID, "versions")}
+      initialRoute={tableRoute(SUBSCRIPTION_HISTORY, "details")}
     />
   ),
 };
 
-export const FivetranHistoryDetails = {
+export const FieldAttributeScdType = {
   beforeEach: seedStorage(),
   render: () => (
-    <DataStudioPage initialRoute={tableRoute(ACCOUNT_HISTORY_ID, "details")} />
+    <DataStudioPage
+      initialRoute={tableRoute(
+        WORKER_POSITION_HISTORY,
+        "field",
+        BUSINESS_TITLE_FIELD_ID,
+      )}
+    />
   ),
 };
 
 export const FieldHistoryRole = {
   beforeEach: seedStorage(),
   render: () => (
-    <DataStudioPage initialRoute={tableRoute(DIM_CUSTOMER_ID, "field", 8110)} />
+    <DataStudioPage
+      initialRoute={tableRoute(
+        WORKER_POSITION_HISTORY,
+        "field",
+        EFFECTIVE_DATE_FIELD_ID,
+      )}
+    />
   ),
 };
 

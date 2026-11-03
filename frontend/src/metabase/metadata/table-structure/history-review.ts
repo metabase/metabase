@@ -13,25 +13,28 @@ import {
   getFailedChecks,
   useHistoryProfile,
 } from "./history-profile";
+import {
+  type AttributeScdType,
+  type ScdType,
+  isAttributeScdType,
+} from "./history-source";
 import type { HistoryBinding } from "./inference";
 import { isRoleA } from "./roles";
-import { useTableStructures } from "./table-structure";
-
-export const COLUMN_TREATMENTS = [
-  "as-it-was",
-  "as-it-was-and-current",
-  "always-current",
-] as const;
-
-export type ColumnTreatment = (typeof COLUMN_TREATMENTS)[number];
+import { type TableStructure, useTableStructures } from "./table-structure";
 
 type TableReview = {
-  columns: Record<string, ColumnTreatment>;
-  confirmedBinding?: string;
+  attributeScdTypes: Record<string, AttributeScdType>;
+  confirmedDefinition?: string;
   confirmedAt?: string;
 };
 
 type HistoryReviewStorage = Record<string, TableReview>;
+
+export type AttributeScdTypeState = {
+  attributeScdType: AttributeScdType;
+  isOverridden: boolean;
+  suggestion: AttributeScdTypeSuggestion;
+};
 
 export type HistoryReviewStatus = {
   needsReview: boolean;
@@ -42,27 +45,25 @@ export type HistoryReviewStatus = {
 };
 
 const STORAGE_KEY = "metabase-prototype-history-review";
-
-const isColumnTreatment = (value: unknown): value is ColumnTreatment =>
-  COLUMN_TREATMENTS.some((treatment) => treatment === value);
+const EMPTY_REVIEW: TableReview = { attributeScdTypes: {} };
 
 function parseTableReview(value: unknown): TableReview {
   if (!isObject(value)) {
-    return { columns: {} };
+    return EMPTY_REVIEW;
   }
-  const columns = isObject(value.columns)
+  const attributeScdTypes = isObject(value.attributeScdTypes)
     ? Object.fromEntries(
-        Object.entries(value.columns).filter(
-          (entry): entry is [string, ColumnTreatment] =>
-            isColumnTreatment(entry[1]),
+        Object.entries(value.attributeScdTypes).filter(
+          (entry): entry is [string, AttributeScdType] =>
+            isAttributeScdType(entry[1]),
         ),
       )
     : {};
   return {
-    columns,
-    confirmedBinding:
-      typeof value.confirmedBinding === "string"
-        ? value.confirmedBinding
+    attributeScdTypes,
+    confirmedDefinition:
+      typeof value.confirmedDefinition === "string"
+        ? value.confirmedDefinition
         : undefined,
     confirmedAt:
       typeof value.confirmedAt === "string" ? value.confirmedAt : undefined,
@@ -76,13 +77,36 @@ function parseStorage(value: unknown): HistoryReviewStorage {
 const getTableKey = (table: Pick<Table, "db_id" | "id">) =>
   `${table.db_id}:${table.id}`;
 
-const getBindingKey = (binding: HistoryBinding) =>
-  JSON.stringify(_.omit(binding, "currentRowsOnly"));
+const getDefinitionKey = (binding: HistoryBinding, scdType: ScdType | null) =>
+  JSON.stringify({ ..._.omit(binding, "currentRowsOnly"), scdType });
 
-export function getDefaultColumnTreatment(
-  column: ColumnChangeProfile,
-): ColumnTreatment | null {
-  return column.changeCount > 0 ? "as-it-was" : null;
+const CORRECTION_SEMANTIC_TYPES = new Set(["type/Name", "type/Email"]);
+const CORRECTION_CHANGE_SHARE = 0.1;
+
+export type AttributeScdTypeSuggestion = {
+  attributeScdType: AttributeScdType;
+  reason: string;
+};
+
+export function suggestAttributeScdType(
+  field: Pick<Field, "semantic_type">,
+  column: Pick<ColumnChangeProfile, "changeCount" | "changedEntityCount">,
+  entityCount: number,
+): AttributeScdTypeSuggestion {
+  if (column.changeCount === 0) {
+    return { attributeScdType: 0, reason: t`never changes` };
+  }
+  const changedShare = column.changedEntityCount / Math.max(1, entityCount);
+  const looksLikeCorrection =
+    field.semantic_type != null &&
+    CORRECTION_SEMANTIC_TYPES.has(field.semantic_type) &&
+    changedShare < CORRECTION_CHANGE_SHARE;
+  return looksLikeCorrection
+    ? {
+        attributeScdType: 1,
+        reason: t`a name that rarely changes, so changes are likely corrections`,
+      }
+    : { attributeScdType: 2, reason: t`changes between versions` };
 }
 
 export function useHistoryReview(table: Pick<Table, "db_id" | "id">) {
@@ -91,70 +115,105 @@ export function useHistoryReview(table: Pick<Table, "db_id" | "id">) {
     parseStorage,
   );
   const tableKey = getTableKey(table);
-  const review = storage[tableKey] ?? { columns: {} };
+  const review = storage[tableKey] ?? EMPTY_REVIEW;
 
   const updateReview = useCallback(
     (update: (review: TableReview) => TableReview) =>
       updateStorage((current) => ({
         ...current,
-        [tableKey]: update(current[tableKey] ?? { columns: {} }),
+        [tableKey]: update(current[tableKey] ?? EMPTY_REVIEW),
       })),
     [tableKey, updateStorage],
   );
 
-  const getColumnTreatment = (
-    column: ColumnChangeProfile,
-  ): ColumnTreatment | null =>
-    column.changeCount > 0
-      ? (review.columns[String(getRawTableFieldId(column.field))] ??
-        getDefaultColumnTreatment(column))
-      : null;
+  const getAttributeScdType = (
+    field: Field,
+    column: ColumnChangeProfile | undefined,
+    entityCount: number,
+  ): AttributeScdTypeState => {
+    const override =
+      review.attributeScdTypes[String(getRawTableFieldId(field))];
+    const suggestion = suggestAttributeScdType(
+      field,
+      column ?? { changeCount: 0, changedEntityCount: 0 },
+      entityCount,
+    );
+    return {
+      attributeScdType: override ?? suggestion.attributeScdType,
+      isOverridden: override != null,
+      suggestion,
+    };
+  };
 
-  const setColumnTreatment = useCallback(
-    (fieldId: FieldId, treatment: ColumnTreatment) =>
+  const setAttributeScdType = useCallback(
+    (fieldId: FieldId, attributeScdType: AttributeScdType | null) =>
       updateReview((current) => ({
         ...current,
-        columns: { ...current.columns, [String(fieldId)]: treatment },
+        attributeScdTypes:
+          attributeScdType == null
+            ? _.omit(current.attributeScdTypes, String(fieldId))
+            : {
+                ...current.attributeScdTypes,
+                [String(fieldId)]: attributeScdType,
+              },
       })),
     [updateReview],
   );
 
   const confirm = useCallback(
-    (binding: HistoryBinding) =>
+    (structure: Pick<TableStructure, "history" | "scdType">) =>
       updateReview((current) => ({
         ...current,
-        confirmedBinding: getBindingKey(binding),
+        confirmedDefinition: getDefinitionKey(
+          structure.history,
+          structure.scdType,
+        ),
         confirmedAt: new Date().toISOString(),
       })),
     [updateReview],
   );
 
-  const isConfirmed = (binding: HistoryBinding) =>
-    review.confirmedBinding === getBindingKey(binding);
+  const isConfirmed = (
+    structure: Pick<TableStructure, "history" | "scdType">,
+  ) =>
+    review.confirmedDefinition ===
+    getDefinitionKey(structure.history, structure.scdType);
 
   return {
     confirmedAt: review.confirmedAt ?? null,
     isConfirmed,
-    getColumnTreatment,
-    setColumnTreatment,
+    getAttributeScdType,
+    setAttributeScdType,
     confirm,
   };
 }
 
-function getIssue(profileState: HistoryProfileState): string | null {
+function getIssue(
+  structure: TableStructure,
+  profileState: HistoryProfileState,
+): string | null {
   if (profileState.status === "unbound") {
     return t`Pick the durable key and valid from columns`;
+  }
+  if (structure.scdType == null) {
+    return t`Pick an SCD type`;
   }
   if (profileState.status !== "loaded") {
     return null;
   }
   const failedCount = getFailedChecks(profileState.profile).length;
-  return failedCount > 0
-    ? ngettext(
-        msgid`${failedCount} history check fails`,
-        `${failedCount} history checks fail`,
-        failedCount,
-      )
+  if (failedCount > 0) {
+    return ngettext(
+      msgid`${failedCount} history check fails`,
+      `${failedCount} history checks fail`,
+      failedCount,
+    );
+  }
+  const isWeakGuess =
+    !structure.isScdTypeOverridden &&
+    structure.scdTypeInference.confidence === "low";
+  return isWeakGuess
+    ? t`SCD type is a guess: ${structure.scdTypeInference.signal}`
     : null;
 }
 
@@ -173,12 +232,12 @@ export function useHistoryReviewStatus(
   if (!isHistory) {
     return null;
   }
-  const issue = getIssue(profileState);
-  const isBindingConfirmed = isConfirmed(structure.history);
+  const issue = getIssue(structure, profileState);
+  const isDefinitionConfirmed = isConfirmed(structure);
   return {
-    needsReview: issue != null && !isBindingConfirmed,
-    isConfirmed: isBindingConfirmed,
-    confirmedAt: isBindingConfirmed ? confirmedAt : null,
+    needsReview: issue != null && !isDefinitionConfirmed,
+    isConfirmed: isDefinitionConfirmed,
+    confirmedAt: isDefinitionConfirmed ? confirmedAt : null,
     issue,
     profileState,
   };

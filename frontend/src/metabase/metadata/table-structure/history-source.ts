@@ -1,131 +1,209 @@
 import { t } from "ttag";
 
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId } from "metabase-types/api";
 
-export const HISTORY_SOURCES = [
+export const SCD_TYPES = [0, 1, 2, 3, 4, 5, 6, 7] as const;
+
+export type ScdType = (typeof SCD_TYPES)[number];
+
+export const ATTRIBUTE_SCD_TYPES = [0, 1, 2, 3] as const;
+
+export type AttributeScdType = (typeof ATTRIBUTE_SCD_TYPES)[number];
+
+export const HISTORY_INFERENCE_RULES = [
+  "fivetran-history-mode",
   "dbt-snapshot",
-  "fivetran-history",
-  "hand-rolled",
+  "explicit-interval",
+  "key-shape",
+  "name",
 ] as const;
 
-export type HistorySource = (typeof HISTORY_SOURCES)[number];
+export type HistoryInferenceRule = (typeof HISTORY_INFERENCE_RULES)[number];
 
-export const CURRENT_ROW_RULES = [
-  "flag",
-  "open-valid-to",
-  "far-future-valid-to",
-] as const;
-
-export type CurrentRowRule = (typeof CURRENT_ROW_RULES)[number];
-
-export type HistorySourceInference = {
-  source: HistorySource;
+export type ScdTypeInference = {
+  scdType: ScdType | null;
+  rule: HistoryInferenceRule | null;
   signal: string;
+  corpusTableCount: number | null;
+  confidence: "high" | "low";
 };
 
-export const FAR_FUTURE_VALID_TO = "9999-12-31";
-
-const DBT_COLUMN_RE = /^dbt_(scd_id|valid_from|valid_to|updated_at)$/;
-const FIVETRAN_COLUMN_RE = /^_fivetran_(start|end|active)$/;
-const VALID_FROM_RE = /(^|_)(valid_from|effective_from)$/;
-const VALID_TO_RE = /(^|_)(valid_to|effective_to)$/;
-const CURRENT_FLAG_RE =
-  /^(is_current|current_flag|is_latest)$|^_fivetran_active$/;
-const DBT_VERSION_KEY_RE = /^dbt_scd_id$/;
 const FIVETRAN_START_RE = /^_fivetran_start$/;
-const SURROGATE_KEY_RE = /_(sk|key)$/;
+const FIVETRAN_END_RE = /^_fivetran_end$/;
+const DBT_VALID_FROM_RE = /^dbt_valid_from$/;
+const DBT_VALID_TO_RE = /^dbt_valid_to$/;
+const INTERVAL_FROM_RE = /(^|_)(valid_from|effective_from|effective_date)$/;
+const INTERVAL_TO_RE = /(^|_)(valid_to|effective_to|end_date)$/;
+const KEY_SHAPE_VERSION_RE = /(^|_)(updated_at|version|revision)$/;
+const HISTORY_NAME_RE = /_(history|snapshots?|versions?)$/;
+const VERSION_RE = /(^|_)(version|revision|etag)$/;
 const ID_RE = /^id$/;
-const ENTITY_ID_RE = /^(?!dbt_).+_id$/;
+const ENTITY_ID_RE = /^(?!dbt_|_fivetran_).+_id$/;
+
+const CORPUS_TABLE_COUNTS: Record<HistoryInferenceRule, number | null> = {
+  "fivetran-history-mode": 18,
+  "dbt-snapshot": null,
+  "explicit-interval": 100,
+  "key-shape": 764,
+  name: 654,
+};
 
 const nameOf = (field: Field) => field.name.toLowerCase();
-const namesMatching = (fields: Field[], pattern: RegExp) =>
-  fields.map(nameOf).filter((name) => pattern.test(name));
 const findMatching = (fields: Field[], pattern: RegExp) =>
   fields.find((field) => pattern.test(nameOf(field)));
 const idOf = (field: Field | undefined) =>
   field ? getRawTableFieldId(field) : null;
 
-export function inferHistorySource(fields: Field[]): HistorySourceInference {
-  const dbtColumns = namesMatching(fields, DBT_COLUMN_RE);
-  if (dbtColumns.length > 0) {
-    return {
-      source: "dbt-snapshot",
-      signal: t`Has ${dbtColumns.join(", ")}, which dbt snapshots add`,
-    };
-  }
-  const fivetranColumns = namesMatching(fields, FIVETRAN_COLUMN_RE);
-  if (fivetranColumns.length > 0) {
-    return {
-      source: "fivetran-history",
-      signal: t`Has ${fivetranColumns.join(", ")}, which Fivetran history mode adds`,
-    };
-  }
-  const rangeColumns = [
-    ...namesMatching(fields, VALID_FROM_RE),
-    ...namesMatching(fields, VALID_TO_RE),
-  ];
+function inferred(
+  rule: HistoryInferenceRule,
+  scdType: ScdType,
+  signal: string,
+  confidence: ScdTypeInference["confidence"],
+): ScdTypeInference {
   return {
-    source: "hand-rolled",
-    signal:
-      rangeColumns.length > 0
-        ? t`Has its own ${rangeColumns.join(" and ")} columns, and no dbt or Fivetran columns`
-        : t`No dbt or Fivetran columns`,
+    scdType,
+    rule,
+    signal,
+    corpusTableCount: CORPUS_TABLE_COUNTS[rule],
+    confidence,
   };
 }
 
-export function getHistorySourceLabel(source: HistorySource) {
-  const labels: Record<HistorySource, string> = {
-    "dbt-snapshot": t`dbt snapshot`,
-    "fivetran-history": t`Fivetran history mode`,
-    "hand-rolled": t`Hand-built history table`,
-  };
-  return labels[source];
+function findIntervalPair(fields: Field[]) {
+  const validFrom = findMatching(fields, INTERVAL_FROM_RE);
+  const validTo = findMatching(fields, INTERVAL_TO_RE);
+  return validFrom && validTo ? [validFrom, validTo] : null;
 }
 
-export function inferVersionKeyFieldId(
-  fields: Field[],
-  durableKeyFieldId: FieldId | null,
-): FieldId | null {
+function findKeyShape(fields: Field[]) {
   const pks = fields.filter(isPK);
-  return idOf(
-    findMatching(fields, DBT_VERSION_KEY_RE) ??
-      pks.find((field) => SURROGATE_KEY_RE.test(nameOf(field))) ??
-      pks.find((field) => getRawTableFieldId(field) !== durableKeyFieldId) ??
-      findMatching(fields, FIVETRAN_START_RE),
+  const idKey = pks.find((field) => !isDate(field));
+  const versionKey = pks.find(
+    (field) => isDate(field) || KEY_SHAPE_VERSION_RE.test(nameOf(field)),
   );
+  return pks.length === 2 && idKey && versionKey ? [idKey, versionKey] : null;
 }
 
-export function inferDurableKeyFallbackFieldId(fields: Field[]) {
-  return idOf(
-    findMatching(fields, ID_RE) ?? findMatching(fields, ENTITY_ID_RE),
-  );
-}
-
-export function inferCurrentRowRule(fields: Field[]): CurrentRowRule {
-  if (findMatching(fields, CURRENT_FLAG_RE)) {
-    return "flag";
+export function inferScdType({
+  name,
+  fields,
+}: {
+  name: string;
+  fields: Field[];
+}): ScdTypeInference {
+  const fivetranStart = findMatching(fields, FIVETRAN_START_RE);
+  const fivetranEnd = findMatching(fields, FIVETRAN_END_RE);
+  if (fivetranStart && fivetranEnd) {
+    return inferred(
+      "fivetran-history-mode",
+      2,
+      t`${fivetranStart.name} / ${fivetranEnd.name} → Fivetran history mode`,
+      "high",
+    );
   }
-  return inferHistorySource(fields).source === "fivetran-history"
-    ? "far-future-valid-to"
-    : "open-valid-to";
+  const dbtFrom = findMatching(fields, DBT_VALID_FROM_RE);
+  const dbtTo = findMatching(fields, DBT_VALID_TO_RE);
+  if (dbtFrom && dbtTo) {
+    return inferred(
+      "dbt-snapshot",
+      2,
+      t`${dbtFrom.name} / ${dbtTo.name} → dbt snapshot`,
+      "high",
+    );
+  }
+  const interval = findIntervalPair(fields);
+  if (interval) {
+    return inferred(
+      "explicit-interval",
+      2,
+      t`${interval[0].name} / ${interval[1].name} pair`,
+      "high",
+    );
+  }
+  const keyShape = findKeyShape(fields);
+  if (keyShape) {
+    return inferred(
+      "key-shape",
+      4,
+      t`Key is ${keyShape[0].name} + ${keyShape[1].name}, with no valid to column`,
+      "low",
+    );
+  }
+  if (HISTORY_NAME_RE.test(name.toLowerCase())) {
+    return inferred("name", 2, t`Named like a history table`, "low");
+  }
+  return {
+    scdType: null,
+    rule: null,
+    signal: t`No history columns, key shape or name matched`,
+    corpusTableCount: null,
+    confidence: "low",
+  };
 }
 
-export function getCurrentRowRuleOptions(): {
-  value: CurrentRowRule;
-  label: string;
-}[] {
-  return [
-    { value: "flag", label: t`Its current flag is true` },
-    { value: "open-valid-to", label: t`Valid to is empty` },
-    {
-      value: "far-future-valid-to",
-      label: t`Valid to is ${FAR_FUTURE_VALID_TO} or empty`,
-    },
-  ];
+export function inferDurableKeyFieldId(fields: Field[]): FieldId | null {
+  const nonKeys = fields.filter((field) => !isPK(field));
+  return idOf(
+    findMatching(nonKeys, ID_RE) ??
+      findMatching(nonKeys, ENTITY_ID_RE) ??
+      fields.find(isPK),
+  );
 }
 
-export function isCurrentRowRule(value: unknown): value is CurrentRowRule {
-  return CURRENT_ROW_RULES.some((rule) => rule === value);
+export function inferVersionFieldId(fields: Field[]): FieldId | null {
+  return idOf(findMatching(fields, VERSION_RE));
+}
+
+export function isScdType(value: unknown): value is ScdType {
+  return SCD_TYPES.some((type) => type === value);
+}
+
+export function isAttributeScdType(value: unknown): value is AttributeScdType {
+  return ATTRIBUTE_SCD_TYPES.some((type) => type === value);
+}
+
+export function getScdTypeLabel(scdType: ScdType) {
+  const labels: Record<ScdType, string> = {
+    0: t`Type 0 · Never changes`,
+    1: t`Type 1 · Overwritten, no history`,
+    2: t`Type 2 · One row per version`,
+    3: t`Type 3 · Previous value in a column`,
+    4: t`Type 4 · History in its own table`,
+    5: t`Type 5 · Mini-dimension with a current key`,
+    6: t`Type 6 · Type 2 with current-value columns`,
+    7: t`Type 7 · Type 2 with a current key on facts`,
+  };
+  return labels[scdType];
+}
+
+export function getAttributeScdTypeLabel(attributeScdType: AttributeScdType) {
+  const labels: Record<AttributeScdType, string> = {
+    0: t`Type 0 · Fixed`,
+    1: t`Type 1 · Overwritten`,
+    2: t`Type 2 · Tracked per version`,
+    3: t`Type 3 · Previous value kept`,
+  };
+  return labels[attributeScdType];
+}
+
+export function getAttributeScdTypeDescription(
+  attributeScdType: AttributeScdType,
+) {
+  const descriptions: Record<AttributeScdType, string> = {
+    0: t`Set once and never changes`,
+    1: t`Changes are corrections, so every version shows today's value and grouping uses the durable key`,
+    2: t`Each version keeps its own value`,
+    3: t`A separate column keeps the previous value`,
+  };
+  return descriptions[attributeScdType];
+}
+
+export function filtersCurrentRows(scdType: ScdType | null) {
+  return scdType === 2 || scdType === 4 || scdType === 6 || scdType === 7;
+}
+
+export function countsDurableKeys(scdType: ScdType | null) {
+  return scdType === 2 || scdType === 6 || scdType === 7;
 }

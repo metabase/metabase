@@ -5,19 +5,23 @@ import {
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
 import {
+  ATTRIBUTE_SCD_TYPES,
+  type AttributeScdType,
+  type AttributeScdTypeSuggestion,
   type ColumnChangeProfile,
-  type ColumnTreatment,
-  FAR_FUTURE_VALID_TO,
   type HistoryProfile,
   type HistoryVersion,
-  getCurrentRowRuleOptions,
+  countsDurableKeys,
+  filtersCurrentRows,
+  getAttributeScdTypeDescription,
+  getAttributeScdTypeLabel,
   getFailedChecks,
-  getHistorySourceLabel,
-  inferHistorySource,
+  isAttributeScdType,
   useHistoryReview,
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import {
   Box,
   Code,
@@ -30,32 +34,36 @@ import {
 } from "metabase/ui";
 import type { RowValue, Table } from "metabase-types/api";
 
+import { getCurrentRowsCondition } from "./HistoryBindingRows";
 import { HistoryPreviewGrid, type PreviewColumn } from "./HistoryPreviewGrid";
 import {
   type EntityNoun,
   countOf,
   formatDate,
   getCheckDescription,
-  getColumnTreatmentDescription,
-  getColumnTreatmentOptions,
 } from "./history-labels";
 
 const PREVIEW_GRID_HEIGHT = 260;
 
-type ColumnWithTreatment = {
+type ColumnWithScdType = {
   column: ColumnChangeProfile;
-  treatment: ColumnTreatment | null;
+  attributeScdType: AttributeScdType;
+  isOverridden: boolean;
+  suggestion: AttributeScdTypeSuggestion;
 };
 
-function useColumnTreatments(table: Table, profile: HistoryProfile) {
-  const { getColumnTreatment } = useHistoryReview(table);
+function useColumnScdTypes(table: Table, profile: HistoryProfile) {
+  const { getAttributeScdType } = useHistoryReview(table);
   return profile.columns.map(
-    (column): ColumnWithTreatment => ({
+    (column): ColumnWithScdType => ({
       column,
-      treatment: getColumnTreatment(column),
+      ...getAttributeScdType(column.field, column, profile.entityCount),
     }),
   );
 }
+
+const shareOf = (count: number, total: number) =>
+  Math.round((count / Math.max(1, total)) * 100);
 
 export function HistoryColumnsSection({
   table,
@@ -68,8 +76,8 @@ export function HistoryColumnsSection({
   noun: EntityNoun;
   readOnly: boolean;
 }) {
-  const { setColumnTreatment } = useHistoryReview(table);
-  const columns = useColumnTreatments(table, profile);
+  const { setAttributeScdType } = useHistoryReview(table);
+  const columns = useColumnScdTypes(table, profile);
   const changing = columns
     .filter(({ column }) => column.changeCount > 0)
     .sort((a, b) => b.column.changedEntityCount - a.column.changedEntityCount);
@@ -78,78 +86,97 @@ export function HistoryColumnsSection({
   return (
     <SidebarSection title={t`Columns over time`}>
       <Text size="sm" c="text-secondary">
-        {t`Which columns change between versions. Pick how each one reads in queries.`}
+        {t`Which columns change between versions, and each column's attribute SCD type. Unset types follow what the data shows.`}
       </Text>
       <DetailsTable>
-        {changing.map(({ column, treatment }) => (
-          <Group
-            key={getRawTableFieldId(column.field)}
-            px="lg"
-            py="md"
-            gap="lg"
-            wrap="nowrap"
-            data-testid="history-column"
-          >
-            <Stack gap={6} flex={1} miw={0}>
-              <Group gap="sm" justify="space-between" wrap="nowrap">
-                <Text fw="bold" truncate>
-                  {column.field.display_name}
+        {changing.map(
+          ({ column, attributeScdType, isOverridden, suggestion }) => (
+            <Group
+              key={getRawTableFieldId(column.field)}
+              px="lg"
+              py="md"
+              gap="lg"
+              wrap="nowrap"
+              align="flex-start"
+              data-testid="history-column"
+            >
+              <Stack gap={6} flex={1} miw={0}>
+                <Group gap="sm" justify="space-between" wrap="nowrap">
+                  <Text fw="bold" truncate>
+                    {column.field.display_name}
+                  </Text>
+                  <Text size="sm" c="text-secondary" flex="0 0 auto">
+                    {t`${shareOf(column.changedEntityCount, profile.entityCount)}% of ${noun.other}`}
+                  </Text>
+                </Group>
+                <Progress
+                  value={shareOf(
+                    column.changedEntityCount,
+                    profile.entityCount,
+                  )}
+                  size="sm"
+                />
+                <Text size="sm" c="text-secondary">
+                  {t`Changed ${column.changeCount.toLocaleString()} times, last on ${formatDate(column.lastChangedAt)}`}
                 </Text>
-                <Text size="sm" c="text-secondary" flex="0 0 auto">
-                  {t`${Math.round(
-                    (column.changedEntityCount /
-                      Math.max(1, profile.entityCount)) *
-                      100,
-                  )}% of ${noun.other}`}
-                </Text>
-              </Group>
-              <Progress
-                value={
-                  (column.changedEntityCount /
-                    Math.max(1, profile.entityCount)) *
-                  100
-                }
-                size="sm"
-              />
-              <Text size="sm" c="text-secondary">
-                {t`Changed ${column.changeCount.toLocaleString()} times, last on ${formatDate(column.lastChangedAt)}`}
-              </Text>
-            </Stack>
-            <Stack gap={4} w={190} flex="0 0 auto">
-              <Select
-                aria-label={t`How ${column.field.display_name} reads`}
-                data={getColumnTreatmentOptions()}
-                value={treatment}
-                allowDeselect={false}
-                disabled={readOnly}
-                size="sm"
-                onChange={(value) => {
-                  const option = getColumnTreatmentOptions().find(
-                    (option) => option.value === value,
-                  );
-                  if (option) {
-                    setColumnTreatment(
-                      getRawTableFieldId(column.field),
-                      option.value,
-                    );
+              </Stack>
+              <Stack gap={4} w={200} flex="0 0 auto">
+                <AttributeScdTypeSelect
+                  label={t`Attribute SCD type of ${column.field.display_name}`}
+                  value={attributeScdType}
+                  disabled={readOnly}
+                  onChange={(value) =>
+                    setAttributeScdType(getRawTableFieldId(column.field), value)
                   }
-                }}
-              />
-              {treatment && (
+                />
                 <Text size="xs" c="text-secondary">
-                  {getColumnTreatmentDescription(treatment)}
+                  {isOverridden
+                    ? getAttributeScdTypeDescription(attributeScdType)
+                    : t`Not set. Suggests type ${suggestion.attributeScdType}: ${suggestion.reason}`}
                 </Text>
-              )}
-            </Stack>
-          </Group>
-        ))}
+              </Stack>
+            </Group>
+          ),
+        )}
       </DetailsTable>
       {unchanged.length > 0 && (
         <Text size="sm" c="text-secondary">
-          {t`Never change: ${unchanged.map(({ column }) => column.field.display_name).join(", ")}. They read the same in every version.`}
+          {t`Never change, so suggested as type 0: ${unchanged.map(({ column }) => column.field.display_name).join(", ")}.`}
         </Text>
       )}
     </SidebarSection>
+  );
+}
+
+export function AttributeScdTypeSelect({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: AttributeScdType;
+  disabled: boolean;
+  onChange: (value: AttributeScdType) => void;
+}) {
+  return (
+    <Select
+      aria-label={label}
+      data={ATTRIBUTE_SCD_TYPES.map((type) => ({
+        value: String(type),
+        label: getAttributeScdTypeLabel(type),
+      }))}
+      value={String(value)}
+      allowDeselect={false}
+      disabled={disabled}
+      size="sm"
+      onOptionSubmit={(selected) => {
+        const type = Number(selected);
+        if (isAttributeScdType(type)) {
+          onChange(type);
+        }
+      }}
+    />
   );
 }
 
@@ -166,6 +193,57 @@ function displayValue(value: RowValue | undefined) {
   return typeof value === "object" ? JSON.stringify(value) : value;
 }
 
+function getPreviewColumns(
+  profile: HistoryProfile,
+  columns: ColumnWithScdType[],
+  addsCurrentValueColumns: boolean,
+): PreviewColumn<PreviewRow>[] {
+  const labelField = profile.labelField;
+  const valueColumns = columns
+    .filter(
+      ({ column }) => column.changeCount > 0 && column.field !== labelField,
+    )
+    .flatMap(({ column, attributeScdType }) => {
+      const name = column.field.name;
+      const asItWas: PreviewColumn<PreviewRow> = {
+        id: name,
+        name: column.field.display_name,
+        value: (row) =>
+          displayValue(
+            attributeScdType === 1
+              ? row.latest.values[name]
+              : row.version.values[name],
+          ),
+      };
+      const current: PreviewColumn<PreviewRow> = {
+        id: `${name}-current`,
+        name: t`${column.field.display_name} (current)`,
+        value: (row) => displayValue(row.latest.values[name]),
+      };
+      return addsCurrentValueColumns && attributeScdType === 2
+        ? [asItWas, current]
+        : [asItWas];
+    });
+  return [
+    {
+      id: "durable-key",
+      name: profile.durableKeyField.display_name,
+      value: (row) => row.entityKey,
+    },
+    ...(labelField
+      ? [
+          {
+            id: "label",
+            name: labelField.display_name,
+            value: (row: PreviewRow) =>
+              displayValue(row.version.values[labelField.name]),
+          },
+        ]
+      : []),
+    ...valueColumns,
+  ];
+}
+
 export function HistoryPreviewSection({
   table,
   profile,
@@ -178,22 +256,16 @@ export function HistoryPreviewSection({
   readOnly: boolean;
 }) {
   const { getTableStructure, setHistoryBinding } = useTableStructures();
-  const binding = getTableStructure(table).history;
-  const columns = useColumnTreatments(table, profile).filter(
-    ({ column, treatment }) =>
-      treatment != null && column.field !== profile.labelField,
-  );
-  const fields = table.fields ?? [];
-  const validFromField = fields.find(
-    (field) => getRawTableFieldId(field) === binding.validFromFieldId,
-  );
-  const validToField = fields.find(
-    (field) => getRawTableFieldId(field) === binding.validToFieldId,
-  );
+  const structure = getTableStructure(table);
+  const binding = structure.history;
+  const columns = useColumnScdTypes(table, profile);
+  const showsCurrentRecords =
+    filtersCurrentRows(structure.scdType) && binding.currentRowsOnly;
+  const countsEntities = countsDurableKeys(structure.scdType);
 
   const rows: PreviewRow[] = profile.entities.flatMap((entity) => {
     const latest = entity.versions[entity.versions.length - 1];
-    const versions = binding.currentRowsOnly
+    const versions = showsCurrentRecords
       ? entity.versions.filter((version) => version.isCurrent)
       : entity.versions;
     return versions.map((version) => ({
@@ -202,83 +274,43 @@ export function HistoryPreviewSection({
       latest,
     }));
   });
-
-  const previewColumns: PreviewColumn<PreviewRow>[] = [
-    {
-      id: "durable-key",
-      name: profile.durableKeyField.display_name,
-      value: (row) => row.entityKey,
-    },
-    ...(profile.labelField
-      ? [
-          {
-            id: "label",
-            name: profile.labelField.display_name,
-            value: (row: PreviewRow) =>
-              displayValue(row.version.values[profile.labelField?.name ?? ""]),
-          },
-        ]
-      : []),
-    ...columns.flatMap(({ column, treatment }) => {
-      const name = column.field.name;
-      const asItWas: PreviewColumn<PreviewRow> = {
-        id: name,
-        name: column.field.display_name,
-        value: (row) =>
-          displayValue(
-            treatment === "always-current"
-              ? row.latest.values[name]
-              : row.version.values[name],
-          ),
-      };
-      const current: PreviewColumn<PreviewRow> = {
-        id: `${name}-current`,
-        name: t`${column.field.display_name} (current)`,
-        value: (row) => displayValue(row.latest.values[name]),
-      };
-      return treatment === "as-it-was-and-current"
-        ? [asItWas, current]
-        : [asItWas];
-    }),
-    ...(validFromField
-      ? [
-          {
-            id: "valid-from",
-            name: validFromField.display_name,
-            value: (row: PreviewRow) => formatDate(row.version.validFrom),
-          },
-        ]
-      : []),
-    ...(validToField
-      ? [
-          {
-            id: "valid-to",
-            name: validToField.display_name,
-            value: (row: PreviewRow) =>
-              row.version.validTo == null
-                ? null
-                : formatDate(row.version.validTo),
-          },
-        ]
-      : []),
-  ];
+  const previewColumns = getPreviewColumns(
+    profile,
+    columns,
+    structure.scdType === 6,
+  );
 
   return (
     <SidebarSection title={t`What people see`}>
-      <Switch
-        label={t`Show only the current version`}
-        checked={binding.currentRowsOnly}
-        disabled={readOnly}
-        onChange={(event) =>
-          setHistoryBinding(table, { currentRowsOnly: event.target.checked })
-        }
-        data-testid="history-preview-current-only"
-      />
       <Text size="sm" c="text-secondary">
-        {binding.currentRowsOnly
-          ? t`New questions on ${table.display_name} start with ${rows.length.toLocaleString()} current versions. People can remove the filter to see every version.`
-          : t`New questions on ${table.display_name} start with all ${rows.length.toLocaleString()} versions.`}{" "}
-        {t`Count gives ${countOf(profile.entityCount, noun)}, the distinct ${profile.durableKeyField.display_name} values, not ${profile.rowCount.toLocaleString()} rows.`}
+        {t`A new question on ${table.display_name}, as someone who doesn't know it's a history table sees it.`}
+      </Text>
+      <Text>
+        {t`Each row is one ${noun.one} record. ${countOf(profile.entityCount, noun)} in ${profile.rowCount.toLocaleString()} records.`}{" "}
+        {showsCurrentRecords && <strong>{t`Showing current records.`}</strong>}
+      </Text>
+      <Group gap="sm">
+        {showsCurrentRecords ? (
+          <FilterPill
+            onRemoveClick={() =>
+              setHistoryBinding(table, { currentRowsOnly: false })
+            }
+          >
+            {t`Current records only`}
+          </FilterPill>
+        ) : (
+          <Switch
+            label={t`Start on current records`}
+            checked={false}
+            disabled={readOnly || !filtersCurrentRows(structure.scdType)}
+            onChange={() => setHistoryBinding(table, { currentRowsOnly: true })}
+          />
+        )}
+      </Group>
+      <Text size="sm" c="text-secondary">
+        {countsEntities
+          ? t`“Number of ${noun.other}” counts each ${noun.one} once: count-distinct(${profile.durableKeyField.name}) = ${profile.entityCount.toLocaleString()}. “Number of records” (${profile.rowCount.toLocaleString()}) comes last.`
+          : t`Counts stay plain row counts for this SCD type.`}
       </Text>
       <Box
         h={PREVIEW_GRID_HEIGHT}
@@ -287,7 +319,7 @@ export function HistoryPreviewSection({
         style={{ overflow: "hidden" }}
       >
         <HistoryPreviewGrid
-          key={`${binding.currentRowsOnly}:${previewColumns.map((column) => column.id).join()}`}
+          key={`${showsCurrentRecords}:${previewColumns.map((column) => column.id).join()}`}
           rows={rows}
           columns={previewColumns}
         />
@@ -296,7 +328,9 @@ export function HistoryPreviewSection({
   );
 }
 
-export function HistoryMetabotSection({
+const yamlValue = (value: string | null | undefined) => value ?? "null";
+
+export function HistoryRepresentationSection({
   table,
   profile,
   noun,
@@ -305,55 +339,63 @@ export function HistoryMetabotSection({
   profile: HistoryProfile;
   noun: EntityNoun;
 }) {
-  const binding = useTableStructures().getTableStructure(table).history;
-  const columns = useColumnTreatments(table, profile);
+  const structure = useTableStructures().getTableStructure(table);
+  const binding = structure.history;
+  const columns = useColumnScdTypes(table, profile);
   const fields = table.fields ?? [];
   const nameOf = (fieldId: number | null) =>
-    fields.find((field) => getRawTableFieldId(field) === fieldId)?.name ?? "—";
-  const columnsWith = (treatment: ColumnTreatment) =>
-    columns
-      .filter((column) => column.treatment === treatment)
-      .map(({ column }) => column.field.name);
-  const currentRule =
-    binding.currentRowRule === "flag"
-      ? `${nameOf(binding.currentFlagFieldId)} = true`
-      : (getCurrentRowRuleOptions().find(
-          (option) => option.value === binding.currentRowRule,
-        )?.label ?? "");
+    fields.find((field) => getRawTableFieldId(field) === fieldId)?.name;
+  const showsCurrentRecords =
+    filtersCurrentRows(structure.scdType) && binding.currentRowsOnly;
+  const setAttributeTypes = columns.filter(({ isOverridden }) => isOverridden);
   const issues = getFailedChecks(profile).map((check) =>
     getCheckDescription(check, profile, noun),
   );
-  const asItWasAndCurrent = columnsWith("as-it-was-and-current");
-  const alwaysCurrent = columnsWith("always-current");
 
-  const lines = [
-    `table: ${table.name}`,
-    `kind: history (${getHistorySourceLabel(inferHistorySource(fields).source)})`,
-    `one row is: one version of a ${noun.one}`,
-    `${noun.one} key: ${nameOf(binding.durableKeyFieldId)}  # count distinct for "how many ${noun.other}"`,
-    `valid: ${nameOf(binding.validFromFieldId)} <= date < ${nameOf(binding.validToFieldId)}`,
-    `current version: ${currentRule}${binding.currentRowRule === "far-future-valid-to" ? ` (${FAR_FUTURE_VALID_TO})` : ""}`,
-    `default rows: ${binding.currentRowsOnly ? "current versions only" : "every version"}`,
-    `tracked columns: ${[...columnsWith("as-it-was"), ...asItWasAndCurrent].join(", ") || "none"}`,
-    ...(asItWasAndCurrent.length > 0
+  const yaml = [
+    `history:`,
+    `  durable_key: ${yamlValue(nameOf(binding.durableKeyFieldId))}`,
+    `  valid_from: ${yamlValue(nameOf(binding.validFromFieldId))}`,
+    `  valid_to: ${yamlValue(nameOf(binding.validToFieldId))}`,
+    `  current_flag: ${yamlValue(nameOf(binding.currentFlagFieldId))}`,
+    `  version: ${yamlValue(nameOf(binding.versionFieldId))}`,
+    `scd_type: ${structure.scdType ?? "null"}`,
+    `default_scope: ${showsCurrentRecords ? "{ segment: current_rows }" : "null"}`,
+    ...(setAttributeTypes.length > 0
       ? [
-          `current-value columns: ${asItWasAndCurrent.map((name) => `${name}_current`).join(", ")}`,
+          `fields:`,
+          ...setAttributeTypes.map(
+            ({ column, attributeScdType }) =>
+              `  ${column.field.name}: { attribute_scd_type: ${attributeScdType} }`,
+          ),
         ]
       : []),
-    ...(alwaysCurrent.length > 0
-      ? [`always current: ${alwaysCurrent.join(", ")}`]
-      : []),
-    ...(issues.length > 0 ? [`known issues: ${issues.join(" ")}`] : []),
+  ];
+
+  const metabotNotes = [
+    countsDurableKeys(structure.scdType)
+      ? t`Counting rows over-counts ${noun.other}: use count-distinct(${profile.durableKeyField.name}).`
+      : t`Plain row counts are right for this SCD type.`,
+    t`Current version: ${getCurrentRowsCondition(structure, fields)}.`,
+    ...issues.map((issue) => t`Known issue: ${issue}`),
   ];
 
   return (
-    <SidebarSection title={t`What Metabot reads`}>
+    <SidebarSection title={t`Representation`}>
       <Text size="sm" c="text-secondary">
-        {t`Added to the table's details when Metabot looks at it, so it counts ${noun.other} instead of rows and picks the right version for a date.`}
+        {t`What this table exports as, and what Metabot reads about it.`}
       </Text>
       <Code block style={{ whiteSpace: "pre-wrap" }}>
-        {lines.join("\n")}
+        {yaml.join("\n")}
       </Code>
+      <Stack gap={4}>
+        <Text fw="bold" size="sm">{t`Metabot`}</Text>
+        {metabotNotes.map((note) => (
+          <Text key={note} size="sm" c="text-secondary">
+            {note}
+          </Text>
+        ))}
+      </Stack>
     </SidebarSection>
   );
 }

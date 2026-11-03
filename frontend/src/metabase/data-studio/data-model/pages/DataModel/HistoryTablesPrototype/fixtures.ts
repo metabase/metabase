@@ -23,6 +23,7 @@ import {
   CUSTOMERS_SNAPSHOT_ROWS,
   DIM_CUSTOMER_ROWS,
 } from "./history-rows";
+import { SUBSCRIPTION_HISTORY_ROWS, WORKER_POSITION_ROWS } from "./worker-rows";
 
 export const WAREHOUSE_ID = 8;
 export const DIM_CUSTOMER_ID = 81;
@@ -30,6 +31,8 @@ export const CUSTOMERS_SNAPSHOT_ID = 82;
 export const ACCOUNT_HISTORY_ID = 83;
 export const FCT_ORDERS_ID = 84;
 export const DIM_PRODUCT_ID = 85;
+export const WORKER_POSITION_HISTORY_ID = 86;
+export const SUBSCRIPTION_HISTORY_ID = 87;
 
 export const DIM_CUSTOMER_ID_FIELD_ID = 8102;
 const DIM_CUSTOMER_PLAN_FIELD_ID = 8104;
@@ -278,8 +281,104 @@ const dimProductFields = createFields(DIM_PRODUCT_ID, [
   },
 ]);
 
+const workerPositionHistoryFields = createFields(WORKER_POSITION_HISTORY_ID, [
+  {
+    id: 8601,
+    name: "position_record_id",
+    display_name: "Position Record ID",
+    ...INTEGER,
+    semantic_type: "type/PK",
+  },
+  { id: 8602, name: "worker_id", display_name: "Worker ID" },
+  { id: 8603, name: "position_id", display_name: "Position ID" },
+  {
+    id: 8604,
+    name: "legal_name",
+    display_name: "Legal Name",
+    semantic_type: "type/Name",
+  },
+  {
+    id: 8605,
+    name: "business_title",
+    display_name: "Business Title",
+    semantic_type: "type/Category",
+  },
+  {
+    id: 8606,
+    name: "department",
+    display_name: "Department",
+    semantic_type: "type/Category",
+  },
+  {
+    id: 8607,
+    name: "location",
+    display_name: "Location",
+    semantic_type: "type/Category",
+  },
+  { id: 8608, name: "manager_id", display_name: "Manager ID" },
+  { id: 8609, name: "hire_date", display_name: "Hire Date", ...DATE },
+  {
+    id: 8610,
+    name: "effective_date",
+    display_name: "Effective Date",
+    ...DATE,
+  },
+  { id: 8611, name: "end_date", display_name: "End Date", ...DATE },
+  { id: 8612, name: "is_current", display_name: "Is Current", ...BOOLEAN },
+  {
+    id: 8613,
+    name: "position_version",
+    display_name: "Position Version",
+    ...INTEGER,
+  },
+  {
+    id: 8614,
+    name: "_fivetran_synced",
+    display_name: "Fivetran Synced",
+    ...DATETIME,
+  },
+]);
+
+const subscriptionHistoryFields = createFields(SUBSCRIPTION_HISTORY_ID, [
+  {
+    id: 8701,
+    name: "id",
+    display_name: "ID",
+    ...INTEGER,
+    semantic_type: "type/PK",
+  },
+  {
+    id: 8702,
+    name: "updated_at",
+    display_name: "Updated at",
+    ...DATETIME,
+    semantic_type: "type/PK",
+  },
+  {
+    id: 8703,
+    name: "plan",
+    display_name: "Plan",
+    semantic_type: "type/Category",
+  },
+  { id: 8704, name: "seats", display_name: "Seats", ...INTEGER },
+  {
+    id: 8705,
+    name: "status",
+    display_name: "Status",
+    semantic_type: "type/Category",
+  },
+  {
+    id: 8706,
+    name: "mrr",
+    display_name: "MRR",
+    ...DECIMAL,
+    semantic_type: "type/Currency",
+  },
+]);
+
 type TableSpec = {
   id: number;
+  schema: string;
   name: string;
   displayName: string;
   fields: Field[];
@@ -289,7 +388,26 @@ type TableSpec = {
 
 const TABLE_SPECS: TableSpec[] = [
   {
+    id: WORKER_POSITION_HISTORY_ID,
+    schema: "workday_hcm",
+    name: "worker_position_history",
+    displayName: "Worker Position History",
+    fields: workerPositionHistoryFields,
+    rows: WORKER_POSITION_ROWS,
+    estimatedRowCount: WORKER_POSITION_ROWS.length,
+  },
+  {
+    id: SUBSCRIPTION_HISTORY_ID,
+    schema: "app",
+    name: "subscription_history",
+    displayName: "Subscription History",
+    fields: subscriptionHistoryFields,
+    rows: SUBSCRIPTION_HISTORY_ROWS,
+    estimatedRowCount: SUBSCRIPTION_HISTORY_ROWS.length,
+  },
+  {
     id: DIM_CUSTOMER_ID,
+    schema: "analytics",
     name: "dim_customer",
     displayName: "Dim Customer",
     fields: dimCustomerFields,
@@ -298,6 +416,7 @@ const TABLE_SPECS: TableSpec[] = [
   },
   {
     id: CUSTOMERS_SNAPSHOT_ID,
+    schema: "snapshots",
     name: "customers_snapshot",
     displayName: "Customers Snapshot",
     fields: customersSnapshotFields,
@@ -306,6 +425,7 @@ const TABLE_SPECS: TableSpec[] = [
   },
   {
     id: ACCOUNT_HISTORY_ID,
+    schema: "salesforce",
     name: "account_history",
     displayName: "Account History",
     fields: accountHistoryFields,
@@ -314,6 +434,7 @@ const TABLE_SPECS: TableSpec[] = [
   },
   {
     id: FCT_ORDERS_ID,
+    schema: "analytics",
     name: "fct_orders",
     displayName: "Fct Orders",
     fields: fctOrdersFields,
@@ -321,6 +442,7 @@ const TABLE_SPECS: TableSpec[] = [
   },
   {
     id: DIM_PRODUCT_ID,
+    schema: "analytics",
     name: "dim_product",
     displayName: "Dim Product",
     fields: dimProductFields,
@@ -333,7 +455,7 @@ export function createWarehouse(): Database {
     createMockTable({
       id: spec.id,
       db_id: WAREHOUSE_ID,
-      schema: "analytics",
+      schema: spec.schema,
       name: spec.name,
       display_name: spec.displayName,
       fields: spec.fields,

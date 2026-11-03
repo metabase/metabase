@@ -28,7 +28,9 @@ import { trackMetadataChange } from "../../../analytics";
 import { DetailsEditableText } from "../DetailPanel";
 
 import {
+  FieldAttributeScdTypeInput,
   FieldHistoryRoleInput,
+  useIsHistoryAttribute,
   useIsHistoryTable,
 } from "./FieldHistoryRoleInput";
 
@@ -49,6 +51,7 @@ export function FieldDetails({
 }: FieldDetailsProps) {
   const readOnly = !table.can_write;
   const isHistoryTable = useIsHistoryTable(table);
+  const isHistoryAttribute = useIsHistoryAttribute(field, table);
   const { handleNameChange, handleDescriptionChange } = useFieldUpdateHandlers({
     field,
   });
@@ -122,6 +125,18 @@ export function FieldDetails({
               label={t`History`}
               value={
                 <FieldHistoryRoleInput
+                  field={field}
+                  table={table}
+                  disabled={readOnly}
+                />
+              }
+            />
+          )}
+          {isHistoryTable && isHistoryAttribute && (
+            <DetailsRow
+              label={t`SCD type`}
+              value={
+                <FieldAttributeScdTypeInput
                   field={field}
                   table={table}
                   disabled={readOnly}

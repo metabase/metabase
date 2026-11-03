@@ -29,16 +29,18 @@ const ISSUE_SEVERITY: Record<HistoryCheckId, "failed" | "warning"> = {
   gap: "warning",
   "valid-range": "failed",
   "has-current": "warning",
+  "version-order": "warning",
 };
 
 function getIssueMessage(issue: HistoryCheckId, currentCount: number) {
   const messages: Record<HistoryCheckId, string> = {
     "durable-key": t`Every version looks like its own key.`,
-    "one-current": t`${currentCount} versions are marked current. If Valid to is reliable, set Current row is to “Valid to is empty”.`,
+    "one-current": t`${currentCount} versions are marked current. If Valid to is reliable, clear Current flag so the current version is where Valid to is empty.`,
     overlap: t`Two versions are valid at the same time, so a date can match both.`,
     gap: t`There's a gap between two versions, so some dates match no version.`,
     "valid-range": t`A version ends before it starts.`,
     "has-current": t`No version is current, so it was probably deleted at the source.`,
+    "version-order": t`The version number goes down between two versions.`,
   };
   return messages[issue];
 }
@@ -66,7 +68,7 @@ export function HistoryEntityPanel({
       ? status.profileState.profile
       : undefined;
   const entity = profile?.entities.find((entity) => entity.key === entityKey);
-  const noun = getEntityNoun(table);
+  const noun = getEntityNoun(table, profile?.durableKeyField.name);
 
   return (
     <DetailPanel
@@ -220,9 +222,9 @@ function EntityVersions({
                       </Text>
                     ),
                   )}
-                  {version.versionKey && (
+                  {version.version != null && (
                     <Text size="xs" c="text-secondary">
-                      {t`Version key ${version.versionKey}`}
+                      {t`Version ${String(version.version)}`}
                     </Text>
                   )}
                   {seam && (

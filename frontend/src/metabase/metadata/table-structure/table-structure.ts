@@ -7,7 +7,12 @@ import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { isCurrentRowRule } from "./history-source";
+import {
+  type ScdType,
+  type ScdTypeInference,
+  inferScdType,
+  isScdType,
+} from "./history-source";
 import {
   type EavBinding,
   type HistoryBinding,
@@ -31,6 +36,7 @@ type TableStructureOverrides = {
   grainDescription?: string;
   periodGranularity?: PeriodGranularity;
   history?: Partial<HistoryBinding>;
+  scdType?: ScdType;
   eav?: Partial<EavBinding>;
   /** `null` means an admin said the table has no main date */
   mainDateFieldId?: FieldId | null;
@@ -53,6 +59,9 @@ export type TableStructure = {
   rowIdentity: RowIdentity;
   periodGranularity: PeriodGranularity;
   history: HistoryBinding;
+  scdType: ScdType | null;
+  scdTypeInference: ScdTypeInference;
+  isScdTypeOverridden: boolean;
   eav: EavBinding;
   /** `undefined` when the table has no main date */
   mainDateField: Field | undefined;
@@ -76,13 +85,10 @@ function parseHistoryBinding(value: unknown): Partial<HistoryBinding> {
   }
   return {
     durableKeyFieldId: parseFieldId(value.durableKeyFieldId),
-    versionKeyFieldId: parseFieldId(value.versionKeyFieldId),
     validFromFieldId: parseFieldId(value.validFromFieldId),
     validToFieldId: parseFieldId(value.validToFieldId),
     currentFlagFieldId: parseFieldId(value.currentFlagFieldId),
-    currentRowRule: isCurrentRowRule(value.currentRowRule)
-      ? value.currentRowRule
-      : undefined,
+    versionFieldId: parseFieldId(value.versionFieldId),
     currentRowsOnly: parseBoolean(value.currentRowsOnly),
   };
 }
@@ -115,6 +121,7 @@ function parseOverrides(value: unknown): TableStructureOverrides {
         : undefined,
     periodGranularity: granularity,
     history: parseHistoryBinding(value.history),
+    scdType: isScdType(value.scdType) ? value.scdType : undefined,
     eav: parseEavBinding(value.eav),
     mainDateFieldId: parseFieldId(value.mainDateFieldId),
   };
@@ -176,6 +183,7 @@ export function useTableStructures() {
       const overrides = state.tables[getTableKey(table)] ?? {};
       const inference = inferTableRole(shape);
       const role = overrides.role ?? inference.role;
+      const scdTypeInference = inferScdType(shape);
       const structure: TableStructure = {
         role,
         inference,
@@ -194,6 +202,9 @@ export function useTableStructures() {
         periodGranularity:
           overrides.periodGranularity ?? inferPeriodGranularity(shape),
         history: withOverrides(inferHistoryBinding(fields), overrides.history),
+        scdType: overrides.scdType ?? scdTypeInference.scdType,
+        scdTypeInference,
+        isScdTypeOverridden: overrides.scdType != null,
         eav: withOverrides(inferEavBinding(fields), overrides.eav),
         ...resolveMainDate(fields, role, overrides.mainDateFieldId),
       };
@@ -259,6 +270,15 @@ export function useTableStructures() {
     [updateOverrides],
   );
 
+  const setScdType = useCallback(
+    (table: Pick<Table, "db_id" | "id">, scdType: ScdType | null) =>
+      updateOverrides(table, (overrides) => ({
+        ...overrides,
+        scdType: scdType ?? undefined,
+      })),
+    [updateOverrides],
+  );
+
   const setEavBinding = useCallback(
     (table: Pick<Table, "db_id" | "id">, eav: Partial<EavBinding>) =>
       updateOverrides(table, (overrides) => ({
@@ -300,6 +320,7 @@ export function useTableStructures() {
     setGrainDescription,
     setPeriodGranularity,
     setHistoryBinding,
+    setScdType,
     setEavBinding,
     setMainDate,
     setFieldGrain,

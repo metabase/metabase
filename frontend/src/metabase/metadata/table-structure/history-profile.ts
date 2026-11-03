@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   Field,
@@ -11,7 +12,6 @@ import type {
   Table,
 } from "metabase-types/api";
 
-import type { CurrentRowRule } from "./history-source";
 import type { HistoryBinding } from "./inference";
 
 export const HISTORY_CHECK_IDS = [
@@ -21,6 +21,7 @@ export const HISTORY_CHECK_IDS = [
   "gap",
   "valid-range",
   "has-current",
+  "version-order",
 ] as const;
 
 export type HistoryCheckId = (typeof HISTORY_CHECK_IDS)[number];
@@ -35,7 +36,7 @@ export type HistoryCheck = {
 
 export type HistoryVersion = {
   rowIndex: number;
-  versionKey: string | null;
+  version: RowValue;
   validFrom: string | null;
   validTo: string | null;
   isOpen: boolean;
@@ -69,7 +70,13 @@ export type HistoryProfile = {
   entities: HistoryEntity[];
   checks: HistoryCheck[];
   columns: ColumnChangeProfile[];
+  currentRule: CurrentRule;
 };
+
+export type CurrentRule =
+  | "current-flag"
+  | "valid-to-is-null"
+  | "latest-per-key";
 
 export type HistoryProfileState =
   | { status: "unbound"; missing: ("durable-key" | "valid-from")[] }
@@ -83,9 +90,8 @@ type BoundHistory = {
   durableKeyField: Field;
   validFromField: Field;
   validToField: Field | undefined;
-  versionKeyField: Field | undefined;
+  versionField: Field | undefined;
   currentFlagField: Field | undefined;
-  currentRowRule: CurrentRowRule;
 };
 
 const PROFILE_ROW_LIMIT = 10000;
@@ -93,7 +99,7 @@ const SEAM_TOLERANCE_MS = 1000;
 const FAR_FUTURE_PREFIX = "9999";
 const LABEL_RE = /(^|_)(name|title|display_name)$/;
 const BOOKKEEPING_RE =
-  /^dbt_|^_fivetran_|(^|_)(updated_at|updated|modified_at|synced_at|loaded_at)$/;
+  /^dbt_|^_fivetran_|(^|_)(updated_at|updated|modified_at|synced_at|loaded_at)$|^(is_current|current_flag|is_latest|active|is_active)$/;
 const TRUTHY_FLAGS = new Set(["true", "t", "y", "yes", "1"]);
 
 const findField = (fields: Field[], fieldId: FieldId | null) =>
@@ -120,9 +126,8 @@ function getBoundHistory(
     durableKeyField,
     validFromField,
     validToField: findField(fields, binding.validToFieldId),
-    versionKeyField: findField(fields, binding.versionKeyFieldId),
+    versionField: findField(fields, binding.versionFieldId),
     currentFlagField: findField(fields, binding.currentFlagFieldId),
-    currentRowRule: binding.currentRowRule,
   };
 }
 
@@ -151,18 +156,13 @@ function isTruthyFlag(value: RowValue | undefined) {
 }
 
 function isCurrentVersion(
-  rule: CurrentRowRule,
+  hasCurrentFlag: boolean,
   validTo: string | null,
   flag: RowValue | undefined,
 ) {
-  switch (rule) {
-    case "flag":
-      return isTruthyFlag(flag);
-    case "open-valid-to":
-      return validTo == null;
-    case "far-future-valid-to":
-      return validTo == null || isFarFuture(validTo);
-  }
+  return hasCurrentFlag
+    ? isTruthyFlag(flag)
+    : validTo == null || isFarFuture(validTo);
 }
 
 function readVersions(dataset: Dataset, fields: Field[], bound: BoundHistory) {
@@ -181,12 +181,12 @@ function readVersions(dataset: Dataset, fields: Field[], bound: BoundHistory) {
       entityKey: toText(readValue(row, bound.durableKeyField)) ?? "",
       version: {
         rowIndex,
-        versionKey: toText(readValue(row, bound.versionKeyField)),
+        version: readValue(row, bound.versionField) ?? null,
         validFrom: toText(readValue(row, bound.validFromField)),
         validTo,
         isOpen: validTo == null || isFarFuture(validTo),
         isCurrent: isCurrentVersion(
-          bound.currentRowRule,
+          bound.currentFlagField != null,
           validTo,
           readValue(row, bound.currentFlagField),
         ),
@@ -225,6 +225,22 @@ function endsBeforeItStarts(version: HistoryVersion) {
   return !version.isOpen && start != null && end != null && end <= start;
 }
 
+const compareVersions = (a: RowValue, b: RowValue) =>
+  typeof a === "number" && typeof b === "number"
+    ? a - b
+    : String(a).localeCompare(String(b), undefined, { numeric: true });
+
+function isVersionOutOfOrder(versions: HistoryVersion[]) {
+  return versions
+    .slice(1)
+    .some(
+      (version, index) =>
+        version.version != null &&
+        versions[index].version != null &&
+        compareVersions(versions[index].version, version.version) >= 0,
+    );
+}
+
 function getEntityIssues(versions: HistoryVersion[]): HistoryCheckId[] {
   const seams = versions
     .slice(1)
@@ -236,6 +252,7 @@ function getEntityIssues(versions: HistoryVersion[]): HistoryCheckId[] {
     ["gap", seams.includes("gap")],
     ["valid-range", versions.some(endsBeforeItStarts)],
     ["has-current", currentCount === 0],
+    ["version-order", isVersionOutOfOrder(versions)],
   ];
   return issues.filter(([, hasIssue]) => hasIssue).map(([id]) => id);
 }
@@ -247,6 +264,7 @@ const CHECK_STATUS_WHEN_FOUND: Record<HistoryCheckId, HistoryCheckStatus> = {
   gap: "warning",
   "valid-range": "failed",
   "has-current": "warning",
+  "version-order": "warning",
 };
 
 function getChecks(
@@ -256,8 +274,11 @@ function getChecks(
 ): HistoryCheck[] {
   const isDurableKeyPerVersion =
     (rowCount > 1 && entities.length === rowCount) ||
-    bound.versionKeyField === bound.durableKeyField;
-  return HISTORY_CHECK_IDS.map((id) => {
+    bound.versionField === bound.durableKeyField;
+  const checkIds = HISTORY_CHECK_IDS.filter(
+    (id) => id !== "version-order" || bound.versionField != null,
+  );
+  return checkIds.map((id) => {
     if (id === "durable-key") {
       return {
         id,
@@ -300,12 +321,12 @@ function getColumnProfiles(
       bound.durableKeyField,
       bound.validFromField,
       bound.validToField,
-      bound.versionKeyField,
+      bound.versionField,
       bound.currentFlagField,
     ].filter((field) => field != null),
   );
   return fields
-    .filter((field) => !boundFields.has(field))
+    .filter((field) => !boundFields.has(field) && !isPK(field))
     .filter((field) => !BOOKKEEPING_RE.test(field.name.toLowerCase()))
     .map((field) => {
       const changes = entities.flatMap((entity) =>
@@ -328,38 +349,64 @@ function getColumnProfiles(
     });
 }
 
+function closeByNextVersion(
+  versions: HistoryVersion[],
+  hasCurrentFlag: boolean,
+): HistoryVersion[] {
+  return versions.map((version, index) => {
+    const next = versions[index + 1];
+    return {
+      ...version,
+      validTo: next?.validFrom ?? null,
+      isOpen: next == null,
+      isCurrent: hasCurrentFlag ? version.isCurrent : next == null,
+    };
+  });
+}
+
+function getCurrentRule(bound: BoundHistory): CurrentRule {
+  if (bound.currentFlagField) {
+    return "current-flag";
+  }
+  return bound.validToField ? "valid-to-is-null" : "latest-per-key";
+}
+
 export function buildHistoryProfile(
   dataset: Dataset,
   fields: Field[],
   bound: BoundHistory,
 ): HistoryProfile {
-  const rows = readVersions(dataset, fields, bound);
+  const readRows = readVersions(dataset, fields, bound);
   const labelField = fields.find(
     (field) =>
       field !== bound.durableKeyField &&
       LABEL_RE.test(field.name.toLowerCase()),
   );
-  const entities = Object.entries(_.groupBy(rows, (row) => row.entityKey)).map(
-    ([key, entityRows]): HistoryEntity => {
-      const versions = _.sortBy(
-        entityRows.map((row) => row.version),
-        (version) => version.validFrom ?? "",
-      );
-      const latest = versions[versions.length - 1];
-      return {
-        key,
-        label: labelField ? toText(latest.values[labelField.name]) : null,
-        versions,
-        issues: getEntityIssues(versions),
-      };
-    },
-  );
-  const validFroms = rows.map((row) => row.version.validFrom);
+  const entities = Object.entries(
+    _.groupBy(readRows, (row) => row.entityKey),
+  ).map(([key, entityRows]): HistoryEntity => {
+    const sorted = _.sortBy(
+      entityRows.map((row) => row.version),
+      (version) => version.validFrom ?? "",
+    );
+    const versions = bound.validToField
+      ? sorted
+      : closeByNextVersion(sorted, bound.currentFlagField != null);
+    const latest = versions[versions.length - 1];
+    return {
+      key,
+      label: labelField ? toText(latest.values[labelField.name]) : null,
+      versions,
+      issues: getEntityIssues(versions),
+    };
+  });
+  const versions = entities.flatMap((entity) => entity.versions);
+  const validFroms = versions.map((version) => version.validFrom);
 
   return {
-    rowCount: rows.length,
+    rowCount: readRows.length,
     entityCount: entities.length,
-    currentRowCount: rows.filter((row) => row.version.isCurrent).length,
+    currentRowCount: versions.filter((version) => version.isCurrent).length,
     maxVersionCount: Math.max(
       0,
       ...entities.map((entity) => entity.versions.length),
@@ -369,8 +416,9 @@ export function buildHistoryProfile(
     durableKeyField: bound.durableKeyField,
     labelField,
     entities,
-    checks: getChecks(entities, rows.length, bound),
+    checks: getChecks(entities, readRows.length, bound),
     columns: getColumnProfiles(entities, fields, bound),
+    currentRule: getCurrentRule(bound),
   };
 }
 

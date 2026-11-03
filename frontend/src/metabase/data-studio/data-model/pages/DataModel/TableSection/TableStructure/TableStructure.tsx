@@ -45,9 +45,10 @@ import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { DetailsEditableText } from "../../DetailPanel";
 import {
-  CurrentRowRuleInput,
-  HistorySourceValue,
+  CurrentFlagHint,
+  DefaultSegmentInput,
   HistoryVersionsSummary,
+  ScdTypeInput,
 } from "../TableHistory";
 
 import S from "./TableStructure.module.css";
@@ -68,6 +69,7 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
     setGrainDescription,
     setPeriodGranularity,
     setHistoryBinding,
+    setScdType,
     setEavBinding,
     setMainDate,
   } = useTableStructures();
@@ -189,9 +191,10 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
         <HistoryBindingSection
           table={table}
           fields={fields}
-          binding={structure.history}
+          structure={structure}
           disabled={readOnly}
           onChange={(history) => setHistoryBinding(table, history)}
+          onScdTypeChange={(scdType) => setScdType(table, scdType)}
         />
       )}
 
@@ -463,16 +466,19 @@ function FieldSelect({
 function HistoryBindingSection({
   table,
   fields,
-  binding,
+  structure,
   disabled,
   onChange,
+  onScdTypeChange,
 }: {
   table: Table;
   fields: Field[];
-  binding: HistoryBinding;
+  structure: TableStructureValue;
   disabled: boolean;
   onChange: (binding: Partial<HistoryBinding>) => void;
+  onScdTypeChange: (scdType: TableStructureValue["scdType"]) => void;
 }) {
+  const binding = structure.history;
   return (
     <SidebarSection title={t`History`}>
       <Text size="sm" c="text-secondary">
@@ -480,8 +486,14 @@ function HistoryBindingSection({
       </Text>
       <DetailsTable>
         <DetailsRow
-          label={t`Source`}
-          value={<HistorySourceValue fields={fields} />}
+          label={t`SCD type`}
+          value={
+            <ScdTypeInput
+              structure={structure}
+              disabled={disabled}
+              onChange={onScdTypeChange}
+            />
+          }
         />
         <DetailsRow
           label={t`Durable key`}
@@ -492,20 +504,6 @@ function HistoryBindingSection({
               value={binding.durableKeyFieldId}
               disabled={disabled}
               onChange={(durableKeyFieldId) => onChange({ durableKeyFieldId })}
-            />
-          }
-        />
-        <DetailsRow
-          label={t`Version key`}
-          value={
-            <FieldSelect
-              label={t`Version key`}
-              fields={fields}
-              value={binding.versionKeyFieldId}
-              placeholder={t`No version key`}
-              clearable
-              disabled={disabled}
-              onChange={(versionKeyFieldId) => onChange({ versionKeyFieldId })}
             />
           }
         />
@@ -528,6 +526,7 @@ function HistoryBindingSection({
               label={t`Valid to`}
               fields={fields}
               value={binding.validToFieldId}
+              placeholder={t`No valid to`}
               clearable
               disabled={disabled}
               onChange={(validToFieldId) => onChange({ validToFieldId })}
@@ -535,43 +534,46 @@ function HistoryBindingSection({
           }
         />
         <DetailsRow
-          label={t`Current row is`}
+          label={t`Current flag`}
           value={
-            <CurrentRowRuleInput
-              value={binding.currentRowRule}
-              disabled={disabled}
-              onChange={(currentRowRule) => onChange({ currentRowRule })}
-            />
-          }
-        />
-        {binding.currentRowRule === "flag" && (
-          <DetailsRow
-            label={t`Current row flag`}
-            value={
+            <Stack gap="xs" py="xs">
               <FieldSelect
-                label={t`Current row flag`}
+                label={t`Current flag`}
                 fields={fields}
                 value={binding.currentFlagFieldId}
+                placeholder={t`No current flag`}
                 clearable
                 disabled={disabled}
                 onChange={(currentFlagFieldId) =>
                   onChange({ currentFlagFieldId })
                 }
               />
-            }
-          />
-        )}
+              <CurrentFlagHint structure={structure} fields={fields} />
+            </Stack>
+          }
+        />
         <DetailsRow
-          label={t`Default rows`}
+          label={t`Version`}
           value={
-            <Switch
-              py="xs"
-              label={t`Show only the current version`}
-              checked={binding.currentRowsOnly}
+            <FieldSelect
+              label={t`Version`}
+              fields={fields}
+              value={binding.versionFieldId}
+              placeholder={t`No version column`}
+              clearable
               disabled={disabled}
-              onChange={(event) =>
-                onChange({ currentRowsOnly: event.target.checked })
-              }
+              onChange={(versionFieldId) => onChange({ versionFieldId })}
+            />
+          }
+        />
+        <DetailsRow
+          label={t`Default segment`}
+          value={
+            <DefaultSegmentInput
+              structure={structure}
+              fields={fields}
+              disabled={disabled}
+              onChange={(currentRowsOnly) => onChange({ currentRowsOnly })}
             />
           }
         />

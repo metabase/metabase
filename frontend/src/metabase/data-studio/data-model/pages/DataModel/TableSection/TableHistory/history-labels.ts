@@ -1,7 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
 import type {
-  ColumnTreatment,
   HistoryCheck,
   HistoryCheckId,
   HistoryCheckStatus,
@@ -15,12 +14,18 @@ export type EntityNoun = { one: string; other: string };
 const TABLE_PREFIX_RE = /^(dim_|d_|stg_|int_)/;
 const TABLE_SUFFIX_RE = /_(history|snapshots?|versions?|scd\d?)$/;
 
-export function getEntityNoun(table: Pick<Table, "name">): EntityNoun {
-  const base = table.name
+const ENTITY_KEY_RE = /^(.+)_id$/;
+
+export function getEntityNoun(
+  table: Pick<Table, "name">,
+  durableKeyName?: string,
+): EntityNoun {
+  const fromKey = durableKeyName?.toLowerCase().match(ENTITY_KEY_RE)?.[1];
+  const fromTable = table.name
     .toLowerCase()
     .replace(TABLE_PREFIX_RE, "")
-    .replace(TABLE_SUFFIX_RE, "")
-    .replace(/_/g, " ");
+    .replace(TABLE_SUFFIX_RE, "");
+  const base = (fromKey ?? fromTable).replace(/_/g, " ");
   const one = base.endsWith("s") ? base.slice(0, -1) : base;
   return { one, other: `${one}s` };
 }
@@ -39,6 +44,7 @@ export function getCheckTitle(id: HistoryCheckId) {
     gap: t`No gaps between versions`,
     "valid-range": t`Valid to comes after valid from`,
     "has-current": t`Every key has a current version`,
+    "version-order": t`Versions are numbered in order`,
   };
   return titles[id];
 }
@@ -85,6 +91,12 @@ export function getCheckDescription(
         `${subject} have a version that ends before it starts.`,
         count,
       );
+    case "version-order":
+      return ngettext(
+        msgid`${subject} has a version number that goes down over time.`,
+        `${subject} have a version number that goes down over time.`,
+        count,
+      );
     case "has-current":
       return ngettext(
         msgid`${subject} has no current version, so it was probably deleted at the source.`,
@@ -102,23 +114,3 @@ export const CHECK_STATUS_ICON: Record<
   warning: { name: "warning", color: "feedback-warning" },
   failed: { name: "warning_round_filled", color: "feedback-negative" },
 };
-
-export function getColumnTreatmentOptions(): {
-  value: ColumnTreatment;
-  label: string;
-}[] {
-  return [
-    { value: "as-it-was", label: t`As it was` },
-    { value: "as-it-was-and-current", label: t`As it was, plus current` },
-    { value: "always-current", label: t`Always current` },
-  ];
-}
-
-export function getColumnTreatmentDescription(treatment: ColumnTreatment) {
-  const descriptions: Record<ColumnTreatment, string> = {
-    "as-it-was": t`Each version keeps its own value`,
-    "as-it-was-and-current": t`Also adds a column with today's value`,
-    "always-current": t`Changes are corrections, so every version shows today's value`,
-  };
-  return descriptions[treatment];
-}

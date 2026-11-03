@@ -37,17 +37,23 @@ export {
   usePropertyRegistry,
 } from "./property-registry";
 export {
-  CURRENT_ROW_RULES,
-  type CurrentRowRule,
-  FAR_FUTURE_VALID_TO,
-  type HistorySource,
-  getCurrentRowRuleOptions,
-  getHistorySourceLabel,
-  inferHistorySource,
-  isCurrentRowRule,
+  ATTRIBUTE_SCD_TYPES,
+  type AttributeScdType,
+  type HistoryInferenceRule,
+  SCD_TYPES,
+  type ScdType,
+  type ScdTypeInference,
+  countsDurableKeys,
+  filtersCurrentRows,
+  getAttributeScdTypeDescription,
+  getAttributeScdTypeLabel,
+  getScdTypeLabel,
+  isAttributeScdType,
+  isScdType,
 } from "./history-source";
 export {
   type ColumnChangeProfile,
+  type CurrentRule,
   type HistoryCheck,
   type HistoryCheckId,
   type HistoryCheckStatus,
@@ -59,9 +65,10 @@ export {
   useHistoryProfile,
 } from "./history-profile";
 export {
-  COLUMN_TREATMENTS,
-  type ColumnTreatment,
+  type AttributeScdTypeState,
+  type AttributeScdTypeSuggestion,
   type HistoryReviewStatus,
+  suggestAttributeScdType,
   useHistoryReview,
   useHistoryReviewStatus,
 } from "./history-review";
