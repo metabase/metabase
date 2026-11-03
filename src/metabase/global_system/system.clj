@@ -370,3 +370,51 @@
   []
   (reset! halted false)
   nil)
+
+;;; -------------------------------------------- Derived components --------------------------------------------
+
+(def ^:private max-derived-values
+  "How many dependency values a derived component remembers a value for. The most recently made value is kept first,
+  and the oldest goes once there are more."
+  8)
+
+(defn- derived-lookup
+  "The value in `entries` made for dependency values identical, one by one, to `deps`, or `::none`."
+  [entries deps]
+  (or (some (fn [[entry-deps value]]
+              (when (every? true? (map identical? entry-deps deps))
+                value))
+            entries)
+      ::none))
+
+(deftype DerivedHandle [k dep-handles make entries]
+  IDeref
+  (deref [_]
+    (let [deps  (mapv deref dep-handles)
+          found (derived-lookup @entries deps)]
+      (if (not= ::none found)
+        found
+        (derived-lookup (swap! entries (fn [es]
+                                         (if (not= ::none (derived-lookup es deps))
+                                           es
+                                           (into [[deps (apply make deps)]] (take (dec max-derived-values)) es))))
+                        deps)))))
+
+(defmethod print-method DerivedHandle
+  [^DerivedHandle handle ^Writer w]
+  (.write w (str "#<DerivedHandle " (pr-str (.-k handle)) ">")))
+
+(defmethod pprint/simple-dispatch DerivedHandle
+  [handle]
+  (print-method handle *out*))
+
+(defn derived-component-handle
+  "Make a read-only handle for a component made from the values of other components.
+   Dereferencing it reads each of `dep-handles` as this thread sees them, and returns the value `make` returned for
+   those values, calling `(make dep-value ...)` the first time this combination is seen.
+   Values are told apart by identity, so a binding of a dependency, or a write that replaces its value, gets a
+   fresh derived value, and the derived value follows bindings of its dependencies with no binding of its own.
+   Only the last few combinations are remembered, so `make` must build something that is safe to rebuild, such as a
+   cache, and it can run more than once for the same values when threads race, keeping one result."
+  [k dep-handles make]
+  (DerivedHandle. k (vec dep-handles) make (atom [])))
