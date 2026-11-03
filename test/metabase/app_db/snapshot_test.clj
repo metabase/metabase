@@ -320,14 +320,16 @@
 ;; The hash and UUID patterns match the value itself, with no surrounding quotes: the auth identity credentials are a
 ;; JSON column holding both, so in the dump they arrive quoted as JSON rather than as SQL string literals. Each shape is
 ;; specific enough to stand on its own. A timestamp is not, since plain dates turn up in seeded text, so that one still
-;; has to be a SQL literal to be masked.
+;; has to be a SQL literal to be masked, and neither is an entity id. The backfill in
+;; `064/20260723_backfill_entity_ids.yaml` gives the internal user one of 21 random hex characters taken from a UUID.
 (def ^:private unstable-literals
   "Values two dumps of the very same migrations disagree on, as `[pattern replacement]` pairs.
-  They are the wall-clock times, and the generated hashes and tokens [[generated-columns]] drops on the row comparison,
-  masked in the SQL text instead since that is what the regeneration check compares."
+  They are the wall-clock times, and the generated hashes, tokens and entity ids [[generated-columns]] drops on the row
+  comparison, masked in the SQL text instead since that is what the regeneration check compares."
   [[#"'\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[+-]\d{2}(?::?\d{2})?)?'" "'<timestamp>'"]
    [#"\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}"                                           "<password-hash>"]
-   [#"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"                 "<uuid>"]])
+   [#"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"                 "<uuid>"]
+   [#"'[0-9a-f]{21}'"                                                               "'<entity-id>'"]])
 
 (defn- unstable-values-masked
   "The `statement` with every [[unstable-literals]] pattern replaced."
