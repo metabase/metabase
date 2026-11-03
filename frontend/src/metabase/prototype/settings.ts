@@ -1,5 +1,6 @@
 import type {
   BooleanPrototypeSetting,
+  NumberPrototypeSetting,
   PrototypeSetting,
   SegmentedPrototypeSetting,
 } from "./types";
@@ -23,7 +24,16 @@ export const FILTER_LAYOUT_ANIMATION: BooleanPrototypeSetting = {
   label: "Filter layout animation",
   description:
     "The filters move when the filter bar changes between one line and indented rows.",
-  defaultValue: true,
+  defaultValue: false,
+};
+
+export const FILTER_LAYOUT_ANIMATION_DURATION: NumberPrototypeSetting = {
+  type: "number",
+  key: "filter-layout-animation-duration",
+  label: "Filter layout animation duration (ms)",
+  defaultValue: 450,
+  min: 0,
+  max: 3000,
 };
 
 /**
@@ -34,4 +44,5 @@ export const FILTER_LAYOUT_ANIMATION: BooleanPrototypeSetting = {
 export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   DATA_SPEED,
   FILTER_LAYOUT_ANIMATION,
+  FILTER_LAYOUT_ANIMATION_DURATION,
 ];

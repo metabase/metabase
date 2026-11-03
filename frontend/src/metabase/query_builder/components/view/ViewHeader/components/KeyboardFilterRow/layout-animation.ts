@@ -2,10 +2,10 @@ import { type RefObject, useLayoutEffect, useRef } from "react";
 
 import {
   FILTER_LAYOUT_ANIMATION,
+  FILTER_LAYOUT_ANIMATION_DURATION,
   usePrototypeSetting,
 } from "metabase/prototype";
 
-const DURATION_MS = 520;
 const EASING = "cubic-bezier(0.2, 0, 0, 1)";
 
 type Layout = {
@@ -29,6 +29,7 @@ export function useLayoutAnimation(
   layoutKey: string,
 ) {
   const [isEnabled] = usePrototypeSetting(FILTER_LAYOUT_ANIMATION);
+  const [duration] = usePrototypeSetting(FILTER_LAYOUT_ANIMATION_DURATION);
   const previousRef = useRef<Layout>(undefined);
 
   useLayoutEffect(() => {
@@ -43,6 +44,7 @@ export function useLayoutAnimation(
       previous == null ||
       previous.key === layoutKey ||
       !isEnabled ||
+      duration <= 0 ||
       window.matchMedia("(prefers-reduced-motion: reduce)").matches
     ) {
       return;
@@ -63,7 +65,7 @@ export function useLayoutAnimation(
           { transform: `translate(${dx}px, ${dy}px)` },
           { transform: "translate(0, 0)" },
         ],
-        { duration: DURATION_MS, easing: EASING },
+        { duration, easing: EASING },
       );
     });
     // A bar that grows takes its new height at once, so the tokens move into
@@ -76,7 +78,7 @@ export function useLayoutAnimation(
         height: `${previous.height}px`,
         alignContent: "flex-start",
       };
-      container.animate([frame, frame], { duration: DURATION_MS });
+      container.animate([frame, frame], { duration });
     }
   });
 }
