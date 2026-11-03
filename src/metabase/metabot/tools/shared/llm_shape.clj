@@ -971,9 +971,9 @@
   "Format field metadata for LLM consumption.
    Matches Python GetFieldMetadataResultSchema.llm_representation exactly, plus an optional
    `source table` + `reference` (portable FK) when the caller supplies them — so a drilled-into
-   field/dimension detail tells the LLM exactly how to reference the column. Without a portable FK, the
-   reference is `reference_name`, the column's output name (like `\"NAME_2\"`)."
-  [{:keys [field_id value_metadata portable_fk reference_name table_reference]}]
+   field/dimension detail tells the LLM exactly how to reference the column. A `reference` field clause wins over
+   the portable FK. Without either, the reference is `reference_name`, the column's output name (like `\"NAME_2\"`)."
+  [{:keys [field_id value_metadata portable_fk reference reference_name table_reference]}]
   (render-llm-template
    :field_metadata
    {:field_metadata_field_id field_id
@@ -982,6 +982,7 @@
     ;; rendered with |safe — escape XML structural chars but keep the JSON's quotes readable,
     ;; like the `:reference` column in [[format-metric-dimensions-table]]
     :field_metadata_reference (some-> (cond
+                                        (vector? reference)      reference
                                         (vector? portable_fk)    portable_fk
                                         (string? reference_name) reference_name)
                                       json/encode

@@ -301,6 +301,23 @@
       (-> (dissoc row :portable_fk)
           (m/assoc-some :source_table (some->> (:portable_fk row) (take 3) vec))))))
 
+(defn- card-multi-fk-table-ids
+  "Return the [[multi-fk-table-ids]] of `columns` when `query` is over a card, or nil."
+  [query columns]
+  (when (lib/primary-source-card-id query)
+    (multi-fk-table-ids columns)))
+
+(defn- dimension-row
+  "Return the dimension row of `column`, one of `columns` of `query`. See [[metric-dimensions]].
+
+  `field-id` is the `field_id` of the row, as in the 3-arity [[->result-column]]. A column of a table in
+  `multi-fk-ids` gets the [[multi-fk-dimension]] of its own FK column."
+  [query columns multi-fk-ids column field-id]
+  (-> (->result-column query column field-id)
+      (m/assoc-some :source_table (renamed-column-source-table query column))
+      (cond->> (and (:fk-field-id column) (contains? multi-fk-ids (:table-id column)))
+        (multi-fk-row query columns column))))
+
 (defn metric-dimensions
   "Return the dimension rows of a metric for `columns` of its query `query`.
 
@@ -311,14 +328,19 @@
   column as `:table_reference`, and a `:reference` field clause that joins through that FK column. When that clause
   cannot be built, the row has no reference: it keeps only its table, as `:source_table`."
   [query columns]
-  (let [multi-fk-ids (when (lib/primary-source-card-id query)
-                       (multi-fk-table-ids columns))]
-    (mapv (fn [column]
-            (-> (->result-column query column)
-                (m/assoc-some :source_table (renamed-column-source-table query column))
-                (cond->> (and (:fk-field-id column) (contains? multi-fk-ids (:table-id column)))
-                  (multi-fk-row query columns column))))
-          columns)))
+  (let [multi-fk-ids (card-multi-fk-table-ids query columns)]
+    (mapv #(dimension-row query columns multi-fk-ids % (column-field-id %)) columns)))
+
+(defn metric-dimension
+  "Return the [[metric-dimensions]] row of `column`, one of `columns` of `query`, with `field-id` as its `field_id`.
+
+    (metric-dimension query columns categories-name 12) ;=> {:field_id 12 :reference [\"field\" {...} [...]] ...}
+
+  `columns` must keep every FK route to a field: with one route only, no table is reached through more than one FK
+  column, and the row gets no `:reference`. `field-id` can be the alias of a later column of one field, see
+  [[->result-columns]]."
+  [query columns column field-id]
+  (dimension-row query columns (card-multi-fk-table-ids query columns) column field-id))
 
 (defn schedule->schedule-map
   "Convert a tool schedule map to the schedule-map format used by cron and pulse channels.

@@ -595,9 +595,9 @@
                   drill-in  (fn [field-id]
                               (let [alias (atom nil)]
                                 (mt/with-dynamic-fn-redefs [field-stats/field-metadata-output
-                                                            (fn [query col field-id limit]
+                                                            (fn [query columns col field-id limit]
                                                               (reset! alias (:lib/desired-column-alias col))
-                                                              (output-fn query col field-id limit))]
+                                                              (output-fn query columns col field-id limit))]
                                   (let [{:keys [portable_fk]} (:structured-output
                                                                (field-stats/field-values {:entity-type "question"
                                                                                           :entity-id   card-id

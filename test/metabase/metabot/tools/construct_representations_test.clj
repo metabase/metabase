@@ -31,6 +31,7 @@
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.metabot.tools.resources :as resources]
    [metabase.metabot.tools.runtime :as tools.runtime]
@@ -3068,6 +3069,37 @@
                              (map #(second (re-find #"ON (\"__mb_source\"\.\"[^\"]+\") =" (:query (qp/compile %)))))
                              results)))
                 (is (every? #(seq (mt/rows (qp/process-query %))) results))))))))))
+
+(deftest duplicate-fk-metric-dimension-drill-in-reference-executes-test
+  (testing "the drill-in on a column that a card reaches through two FK columns gives a Reference that runs"
+    (mt/with-temp [:model/Card {card-id :id, card-eid :entity_id}
+                   {:name "Venues with peer" :type :question :dataset_query (tools.tu/venues-self-join-query)}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Venue count" :type :metric :dataset_query (card-count-query card-id)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [xml       (llm-shape/field-metadata->xml
+                         (:structured-output (field-stats/field-values {:entity-type "metric"
+                                                                        :entity-id   metric-id
+                                                                        :field-id    (mt/id :categories :name)
+                                                                        :limit       5})))
+              reference (some-> (re-find #"Reference \(copy into a field clause\): (.*)" xml) second json/decode)
+              result    (try
+                          (-> (construct/execute-representations-query
+                               (query-data
+                                {"lib/type" "mbql/query"
+                                 "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                              "source-card" card-eid
+                                              "breakout"    [(reference->field-clause reference)]
+                                              "aggregation" [["metric" {} metric-eid]]}]}))
+                              (get-in [:structured-output :query]))
+                          (catch clojure.lang.ExceptionInfo e
+                            (ex-message e)))]
+          (testing "the drill-in names the FK column of its Reference"
+            (is (str/includes? xml "PUBLIC.CATEGORIES (via Category)")))
+          (testing "the Reference runs and joins through that FK column"
+            (is (map? result) (str "query failed: " result))
+            (when (map? result)
+              (is (str/includes? (:query (qp/compile result)) "ON \"__mb_source\".\"CATEGORY_ID\" =")))))))))
 
 (deftest multi-stage-metric-over-model-breakout-executes-test
   (testing "every dimension listed for a multi-stage metric over a model works on the base table it must be used on"
