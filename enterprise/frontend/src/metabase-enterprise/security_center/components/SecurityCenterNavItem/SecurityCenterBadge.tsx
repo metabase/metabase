@@ -8,5 +8,5 @@ export const SecurityCenterBadge = () => {
     return null;
   }
 
-  return <IssueDot data-testid="security-center-badge" />;
+  return <IssueDot />;
 };
