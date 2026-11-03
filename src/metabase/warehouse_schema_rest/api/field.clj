@@ -200,7 +200,7 @@
       (when removed-fk?
         (clear-dimension-on-fk-change! field))
       (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-      (schema.field-user-settings/upsert-user-settings
+      (schema.field-user-settings/upsert-field-user-settings!
        field
        (cond-> body
          (or removed-fk? (contains? body :fk_target_field_id))

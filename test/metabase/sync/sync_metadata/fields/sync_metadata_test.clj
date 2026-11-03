@@ -304,7 +304,7 @@
   (testing "A base type of a field changes only when the field is dropped then a new field with the name is created (#37047).
            In this case, we should make sure effective type is set to base type"
     (mt/with-temp [:model/Field {field-id :id} {}]
-      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Category})
       (is (= [["FieldUserSettings"
                field-id
                {:effective_type    nil
@@ -366,7 +366,7 @@
 (deftest untyped-field-getting-its-base-type-keeps-user-settings-test
   (testing "A Field that never had a real base type, like one serdes synthesized for a stub database, keeps its user settings"
     (mt/with-temp [:model/Field {field-id :id} {:base_type :type/* :active false}]
-      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Category})
       (is (= [["Field"
                field-id
                {:base_type           :type/Text
@@ -470,7 +470,7 @@
            Metabase versions that the customer's instance carries forward."
     (testing "broken row gets healed even when base_type does not change"
       (mt/with-temp [:model/Field {field-id :id} {}]
-        (field-user-settings/upsert-user-settings {:id field-id} {:effective_type :type/Text})
+        (field-user-settings/upsert-field-user-settings! {:id field-id} {:effective_type :type/Text})
         (is (= [["FieldUserSettings" field-id {:effective_type nil :coercion_strategy nil}]
                 ["Field" field-id {:effective_type :type/Number}]]
                (updates-that-will-be-performed!
@@ -518,7 +518,7 @@
 (deftest base-type-change-leaves-data-sensitivity-test
   (testing "the override write on a base type change does not include data_sensitivity"
     (mt/with-temp [:model/Field {field-id :id} {:data_sensitivity :PII}]
-      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Category})
       (let [updates (updates-that-will-be-performed!
                      (merge default-metadata
                             {:base-type      :type/Text

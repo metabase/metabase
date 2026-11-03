@@ -25,7 +25,6 @@
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema-rest.api.table :as api.table]
    [toucan2.core :as t2])
   (:import
@@ -42,7 +41,7 @@
   `t2/select :model/Table` shows sync's values only."
   [column table-id]
   (t2/select-one-fn column :model/Table :id table-id
-                    {:from [(warehouse-schema-overlay/table-query)]}))
+                    {:from [[(t2/table-name :model/Table) :metabase_table]]}))
 
 (deftest ^:parallel unauthenticated-test
   (is (= (get api.response/response-unauthentic :body)

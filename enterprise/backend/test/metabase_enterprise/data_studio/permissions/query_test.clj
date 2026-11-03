@@ -40,7 +40,7 @@
       (mt/with-temp [:model/User       {user-id :id}       {}
                      :model/Collection {collection-id :id} {:type "library-data"}]
         (try
-          (schema.table-user-settings/upsert-user-settings (t2/select-one :model/Table :id (mt/id :venues))
+          (schema.table-user-settings/upsert-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
                                                            {:is_published  true
                                                             :collection_id collection-id})
           (let [all-users (perms/all-users-group)]
@@ -53,7 +53,7 @@
             (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no))
           (f user-id collection-id)
           (finally
-            (schema.table-user-settings/unset-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
+            (schema.table-user-settings/unset-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
                                                              [:is_published :collection_id])))))))
 
 (deftest published-table-test

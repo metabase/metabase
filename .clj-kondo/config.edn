@@ -75,7 +75,6 @@
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/t2-implicit-pk                                   {:level :warning}
-  :metabase/table-or-field-query                             {:level :warning}
   ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
   ;; `:column value` pairs rather than a map. Off by default and enabled per namespace under
   ;; `:config-in-ns`; flip it on globally once every `db.clj` has been converted.
@@ -974,12 +973,7 @@
    :name    agent-exit-namespaces}]
 
  :config-in-ns
- {metabase.app-db.custom-migrations
-  {:linters
-   ;; a migration reads the rows as they were when it ran; applying today's user settings would make it drift
-   {:metabase/table-or-field-query {:level :off}}}
-
-  test-namespaces
+ {test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}

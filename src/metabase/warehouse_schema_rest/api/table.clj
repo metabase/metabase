@@ -216,7 +216,7 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (schema.table-user-settings/upsert-user-settings existing-table changes))
+    (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
   (let [updated-table        (warehouse-schema-rest.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
